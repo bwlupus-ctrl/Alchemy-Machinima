@@ -1,11 +1,11 @@
 # Settings — Director Kit page contract
 
 Page key: `director_settings_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (9/16 setting-bound rows; 6 C++-referenced rows).
+Computed class: **code-driven** (10/17 setting-bound rows; 6 C++-referenced rows).
 
 ## Real owners
 
-- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (15 matching rows).
+- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (16 matching rows).
 - Referencing classes: `LLFloaterDirector` (5), `LLNotifications` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
@@ -26,22 +26,23 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `scene_recovery` / `settings_delete_backup` (Delete backup) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:26` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `scene_recovery` / `settings_recovery_help` (About recovery) | `text` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:29` | kit readout ← approved static copy; no runtime writer | none |
 | `settings_cast` / `settings_add_self_link` (Add me at login) | none | kit-native action `link_to:capture_group/scene_options_tab`; no duplicate widget is required | none |
-| `settings_prompts` / `settings_reset_prompts` (Reset prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:2168`) | none |
+| `settings_prompts` / `settings_reset_prompts` (Reset prompts) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:37` | `ALDirectorSettingsKitAdapter` command/model binding → wired in `LLFloaterDirector::bindDirectorSettingsPage()`; behavior `LLNotifications::setIgnored()` (`indra/newview/llfloaterdirector.cpp:2169`) | none |
 | `settings_appearance` / `settings_theme` (Theme) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` | kit `combo` ↔ `DirectorTheme` `String` | none |
-| `settings_appearance` / `hide_cursor_with_ui` (Hide cursor with interface) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:58` | kit `toggle` ↔ `HideCursorWithUI` `Boolean` | none |
-| `settings_appearance` / `settings_action_all_off` (Replace ACTION with All Off) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:61` | kit `toggle` ↔ `DirectorActionAllOffMode` `Boolean` | none |
-| `settings_appearance` / `settings_restore_last_reset` (Restore last reset) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:64` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `settings_performance` / `settings_rigged_lod_hysteresis` (LOD hysteresis) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:69` | kit `slider` ↔ `RenderRiggedLODHysteresis` `F32` | none |
-| `settings_performance` / `settings_shadow_direct_transitions_check` (Shadow passes) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:74` | kit `toggle` ↔ `RenderShadowDirectTransitions` `Boolean` | none |
-| `settings_performance` / `settings_vbo_pool_clean_check` (VBO pool cleanup) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:77` | kit `toggle` ↔ `RenderVBOPoolCleanAtFrameEnd` `Boolean` | none |
-| `settings_performance` / `settings_emergency_purge_sliced` (Spread texture purges) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:80` | kit `toggle` ↔ `AlchemyEmergencyPurgeSliced` `Boolean` | none |
-| `settings_performance` / `settings_capture_quality_pin` (Pin scene textures (no degrade during takes)) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:83` | kit `toggle` ↔ `BDMergeCaptureModePin` `Boolean` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4704` `capture_quality_pin` |
+| `settings_appearance` / `settings_theme_invert` (Invert theme) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:62` | kit `toggle` ↔ `DirectorThemeInvert` `Boolean` | none |
+| `settings_appearance` / `hide_cursor_with_ui` (Hide cursor with interface) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:65` | kit `toggle` ↔ `HideCursorWithUI` `Boolean` | none |
+| `settings_appearance` / `settings_action_all_off` (Replace ACTION with All Off) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:68` | kit `toggle` ↔ `DirectorActionAllOffMode` `Boolean` | none |
+| `settings_appearance` / `settings_restore_last_reset` (Restore last reset) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:71` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `settings_performance` / `settings_rigged_lod_hysteresis` (LOD hysteresis) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:76` | kit `slider` ↔ `RenderRiggedLODHysteresis` `F32` | none |
+| `settings_performance` / `settings_shadow_direct_transitions_check` (Shadow passes) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:81` | kit `toggle` ↔ `RenderShadowDirectTransitions` `Boolean` | none |
+| `settings_performance` / `settings_vbo_pool_clean_check` (VBO pool cleanup) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:84` | kit `toggle` ↔ `RenderVBOPoolCleanAtFrameEnd` `Boolean` | none |
+| `settings_performance` / `settings_emergency_purge_sliced` (Spread texture purges) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:87` | kit `toggle` ↔ `AlchemyEmergencyPurgeSliced` `Boolean` | none |
+| `settings_performance` / `settings_capture_quality_pin` (Pin scene textures (no degrade during takes)) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:90` | kit `toggle` ↔ `BDMergeCaptureModePin` `Boolean` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4704` `capture_quality_pin` |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `LLNotifications::setIgnored()` — `indra/newview/llfloaterdirector.cpp:2168` | Move model-facing work into `ALDirectorSettingsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLNotifications::setIgnored()` — `indra/newview/llfloaterdirector.cpp:2169` | Move model-facing work into `ALDirectorSettingsKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -52,7 +53,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **22 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **23 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -70,6 +71,7 @@ Manifest size: **22 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `card-settings_prompts-tallest-1160` | Only `settings_prompts` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `card-settings_appearance-tallest-850` | Only `settings_appearance` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-settings_appearance-tallest-1160` | Only `settings_appearance` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `settings_theme_invert-on` | Only `settings_theme_invert` is on; dependent visibility is measured. |
 | `hide_cursor_with_ui-on` | Only `hide_cursor_with_ui` is on; dependent visibility is measured. |
 | `settings_action_all_off-on` | Only `settings_action_all_off` is on; dependent visibility is measured. |
 | `card-settings_performance-tallest-850` | Only `settings_performance` is put in its tallest local state at 850 px; all other cards stay default. |

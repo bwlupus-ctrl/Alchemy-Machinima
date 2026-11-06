@@ -10,6 +10,7 @@
 #include "llpanel.h"
 #include "llstring.h"
 #include "lltextbox.h"
+#include "lluicolortable.h"
 #include "lltexteditor.h"
 #include "lluictrlfactory.h"
 
@@ -18,6 +19,7 @@ namespace
 LLTextBox* makeText(LLPanel* parent, const std::string& name, S32 top, S32 height, bool wrap = false)
 {
     LLTextBox::Params params;
+    params.text_color = LLUIColorTable::instance().getColor("KitTextMuted");
     params.name     = name;
     params.rect     = LLRect(10, top, parent->getRect().getWidth() - 10, top - height);
     params.wrap     = wrap;

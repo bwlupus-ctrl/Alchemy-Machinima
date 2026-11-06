@@ -100,6 +100,7 @@
 #include "llspinctrl.h"             // group start-delay spinner (Groups section)
 #include "lltabcontainer.h"
 #include "lltextbox.h"
+#include "lluicolortable.h"
 #include "lltexteditor.h"
 #include "lltooldraganddrop.h"
 #include "lltool.h"
@@ -3954,6 +3955,7 @@ void LLFloaterDirector::requestAllOff()
         mShell->addChild(mAllOffPopover);
         mAllOffPopover->bindAnchor(mActionBtn);
         LLTextBox::Params text;
+        text.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
         text.name = "director_all_off_message";
         text.rect = LLRect(12, 114, 348, 48);
         text.initial_value = "Switch Director features off and reset Personal Lighting and Avatar Light Response? Restore last reset keeps a backup.";
@@ -6255,9 +6257,12 @@ void LLFloaterDirector::refreshCastList()
                 // members tint to their group's stable pastel hue so the
                 // grouping reads at a glance (the diffed mName includes the
                 // group suffix, so a retag re-applies the color)
-                cell->setColor(!in_world ? LLColor4::grey
-                             : (m && !m->mGroup.empty()) ? group_tint(m->mGroup)
-                                                         : LLColor4::white);
+                // Kit lists inherit live text roles from styleList/restyleLists.
+                // Group names and the status column still identify each member.
+                if (!mIsV2)
+                    cell->setColor(!in_world ? LLColor4::grey
+                                 : (m && !m->mGroup.empty()) ? group_tint(m->mGroup)
+                                                             : LLColor4::white);
             }
             state.mName = name;
             state.mInWorld = in_world;
@@ -8326,9 +8331,9 @@ void LLFloaterDirector::refreshStatusStrip()
     if (mRecState != rec_state)
     {
         mRecState = rec_state;
-        const LLColor4 rec_color = mIsV2
-            ? (rec ? LLColor4::white : ALKitStyle::color(ALKitStyle::FAINT).get())
-            : (rec ? LLColor4(0.85f, 0.25f, 0.25f, 1.f) : LLColor4(0.5f, 0.5f, 0.5f, 1.f));
+        const LLUIColor rec_color = mIsV2
+            ? ALKitStyle::color(rec ? ALKitStyle::RECORD_TEXT_ON : ALKitStyle::MUTED)
+            : LLUIColor(rec ? LLColor4(0.85f, 0.25f, 0.25f, 1.f) : LLColor4(0.5f, 0.5f, 0.5f, 1.f));
         if (!mIsV2)
             mRecIndicator->setText(rec ? std::string("REC \xE2\x97\x8F")
                                        : std::string("REC \xE2\x97\x8B"));

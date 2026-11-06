@@ -211,8 +211,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2288 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2288, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2288, "unresolved_rows": 75}`.
+Existing evidence: 2289 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2289, "multi_page_settings": 21, "owner_roots": 36, "pages": 39, "rows": 2289, "unresolved_rows": 75}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous

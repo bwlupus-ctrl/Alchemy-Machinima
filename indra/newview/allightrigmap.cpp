@@ -14,6 +14,7 @@
 #include "llrender2dutils.h"
 #include "llfontgl.h"
 #include "lluictrlfactory.h"
+#include "lluicolortable.h"
 #include "llviewercamera.h"
 #include "llviewercontrol.h"
 #include <initializer_list>
@@ -63,8 +64,8 @@ void nearEllipse(F32 cx, F32 cy, F32 rx, F32 ry, const LLColor4& c)
 
 void gradientDisc(F32 cx, F32 cy, F32 radius)
 {
-    const LLColor4 centre = LLColor4(0x1d / 255.f, 0x30 / 255.f, 0x49 / 255.f, 1.f);
-    const LLColor4 edge   = LLColor4(0x09 / 255.f, 0x11 / 255.f, 0x20 / 255.f, 1.f);
+    const LLColor4 centre = LLUIColorTable::instance().getColor("KitMapBackdropMid").get();
+    const LLColor4 edge   = LLUIColorTable::instance().getColor("KitMapBackdropEdge").get();
     gGL.begin(LLRender::TRIANGLE_FAN);
     gGL.color4fv(centre.mV);
     gGL.vertex2f(cx - .12f * radius, cy + .18f * radius);
@@ -79,8 +80,10 @@ void gradientDisc(F32 cx, F32 cy, F32 radius)
 
 void frontHemisphere(F32 cx, F32 cy, F32 radius)
 {
-    const LLColor4 middle = LLColor4(0x2b / 255.f, 0x4c / 255.f, 0x74 / 255.f, .62f);
-    const LLColor4 edge   = LLColor4(0x18 / 255.f, 0x30 / 255.f, 0x4f / 255.f, .32f);
+    LLColor4 middle = LLUIColorTable::instance().getColor("KitMapHemisphereMid").get();
+    LLColor4 edge   = LLUIColorTable::instance().getColor("KitMapHemisphereLow").get();
+    middle.mV[VALPHA] = .62f;
+    edge.mV[VALPHA] = .32f;
     gGL.begin(LLRender::TRIANGLE_FAN);
     gGL.color4fv(middle.mV);
     gGL.vertex2f(cx, cy - .24f * radius);
@@ -613,13 +616,13 @@ void ALLightRigMap::draw()
         const F32  inner_x = light.x + (right ? -light.rr - 5.f : light.rr + 5.f);
         const LLFontGL::HAlign outer_align = right ? LLFontGL::LEFT : LLFontGL::RIGHT;
         const LLFontGL::HAlign inner_align = right ? LLFontGL::RIGHT : LLFontGL::LEFT;
-        place_label(LABEL[light.i], light.color, light.i,
+        place_label(LABEL[light.i], ALKitStyle::color(ALKitStyle::TEXT).get(), light.i,
                     { { outer_x, light.y, outer_align }, { inner_x, light.y, inner_align },
                       { light.x, light.y + light.rr + 9.f, LLFontGL::HCENTER },
                       { light.x, light.y - light.rr - 9.f, LLFontGL::HCENTER } },
                     true, true);
         if (!mOn[light.i])
-            place_label(S_OFF, light.color, light.i,
+            place_label(S_OFF, ALKitStyle::color(ALKitStyle::TEXT).get(), light.i,
                         { { light.x, light.y - light.rr - 9.f, LLFontGL::HCENTER },
                           { light.x, light.y + light.rr + 9.f, LLFontGL::HCENTER },
                           { outer_x, light.y - 13.f, outer_align }, { outer_x, light.y + 13.f, outer_align },

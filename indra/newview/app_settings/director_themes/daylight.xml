@@ -1007,10 +1007,10 @@
       </array>
       <key>KitWarnBandText</key>
       <array>
-        <real>0.0706</real>
-        <real>0.3098</real>
-        <real>0.5647</real>
-        <real>1.0000</real>
+        <real>0.42</real>
+        <real>0.24</real>
+        <real>0.0</real>
+        <real>1.0</real>
       </array>
       <key>KitWhiteFaint015</key>
       <array>

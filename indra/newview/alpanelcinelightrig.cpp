@@ -22,6 +22,7 @@
 #include "alkithistory.h"
 #include "alkitshell.h"
 #include "alkitpage.h"
+#include "alkitstyle.h"
 #include "alkitmenu.h"
 #include "alriggroupsubject.h"
 #include "llmenugl.h"
@@ -820,8 +821,12 @@ bool ALPanelCineLightRig::postBuild()
     mShadowHint = getChild<LLTextBox>("cine_shadow_hint");
     mShadowFixIt = getChild<LLButton>("cine_shadow_fixit");
     mRadiusLabel = getChild<LLTextBox>("cine_radius_label");
-    mRadiusDefaultColor = LLUIColorTable::instance().getColor(
-        "LabelTextColor", LLColor4::white);
+    // The generated Director page has a kit child before postBuild; the
+    // standalone legacy panel keeps its original live label colour.
+    mRadiusDefaultColor = mRigKitPage ? LLUIColorTable::instance().getColor("KitTextSecondary")
+        : LLUIColorTable::instance().getColor("LabelTextColor", LLColor4::white);
+    mRadiusWarningColor = mRigKitPage ? LLUIColorTable::instance().getColor("KitWarnBandText")
+        : LLUIColor(LLColor4(1.f, 0.75f, 0.25f, 1.f));
     mSetupSave = getChild<LLButton>("cine_setup_save");
     mSetupDelete = getChild<LLButton>("cine_setup_delete");
     // [UIPerf] cache the formerly per-frame name lookups (tolerant findChild,
@@ -2148,8 +2153,7 @@ void ALPanelCineLightRig::syncGroupControls()
         if (resolved_count == 0)
         {
             setTextIfChanged(mGroupStatus, std::string("none resolved"));
-            mGroupStatus->setColor(
-                LLUIColor(LLColor4(1.f, 0.75f, 0.25f, 1.f)));
+            mGroupStatus->setColor(mRadiusWarningColor);
         }
         else
         {
@@ -3145,8 +3149,7 @@ void ALPanelCineLightRig::updateDerivedStatus()
         radius_over_ceiling != mRadiusOverCeiling)
     {
         mRadiusLabel->setColor(radius_over_ceiling
-            ? LLUIColor(LLColor4(1.f, 0.75f, 0.25f, 1.f))
-            : mRadiusDefaultColor);
+            ? mRadiusWarningColor : mRadiusDefaultColor);
         mRadiusOverCeiling = radius_over_ceiling;
         mRadiusCueInitialized = true;
     }

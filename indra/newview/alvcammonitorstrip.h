@@ -9,6 +9,7 @@
 #include "alvcampagemodel.h"
 #include "alflowgrid.h"
 #include "llui.h"
+#include "lluicolor.h"
 #include "lluiimage.h"
 #include "lluictrl.h"
 #include "llprismpreview.h"
@@ -37,10 +38,10 @@ private:
     bool mInfoOverlay = false;
     F32 mSpeed = 1.f;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mTextColor;
-    LLColor4 mMutedColor;
-    LLColor4 mAccentColor;
-    LLColor4 mBorderColor;
+    LLUIColor mTextColor;
+    LLUIColor mMutedColor;
+    LLUIColor mAccentColor;
+    LLUIColor mBorderColor;
 };
 
 // Manifest-only placeholder for the "vcam_monitor_tile" XUI tag. It needs its OWN Params type:
@@ -138,9 +139,9 @@ private:
     bool mInfoOverlay = false;
     LLPrismLens::EFitMode mNewFaceFit = LLPrismLens::EFitMode::FIT;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mBorderColor;
-    LLColor4 mTextColor;
-    LLColor4 mMutedColor;
+    LLUIColor mBorderColor;
+    LLUIColor mTextColor;
+    LLUIColor mMutedColor;
     LLPrismPreviewService* mPreviewService = nullptr;
     S32 mMouseDownSlot = -1;
     std::string mPreviewCostText;
@@ -172,7 +173,7 @@ private:
     U32 mCount = 0;
     std::string mLabel;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mTextColor;
+    LLUIColor mTextColor;
 };
 
 class ALVCamCameraSelector : public LLUICtrl, public ALFlowGridItem
@@ -262,10 +263,10 @@ private:
     S32 mScrollOffset = 0;
     bool mMovePick = false;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mTextColor;
-    LLColor4 mMutedColor;
-    LLColor4 mAccentColor;
-    LLColor4 mBorderColor;
+    LLUIColor mTextColor;
+    LLUIColor mMutedColor;
+    LLUIColor mAccentColor;
+    LLUIColor mBorderColor;
 };
 
 class ALVCamTexturePickerList : public LLUICtrl
@@ -291,10 +292,10 @@ private:
     U32 mCount = 0;
     LLUUID mSelected;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mBorderColor;
-    LLColor4 mTextColor;
-    LLColor4 mMutedColor;
-    LLColor4 mAccentColor;
+    LLUIColor mBorderColor;
+    LLUIColor mTextColor;
+    LLUIColor mMutedColor;
+    LLUIColor mAccentColor;
     LLPrismPreviewService* mPreviewService = nullptr;
 };
 
@@ -323,10 +324,10 @@ private:
     std::vector<Item> mItems;
     S32 mScrollOffset = 0;
     const LLFontGL* mFont = nullptr;
-    LLColor4 mBorderColor;
-    LLColor4 mTextColor;
-    LLColor4 mMutedColor;
-    LLColor4 mAccentColor;
+    LLUIColor mBorderColor;
+    LLUIColor mTextColor;
+    LLUIColor mMutedColor;
+    LLUIColor mAccentColor;
 };
 
 #endif

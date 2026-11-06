@@ -47,15 +47,15 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ak_output` / `ak_warn` (Capture warnings) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:149` | kit readout ← approved static copy; no runtime writer | none |
 | `ak_output` / `ak_limits` (Known limits) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:152` | kit readout ← approved static copy; no runtime writer | none |
 | `ak_diagnostics` / `ak_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:157` | kit `combo` ↔ `ActorKeyDebugView` `U32` | none |
-| `ak_diagnostics` / `ak_selftest` (Self-test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:168` | kit `button` ↔ `ActorKeySelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:137`) | none |
-| `ak_diagnostics` / `ak_shadowtest` (Exact shadow test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:171` | kit `button` ↔ `ActorKeyShadowSelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:139`) | none |
+| `ak_diagnostics` / `ak_selftest` (Self-test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:168` | kit `button` ↔ `ActorKeySelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:139`) | none |
+| `ak_diagnostics` / `ak_shadowtest` (Exact shadow test) | `button` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:171` | kit `button` ↔ `ActorKeyShadowSelfTest` `U32`; `ALPanelActorKey` preserves/calls wired in `ALPanelActorKey::postBuild()`; behavior `ALPanelActorKey::setU32()` (`indra/newview/alpanelactorkey.cpp:141`) | none |
 | `ak_diagnostics` / `ak_result` (Last result) | `text` `indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml:174` | kit readout ← approved static copy; no runtime writer | none |
 
 ## Adapter extraction
 
 | Existing function | Extraction contract |
 |---|---|
-| `ALPanelActorKey::setU32()` — `indra/newview/alpanelactorkey.cpp:137, 139` | Move model-facing work into `ALPanelActorKey` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `ALPanelActorKey::setU32()` — `indra/newview/alpanelactorkey.cpp:139, 141` | Move model-facing work into `ALPanelActorKey` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 

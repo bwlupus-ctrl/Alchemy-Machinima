@@ -40,6 +40,7 @@ namespace
 
     bool sSnapshotTaken = false;
     bool sSettingConnected = false;
+    bool sInvertConnected = false;
     bool sReloadConnected = false;
 
     void takeSnapshot()
@@ -134,7 +135,8 @@ std::vector<ThemeInfo> listThemes()
     // Stock display order matches director_kit_gen.py; discovered custom themes follow by file name.
     const std::vector<std::string> stock_order = {
         "default", "second_life", "night_shoot", "tungsten", "graphite",
-        "daylight", "teal_orange", "noir", "neon", "arctic"
+        "daylight", "teal_orange", "noir", "neon", "arctic",
+        "rose_quartz", "bubblegum", "lavender", "peach_sorbet"
     };
     std::stable_sort(result.begin(), result.end(),
                      [&stock_order](const ThemeInfo& left, const ThemeInfo& right)
@@ -195,11 +197,26 @@ void applyTheme(const Theme& theme)
 {
     takeSnapshot();
     LLUIColorTable& table = LLUIColorTable::instance();
-    for (const auto& original : originals())
+    ColorMap effective = originals();
+    for (const auto& override_color : theme.colors)
     {
-        const auto override_it = theme.colors.find(original.first);
-        const LLColor4& value = (override_it != theme.colors.end()) ? override_it->second : original.second;
-        table.setLoadedColor(original.first, value);
+        const auto known = effective.find(override_color.first);
+        if (known != effective.end())
+        {
+            known->second = override_color.second;
+        }
+    }
+    if (gSavedSettings.getBOOL(kInvertSettingName))
+    {
+        if (!tryInvertColors(effective))
+        {
+            LL_WARNS("DirectorTheme") << "Theme '" << theme.id
+                << "' fails inverted contrast; applying un-inverted theme" << LL_ENDL;
+        }
+    }
+    for (const auto& color : effective)
+    {
+        table.setLoadedColor(color.first, color.second);
     }
     // Scroll-list colours are plain LLColor4 values on the list, so the kit lists read them again here.
     ALKitStyle::restyleLists();
@@ -232,6 +249,20 @@ void init()
                     applyThemeById(new_value.asString());
                 });
             sSettingConnected = true;
+        }
+    }
+
+    if (!sInvertConnected)
+    {
+        LLControlVariable* control = gSavedSettings.getControl(kInvertSettingName);
+        if (control)
+        {
+            control->getSignal()->connect(
+                [](LLControlVariable*, const LLSD&, const LLSD&)
+                {
+                    applyThemeById(gSavedSettings.getString(kSettingName));
+                });
+            sInvertConnected = true;
         }
     }
 

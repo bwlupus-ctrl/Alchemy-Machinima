@@ -35,6 +35,7 @@
 #include "llstring.h"
 #include "lltabcontainer.h"
 #include "lltextbox.h"
+#include "lluicolortable.h"
 #include "lluictrlfactory.h"
 #include "llviewercontrol.h"
 #include "llviewerwindow.h"
@@ -512,6 +513,7 @@ void ALKitShell::buildChrome()
                 shell->searchFocusLost();
         });
     LLTextBox::Params text_params;
+    text_params.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
     text_params.name = "kit_search_header";
     text_params.rect = LLRect(10, 380, 420, 358);
     mSearchHeader    = LLUICtrlFactory::create<LLTextBox>(text_params);
@@ -546,6 +548,7 @@ void ALKitShell::buildChrome()
         addChild(mCastPopover);
         mCastPopover->bindAnchor(cast_chip);
         LLTextBox::Params empty;
+        empty.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
         empty.name = "kit_cast_empty";
         empty.rect = LLRect(12, 344, 288, 300);
         empty.initial_value = "Cast is shown in the left rail.";
@@ -1193,8 +1196,11 @@ void ALKitShell::draw()
     {
         LLRect rect;
         if (mTransportArm->localRectToOtherView(mTransportArm->getLocalRect(), &rect, this))
-            gl_line_2d(rect.mLeft, rect.mBottom + 3, rect.mLeft, rect.mTop - 3,
-                       LLColor4(0.078f, 0.078f, 0.075f, .3f));
+        {
+            LLColor4 divider = ALKitStyle::color(ALKitStyle::KNOB_ON).get();
+            divider.mV[VALPHA] = .3f;
+            gl_line_2d(rect.mLeft, rect.mBottom + 3, rect.mLeft, rect.mTop - 3, divider);
+        }
     }
     LLView* view = mHighlight.get();
     if (view && mHighlightTimer.getElapsedTimeF32() < ALKitStyle::FLASH_SEC)

@@ -110,10 +110,10 @@ void drawText(const LLFontGL* font, const std::string& text,
 
 ALVCamMonitorHeader::ALVCamMonitorHeader(const Params& p)
     : LLUICtrl(p), mFont(LLFontGL::getFontSansSerifSmall()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
-      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get()),
-      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get())
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT)),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED)),
+      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT)),
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER))
 {
     setMouseOpaque(true);
 }
@@ -134,20 +134,20 @@ void ALVCamMonitorHeader::draw()
     const S32 h = 24;
     gGL.pushMatrix();
     gGL.translatef(0.f, static_cast<F32>(getRect().getHeight() - h), 0.f);
-    drawText(mFont, "Size", layout.mSizeLabelLeft, 8, mMutedColor);
+    drawText(mFont, "Size", layout.mSizeLabelLeft, 8, mMutedColor.get());
     const S32 size_width = llmax(1, layout.mSizeRight - layout.mSizeLeft);
     for (S32 index = 0; index < 2; ++index)
     {
         LLRect rect(layout.mSizeLeft + index * size_width / 2, h,
                     layout.mSizeLeft + (index + 1) * size_width / 2 - 2, 0);
-        gl_rect_2d(rect, index == static_cast<S32>(mCompact) ? mAccentColor : mBorderColor, false);
-        drawText(mFont, index ? "Compact" : "Large", rect.mLeft + 5, 8, mTextColor,
+        gl_rect_2d(rect, index == static_cast<S32>(mCompact) ? mAccentColor.get() : mBorderColor.get(), false);
+        drawText(mFont, index ? "Compact" : "Large", rect.mLeft + 5, 8, mTextColor.get(),
                  rect.getWidth() - 10);
     }
     const S32 preview_switch_left = layout.mPreviewRight - ALKitStyle::SWITCH_W;
-    drawText(mFont, "Previews", layout.mPreviewLeft, 8, mTextColor,
+    drawText(mFont, "Previews", layout.mPreviewLeft, 8, mTextColor.get(),
              preview_switch_left - layout.mPreviewLeft - 4);
-    const LLColor4 preview_track = (mPreviews ? mAccentColor :
+    const LLColor4 preview_track = (mPreviews ? mAccentColor.get() :
         ALKitStyle::color(ALKitStyle::SWITCH_OFF).get());
     const LLColor4 preview_knob = ALKitStyle::color(mPreviews ? ALKitStyle::KNOB_ON :
         ALKitStyle::KNOB_OFF).get();
@@ -161,9 +161,9 @@ void ALVCamMonitorHeader::draw()
                  12.f, 7.f, 20, true);
     gGL.popMatrix();
     const S32 info_switch_left = layout.mInfoRight - ALKitStyle::SWITCH_W;
-    drawText(mFont, "Info", layout.mInfoLeft, 8, mTextColor,
+    drawText(mFont, "Info", layout.mInfoLeft, 8, mTextColor.get(),
              info_switch_left - layout.mInfoLeft - 4);
-    const LLColor4 info_track = (mInfoOverlay ? mAccentColor :
+    const LLColor4 info_track = (mInfoOverlay ? mAccentColor.get() :
         ALKitStyle::color(ALKitStyle::SWITCH_OFF).get());
     const LLColor4 info_knob = ALKitStyle::color(mInfoOverlay ? ALKitStyle::KNOB_ON :
         ALKitStyle::KNOB_OFF).get();
@@ -174,7 +174,7 @@ void ALVCamMonitorHeader::draw()
     gGL.color4fv(info_knob.mV);
     gl_circle_2d(static_cast<F32>(info_switch_left + (mInfoOverlay ? 25 : 9)),
                  12.f, 7.f, 20, true);
-    drawText(mFont, "fps", layout.mSpeedLabelLeft, 8, mMutedColor);
+    drawText(mFont, "fps", layout.mSpeedLabelLeft, 8, mMutedColor.get());
     const F32 speeds[] = { .5f, 1.f, 2.f, 5.f };
     const char* labels[] = { "0.5", "1", "2", "5" };
     const S32 speed_width = llmin(196, llmax(1, w - layout.mSpeedLeft));
@@ -182,8 +182,8 @@ void ALVCamMonitorHeader::draw()
     {
         LLRect rect(layout.mSpeedLeft + index * speed_width / 4, h,
                     layout.mSpeedLeft + (index + 1) * speed_width / 4 - 2, 0);
-        gl_rect_2d(rect, fabsf(mSpeed - speeds[index]) < .01f ? mAccentColor : mBorderColor, false);
-        drawText(mFont, labels[index], rect.mLeft + 5, 8, mTextColor,
+        gl_rect_2d(rect, fabsf(mSpeed - speeds[index]) < .01f ? mAccentColor.get() : mBorderColor.get(), false);
+        drawText(mFont, labels[index], rect.mLeft + 5, 8, mTextColor.get(),
                  rect.getWidth() - 10);
     }
     LLUICtrl::draw();
@@ -230,9 +230,9 @@ bool ALVCamMonitorHeader::handleMouseDown(S32 x, S32 y, MASK)
 ALVCamMonitorStrip::ALVCamMonitorStrip(const Params& p)
     : LLUICtrl(p),
       mFont(LLFontGL::getFontSansSerifSmall()),
-      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER)),
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT)),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED)),
       mPreviewService(&LLPrismPreviewService::instance())
 {
     setMouseOpaque(true);
@@ -346,7 +346,7 @@ void ALVCamMonitorStrip::draw()
     if (start >= end)
     {
         drawText(mFont, "Add a camera to see monitor previews.", 4,
-                 getRect().getHeight() / 2, mMutedColor, getRect().getWidth() - 8);
+                 getRect().getHeight() / 2, mMutedColor.get(), getRect().getWidth() - 8);
         LLUICtrl::draw();
         return;
     }
@@ -379,22 +379,31 @@ void ALVCamMonitorStrip::draw()
         }
         else
             gl_rect_2d(picture, tile.mNoSignalWhite ? LLColor4::white : LLColor4::black, true);
-        gl_rect_2d(picture, mBorderColor, false);
+        gl_rect_2d(picture, mBorderColor.get(), false);
+        static const LLUIColor warning = LLUIColorTable::instance().getColor("KitWarnBandText");
+        static const LLUIColor error = LLUIColorTable::instance().getColor("KitRecordText");
+        const LLUIColor* caption = &mTextColor;
         LLColor4 status_dot(0.56f, 0.85f, 0.66f, 1.f);
         if (!tile.mPreviewsEnabled && tile.mActivity != LLPrismLens::EActivityState::IDLE)
-            status_dot = mMutedColor;
+            status_dot = mMutedColor.get();
         // HELD = reusing the camera's last picture between preview refreshes
         // (e.g. 1 fps). That is still a running camera: keep the steady live
         // colour, otherwise the dot flashes once per preview publish.
         else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::PAUSED)
-            status_dot = mMutedColor;
+            status_dot = mMutedColor.get();
         else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::WARMING ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::THROTTLED)
+        {
             status_dot = LLColor4(0.95f, 0.68f, 0.22f, 1.f);
+            caption = &warning;
+        }
         else if (tile.mPublication.mState == LLPrismPreviewService::ETileState::OFFLINE ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::FAILED ||
                  tile.mPublication.mState == LLPrismPreviewService::ETileState::SHADER_UNAVAILABLE)
+        {
             status_dot = LLColor4(0.90f, 0.28f, 0.24f, 1.f);
+            caption = &error;
+        }
         if (mCompact)
         {
             gGL.color4fv(status_dot.mV);
@@ -406,14 +415,14 @@ void ALVCamMonitorStrip::draw()
         if (!mCompact)
             gl_circle_2d(static_cast<F32>(rect.mLeft + 24), static_cast<F32>(name_y + 3),
                          2.5f, 10, true);
-        drawText(mFont, "::::", rect.mLeft + 4, name_y, mMutedColor, 18);
+        drawText(mFont, "::::", rect.mLeft + 4, name_y, mMutedColor.get(), 18);
         const S32 name_left = rect.mLeft + (mCompact ? 24 : 30);
-        drawText(mFont, text_cache.mName, name_left, name_y, mTextColor,
+        drawText(mFont, text_cache.mName, name_left, name_y, mTextColor.get(),
                  llmax(1, rect.mRight - 22 - name_left));
-        drawText(mFont, "...", rect.mRight - 18, name_y, mMutedColor, 16);
+        drawText(mFont, "...", rect.mRight - 18, name_y, mMutedColor.get(), 16);
         {
             drawText(mFont, text_cache.mStatus, rect.mLeft + 12, picture.mBottom - 28,
-                     status_dot, rect.getWidth() - 16);
+                     caption->get(), rect.getWidth() - 16);
         }
     }
     LLUICtrl::draw();
@@ -594,7 +603,7 @@ bool ALVCamMonitorStrip::handleDisplayRowDrop(
 
 ALVCamMonitorPager::ALVCamMonitorPager(const Params& p)
     : LLUICtrl(p), mFont(LLFontGL::getFontSansSerifSmall()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get())
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT))
 {
 }
 
@@ -611,7 +620,7 @@ void ALVCamMonitorPager::setPage(U32 page, U32 count)
 void ALVCamMonitorPager::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director VCam monitor pager");
-    drawText(mFont, mLabel, 4, 7, mTextColor, getRect().getWidth() - 8);
+    drawText(mFont, mLabel, 4, 7, mTextColor.get(), getRect().getWidth() - 8);
     LLUICtrl::draw();
 }
 
@@ -908,10 +917,10 @@ bool ALVCamCameraSelector::handleKeyHere(KEY key, MASK mask)
 
 ALVCamFaceList::ALVCamFaceList(const Params& p)
     : LLUICtrl(p), mFont(LLFontGL::getFontSansSerifSmall()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
-      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get()),
-      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get())
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT)),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED)),
+      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT)),
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER))
 {
 }
 
@@ -943,9 +952,9 @@ void ALVCamFaceList::draw()
     {
         const S32 top = getRect().getHeight() - (i - mScrollOffset) * FACE_ROW_HEIGHT;
         LLRect rect(0, top, content_right, top - 30);
-        gl_rect_2d(rect, mItems[i].mSelected ? mAccentColor : mBorderColor, false);
-        drawText(mFont, mItems[i].mName, 7, top - 13, mTextColor);
-        drawText(mFont, mItems[i].mMeta, 150, top - 13, mMutedColor);
+        gl_rect_2d(rect, mItems[i].mSelected ? mAccentColor.get() : mBorderColor.get(), false);
+        drawText(mFont, mItems[i].mName, 7, top - 13, mTextColor.get());
+        drawText(mFont, mItems[i].mMeta, 150, top - 13, mMutedColor.get());
     }
     if (static_cast<S32>(mItems.size()) > visible_rows)
     {
@@ -959,13 +968,13 @@ void ALVCamFaceList::draw()
         gl_rect_2d(LLRect(track_left, getRect().getHeight(), getRect().getWidth(), 0),
                    LLColor4(0.f, 0.f, 0.f, .18f), true);
         gl_rect_2d(LLRect(track_left + 1, thumb_top, getRect().getWidth() - 1,
-                          thumb_top - thumb_height), mBorderColor, true);
+                          thumb_top - thumb_height), mBorderColor.get(), true);
     }
     if (mMovePick)
     {
-        gl_rect_2d(getLocalRect(), mAccentColor, false);
+        gl_rect_2d(getLocalRect(), mAccentColor.get(), false);
         drawText(mFont, "PICK A FACE TO MOVE", llmax(7, content_right - 132),
-                 getRect().getHeight() - 13, mAccentColor);
+                 getRect().getHeight() - 13, mAccentColor.get());
     }
     LLUICtrl::draw();
 }
@@ -1008,10 +1017,10 @@ bool ALVCamFaceList::handleDragAndDrop(
 ALVCamTexturePickerList::ALVCamTexturePickerList(const Params& p)
     : LLUICtrl(p),
       mFont(LLFontGL::getFontSansSerifSmall()),
-      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
-      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get()),
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER)),
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT)),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED)),
+      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT)),
       mPreviewService(&LLPrismPreviewService::instance())
 {
     setMouseOpaque(true);
@@ -1038,7 +1047,7 @@ void ALVCamTexturePickerList::draw()
     if (!mCount)
     {
         drawText(mFont, "No VCam cameras - add one in Director > Camera > VCam",
-                 8, getRect().getHeight() / 2 + 4, mMutedColor,
+                 8, getRect().getHeight() / 2 + 4, mMutedColor.get(),
                  getRect().getWidth() - 16);
         LLUICtrl::draw();
         return;
@@ -1050,13 +1059,13 @@ void ALVCamTexturePickerList::draw()
         const bool remove = row == 0;
         const bool selected = remove ? mSelected.isNull() :
             mItems[row - 1].mCapture.mId == mSelected;
-        if (selected) gl_rect_2d(rect, LLColor4(mAccentColor.mV[0], mAccentColor.mV[1],
-                                                mAccentColor.mV[2], .18f), true);
-        gl_rect_2d(rect, mBorderColor, false);
+        if (selected) gl_rect_2d(rect, LLColor4(mAccentColor.get().mV[0], mAccentColor.get().mV[1],
+                                                mAccentColor.get().mV[2], .18f), true);
+        gl_rect_2d(rect, mBorderColor.get(), false);
         if (remove)
         {
             drawText(mFont, "None / Remove VCam feed", 8, top - 22,
-                     selected ? mAccentColor : mTextColor,
+                     selected ? mAccentColor.get() : mTextColor.get(),
                      getRect().getWidth() - 16);
             continue;
         }
@@ -1079,9 +1088,9 @@ void ALVCamTexturePickerList::draw()
         }
         else
             gl_rect_2d(picture, LLColor4(.08f, .09f, .11f, 1.f), true);
-        gl_rect_2d(picture, mBorderColor, false);
+        gl_rect_2d(picture, mBorderColor.get(), false);
         drawText(mFont, item.mLabel, 65, top - 22,
-                 selected ? mAccentColor : mTextColor,
+                 selected ? mAccentColor.get() : mTextColor.get(),
                  getRect().getWidth() - 73);
     }
     LLUICtrl::draw();
@@ -1102,10 +1111,10 @@ bool ALVCamTexturePickerList::handleMouseDown(S32, S32 y, MASK)
 ALVCamProjectorList::ALVCamProjectorList(const Params& p)
     : LLUICtrl(p),
       mFont(LLFontGL::getFontSansSerifSmall()),
-      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER).get()),
-      mTextColor(ALKitStyle::color(ALKitStyle::TEXT).get()),
-      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED).get()),
-      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT).get())
+      mBorderColor(ALKitStyle::color(ALKitStyle::CARD_BORDER)),
+      mTextColor(ALKitStyle::color(ALKitStyle::TEXT)),
+      mMutedColor(ALKitStyle::color(ALKitStyle::MUTED)),
+      mAccentColor(ALKitStyle::color(ALKitStyle::ACCENT))
 {
     setMouseOpaque(true);
     setToolTip(std::string("Select a feed, Track... to open its joint tracking controls, or Remove to unbind it."));
@@ -1146,19 +1155,19 @@ void ALVCamProjectorList::draw()
             (row - mScrollOffset) * PROJECTOR_ROW_HEIGHT;
         const LLRect rect(0, top, content_right, top - PROJECTOR_ROW_HEIGHT);
         if (mItems[row].mSelected)
-            gl_rect_2d(rect, LLColor4(mAccentColor.mV[0], mAccentColor.mV[1],
-                                      mAccentColor.mV[2], .18f), true);
-        gl_rect_2d(rect, mItems[row].mSelected ? mAccentColor : mBorderColor, false);
-        drawText(mFont, mItems[row].mName, 7, top - 15, mTextColor,
+            gl_rect_2d(rect, LLColor4(mAccentColor.get().mV[0], mAccentColor.get().mV[1],
+                                      mAccentColor.get().mV[2], .18f), true);
+        gl_rect_2d(rect, mItems[row].mSelected ? mAccentColor.get() : mBorderColor.get(), false);
+        drawText(mFont, mItems[row].mName, 7, top - 15, mTextColor.get(),
                  llmax(1, content_right - 80));
-        drawText(mFont, mItems[row].mMeta, 7, top - 29, mMutedColor,
+        drawText(mFont, mItems[row].mMeta, 7, top - 29, mMutedColor.get(),
                  llmax(1, content_right - 80));
         const bool can_track = ALProjectorTracker::eligible(gObjectList.findObject(mItems[row].mObjectId));
         if (can_track)
             drawText(mFont, ALProjectorTracker::instance().state(mItems[row].mObjectId).enabled ? "Tracking" : "Track...",
-                     content_right - 61, top - 29, mTextColor, 55);
+                     content_right - 61, top - 29, mTextColor.get(), 55);
         drawText(mFont, "Remove", content_right - 61, top - (can_track ? 13 : 22),
-                 mTextColor, 55);
+                 mTextColor.get(), 55);
     }
     if (static_cast<S32>(mItems.size()) > visible_rows)
     {
@@ -1172,7 +1181,7 @@ void ALVCamProjectorList::draw()
         gl_rect_2d(LLRect(track_left, getRect().getHeight(), getRect().getWidth(), 0),
                    LLColor4(0.f, 0.f, 0.f, .18f), true);
         gl_rect_2d(LLRect(track_left + 1, thumb_top, getRect().getWidth() - 1,
-                          thumb_top - thumb_height), mBorderColor, true);
+                          thumb_top - thumb_height), mBorderColor.get(), true);
     }
     LLUICtrl::draw();
 }

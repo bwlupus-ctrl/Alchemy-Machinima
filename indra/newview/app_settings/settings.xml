@@ -8187,6 +8187,17 @@
       <key>Value</key>
       <string>default</string>
     </map>
+    <key>DirectorThemeInvert</key>
+    <map>
+      <key>Comment</key>
+      <string>[Director] Flip the chosen colour theme between light and dark, keeping its hues. Record red, shadows and scrims stay as they are.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>0</integer>
+    </map>
     <key>DirectorAnimPlayLocalPriority</key>
     <map>
       <key>Comment</key>

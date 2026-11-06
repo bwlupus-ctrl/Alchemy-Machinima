@@ -16,6 +16,8 @@
 
 #include "alghoststudio.h"
 #include "alkitrow.h"
+#include "alkitpage.h"
+#include "lluicolortable.h"
 #include "llagentdata.h"
 #include "llavatarnamecache.h"
 #include "llbutton.h"
@@ -649,7 +651,9 @@ void ALPanelAvatarLightResponse::refreshStatus()
                      over, static_cast<S32>(LLVOAvatar::sMaxNonImpostors)));
         if (changed)
         {
-            mBudget->setColor(ALR_COLOR_AMBER);
+            // Only the generated Director version contains kit rows.
+            static const LLUIColor warning = LLUIColorTable::instance().getColor("KitWarnBandText");
+            mBudget->setColor(findChild<ALKitPage>("actors_kit") ? warning : LLUIColor(ALR_COLOR_AMBER));
         }
         ALKitRow::setControlVisible(mBudget, true);
     }

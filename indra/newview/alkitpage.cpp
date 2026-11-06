@@ -28,6 +28,7 @@
 #include "llnotificationsutil.h"
 #include "llstring.h"
 #include "lltextbox.h"
+#include "lluicolortable.h"
 #include "lluictrlfactory.h"
 #include "lldirectorcast.h"
 #include "llviewercontrol.h"
@@ -513,6 +514,7 @@ bool ALKitPage::postBuild()
         mMasterBox->setMouseOpaque(false);
         mBar->addChild(mMasterBox);
         LLTextBox::Params master_label;
+        master_label.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
         master_label.name          = pre + "_master_label";
         master_label.rect          = LLRect(0, 20, ALKitStyle::MASTER_LABEL_MIN_W, 0);
         master_label.initial_value = mMasterLabel;
@@ -595,6 +597,7 @@ bool ALKitPage::postBuild()
     mBanner->setBackgroundVisible(true);
     mBanner->setBackgroundColor(ALKitStyle::color(ALKitStyle::BANNER_BG));
     LLTextBox::Params bt;
+    bt.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
     bt.name          = pre + "_banner_text";
     bt.rect          = LLRect(10, 24, 360, 0);
     bt.initial_value = mMasterLabel + " is off. Controls stay editable.";
@@ -629,6 +632,7 @@ bool ALKitPage::postBuild()
         mGateBanner->setBackgroundVisible(true);
         mGateBanner->setBackgroundColor(ALKitStyle::color(ALKitStyle::BANNER_BG));
         LLTextBox::Params gate;
+        gate.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
         gate.name          = pre + "_gate_text";
         gate.rect          = LLRect(10, 24, page_width - 10, 0);
         gate.initial_value = gate_text;
@@ -1646,6 +1650,7 @@ void ALKitPage::buildResetPopover()
         mResetPopover->bindAnchor(mResetPage);
 
         LLTextBox::Params message_params;
+        message_params.text_color = LLUIColorTable::instance().getColor("KitTextSecondary");
         message_params.name          = pre + "_reset_message";
         message_params.rect          = LLRect(12, 84, 308, 48);
         message_params.initial_value = "Reset every control on this page to its default?";

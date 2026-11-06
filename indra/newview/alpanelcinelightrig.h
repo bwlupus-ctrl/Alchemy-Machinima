@@ -270,6 +270,7 @@ private:
     S32 mShadowHintRequested = -1;
     S32 mShadowHintSlots = -1;
     LLUIColor mRadiusDefaultColor;
+    LLUIColor mRadiusWarningColor;
     std::string mPendingSetupSelection;
     bool mAnchorSelectionInitialized = false;
     U64 mSubjectChoiceRevision = ~U64(0);

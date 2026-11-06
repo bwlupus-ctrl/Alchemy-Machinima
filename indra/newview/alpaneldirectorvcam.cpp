@@ -1311,7 +1311,7 @@ void ALPanelDirectorVCam::setStatus(const std::string& text, bool warning)
         setValueIfChanged(status, text);
         setRowControlVisible(row("vc_status"), !text.empty());
         if (LLTextBox* line = dynamic_cast<LLTextBox*>(status))
-            line->setColor(ALKitStyle::color(warning ? ALKitStyle::RECORD : ALKitStyle::TEXT));
+            line->setColor(ALKitStyle::color(warning ? ALKitStyle::RECORD_TEXT : ALKitStyle::TEXT));
     }
 }
 

@@ -361,8 +361,9 @@ def validate_data(data: dict) -> None:
     # Fix round 1: Object Centre / Picked spot, Point XYZ and reset nudge: +5, 2418 -> 2423.
     # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets + 30 Capture Key (D56 removes 3 ReShade rows) = 2485; Variable ND adds 4 = 2489; six clone FX sliders = 2495.
     # ALL OFF adds two gear rows: the mode preference and Restore last reset.
-    if len(pages) != 39 or row_count != 2497:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2497")
+    # Includes the DirectorThemeInvert row in Director settings.
+    if len(pages) != 39 or row_count != 2498:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2498")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -520,10 +521,28 @@ def stripped_copy(node: ET.Element, strip_label: bool = True) -> ET.Element:
 # Transport buttons whose fill is accent or record colour; their icons use KitIconOnAccent.
 ACCENT_FILL_BUTTONS = ("btn_action", "btn_cut", "btn_arm")
 
+# Legacy source panels are shared with v1; translate their text roles only when
+# emitting Director kit XUI. Unknown colours remain visible to the theme gate.
+KIT_TEXT_COLORS = {
+    "LtGray_50": "KitTextMuted",
+    "LtGray": "KitTextSecondary",
+    "White": "KitText",
+    "EmphasisColor": "KitAccent",
+    "1 0.3 0.2 1": "KitRecordText",
+    "1 0.75 0.25 1": "KitWarnBandText",
+    "Orange": "KitWarnBandText",
+}
+
 
 def apply_kit_xui_style(root: ET.Element) -> None:
     """Stamp only generated Director-v2 controls; v1/global widget defaults stay untouched."""
     for node in list(root.iter()):
+        if node.tag == "text" and "text_color" not in node.attrib:
+            name = node.get("name", "").lower()
+            muted = any(word in name for word in ("help", "note", "hint"))
+            node.set("text_color", "KitTextMuted" if muted else "KitTextSecondary")
+        if node.get("text_color") in KIT_TEXT_COLORS:
+            node.set("text_color", KIT_TEXT_COLORS[node.get("text_color")])
         if node.get("image_overlay", "").startswith("KitIcon_") and "image_overlay_color" not in node.attrib:
             # Icons on an accent or record fill take KitIconOnAccent; other kit icons follow the
             # colour theme (KitIconTint = white at 0.75 in the Default skin).
@@ -585,6 +604,11 @@ def apply_kit_xui_style(root: ET.Element) -> None:
         elif node.tag == "spinner":
             node.set("text_enabled_color", "KitText")
             node.set("text_disabled_color", "KitMuted")
+        elif node.tag == "compass_dial":
+            node.set("ring_color", "KitDialRing")
+            node.set("tick_color", "KitDialTick")
+            node.set("needle_color", "KitDialNeedle")
+            node.set("text_color", "KitText")
         elif node.tag == "color_swatch":
             node.set("border_color", "KitSwatchBorder")
 
@@ -1977,7 +2001,8 @@ def theme_choices(themes_dir: Path = THEMES_DIR) -> tuple[list[str], list[str]]:
     if not any(stem == "default" for stem, _label in entries):
         raise GenError("app_settings/director_themes/default.xml is required")
     stock_order = ("default", "second_life", "night_shoot", "tungsten", "graphite",
-                   "daylight", "teal_orange", "noir", "neon", "arctic")
+                   "daylight", "teal_orange", "noir", "neon", "arctic",
+                   "rose_quartz", "bubblegum", "lavender", "peach_sorbet")
     ranks = {stem: rank for rank, stem in enumerate(stock_order)}
     entries.sort(key=lambda entry: (ranks.get(entry[0], len(ranks)), entry[0]))
     return [label for _stem, label in entries], [stem for stem, _label in entries]

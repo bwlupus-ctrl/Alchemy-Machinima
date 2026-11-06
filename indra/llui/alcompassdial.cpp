@@ -350,7 +350,7 @@ void ALCompassDial::draw()
         const F32 inner = radius - (major ? 7.f : 4.f);
         gl_line_2d(ll_round(cx + dx * inner),  ll_round(cy + dy * inner),
                    ll_round(cx + dx * radius), ll_round(cy + dy * radius),
-                   major ? ring : tick);
+                   major && !mKitGeometry ? ring : tick);
     }
 
     // needle: hub dot + line toward the current bearing

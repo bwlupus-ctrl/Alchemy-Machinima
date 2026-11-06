@@ -7,6 +7,8 @@
 #include "alghoststudio.h"
 #include "alkitpage.h"
 #include "alkitrow.h"
+#include "alkitstyle.h"
+#include "lluicolortable.h"
 #include "llbutton.h"
 #include "llcharacter.h"
 #include "llfontgl.h"
@@ -176,9 +178,10 @@ void ALPanelActorKey::refreshReadouts()
             ? std::string("Keying: ") + modeName(ALActorChromaKey::mode())
             : ALActorChromaKey::reason().empty() ? "Arming" : "Suspended: " + ALActorChromaKey::reason();
     const std::string warnings = captureWarnings();
-    const LLColor4 tint = !ALActorChromaKey::sActive ? LLColor4::white
-        : !ALActorChromaKey::keyedThisFrame() || warnings != "No capture overlays enabled."
-            ? LLColor4(1.f,.7f,.15f,1.f) : LLColor4(.2f,1.f,.35f,1.f);
+    static const LLUIColor warning = LLUIColorTable::instance().getColor("KitWarnBandText");
+    const LLUIColor& tint = ALActorChromaKey::sActive &&
+        (!ALActorChromaKey::keyedThisFrame() || warnings != "No capture overlays enabled.")
+        ? warning : ALKitStyle::color(ALKitStyle::TEXT);
     setTextIfChanged(mReadouts[0], status);
     mReadouts[0]->setColor(tint);
     setTextIfChanged(mReadouts[1], codes(ALActorChromaKey::colour()));

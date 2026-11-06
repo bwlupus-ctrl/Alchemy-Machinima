@@ -11,6 +11,23 @@
       "TOOLING": 426
     },
     "dirty_product_inputs": [
+      "indra/llui/alcompassdial.cpp",
+      "indra/newview/aldirectortheme.cpp",
+      "indra/newview/aldirectortheme.h",
+      "indra/newview/alkithelp.cpp",
+      "indra/newview/alkitpage.cpp",
+      "indra/newview/alkitshell.cpp",
+      "indra/newview/allightrigmap.cpp",
+      "indra/newview/alpanelactorkey.cpp",
+      "indra/newview/alpanelavatarlightresponse.cpp",
+      "indra/newview/alpanelcinelightrig.cpp",
+      "indra/newview/alpanelcinelightrig.h",
+      "indra/newview/alpaneldirectorvcam.cpp",
+      "indra/newview/alvcammonitorstrip.cpp",
+      "indra/newview/alvcammonitorstrip.h",
+      "indra/newview/app_settings/director_themes/daylight.xml",
+      "indra/newview/app_settings/settings.xml",
+      "indra/newview/llfloaterdirector.cpp",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -53,8 +70,11 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "indra/newview/tests/aldirectortheme_test.cpp",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/shader_load_check.py"
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_theme_check.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -68,14 +88,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "56107abbfcee47398cb9161151e20bbb9e83cf47277a7ec781dedcb54dba6011",
+        "csv_sha256": "e2df06f3d3a4d17761dfc79313bd43b9ae3d036a1b9aa7680736bfec24c52f68",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4774,
+        "entries": 4776,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -117,9 +137,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2566,
+        "generated_kit_rows": 2567,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2162,
+        "interactive_rows": 2163,
         "pages": 39,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -162,7 +182,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3900,
+        "settings_declared": 3901,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -228,19 +248,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2288,
+        "independent_json_rows": 2289,
         "multi_page_settings": 21,
         "owner_roots": 36,
         "pages": 39,
-        "rows": 2288,
+        "rows": 2289,
         "unresolved_rows": 75
       },
-      "wiring_rows": 2288
+      "wiring_rows": 2289
     },
-    "head_source_tree": "3419bf8933b24ab590dbe685ab634e15e958dba9",
+    "head_source_tree": "0c28c9d535c47f46156ee87f873390817f4de8b1",
     "hook_files": 523,
     "hunks": 3228,
-    "input_sha256": "ac2f1c8cd0888a7195b39b7531c584caccde2667893289d4a8f0cb58cee23f2b",
+    "input_sha256": "af97aaae99b6ccda96d86bbf865c51c9b34084f48b297799fd11ce9486ae8e0d",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
