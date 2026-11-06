@@ -23433,6 +23433,20 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+    <key>RenderShaderDumpEquivalence</key>
+    <map>
+      <key>Comment</key><string>Write ordered shader equivalence records to the logs directory. Diagnostic command-line setting.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>Boolean</string>
+      <key>Value</key><integer>0</integer>
+    </map>
+    <key>RenderShaderInjectFail</key>
+    <map>
+      <key>Comment</key><string>Shader failure injection entries separated by semicolons. Nonempty disables binary cache reads and writes for the run.</string>
+      <key>Persist</key><integer>0</integer>
+      <key>Type</key><string>String</string>
+      <key>Value</key><string />
+    </map>
     <key>RenderShaderCacheEnabled</key>
     <map>
       <key>Comment</key>

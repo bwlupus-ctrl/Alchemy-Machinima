@@ -13,7 +13,8 @@ def run(root):
     header = (root / HEADER).read_text(encoding='utf-8')
     scanner = function(source, 'shader_source_has_main(') + '\n' + function(source, 'shader_shared_source_fingerprint(')
     init = function(source, 'LLShaderMgr::readShaderSource(') + '\n' + function(source, 'LLShaderMgr::initShaderCache(')
-    hashed = function((root / GLSL).read_text(encoding='utf-8'), 'LLGLSLShader::hash(')
+    shader = (root / GLSL).read_text(encoding='utf-8')
+    hashed = function(shader, 'LLGLSLShader::hash(') + '\n' + function(shader, 'LLGLSLShader::hashWithEpoch(')
     features = function(source, 'LLShaderMgr::hashShaderCacheFeatures(')
     feature_class = function((root / 'indra/llrender/llglslshader.h').read_text(encoding='utf-8'), 'class LLShaderFeatures') + ';'
     fields = feature_fields((root / 'indra/llrender/llglslshader.h').read_text(encoding='utf-8'))
@@ -23,7 +24,10 @@ def run(root):
     for name, boundary, result in (
             ('loadCachedProgramBinary', '    glProgramParameteri', 'false'),
             ('saveCachedProgramBinary', '    ProgramBinaryData binary_info', 'true')):
-        method = function(source, 'LLShaderMgr::' + name + '(')
+        method = function(source, 'LLShaderMgr::' + name + ('Internal(' if name == 'loadCachedProgramBinary' else '('))
+        if name == 'loadCachedProgramBinary':
+            method = method.replace('template<bool diagnostics>\n', '').replace('loadCachedProgramBinaryInternal(', 'loadCachedProgramBinary(')
+            method = method.replace('if constexpr (diagnostics)', 'if constexpr (false)')
         binary_guards += method[:method.index(boundary)] + '\n    ++binary_io; return ' + result + ';\n}\n'
     schema = re.search(r'SHADER_CACHE_SCHEMA\s*=\s*"([^"]+)"', header)[1]
     out = root / '.tmp/shader_load/native'
@@ -83,6 +87,7 @@ struct Directory {std::string cache;std::string getDirDelimiter(){return "/";}
 }directory,*gDirUtilp=&directory;
 struct LLFile{static bool isfile(const std::string& p){return fs::is_regular_file(fsyspath(p));}static void mkdir(const std::string& path){fs::create_directories(fsyspath(path));}};
 struct LLSD {bool map=false;std::string text;std::map<std::string,LLSD> entries;
+ template<size_t N> LLSD& operator=(const char (&value)[N]){text=value;return *this;}
  LLSD& operator[](const char* key){return entries[key];}
  const LLSD& operator[](const char* key)const{static const LLSD empty;auto it=entries.find(key);return it==entries.end()?empty:it->second;}bool isMap()const{return map;}
  LLUUID asUUID()const{return LLUUID(text);}int asInteger()const{return 123;}double asReal()const{return 0;}
@@ -109,7 +114,9 @@ struct LLShaderMgr {
  struct ProgramBinaryData{GLsizei mBinaryLength=0;GLenum mBinaryFormat=0;F32 mLastUsedTime=0;};
  std::map<LLUUID,ProgramBinaryData>mShaderBinaryCache;
  LLUUID mShaderCacheVersion,mSharedShaderFingerprint;
+ LLSD mShaderAttempt;
  bool mShaderCacheEnabled=false,mShaderCacheReadOnly=false,mShaderCacheScanAttempted=false,mShaderCacheSourceValid=false;
+ bool mShaderInjectionActive=false;
  std::string mShaderCacheDir,prefix;
  int purges=0;
  std::string getShaderDirPrefix(){return prefix;}
@@ -117,6 +124,8 @@ struct LLShaderMgr {
  static bool readShaderSource(const std::string&,std::string&);
  static bool readShaderSourceActual(const std::string&,std::string&);
  int binary_io=0;
+ bool injectShaderFailure(const std::string&,const std::string&)const;
+ bool rejectProgramBinary(LLGLSLShader*);
  bool loadCachedProgramBinary(LLGLSLShader*);
  bool saveCachedProgramBinary(LLGLSLShader*);
  void initShaderCache(bool,bool);
@@ -132,6 +141,7 @@ struct LLGLSLShader {
  inline static std::map<std::string,std::string>sGlobalDefines;
  inline static int sIndexedTextureChannels=4;
  LLUUID hash();
+ LLUUID hashWithEpoch(U32);
 };
 PADDED_SHADER
 SCANNER
@@ -262,7 +272,7 @@ int main(int argc,char** argv){
  require(shader_shared_source_fingerprint(prefix,after)&&!(before==after),"empty shared file missing from fingerprint");
  write(tree/"class1/emptyRoot.glsl","");invalid.mShaderFiles={{"emptyRoot.glsl",1}};
  invalid.hash();require(invalid.mShaderCacheEligible,"empty root rejected");
- fs::remove(tree/"nested/empty.glsl");
+ fs::rename(tree/"nested/empty.glsl",base/"retained_empty.glsl");
  directory.cache=(base/"cache").u8string();
  fs::create_directories(fsyspath(directory.cache));
  const fs::path meta=fsyspath(directory.cache)/"shaderdata.llsd";
@@ -288,13 +298,16 @@ int main(int argc,char** argv){
  check("second instance unreadable metadata",false,"",true,false,0);
  metadata_map=false;parse_ok=true;metadata_schema=LLShaderMgr::SHADER_CACHE_SCHEMA;
  LLShaderMgr malformed;malformed.prefix=prefix;malformed.initShaderCache(true,false);require(malformed.purges==1,"non-map metadata accepted");
- fs::remove(meta);check("missing metadata",true,LLShaderMgr::SHADER_CACHE_SCHEMA,false,false,1);
+ fs::rename(meta,base/"retained_metadata.llsd");check("missing metadata",true,LLShaderMgr::SHADER_CACHE_SCHEMA,false,false,1);
  write(meta,"fixture parser payload");
  denied_source=(tree/"class1/util.glsl").u8string();
  LLShaderMgr failed;failed.prefix=prefix;failed.initShaderCache(true,false);
  require(!failed.mShaderCacheEnabled&&failed.purges==0&&failed.mShaderBinaryCache.empty(),"scan failure served old binaries");
  denied_source.clear();failed.initShaderCache(true,false);
  require(!failed.mShaderCacheEnabled,"scan failure was re-enabled later in same run");
+ LLShaderMgr injected;injected.prefix=prefix;injected.mShaderInjectionActive=true;
+ injected.initShaderCache(true,false);
+ require(!injected.mShaderCacheEnabled&&injected.purges==0&&injected.mShaderBinaryCache.empty(),"injected run touched binary cache metadata");
  std::cout<<"native production init: 12 keep/purge cases PASS; scan failure remains disabled\n"
           <<"native production scan: UTF-8/sorted nested shared files, roots, empty files valid, missing/unreadable failures PASS\n"
           <<"native production hash: root locality, shared invalidation, lower-class fallback, attributes, feature code and handle independence PASS\n";
@@ -313,8 +326,10 @@ int main(int argc,char** argv){
     path = out / 'shader_load_native.cpp'
     path.write_text(code, encoding='utf-8-sig')
     executable = compiler_command(out, [path], 'shader_load_native')
-    with tempfile.TemporaryDirectory(prefix='fixture_', dir=out) as data:
-        result = subprocess.run([str(executable), data], capture_output=True, text=True, timeout=30)
+    # Retain native fixtures for inspection; this task's no-delete constraint
+    # also applies to scratch products. Each invocation gets a fresh directory.
+    data = tempfile.mkdtemp(prefix='fixture_', dir=out)
+    result = subprocess.run([str(executable), data], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
     print(result.stdout, end='')
     # Compare production scan with an independently enumerated complete manifest.

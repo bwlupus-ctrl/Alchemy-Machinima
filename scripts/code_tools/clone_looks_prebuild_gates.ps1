@@ -4,6 +4,9 @@
 $kitPy += @(
   @{ Label = 'Shader load contract'; File = 'scripts\code_tools\shader_load_check.py'; PyArgs = @('--check') }
   @{ Label = 'Shader load planted fixtures'; File = 'scripts\code_tools\shader_load_check.py'; PyArgs = @('--selftest') }
+  # Requires built Release llcommon/llmath and CMake/vcpkg dependencies; hard-fails if missing.
+  @{ Label = 'Shader diagnostics native and settings'; File = 'scripts\code_tools\shader_diagnostics_check.py'; PyArgs = @() }
+  @{ Label = 'Shader equivalence diff planted fixtures'; File = 'scripts\code_tools\shader_equivalence_diff.py'; PyArgs = @('--selftest') }
   @{ Label = 'Director ALL OFF contract'; File = 'scripts\code_tools\director_all_off_check.py'; PyArgs = @('--check') }
   @{ Label = 'Director ALL OFF planted fixtures'; File = 'scripts\code_tools\director_all_off_check.py'; PyArgs = @('--selftest') }
   @{ Label = 'Clone looks GL and real SL safety gate'; File = 'scripts\code_tools\clone_looks_gl_check.py'; PyArgs = @() }

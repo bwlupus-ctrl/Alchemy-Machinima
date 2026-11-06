@@ -32,6 +32,8 @@
 
 #include "llgl.h"
 #include "llglslshader.h"
+#include "llshaderdiagnostics.h"
+#include <fstream>
 
 class LLShaderMgr
 {
@@ -988,6 +990,10 @@ public:
 
     virtual void initAttribsAndUniforms(void);
 
+    template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader* shader);
+    template<bool diagnostics> GLuint loadShaderFileInternal(const std::string& filename, S32& level, GLenum type,
+        std::map<std::string, std::string>* defines, S32 channels);
+    template<bool diagnostics> bool linkProgramObjectInternal(GLuint obj, bool suppress_errors, const std::string& name);
     bool attachShaderFeatures(LLGLSLShader * shader);
     void dumpObjectLog(GLuint ret, bool warns = true, const std::string& filename = "");
     void dumpShaderSource(U32 shader_code_count, GLchar** shader_code_text);
@@ -1013,7 +1019,7 @@ public:
 
     // Schema changes discard metadata. Epoch changes invalidate program keys.
     static constexpr const char* SHADER_CACHE_SCHEMA = "620ec4f7-831c-40d2-b391-8b1c94813245";
-    static constexpr U32 SHADER_CACHE_EPOCH = 1;
+    static constexpr U32 SHADER_CACHE_EPOCH = 2;
     static bool readShaderSource(const std::string& filename, std::string& source);
     void initShaderCache(bool enabled, bool second_instance);
     void hashShaderCacheFeatures();
@@ -1021,6 +1027,7 @@ public:
     void clearShaderCache();
     void persistShaderCacheMetadata();
 
+    template<bool diagnostics> bool loadCachedProgramBinaryInternal(LLGLSLShader* shader);
     bool loadCachedProgramBinary(LLGLSLShader* shader);
     bool saveCachedProgramBinary(LLGLSLShader* shader);
 
@@ -1052,6 +1059,53 @@ public:
     LLUUID mSharedShaderFingerprint;
     LLUUID mShaderCacheFeatureHash;
     std::string mShaderCacheDir;
+
+    // Configured by the viewer, never reads gSavedSettings in llrender.
+    void configureShaderDiagnostics(bool dump, const std::string& injection, bool second_instance);
+    void openShaderEquivalence();
+    void writeShaderRecord(LLSD record);
+    void beginShaderPass(const std::string& name);
+    void finishShaderPass();
+    class ShaderDiagnosticPass
+    {
+        LLShaderMgr* mMgr;
+    public:
+        explicit ShaderDiagnosticPass(LLShaderMgr* mgr) : mMgr(mgr->mShaderDiagnosticsEnabled ? mgr : nullptr)
+        { if (mMgr) mMgr->beginShaderPass("setShaders"); }
+        ~ShaderDiagnosticPass() { if (mMgr) mMgr->finishShaderPass(); }
+    };
+    void beginShaderAttempt(LLGLSLShader* shader);
+    void snapshotShaderAttempt(LLGLSLShader* shader, bool capture_key = false);
+    void finishShaderAttempt(LLGLSLShader* shader, bool success);
+    void beginShaderStage(const std::string& file, GLenum type, S32 requested);
+    void assembledShaderStage(const std::string& key, const std::string& source_hash, S32 source_level);
+    void finishShaderStage(bool success, S32 resolved, GLuint object = 0, const char* outcome = "not_attempted");
+    void traceAttachment(GLuint object);
+    void traceFeatureAttachment(const std::string& file, GLenum type, const char* outcome = "not_attempted");
+    void traceLink(bool success);
+    bool injectShaderFailure(const std::string& kind, const std::string& target, S32 value = -1) const;
+    void injectShaderOverflow(LLGLSLShader* shader);
+    bool rejectProgramBinary(LLGLSLShader* shader, const std::string& cache_path = "");
+    bool mShaderDiagnosticsEnabled = false;
+    bool mShaderInjectionActive = false;
+
+private:
+    bool mShaderDumpRequested = false;
+    bool mShaderDumpOpened = false;
+    bool mShaderInjectionWarned = false;
+    bool mShaderDumpSecondWarned = false;
+    std::ofstream mShaderEquivalence;
+    std::vector<LLShaderInjection> mShaderInjections;
+    std::map<std::string, S32> mShaderAttemptNumbers;
+    bool mShaderPassActive = false;
+    bool mShaderAttemptOwnsPass = false;
+    bool mShaderStageOwnsPass = false;
+    S32 mShaderPassNumber = 0;
+    S32 mShaderPassPrograms = 0;
+    S32 mShaderPassModules = 0;
+    LLSD mShaderAttempt;
+    LLSD mShaderStage;
+    std::map<GLuint, LLSD> mDiagnosticObjects;
 
 protected:
 

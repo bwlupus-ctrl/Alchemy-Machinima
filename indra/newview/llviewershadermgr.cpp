@@ -676,6 +676,8 @@ LLViewerShaderMgr::LLViewerShaderMgr() :
     mShaderLevel(SHADER_COUNT, 0),
     mMaxAvatarShaderLevel(0)
 {
+    configureShaderDiagnostics(gSavedSettings.getBOOL("RenderShaderDumpEquivalence"),
+        gSavedSettings.getString("RenderShaderInjectFail"), LLAppViewer::instance()->isSecondInstance());
 }
 
 LLViewerShaderMgr::~LLViewerShaderMgr()
@@ -954,6 +956,8 @@ bool LLViewerShaderMgr::gbufferAvatarTagPreferred()
 void LLViewerShaderMgr::setShaders()
 {
     LL_PROFILE_ZONE_SCOPED;
+    configureShaderDiagnostics(gSavedSettings.getBOOL("RenderShaderDumpEquivalence"),
+        gSavedSettings.getString("RenderShaderInjectFail"), LLAppViewer::instance()->isSecondInstance());
     //setShaders might be called redundantly by gSavedSettings, so return on reentrance
     static bool reentrance = false;
 
@@ -977,6 +981,8 @@ void LLViewerShaderMgr::setShaders()
         static LLCachedControl<bool> shader_cache_enabled(gSavedSettings, "RenderShaderCacheEnabled", true);
         initShaderCache(shader_cache_enabled, LLAppViewer::instance()->isSecondInstance());
     }
+
+    ShaderDiagnosticPass diagnostic_pass(this);
 
     static LLCachedControl<U32> max_texture_index(gSavedSettings, "RenderMaxTextureIndex", 16);
 

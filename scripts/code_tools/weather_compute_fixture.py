@@ -13,6 +13,8 @@ def function(text, signature):
     # braces that do not balance at the C++ method boundary).
     tokens = re.compile(r'//[^\n]*|/\*[\s\S]*?\*/|"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|[{}]')
     start=text.index(signature);opening=text.index('{',start);depth=0
+    previous=text.rfind('\n',0,max(start-1,0))+1
+    if 'Internal(' in signature and text[previous:start].strip().startswith('template<'):start=previous
     for token in tokens.finditer(text,opening):
         if token.group()=='{':depth+=1
         elif token.group()=='}':
@@ -44,6 +46,15 @@ def build(tree, out, gl, extend=None):
         'bool LLGLSLShader::createShader(', 'bool LLGLSLShader::link(',
         'void LLGLSLShader::attachObject(', 'bool LLGLSLShader::mapAttributes(',
         'LLUUID LLGLSLShader::hash('))
+    diagnostic_templates = 'LLGLSLShader::createShaderInternal(' in shader
+    if diagnostic_templates:
+        methods += '\n' + '\n'.join(function(manager, signature) for signature in (
+            'GLuint LLShaderMgr::loadShaderFileInternal(', 'bool LLShaderMgr::linkProgramObjectInternal('))
+        methods += '\n' + '\n'.join(function(shader, signature) for signature in (
+            'bool LLGLSLShader::createShaderInternal(', 'bool LLGLSLShader::linkInternal(',
+            'void LLGLSLShader::attachObjectInternal(', 'bool LLGLSLShader::mapAttributesInternal('))
+    if 'LLGLSLShader::hashWithEpoch(' in shader:
+        methods += '\n' + function(shader, 'LLUUID LLGLSLShader::hashWithEpoch(')
     entries = [
         ('glGetError', 'unsigned', '', C.c_uint, []),
         ('glGetIntegerv', 'void', 'unsigned,int*', None, [C.c_uint,C.c_void_p]),
@@ -186,6 +197,35 @@ struct fsyspath:std::filesystem::path {
  std::string string()const{return u8string();}
 };
 struct LLShaderMgr {''')
+    if diagnostic_templates:
+        # Only observation/injection services are inert here. Execute the actual
+        # implementation templates through the production public entry points.
+        prefix = prefix.replace('struct LLShaderMgr {', '''struct LLShaderMgr {
+ bool mShaderDiagnosticsEnabled=false;
+ std::map<GLuint,int> mDiagnosticObjects;
+ template<class... A> bool injectShaderFailure(A&&...){return false;}
+ template<class... A> void beginShaderStage(A&&...){}
+ template<class... A> void assembledShaderStage(A&&...){}
+ template<class... A> void finishShaderStage(A&&...){}
+ template<class... A> void beginShaderAttempt(A&&...){}
+ template<class... A> void snapshotShaderAttempt(A&&...){}
+ template<class... A> void finishShaderAttempt(A&&...){}
+ template<class... A> void injectShaderOverflow(A&&...){}
+ template<class... A> void traceAttachment(A&&...){}
+ template<class... A> void traceLink(A&&...){}
+ template<bool diagnostics> GLuint loadShaderFileInternal(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32);
+ template<bool diagnostics> bool linkProgramObjectInternal(GLuint,bool,const std::string&);
+ template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader* s){return attachShaderFeatures(s);}
+ template<bool diagnostics> bool loadCachedProgramBinaryInternal(LLGLSLShader* s){return loadCachedProgramBinary(s);}
+''')
+        prefix = prefix.replace(' bool isCompute()const;', '''
+ template<bool diagnostics> bool createShaderInternal();
+ template<bool diagnostics> bool linkInternal(bool=false);
+ template<bool diagnostics> void attachObjectInternal(GLuint);
+ template<bool diagnostics> bool mapAttributesInternal();
+ bool isCompute()const;''')
+    if 'LLGLSLShader::hashWithEpoch(' in shader:
+        prefix = prefix.replace('LLUUID hash();', 'LLUUID hash();LLUUID hashWithEpoch(U32);')
     prefix = prefix.replace('CONTEXT_DECLARATION', declaration(tree.read('indra/llrender/llshadermgr.h'), 'sContextGeneration'))
     # Run the native uniform discovery, ordering and sampler-channel assignment.
     from weather_native_fixture import build as mapper_parts
