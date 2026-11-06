@@ -82,9 +82,11 @@ def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
                      'sig.addExact(mWeatherCinematicRevision.signature())'):
         assert consumer in manager, 'missing weather probe consumer '+consumer
     loader=tree.read('indra/llrender/llglslshader.cpp')
-    create=function(loader,'bool LLGLSLShader::createShader(')
+    create=function(loader,'bool LLGLSLShader::createShaderInternal(' if 'LLGLSLShader::createShaderInternal(' in loader else 'bool LLGLSLShader::createShader(')
     assert create.index('prepareWeatherFeatures(this)')<create.index('mShaderHash = hash()'), 'weather permutation omitted from binary cache key'
-    attach=function(tree.read('indra/llrender/llshadermgr.cpp'),'bool LLShaderMgr::attachShaderFeatures(')
+    shader_manager=tree.read('indra/llrender/llshadermgr.cpp')
+    attach=function(shader_manager,'bool LLShaderMgr::attachShaderFeaturesInternal(' if 'LLShaderMgr::attachShaderFeaturesInternal(' in shader_manager else 'bool LLShaderMgr::attachShaderFeatures(')
+    attach=attach.replace('attachFragmentObjectInternal<diagnostics>', 'attachFragmentObject')
     color_attachment=attach.index('attachFragmentObject("environment/srgbF.glsl")')
     assert 'features->hasWeatherMaterial' in attach[color_attachment-250:color_attachment], 'native wet legacy permutations omit the colour-space module'
     feature_prepare=function(tree.read('indra/llrender/llshadermgr.cpp'),'void LLShaderMgr::prepareWeatherFeatures(')

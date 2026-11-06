@@ -76,8 +76,12 @@ void main(){uint i=gl_GlobalInvocationID.x;values[i]=i*7u+11u;}
                 old=oldtree.read(path)
                 # Retain the baseline assembly verbatim inside the fixture API.
                 current=tree.read(path)
-                current=current.replace(function(current,'GLuint LLShaderMgr::loadShaderFile('),
-                    function(old,'GLuint LLShaderMgr::loadShaderFile('))
+                old_loader=function(old,'GLuint LLShaderMgr::loadShaderFile(')
+                if 'LLShaderMgr::loadShaderFileInternal(' in current:
+                    current=current.replace(function(current,'GLuint LLShaderMgr::loadShaderFileInternal('),
+                        'template<bool diagnostics>\n'+old_loader.replace('LLShaderMgr::loadShaderFile(', 'LLShaderMgr::loadShaderFileInternal(', 1))
+                else:
+                    current=current.replace(function(current,'GLuint LLShaderMgr::loadShaderFile('), old_loader)
                 current=current.replace(function(current,'void LLShaderMgr::initAttribsAndUniforms('),
                     function(old,'void LLShaderMgr::initAttribsAndUniforms('))
                 return current

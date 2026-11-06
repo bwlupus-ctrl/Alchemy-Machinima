@@ -437,10 +437,13 @@ bool LLGLSLShader::isCompute() const
     return mShaderFiles.size() == 1 && mShaderFiles.front().second == COMPUTE_STAGE;
 }
 
-bool LLGLSLShader::createShader()
+template<bool diagnostics>
+bool LLGLSLShader::createShaderInternal()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
 
+    LLShaderMgr* mgr = LLShaderMgr::instance();
+    if constexpr (diagnostics) mgr->beginShaderAttempt(this);
     unloadInternal();
 
     sInstances.insert(this);
@@ -458,6 +461,7 @@ bool LLGLSLShader::createShader()
     for (const auto& file : mShaderFiles) has_compute |= file.second == COMPUTE_STAGE;
     if (has_compute && (!isCompute() || !LLShaderMgr::computeShadersSupported()))
     {
+        if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
         return false;
     }
@@ -465,6 +469,7 @@ bool LLGLSLShader::createShader()
     if (isCompute()) mFeatures = LLShaderFeatures();
     else LLShaderMgr::instance()->prepareWeatherFeatures(this);
     mShaderHash = hash();
+    if constexpr (diagnostics) mgr->snapshotShaderAttempt(this, true);
 
     // Create program
     mProgramObject = glCreateProgram();
@@ -472,13 +477,14 @@ bool LLGLSLShader::createShader()
     {
         // Shouldn't happen if shader related extensions, like ARB_vertex_shader, exist.
         LL_SHADER_LOADING_WARNS() << "Failed to create handle for shader: " << mName << LL_ENDL;
+        if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
         return false;
     }
 
     bool success = true;
 
-    mUsingBinaryProgram =  LLShaderMgr::instance()->loadCachedProgramBinary(this);
+    mUsingBinaryProgram = mgr->loadCachedProgramBinaryInternal<diagnostics>(this);
 
     if (!mUsingBinaryProgram)
     {
@@ -490,11 +496,11 @@ bool LLGLSLShader::createShader()
         vector< pair<string, GLenum> >::iterator fileIter = mShaderFiles.begin();
         for (; fileIter != mShaderFiles.end(); fileIter++)
         {
-            GLuint shaderhandle = LLShaderMgr::instance()->loadShaderFile((*fileIter).first, mShaderLevel, (*fileIter).second, &mDefines, mFeatures.mIndexedTextureChannels);
+            GLuint shaderhandle = mgr->loadShaderFileInternal<diagnostics>((*fileIter).first, mShaderLevel, (*fileIter).second, &mDefines, mFeatures.mIndexedTextureChannels);
             LL_DEBUGS("ShaderLoading") << "SHADER FILE: " << (*fileIter).first << " mShaderLevel=" << mShaderLevel << LL_ENDL;
             if (shaderhandle)
             {
-                attachObject(shaderhandle);
+                attachObjectInternal<diagnostics>(shaderhandle);
             }
             else
             {
@@ -504,15 +510,16 @@ bool LLGLSLShader::createShader()
     }
 
     // Attach existing objects
-    if (!isCompute() && !LLShaderMgr::instance()->attachShaderFeatures(this))
+    if (!isCompute() && !mgr->attachShaderFeaturesInternal<diagnostics>(this))
     {
+        if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
         return false;
     }
     // Map attributes and uniforms
     if (success)
     {
-        success = isCompute() ? (mUsingBinaryProgram || link()) : mapAttributes();
+        success = isCompute() ? (mUsingBinaryProgram || linkInternal<diagnostics>()) : mapAttributesInternal<diagnostics>();
     }
     if (success)
     {
@@ -526,13 +533,23 @@ bool LLGLSLShader::createShader()
         if (!isCompute() && mShaderLevel > 0)
         {
             LL_SHADER_LOADING_WARNS() << "Failed to link using shader level " << mShaderLevel << " trying again using shader level " << (mShaderLevel - 1) << LL_ENDL;
+            if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
             mShaderLevel--;
-            return createShader();
+            return createShaderInternal<diagnostics>();
         }
         else
         {
-            // Give up and unload shader.
+            // Capture reflection before teardown clears it.
+            if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
             unloadInternal();
+        }
+    }
+    if constexpr (diagnostics)
+    {
+        if (success)
+        {
+            mgr->injectShaderOverflow(this);
+            mgr->finishShaderAttempt(this, true);
         }
     }
     // NOTE: indexed texture channels (tex0..texN) are assigned the first texture
@@ -569,6 +586,12 @@ bool LLGLSLShader::createShader()
     return success;
 }
 
+bool LLGLSLShader::createShader()
+{
+    if (LLShaderMgr::instance()->mShaderDiagnosticsEnabled) return createShaderInternal<true>();
+    return createShaderInternal<false>();
+}
+
 #if DEBUG_SHADER_INCLUDES
 void dumpAttachObject(const char* func_name, GLuint program_object, const std::string& object_path)
 {
@@ -590,12 +613,15 @@ void dumpAttachObject(const char* func_name, GLuint program_object, const std::s
 }
 #endif // DEBUG_SHADER_INCLUDES
 
-bool LLGLSLShader::attachVertexObject(std::string object_path)
+template<bool diagnostics>
+bool LLGLSLShader::attachVertexObjectInternal(std::string object_path)
 {
+    if constexpr (diagnostics) LLShaderMgr::instance()->traceFeatureAttachment(object_path, GL_VERTEX_SHADER);
     if (LLShaderMgr::instance()->mVertexShaderObjects.count(object_path) > 0)
     {
         stop_glerror();
         glAttachShader(mProgramObject, LLShaderMgr::instance()->mVertexShaderObjects[object_path]);
+        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(LLShaderMgr::instance()->mVertexShaderObjects[object_path]);
 #if DEBUG_SHADER_INCLUDES
         dumpAttachObject("attachVertexObject", mProgramObject, object_path);
 #endif // DEBUG_SHADER_INCLUDES
@@ -609,15 +635,26 @@ bool LLGLSLShader::attachVertexObject(std::string object_path)
     }
 }
 
-bool LLGLSLShader::attachFragmentObject(std::string object_path)
+bool LLGLSLShader::attachVertexObject(std::string object_path)
+{
+    return attachVertexObjectInternal<false>(object_path);
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::attachFragmentObjectInternal(std::string object_path)
 {
     if(mUsingBinaryProgram)
+    {
+        if constexpr (diagnostics) LLShaderMgr::instance()->traceFeatureAttachment(object_path, GL_FRAGMENT_SHADER, "skipped");
         return true;
+    }
+    if constexpr (diagnostics) LLShaderMgr::instance()->traceFeatureAttachment(object_path, GL_FRAGMENT_SHADER);
 
     if (LLShaderMgr::instance()->mFragmentShaderObjects.count(object_path) > 0)
     {
         stop_glerror();
         glAttachShader(mProgramObject, LLShaderMgr::instance()->mFragmentShaderObjects[object_path]);
+        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(LLShaderMgr::instance()->mFragmentShaderObjects[object_path]);
 #if DEBUG_SHADER_INCLUDES
         dumpAttachObject("attachFragmentObject", mProgramObject, object_path);
 #endif // DEBUG_SHADER_INCLUDES
@@ -631,7 +668,13 @@ bool LLGLSLShader::attachFragmentObject(std::string object_path)
     }
 }
 
-void LLGLSLShader::attachObject(GLuint object)
+bool LLGLSLShader::attachFragmentObject(std::string object_path)
+{
+    return attachFragmentObjectInternal<false>(object_path);
+}
+
+template<bool diagnostics>
+void LLGLSLShader::attachObjectInternal(GLuint object)
 {
     if(mUsingBinaryProgram)
         return;
@@ -640,6 +683,7 @@ void LLGLSLShader::attachObject(GLuint object)
     {
         stop_glerror();
         glAttachShader(mProgramObject, object);
+        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(object);
 #if DEBUG_SHADER_INCLUDES
         std::string object_path("???");
         dumpAttachObject("attachObject", mProgramObject, object_path);
@@ -650,6 +694,11 @@ void LLGLSLShader::attachObject(GLuint object)
     {
         LL_SHADER_LOADING_WARNS() << "Attempting to attach non existing shader object. " << LL_ENDL;
     }
+}
+
+void LLGLSLShader::attachObject(GLuint object)
+{
+    attachObjectInternal<false>(object);
 }
 
 void LLGLSLShader::attachObjects(GLuint* objects, S32 count)
@@ -663,7 +712,8 @@ void LLGLSLShader::attachObjects(GLuint* objects, S32 count)
     }
 }
 
-bool LLGLSLShader::mapAttributes()
+template<bool diagnostics>
+bool LLGLSLShader::mapAttributesInternal()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
 
@@ -678,7 +728,7 @@ bool LLGLSLShader::mapAttributes()
         }
 
         //link the program
-        res = link();
+        res = linkInternal<diagnostics>();
     }
 
     mAttribute.clear();
@@ -714,6 +764,11 @@ bool LLGLSLShader::mapAttributes()
     }
 
     return false;
+}
+
+bool LLGLSLShader::mapAttributes()
+{
+    return mapAttributesInternal<false>();
 }
 
 void LLGLSLShader::mapUniform(const gl_uniform_data_t& gl_uniform)
@@ -1068,7 +1123,8 @@ bool LLGLSLShader::mapUniforms()
 }
 
 
-bool LLGLSLShader::link(bool suppress_errors)
+template<bool diagnostics>
+bool LLGLSLShader::linkInternal(bool suppress_errors)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
 
@@ -1083,8 +1139,12 @@ bool LLGLSLShader::link(bool suppress_errors)
         glBindFragDataLocation(mProgramObject, 3, "alr_rimsplit_parity_mask");
     }
 
-    bool success = LLShaderMgr::instance()->linkProgramObject(mProgramObject, suppress_errors);
+    bool success = LLShaderMgr::instance()->linkProgramObjectInternal<diagnostics>(mProgramObject, suppress_errors, mName);
 
+    if constexpr (diagnostics)
+    {
+        LLShaderMgr::instance()->traceLink(success);
+    }
     if (!success && !suppress_errors)
     {
         LLShaderMgr::instance()->dumpObjectLog(mProgramObject, !success, mName);
@@ -1096,6 +1156,11 @@ bool LLGLSLShader::link(bool suppress_errors)
     }
 
     return success;
+}
+
+bool LLGLSLShader::link(bool suppress_errors)
+{
+    return linkInternal<false>(suppress_errors);
 }
 
 void LLGLSLShader::bind()
@@ -2105,6 +2170,11 @@ void LLShaderUniforms::apply(LLGLSLShader* shader)
 
 LLUUID LLGLSLShader::hash()
 {
+    return hashWithEpoch(LLShaderMgr::SHADER_CACHE_EPOCH);
+}
+
+LLUUID LLGLSLShader::hashWithEpoch(U32 epoch)
+{
     mShaderCacheEligible = true;
     HBXXH128 hash_obj;
     hash_obj.update(mName);
@@ -2168,7 +2238,6 @@ LLUUID LLGLSLShader::hash()
     auto* manager = LLShaderMgr::instance();
     hash_obj.update(manager->mSharedShaderFingerprint.asString());
     hash_obj.update(manager->mShaderCacheFeatureHash.asString());
-    const U32 epoch = LLShaderMgr::SHADER_CACHE_EPOCH;
     hash_obj.update(&epoch, sizeof(epoch));
     hash_obj.update(&sIndexedTextureChannels, sizeof(sIndexedTextureChannels));
     for (const auto& attribute : manager->mReservedAttribs)
@@ -2209,3 +2278,12 @@ void LLGLSLShader::setLabel(const char* label) {
     LL_LABEL_OBJECT_GL(GL_PROGRAM, mProgramObject, strlen(label), label);
 }
 #endif
+
+template bool LLGLSLShader::attachVertexObjectInternal<true>(std::string);
+template bool LLGLSLShader::attachVertexObjectInternal<false>(std::string);
+
+template bool LLGLSLShader::attachFragmentObjectInternal<true>(std::string);
+template bool LLGLSLShader::attachFragmentObjectInternal<false>(std::string);
+
+template void LLGLSLShader::attachObjectInternal<true>(GLuint);
+template void LLGLSLShader::attachObjectInternal<false>(GLuint);

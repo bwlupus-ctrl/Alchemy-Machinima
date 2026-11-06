@@ -240,6 +240,14 @@ public:
     bool readProfileQuery(bool for_runtime = false, bool force_read = false);
 
     bool createShader();
+    // Shader-load-only compile-time variants: no diagnostic work on the off path.
+    template<bool diagnostics> bool createShaderInternal();
+    template<bool diagnostics> bool attachVertexObjectInternal(std::string object_path);
+    template<bool diagnostics> bool attachFragmentObjectInternal(std::string object_path);
+    template<bool diagnostics> void attachObjectInternal(GLuint object);
+    template<bool diagnostics> bool mapAttributesInternal();
+    template<bool diagnostics> bool linkInternal(bool suppress_errors = false);
+
     bool attachFragmentObject(std::string object);
     bool attachVertexObject(std::string object);
     void attachObject(GLuint object);
@@ -326,6 +334,7 @@ public:
     bool isComplete() const { return mProgramObject != 0; }
 
     LLUUID hash();
+    LLUUID hashWithEpoch(U32 epoch);
 
     // Unbinds any previously bound shader by explicitly binding no shader.
     static void unbind();

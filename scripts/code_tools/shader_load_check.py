@@ -14,6 +14,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 MGR = 'indra/llrender/llshadermgr.cpp'
@@ -24,22 +25,31 @@ HERO = 'indra/newview/llheroprobemanager.cpp'
 REGION = 'indra/newview/llviewerregion.cpp'
 SHADERS = 'indra/newview/app_settings/shaders'
 PINS = 'scripts/code_tools/shader_load_epochs.json'
-INPUTS = (MGR, HEADER, GLSL, VIEWER, HERO, REGION, 'indra/llrender/llglslshader.h')
+SETTINGS = 'indra/newview/app_settings/settings.xml'
+INPUTS = (MGR, HEADER, GLSL, VIEWER, HERO, REGION, SETTINGS, 'indra/llrender/llglslshader.h', 'indra/llrender/llshaderdiagnostics.h')
 # Whole routines, including call/attachment order and all generated text. Header
 # pinning also covers feature representation and inline helpers. The source-site
 # inventory below rejects new injection/attachment sites outside these regions.
 REGIONS = {
     MGR: ('LLShaderMgr::shaderLanguageVersion(', 'LLShaderMgr::prepareWeatherFeatures(',
-          'LLShaderMgr::attachShaderFeatures(', 'LLShaderMgr::loadShaderFile(',
-          'LLShaderMgr::linkProgramObject(', 'LLShaderMgr::readShaderSource(', 'shader_source_has_main(',
+          'LLShaderMgr::attachShaderFeatures(', 'LLShaderMgr::attachShaderFeaturesInternal(', 'LLShaderMgr::loadShaderFile(', 'LLShaderMgr::loadShaderFileInternal(',
+          'LLShaderMgr::linkProgramObject(', 'LLShaderMgr::linkProgramObjectInternal(', 'LLShaderMgr::readShaderSource(', 'shader_source_has_main(',
           'shader_shared_source_fingerprint(', 'LLShaderMgr::hashShaderCacheFeatures(',
-          'LLShaderMgr::initShaderCache(', 'LLShaderMgr::loadCachedProgramBinary(',
-          'LLShaderMgr::saveCachedProgramBinary('),
-    GLSL: ('LLGLSLShader::unloadInternal(', 'LLGLSLShader::createShader(', 'LLGLSLShader::attachVertexObject(',
-           'LLGLSLShader::attachFragmentObject(', 'LLGLSLShader::attachObject(',
-           'LLGLSLShader::attachObjects(', 'LLGLSLShader::mapAttributes(',
-           'LLGLSLShader::link(', 'LLGLSLShader::hash('),
-    VIEWER: ('LLViewerShaderMgr::setShaders(', 'LLViewerShaderMgr::loadBasicShaders('),
+          'LLShaderMgr::initShaderCache(', 'LLShaderMgr::loadCachedProgramBinary(', 'LLShaderMgr::loadCachedProgramBinaryInternal(',
+          'LLShaderMgr::saveCachedProgramBinary(', 'LLShaderMgr::configureShaderDiagnostics(',
+          'LLShaderMgr::openShaderEquivalence(', 'LLShaderMgr::rejectProgramBinary(',
+          'LLShaderMgr::beginShaderAttempt(', 'LLShaderMgr::snapshotShaderAttempt(',
+          'LLShaderMgr::beginShaderStage(', 'LLShaderMgr::assembledShaderStage(',
+          'LLShaderMgr::finishShaderStage(', 'LLShaderMgr::writeShaderRecord(',
+          'LLShaderMgr::beginShaderPass(', 'LLShaderMgr::finishShaderPass(',
+          'LLShaderMgr::traceAttachment(', 'LLShaderMgr::traceFeatureAttachment(',
+          'LLShaderMgr::traceLink(', 'LLShaderMgr::injectShaderFailure(',
+          'LLShaderMgr::injectShaderOverflow(', 'LLShaderMgr::finishShaderAttempt('),
+    GLSL: ('LLGLSLShader::unloadInternal(', 'LLGLSLShader::createShader(', 'LLGLSLShader::createShaderInternal(', 'LLGLSLShader::attachVertexObject(', 'LLGLSLShader::attachVertexObjectInternal(',
+           'LLGLSLShader::attachFragmentObject(', 'LLGLSLShader::attachFragmentObjectInternal(', 'LLGLSLShader::attachObject(', 'LLGLSLShader::attachObjectInternal(',
+           'LLGLSLShader::attachObjects(', 'LLGLSLShader::mapAttributes(', 'LLGLSLShader::mapAttributesInternal(',
+           'LLGLSLShader::link(', 'LLGLSLShader::linkInternal(', 'LLGLSLShader::hash(', 'LLGLSLShader::hashWithEpoch('),
+    VIEWER: ('LLViewerShaderMgr::LLViewerShaderMgr(', 'LLViewerShaderMgr::setShaders(', 'LLViewerShaderMgr::loadBasicShaders('),
 }
 CPP_TOKENS = re.compile(
     r'R"(?P<delimiter>[^\s()\\]{0,16})\([\s\S]*?\)(?P=delimiter)"'
@@ -61,6 +71,9 @@ def function(source, name):
         if depth == 0:
             # Include the signature's return type/static qualifier too.
             line = source.rfind('\n', 0, start) + 1
+            previous = source.rfind('\n', 0, max(line - 1, 0)) + 1
+            if source[previous:line].strip().startswith('template<'):
+                line = previous
             return source[line:end + 1]
     raise ValueError('unclosed function: ' + name)
 
@@ -74,7 +87,7 @@ def region_digest(files):
     for path, names in REGIONS.items():
         for name in names:
             digest.update((path + '\n' + name + '\n' + function(files[path], name) + '\n').encode())
-    for path in (HEADER, 'indra/llrender/llglslshader.h'):
+    for path in (HEADER, 'indra/llrender/llglslshader.h', 'indra/llrender/llshaderdiagnostics.h'):
         source = re.sub(r'(SHADER_CACHE_EPOCH\s*=\s*)\d+', r'\1EPOCH', files[path])
         digest.update((path + '\n' + source).encode())
     return digest.hexdigest()
@@ -103,7 +116,7 @@ def feature_fields(source):
 
 def dependency_errors(files, shaders):
     errors = []
-    regions = function(files[MGR], 'LLShaderMgr::attachShaderFeatures(') + function(files[VIEWER], 'LLViewerShaderMgr::loadBasicShaders(')
+    regions = function(files[MGR], 'LLShaderMgr::attachShaderFeaturesInternal(') + function(files[VIEWER], 'LLViewerShaderMgr::loadBasicShaders(')
     names = set(re.findall(r'"([^"\n]+\.glsl)"', regions))
     for name in sorted(names):
         matches = [(p, s) for p, s in shaders.items() if p.endswith('/' + name)]
@@ -163,11 +176,36 @@ def source_errors(files, shaders, pins):
         errors.append('second instance must never purge cache')
     if 'enabled && mShaderCacheSourceValid' not in init or 'if (!mShaderCacheScanAttempted)' not in init:
         errors.append('failed source scan must disable cache for the entire run')
-    hashed = function(files[GLSL], 'LLGLSLShader::hash(')
-    for item in ('mSharedShaderFingerprint', 'SHADER_CACHE_EPOCH', 'mReservedAttribs', 'mShaderCacheFeatureHash'):
+    hashed = function(files[GLSL], 'LLGLSLShader::hashWithEpoch(')
+    if function(files[GLSL], 'LLGLSLShader::hash(').strip() != 'LLUUID LLGLSLShader::hash()\n{\n    return hashWithEpoch(LLShaderMgr::SHADER_CACHE_EPOCH);\n}':
+        errors.append('production hash must use the declared cache epoch')
+    for item in ('mSharedShaderFingerprint', 'hash_obj.update(&epoch, sizeof(epoch));', 'mReservedAttribs', 'mShaderCacheFeatureHash'):
         if item not in hashed:
             errors.append('program hash missing input/fail-safe: ' + item)
     declared = feature_fields(files['indra/llrender/llglslshader.h'])
+    snapshot = function(files[MGR], 'LLShaderMgr::snapshotShaderAttempt(')
+    dumped = re.findall(r'features\["(\w+)"\] = shader->mFeatures\.\1;', snapshot)
+    if dumped != declared:
+        errors.append('equivalence dump must include every LLShaderFeatures field in declaration order')
+    if '&& !mShaderInjectionActive' not in init:
+        errors.append('failure injection must disable binary cache initialization')
+    configuration = function(files[MGR], 'LLShaderMgr::configureShaderDiagnostics(')
+    if 'mShaderCacheEnabled = false;' not in configuration:
+        errors.append('failure injection must also disable an already initialized binary cache')
+    try:
+        items = list(ET.fromstring(files[SETTINGS]).find('map'))
+        for name, kind, default in (('RenderShaderDumpEquivalence', 'Boolean', '0'),
+                                    ('RenderShaderInjectFail', 'String', '')):
+            matches = [value for key, value in zip(items[::2], items[1::2]) if key.text == name]
+            if len(matches) != 1:
+                errors.append('diagnostic setting must be declared exactly once: ' + name)
+                continue
+            entries = list(matches[0])
+            metadata = {key.text: value.text or '' for key, value in zip(entries[::2], entries[1::2])}
+            if metadata.get('Type') != kind or metadata.get('Value') != default or metadata.get('Persist') != '0':
+                errors.append('invalid diagnostic setting type/default/Persist: ' + name)
+    except (ET.ParseError, TypeError):
+        errors.append('malformed diagnostic settings document')
     feeds = re.findall(r'hash_obj\.update\(&mFeatures\.(\w+), sizeof\(mFeatures\.\1\)\);', hashed)
     if feeds != declared or re.search(r'&mFeatures\s*[,)]', hashed):
         errors.append('LLShaderFeatures must hash every declared field exactly once in declaration order')
@@ -179,7 +217,7 @@ def source_errors(files, shaders, pins):
     for name, guard in (
             ('loadCachedProgramBinary', 'if (!mShaderCacheEnabled || !shader->mShaderCacheEligible) return false;'),
             ('saveCachedProgramBinary', 'if (!mShaderCacheEnabled || mShaderCacheReadOnly || !shader->mShaderCacheEligible) return true;')):
-        method = function(files[MGR], 'LLShaderMgr::' + name + '(')
+        method = function(files[MGR], 'LLShaderMgr::' + name + ('Internal(' if name == 'loadCachedProgramBinary' else '('))
         if guard not in method:
             errors.append(name + ' must check global and per-program state after hash')
     reader = function(files[MGR], 'LLShaderMgr::readShaderSource(')
@@ -211,7 +249,9 @@ def load(root):
     return files, shaders, pins
 
 
-INJECTION_PATTERN = r'\b(?:glShaderSource|glShaderBinary|glSpecializeShader|glCompileShader|glCreateShader|glCreateProgram|glAttachShader|glDetachShader|glLinkProgram|glBindAttribLocation|glBindFragDataLocation(?:Indexed)?|glTransformFeedbackVaryings|glProgramParameteri|glProgramBinary|loadShaderFile|attachVertexObject|attachFragmentObject|attachObject|attachObjects)\s*\('
+# Find sensitive identifiers before trying to interpret C++ template syntax.
+# This also catches callable aliases and parenthesized/nested template arguments.
+INJECTION_PATTERN = r'\b(?:glShaderSource|glShaderBinary|glSpecializeShader|glCompileShader|glCreateShader|glCreateProgram|glAttachShader|glDetachShader|glLinkProgram|glBindAttribLocation|glBindFragDataLocation(?:Indexed)?|glTransformFeedbackVaryings|glProgramParameteri|glProgramBinary|loadShaderFile(?:Internal)?|attachVertexObject(?:Internal)?|attachFragmentObject(?:Internal)?|attachObject(?:Internal)?|attachObjects)\b'
 # Existing inventory/object attachment APIs happen to share the shader method
 # names. Whitelist exact non-shader expressions, never a whole native source.
 NON_SHADER_ATTACH = {
@@ -220,7 +260,9 @@ NON_SHADER_ATTACH = {
  'indra/newview/llvoavatarself.cpp': ('LLVOAvatarSelf::attachObject(LLViewerObject *viewer_object)',
      'LLVOAvatar::attachObject(viewer_object)'),
  'indra/newview/llinventorypanel.cpp': ('LLInventoryPanel::attachObject(const LLSD& userdata)',
-     'LLViewerAttachMenu::attachObjects(items, userdata.asString())'),
+     'LLViewerAttachMenu::attachObjects(items, userdata.asString())',
+     'boost::bind(&LLInventoryPanel::attachObject, this, _2)'),
+ 'indra/newview/llwearableitemslist.cpp': ('boost::bind(LLViewerAttachMenu::attachObjects, ids, _2)',),
  'indra/newview/llviewerattachmenu.cpp': ('LLViewerAttachMenu::attachObjects(const uuid_vec_t& items, const std::string& joint_name)',),
 }
 
@@ -229,6 +271,15 @@ def unpinned_sites(path, source):
     for name in REGIONS.get(path, ()):
         source = source.replace(function(source, name), '')
     source = mask(source)
+    # Explicit instantiation declarations have no executable body. Do not
+    # confuse these with calls to the newly pinned compile-time entry points.
+    source = re.sub(r'^template (?:bool|void|GLuint) LL(?:ShaderMgr|GLSLShader)::\w+Internal<(?:true|false)>\([^;{}]*\);$',
+                    '', source, flags=re.M)
+    if path == 'indra/llrender/llgl.cpp':
+        # Exact GL entry-point storage declarations and loader assignments,
+        # never an executable invocation (including calls via a template).
+        source = re.sub(r'^PFNGL[A-Z0-9]+PROC\s+gl\w+ = nullptr;$', '', source, flags=re.M)
+        source = re.sub(r'^    (gl\w+) = \(PFNGL[A-Z0-9]+PROC\)LL_GET_PROC_ADDRESS\(\s*\);$', '', source, flags=re.M)
     for expression in NON_SHADER_ATTACH.get(path, ()):
         source = source.replace(expression, '')
     return bool(re.search(INJECTION_PATTERN, source))
@@ -317,7 +368,11 @@ def selftest(quiet=False):
     for label, call in (
             ('unpinned direct GL attachment', 'glAttachShader(program, stage);'),
             ('unpinned wrapper attachment', 'shader.attachObjects(stages, 2);'),
-            ('unpinned indexed fragment output', 'glBindFragDataLocationIndexed(program, 0, 1, "color");')):
+            ('unpinned indexed fragment output', 'glBindFragDataLocationIndexed(program, 0, 1, "color");'),
+            ('unpinned diagnostic attachment', 'shader.attachVertexObjectInternal<true>("feature.glsl");'),
+            ('unpinned parenthesized attachment', 'shader.attachVertexObjectInternal<(true)>("feature.glsl");'),
+            ('unpinned parenthesized load', 'mgr.loadShaderFileInternal<(false)>(file, level, type, nullptr, 0);'),
+            ('unpinned diagnostic stage load', 'mgr.loadShaderFileInternal<false>(file, level, type, nullptr, 0);')):
         if not unpinned_sites('fixture.cpp', 'void added(){' + call + '}'):
             failures.append('SURVIVING FIXTURE: ' + label)
         elif not quiet:
@@ -325,6 +380,8 @@ def selftest(quiet=False):
     # Refresh the epoch digest in these structural fixtures so they must fail
     # their own contracts, independently of the injection pin.
     structural = [
+        ('wrong production epoch', GLSL, 'return hashWithEpoch(LLShaderMgr::SHADER_CACHE_EPOCH);', 'return hashWithEpoch(0);'),
+        ('epoch feed omitted', GLSL, '    hash_obj.update(&epoch, sizeof(epoch));', ''),
         ('feature field omitted', GLSL,
          '    hash_obj.update(&mFeatures.hasActorFxShadow, sizeof(mFeatures.hasActorFxShadow));', ''),
         ('new feature field omitted', 'indra/llrender/llglslshader.h',
@@ -338,7 +395,15 @@ def selftest(quiet=False):
         ('binary load ignores global disable', MGR, '!mShaderCacheEnabled || !shader->mShaderCacheEligible', '!shader->mShaderCacheEligible'),
         ('binary save ignores global disable', MGR, '!mShaderCacheEnabled || mShaderCacheReadOnly || !shader->mShaderCacheEligible', 'mShaderCacheReadOnly || !shader->mShaderCacheEligible'),
         ('empty source rejected', MGR, 'if (ec || size >', 'if (ec || size == 0 || size >'),
+        ('injection enables cache', MGR, ' && !mShaderInjectionActive;', ';'),
+        ('injection retains live cache', MGR, '        mShaderCacheEnabled = false;', ''),
+        ('feature dump omits field', MGR, '    features["hasActorFxShadow"] = shader->mFeatures.hasActorFxShadow;', ''),
     ]
+    for name in ('RenderShaderDumpEquivalence', 'RenderShaderInjectFail'):
+        declaration = re.search(r'<key>' + name + r'</key>\s*<map>[\s\S]*?</map>', files[SETTINGS])[0]
+        structural.append((name + ' persists', SETTINGS, declaration,
+                           declaration.replace('<key>Persist</key><integer>0</integer>',
+                                               '<key>Persist</key><integer>1</integer>')))
     for label, path, old, new in structural:
         assert old in files[path], 'fixture anchor missing: ' + label
         changed = dict(files)
@@ -364,7 +429,7 @@ def selftest(quiet=False):
         for failure in failures:
             print(failure, file=sys.stderr)
     elif not quiet:
-        print('shader_load_check selftest: 27 planted regressions rejected; epoch transition checked')
+        print('shader_load_check selftest: 38 planted regressions rejected; epoch transition checked')
     return 1 if failures else 0
 
 

@@ -52,6 +52,7 @@ set(llrender_HEADER_FILES
     llrendernavprim.h
     llrendersphere.h
     llrendertarget.h
+    llshaderdiagnostics.h
     llshadermgr.h
     lltexture.h
     lltexturemanagerbridge.h
@@ -127,6 +128,7 @@ if (BUILD_TESTING)
   # llrender — it doesn't need GL.
   set(test_project llrender)
   set(test_libs llrender)
+  LL_ADD_INTEGRATION_TEST(llshaderdiagnostics "" "${test_libs}" "${test_project}")
   if (BUILD_HEADLESS)
     set(registry_test_libs llrenderheadless)
   else()

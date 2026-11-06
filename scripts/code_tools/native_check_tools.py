@@ -53,7 +53,10 @@ def viewer_native_flags():
         if (build / 'llcommon/Release/llcommon.lib').is_file():
             break
     else:
-        raise RuntimeError('An existing CMake Release llcommon library is required for native linking')
+        raise RuntimeError('Native shader diagnostics prerequisites missing: build Release llcommon and llmath '
+                           'and install the CMake/vcpkg dependencies first. Searched checkout/build-* and '
+                           'git-common checkout/build-* for newview/alchemy-bin.vcxproj with '
+                           'llcommon/Release/llcommon.lib. This gate cannot run or pass without native libraries.')
     ns = {'m': 'http://schemas.microsoft.com/developer/msbuild/2003'}
     tree = ET.parse(project)
     group = next(n for n in tree.findall('m:ItemDefinitionGroup', ns) if "Release|x64" in n.get('Condition', ''))
@@ -64,8 +67,15 @@ def viewer_native_flags():
     flags += [f'/I"{d}"' for d in includes if d.is_dir()]
     libraries = [f'"{build / name / "Release" / (name + ".lib")}"' for name in ('llcommon', 'llmath')]
     required = ('apr-1', 'aprapp-1', 'libexpatMT', 'boost_', 'fmt', 'xxhash', 'simdjson', 'simdutf', 'TracyClient', 'zs')
-    libraries += [f'"{p}"' for p in (build / 'vcpkg_installed').glob('*/lib/*.lib')
-                  if p.stem.startswith(required)]
+    installed = list((build / 'vcpkg_installed').glob('*/lib/*.lib'))
+    missing = [str(build / name / 'Release' / (name + '.lib')) for name in ('llcommon', 'llmath')
+               if not (build / name / 'Release' / (name + '.lib')).is_file()]
+    missing += [prefix + '*.lib (vcpkg)' for prefix in required if not any(p.stem.startswith(prefix) for p in installed)]
+    if missing:
+        raise RuntimeError('Native shader diagnostics prerequisites missing: ' + ', '.join(missing)
+                           + '. Build Release llcommon/llmath and install the CMake/vcpkg dependencies first; '
+                           'this gate cannot run or pass without them.')
+    libraries += [f'"{p}"' for p in installed if p.stem.startswith(required)]
     libraries += ['/link', '/OPT:REF', 'advapi32.lib', 'bcrypt.lib', 'user32.lib', 'shell32.lib', 'ws2_32.lib',
                   'dbghelp.lib', 'dbgeng.lib', 'winmm.lib', 'ole32.lib', 'version.lib', 'psapi.lib', 'synchronization.lib', 'iphlpapi.lib', 'rpcrt4.lib']
     return flags, libraries
