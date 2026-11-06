@@ -325,7 +325,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@1137,57", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2851,32", "indra/newview/CMakeLists.txt@2957,186"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@4514,839", "indra/newview/app_settings/settings.xml@5354,175", "indra/newview/app_settings/settings.xml@6564,14744", "indra/newview/app_settings/settings.xml@21310,1113", "indra/newview/app_settings/settings.xml@28519,648", "indra/newview/app_settings/settings.xml@29313,2466", "indra/newview/app_settings/settings.xml@31780,209", "indra/newview/app_settings/settings.xml@31990,364"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@4514,839", "indra/newview/app_settings/settings.xml@5354,175", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@21321,1113", "indra/newview/app_settings/settings.xml@28530,648", "indra/newview/app_settings/settings.xml@29324,2466", "indra/newview/app_settings/settings.xml@31791,209", "indra/newview/app_settings/settings.xml@32001,364"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@156,7", "indra/newview/llappviewer.cpp@1954,24", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@2877,7", "indra/newview/llappviewer.cpp@4589,17", "indra/newview/llappviewer.cpp@4618,10", "indra/newview/llappviewer.cpp@4729,11", "indra/newview/llappviewer.cpp@5809,119", "indra/newview/llappviewer.cpp@6444,15", "indra/newview/llappviewer.cpp@6482,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@60,19"]}
 - {"path": "indra/newview/llfloaterhoverheight.cpp", "hunks": ["indra/newview/llfloaterhoverheight.cpp@93,41"]}
@@ -526,6 +526,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `DirectorSwitcherSeed`
 - `DirectorSwitcherSequence`
 - `DirectorTheme`
+- `DirectorThemeInvert`
 - `DirectorUIV2`
 - `DirectorV2CastRosterOpen`
 - `DirectorV2LightMapSideFrom`
@@ -690,11 +691,15 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## generated runtime
 
 - `indra/newview/app_settings/director_themes/arctic.xml`
+- `indra/newview/app_settings/director_themes/bubblegum.xml`
 - `indra/newview/app_settings/director_themes/daylight.xml`
 - `indra/newview/app_settings/director_themes/graphite.xml`
+- `indra/newview/app_settings/director_themes/lavender.xml`
 - `indra/newview/app_settings/director_themes/neon.xml`
 - `indra/newview/app_settings/director_themes/night_shoot.xml`
 - `indra/newview/app_settings/director_themes/noir.xml`
+- `indra/newview/app_settings/director_themes/peach_sorbet.xml`
+- `indra/newview/app_settings/director_themes/rose_quartz.xml`
 - `indra/newview/app_settings/director_themes/teal_orange.xml`
 - `indra/newview/app_settings/director_themes/tungsten.xml`
 - `indra/newview/skins/default/xui/en/director_kit_index.xml`

@@ -2246,6 +2246,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -2378,7 +2379,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -2518,6 +2520,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -2638,7 +2641,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -2735,8 +2739,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -2804,6 +2810,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -2840,6 +2847,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -6286,6 +6294,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -6721,6 +6730,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -10939,11 +10949,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@22965,412",
-          "indra/newview/app_settings/settings.xml@23488,362",
-          "indra/newview/app_settings/settings.xml@29168,100",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@22976,412",
+          "indra/newview/app_settings/settings.xml@23499,362",
+          "indra/newview/app_settings/settings.xml@29179,100",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -12808,6 +12818,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -12940,7 +12951,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -12999,11 +13011,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -13029,6 +13043,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -13040,6 +13055,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -16871,6 +16887,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -17306,6 +17323,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -23224,11 +23242,11 @@
           "indra/newview/app_settings/settings.xml@5893,21",
           "indra/newview/app_settings/settings.xml@5915,527",
           "indra/newview/app_settings/settings.xml@6443,120",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@27360,98",
-          "indra/newview/app_settings/settings.xml@27893,229",
-          "indra/newview/app_settings/settings.xml@29313,2466",
-          "indra/newview/app_settings/settings.xml@31990,364"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@27371,98",
+          "indra/newview/app_settings/settings.xml@27904,229",
+          "indra/newview/app_settings/settings.xml@29324,2466",
+          "indra/newview/app_settings/settings.xml@32001,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24934,8 +24952,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -25003,6 +25023,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -27949,6 +27970,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -28384,6 +28406,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -35114,8 +35137,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -47161,9 +47184,9 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@31780,209",
-          "indra/newview/app_settings/settings.xml@31990,364"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@31791,209",
+          "indra/newview/app_settings/settings.xml@32001,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -52463,6 +52486,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -52583,7 +52607,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -52717,11 +52742,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -52747,6 +52774,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -52758,6 +52786,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -52807,8 +52836,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -52876,6 +52907,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -52912,6 +52944,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -58235,6 +58268,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -58670,6 +58704,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -68064,8 +68099,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@25632,1573"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@25643,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -69728,6 +69763,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -69860,7 +69896,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -70093,6 +70130,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -70213,7 +70251,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -70239,6 +70278,7 @@
           "indra/llrender/llrender.h",
           "indra/llrender/llrender2dutils.h",
           "indra/llui/llfocusmgr.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrig.h",
@@ -70284,6 +70324,7 @@
           "ALLightRigMap::setViewMode",
           "ALUIPerfSelfTest::recordKitText",
           "LLFontGL::getFontSansSerifSmall",
+          "LLUIColorTable::instance",
           "LLUICtrl::draw",
           "LLUICtrl::handleHover",
           "LLUICtrl::handleKeyHere",
@@ -70469,6 +70510,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -72261,6 +72303,7 @@
         "includes": [
           "indra/llrender/lluiimage.h",
           "indra/llui/llui.h",
+          "indra/llui/lluicolor.h",
           "indra/llui/lluictrl.h",
           "indra/newview/alflowgrid.h",
           "indra/newview/alvcampagemodel.h",
@@ -73565,6 +73608,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -74000,6 +74044,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -75980,7 +76025,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5530,32",
           "indra/newview/app_settings/settings.xml@5563,21",
-          "indra/newview/app_settings/settings.xml@6564,14744"
+          "indra/newview/app_settings/settings.xml@6564,14755"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -77042,11 +77087,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -77072,6 +77119,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -77083,6 +77131,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -84176,11 +84225,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@22965,412",
-          "indra/newview/app_settings/settings.xml@23488,362",
-          "indra/newview/app_settings/settings.xml@29168,100",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@22976,412",
+          "indra/newview/app_settings/settings.xml@23499,362",
+          "indra/newview/app_settings/settings.xml@29179,100",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -86411,6 +86460,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -86846,6 +86896,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -90022,11 +90073,15 @@
     ],
     "generated_runtime": [
       "indra/newview/app_settings/director_themes/arctic.xml",
+      "indra/newview/app_settings/director_themes/bubblegum.xml",
       "indra/newview/app_settings/director_themes/daylight.xml",
       "indra/newview/app_settings/director_themes/graphite.xml",
+      "indra/newview/app_settings/director_themes/lavender.xml",
       "indra/newview/app_settings/director_themes/neon.xml",
       "indra/newview/app_settings/director_themes/night_shoot.xml",
       "indra/newview/app_settings/director_themes/noir.xml",
+      "indra/newview/app_settings/director_themes/peach_sorbet.xml",
+      "indra/newview/app_settings/director_themes/rose_quartz.xml",
       "indra/newview/app_settings/director_themes/teal_orange.xml",
       "indra/newview/app_settings/director_themes/tungsten.xml",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -90089,12 +90144,12 @@
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@4514,839",
           "indra/newview/app_settings/settings.xml@5354,175",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@21310,1113",
-          "indra/newview/app_settings/settings.xml@28519,648",
-          "indra/newview/app_settings/settings.xml@29313,2466",
-          "indra/newview/app_settings/settings.xml@31780,209",
-          "indra/newview/app_settings/settings.xml@31990,364"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@21321,1113",
+          "indra/newview/app_settings/settings.xml@28530,648",
+          "indra/newview/app_settings/settings.xml@29324,2466",
+          "indra/newview/app_settings/settings.xml@31791,209",
+          "indra/newview/app_settings/settings.xml@32001,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -90995,6 +91050,7 @@
       "DirectorSwitcherSeed",
       "DirectorSwitcherSequence",
       "DirectorTheme",
+      "DirectorThemeInvert",
       "DirectorUIV2",
       "DirectorV2CastRosterOpen",
       "DirectorV2LightMapSideFrom",
@@ -93469,6 +93525,7 @@
           "indra/llui/llpanel.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alkitcard.h",
           "indra/newview/alkithelp.h",
@@ -93494,6 +93551,7 @@
           "ALKitStyle::sansFont",
           "ALUIPerfSelfTest::recordKitText",
           "LLStringUtil::toUpper",
+          "LLUIColorTable::instance",
           "LLView::draw"
         ],
         "unresolved_includes": []
@@ -93646,6 +93704,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -93778,7 +93837,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -94133,6 +94193,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -94253,7 +94314,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -94402,6 +94464,7 @@
           "indra/llrender/llrender.h",
           "indra/llrender/llrender2dutils.h",
           "indra/llui/llfocusmgr.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrig.h",
@@ -94447,6 +94510,7 @@
           "ALLightRigMap::setViewMode",
           "ALUIPerfSelfTest::recordKitText",
           "LLFontGL::getFontSansSerifSmall",
+          "LLUIColorTable::instance",
           "LLUICtrl::draw",
           "LLUICtrl::handleHover",
           "LLUICtrl::handleKeyHere",
@@ -94482,11 +94546,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -94512,6 +94578,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -94523,6 +94590,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -94654,8 +94722,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -94723,6 +94793,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -94838,6 +94909,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -97156,6 +97228,7 @@
         "includes": [
           "indra/llrender/lluiimage.h",
           "indra/llui/llui.h",
+          "indra/llui/lluicolor.h",
           "indra/llui/lluictrl.h",
           "indra/newview/alflowgrid.h",
           "indra/newview/alvcampagemodel.h",
@@ -99580,6 +99653,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -100015,6 +100089,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -108296,10 +108371,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@25632,1573",
-          "indra/newview/app_settings/settings.xml@27783,109",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@25643,1573",
+          "indra/newview/app_settings/settings.xml@27794,109",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -112816,8 +112891,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -113988,6 +114063,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -114120,7 +114196,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -114144,6 +114221,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -114264,7 +114342,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -114299,6 +114378,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -116633,6 +116713,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -117068,6 +117149,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -120440,15 +120522,15 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@21310,1113",
-          "indra/newview/app_settings/settings.xml@22425,76",
-          "indra/newview/app_settings/settings.xml@22557,407",
-          "indra/newview/app_settings/settings.xml@22965,412",
-          "indra/newview/app_settings/settings.xml@23400,87",
-          "indra/newview/app_settings/settings.xml@23961,164",
-          "indra/newview/app_settings/settings.xml@29313,2466",
-          "indra/newview/app_settings/settings.xml@31990,364"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@21321,1113",
+          "indra/newview/app_settings/settings.xml@22436,76",
+          "indra/newview/app_settings/settings.xml@22568,407",
+          "indra/newview/app_settings/settings.xml@22976,412",
+          "indra/newview/app_settings/settings.xml@23411,87",
+          "indra/newview/app_settings/settings.xml@23972,164",
+          "indra/newview/app_settings/settings.xml@29324,2466",
+          "indra/newview/app_settings/settings.xml@32001,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -123286,6 +123368,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -123418,7 +123501,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -123735,11 +123819,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -123765,6 +123851,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -123776,6 +123863,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -123792,8 +123880,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -123861,6 +123951,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -123980,6 +124071,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -128307,6 +128399,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -128742,6 +128835,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -136469,10 +136563,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@21310,1113",
-          "indra/newview/app_settings/settings.xml@22513,43",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@21321,1113",
+          "indra/newview/app_settings/settings.xml@22524,43",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -139880,6 +139974,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -140012,7 +140107,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -140152,6 +140248,7 @@
           "indra/llrender/llrender.h",
           "indra/llrender/llrender2dutils.h",
           "indra/llui/llfocusmgr.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrig.h",
@@ -140197,6 +140294,7 @@
           "ALLightRigMap::setViewMode",
           "ALUIPerfSelfTest::recordKitText",
           "LLFontGL::getFontSansSerifSmall",
+          "LLUIColorTable::instance",
           "LLUICtrl::draw",
           "LLUICtrl::handleHover",
           "LLUICtrl::handleKeyHere",
@@ -140234,11 +140332,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -140264,6 +140364,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -140275,6 +140376,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -140291,8 +140393,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -140360,6 +140464,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -140396,6 +140501,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -143368,6 +143474,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -143803,6 +143910,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -152100,6 +152208,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1153,
+        "source": "indra/newview/aldirectortheme.h",
+        "text": "aldirectortheme.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 355,
         "source": "indra/newview/alenvonlydiagnostics.cpp",
         "text": "alenvonlydiagnostics.cpp"
@@ -152791,11 +152905,11 @@
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@5354,175",
           "indra/newview/app_settings/settings.xml@5915,527",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@21310,1113",
-          "indra/newview/app_settings/settings.xml@25632,1573",
-          "indra/newview/app_settings/settings.xml@27206,153",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@21321,1113",
+          "indra/newview/app_settings/settings.xml@25643,1573",
+          "indra/newview/app_settings/settings.xml@27217,153",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -153221,6 +153335,7 @@
       "indra/newview/aldirectoralloff.h",
       "indra/newview/aldirectorqol.cpp",
       "indra/newview/aldirectorqol.h",
+      "indra/newview/aldirectortheme.h",
       "indra/newview/alenvonlydiagnostics.cpp",
       "indra/newview/algazemath.h",
       "indra/newview/algazemotor.h",
@@ -155632,6 +155747,16 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortheme.h": {
+        "includes": [
+          "indra/llcommon/llsd.h",
+          "indra/llmath/v4color.h"
+        ],
+        "qualified_call_candidates": [
+          "LLUIColorTable::loadFromSettings"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alenvonlydiagnostics.cpp": {
         "includes": [
           "indra/llcommon/llcallbacklist.h",
@@ -156219,6 +156344,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -156351,7 +156477,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -156572,6 +156699,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -156692,7 +156820,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -156788,11 +156917,13 @@
           "indra/llui/llbutton.h",
           "indra/llui/llnotificationsutil.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/newview/alactorchromakey.h",
           "indra/newview/alactorkeyui.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelactorkey.h",
           "indra/newview/llactormover.h",
           "indra/newview/llviewercontrol.h",
@@ -156818,6 +156949,7 @@
           "ALActorKeyUI::shadowStatus",
           "ALActorKeyUI::shadowTestUnavailable",
           "ALGhostStudio::instance",
+          "ALKitStyle::color",
           "ALPanelActorKey::draw",
           "ALPanelActorKey::onVisibilityChange",
           "ALPanelActorKey::postBuild",
@@ -156829,6 +156961,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLVfxManager::instance"
         ],
         "unresolved_includes": []
@@ -156864,6 +156997,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -160212,6 +160346,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -160647,6 +160782,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -166316,12 +166452,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@3469,1044",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@21310,1113",
-          "indra/newview/app_settings/settings.xml@22557,407",
-          "indra/newview/app_settings/settings.xml@22965,412",
-          "indra/newview/app_settings/settings.xml@25632,1573",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@21321,1113",
+          "indra/newview/app_settings/settings.xml@22568,407",
+          "indra/newview/app_settings/settings.xml@22976,412",
+          "indra/newview/app_settings/settings.xml@25643,1573",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -167699,6 +167835,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -167831,7 +167968,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -168052,6 +168190,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -168172,7 +168311,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -168259,8 +168399,10 @@
           "indra/llui/llscrolllistctrl.h",
           "indra/llui/llsliderctrl.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alghoststudio.h",
+          "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
@@ -168328,6 +168470,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::postBuild",
+          "LLUIColorTable::instance",
           "LLWorld::getInstance",
           "LLWorld::instanceExists"
         ],
@@ -168364,6 +168507,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -170731,6 +170875,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -171166,6 +171311,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -176796,7 +176942,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14744"
+          "indra/newview/app_settings/settings.xml@6564,14755"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -177636,6 +177782,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -177768,7 +177915,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -177984,6 +178132,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -179511,6 +179660,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -179946,6 +180096,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -183344,7 +183495,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744"
+          "indra/newview/app_settings/settings.xml@6564,14755"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -187050,6 +187201,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -187485,6 +187637,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -192163,6 +192316,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -192598,6 +192752,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -195558,9 +195713,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@21310,1113",
-          "indra/newview/app_settings/settings.xml@29313,2466"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@21321,1113",
+          "indra/newview/app_settings/settings.xml@29324,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -198418,6 +198573,7 @@
           "indra/llui/llsliderwheel.h",
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/alghoststudio.h",
@@ -198538,7 +198694,8 @@
           "LLSliderWheel::noteScroll",
           "LLStringUtil::getTokens",
           "LLStringUtil::replaceString",
-          "LLStringUtil::toUpper"
+          "LLStringUtil::toUpper",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -198573,6 +198730,7 @@
           "indra/newview/alkitpage.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
+          "indra/newview/alkitstyle.h",
           "indra/newview/alpanelcinelightrig.h",
           "indra/newview/alpresetlook.h",
           "indra/newview/alriggroupsubject.h",
@@ -199693,6 +199851,7 @@
         "includes": [
           "indra/llrender/lluiimage.h",
           "indra/llui/llui.h",
+          "indra/llui/lluicolor.h",
           "indra/llui/lluictrl.h",
           "indra/newview/alflowgrid.h",
           "indra/newview/alvcampagemodel.h",
@@ -201935,6 +202094,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -202370,6 +202530,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",
@@ -209599,10 +209760,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14744",
-          "indra/newview/app_settings/settings.xml@29313,2466",
-          "indra/newview/app_settings/settings.xml@31780,209",
-          "indra/newview/app_settings/settings.xml@31990,364"
+          "indra/newview/app_settings/settings.xml@6564,14755",
+          "indra/newview/app_settings/settings.xml@29324,2466",
+          "indra/newview/app_settings/settings.xml@31791,209",
+          "indra/newview/app_settings/settings.xml@32001,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -212220,6 +212381,7 @@
           "indra/llui/llnotificationsutil.h",
           "indra/llui/llscrolllistitem.h",
           "indra/llui/lltextbox.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/llxml/llcontrol.h",
           "indra/newview/alcinelightrigmanager.h",
@@ -212352,7 +212514,8 @@
           "LLStringUtil::toLower",
           "LLStringUtil::toUpper",
           "LLStringUtil::trim",
-          "LLUI::getUIImage"
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance"
         ],
         "unresolved_includes": []
       },
@@ -215260,6 +215423,7 @@
           "indra/llui/lltabcontainer.h",
           "indra/llui/lltextbox.h",
           "indra/llui/lltexteditor.h",
+          "indra/llui/lluicolortable.h",
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavataranimspeed.h",
           "indra/newview/alavatarlightresponse.h",
@@ -215695,6 +215859,7 @@
           "LLStringUtil::trim",
           "LLTimer::getTotalSeconds",
           "LLToolDragAndDrop::getInstance",
+          "LLUIColorTable::instance",
           "LLUICtrlFactory::getInstance",
           "LLURI::escape",
           "LLURI::unescape",

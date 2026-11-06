@@ -3809,6 +3809,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alpanelactorkey.cpp",
+    "dependency": "indra/newview/alkitstyle.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alpanelactorkey.h",
     "dependency": "indra/newview/aluirefresh.h",
     "excluded": false,
@@ -3955,6 +3964,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelavatarlightresponse.cpp",
     "dependency": "indra/newview/alkitrow.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelavatarlightresponse.cpp",
+    "dependency": "indra/newview/alkitpage.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -4153,6 +4171,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelcinelightrig.cpp",
     "dependency": "indra/newview/alkitpage.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelcinelightrig.cpp",
+    "dependency": "indra/newview/alkitstyle.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
