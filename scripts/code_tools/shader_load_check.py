@@ -33,11 +33,12 @@ INPUTS = (MGR, HEADER, GLSL, VIEWER, HERO, REGION, SETTINGS, 'indra/llrender/llg
 REGIONS = {
     MGR: ('LLShaderMgr::shaderLanguageVersion(', 'LLShaderMgr::prepareWeatherFeatures(',
           'LLShaderMgr::attachShaderFeatures(', 'LLShaderMgr::attachShaderFeaturesInternal(', 'LLShaderMgr::loadShaderFile(', 'LLShaderMgr::loadShaderFileInternal(',
-          'LLShaderMgr::linkProgramObject(', 'LLShaderMgr::linkProgramObjectInternal(', 'LLShaderMgr::readShaderSource(', 'shader_source_has_main(',
+          'LLShaderMgr::linkProgramObject(', 'LLShaderMgr::linkProgramObjectInternal(', 'LLShaderMgr::submitProgramLink(', 'LLShaderMgr::finishProgramLinkInternal(', 'LLShaderMgr::readShaderSource(', 'shader_source_has_main(',
           'shader_shared_source_fingerprint(', 'LLShaderMgr::hashShaderCacheFeatures(',
           'LLShaderMgr::initShaderCache(', 'LLShaderMgr::loadCachedProgramBinary(', 'LLShaderMgr::loadCachedProgramBinaryInternal(',
           'LLShaderMgr::saveCachedProgramBinary(', 'LLShaderMgr::configureShaderDiagnostics(',
           'LLShaderMgr::openShaderEquivalence(', 'LLShaderMgr::rejectProgramBinary(',
+          'LLShaderMgr::ShaderAttemptScope::ShaderAttemptScope(', 'LLShaderMgr::ShaderAttemptScope::~ShaderAttemptScope(',
           'LLShaderMgr::beginShaderAttempt(', 'LLShaderMgr::snapshotShaderAttempt(',
           'LLShaderMgr::beginShaderStage(', 'LLShaderMgr::assembledShaderStage(',
           'LLShaderMgr::finishShaderStage(', 'LLShaderMgr::writeShaderRecord(',
@@ -45,10 +46,10 @@ REGIONS = {
           'LLShaderMgr::traceAttachment(', 'LLShaderMgr::traceFeatureAttachment(',
           'LLShaderMgr::traceLink(', 'LLShaderMgr::injectShaderFailure(',
           'LLShaderMgr::injectShaderOverflow(', 'LLShaderMgr::finishShaderAttempt('),
-    GLSL: ('LLGLSLShader::unloadInternal(', 'LLGLSLShader::createShader(', 'LLGLSLShader::createShaderInternal(', 'LLGLSLShader::attachVertexObject(', 'LLGLSLShader::attachVertexObjectInternal(',
+    GLSL: ('LLGLSLShader::unloadInternal(', 'LLGLSLShader::createShader(', 'LLGLSLShader::createShaderInternal(', 'LLGLSLShader::prepareShaderInternal(', 'LLGLSLShader::submitShaderInternal(', 'LLGLSLShader::finishShaderInternal(', 'LLGLSLShader::attachVertexObject(', 'LLGLSLShader::attachVertexObjectInternal(',
            'LLGLSLShader::attachFragmentObject(', 'LLGLSLShader::attachFragmentObjectInternal(', 'LLGLSLShader::attachObject(', 'LLGLSLShader::attachObjectInternal(',
-           'LLGLSLShader::attachObjects(', 'LLGLSLShader::mapAttributes(', 'LLGLSLShader::mapAttributesInternal(',
-           'LLGLSLShader::link(', 'LLGLSLShader::linkInternal(', 'LLGLSLShader::hash(', 'LLGLSLShader::hashWithEpoch('),
+           'LLGLSLShader::attachObjects(', 'LLGLSLShader::mapAttributes(', 'LLGLSLShader::mapAttributesInternal(', 'LLGLSLShader::bindAttributes(', 'LLGLSLShader::readAttributes(',
+           'LLGLSLShader::link(', 'LLGLSLShader::linkInternal(', 'LLGLSLShader::submitLink(', 'LLGLSLShader::finishLinkInternal(', 'LLGLSLShader::hash(', 'LLGLSLShader::hashWithEpoch('),
     VIEWER: ('LLViewerShaderMgr::LLViewerShaderMgr(', 'LLViewerShaderMgr::setShaders(', 'LLViewerShaderMgr::loadBasicShaders('),
 }
 CPP_TOKENS = re.compile(

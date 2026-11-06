@@ -83,6 +83,8 @@ def run(ref='WORKTREE', mutation=None, cost=True, regression=None):
         assert consumer in manager, 'missing weather probe consumer '+consumer
     loader=tree.read('indra/llrender/llglslshader.cpp')
     create=function(loader,'bool LLGLSLShader::createShaderInternal(' if 'LLGLSLShader::createShaderInternal(' in loader else 'bool LLGLSLShader::createShader(')
+    if 'LLGLSLShader::prepareShaderInternal(' in loader:
+        create = function(loader, 'LLGLSLShader::prepareShaderInternal(')
     assert create.index('prepareWeatherFeatures(this)')<create.index('mShaderHash = hash()'), 'weather permutation omitted from binary cache key'
     shader_manager=tree.read('indra/llrender/llshadermgr.cpp')
     attach=function(shader_manager,'bool LLShaderMgr::attachShaderFeaturesInternal(' if 'LLShaderMgr::attachShaderFeaturesInternal(' in shader_manager else 'bool LLShaderMgr::attachShaderFeatures(')

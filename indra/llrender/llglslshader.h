@@ -32,6 +32,16 @@
 #include "llsd.h"
 #include "llstaticstringtable.h"
 #include <boost/unordered_map.hpp>
+#include <memory>
+#include <optional>
+#include <utility>
+
+// One creation attempt owns its journal and any standalone pass across seams.
+struct LLShaderAttemptContext
+{
+    LLSD attempt;
+    bool ownsPass = false;
+};
 
 class LLShaderFeatures
 {
@@ -239,6 +249,38 @@ public:
     // If force_read is true, will force an immediate readback (severe performance penalty)
     bool readProfileQuery(bool for_runtime = false, bool force_read = false);
 
+private:
+    // A job describes one attempt. Only finish can publish success; the public
+    // entry runs all three stages back to back, including synchronous retries.
+    struct ShaderCreationJob
+    {
+        enum class State { prepared, submitted, finished, failed };
+        explicit ShaderCreationJob(LLGLSLShader* shader) : owner(shader) {}
+        ShaderCreationJob(const ShaderCreationJob&) = delete;
+        ShaderCreationJob& operator=(const ShaderCreationJob&) = delete;
+        ShaderCreationJob(ShaderCreationJob&& other) noexcept
+            : owner(std::exchange(other.owner, nullptr)), program(other.program),
+              generation(other.generation), state(other.state), success(other.success),
+              retry(other.retry), context(std::move(other.context)) {}
+        ShaderCreationJob& operator=(ShaderCreationJob&&) = delete;
+        LLGLSLShader* owner;
+        GLuint program = 0;
+        U64 generation = 0;
+        State state = State::failed;
+        bool success = true; // root compilation result, never a completed result
+        bool retry = false;
+        std::unique_ptr<LLShaderAttemptContext> context;
+    };
+    U64 mShaderAttemptGeneration = 0;
+    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();
+    template<bool diagnostics> void submitShaderInternal(ShaderCreationJob& job);
+    template<bool diagnostics> bool finishShaderInternal(ShaderCreationJob& job);
+    void bindAttributes();
+    bool readAttributes(bool res);
+    void submitLink();
+    template<bool diagnostics> bool finishLinkInternal(bool suppress_errors = false);
+
+public:
     bool createShader();
     // Shader-load-only compile-time variants: no diagnostic work on the off path.
     template<bool diagnostics> bool createShaderInternal();
