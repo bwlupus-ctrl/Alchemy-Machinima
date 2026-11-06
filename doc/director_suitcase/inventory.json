@@ -192,10 +192,10 @@
       },
       "wiring_rows": 2289
     },
-    "head_source_tree": "d39a49df7bc593f0d2e39086f938690b2434ad68",
+    "head_source_tree": "80514cbe8101db64ff4bb26a55c658dab457bfb2",
     "hook_files": 523,
-    "hunks": 3272,
-    "input_sha256": "be629db8f88beff7a361a89fff8a1e9f602c329ab8a2f90dc54c41a5e7a7a42f",
+    "hunks": 3269,
+    "input_sha256": "0e0c48fd3842183d1e79c83c4040f22b3ff8e52aa0707ac945a53230d352223e",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -10961,8 +10961,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "capture-sidecar",
-        "looks",
         "weather"
       ],
       "class": "HOOK",
@@ -10971,17 +10969,17 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "capture-sidecar",
         "looks",
         "weather"
       ],
       "git_status": "M",
-      "layer": 8,
+      "layer": 6,
       "path": "indra/llrender/llglslshader.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
       "candidate_features_from_subjects": [
-        "looks",
         "weather"
       ],
       "class": "HOOK",
@@ -10990,11 +10988,12 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "capture-sidecar",
         "looks",
         "weather"
       ],
       "git_status": "M",
-      "layer": 8,
+      "layer": 6,
       "path": "indra/llrender/llglslshader.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -11131,7 +11130,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "roto-tron",
         "sensor"
       ],
       "class": "HOOK",
@@ -11159,7 +11157,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "roto-tron",
         "sensor"
       ],
       "class": "HOOK",

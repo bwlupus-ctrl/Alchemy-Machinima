@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3272 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3269 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (170)
 
@@ -177,7 +177,7 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 
-## Unknown hunk features (1721)
+## Unknown hunk features (1715)
 
 - `indra/llui/llfloater.cpp@2180,30`
 - `indra/llui/llfloater.cpp@2311,18`
@@ -893,19 +893,18 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llrender/llshadermgr.cpp@1167,13`
 - `indra/llrender/llshadermgr.cpp@1199,12`
 - `indra/llrender/llshadermgr.cpp@1219,7`
-- `indra/llrender/llshadermgr.cpp@1228,18`
-- `indra/llrender/llshadermgr.cpp@1252,7`
-- `indra/llrender/llshadermgr.cpp@1265,14`
-- `indra/llrender/llshadermgr.cpp@1292,210`
-- `indra/llrender/llshadermgr.cpp@1509,7`
-- `indra/llrender/llshadermgr.cpp@1519,12`
-- `indra/llrender/llshadermgr.cpp@1546,22`
-- `indra/llrender/llshadermgr.cpp@1625,18`
-- `indra/llrender/llshadermgr.cpp@1759,9`
-- `indra/llrender/llshadermgr.cpp@1943,16`
+- `indra/llrender/llshadermgr.cpp@1228,34`
+- `indra/llrender/llshadermgr.cpp@1268,23`
+- `indra/llrender/llshadermgr.cpp@1304,210`
+- `indra/llrender/llshadermgr.cpp@1521,7`
+- `indra/llrender/llshadermgr.cpp@1531,12`
+- `indra/llrender/llshadermgr.cpp@1558,22`
+- `indra/llrender/llshadermgr.cpp@1637,18`
+- `indra/llrender/llshadermgr.cpp@1771,9`
+- `indra/llrender/llshadermgr.cpp@1955,16`
 - `indra/llrender/llshadermgr.h@32,8`
 - `indra/llrender/llshadermgr.h@247,14`
-- `indra/llrender/llshadermgr.h@1035,9`
+- `indra/llrender/llshadermgr.h@1037,9`
 - `indra/llwindow/llwindowwin32.cpp@205,43`
 - `indra/llwindow/llwindowwin32.cpp@718,21`
 - `indra/llwindow/llwindowwin32.cpp@805,11`
@@ -1015,6 +1014,41 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@458,17`
 - `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@534,7`
 - `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@727,10`
+- `indra/llrender/llglslshader.cpp@29,8`
+- `indra/llrender/llglslshader.cpp@57,7`
+- `indra/llrender/llglslshader.cpp@95,13`
+- `indra/llrender/llglslshader.cpp@359,18`
+- `indra/llrender/llglslshader.cpp@391,7`
+- `indra/llrender/llglslshader.cpp@480,14`
+- `indra/llrender/llglslshader.cpp@499,62`
+- `indra/llrender/llglslshader.cpp@565,49`
+- `indra/llrender/llglslshader.cpp@665,15`
+- `indra/llrender/llglslshader.cpp@687,26`
+- `indra/llrender/llglslshader.cpp@720,13`
+- `indra/llrender/llglslshader.cpp@735,7`
+- `indra/llrender/llglslshader.cpp@748,11`
+- `indra/llrender/llglslshader.cpp@764,18`
+- `indra/llrender/llglslshader.cpp@811,24`
+- `indra/llrender/llglslshader.cpp@897,32`
+- `indra/llrender/llglslshader.cpp@989,7`
+- `indra/llrender/llglslshader.cpp@1049,10`
+- `indra/llrender/llglslshader.cpp@1081,8`
+- `indra/llrender/llglslshader.cpp@1093,39`
+- `indra/llrender/llglslshader.cpp@1150,8`
+- `indra/llrender/llglslshader.cpp@1181,33`
+- `indra/llrender/llglslshader.cpp@1221,19`
+- `indra/llrender/llglslshader.cpp@1294,7`
+- `indra/llrender/llglslshader.cpp@1306,6`
+- `indra/llrender/llglslshader.cpp@1356,6`
+- `indra/llrender/llglslshader.cpp@2241,12`
+- `indra/llrender/llglslshader.cpp@2255,8`
+- `indra/llrender/llglslshader.cpp@2349,12`
+- `indra/llrender/llglslshader.h@32,27`
+- `indra/llrender/llglslshader.h@156,9`
+- `indra/llrender/llglslshader.h@194,7`
+- `indra/llrender/llglslshader.h@364,8`
+- `indra/llrender/llglslshader.h@376,7`
+- `indra/llrender/llglslshader.h@415,8`
 - `indra/newview/app_settings/shaders/class3/environment/waterF.glsl@27,20`
 - `indra/newview/lldrawpoolavatar.h@35,7`
 - `indra/newview/lldrawpoolavatar.h@60,7`
@@ -1063,46 +1097,6 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewertexturelist.cpp@1347,18`
 - `indra/newview/llviewertexturelist.cpp@1368,30`
 - `indra/newview/llviewertexturelist.cpp@2007,3`
-- `indra/llrender/llglslshader.cpp@29,8`
-- `indra/llrender/llglslshader.cpp@57,7`
-- `indra/llrender/llglslshader.cpp@95,13`
-- `indra/llrender/llglslshader.cpp@359,17`
-- `indra/llrender/llglslshader.cpp@390,7`
-- `indra/llrender/llglslshader.cpp@422,28`
-- `indra/llrender/llglslshader.cpp@477,14`
-- `indra/llrender/llglslshader.cpp@496,11`
-- `indra/llrender/llglslshader.cpp@510,16`
-- `indra/llrender/llglslshader.cpp@530,47`
-- `indra/llrender/llglslshader.cpp@586,12`
-- `indra/llrender/llglslshader.cpp@613,15`
-- `indra/llrender/llglslshader.cpp@635,26`
-- `indra/llrender/llglslshader.cpp@668,13`
-- `indra/llrender/llglslshader.cpp@683,7`
-- `indra/llrender/llglslshader.cpp@696,11`
-- `indra/llrender/llglslshader.cpp@712,8`
-- `indra/llrender/llglslshader.cpp@728,7`
-- `indra/llrender/llglslshader.cpp@766,11`
-- `indra/llrender/llglslshader.cpp@839,32`
-- `indra/llrender/llglslshader.cpp@931,7`
-- `indra/llrender/llglslshader.cpp@991,10`
-- `indra/llrender/llglslshader.cpp@1023,8`
-- `indra/llrender/llglslshader.cpp@1035,39`
-- `indra/llrender/llglslshader.cpp@1092,8`
-- `indra/llrender/llglslshader.cpp@1123,28`
-- `indra/llrender/llglslshader.cpp@1158,11`
-- `indra/llrender/llglslshader.cpp@1223,7`
-- `indra/llrender/llglslshader.cpp@1235,6`
-- `indra/llrender/llglslshader.cpp@1285,6`
-- `indra/llrender/llglslshader.cpp@2170,12`
-- `indra/llrender/llglslshader.cpp@2184,8`
-- `indra/llrender/llglslshader.cpp@2278,12`
-- `indra/llrender/llglslshader.h@37,12`
-- `indra/llrender/llglslshader.h@146,9`
-- `indra/llrender/llglslshader.h@184,7`
-- `indra/llrender/llglslshader.h@240,14`
-- `indra/llrender/llglslshader.h@322,8`
-- `indra/llrender/llglslshader.h@334,7`
-- `indra/llrender/llglslshader.h@373,8`
 - `indra/newview/llenvironment.cpp@29,7`
 - `indra/newview/llenvironment.cpp@937,18`
 - `indra/newview/llenvironment.cpp@960,17`
@@ -1901,7 +1895,7 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml@22,6`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 
-## Unknown/non-function contexts (1200)
+## Unknown/non-function contexts (1198)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -2520,7 +2514,7 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llrender/llshadermgr.h@393,12`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.h@439,89`: unknown/non-function (public:)
 - `indra/llrender/llshadermgr.h@591,396`: unknown/non-function (public:)
-- `indra/llrender/llshadermgr.h@1035,9`: unknown/non-function (public:)
+- `indra/llrender/llshadermgr.h@1037,9`: unknown/non-function (public:)
 - `indra/newview/alderenderlist.cpp@13,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/alderenderlist.h@13,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/alderenderlist.h@38,7`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2594,6 +2588,19 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@741,48`: unknown/non-function (void main())
 - `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@794,34`: unknown/non-function (void main())
 - `indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@829,51`: unknown/non-function (void main())
+- `indra/llrender/llglslshader.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llglslshader.cpp@57,7`: unknown/non-function (GLuint LLGLSLShader::sCurBoundShader = 0;)
+- `indra/llrender/llglslshader.cpp@1306,6`: unknown/non-function (void LLGLSLShader::unbind(void))
+- `indra/llrender/llglslshader.cpp@1356,6`: unknown/non-function (S32 LLGLSLShader::bindTexture(S32 uniform, LLRenderTarget* texture, bool depth,)
+- `indra/llrender/llglslshader.cpp@2349,12`: unknown/non-function (void LLGLSLShader::setLabel(const char* label) {)
+- `indra/llrender/llglslshader.h@32,27`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llrender/llglslshader.h@78,14`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@156,9`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@194,7`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@215,12`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@364,8`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@376,7`: unknown/non-function (public:)
+- `indra/llrender/llglslshader.h@415,8`: unknown/non-function (public:)
 - `indra/newview/app_settings/shaders/class1/alchemy/blitWithEffectsF.glsl@48,13`: unknown/non-function (out vec4 frag_color;)
 - `indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@142,8`: unknown/non-function (vec3 PBRNeutralToneMapping( vec3 color ))
 - `indra/newview/app_settings/shaders/class3/environment/waterF.glsl@27,20`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2639,21 +2646,6 @@ All 3272 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewertexturelist.cpp@2007,3`: unknown/non-function (bool LLUIImageList::initFromFile())
 - `indra/newview/llvograss.cpp@42,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvotree.cpp@50,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/llrender/llglslshader.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/llrender/llglslshader.cpp@57,7`: unknown/non-function (GLuint LLGLSLShader::sCurBoundShader = 0;)
-- `indra/llrender/llglslshader.cpp@712,8`: unknown/non-function (void LLGLSLShader::attachObjects(GLuint* objects, S32 count))
-- `indra/llrender/llglslshader.cpp@1235,6`: unknown/non-function (void LLGLSLShader::unbind(void))
-- `indra/llrender/llglslshader.cpp@1285,6`: unknown/non-function (S32 LLGLSLShader::bindTexture(S32 uniform, LLRenderTarget* texture, bool depth,)
-- `indra/llrender/llglslshader.cpp@2278,12`: unknown/non-function (void LLGLSLShader::setLabel(const char* label) {)
-- `indra/llrender/llglslshader.h@37,12`: unknown/non-function (class LLShaderFeatures)
-- `indra/llrender/llglslshader.h@68,14`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@146,9`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@184,7`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@205,12`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@240,14`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@322,8`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@334,7`: unknown/non-function (public:)
-- `indra/llrender/llglslshader.h@373,8`: unknown/non-function (public:)
 - `indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@182,13`: unknown/non-function (vec3 mikktspace(vec3 vNt, vec3 vT, float sign))
 - `indra/newview/app_settings/shaders/class1/deferred/pbrterrainV.glsl@35,7`: unknown/non-function (uniform mat3 normal_matrix;)

@@ -2522,25 +2522,24 @@ HEAD coordinates; guards/features are candidate evidence
 | 1167–1179 (n=13) | LLShaderMgr::loadShaderFileInternal | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 1199–1210 (n=12) | LLShaderMgr::loadShaderFileInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1219–1225 (n=7) | LLShaderMgr::loadShaderFileInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1228–1245 (n=18) | LLShaderMgr::loadShaderFile | unknown | unknown-review | unknown; conditional evidence present | Edits LLShaderMgr |
-| 1252–1258 (n=7) | LLShaderMgr::linkProgramObjectInternal | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1265–1278 (n=14) | LLShaderMgr::linkProgramObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 1292–1501 (n=210) | LLShaderMgr::hashShaderCacheFeatures, LLShaderMgr::initShaderCache, LLShaderMgr::readShaderSource, feed, increment, shader_shared_source_fingerprint, shader_source_has_main, std::find_if | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Detect truncation, growth and read errors, rather than hashing a prefix. A stage root owns main(); everything else can be linked as a shared module. Treat closed comments as whitespace so documentation cannot hide a dependency. todo: this is likely very expensive to parse, should |
-| 1509–1515 (n=7) | LLShaderMgr::persistShaderCacheMetadata | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1519–1530 (n=12) | LLShaderMgr::persistShaderCacheMetadata | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings and shader cache get saved at different time, thus making RenderShaderCacheVersion unreliable when running multiple viewer instances, or for cases where viewer crashes before saving settings. Duplicate version to the cache itself. Schema lives in metadata; settings may b |
-| 1546–1567 (n=22) | LLShaderMgr::persistShaderCacheMetadata, increment | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A crash can leave binaries saved before their metadata. Reap these too; otherwise they are invisible to the age-based LRU on subsequent launches. |
-| 1573–1613 (n=41) | LLShaderMgr::loadCachedProgramBinaryInternal, constexpr | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Synthetic rejection enters the same rejection/compile-fallback path, without reading a binary or touching its metadata in an injected run. Fallback Actor FX programs share the primary program feature/hash key. Ignore a cached primary binary while either primary module is missing, |
-| 1625–1642 (n=18) | LLShaderMgr::loadCachedProgramBinaryInternal, constexpr | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1645–1675 (n=31) | LLShaderMgr::loadCachedProgramBinary, LLShaderMgr::loadCachedProgramBinaryInternal, LLShaderMgr::saveCachedProgramBinary | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Do not cache a fallback program under the primary key. A later run with working modules must relink the real Actor FX implementation. |
-| 1725–1737 (n=13) | LLShaderMgr::initAttribsAndUniforms | weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1759–1767 (n=9) | LLShaderMgr::initAttribsAndUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1810–1817 (n=8) | LLShaderMgr::initAttribsAndUniforms | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1824–1831 (n=8) | LLShaderMgr::initAttribsAndUniforms | sensor | creative-candidate | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 1943–1958 (n=16) | LLShaderMgr::initAttribsAndUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 2089–2100 (n=12) | LLShaderMgr::initAttribsAndUniforms | looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2135–2194 (n=60) | LLShaderMgr::initAttribsAndUniforms | clones, looks, sensor | creative-candidate | unknown; no local conditional evidence | Comment evidence: Cine rig flare sources (Group 1 — rig source arrays) Lens flare polished-stack additions (Group 2 — element intensities) Lens flare polished-stack shape params (Group 3) Lens flare master (Group 4) Graduated ND (pre-tonemap exposure region) Polarizer (pre-tonemap on-lens filter;  |
-| 2258–2620 (n=363) | LLShaderMgr::initAttribsAndUniforms | capture-sidecar, clones, rig, roto-tron, sensor, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge G3.2] volumetric lighting (donor: Black Dragon) [BDMerge G3.3] per-projector volumetric light cones [BDMerge G3.3 Phase 1] projector-volumetric cinema levers [BDMerge G3.3 Phase 3] atmosphere levers [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows  |
-| 2629–3011 (n=383) | LLShaderMgr::assembledShaderStage, LLShaderMgr::beginShaderAttempt, LLShaderMgr::beginShaderPass, LLShaderMgr::beginShaderStage, LLShaderMgr::configureShaderDiagnostics, LLShaderMgr::finishShaderAttempt, LLShaderMgr::finishShaderPass, LLShaderMgr::finishShaderStage, LLShaderMgr::injectShaderFailure, LLShaderMgr::injectShaderOverflow, LLShaderMgr::openShaderEquivalence, LLShaderMgr::rejectProgramBinary, LLShaderMgr::snapshotShaderAttempt, LLShaderMgr::traceAttachment, LLShaderMgr::traceFeatureAttachment, LLShaderMgr::traceLink, LLShaderMgr::writeShaderRecord | capture-sidecar, looks, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Entries follow the setting; only cache disabling is latched for the process. Used by both real binary rejection and the synthetic rejection. Injection never reads a binary, touches metadata, or removes a cache entry. Fail visibly if an attachment escaped the instrumented load pat |
+| 1228–1261 (n=34) | LLShaderMgr::finishProgramLinkInternal, LLShaderMgr::loadShaderFile, LLShaderMgr::submitProgramLink | unknown | unknown-review | unknown; conditional evidence present | Edits LLShaderMgr |
+| 1268–1290 (n=23) | LLShaderMgr::linkProgramObject, LLShaderMgr::linkProgramObjectInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
+| 1304–1513 (n=210) | LLShaderMgr::hashShaderCacheFeatures, LLShaderMgr::initShaderCache, LLShaderMgr::readShaderSource, feed, increment, shader_shared_source_fingerprint, shader_source_has_main, std::find_if | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Detect truncation, growth and read errors, rather than hashing a prefix. A stage root owns main(); everything else can be linked as a shared module. Treat closed comments as whitespace so documentation cannot hide a dependency. todo: this is likely very expensive to parse, should |
+| 1521–1527 (n=7) | LLShaderMgr::persistShaderCacheMetadata | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1531–1542 (n=12) | LLShaderMgr::persistShaderCacheMetadata | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings and shader cache get saved at different time, thus making RenderShaderCacheVersion unreliable when running multiple viewer instances, or for cases where viewer crashes before saving settings. Duplicate version to the cache itself. Schema lives in metadata; settings may b |
+| 1558–1579 (n=22) | LLShaderMgr::persistShaderCacheMetadata, increment | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A crash can leave binaries saved before their metadata. Reap these too; otherwise they are invisible to the age-based LRU on subsequent launches. |
+| 1585–1625 (n=41) | LLShaderMgr::loadCachedProgramBinaryInternal, constexpr | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Synthetic rejection enters the same rejection/compile-fallback path, without reading a binary or touching its metadata in an injected run. Fallback Actor FX programs share the primary program feature/hash key. Ignore a cached primary binary while either primary module is missing, |
+| 1637–1654 (n=18) | LLShaderMgr::loadCachedProgramBinaryInternal, constexpr | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1657–1687 (n=31) | LLShaderMgr::loadCachedProgramBinary, LLShaderMgr::loadCachedProgramBinaryInternal, LLShaderMgr::saveCachedProgramBinary | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Do not cache a fallback program under the primary key. A later run with working modules must relink the real Actor FX implementation. |
+| 1737–1749 (n=13) | LLShaderMgr::initAttribsAndUniforms | weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1771–1779 (n=9) | LLShaderMgr::initAttribsAndUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1822–1829 (n=8) | LLShaderMgr::initAttribsAndUniforms | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1836–1843 (n=8) | LLShaderMgr::initAttribsAndUniforms | sensor | creative-candidate | unknown; no local conditional evidence | Edits LLShaderMgr |
+| 1955–1970 (n=16) | LLShaderMgr::initAttribsAndUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
+| 2101–2112 (n=12) | LLShaderMgr::initAttribsAndUniforms | looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2147–2206 (n=60) | LLShaderMgr::initAttribsAndUniforms | clones, looks, sensor | creative-candidate | unknown; no local conditional evidence | Comment evidence: Cine rig flare sources (Group 1 — rig source arrays) Lens flare polished-stack additions (Group 2 — element intensities) Lens flare polished-stack shape params (Group 3) Lens flare master (Group 4) Graduated ND (pre-tonemap exposure region) Polarizer (pre-tonemap on-lens filter;  |
+| 2270–2632 (n=363) | LLShaderMgr::initAttribsAndUniforms | capture-sidecar, clones, rig, roto-tron, sensor, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge G3.2] volumetric lighting (donor: Black Dragon) [BDMerge G3.3] per-projector volumetric light cones [BDMerge G3.3 Phase 1] projector-volumetric cinema levers [BDMerge G3.3 Phase 3] atmosphere levers [BDMerge G3.3 Batch 1] temporal reprojection (A) + gobo-colored shadows  |
+| 2641–3057 (n=417) | LLShaderMgr::ShaderAttemptScope::ShaderAttemptScope, LLShaderMgr::ShaderAttemptScope::~ShaderAttemptScope, LLShaderMgr::assembledShaderStage, LLShaderMgr::beginShaderAttempt, LLShaderMgr::beginShaderPass, LLShaderMgr::beginShaderStage, LLShaderMgr::configureShaderDiagnostics, LLShaderMgr::finishShaderAttempt, LLShaderMgr::finishShaderPass, LLShaderMgr::finishShaderStage, LLShaderMgr::injectShaderFailure, LLShaderMgr::injectShaderOverflow, LLShaderMgr::openShaderEquivalence, LLShaderMgr::rejectProgramBinary, LLShaderMgr::snapshotShaderAttempt, LLShaderMgr::traceAttachment, LLShaderMgr::traceFeatureAttachment, LLShaderMgr::traceLink, LLShaderMgr::writeShaderRecord | capture-sidecar, looks, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Entries follow the setting; only cache disabling is latched for the process. Used by both real binary rejection and the synthetic rejection. Injection never reads a binary, touches metadata, or removes a cache entry. Fail visibly if an attachment escaped the instrumented load pat |
 
 ## Slice 4: `indra/llrender/llshadermgr.h`
 
@@ -2558,9 +2557,9 @@ HEAD coordinates; guards/features are candidate evidence
 | 393–404 (n=12) | unknown/non-function (public:) | looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 439–527 (n=89) | unknown/non-function (public:) | clones, looks, sensor, shafts-volumetrics | creative-candidate | unknown; no local conditional evidence | Comment evidence: Cine rig flare sources (Group 1 — rig source arrays, uploaded per frame like MULTI_LIGHT). AL_CINE_FLARE_MAX cap defined alongside LL_DEFERRED_MULTI_LIGHT_COUNT in llviewershadermgr.h. Lens flare polished-stack additions (Group 2 — element intensities, default 0 = feature-off byt |
 | 591–986 (n=396) | unknown/non-function (public:) | capture-sidecar, clones, environment, rig, roto-tron, sensor, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge G3.2] volumetric lighting (donor: Black Dragon) [BDMerge G3.3] per-projector volumetric light cones [BDMerge G3.3 Phase 1] projector-volumetric cinema levers [BDMerge G3.3 Phase 3] atmosphere levers (all default to a no-op) [BDMerge G3.3 Batch 1] temporal reprojection (A |
-| 990–1033 (n=44) | disableShaderCache, updateWeatherUniforms, weatherMaterialsEnabled, weatherMaterialsSupported | weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: Shader teardown accompanies GL-context teardown/reload. Schema changes discard metadata. Epoch changes invalidate program keys. |
-| 1035–1043 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Owns compiled objects. The filename maps above are aliases for preloaded graphics feature modules, not a permutation cache. |
-| 1053–1112 (n=60) | ShaderDiagnosticPass, ~ShaderDiagnosticPass | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: Configured by the viewer, never reads gSavedSettings in llrender. |
+| 990–1035 (n=46) | disableShaderCache, updateWeatherUniforms, weatherMaterialsEnabled, weatherMaterialsSupported | weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: Shader teardown accompanies GL-context teardown/reload. Schema changes discard metadata. Epoch changes invalidate program keys. |
+| 1037–1045 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Owns compiled objects. The filename maps above are aliases for preloaded graphics feature modules, not a permutation cache. |
+| 1055–1128 (n=74) | ShaderDiagnosticPass, ~ShaderDiagnosticPass | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: Configured by the viewer, never reads gSavedSettings in llrender. |
 
 ## Slice 4: `indra/llwindow/llwindowwin32.cpp`
 
@@ -3233,6 +3232,64 @@ HEAD coordinates; guards/features are candidate evidence
 | 829–879 (n=51) | unknown/non-function (void main()) | capture-sidecar, looks, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Reuse effective beauty coverage, including sun/local/environment glare, emissive suppression, Actor FX and vertex alpha. Texture alpha alone leaves background motion on otherwise dominant reflective glass. Same contract as alphaF.glsl: RGB = LINEAR diffuse reflectance of THIS lay |
 | 881–914 (n=34) | main | looks, weather | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 6: `indra/llrender/llglslshader.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 29–36 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 57–63 (n=7) | unknown/non-function (GLuint LLGLSLShader::sCurBoundShader = 0;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
+| 95–107 (n=13) | is_sampler_type | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 359–376 (n=18) | LLGLSLShader::dumpStats | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Preserve stage classification until a currently bound program is unbound. |
+| 391–397 (n=7) | LLGLSLShader::dumpStats | unknown | unknown-review | unknown; conditional evidence present | Edits LLShaderMgr |
+| 423–452 (n=30) | LLGLSLShader::isCompute, LLGLSLShader::prepareShaderInternal | capture-sidecar | creative-candidate | unknown; conditional evidence present | Edits LLGLSLShader, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER, LLShaderMgr |
+| 460–478 (n=19) | LLGLSLShader::prepareShaderInternal | weather | creative-candidate | unknown; conditional evidence present | Edits LLShaderMgr, LLShaderFeatures |
+| 480–493 (n=14) | LLGLSLShader::prepareShaderInternal | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The retrievable hint remains inside this cache attempt, before source compilation, to preserve the original GL call order on hits and misses. |
+| 499–560 (n=62) | LLGLSLShader::finishShaderInternal, LLGLSLShader::prepareShaderInternal, LLGLSLShader::submitShaderInternal | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Binary hits and failed root compilations have a matching no-op submit. |
+| 565–613 (n=49) | LLGLSLShader::finishShaderInternal, constexpr | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Give up and unload shader. Capture reflection before teardown clears it. [BDMerge NSpot diag] silent sampler overflow is catastrophic (samplers past the GPU unit limit read unit 0) - always report near/over budget |
+| 620–647 (n=28) | LLGLSLShader::createShader, LLGLSLShader::createShaderInternal, LLGLSLShader::finishShaderInternal | capture-sidecar | creative-candidate | unknown; conditional evidence present | Edits LLGLSLShader, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER, LLShaderMgr |
+| 665–679 (n=15) | LLGLSLShader::attachVertexObjectInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
+| 687–712 (n=26) | LLGLSLShader::attachFragmentObjectInternal, LLGLSLShader::attachVertexObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
+| 720–732 (n=13) | LLGLSLShader::attachFragmentObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
+| 735–741 (n=7) | LLGLSLShader::attachObjectInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
+| 748–758 (n=11) | LLGLSLShader::attachObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
+| 764–781 (n=18) | LLGLSLShader::bindAttributes, LLGLSLShader::readAttributes | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: before linking, make sure reserved attributes always have consistent locations before linking, make sure reserved attributes always have consistent locations link the program |
+| 811–834 (n=24) | LLGLSLShader::mapAttributes, LLGLSLShader::mapAttributesInternal | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLSLShader, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER |
+| 897–928 (n=32) | LLGLSLShader::mapUniform | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Multi-material shaders bind several sampler families with a fixed per-slot layout. These names are not reserved uniforms and must not fall through to GL's default sampler value of texture unit zero. |
+| 933–967 (n=35) | LLGLSLShader::mapUniform | weather | creative-candidate | unknown; conditional evidence present | Comment evidence: found it found it |
+| 989–995 (n=7) | LLGLSLShader::mapUniformTextureChannel | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1049–1058 (n=10) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1081–1088 (n=8) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1093–1131 (n=39) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1150–1157 (n=8) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1181–1213 (n=33) | LLGLSLShader::finishLinkInternal, LLGLSLShader::submitLink, constexpr | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: GLSL 1.50 does not support explicit fragment-output locations without an extension. Bind the named forward-rendering outputs before linking; on newer GLSL these agree with (and do not override) the layout qualifiers. |
+| 1221–1239 (n=19) | LLGLSLShader::link, LLGLSLShader::linkInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER |
+| 1248–1266 (n=19) | LLGLSLShader::bind | weather | creative-candidate | unknown; conditional evidence present | Edits LLVertexBuffer, LLShaderMgr |
+| 1294–1300 (n=7) | LLGLSLShader::unbind | unknown | unknown-review | unknown; conditional evidence present | Edits LLVertexBuffer |
+| 1306–1311 (n=6) | unknown/non-function (void LLGLSLShader::unbind(void)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLTexture, LLTexUnit, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER |
+| 1356–1361 (n=6) | unknown/non-function (S32 LLGLSLShader::bindTexture(S32 uniform, LLRenderTarget* texture, bool depth,) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLRenderTarget, LLTexUnit, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER |
+| 2241–2252 (n=12) | LLGLSLShader::hash, LLGLSLShader::hashWithEpoch | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr, LLUUID, LLGLSLShader |
+| 2255–2262 (n=8) | LLGLSLShader::hashWithEpoch | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
+| 2270–2346 (n=77) | LLGLSLShader::hashWithEpoch | looks, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Hash declared fields only: LLShaderFeatures can have padding whose bytes differ between otherwise identical (including heap-allocated) variants. Hash every possible class fallback, including lower classes used after a compile failure. Only programs naming this root depend on thes |
+| 2349–2360 (n=12) | unknown/non-function (void LLGLSLShader::setLabel(const char* label) {) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
+
+## Slice 6: `indra/llrender/llglslshader.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 32–58 (n=27) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: One creation attempt owns its journal and any standalone pass across seams. Multi-material programs declare explicit sampler families such as basecolor0/normalmap0/... or diffuse0/bump0/spec0.  The value is the material-slot stride used to bind those samplers to fixed texture uni |
+| 78–91 (n=14) | unknown/non-function (public:) | looks, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: Native per-draw cinematic Actor FX. The fragment utility transforms the actor's original material result while leaving authored coverage intact. Lightweight shadow-only Actor FX coverage. This deliberately does not link the beauty utility: shadow programs only need Dissolve's cov |
+| 156–164 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Numeric spelling keeps the GL 4.1/macOS headers usable. |
+| 194–200 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 215–226 (n=12) | unknown/non-function (public:) | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Shared Actor FX replays indexed rigged PBR through a forward-lighting shader, which needs additional shadow/reflection samplers beyond the native GBuffer pass.  Keep its material stride separate so static/native indexed PBR and indexed legacy materials retain their full batch wid |
+| 249–295 (n=47) | ShaderCreationJob | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: A job describes one attempt. Only finish can publish success; the public entry runs all three stages back to back, including synchronous retries. Shader-load-only compile-time variants: no diagnostic work on the off path. |
+| 364–371 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLTexture, LLTexUnit, LLRenderTarget |
+| 376–382 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID |
+| 415–422 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: A missing/unreadable root affects this program, not the shared cache. |
+
 ## Slice 6: `indra/newview/app_settings/shaders/class1/alchemy/blitWithEffectsF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -3694,66 +3751,6 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 50–56 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 378–386 (n=9) | LLVOTree::idleUpdate | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] LTr: a camera-distance trunk LOD switch is churn; the first build and move/rotate below stay events. |
-
-## Slice 8: `indra/llrender/llglslshader.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 29–36 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 57–63 (n=7) | unknown/non-function (GLuint LLGLSLShader::sCurBoundShader = 0;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-| 95–107 (n=13) | is_sampler_type | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 359–375 (n=17) | LLGLSLShader::dumpStats | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Preserve stage classification until a currently bound program is unbound. |
-| 390–396 (n=7) | LLGLSLShader::dumpStats | unknown | unknown-review | unknown; conditional evidence present | Edits LLShaderMgr |
-| 422–449 (n=28) | LLGLSLShader::createShaderInternal, LLGLSLShader::isCompute | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLSLShader, LLShaderMgr |
-| 457–475 (n=19) | LLGLSLShader::createShaderInternal | weather | creative-candidate | unknown; conditional evidence present | Edits LLShaderMgr, LLShaderFeatures |
-| 477–490 (n=14) | LLGLSLShader::createShaderInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 496–506 (n=11) | LLGLSLShader::createShaderInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 510–525 (n=16) | LLGLSLShader::createShaderInternal | unknown | unknown-review | unknown; conditional evidence present | Edits LLShaderMgr |
-| 530–576 (n=47) | LLGLSLShader::createShaderInternal, constexpr | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Give up and unload shader. Capture reflection before teardown clears it. [BDMerge NSpot diag] silent sampler overflow is catastrophic (samplers past the GPU unit limit read unit 0) - always report near/over budget |
-| 586–597 (n=12) | LLGLSLShader::createShader | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLSLShader, LLShaderMgr |
-| 613–627 (n=15) | LLGLSLShader::attachVertexObjectInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
-| 635–660 (n=26) | LLGLSLShader::attachFragmentObjectInternal, LLGLSLShader::attachVertexObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
-| 668–680 (n=13) | LLGLSLShader::attachFragmentObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-| 683–689 (n=7) | LLGLSLShader::attachObjectInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 696–706 (n=11) | LLGLSLShader::attachObject | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-| 712–719 (n=8) | unknown/non-function (void LLGLSLShader::attachObjects(GLuint* objects, S32 count)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-| 728–734 (n=7) | LLGLSLShader::mapAttributesInternal | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 766–776 (n=11) | LLGLSLShader::mapAttributes | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-| 839–870 (n=32) | LLGLSLShader::mapUniform | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Multi-material shaders bind several sampler families with a fixed per-slot layout. These names are not reserved uniforms and must not fall through to GL's default sampler value of texture unit zero. |
-| 875–909 (n=35) | LLGLSLShader::mapUniform | weather | creative-candidate | unknown; conditional evidence present | Comment evidence: found it found it |
-| 931–937 (n=7) | LLGLSLShader::mapUniformTextureChannel | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 991–1000 (n=10) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1023–1030 (n=8) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1035–1073 (n=39) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1092–1099 (n=8) | LLGLSLShader::mapUniforms | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1123–1150 (n=28) | LLGLSLShader::linkInternal, constexpr | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: GLSL 1.50 does not support explicit fragment-output locations without an extension. Bind the named forward-rendering outputs before linking; on newer GLSL these agree with (and do not override) the layout qualifiers. |
-| 1158–1168 (n=11) | LLGLSLShader::link | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-| 1177–1195 (n=19) | LLGLSLShader::bind | weather | creative-candidate | unknown; conditional evidence present | Edits LLVertexBuffer, LLShaderMgr |
-| 1223–1229 (n=7) | LLGLSLShader::unbind | unknown | unknown-review | unknown; conditional evidence present | Edits LLVertexBuffer |
-| 1235–1240 (n=6) | unknown/non-function (void LLGLSLShader::unbind(void)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLTexture, LLTexUnit, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER |
-| 1285–1290 (n=6) | unknown/non-function (S32 LLGLSLShader::bindTexture(S32 uniform, LLRenderTarget* texture, bool depth,) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLRenderTarget, LLTexUnit, LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER |
-| 2170–2181 (n=12) | LLGLSLShader::hash, LLGLSLShader::hashWithEpoch | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr, LLUUID, LLGLSLShader |
-| 2184–2191 (n=8) | LLGLSLShader::hashWithEpoch | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 2199–2275 (n=77) | LLGLSLShader::hashWithEpoch | looks, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Hash declared fields only: LLShaderFeatures can have padding whose bytes differ between otherwise identical (including heap-allocated) variants. Hash every possible class fallback, including lower classes used after a compile failure. Only programs naming this root depend on thes |
-| 2278–2289 (n=12) | unknown/non-function (void LLGLSLShader::setLabel(const char* label) {) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader |
-
-## Slice 8: `indra/llrender/llglslshader.h`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 37–48 (n=12) | unknown/non-function (class LLShaderFeatures) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Multi-material programs declare explicit sampler families such as basecolor0/normalmap0/... or diffuse0/bump0/spec0.  The value is the material-slot stride used to bind those samplers to fixed texture units. It is separate from mIndexedTextureChannels, which injects tex0..texN an |
-| 68–81 (n=14) | unknown/non-function (public:) | looks, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: Native per-draw cinematic Actor FX. The fragment utility transforms the actor's original material result while leaving authored coverage intact. Lightweight shadow-only Actor FX coverage. This deliberately does not link the beauty utility: shadow programs only need Dissolve's cov |
-| 146–154 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Numeric spelling keeps the GL 4.1/macOS headers usable. |
-| 184–190 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 205–216 (n=12) | unknown/non-function (public:) | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Shared Actor FX replays indexed rigged PBR through a forward-lighting shader, which needs additional shadow/reflection samplers beyond the native GBuffer pass.  Keep its material stride separate so static/native indexed PBR and indexed legacy materials retain their full batch wid |
-| 240–253 (n=14) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Shader-load-only compile-time variants: no diagnostic work on the off path. |
-| 322–329 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLTexture, LLTexUnit, LLRenderTarget |
-| 334–340 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID |
-| 373–380 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: A missing/unreadable root affects this program, not the shared cache. |
 
 ## Slice 8: `indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl`
 

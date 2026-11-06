@@ -34436,6 +34436,18 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
+        "line": 15,
+        "source": "indra/llrender/llglslshader.cpp",
+        "text": "llglslshader.cpp"
+      },
+      {
+        "file": "indra/llrender/CMakeLists.txt",
+        "line": 45,
+        "source": "indra/llrender/llglslshader.h",
+        "text": "llglslshader.h"
+      },
+      {
+        "file": "indra/llrender/CMakeLists.txt",
         "line": 17,
         "source": "indra/llrender/llimagegl.cpp",
         "text": "llimagegl.cpp"
@@ -35352,15 +35364,15 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2258,363",
-          "indra/llrender/llshadermgr.cpp@2629,383"
+          "indra/llrender/llshadermgr.cpp@2270,363",
+          "indra/llrender/llshadermgr.cpp@2641,417"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@591,396",
-          "indra/llrender/llshadermgr.h@1053,60"
+          "indra/llrender/llshadermgr.h@1055,74"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -35435,6 +35447,19 @@
           "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@829,51"
         ],
         "path": "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl"
+      },
+      {
+        "hunks": [
+          "indra/llrender/llglslshader.cpp@423,30",
+          "indra/llrender/llglslshader.cpp@620,28"
+        ],
+        "path": "indra/llrender/llglslshader.cpp"
+      },
+      {
+        "hunks": [
+          "indra/llrender/llglslshader.h@249,47"
+        ],
+        "path": "indra/llrender/llglslshader.h"
       },
       {
         "hunks": [
@@ -35710,6 +35735,124 @@
         ],
         "unresolved_includes": []
       },
+      "indra/llrender/llglslshader.cpp": {
+        "includes": [
+          "indra/llcommon/hbxxh.h",
+          "indra/llcommon/linden_common.h",
+          "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdserialize.h",
+          "indra/llfilesystem/lldir.h",
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llrender.h",
+          "indra/llrender/llrendertarget.h",
+          "indra/llrender/llshadermgr.h",
+          "indra/llrender/llvertexbuffer.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFile::isfile",
+          "LLGLSLShader::LLGLSLShader",
+          "LLGLSLShader::addConstant",
+          "LLGLSLShader::addPermutation",
+          "LLGLSLShader::attachFragmentObject",
+          "LLGLSLShader::attachFragmentObjectInternal",
+          "LLGLSLShader::attachObject",
+          "LLGLSLShader::attachObjectInternal",
+          "LLGLSLShader::attachObjects",
+          "LLGLSLShader::attachVertexObject",
+          "LLGLSLShader::attachVertexObjectInternal",
+          "LLGLSLShader::bind",
+          "LLGLSLShader::bindAttributes",
+          "LLGLSLShader::bindTexture",
+          "LLGLSLShader::clearPermutations",
+          "LLGLSLShader::clearStats",
+          "LLGLSLShader::createShader",
+          "LLGLSLShader::createShaderInternal",
+          "LLGLSLShader::disableTexture",
+          "LLGLSLShader::dumpStats",
+          "LLGLSLShader::enableTexture",
+          "LLGLSLShader::fastUniform1f",
+          "LLGLSLShader::finishLinkInternal",
+          "LLGLSLShader::finishProfile",
+          "LLGLSLShader::finishShaderInternal",
+          "LLGLSLShader::getAttribLocation",
+          "LLGLSLShader::getTextureChannel",
+          "LLGLSLShader::getUniformLocation",
+          "LLGLSLShader::hash",
+          "LLGLSLShader::hashWithEpoch",
+          "LLGLSLShader::initProfile",
+          "LLGLSLShader::isCompute",
+          "LLGLSLShader::link",
+          "LLGLSLShader::linkInternal",
+          "LLGLSLShader::mapAttributes",
+          "LLGLSLShader::mapAttributesInternal",
+          "LLGLSLShader::mapUniform",
+          "LLGLSLShader::mapUniformTextureChannel",
+          "LLGLSLShader::mapUniforms",
+          "LLGLSLShader::placeProfileQuery",
+          "LLGLSLShader::prepareShaderInternal",
+          "LLGLSLShader::readAttributes",
+          "LLGLSLShader::readProfileQuery",
+          "LLGLSLShader::removePermutation",
+          "LLGLSLShader::setLabel",
+          "LLGLSLShader::setMinimumAlpha",
+          "LLGLSLShader::startProfile",
+          "LLGLSLShader::stopProfile",
+          "LLGLSLShader::submitLink",
+          "LLGLSLShader::submitShaderInternal",
+          "LLGLSLShader::unbind",
+          "LLGLSLShader::unbindTexture",
+          "LLGLSLShader::uniform1f",
+          "LLGLSLShader::uniform1fv",
+          "LLGLSLShader::uniform1i",
+          "LLGLSLShader::uniform1iv",
+          "LLGLSLShader::uniform1ui",
+          "LLGLSLShader::uniform2f",
+          "LLGLSLShader::uniform2fv",
+          "LLGLSLShader::uniform2i",
+          "LLGLSLShader::uniform3f",
+          "LLGLSLShader::uniform3fv",
+          "LLGLSLShader::uniform4f",
+          "LLGLSLShader::uniform4fv",
+          "LLGLSLShader::uniform4iv",
+          "LLGLSLShader::uniform4uiv",
+          "LLGLSLShader::uniformMatrix2fv",
+          "LLGLSLShader::uniformMatrix3fv",
+          "LLGLSLShader::uniformMatrix3x4fv",
+          "LLGLSLShader::uniformMatrix4fv",
+          "LLGLSLShader::unload",
+          "LLGLSLShader::unloadInternal",
+          "LLGLSLShader::vertexAttrib4f",
+          "LLGLSLShader::vertexAttrib4fv",
+          "LLSD::Integer",
+          "LLSD::emptyArray",
+          "LLSD::emptyMap",
+          "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::instance",
+          "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderUniforms::apply",
+          "LLVertexBuffer::setupClientArrays",
+          "LLVertexBuffer::unbind"
+        ],
+        "unresolved_includes": [
+          {
+            "candidates": [],
+            "include": "OpenGL/OpenGL.h"
+          }
+        ]
+      },
+      "indra/llrender/llglslshader.h": {
+        "includes": [
+          "indra/llcommon/llsd.h",
+          "indra/llcommon/llstaticstringtable.h",
+          "indra/llrender/llgl.h",
+          "indra/llrender/llrender.h"
+        ],
+        "qualified_call_candidates": [
+          "LLVertexBuffer::getTypeMask"
+        ],
+        "unresolved_includes": []
+      },
       "indra/llrender/llimagegl.cpp": {
         "includes": [
           "indra/llcommon/linden_common.h",
@@ -35888,6 +36031,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -35912,6 +36056,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -47658,8 +47803,8 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2135,60",
-          "indra/llrender/llshadermgr.cpp@2258,363"
+          "indra/llrender/llshadermgr.cpp@2147,60",
+          "indra/llrender/llshadermgr.cpp@2270,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -48856,6 +49001,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -48880,6 +49026,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -108779,6 +108926,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -108803,6 +108951,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -121023,11 +121172,11 @@
           "indra/llrender/llshadermgr.cpp@287,64",
           "indra/llrender/llshadermgr.cpp@459,13",
           "indra/llrender/llshadermgr.cpp@473,7",
-          "indra/llrender/llshadermgr.cpp@1573,41",
-          "indra/llrender/llshadermgr.cpp@1645,31",
-          "indra/llrender/llshadermgr.cpp@2089,12",
-          "indra/llrender/llshadermgr.cpp@2135,60",
-          "indra/llrender/llshadermgr.cpp@2629,383"
+          "indra/llrender/llshadermgr.cpp@1585,41",
+          "indra/llrender/llshadermgr.cpp@1657,31",
+          "indra/llrender/llshadermgr.cpp@2101,12",
+          "indra/llrender/llshadermgr.cpp@2147,60",
+          "indra/llrender/llshadermgr.cpp@2641,417"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -121227,6 +121376,19 @@
       },
       {
         "hunks": [
+          "indra/llrender/llglslshader.cpp@2270,77"
+        ],
+        "path": "indra/llrender/llglslshader.cpp"
+      },
+      {
+        "hunks": [
+          "indra/llrender/llglslshader.h@78,14",
+          "indra/llrender/llglslshader.h@215,12"
+        ],
+        "path": "indra/llrender/llglslshader.h"
+      },
+      {
+        "hunks": [
           "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@110,19",
           "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@131,7",
           "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl@142,8",
@@ -121307,19 +121469,6 @@
           "indra/newview/llsettingsvo.cpp@915,59"
         ],
         "path": "indra/newview/llsettingsvo.cpp"
-      },
-      {
-        "hunks": [
-          "indra/llrender/llglslshader.cpp@2199,77"
-        ],
-        "path": "indra/llrender/llglslshader.cpp"
-      },
-      {
-        "hunks": [
-          "indra/llrender/llglslshader.h@68,14",
-          "indra/llrender/llglslshader.h@205,12"
-        ],
-        "path": "indra/llrender/llglslshader.h"
       },
       {
         "hunks": [
@@ -122096,6 +122245,7 @@
           "LLGLSLShader::attachVertexObject",
           "LLGLSLShader::attachVertexObjectInternal",
           "LLGLSLShader::bind",
+          "LLGLSLShader::bindAttributes",
           "LLGLSLShader::bindTexture",
           "LLGLSLShader::clearPermutations",
           "LLGLSLShader::clearStats",
@@ -122105,7 +122255,9 @@
           "LLGLSLShader::dumpStats",
           "LLGLSLShader::enableTexture",
           "LLGLSLShader::fastUniform1f",
+          "LLGLSLShader::finishLinkInternal",
           "LLGLSLShader::finishProfile",
+          "LLGLSLShader::finishShaderInternal",
           "LLGLSLShader::getAttribLocation",
           "LLGLSLShader::getTextureChannel",
           "LLGLSLShader::getUniformLocation",
@@ -122121,12 +122273,16 @@
           "LLGLSLShader::mapUniformTextureChannel",
           "LLGLSLShader::mapUniforms",
           "LLGLSLShader::placeProfileQuery",
+          "LLGLSLShader::prepareShaderInternal",
+          "LLGLSLShader::readAttributes",
           "LLGLSLShader::readProfileQuery",
           "LLGLSLShader::removePermutation",
           "LLGLSLShader::setLabel",
           "LLGLSLShader::setMinimumAlpha",
           "LLGLSLShader::startProfile",
           "LLGLSLShader::stopProfile",
+          "LLGLSLShader::submitLink",
+          "LLGLSLShader::submitShaderInternal",
           "LLGLSLShader::unbind",
           "LLGLSLShader::unbindTexture",
           "LLGLSLShader::uniform1f",
@@ -122316,6 +122472,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -122340,6 +122497,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -137010,7 +137168,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2258,363"
+          "indra/llrender/llshadermgr.cpp@2270,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -137998,6 +138156,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -138022,6 +138181,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -153275,7 +153435,7 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@846,36",
-          "indra/llrender/llshadermgr.cpp@2258,363"
+          "indra/llrender/llshadermgr.cpp@2270,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -154269,6 +154429,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -154293,6 +154454,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -166824,10 +166986,10 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1824,8",
-          "indra/llrender/llshadermgr.cpp@2089,12",
-          "indra/llrender/llshadermgr.cpp@2135,60",
-          "indra/llrender/llshadermgr.cpp@2258,363"
+          "indra/llrender/llshadermgr.cpp@1836,8",
+          "indra/llrender/llshadermgr.cpp@2101,12",
+          "indra/llrender/llshadermgr.cpp@2147,60",
+          "indra/llrender/llshadermgr.cpp@2270,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -167314,6 +167476,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -167338,6 +167501,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -177266,7 +177430,7 @@
           "indra/llrender/llshadermgr.cpp@360,19",
           "indra/llrender/llshadermgr.cpp@388,17",
           "indra/llrender/llshadermgr.cpp@430,20",
-          "indra/llrender/llshadermgr.cpp@2258,363"
+          "indra/llrender/llshadermgr.cpp@2270,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -177560,6 +177724,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -177584,6 +177749,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -196114,7 +196280,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1810,8"
+          "indra/llrender/llshadermgr.cpp@1822,8"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -196759,6 +196925,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -196783,6 +196950,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
@@ -210142,9 +210310,9 @@
         "hunks": [
           "indra/llrender/llshadermgr.cpp@76,98",
           "indra/llrender/llshadermgr.cpp@287,64",
-          "indra/llrender/llshadermgr.cpp@1725,13",
-          "indra/llrender/llshadermgr.cpp@2258,363",
-          "indra/llrender/llshadermgr.cpp@2629,383"
+          "indra/llrender/llshadermgr.cpp@1737,13",
+          "indra/llrender/llshadermgr.cpp@2270,363",
+          "indra/llrender/llshadermgr.cpp@2641,417"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -210152,7 +210320,7 @@
         "hunks": [
           "indra/llrender/llshadermgr.h@53,13",
           "indra/llrender/llshadermgr.h@591,396",
-          "indra/llrender/llshadermgr.h@990,44"
+          "indra/llrender/llshadermgr.h@990,46"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -210234,25 +210402,25 @@
       },
       {
         "hunks": [
-          "indra/newview/llreflectionmapmanager.h@26,15",
-          "indra/newview/llreflectionmapmanager.h@357,16"
-        ],
-        "path": "indra/newview/llreflectionmapmanager.h"
-      },
-      {
-        "hunks": [
-          "indra/llrender/llglslshader.cpp@457,19",
-          "indra/llrender/llglslshader.cpp@875,35",
-          "indra/llrender/llglslshader.cpp@1177,19",
-          "indra/llrender/llglslshader.cpp@2199,77"
+          "indra/llrender/llglslshader.cpp@460,19",
+          "indra/llrender/llglslshader.cpp@933,35",
+          "indra/llrender/llglslshader.cpp@1248,19",
+          "indra/llrender/llglslshader.cpp@2270,77"
         ],
         "path": "indra/llrender/llglslshader.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llglslshader.h@68,14"
+          "indra/llrender/llglslshader.h@78,14"
         ],
         "path": "indra/llrender/llglslshader.h"
+      },
+      {
+        "hunks": [
+          "indra/newview/llreflectionmapmanager.h@26,15",
+          "indra/newview/llreflectionmapmanager.h@357,16"
+        ],
+        "path": "indra/newview/llreflectionmapmanager.h"
       },
       {
         "hunks": [
@@ -210565,6 +210733,7 @@
           "LLGLSLShader::attachVertexObject",
           "LLGLSLShader::attachVertexObjectInternal",
           "LLGLSLShader::bind",
+          "LLGLSLShader::bindAttributes",
           "LLGLSLShader::bindTexture",
           "LLGLSLShader::clearPermutations",
           "LLGLSLShader::clearStats",
@@ -210574,7 +210743,9 @@
           "LLGLSLShader::dumpStats",
           "LLGLSLShader::enableTexture",
           "LLGLSLShader::fastUniform1f",
+          "LLGLSLShader::finishLinkInternal",
           "LLGLSLShader::finishProfile",
+          "LLGLSLShader::finishShaderInternal",
           "LLGLSLShader::getAttribLocation",
           "LLGLSLShader::getTextureChannel",
           "LLGLSLShader::getUniformLocation",
@@ -210590,12 +210761,16 @@
           "LLGLSLShader::mapUniformTextureChannel",
           "LLGLSLShader::mapUniforms",
           "LLGLSLShader::placeProfileQuery",
+          "LLGLSLShader::prepareShaderInternal",
+          "LLGLSLShader::readAttributes",
           "LLGLSLShader::readProfileQuery",
           "LLGLSLShader::removePermutation",
           "LLGLSLShader::setLabel",
           "LLGLSLShader::setMinimumAlpha",
           "LLGLSLShader::startProfile",
           "LLGLSLShader::stopProfile",
+          "LLGLSLShader::submitLink",
+          "LLGLSLShader::submitShaderInternal",
           "LLGLSLShader::unbind",
           "LLGLSLShader::unbindTexture",
           "LLGLSLShader::uniform1f",
@@ -210785,6 +210960,7 @@
           "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishProgramLinkInternal",
           "LLShaderMgr::finishShaderAttempt",
           "LLShaderMgr::finishShaderPass",
           "LLShaderMgr::finishShaderStage",
@@ -210809,6 +210985,7 @@
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
           "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::submitProgramLink",
           "LLShaderMgr::traceAttachment",
           "LLShaderMgr::traceFeatureAttachment",
           "LLShaderMgr::traceLink",
