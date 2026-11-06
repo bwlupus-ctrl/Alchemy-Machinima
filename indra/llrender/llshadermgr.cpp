@@ -1238,15 +1238,18 @@ template GLuint LLShaderMgr::loadShaderFileInternal<true>(const std::string&, S3
 template GLuint LLShaderMgr::loadShaderFileInternal<false>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32);
 
 
-template<bool diagnostics>
-bool LLShaderMgr::linkProgramObjectInternal(GLuint obj, bool suppress_errors, const std::string& name)
+void LLShaderMgr::submitProgramLink(GLuint obj)
 {
     //check for errors
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_SHADER("glLinkProgram");
         glLinkProgram(obj);
     }
+}
 
+template<bool diagnostics>
+bool LLShaderMgr::finishProgramLinkInternal(GLuint obj, bool suppress_errors, const std::string& name)
+{
     GLint success = GL_TRUE;
 
     {
@@ -1265,12 +1268,21 @@ bool LLShaderMgr::linkProgramObjectInternal(GLuint obj, bool suppress_errors, co
     return success;
 }
 
+template<bool diagnostics>
+bool LLShaderMgr::linkProgramObjectInternal(GLuint obj, bool suppress_errors, const std::string& name)
+{
+    submitProgramLink(obj);
+    return finishProgramLinkInternal<diagnostics>(obj, suppress_errors, name);
+}
+
 bool LLShaderMgr::linkProgramObject(GLuint obj, bool suppress_errors)
 {
     return linkProgramObjectInternal<false>(obj, suppress_errors, "");
 }
 template bool LLShaderMgr::linkProgramObjectInternal<true>(GLuint, bool, const std::string&);
 template bool LLShaderMgr::linkProgramObjectInternal<false>(GLuint, bool, const std::string&);
+template bool LLShaderMgr::finishProgramLinkInternal<true>(GLuint, bool, const std::string&);
+template bool LLShaderMgr::finishProgramLinkInternal<false>(GLuint, bool, const std::string&);
 
 
 bool LLShaderMgr::validateProgramObject(GLuint obj)
@@ -2696,10 +2708,37 @@ bool LLShaderMgr::rejectProgramBinary(LLGLSLShader* shader, const std::string& c
     return false;
 }
 
+LLShaderMgr::ShaderAttemptScope::ShaderAttemptScope(LLShaderMgr* mgr,
+    std::unique_ptr<LLShaderAttemptContext>& context) : mMgr(mgr), mContext(context.get())
+{
+    if (!mMgr) return;
+    if (!context) context = std::make_unique<LLShaderAttemptContext>();
+    mContext = context.get();
+    mPreviousAttempt = mMgr->mShaderAttempt;
+    mPreviousOwnsPass = mMgr->mShaderAttemptOwnsPass;
+    mMgr->mShaderAttempt = mContext->attempt;
+    mMgr->mShaderAttemptOwnsPass = mContext->ownsPass;
+
+}
+
+LLShaderMgr::ShaderAttemptScope::~ShaderAttemptScope()
+{
+    if (!mMgr) return;
+    mContext->attempt = mMgr->mShaderAttempt;
+    mContext->ownsPass = mMgr->mShaderAttemptOwnsPass;
+    mMgr->mShaderAttempt = mPreviousAttempt;
+    mMgr->mShaderAttemptOwnsPass = mPreviousOwnsPass;
+}
+
 void LLShaderMgr::beginShaderAttempt(LLGLSLShader* shader)
 {
     mShaderAttemptOwnsPass = !mShaderPassActive;
-    if (mShaderAttemptOwnsPass) beginShaderPass("standalone_program");
+    if (mShaderAttemptOwnsPass)
+    {
+        beginShaderPass("standalone_program");
+        mShaderStandalonePass = true;
+    }
+    ++mShaderAttemptsActive;
     mShaderAttempt = LLSD::emptyMap();
     mShaderAttempt["type"] = "program";
     mShaderAttempt["name"] = shader->mName;
@@ -2973,7 +3012,14 @@ void LLShaderMgr::finishShaderAttempt(LLGLSLShader* shader, bool success)
     ++mShaderPassPrograms;
     writeShaderRecord(mShaderAttempt);
     mShaderAttempt = LLSD();
-    if (mShaderAttemptOwnsPass) finishShaderPass();
+    // Overlapping standalone attempts share one journal pass. Its initiating
+    // job can finish first; close only after every participating job finishes.
+    llassert_always(mShaderAttemptsActive > 0);
+    if (--mShaderAttemptsActive == 0 && mShaderStandalonePass)
+    {
+        finishShaderPass();
+        mShaderStandalonePass = false;
+    }
 }
 
 void LLShaderMgr::writeShaderRecord(LLSD record)

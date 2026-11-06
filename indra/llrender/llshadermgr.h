@@ -993,6 +993,8 @@ public:
     template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader* shader);
     template<bool diagnostics> GLuint loadShaderFileInternal(const std::string& filename, S32& level, GLenum type,
         std::map<std::string, std::string>* defines, S32 channels);
+    void submitProgramLink(GLuint obj);
+    template<bool diagnostics> bool finishProgramLinkInternal(GLuint obj, bool suppress_errors, const std::string& name);
     template<bool diagnostics> bool linkProgramObjectInternal(GLuint obj, bool suppress_errors, const std::string& name);
     bool attachShaderFeatures(LLGLSLShader * shader);
     void dumpObjectLog(GLuint ret, bool warns = true, const std::string& filename = "");
@@ -1019,7 +1021,7 @@ public:
 
     // Schema changes discard metadata. Epoch changes invalidate program keys.
     static constexpr const char* SHADER_CACHE_SCHEMA = "620ec4f7-831c-40d2-b391-8b1c94813245";
-    static constexpr U32 SHADER_CACHE_EPOCH = 2;
+    static constexpr U32 SHADER_CACHE_EPOCH = 3;
     static bool readShaderSource(const std::string& filename, std::string& source);
     void initShaderCache(bool enabled, bool second_instance);
     void hashShaderCacheFeatures();
@@ -1074,6 +1076,18 @@ public:
         { if (mMgr) mMgr->beginShaderPass("setShaders"); }
         ~ShaderDiagnosticPass() { if (mMgr) mMgr->finishShaderPass(); }
     };
+    class ShaderAttemptScope
+    {
+        LLShaderMgr* mMgr;
+        LLShaderAttemptContext* mContext;
+        LLSD mPreviousAttempt;
+        bool mPreviousOwnsPass = false;
+    public:
+        ShaderAttemptScope(LLShaderMgr* mgr, std::unique_ptr<LLShaderAttemptContext>& context);
+        ~ShaderAttemptScope();
+        ShaderAttemptScope(const ShaderAttemptScope&) = delete;
+        ShaderAttemptScope& operator=(const ShaderAttemptScope&) = delete;
+    };
     void beginShaderAttempt(LLGLSLShader* shader);
     void snapshotShaderAttempt(LLGLSLShader* shader, bool capture_key = false);
     void finishShaderAttempt(LLGLSLShader* shader, bool success);
@@ -1101,6 +1115,8 @@ private:
     bool mShaderAttemptOwnsPass = false;
     bool mShaderStageOwnsPass = false;
     S32 mShaderPassNumber = 0;
+    S32 mShaderAttemptsActive = 0;
+    bool mShaderStandalonePass = false;
     S32 mShaderPassPrograms = 0;
     S32 mShaderPassModules = 0;
     LLSD mShaderAttempt;

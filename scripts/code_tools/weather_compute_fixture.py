@@ -53,6 +53,15 @@ def build(tree, out, gl, extend=None):
         methods += '\n' + '\n'.join(function(shader, signature) for signature in (
             'bool LLGLSLShader::createShaderInternal(', 'bool LLGLSLShader::linkInternal(',
             'void LLGLSLShader::attachObjectInternal(', 'bool LLGLSLShader::mapAttributesInternal('))
+    split_creation = 'LLGLSLShader::prepareShaderInternal(' in shader
+    if split_creation:
+        methods += '\n' + '\n'.join(function(manager, signature) for signature in (
+            'void LLShaderMgr::submitProgramLink(', 'bool LLShaderMgr::finishProgramLinkInternal('))
+        methods += '\n' + '\n'.join(function(shader, signature) for signature in (
+            'LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal(',
+            'void LLGLSLShader::submitShaderInternal(', 'bool LLGLSLShader::finishShaderInternal(',
+            'void LLGLSLShader::bindAttributes(', 'bool LLGLSLShader::readAttributes(',
+            'void LLGLSLShader::submitLink(', 'bool LLGLSLShader::finishLinkInternal('))
     if 'LLGLSLShader::hashWithEpoch(' in shader:
         methods += '\n' + function(shader, 'LLUUID LLGLSLShader::hashWithEpoch(')
     entries = [
@@ -224,6 +233,15 @@ struct LLShaderMgr {''')
  template<bool diagnostics> void attachObjectInternal(GLuint);
  template<bool diagnostics> bool mapAttributesInternal();
  bool isCompute()const;''')
+    if split_creation:
+        header = tree.read('indra/llrender/llglslshader.h')
+        job = function(header, 'struct ShaderCreationJob').replace('U64 generation', 'unsigned long long generation') + ';'
+        prefix = '#include <memory>\n#include <optional>\n#include <utility>\nstruct LLShaderAttemptContext {};\n' + prefix
+        prefix = prefix.replace('struct LLShaderMgr {', 'struct LLShaderMgr {\n struct ShaderAttemptScope { template<class T> ShaderAttemptScope(LLShaderMgr*, T&) {} };')
+        declarations = header[header.index('    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();'):header.index('\npublic:', header.index('struct ShaderCreationJob'))]
+        prefix = prefix.replace('struct LLGLSLShader {', 'struct LLGLSLShader {\n' + job + '\n unsigned long long mShaderAttemptGeneration=0;\n' + declarations)
+        prefix = prefix.replace(' bool linkProgramObject(GLuint,bool=false);',
+            ' void submitProgramLink(GLuint);\n template<bool diagnostics> bool finishProgramLinkInternal(GLuint,bool,const std::string&);\n bool linkProgramObject(GLuint,bool=false);')
     if 'LLGLSLShader::hashWithEpoch(' in shader:
         prefix = prefix.replace('LLUUID hash();', 'LLUUID hash();LLUUID hashWithEpoch(U32);')
     prefix = prefix.replace('CONTEXT_DECLARATION', declaration(tree.read('indra/llrender/llshadermgr.h'), 'sContextGeneration'))

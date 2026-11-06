@@ -17,40 +17,86 @@ def run(directory):
     sh = (ROOT / 'indra/llrender/llglslshader.h').read_text(encoding='utf-8')
     methods = '\n'.join(function(mgr, 'LLShaderMgr::' + name + '(') for name in (
         'shaderLanguageVersion', 'ownsShaderObject', 'clearShaderObjects',
-        'loadShaderFileInternal', 'linkProgramObjectInternal', 'attachShaderFeaturesInternal',
+        'loadShaderFileInternal', 'linkProgramObjectInternal', 'submitProgramLink', 'finishProgramLinkInternal', 'attachShaderFeaturesInternal',
         'loadCachedProgramBinaryInternal', 'saveCachedProgramBinary', 'rejectProgramBinary',
         'readShaderSource', 'configureShaderDiagnostics', 'openShaderEquivalence',
+        'ShaderAttemptScope::ShaderAttemptScope', 'ShaderAttemptScope::~ShaderAttemptScope',
         'beginShaderAttempt', 'snapshotShaderAttempt', 'beginShaderStage',
         'assembledShaderStage', 'finishShaderStage', 'traceFeatureAttachment',
         'traceAttachment', 'traceLink', 'injectShaderFailure', 'injectShaderOverflow',
         'finishShaderAttempt', 'writeShaderRecord', 'beginShaderPass', 'finishShaderPass'))
     methods += '\n' + '\n'.join(function(shader, 'LLGLSLShader::' + name + '(') for name in (
         'isCompute', 'unloadInternal', 'createShaderInternal', 'createShader',
+        'prepareShaderInternal', 'submitShaderInternal', 'finishShaderInternal',
+        'bindAttributes', 'readAttributes', 'submitLink', 'finishLinkInternal',
         'attachVertexObjectInternal', 'attachFragmentObjectInternal', 'attachObjectInternal',
         'mapAttributesInternal', 'linkInternal', 'hash', 'hashWithEpoch',
         'mapUniform', 'mapUniformTextureChannel', 'mapUniforms'))
     methods = function(shader, 'static bool is_sampler_type(') + '\n' + methods
+    # Immutable local Step-1 baseline. Execute its four unsplit algorithms with
+    # the same loader, cache, reflection and driver spies as the split algorithms.
+    import subprocess
+    base = 'a34eb579f18c9e12ebc19ed5faf3a2c6db0143dc'
+    def baseline(path, names):
+        text = subprocess.check_output(['git', 'show', base + ':' + path], cwd=ROOT, text=True, encoding='utf-8')
+        return '\n'.join(function(text, name + '(') for name in names)
+    legacy = baseline('indra/llrender/llglslshader.cpp', [
+        'LLGLSLShader::' + n for n in ('createShaderInternal', 'mapAttributesInternal', 'linkInternal')])
+    legacy += '\n' + baseline('indra/llrender/llshadermgr.cpp', ['LLShaderMgr::linkProgramObjectInternal'])
+    for name in ('createShaderInternal', 'mapAttributesInternal', 'linkInternal', 'linkProgramObjectInternal'):
+        assert name in legacy, 'legacy rename anchor missing: ' + name
+        legacy = legacy.replace(name, name + 'Legacy')
+    methods += '\n' + legacy
+
+    # All instrumentation anchors fail closed. These mutations run in BOTH
+    # template variants, so OFF/ON agreement alone cannot detect them.
+    def replace_once(text, anchor, replacement):
+        assert text.count(anchor) == 1, 'fixture anchor missing/ambiguous: ' + anchor
+        return text.replace(anchor, replacement, 1)
+
+    finish_link = function(shader, 'LLGLSLShader::finishLinkInternal(')
+    methods = replace_once(methods, finish_link, replace_once(finish_link,
+        'if (success)', 'if (success && !plantSeam)'))
+    finish = function(shader, 'LLGLSLShader::finishShaderInternal(')
+    # The review counterexample: the wrapper does completion and stores it,
+    # while a direct prepare/submit/finish caller silently skips it.
+    moved = replace_once(finish,
+        'success = mUsingBinaryProgram || finishLinkInternal<diagnostics>();',
+        'success = mUsingBinaryProgram || ((plantRelocation || plantStatus) ? job.linkResult : finishLinkInternal<diagnostics>());')
+    methods = replace_once(methods, finish, moved)
+    wrapper = function(shader, 'LLGLSLShader::createShaderInternal(')
+    instrumented_wrapper = replace_once(wrapper, '    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;',
+        '    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;\n    CreationDepth creationScope;')
+    methods = replace_once(methods, wrapper, replace_once(instrumented_wrapper, '        submitShaderInternal<diagnostics>(job);',
+        '        checkPrepared(job);\n        submitShaderInternal<diagnostics>(job);\n        checkSubmitted(job);\n'
+        '        if (plantRelocation && job.success && !mUsingBinaryProgram) job.linkResult = finishLinkInternal<diagnostics>();\n'
+        '        if (plantSeam && job.success && !mUsingBinaryProgram) LLShaderMgr::instance()->saveCachedProgramBinary(this);'))
+    # Explicit moved-status control: move the real completion call into submit.
+    # The seam query checker must reject it before final records are compared.
+    submit = function(shader, 'LLGLSLShader::submitShaderInternal(')
+    methods = replace_once(methods, submit, replace_once(submit, '        submitLink();',
+        '        submitLink();\n        if (plantStatus) job.linkResult = finishLinkInternal<diagnostics>();'))
     # Plant exactly the review's early return after the request trace, confined
     # to <true>. The entire warm creation must now have a different GL trace.
     vertex = function(shader, 'LLGLSLShader::attachVertexObjectInternal(')
-    planted = vertex.replace('attachVertexObjectInternal(', 'attachVertexObjectPlanted(', 1)
+    planted = replace_once(vertex, 'attachVertexObjectInternal(', 'attachVertexObjectPlanted(')
     anchor = '    if constexpr (diagnostics) LLShaderMgr::instance()->traceFeatureAttachment(object_path, GL_VERTEX_SHADER);'
     assert anchor in planted
-    planted = planted.replace(anchor, anchor + '\n    if constexpr (diagnostics) if (mUsingBinaryProgram) return true;', 1)
-    methods = methods.replace(vertex, planted + '\n' + vertex.replace(anchor,
-        '    if (plantRegression) return attachVertexObjectPlanted<diagnostics>(object_path);\n' + anchor, 1))
+    planted = replace_once(planted, anchor, anchor + '\n    if constexpr (diagnostics) if (mUsingBinaryProgram) return true;')
+    methods = replace_once(methods, vertex, planted + '\n' + replace_once(vertex, anchor,
+        '    if (plantRegression) return attachVertexObjectPlanted<diagnostics>(object_path);\n' + anchor))
 
     # Only diagnostic reflection reads are excluded from the differential trace.
     # A state-changing GL call inside an observer must still be detected.
     finish = function(mgr, 'LLShaderMgr::finishShaderAttempt(')
-    observed = finish.replace('{\n', '{\n    ObserverScope observer;\n', 1)
+    observed = replace_once(finish, '{\n    snapshotShaderAttempt', '{\n    ObserverScope observer;\n    snapshotShaderAttempt')
     sampler = 'if (location >= 0) glGetUniformiv(shader->mProgramObject, location, &unit);'
     assert sampler in observed
-    observed = observed.replace(sampler, sampler + '\n                        if (plantReflection) glUniform1i(location, 7);')
-    methods = methods.replace(finish, observed)
+    observed = replace_once(observed, sampler, sampler + '\n                        if (plantReflection) glUniform1i(location, 7);')
+    methods = replace_once(methods, finish, observed)
     gamma = 'if (features->hasGamma || features->isDeferred)'
     assert gamma in methods
-    methods = methods.replace(gamma, 'if constexpr (diagnostics) if (plantGamma && features->hasGamma) glProgramParameteri(shader->mProgramObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);\n    ' + gamma, 1)
+    methods = replace_once(methods, gamma, 'if constexpr (diagnostics) if (plantGamma && features->hasGamma) glProgramParameteri(shader->mProgramObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_FALSE);\n    ' + gamma)
 
     prefix = r'''
 #include "linden_common.h"
@@ -70,6 +116,10 @@ def run(directory):
 #include <set>
 #include <sstream>
 #include <vector>
+#include <memory>
+#include <optional>
+#include <utility>
+#include <type_traits>
 #undef LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER
 #undef LL_PROFILE_ZONE_NAMED_CATEGORY_SHADER
 #undef LL_WARNS
@@ -89,8 +139,8 @@ def run(directory):
 #define LL_ERRS(...) NullLog{}
 #define llassert(x) CHECK(x)
 #define llassert_always(x) CHECK(x)
-#define stop_glerror() ((void)0)
-#define flush_glerror() ((void)0)
+#define stop_glerror() call("stop_glerror")
+#define flush_glerror() call("flush_glerror")
 #define CHECK(x) do{if(!(x))throw std::runtime_error(#x);}while(0)
 using std::vector;using std::pair;using std::string;
 struct NullLog{template<class T> NullLog& operator<<(const T&){return *this;}};
@@ -98,6 +148,13 @@ std::vector<std::string> calls;
 GLuint nextHandle=1;
 std::map<GLuint,std::string> sources;
 std::map<GLuint,std::vector<GLuint>> attached;
+bool useLegacy=false, useDirect=false, plantSeam=false, plantRelocation=false, plantStatus=false;
+int failLinkCount=0;
+int activeCreateDepth=0,maxCreateDepth=0,createEntries=0;
+struct CreationDepth {
+ CreationDepth(){++createEntries;maxCreateDepth=std::max(maxCreateDepth,++activeCreateDepth);}
+ ~CreationDepth(){--activeCreateDepth;}
+};
 bool plantRegression=false, plantReflection=false, plantGamma=false, failLink=false, rejectBinary=false, observing=false;
 struct ObserverScope {ObserverScope(){CHECK(!observing);observing=true;}~ObserverScope(){observing=false;}};
 void query(const std::string& s){if(!observing) calls.push_back(s);}
@@ -111,6 +168,24 @@ struct FixtureDir{
  std::string getExpandedFilename(int,const std::string& name){return root+"/"+name;}
  std::string add(const std::string& a,const std::string& b){return a+"/"+b;}
 } fixtureDir;
+// Exercise production cache rejection without deleting fixture files. Moving
+// within the verified scratch directory preserves remove's visible semantics
+// (the old path is absent) and retains the rejected bytes for inspection.
+struct RetainedFile : LLFile {
+ using LLFile::LLFile;
+ static int remove(const std::string& path) {
+   const auto root=std::filesystem::absolute(fixtureDir.root).lexically_normal();
+   const auto target=std::filesystem::absolute(path).lexically_normal();
+   CHECK(target.parent_path()==root);
+   static unsigned sequence=0;
+   auto retained=target;
+   do {retained=target;retained += ".rejected_"+std::to_string(++sequence);}
+   while(std::filesystem::exists(retained));
+   std::filesystem::rename(target,retained);
+   return 0;
+ }
+};
+#define LLFile RetainedFile
 #define gDirUtilp (&fixtureDir)
 constexpr int LL_PATH_LOGS=0;
 struct FixtureGLManager{int mGLSLVersionMajor=4,mGLSLVersionMinor=60,mNumTextureImageUnits=32;
@@ -143,7 +218,7 @@ void glDeleteQueries(GLsizei n,const GLuint* h){std::string e="glDeleteQueries:"
 void glLinkProgram(GLuint h){call("glLinkProgram:"+std::to_string(h));}
 void glGetProgramiv(GLuint h,GLenum k,GLint* p){
  // Only queries made exclusively by finishShaderAttempt are observers.
- if(k==GL_LINK_STATUS){call("glGetProgramiv:link:"+std::to_string(h));*p=!(failLink || rejectBinary);rejectBinary=false;}
+ if(k==GL_LINK_STATUS){call("glGetProgramiv:link:"+std::to_string(h));*p=!(failLink || rejectBinary || failLinkCount>0);if(!rejectBinary && failLinkCount>0)--failLinkCount;rejectBinary=false;}
  else if(k==GL_PROGRAM_BINARY_LENGTH){call("glGetProgramiv:binary_length:"+std::to_string(h));*p=0;}
  else {
    CHECK(k==GL_ACTIVE_ATTRIBUTES || k==GL_ACTIVE_ATTRIBUTE_MAX_LENGTH ||
@@ -177,6 +252,7 @@ void glUniformBlockBinding(GLuint,GLuint,GLuint binding){call("glUniformBlockBin
 void glUseProgram(GLuint h){call("glUseProgram:"+std::to_string(h));}
 
 '''
+    prefix += function(sh, 'struct LLShaderAttemptContext') + ';\n'
     prefix += function(sh, 'class LLShaderFeatures') + ';\n'
     diagnostic = mh[mh.index('    // Configured by the viewer,'):mh.index('\nprotected:', mh.index('    // Configured by the viewer,'))]
     prefix += r'''
@@ -200,6 +276,9 @@ struct LLShaderMgr{
  std::string getShaderDirPrefix(){return root+"/class";}
  void prepareWeatherFeatures(LLGLSLShader*){}
  template<bool diagnostics> GLuint loadShaderFileInternal(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32);
+ void submitProgramLink(GLuint);
+ template<bool diagnostics> bool finishProgramLinkInternal(GLuint,bool,const std::string&);
+ template<bool diagnostics> bool linkProgramObjectInternalLegacy(GLuint,bool,const std::string&);
  template<bool diagnostics> bool linkProgramObjectInternal(GLuint,bool,const std::string&);
  template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader*);
  template<bool diagnostics> bool loadCachedProgramBinaryInternal(LLGLSLShader*);
@@ -207,6 +286,7 @@ struct LLShaderMgr{
  void dumpObjectLog(GLuint,bool,const std::string&){}
  void dumpShaderSource(U32,GLchar**){}
 '''
+    assert 'private:' in diagnostic, 'diagnostic visibility anchor missing'
     prefix += diagnostic.replace('private:', 'public:') + '\n};\n'
     prefix += r'''
 LLShaderMgr* currentMgr=nullptr;
@@ -230,6 +310,22 @@ struct LLGLSLShader{
  int mShaderLevel=3,mShaderGroup=0,mActiveTextureChannels=0;
  std::string mName="fixture";LLUUID mShaderHash;
  bool isCompute()const;bool createShader();void unloadInternal();LLUUID hash();LLUUID hashWithEpoch(U32);
+ JOB_DECLARATIONS
+ std::vector<std::string> preparedCalls;
+ void checkPrepared(const ShaderCreationJob& job){
+   CHECK(job.state==ShaderCreationJob::State::prepared && job.owner==this);
+   preparedCalls=calls;
+ }
+ void checkSubmitted(const ShaderCreationJob& job){
+   CHECK(job.state==ShaderCreationJob::State::submitted && job.owner==this);
+   for(size_t i=preparedCalls.size();i<calls.size();++i){
+     const auto& e=calls[i];
+     CHECK(e.find("glGet")==std::string::npos && e.find("glCompile")==std::string::npos);
+   }
+ }
+ template<bool diagnostics> bool createShaderInternalLegacy();
+ template<bool diagnostics> bool mapAttributesInternalLegacy();
+ template<bool diagnostics> bool linkInternalLegacy(bool=false);
  template<bool diagnostics> bool createShaderInternal();
  template<bool diagnostics> bool attachVertexObjectInternal(std::string);
  template<bool diagnostics> bool attachVertexObjectPlanted(std::string);
@@ -245,23 +341,41 @@ struct LLGLSLShader{
  static void unbind(){call("unbind service");sCurBoundShaderPtr=nullptr;}
 };
 '''
-    prefix = prefix.replace('UNIFORM_DATA', function(sh, 'struct gl_uniform_data_t') + ';')
+    job = function(sh, 'struct ShaderCreationJob') + ';'
+    job = replace_once(job, 'bool retry = false;', 'bool retry = false; bool linkResult = true;')
+    declarations = sh[sh.index('    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();'):sh.index('\npublic:', sh.index('struct ShaderCreationJob'))]
+    prefix = replace_once(prefix, 'JOB_DECLARATIONS', job + '\n U64 mShaderAttemptGeneration=0;\n' + declarations)
+    prefix = replace_once(prefix, 'UNIFORM_DATA', function(sh, 'struct gl_uniform_data_t') + ';')
     suffix = r'''
+static_assert(!std::is_copy_constructible_v<LLGLSLShader::ShaderCreationJob>);
+static_assert(!std::is_copy_assignable_v<LLGLSLShader::ShaderCreationJob>);
 struct Result{std::vector<std::string> gl;};
+template<bool diagnostics> bool direct(LLGLSLShader& shader){
+ for(;;){
+   auto prepared=shader.prepareShaderInternal<diagnostics>();
+   auto job=std::move(prepared); // Exercise ownership transfer with diagnostics too.
+   if constexpr (!diagnostics) CHECK(!job.context);
+   if(job.state==LLGLSLShader::ShaderCreationJob::State::failed)return false;
+   shader.checkPrepared(job);shader.submitShaderInternal<diagnostics>(job);shader.checkSubmitted(job);
+   bool success=shader.finishShaderInternal<diagnostics>(job);
+   if(!job.retry)return success;
+ }
+}
 void writeFile(const std::string& p,const std::string& text){
  std::filesystem::create_directories(std::filesystem::path(p).parent_path());
  std::ofstream(p,std::ios::binary)<<text;
 }
 template<bool diagnostics> Result scenario(const std::string& mode,const std::string& path){
  calls.clear();sources.clear();attached.clear();nextHandle=1;LLGLSLShader::sInstances.clear();
- failLink=false;rejectBinary=false;units.clear();blockBinding=0;
+ failLink=false;failLinkCount=0;rejectBinary=false;units.clear();blockBinding=0;
+ CHECK(activeCreateDepth==0);maxCreateDepth=0;createEntries=0;
  LLShaderMgr mgr;currentMgr=&mgr;mgr.root=path;mgr.mShaderCacheDir=path;
  fixtureDir.root=path;
  std::filesystem::create_directories(path);
  writeFile(path+"/shader_equivalence.jsonl","STALE EARLIER RUN\n");
  mgr.configureShaderDiagnostics(diagnostics,"",false);
  std::unique_ptr<LLShaderMgr::ShaderDiagnosticPass> pass;
- if(mode!="startup" && mode!="startup_inject")pass=std::make_unique<LLShaderMgr::ShaderDiagnosticPass>(&mgr);
+ if(mode!="startup" && mode!="startup_inject" && mode.find("standalone")==std::string::npos)pass=std::make_unique<LLShaderMgr::ShaderDiagnosticPass>(&mgr);
  // Every file is fixture-owned. No installed/viewer shader files are opened.
  for(const auto& file:{"rootV.glsl","rootF.glsl","compute.glsl","deferred/textureUtilV.glsl","deferred/globalF.glsl","objects/nonindexedTextureV.glsl","windlight/gammaF.glsl","windlight/atmosphericsVarsF.glsl","windlight/atmosphericsHelpersF.glsl","windlight/atmosphericsVarsV.glsl","windlight/atmosphericsHelpersV.glsl"})
    writeFile(path+"/class2/"+file,"void fixture(){}\n");
@@ -286,21 +400,72 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
  LLGLSLShader s;
  if(mode=="gamma")s.mFeatures.hasGamma=true;
  s.mShaderFiles={{mode=="file_fallback"?"only.glsl":"rootV.glsl",GL_VERTEX_SHADER},{"rootF.glsl",GL_FRAGMENT_SHADER}};
- if(mode=="compute")s.mShaderFiles={{"compute.glsl",LLGLSLShader::COMPUTE_STAGE}};
+ if(mode=="compute" || mode=="compute_link_fail")s.mShaderFiles={{"compute.glsl",LLGLSLShader::COMPUTE_STAGE}};
  if(mode=="startup" || mode=="startup_inject")s.mName="Benchmark Shader";
  if(mode=="startup_inject")mgr.configureShaderDiagnostics(diagnostics,"link:Benchmark Shader",false);
- if(mode=="accepted_binary" || mode=="driver_rejected" || mode=="read_failure"){
+ if(mode=="accepted_binary" || mode=="driver_rejected" || mode=="read_failure" || mode=="binary_retry"){
    s.mShaderHash=s.hash();mgr.mShaderBinaryCache[s.mShaderHash]={4,1,0};
    writeFile(path+"/"+s.mShaderHash.asString()+".shaderbin",mode=="read_failure"?"A":"ABCD");
-   rejectBinary=mode=="driver_rejected";
+   rejectBinary=mode=="driver_rejected" || mode=="binary_retry";
  }
  if(mode=="synthetic_rejected")mgr.configureShaderDiagnostics(diagnostics,"binary:fixture",false);
  if(mode=="disabled")mgr.mShaderCacheEnabled=false;
- bool success=s.createShader();
- CHECK(success==(mode!="all_fail" && mode!="startup_inject"));
- if(mode=="reload")CHECK(s.createShader());
+ if(mode=="attachment_fail")mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+ if(mode=="link_fail" || mode=="compute_link_fail")failLink=true;
+ if(mode=="binary_retry")failLinkCount=1;
+ bool success;
+ if(mode.find("interleave")==0){
+   s.mName="job A";s.mDefines["JOB_A"]="1";
+   LLGLSLShader b;b.mName="job B";b.mShaderLevel=2;b.mFeatures.hasGamma=true;
+   b.mDefines["JOB_B"]="2";b.mShaderFiles=s.mShaderFiles;
+   if(useLegacy){
+     // Same logical pass as the overlapping standalone attempts: compare the
+     // complete journal through the unchanged strict whole-file validator.
+     if(mode=="interleave_standalone")mgr.beginShaderPass("standalone_program");
+     CHECK(s.createShaderInternalLegacy<diagnostics>());
+     CHECK(b.createShaderInternalLegacy<diagnostics>());
+     if(mode=="interleave_standalone")mgr.finishShaderPass();
+   }else{
+     auto aJob=s.prepareShaderInternal<diagnostics>();s.submitShaderInternal<diagnostics>(aJob);
+     auto bJob=b.prepareShaderInternal<diagnostics>();b.submitShaderInternal<diagnostics>(bJob);
+     if constexpr (diagnostics){
+       CHECK(aJob.context && bJob.context && aJob.context.get()!=bJob.context.get());
+       CHECK(aJob.context->ownsPass==(mode=="interleave_standalone"));
+       CHECK(!bJob.context->ownsPass);
+     }
+     CHECK(s.finishShaderInternal<diagnostics>(aJob));
+     if constexpr (diagnostics){
+       CHECK(mgr.mShaderPassActive && mgr.mShaderAttemptsActive==1);
+       CHECK(aJob.context->ownsPass==(mode=="interleave_standalone"));
+     }
+     CHECK(b.finishShaderInternal<diagnostics>(bJob));
+     if constexpr (diagnostics){
+       CHECK(mgr.mShaderAttemptsActive==0 && !bJob.context->ownsPass);
+       CHECK(mgr.mShaderPassActive==(mode!="interleave_standalone"));
+     }
+   }
+   b.unloadInternal();success=true;
+ }else if(mode=="ticket_guards"){
+   auto stale=s.prepareShaderInternal<false>();s.submitShaderInternal<false>(stale);
+   nextHandle=stale.program; // Force GL handle reuse for the next attempt.
+   auto replacement=s.prepareShaderInternal<false>();
+   CHECK(replacement.program==stale.program && replacement.generation!=stale.generation);
+   bool rejected=false;
+   try{s.finishShaderInternal<false>(stale);}catch(const std::runtime_error&){rejected=true;}CHECK(rejected);
+   stale.state=LLGLSLShader::ShaderCreationJob::State::prepared;
+   rejected=false;try{s.submitShaderInternal<false>(stale);}catch(const std::runtime_error&){rejected=true;}CHECK(rejected);
+   auto moved=std::move(replacement);
+   rejected=false;try{s.submitShaderInternal<false>(replacement);}catch(const std::runtime_error&){rejected=true;}CHECK(rejected);
+   s.submitShaderInternal<false>(moved);success=s.finishShaderInternal<false>(moved);
+   rejected=false;try{s.finishShaderInternal<false>(moved);}catch(const std::runtime_error&){rejected=true;}CHECK(rejected);
+ }else success=useLegacy?s.createShaderInternalLegacy<diagnostics>():(useDirect?direct<diagnostics>(s):s.createShader());
+ CHECK(success==(mode!="all_fail" && mode!="startup_inject" && mode!="attachment_fail" && mode!="link_fail" && mode!="compute_link_fail"));
+ if(mode=="reload")CHECK(useLegacy?s.createShaderInternalLegacy<diagnostics>():(useDirect?direct<diagnostics>(s):s.createShader()));
  pass.reset();
  if(mode=="all_fail")CHECK(mgr.mVertexShaderObjects.count("rootV.glsl")==0);
+ CHECK(activeCreateDepth==0 && maxCreateDepth<=1);
+ if(!useLegacy && !useDirect && mode.find("interleave")!=0 && mode!="ticket_guards")
+   CHECK(createEntries==(mode=="reload"?2:1));
  Result result;result.gl=calls;
  if(diagnostics){CHECK(mgr.mShaderDumpOpened && mgr.mShaderEquivalence.is_open());}
 
@@ -309,14 +474,68 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
 }
 int main(int argc,char** argv){
  CHECK(argc==2);std::string root=argv[1];
- for(const auto& mode:{"cold","all_fail","file_fallback","shared_fallback","shared_direct2","reload","compute","startup","accepted_binary","gamma","disabled","read_failure","driver_rejected","synthetic_rejected"}){
+ for(const auto& mode:{"cold","all_fail","file_fallback","shared_fallback","shared_direct2","reload","compute","startup","accepted_binary","gamma","disabled","read_failure","driver_rejected","synthetic_rejected","attachment_fail","link_fail","compute_link_fail","binary_retry"}){
    // Identical filesystem inputs and reset driver state for both algorithms.
    std::string path=root+"/"+mode;
    auto off=scenario<false>(mode,path);
    auto on=scenario<true>(mode,path);
    CHECK(off.gl==on.gl);
+   useLegacy=true;
+   auto legacyOff=scenario<false>(mode,root+"/legacy_"+mode);
+   auto legacyOn=scenario<true>(mode,root+"/legacy_"+mode);
+   useLegacy=false;
+   CHECK(off.gl==legacyOff.gl && on.gl==legacyOn.gl);
+   useDirect=true;
+   auto directOff=scenario<false>(mode,root+"/direct_"+mode);
+   auto directOn=scenario<true>(mode,root+"/direct_"+mode);
+   useDirect=false;
+   CHECK(directOff.gl==legacyOff.gl && directOn.gl==legacyOn.gl);
    std::cout<<"producer/differential "<<mode<<" PASS ("<<on.gl.size()<<" calls)\n";
  }
+ for(const auto& mode:{"interleave","interleave_standalone"}){
+   scenario<true>(mode,root+"/"+mode);
+   useLegacy=true;scenario<true>(mode,root+"/legacy_"+mode);useLegacy=false;
+ }
+ scenario<false>("ticket_guards",root+"/ticket_guards");
+ std::cout<<"ticket guards: stale submit/finish with reused handle, moved-from ticket and duplicate finish rejected\n";
+ std::cout<<"retry loop: one wrapper entry, maximum depth one across all retry attempts; terminal/early outcomes match legacy\n";
+ auto serial=scenario<false>("cold",root+"/seam");
+ auto serialOn=scenario<true>("cold",root+"/seam_on");
+ plantSeam=true;
+ auto earlySave=scenario<false>("cold",root+"/seam");
+ auto earlySaveOn=scenario<true>("cold",root+"/seam_on");
+ plantSeam=false;
+ CHECK(serial.gl!=earlySave.gl && serialOn.gl!=earlySaveOn.gl);
+ std::cout<<"rejected: binary save moved from finish to submit (both diagnostic variants)\n";
+ // The relocated completion preserves the wrapper trace, but direct stages
+ // must reject it against legacy. Test both variants independently.
+ plantRelocation=true;
+ auto relocated=scenario<false>("cold",root+"/relocated");
+ auto relocatedOn=scenario<true>("cold",root+"/relocated_on");
+ CHECK(relocated.gl==serial.gl && relocatedOn.gl==serialOn.gl);
+ useDirect=true;
+ auto missing=scenario<false>("cold",root+"/missing_finish");
+ auto missingOn=scenario<true>("cold",root+"/missing_finish_on");
+ CHECK(missing.gl!=serial.gl && missingOn.gl!=serialOn.gl);
+ useDirect=false;plantRelocation=false;
+ std::cout<<"rejected: review relocation from finish into wrapper (direct stages, both variants)\n";
+ plantStatus=true;
+ for(bool diagnostic:{false,true}){
+   bool rejected=false;
+   try{if(diagnostic)scenario<true>("cold",root+"/moved_status_on");
+       else scenario<false>("cold",root+"/moved_status");}
+   catch(const std::runtime_error&){rejected=true;}
+   CHECK(rejected);
+ }
+ plantStatus=false;
+ std::cout<<"rejected: moved-status query in submit (both variants)\n";
+ // A fresh prepared ticket cannot be finished, and another shader cannot submit it.
+ LLShaderMgr seamMgr;currentMgr=&seamMgr;
+ LLGLSLShader owner,other;
+ LLGLSLShader::ShaderCreationJob job(&owner);job.state=LLGLSLShader::ShaderCreationJob::State::prepared;
+ bool caught=false;try{owner.finishShaderInternal<false>(job);}catch(const std::runtime_error&){caught=true;}CHECK(caught);
+ caught=false;try{other.submitShaderInternal<false>(job);}catch(const std::runtime_error&){caught=true;}CHECK(caught);
+ std::cout<<"ticket guards: finish-before-submit and wrong owner rejected\n";
  auto baseline=scenario<false>("accepted_binary",root+"/planted");
  plantRegression=true;
  auto broken=scenario<true>("accepted_binary",root+"/planted");
@@ -366,10 +585,36 @@ int main(int argc,char** argv){
     dumps = {}
     for mode in ('cold', 'all_fail', 'file_fallback', 'shared_fallback', 'shared_direct2',
                  'reload', 'compute', 'startup', 'accepted_binary', 'planted', 'startup_inject',
-                 'gamma', 'disabled', 'read_failure', 'driver_rejected', 'synthetic_rejected'):
+                 'gamma', 'disabled', 'read_failure', 'driver_rejected', 'synthetic_rejected',
+                 'attachment_fail', 'link_fail', 'compute_link_fail', 'binary_retry'):
         dumps[mode] = load(directory / mode / 'shader_equivalence.jsonl')
+    for mode, records in dumps.items():
+        if mode not in ('planted', 'startup_inject'):
+            assert not compare(records, load(directory / ('legacy_' + mode) / 'shader_equivalence.jsonl')), mode
+            assert not compare(records, load(directory / ('direct_' + mode) / 'shader_equivalence.jsonl')), mode
+    print('Step-1 unsplit vs wrapper AND direct stages: ordered GL traces and full dumps identical in both variants PASS')
+    # Validate the entire interleaved journal, including complete pass counts,
+    # with the unchanged strict validator. Compare every record to serial legacy
+    # creation within the same logical pass (including standalone ownership).
+    for mode in ('interleave', 'interleave_standalone'):
+        records = load(directory / mode / 'shader_equivalence.jsonl')
+        legacy_records = load(directory / ('legacy_' + mode) / 'shader_equivalence.jsonl')
+        assert not compare(records, legacy_records), mode
+        actual = [r for r in records if r['type'] == 'program']
+        assert len(actual) == 2
+        assert [r['name'] for r in actual] == ['job A', 'job B']
+        assert all(r['stages'] and r['attachments'] and r['success'] for r in actual)
+        assert actual[0]['cache_key'] != actual[1]['cache_key']
+        assert actual[0]['defines'] == {'JOB_A': '1'} and actual[1]['defines'] == {'JOB_B': '2'}
+    print('interleaved A/B: two complete legacy-identical records and pass ownership (explicit/standalone passes) PASS')
+
     def programs(mode):
         return [r for r in dumps[mode] if r['type'] == 'program']
+    assert len(programs('attachment_fail')) == 1 and not programs('attachment_fail')[0]['success']
+    assert len(programs('compute_link_fail')) == 1 and not programs('compute_link_fail')[0]['success']
+    assert [r['attempt'] for r in programs('link_fail')] == [1, 2, 3, 4]
+    assert [r['requested_level'] for r in programs('link_fail')] == [3, 2, 1, 0]
+    assert len(programs('binary_retry')) == 2 and programs('binary_retry')[-1]['success']
     assert not programs('all_fail')[-1]['success']
     assert len(programs('reload')) == 2
     assert all(s['compile_outcome'] == 'reused' for s in programs('reload')[1]['stages'])

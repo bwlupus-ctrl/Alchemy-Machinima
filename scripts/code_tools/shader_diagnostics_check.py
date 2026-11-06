@@ -32,6 +32,14 @@ def check_log_messages():
         for name in names:
             expected = messages(function(before, cls + '::' + name + '('))
             body = function(after, cls + '::' + name + 'Internal(')
+            split = {
+                'createShader': ('prepareShaderInternal', 'submitShaderInternal', 'finishShaderInternal'),
+                'mapAttributes': ('bindAttributes', 'readAttributes'),
+                'link': ('submitLink', 'finishLinkInternal'),
+                'linkProgramObject': ('submitProgramLink', 'finishProgramLinkInternal'),
+            }
+            for helper in split.get(name, ()):
+                body += function(after, cls + '::' + helper + '(')
             if name == 'loadCachedProgramBinary':
                 body += function(after, cls + '::rejectProgramBinary(')
             assert messages(body) == expected, f'changed log message expression: {cls}::{name}'
@@ -59,7 +67,7 @@ def native_failure_paths(directory):
     vertex = function(shader, 'LLGLSLShader::attachVertexObjectInternal(')
     proposed = vertex.replace('attachVertexObjectInternal(', 'attachVertexObjectProposed(', 1)
     proposed = proposed.replace('{\n', '{\n    if (mUsingBinaryProgram) return true;\n', 1)
-    link = function(manager, 'LLShaderMgr::linkProgramObjectInternal(')
+    link = '\n'.join(function(manager, 'LLShaderMgr::' + n + '(') for n in ('submitProgramLink', 'finishProgramLinkInternal', 'linkProgramObjectInternal'))
     matcher = function(manager, 'LLShaderMgr::injectShaderFailure(')
     source = r'''
 #include "llshaderdiagnostics.h"
@@ -85,6 +93,8 @@ struct LLShaderMgr {
     void traceAttachment(GLuint){}
     void dumpObjectLog(GLuint,bool,const std::string&){++logs;}
     bool injectShaderFailure(const std::string&,const std::string&,S32=-1) const;
+    void submitProgramLink(GLuint);
+    template<bool diagnostics> bool finishProgramLinkInternal(GLuint,bool,const std::string&);
     template<bool diagnostics> bool linkProgramObjectInternal(GLuint,bool,const std::string&);
 } manager;
 LLShaderMgr* LLShaderMgr::instance(){return &manager;}

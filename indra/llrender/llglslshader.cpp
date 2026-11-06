@@ -369,6 +369,7 @@ void LLGLSLShader::unload()
 
 void LLGLSLShader::unloadInternal()
 {
+    ++mShaderAttemptGeneration;
     if (sCurBoundShaderPtr == this) unbind();
     sInstances.erase(this);
 
@@ -438,11 +439,13 @@ bool LLGLSLShader::isCompute() const
 }
 
 template<bool diagnostics>
-bool LLGLSLShader::createShaderInternal()
+LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal()
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
+    ShaderCreationJob job(this);
 
     LLShaderMgr* mgr = LLShaderMgr::instance();
+    std::optional<LLShaderMgr::ShaderAttemptScope> context;
+    if constexpr (diagnostics) context.emplace(mgr, job.context);
     if constexpr (diagnostics) mgr->beginShaderAttempt(this);
     unloadInternal();
 
@@ -463,7 +466,7 @@ bool LLGLSLShader::createShaderInternal()
     {
         if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
-        return false;
+        return job;
     }
 
     if (isCompute()) mFeatures = LLShaderFeatures();
@@ -479,11 +482,11 @@ bool LLGLSLShader::createShaderInternal()
         LL_SHADER_LOADING_WARNS() << "Failed to create handle for shader: " << mName << LL_ENDL;
         if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
-        return false;
+        return job;
     }
 
-    bool success = true;
-
+    // The retrievable hint remains inside this cache attempt, before source
+    // compilation, to preserve the original GL call order on hits and misses.
     mUsingBinaryProgram = mgr->loadCachedProgramBinaryInternal<diagnostics>(this);
 
     if (!mUsingBinaryProgram)
@@ -504,7 +507,7 @@ bool LLGLSLShader::createShaderInternal()
             }
             else
             {
-                success = false;
+                job.success = false;
             }
         }
     }
@@ -514,12 +517,44 @@ bool LLGLSLShader::createShaderInternal()
     {
         if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
-        return false;
+        return job;
     }
+    job.program = mProgramObject;
+    job.generation = mShaderAttemptGeneration;
+    job.state = ShaderCreationJob::State::prepared;
+    return job;
+}
+
+template<bool diagnostics>
+void LLGLSLShader::submitShaderInternal(ShaderCreationJob& job)
+{
+    llassert_always(job.owner == this && job.state == ShaderCreationJob::State::prepared);
+    llassert_always(job.program == mProgramObject && job.generation == mShaderAttemptGeneration);
+    std::optional<LLShaderMgr::ShaderAttemptScope> context;
+    if constexpr (diagnostics) context.emplace(LLShaderMgr::instance(), job.context);
+    if (job.success && !mUsingBinaryProgram)
+    {
+        if (!isCompute()) bindAttributes();
+        submitLink();
+    }
+    // Binary hits and failed root compilations have a matching no-op submit.
+    job.state = ShaderCreationJob::State::submitted;
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::finishShaderInternal(ShaderCreationJob& job)
+{
+    llassert_always(job.owner == this && job.state == ShaderCreationJob::State::submitted);
+    llassert_always(job.program == mProgramObject && job.generation == mShaderAttemptGeneration);
+    LLShaderMgr* mgr = LLShaderMgr::instance();
+    std::optional<LLShaderMgr::ShaderAttemptScope> context;
+    if constexpr (diagnostics) context.emplace(mgr, job.context);
+    bool success = job.success;
     // Map attributes and uniforms
     if (success)
     {
-        success = isCompute() ? (mUsingBinaryProgram || linkInternal<diagnostics>()) : mapAttributesInternal<diagnostics>();
+        success = mUsingBinaryProgram || finishLinkInternal<diagnostics>();
+        if (!isCompute()) success = readAttributes(success);
     }
     if (success)
     {
@@ -535,7 +570,9 @@ bool LLGLSLShader::createShaderInternal()
             LL_SHADER_LOADING_WARNS() << "Failed to link using shader level " << mShaderLevel << " trying again using shader level " << (mShaderLevel - 1) << LL_ENDL;
             if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
             mShaderLevel--;
-            return createShaderInternal<diagnostics>();
+            job.state = ShaderCreationJob::State::failed;
+            job.retry = true;
+            return false;
         }
         else
         {
@@ -583,7 +620,22 @@ bool LLGLSLShader::createShaderInternal()
     setLabel(mName.c_str());
 #endif
 
-    return success;
+    job.state = success ? ShaderCreationJob::State::finished : ShaderCreationJob::State::failed;
+    return job.state == ShaderCreationJob::State::finished;
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::createShaderInternal()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
+    for (;;)
+    {
+        ShaderCreationJob job = prepareShaderInternal<diagnostics>();
+        if (job.state == ShaderCreationJob::State::failed) return false;
+        submitShaderInternal<diagnostics>(job);
+        const bool success = finishShaderInternal<diagnostics>(job);
+        if (!job.retry) return success;
+    }
 }
 
 bool LLGLSLShader::createShader()
@@ -712,25 +764,18 @@ void LLGLSLShader::attachObjects(GLuint* objects, S32 count)
     }
 }
 
-template<bool diagnostics>
-bool LLGLSLShader::mapAttributesInternal()
+void LLGLSLShader::bindAttributes()
 {
-    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
-
-    bool res = true;
-    if (!mUsingBinaryProgram)
+    //before linking, make sure reserved attributes always have consistent locations
+    for (U32 i = 0; i < LLShaderMgr::instance()->mReservedAttribs.size(); i++)
     {
-        //before linking, make sure reserved attributes always have consistent locations
-        for (U32 i = 0; i < LLShaderMgr::instance()->mReservedAttribs.size(); i++)
-        {
-            const char* name = LLShaderMgr::instance()->mReservedAttribs[i].c_str();
-            glBindAttribLocation(mProgramObject, i, (const GLchar*)name);
-        }
-
-        //link the program
-        res = linkInternal<diagnostics>();
+        const char* name = LLShaderMgr::instance()->mReservedAttribs[i].c_str();
+        glBindAttribLocation(mProgramObject, i, (const GLchar*)name);
     }
+}
 
+bool LLGLSLShader::readAttributes(bool res)
+{
     mAttribute.clear();
 #if LL_DEBUG || LL_RELEASE_WITH_DEBUG_INFO
     mAttribute.resize(LLShaderMgr::instance()->mReservedAttribs.size(), { -1, NULL });
@@ -764,6 +809,19 @@ bool LLGLSLShader::mapAttributesInternal()
     }
 
     return false;
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::mapAttributesInternal()
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
+    bool res = true;
+    if (!mUsingBinaryProgram)
+    {
+        bindAttributes();
+        res = linkInternal<diagnostics>();
+    }
+    return readAttributes(res);
 }
 
 bool LLGLSLShader::mapAttributes()
@@ -1123,8 +1181,7 @@ bool LLGLSLShader::mapUniforms()
 }
 
 
-template<bool diagnostics>
-bool LLGLSLShader::linkInternal(bool suppress_errors)
+void LLGLSLShader::submitLink()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
 
@@ -1139,7 +1196,13 @@ bool LLGLSLShader::linkInternal(bool suppress_errors)
         glBindFragDataLocation(mProgramObject, 3, "alr_rimsplit_parity_mask");
     }
 
-    bool success = LLShaderMgr::instance()->linkProgramObjectInternal<diagnostics>(mProgramObject, suppress_errors, mName);
+    LLShaderMgr::instance()->submitProgramLink(mProgramObject);
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::finishLinkInternal(bool suppress_errors)
+{
+    bool success = LLShaderMgr::instance()->finishProgramLinkInternal<diagnostics>(mProgramObject, suppress_errors, mName);
 
     if constexpr (diagnostics)
     {
@@ -1156,6 +1219,14 @@ bool LLGLSLShader::linkInternal(bool suppress_errors)
     }
 
     return success;
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::linkInternal(bool suppress_errors)
+{
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER;
+    submitLink();
+    return finishLinkInternal<diagnostics>(suppress_errors);
 }
 
 bool LLGLSLShader::link(bool suppress_errors)
