@@ -7,8 +7,8 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 734,
       "HOOK": 523,
-      "OWNED": 908,
-      "TOOLING": 426
+      "OWNED": 909,
+      "TOOLING": 430
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -117,7 +117,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3901,
+        "settings_declared": 3903,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -192,10 +192,10 @@
       },
       "wiring_rows": 2289
     },
-    "head_source_tree": "96a917b38d9b4fc5e2d9ecf0a6fb178dcba25237",
+    "head_source_tree": "d39a49df7bc593f0d2e39086f938690b2434ad68",
     "hook_files": 523,
-    "hunks": 3228,
-    "input_sha256": "9940d08ab1f27b054ce07ee2f5c80531045f85b108c6738d05eaefaa6ffc5cd9",
+    "hunks": 3272,
+    "input_sha256": "be629db8f88beff7a361a89fff8a1e9f602c329ab8a2f90dc54c41a5e7a7a42f",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -203,7 +203,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2056
+    "settings": 2058
   },
   "paths": [
     {
@@ -11116,6 +11116,19 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/llrender/llshaderdiagnostics.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [
         "clones",
         "roto-tron",
@@ -11227,6 +11240,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/llrender/tests/llimagegl_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/llrender/tests/llshaderdiagnostics_test.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -30966,9 +30992,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "roto-tron"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -43263,6 +43287,45 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/sensor_quant_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_diagnostics_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_diagnostics_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_equivalence_diff.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

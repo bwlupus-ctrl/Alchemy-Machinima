@@ -108,6 +108,15 @@
     "reason": "present at base"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/llrender/llshadermgr.h",
+    "dependency": "indra/llrender/llshaderdiagnostics.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "OUT: remove unrelated caller or adapt creative caller to a minimal target contract; do not port excluded feature",
     "class": "EXCLUDED-PERF",
     "consumer": "indra/llrender/llvertexbuffer.cpp",

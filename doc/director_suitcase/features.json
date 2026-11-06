@@ -10951,9 +10951,9 @@
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@22976,412",
-          "indra/newview/app_settings/settings.xml@23499,362",
-          "indra/newview/app_settings/settings.xml@29179,100",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@23513,362",
+          "indra/newview/app_settings/settings.xml@29193,100",
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -11206,9 +11206,9 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@129,24",
           "indra/newview/llviewershadermgr.cpp@613,35",
-          "indra/newview/llviewershadermgr.cpp@2603,18",
-          "indra/newview/llviewershadermgr.cpp@4077,11",
-          "indra/newview/llviewershadermgr.cpp@6383,118"
+          "indra/newview/llviewershadermgr.cpp@2609,18",
+          "indra/newview/llviewershadermgr.cpp@4083,11",
+          "indra/newview/llviewershadermgr.cpp@6389,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -23243,10 +23243,10 @@
           "indra/newview/app_settings/settings.xml@5915,527",
           "indra/newview/app_settings/settings.xml@6443,120",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@27371,98",
-          "indra/newview/app_settings/settings.xml@27904,229",
-          "indra/newview/app_settings/settings.xml@29324,2466",
-          "indra/newview/app_settings/settings.xml@32001,364"
+          "indra/newview/app_settings/settings.xml@27385,98",
+          "indra/newview/app_settings/settings.xml@27918,229",
+          "indra/newview/app_settings/settings.xml@29338,2466",
+          "indra/newview/app_settings/settings.xml@32015,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -34466,7 +34466,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -34478,7 +34478,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 60,
+        "line": 61,
         "source": "indra/llrender/llvertexbuffer.h",
         "text": "llvertexbuffer.h"
       },
@@ -35138,7 +35138,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -35319,13 +35319,15 @@
           "indra/newview/llviewershadermgr.cpp@334,32",
           "indra/newview/llviewershadermgr.cpp@369,21",
           "indra/newview/llviewershadermgr.cpp@432,143",
-          "indra/newview/llviewershadermgr.cpp@1473,18",
-          "indra/newview/llviewershadermgr.cpp@1507,14",
-          "indra/newview/llviewershadermgr.cpp@2060,40",
-          "indra/newview/llviewershadermgr.cpp@2403,28",
-          "indra/newview/llviewershadermgr.cpp@2715,321",
-          "indra/newview/llviewershadermgr.cpp@3827,67",
-          "indra/newview/llviewershadermgr.cpp@5405,299"
+          "indra/newview/llviewershadermgr.cpp@676,8",
+          "indra/newview/llviewershadermgr.cpp@928,36",
+          "indra/newview/llviewershadermgr.cpp@1479,18",
+          "indra/newview/llviewershadermgr.cpp@1513,14",
+          "indra/newview/llviewershadermgr.cpp@2066,40",
+          "indra/newview/llviewershadermgr.cpp@2409,28",
+          "indra/newview/llviewershadermgr.cpp@2721,319",
+          "indra/newview/llviewershadermgr.cpp@3833,67",
+          "indra/newview/llviewershadermgr.cpp@5411,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -35350,13 +35352,15 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@2258,363",
+          "indra/llrender/llshadermgr.cpp@2629,383"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@591,396",
+          "indra/llrender/llshadermgr.h@1053,60"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -35853,6 +35857,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -35865,30 +35870,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -35901,7 +35929,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -45627,7 +45656,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -45639,7 +45668,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 60,
+        "line": 61,
         "source": "indra/llrender/llvertexbuffer.h",
         "text": "llvertexbuffer.h"
       },
@@ -47185,8 +47214,8 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@31791,209",
-          "indra/newview/app_settings/settings.xml@32001,364"
+          "indra/newview/app_settings/settings.xml@31805,209",
+          "indra/newview/app_settings/settings.xml@32015,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -47580,12 +47609,12 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@129,24",
-          "indra/newview/llviewershadermgr.cpp@686,32",
-          "indra/newview/llviewershadermgr.cpp@1667,259",
-          "indra/newview/llviewershadermgr.cpp@4502,633",
-          "indra/newview/llviewershadermgr.cpp@6253,8",
-          "indra/newview/llviewershadermgr.cpp@6293,70",
-          "indra/newview/llviewershadermgr.cpp@6383,118"
+          "indra/newview/llviewershadermgr.cpp@688,32",
+          "indra/newview/llviewershadermgr.cpp@1673,259",
+          "indra/newview/llviewershadermgr.cpp@4508,633",
+          "indra/newview/llviewershadermgr.cpp@6259,8",
+          "indra/newview/llviewershadermgr.cpp@6299,70",
+          "indra/newview/llviewershadermgr.cpp@6389,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -47629,15 +47658,15 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2053,60",
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@2135,60",
+          "indra/llrender/llshadermgr.cpp@2258,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@439,89",
+          "indra/llrender/llshadermgr.h@591,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -48796,6 +48825,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -48808,30 +48838,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -48844,7 +48897,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -68100,7 +68154,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@25643,1573"
+          "indra/newview/app_settings/settings.xml@25657,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -76000,7 +76054,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 169,
+        "line": 171,
         "source": "indra/newview/skins/default/xui/en/fonts.xml",
         "text": "\"LLFONT_TEST_FONTS_XML=\\\"${INDRA_SOURCE_DIR}/newview/skins/default/xui/en/fonts.xml\\\"\")"
       }
@@ -84227,9 +84281,9 @@
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@22976,412",
-          "indra/newview/app_settings/settings.xml@23499,362",
-          "indra/newview/app_settings/settings.xml@29179,100",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@23513,362",
+          "indra/newview/app_settings/settings.xml@29193,100",
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -84280,8 +84334,8 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@613,35",
-          "indra/newview/llviewershadermgr.cpp@2603,18",
-          "indra/newview/llviewershadermgr.cpp@4077,11"
+          "indra/newview/llviewershadermgr.cpp@2609,18",
+          "indra/newview/llviewershadermgr.cpp@4083,11"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       }
@@ -90066,7 +90120,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 169,
+        "line": 171,
         "source": "indra/newview/skins/default/xui/en/fonts.xml",
         "text": "\"LLFONT_TEST_FONTS_XML=\\\"${INDRA_SOURCE_DIR}/newview/skins/default/xui/en/fonts.xml\\\"\")"
       }
@@ -90146,10 +90200,10 @@
           "indra/newview/app_settings/settings.xml@5354,175",
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
-          "indra/newview/app_settings/settings.xml@28530,648",
-          "indra/newview/app_settings/settings.xml@29324,2466",
-          "indra/newview/app_settings/settings.xml@31791,209",
-          "indra/newview/app_settings/settings.xml@32001,364"
+          "indra/newview/app_settings/settings.xml@28544,648",
+          "indra/newview/app_settings/settings.xml@29338,2466",
+          "indra/newview/app_settings/settings.xml@31805,209",
+          "indra/newview/app_settings/settings.xml@32015,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -108155,7 +108209,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -108372,9 +108426,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@25643,1573",
-          "indra/newview/app_settings/settings.xml@27794,109",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@25657,1573",
+          "indra/newview/app_settings/settings.xml@27808,109",
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -108459,19 +108513,25 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@1381,26"
+          "indra/newview/llviewershadermgr.cpp@1387,26"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@435,15"
+          "indra/llrender/llshadermgr.cpp@183,7",
+          "indra/llrender/llshadermgr.cpp@191,7",
+          "indra/llrender/llshadermgr.cpp@244,16",
+          "indra/llrender/llshadermgr.cpp@352,7",
+          "indra/llrender/llshadermgr.cpp@360,19",
+          "indra/llrender/llshadermgr.cpp@422,7",
+          "indra/llrender/llshadermgr.cpp@430,20"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@591,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -108688,6 +108748,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -108700,30 +108761,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -108736,7 +108820,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -112892,7 +112977,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -119575,7 +119660,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -120527,10 +120612,10 @@
           "indra/newview/app_settings/settings.xml@22436,76",
           "indra/newview/app_settings/settings.xml@22568,407",
           "indra/newview/app_settings/settings.xml@22976,412",
-          "indra/newview/app_settings/settings.xml@23411,87",
-          "indra/newview/app_settings/settings.xml@23972,164",
-          "indra/newview/app_settings/settings.xml@29324,2466",
-          "indra/newview/app_settings/settings.xml@32001,364"
+          "indra/newview/app_settings/settings.xml@23411,101",
+          "indra/newview/app_settings/settings.xml@23986,164",
+          "indra/newview/app_settings/settings.xml@29338,2466",
+          "indra/newview/app_settings/settings.xml@32015,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -120859,63 +120944,63 @@
           "indra/newview/llviewershadermgr.cpp@369,21",
           "indra/newview/llviewershadermgr.cpp@397,22",
           "indra/newview/llviewershadermgr.cpp@432,143",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@808,8",
-          "indra/newview/llviewershadermgr.cpp@822,29",
-          "indra/newview/llviewershadermgr.cpp@987,31",
-          "indra/newview/llviewershadermgr.cpp@1026,9",
-          "indra/newview/llviewershadermgr.cpp@1180,52",
-          "indra/newview/llviewershadermgr.cpp@1381,26",
-          "indra/newview/llviewershadermgr.cpp@1414,21",
-          "indra/newview/llviewershadermgr.cpp@1667,259",
-          "indra/newview/llviewershadermgr.cpp@1984,10",
-          "indra/newview/llviewershadermgr.cpp@2004,46",
-          "indra/newview/llviewershadermgr.cpp@2108,7",
-          "indra/newview/llviewershadermgr.cpp@2123,117",
-          "indra/newview/llviewershadermgr.cpp@2249,12",
-          "indra/newview/llviewershadermgr.cpp@2264,13",
-          "indra/newview/llviewershadermgr.cpp@2292,13",
-          "indra/newview/llviewershadermgr.cpp@2307,13",
-          "indra/newview/llviewershadermgr.cpp@2351,10",
-          "indra/newview/llviewershadermgr.cpp@2468,11",
-          "indra/newview/llviewershadermgr.cpp@2514,14",
-          "indra/newview/llviewershadermgr.cpp@2539,15",
-          "indra/newview/llviewershadermgr.cpp@2582,12",
-          "indra/newview/llviewershadermgr.cpp@2603,18",
-          "indra/newview/llviewershadermgr.cpp@2669,18",
-          "indra/newview/llviewershadermgr.cpp@2715,321",
-          "indra/newview/llviewershadermgr.cpp@3073,7",
-          "indra/newview/llviewershadermgr.cpp@3086,7",
-          "indra/newview/llviewershadermgr.cpp@3411,17",
-          "indra/newview/llviewershadermgr.cpp@3522,16",
-          "indra/newview/llviewershadermgr.cpp@3547,17",
-          "indra/newview/llviewershadermgr.cpp@3590,13",
-          "indra/newview/llviewershadermgr.cpp@3637,14",
-          "indra/newview/llviewershadermgr.cpp@3686,12",
-          "indra/newview/llviewershadermgr.cpp@3730,12",
-          "indra/newview/llviewershadermgr.cpp@3744,49",
-          "indra/newview/llviewershadermgr.cpp@3795,14",
-          "indra/newview/llviewershadermgr.cpp@3975,7",
-          "indra/newview/llviewershadermgr.cpp@3988,7",
-          "indra/newview/llviewershadermgr.cpp@4007,7",
-          "indra/newview/llviewershadermgr.cpp@4022,7",
-          "indra/newview/llviewershadermgr.cpp@4044,7",
-          "indra/newview/llviewershadermgr.cpp@4060,7",
-          "indra/newview/llviewershadermgr.cpp@4077,11",
-          "indra/newview/llviewershadermgr.cpp@4117,8",
-          "indra/newview/llviewershadermgr.cpp@4150,7",
-          "indra/newview/llviewershadermgr.cpp@4168,7",
-          "indra/newview/llviewershadermgr.cpp@4182,7",
-          "indra/newview/llviewershadermgr.cpp@4194,7",
-          "indra/newview/llviewershadermgr.cpp@4227,15",
-          "indra/newview/llviewershadermgr.cpp@4260,14",
-          "indra/newview/llviewershadermgr.cpp@5405,299",
-          "indra/newview/llviewershadermgr.cpp@5960,71",
-          "indra/newview/llviewershadermgr.cpp@6037,115",
-          "indra/newview/llviewershadermgr.cpp@6185,12",
-          "indra/newview/llviewershadermgr.cpp@6268,12",
-          "indra/newview/llviewershadermgr.cpp@6293,70",
-          "indra/newview/llviewershadermgr.cpp@6383,118"
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@810,8",
+          "indra/newview/llviewershadermgr.cpp@824,29",
+          "indra/newview/llviewershadermgr.cpp@993,31",
+          "indra/newview/llviewershadermgr.cpp@1032,9",
+          "indra/newview/llviewershadermgr.cpp@1186,52",
+          "indra/newview/llviewershadermgr.cpp@1387,26",
+          "indra/newview/llviewershadermgr.cpp@1420,21",
+          "indra/newview/llviewershadermgr.cpp@1673,259",
+          "indra/newview/llviewershadermgr.cpp@1990,10",
+          "indra/newview/llviewershadermgr.cpp@2010,46",
+          "indra/newview/llviewershadermgr.cpp@2114,7",
+          "indra/newview/llviewershadermgr.cpp@2129,117",
+          "indra/newview/llviewershadermgr.cpp@2255,12",
+          "indra/newview/llviewershadermgr.cpp@2270,13",
+          "indra/newview/llviewershadermgr.cpp@2298,13",
+          "indra/newview/llviewershadermgr.cpp@2313,13",
+          "indra/newview/llviewershadermgr.cpp@2357,10",
+          "indra/newview/llviewershadermgr.cpp@2474,11",
+          "indra/newview/llviewershadermgr.cpp@2520,14",
+          "indra/newview/llviewershadermgr.cpp@2545,15",
+          "indra/newview/llviewershadermgr.cpp@2588,12",
+          "indra/newview/llviewershadermgr.cpp@2609,18",
+          "indra/newview/llviewershadermgr.cpp@2675,18",
+          "indra/newview/llviewershadermgr.cpp@2721,319",
+          "indra/newview/llviewershadermgr.cpp@3079,7",
+          "indra/newview/llviewershadermgr.cpp@3092,7",
+          "indra/newview/llviewershadermgr.cpp@3417,17",
+          "indra/newview/llviewershadermgr.cpp@3528,16",
+          "indra/newview/llviewershadermgr.cpp@3553,17",
+          "indra/newview/llviewershadermgr.cpp@3596,13",
+          "indra/newview/llviewershadermgr.cpp@3643,14",
+          "indra/newview/llviewershadermgr.cpp@3692,12",
+          "indra/newview/llviewershadermgr.cpp@3736,12",
+          "indra/newview/llviewershadermgr.cpp@3750,49",
+          "indra/newview/llviewershadermgr.cpp@3801,14",
+          "indra/newview/llviewershadermgr.cpp@3981,7",
+          "indra/newview/llviewershadermgr.cpp@3994,7",
+          "indra/newview/llviewershadermgr.cpp@4013,7",
+          "indra/newview/llviewershadermgr.cpp@4028,7",
+          "indra/newview/llviewershadermgr.cpp@4050,7",
+          "indra/newview/llviewershadermgr.cpp@4066,7",
+          "indra/newview/llviewershadermgr.cpp@4083,11",
+          "indra/newview/llviewershadermgr.cpp@4123,8",
+          "indra/newview/llviewershadermgr.cpp@4156,7",
+          "indra/newview/llviewershadermgr.cpp@4174,7",
+          "indra/newview/llviewershadermgr.cpp@4188,7",
+          "indra/newview/llviewershadermgr.cpp@4200,7",
+          "indra/newview/llviewershadermgr.cpp@4233,15",
+          "indra/newview/llviewershadermgr.cpp@4266,14",
+          "indra/newview/llviewershadermgr.cpp@5411,299",
+          "indra/newview/llviewershadermgr.cpp@5966,71",
+          "indra/newview/llviewershadermgr.cpp@6043,115",
+          "indra/newview/llviewershadermgr.cpp@6191,12",
+          "indra/newview/llviewershadermgr.cpp@6274,12",
+          "indra/newview/llviewershadermgr.cpp@6299,70",
+          "indra/newview/llviewershadermgr.cpp@6389,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -120933,23 +121018,25 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@53,7",
-          "indra/llrender/llshadermgr.cpp@75,95",
-          "indra/llrender/llshadermgr.cpp@289,57",
-          "indra/llrender/llshadermgr.cpp@460,12",
-          "indra/llrender/llshadermgr.cpp@1519,19",
-          "indra/llrender/llshadermgr.cpp@1578,16",
-          "indra/llrender/llshadermgr.cpp@2007,12",
-          "indra/llrender/llshadermgr.cpp@2053,60"
+          "indra/llrender/llshadermgr.cpp@54,7",
+          "indra/llrender/llshadermgr.cpp@76,98",
+          "indra/llrender/llshadermgr.cpp@287,64",
+          "indra/llrender/llshadermgr.cpp@459,13",
+          "indra/llrender/llshadermgr.cpp@473,7",
+          "indra/llrender/llshadermgr.cpp@1573,41",
+          "indra/llrender/llshadermgr.cpp@1645,31",
+          "indra/llrender/llshadermgr.cpp@2089,12",
+          "indra/llrender/llshadermgr.cpp@2135,60",
+          "indra/llrender/llshadermgr.cpp@2629,383"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@39,9",
-          "indra/llrender/llshadermgr.h@82,9",
-          "indra/llrender/llshadermgr.h@391,12",
-          "indra/llrender/llshadermgr.h@437,89"
+          "indra/llrender/llshadermgr.h@41,9",
+          "indra/llrender/llshadermgr.h@84,9",
+          "indra/llrender/llshadermgr.h@393,12",
+          "indra/llrender/llshadermgr.h@439,89"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -121223,7 +121310,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llglslshader.cpp@2129,78"
+          "indra/llrender/llglslshader.cpp@2199,77"
         ],
         "path": "indra/llrender/llglslshader.cpp"
       },
@@ -122002,14 +122089,18 @@
           "LLGLSLShader::addConstant",
           "LLGLSLShader::addPermutation",
           "LLGLSLShader::attachFragmentObject",
+          "LLGLSLShader::attachFragmentObjectInternal",
           "LLGLSLShader::attachObject",
+          "LLGLSLShader::attachObjectInternal",
           "LLGLSLShader::attachObjects",
           "LLGLSLShader::attachVertexObject",
+          "LLGLSLShader::attachVertexObjectInternal",
           "LLGLSLShader::bind",
           "LLGLSLShader::bindTexture",
           "LLGLSLShader::clearPermutations",
           "LLGLSLShader::clearStats",
           "LLGLSLShader::createShader",
+          "LLGLSLShader::createShaderInternal",
           "LLGLSLShader::disableTexture",
           "LLGLSLShader::dumpStats",
           "LLGLSLShader::enableTexture",
@@ -122019,10 +122110,13 @@
           "LLGLSLShader::getTextureChannel",
           "LLGLSLShader::getUniformLocation",
           "LLGLSLShader::hash",
+          "LLGLSLShader::hashWithEpoch",
           "LLGLSLShader::initProfile",
           "LLGLSLShader::isCompute",
           "LLGLSLShader::link",
+          "LLGLSLShader::linkInternal",
           "LLGLSLShader::mapAttributes",
+          "LLGLSLShader::mapAttributesInternal",
           "LLGLSLShader::mapUniform",
           "LLGLSLShader::mapUniformTextureChannel",
           "LLGLSLShader::mapUniforms",
@@ -122191,6 +122285,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -122203,30 +122298,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -122239,7 +122357,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -135537,7 +135656,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -135549,7 +135668,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 60,
+        "line": 61,
         "source": "indra/llrender/llvertexbuffer.h",
         "text": "llvertexbuffer.h"
       },
@@ -136566,7 +136685,7 @@
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
           "indra/newview/app_settings/settings.xml@22524,43",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -136847,17 +136966,17 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@189,22",
           "indra/newview/llviewershadermgr.cpp@275,47",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@1667,259",
-          "indra/newview/llviewershadermgr.cpp@1935,8",
-          "indra/newview/llviewershadermgr.cpp@2004,46",
-          "indra/newview/llviewershadermgr.cpp@3127,23",
-          "indra/newview/llviewershadermgr.cpp@3165,23",
-          "indra/newview/llviewershadermgr.cpp@3201,22",
-          "indra/newview/llviewershadermgr.cpp@3236,85",
-          "indra/newview/llviewershadermgr.cpp@3827,67",
-          "indra/newview/llviewershadermgr.cpp@4502,633",
-          "indra/newview/llviewershadermgr.cpp@6037,115"
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@1673,259",
+          "indra/newview/llviewershadermgr.cpp@1941,8",
+          "indra/newview/llviewershadermgr.cpp@2010,46",
+          "indra/newview/llviewershadermgr.cpp@3133,23",
+          "indra/newview/llviewershadermgr.cpp@3171,23",
+          "indra/newview/llviewershadermgr.cpp@3207,22",
+          "indra/newview/llviewershadermgr.cpp@3242,85",
+          "indra/newview/llviewershadermgr.cpp@3833,67",
+          "indra/newview/llviewershadermgr.cpp@4508,633",
+          "indra/newview/llviewershadermgr.cpp@6043,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -136891,13 +137010,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@2258,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@591,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -137848,6 +137967,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -137860,30 +137980,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -137896,7 +138039,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -152034,7 +152178,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -152046,7 +152190,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 60,
+        "line": 61,
         "source": "indra/llrender/llvertexbuffer.h",
         "text": "llvertexbuffer.h"
       },
@@ -152907,9 +153051,9 @@
           "indra/newview/app_settings/settings.xml@5915,527",
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
-          "indra/newview/app_settings/settings.xml@25643,1573",
-          "indra/newview/app_settings/settings.xml@27217,153",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@25657,1573",
+          "indra/newview/app_settings/settings.xml@27231,153",
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -153081,17 +153225,17 @@
           "indra/newview/llviewershadermgr.cpp@189,22",
           "indra/newview/llviewershadermgr.cpp@239,32",
           "indra/newview/llviewershadermgr.cpp@275,47",
-          "indra/newview/llviewershadermgr.cpp@686,32",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@1333,23",
-          "indra/newview/llviewershadermgr.cpp@1667,259",
-          "indra/newview/llviewershadermgr.cpp@1944,12",
-          "indra/newview/llviewershadermgr.cpp@1966,9",
-          "indra/newview/llviewershadermgr.cpp@2004,46",
-          "indra/newview/llviewershadermgr.cpp@3236,85",
-          "indra/newview/llviewershadermgr.cpp@3522,16",
-          "indra/newview/llviewershadermgr.cpp@4502,633",
-          "indra/newview/llviewershadermgr.cpp@6037,115"
+          "indra/newview/llviewershadermgr.cpp@688,32",
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@1339,23",
+          "indra/newview/llviewershadermgr.cpp@1673,259",
+          "indra/newview/llviewershadermgr.cpp@1950,12",
+          "indra/newview/llviewershadermgr.cpp@1972,9",
+          "indra/newview/llviewershadermgr.cpp@2010,46",
+          "indra/newview/llviewershadermgr.cpp@3242,85",
+          "indra/newview/llviewershadermgr.cpp@3528,16",
+          "indra/newview/llviewershadermgr.cpp@4508,633",
+          "indra/newview/llviewershadermgr.cpp@6043,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -153130,14 +153274,14 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@825,36",
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@846,36",
+          "indra/llrender/llshadermgr.cpp@2258,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@591,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -154094,6 +154238,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -154106,30 +154251,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -154142,7 +154310,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -165717,7 +165886,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -166456,8 +166625,8 @@
           "indra/newview/app_settings/settings.xml@21321,1113",
           "indra/newview/app_settings/settings.xml@22568,407",
           "indra/newview/app_settings/settings.xml@22976,412",
-          "indra/newview/app_settings/settings.xml@25643,1573",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@25657,1573",
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -166638,10 +166807,10 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@239,32",
           "indra/newview/llviewershadermgr.cpp@369,21",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@1180,52",
-          "indra/newview/llviewershadermgr.cpp@1667,259",
-          "indra/newview/llviewershadermgr.cpp@4502,633"
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@1186,52",
+          "indra/newview/llviewershadermgr.cpp@1673,259",
+          "indra/newview/llviewershadermgr.cpp@4508,633"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -166655,19 +166824,19 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1742,8",
-          "indra/llrender/llshadermgr.cpp@2007,12",
-          "indra/llrender/llshadermgr.cpp@2053,60",
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@1824,8",
+          "indra/llrender/llshadermgr.cpp@2089,12",
+          "indra/llrender/llshadermgr.cpp@2135,60",
+          "indra/llrender/llshadermgr.cpp@2258,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@139,8",
-          "indra/llrender/llshadermgr.h@391,12",
-          "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@141,8",
+          "indra/llrender/llshadermgr.h@393,12",
+          "indra/llrender/llshadermgr.h@439,89",
+          "indra/llrender/llshadermgr.h@591,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -167114,6 +167283,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -167126,30 +167296,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -167162,7 +167355,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -176500,7 +176694,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -177050,13 +177244,13 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@275,47",
           "indra/newview/llviewershadermgr.cpp@334,32",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@1381,26",
-          "indra/newview/llviewershadermgr.cpp@1667,259",
-          "indra/newview/llviewershadermgr.cpp@2004,46",
-          "indra/newview/llviewershadermgr.cpp@2060,40",
-          "indra/newview/llviewershadermgr.cpp@4502,633",
-          "indra/newview/llviewershadermgr.cpp@5405,299"
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@1387,26",
+          "indra/newview/llviewershadermgr.cpp@1673,259",
+          "indra/newview/llviewershadermgr.cpp@2010,46",
+          "indra/newview/llviewershadermgr.cpp@2066,40",
+          "indra/newview/llviewershadermgr.cpp@4508,633",
+          "indra/newview/llviewershadermgr.cpp@5411,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -177069,17 +177263,17 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@364,10",
-          "indra/llrender/llshadermgr.cpp@391,9",
-          "indra/llrender/llshadermgr.cpp@435,15",
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@360,19",
+          "indra/llrender/llshadermgr.cpp@388,17",
+          "indra/llrender/llshadermgr.cpp@430,20",
+          "indra/llrender/llshadermgr.cpp@2258,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@437,89",
-          "indra/llrender/llshadermgr.h@589,396"
+          "indra/llrender/llshadermgr.h@439,89",
+          "indra/llrender/llshadermgr.h@591,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -177335,6 +177529,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -177347,30 +177542,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -177383,7 +177601,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -194819,7 +195038,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -195715,7 +195934,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
-          "indra/newview/app_settings/settings.xml@29324,2466"
+          "indra/newview/app_settings/settings.xml@29338,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -195880,10 +196099,10 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@170,11",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@1180,52",
-          "indra/newview/llviewershadermgr.cpp@2060,40",
-          "indra/newview/llviewershadermgr.cpp@2123,117"
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@1186,52",
+          "indra/newview/llviewershadermgr.cpp@2066,40",
+          "indra/newview/llviewershadermgr.cpp@2129,117"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -195895,13 +196114,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@1728,8"
+          "indra/llrender/llshadermgr.cpp@1810,8"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@125,8"
+          "indra/llrender/llshadermgr.h@127,8"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -196509,6 +196728,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -196521,30 +196741,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -196557,7 +196800,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",
@@ -209076,7 +209320,7 @@
       },
       {
         "file": "indra/llrender/CMakeLists.txt",
-        "line": 55,
+        "line": 56,
         "source": "indra/llrender/llshadermgr.h",
         "text": "llshadermgr.h"
       },
@@ -209761,9 +210005,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@29324,2466",
-          "indra/newview/app_settings/settings.xml@31791,209",
-          "indra/newview/app_settings/settings.xml@32001,364"
+          "indra/newview/app_settings/settings.xml@29338,2466",
+          "indra/newview/app_settings/settings.xml@31805,209",
+          "indra/newview/app_settings/settings.xml@32015,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -209877,13 +210121,13 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@275,47",
-          "indra/newview/llviewershadermgr.cpp@721,81",
-          "indra/newview/llviewershadermgr.cpp@987,31",
-          "indra/newview/llviewershadermgr.cpp@1381,26",
-          "indra/newview/llviewershadermgr.cpp@2004,46",
-          "indra/newview/llviewershadermgr.cpp@4502,633",
-          "indra/newview/llviewershadermgr.cpp@6037,115",
-          "indra/newview/llviewershadermgr.cpp@6871,30"
+          "indra/newview/llviewershadermgr.cpp@723,81",
+          "indra/newview/llviewershadermgr.cpp@993,31",
+          "indra/newview/llviewershadermgr.cpp@1387,26",
+          "indra/newview/llviewershadermgr.cpp@2010,46",
+          "indra/newview/llviewershadermgr.cpp@4508,633",
+          "indra/newview/llviewershadermgr.cpp@6043,115",
+          "indra/newview/llviewershadermgr.cpp@6877,30"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -209896,18 +210140,19 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@75,95",
-          "indra/llrender/llshadermgr.cpp@289,57",
-          "indra/llrender/llshadermgr.cpp@1643,13",
-          "indra/llrender/llshadermgr.cpp@2176,363"
+          "indra/llrender/llshadermgr.cpp@76,98",
+          "indra/llrender/llshadermgr.cpp@287,64",
+          "indra/llrender/llshadermgr.cpp@1725,13",
+          "indra/llrender/llshadermgr.cpp@2258,363",
+          "indra/llrender/llshadermgr.cpp@2629,383"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@51,13",
-          "indra/llrender/llshadermgr.h@589,396",
-          "indra/llrender/llshadermgr.h@994,30"
+          "indra/llrender/llshadermgr.h@53,13",
+          "indra/llrender/llshadermgr.h@591,396",
+          "indra/llrender/llshadermgr.h@990,44"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -209996,10 +210241,10 @@
       },
       {
         "hunks": [
-          "indra/llrender/llglslshader.cpp@454,16",
-          "indra/llrender/llglslshader.cpp@820,35",
-          "indra/llrender/llglslshader.cpp@1112,19",
-          "indra/llrender/llglslshader.cpp@2129,78"
+          "indra/llrender/llglslshader.cpp@457,19",
+          "indra/llrender/llglslshader.cpp@875,35",
+          "indra/llrender/llglslshader.cpp@1177,19",
+          "indra/llrender/llglslshader.cpp@2199,77"
         ],
         "path": "indra/llrender/llglslshader.cpp"
       },
@@ -210313,14 +210558,18 @@
           "LLGLSLShader::addConstant",
           "LLGLSLShader::addPermutation",
           "LLGLSLShader::attachFragmentObject",
+          "LLGLSLShader::attachFragmentObjectInternal",
           "LLGLSLShader::attachObject",
+          "LLGLSLShader::attachObjectInternal",
           "LLGLSLShader::attachObjects",
           "LLGLSLShader::attachVertexObject",
+          "LLGLSLShader::attachVertexObjectInternal",
           "LLGLSLShader::bind",
           "LLGLSLShader::bindTexture",
           "LLGLSLShader::clearPermutations",
           "LLGLSLShader::clearStats",
           "LLGLSLShader::createShader",
+          "LLGLSLShader::createShaderInternal",
           "LLGLSLShader::disableTexture",
           "LLGLSLShader::dumpStats",
           "LLGLSLShader::enableTexture",
@@ -210330,10 +210579,13 @@
           "LLGLSLShader::getTextureChannel",
           "LLGLSLShader::getUniformLocation",
           "LLGLSLShader::hash",
+          "LLGLSLShader::hashWithEpoch",
           "LLGLSLShader::initProfile",
           "LLGLSLShader::isCompute",
           "LLGLSLShader::link",
+          "LLGLSLShader::linkInternal",
           "LLGLSLShader::mapAttributes",
+          "LLGLSLShader::mapAttributesInternal",
           "LLGLSLShader::mapUniform",
           "LLGLSLShader::mapUniformTextureChannel",
           "LLGLSLShader::mapUniforms",
@@ -210502,6 +210754,7 @@
           "indra/llcommon/hbxxh.h",
           "indra/llcommon/linden_common.h",
           "indra/llcommon/llfile.h",
+          "indra/llcommon/llsdjson.h",
           "indra/llcommon/llsdserialize.h",
           "indra/llcommon/llsdutil.h",
           "indra/llfilesystem/lldir.h",
@@ -210514,30 +210767,53 @@
           "LLFile::remove",
           "LLSD::Integer",
           "LLSD::Real",
+          "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLSDSerialize::fromBinary",
           "LLSDSerialize::toBinary",
+          "LLShaderInjection::parse",
           "LLShaderMgr::LLShaderMgr",
+          "LLShaderMgr::assembledShaderStage",
           "LLShaderMgr::attachShaderFeatures",
+          "LLShaderMgr::attachShaderFeaturesInternal",
+          "LLShaderMgr::beginShaderAttempt",
+          "LLShaderMgr::beginShaderPass",
+          "LLShaderMgr::beginShaderStage",
           "LLShaderMgr::clearShaderCache",
           "LLShaderMgr::clearShaderObjects",
           "LLShaderMgr::computeShadersSupported",
+          "LLShaderMgr::configureShaderDiagnostics",
           "LLShaderMgr::dumpObjectLog",
           "LLShaderMgr::dumpShaderSource",
+          "LLShaderMgr::finishShaderAttempt",
+          "LLShaderMgr::finishShaderPass",
+          "LLShaderMgr::finishShaderStage",
           "LLShaderMgr::hashShaderCacheFeatures",
           "LLShaderMgr::initAttribsAndUniforms",
           "LLShaderMgr::initShaderCache",
+          "LLShaderMgr::injectShaderFailure",
+          "LLShaderMgr::injectShaderOverflow",
           "LLShaderMgr::instance",
           "LLShaderMgr::linkProgramObject",
+          "LLShaderMgr::linkProgramObjectInternal",
           "LLShaderMgr::loadCachedProgramBinary",
+          "LLShaderMgr::loadCachedProgramBinaryInternal",
           "LLShaderMgr::loadShaderFile",
+          "LLShaderMgr::loadShaderFileInternal",
+          "LLShaderMgr::openShaderEquivalence",
           "LLShaderMgr::ownsShaderObject",
           "LLShaderMgr::persistShaderCacheMetadata",
           "LLShaderMgr::prepareWeatherFeatures",
           "LLShaderMgr::readShaderSource",
+          "LLShaderMgr::rejectProgramBinary",
           "LLShaderMgr::saveCachedProgramBinary",
           "LLShaderMgr::shaderLanguageVersion",
+          "LLShaderMgr::snapshotShaderAttempt",
+          "LLShaderMgr::traceAttachment",
+          "LLShaderMgr::traceFeatureAttachment",
+          "LLShaderMgr::traceLink",
           "LLShaderMgr::validateProgramObject",
+          "LLShaderMgr::writeShaderRecord",
           "LLTimer::getTotalSeconds"
         ],
         "unresolved_includes": [
@@ -210550,7 +210826,8 @@
       "indra/llrender/llshadermgr.h": {
         "includes": [
           "indra/llrender/llgl.h",
-          "indra/llrender/llglslshader.h"
+          "indra/llrender/llglslshader.h",
+          "indra/llrender/llshaderdiagnostics.h"
         ],
         "qualified_call_candidates": [
           "ALCineHaze::bind",

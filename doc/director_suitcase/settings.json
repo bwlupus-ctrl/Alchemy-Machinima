@@ -33373,6 +33373,46 @@
   },
   {
     "change": "added",
+    "comment": "Write ordered shader equivalence records to the logs directory. Diagnostic command-line setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderShaderDumpEquivalence",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Shader failure injection entries separated by semicolons. Nonempty disables binary cache reads and writes for the run.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderShaderInjectFail",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "String"
+  },
+  {
+    "change": "added",
     "comment": "[AlphaShadowCap] Log capped-cascade draw-count verdicts every 64 frames and check for shadow draw filter leaks. Debug only.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

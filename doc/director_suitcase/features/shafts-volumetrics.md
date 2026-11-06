@@ -87,10 +87,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/viewer_manifest.py", "hunks": ["indra/newview/viewer_manifest.py@108,12"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1201,225"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@25,12", "indra/newview/lldrawpoolalpha.cpp@120,17"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@275,47", "indra/newview/llviewershadermgr.cpp@334,32", "indra/newview/llviewershadermgr.cpp@721,81", "indra/newview/llviewershadermgr.cpp@1381,26", "indra/newview/llviewershadermgr.cpp@1667,259", "indra/newview/llviewershadermgr.cpp@2004,46", "indra/newview/llviewershadermgr.cpp@2060,40", "indra/newview/llviewershadermgr.cpp@4502,633", "indra/newview/llviewershadermgr.cpp@5405,299"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@275,47", "indra/newview/llviewershadermgr.cpp@334,32", "indra/newview/llviewershadermgr.cpp@723,81", "indra/newview/llviewershadermgr.cpp@1387,26", "indra/newview/llviewershadermgr.cpp@1673,259", "indra/newview/llviewershadermgr.cpp@2010,46", "indra/newview/llviewershadermgr.cpp@2066,40", "indra/newview/llviewershadermgr.cpp@4508,633", "indra/newview/llviewershadermgr.cpp@5411,299"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@351,58", "indra/newview/llviewershadermgr.h@435,34"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@364,10", "indra/llrender/llshadermgr.cpp@391,9", "indra/llrender/llshadermgr.cpp@435,15", "indra/llrender/llshadermgr.cpp@2176,363"]}
-- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@437,89", "indra/llrender/llshadermgr.h@589,396"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@360,19", "indra/llrender/llshadermgr.cpp@388,17", "indra/llrender/llshadermgr.cpp@430,20", "indra/llrender/llshadermgr.cpp@2258,363"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@439,89", "indra/llrender/llshadermgr.h@591,396"]}
 - {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@749,175"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@70,296", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@588,23"]}
 - {"path": "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@130,9", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@140,7"]}
@@ -268,7 +268,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## cmake entries
 
 - {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
-- {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 56, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 340, "text": "alactormaskdiagnostics.cpp # [ActorMask] WP7", "source": "indra/newview/alactormaskdiagnostics.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 350, "text": "alcinehaze.cpp", "source": "indra/newview/alcinehaze.cpp"}

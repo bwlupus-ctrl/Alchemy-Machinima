@@ -101,7 +101,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@896,11", "indra/newview/CMakeLists.txt@1137,57", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@1892,13", "indra/newview/CMakeLists.txt@2851,32", "indra/newview/CMakeLists.txt@2889,20", "indra/newview/CMakeLists.txt@2957,186"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@21321,1113", "indra/newview/app_settings/settings.xml@29324,2466"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@21321,1113", "indra/newview/app_settings/settings.xml@29338,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@275,8", "indra/newview/llappviewer.cpp@1954,24", "indra/newview/llappviewer.cpp@4841,12", "indra/newview/llappviewer.cpp@4970,12", "indra/newview/llappviewer.cpp@5809,119", "indra/newview/llappviewer.cpp@5930,44", "indra/newview/llappviewer.cpp@6444,15", "indra/newview/llappviewer.cpp@6482,45"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@62,9", "indra/newview/alviewermenu.cpp@604,830"]}
@@ -118,10 +118,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/llplugin/llpluginclassmedia.cpp", "hunks": ["indra/llplugin/llpluginclassmedia.cpp@345,38", "indra/llplugin/llpluginclassmedia.cpp@832,65", "indra/llplugin/llpluginclassmedia.cpp@1196,76"]}
 - {"path": "indra/llplugin/llpluginclassmedia.h", "hunks": ["indra/llplugin/llpluginclassmedia.h@30,10", "indra/llplugin/llpluginclassmedia.h@74,18", "indra/llplugin/llpluginclassmedia.h@170,24", "indra/llplugin/llpluginclassmedia.h@517,13"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@170,11", "indra/newview/llviewershadermgr.cpp@721,81", "indra/newview/llviewershadermgr.cpp@1180,52", "indra/newview/llviewershadermgr.cpp@2060,40", "indra/newview/llviewershadermgr.cpp@2123,117"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@170,11", "indra/newview/llviewershadermgr.cpp@723,81", "indra/newview/llviewershadermgr.cpp@1186,52", "indra/newview/llviewershadermgr.cpp@2066,40", "indra/newview/llviewershadermgr.cpp@2129,117"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@280,14"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@1728,8"]}
-- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@125,8"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@1810,8"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@127,8"]}
 - {"path": "indra/newview/llpanelvolume.cpp", "hunks": ["indra/newview/llpanelvolume.cpp@25,13", "indra/newview/llpanelvolume.cpp@155,11", "indra/newview/llpanelvolume.cpp@424,8", "indra/newview/llpanelvolume.cpp@1069,118"]}
 - {"path": "indra/newview/llreflectionmapmanager.h", "hunks": ["indra/newview/llreflectionmapmanager.h@209,32"]}
 - {"path": "indra/newview/llsettingsvo.cpp", "hunks": ["indra/newview/llsettingsvo.cpp@39,8", "indra/newview/llsettingsvo.cpp@1261,15", "indra/newview/llsettingsvo.cpp@1299,35"]}
@@ -311,7 +311,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/llplugin/CMakeLists.txt", "line": 12, "text": "llpluginprocessparent.cpp", "source": "indra/llplugin/llpluginprocessparent.cpp"}
 - {"file": "indra/llplugin/CMakeLists.txt", "line": 25, "text": "llpluginprocessparent.h", "source": "indra/llplugin/llpluginprocessparent.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
-- {"file": "indra/llrender/CMakeLists.txt", "line": 55, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 56, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 14, "text": "llbutton.cpp", "source": "indra/llui/llbutton.cpp"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 22, "text": "llcontainerview.cpp", "source": "indra/llui/llcontainerview.cpp"}
