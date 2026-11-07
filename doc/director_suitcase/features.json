@@ -10952,8 +10952,8 @@
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@22976,412",
           "indra/newview/app_settings/settings.xml@23524,362",
-          "indra/newview/app_settings/settings.xml@29204,100",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@29215,100",
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -23061,6 +23061,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1023,
         "source": "indra/newview/llviewercontrol.cpp",
         "text": "llviewercontrol.cpp"
@@ -23246,10 +23252,10 @@
           "indra/newview/app_settings/settings.xml@5915,527",
           "indra/newview/app_settings/settings.xml@6443,120",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@27396,98",
-          "indra/newview/app_settings/settings.xml@27929,229",
-          "indra/newview/app_settings/settings.xml@29349,2466",
-          "indra/newview/app_settings/settings.xml@32026,364"
+          "indra/newview/app_settings/settings.xml@27407,98",
+          "indra/newview/app_settings/settings.xml@27940,229",
+          "indra/newview/app_settings/settings.xml@29360,2466",
+          "indra/newview/app_settings/settings.xml@32037,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -30771,6 +30777,52 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewercontrol.cpp": {
         "includes": [
           "indra/llaudio/llaudioengine.h",
@@ -34991,6 +35043,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1023,
         "source": "indra/newview/llviewercontrol.cpp",
         "text": "llviewercontrol.cpp"
@@ -35165,7 +35223,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -42333,6 +42391,52 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewercontrol.cpp": {
         "includes": [
           "indra/llaudio/llaudioengine.h",
@@ -47247,6 +47351,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1021,
         "source": "indra/newview/llviewercamera.cpp",
         "text": "llviewercamera.cpp"
@@ -47479,8 +47589,8 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@31816,209",
-          "indra/newview/app_settings/settings.xml@32026,364"
+          "indra/newview/app_settings/settings.xml@31827,209",
+          "indra/newview/app_settings/settings.xml@32037,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -62663,6 +62773,52 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewercamera.cpp": {
         "includes": [
           "indra/llcommon/lltracerecording.h",
@@ -68512,7 +68668,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@25668,1573"
+          "indra/newview/app_settings/settings.xml@25679,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -84641,8 +84797,8 @@
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@22976,412",
           "indra/newview/app_settings/settings.xml@23524,362",
-          "indra/newview/app_settings/settings.xml@29204,100",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@29215,100",
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -90561,10 +90717,10 @@
           "indra/newview/app_settings/settings.xml@5354,175",
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
-          "indra/newview/app_settings/settings.xml@28555,648",
-          "indra/newview/app_settings/settings.xml@29349,2466",
-          "indra/newview/app_settings/settings.xml@31816,209",
-          "indra/newview/app_settings/settings.xml@32026,364"
+          "indra/newview/app_settings/settings.xml@28566,648",
+          "indra/newview/app_settings/settings.xml@29360,2466",
+          "indra/newview/app_settings/settings.xml@31827,209",
+          "indra/newview/app_settings/settings.xml@32037,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -108788,9 +108944,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@25668,1573",
-          "indra/newview/app_settings/settings.xml@27819,109",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@25679,1573",
+          "indra/newview/app_settings/settings.xml@27830,109",
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -113350,7 +113506,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -120801,6 +120957,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1023,
         "source": "indra/newview/llviewercontrol.cpp",
         "text": "llviewercontrol.cpp"
@@ -120999,8 +121161,8 @@
           "indra/newview/app_settings/settings.xml@22976,412",
           "indra/newview/app_settings/settings.xml@23469,54",
           "indra/newview/app_settings/settings.xml@23997,164",
-          "indra/newview/app_settings/settings.xml@29349,2466",
-          "indra/newview/app_settings/settings.xml@32026,364"
+          "indra/newview/app_settings/settings.xml@29360,2466",
+          "indra/newview/app_settings/settings.xml@32037,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -132079,6 +132241,52 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewercontrol.cpp": {
         "includes": [
           "indra/llaudio/llaudioengine.h",
@@ -136951,6 +137159,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1023,
         "source": "indra/newview/llviewercontrol.cpp",
         "text": "llviewercontrol.cpp"
@@ -137182,7 +137396,7 @@
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
           "indra/newview/app_settings/settings.xml@22524,43",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -147417,6 +147631,52 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewercontrol.cpp": {
         "includes": [
           "indra/llaudio/llaudioengine.h",
@@ -153652,9 +153912,9 @@
           "indra/newview/app_settings/settings.xml@5915,527",
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
-          "indra/newview/app_settings/settings.xml@25668,1573",
-          "indra/newview/app_settings/settings.xml@27242,153",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@25679,1573",
+          "indra/newview/app_settings/settings.xml@27253,153",
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -167319,8 +167579,8 @@
           "indra/newview/app_settings/settings.xml@21321,1113",
           "indra/newview/app_settings/settings.xml@22568,407",
           "indra/newview/app_settings/settings.xml@22976,412",
-          "indra/newview/app_settings/settings.xml@25668,1573",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@25679,1573",
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -196466,6 +196726,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 2026,
         "source": "indra/newview/llviewercamera.h",
         "text": "llviewercamera.h"
@@ -196648,7 +196914,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@6564,14755",
           "indra/newview/app_settings/settings.xml@21321,1113",
-          "indra/newview/app_settings/settings.xml@29349,2466"
+          "indra/newview/app_settings/settings.xml@29360,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -207048,6 +207314,52 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewercamera.h": {
         "includes": [
           "indra/llcommon/llsingleton.h",
@@ -210576,6 +210888,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 994,
+        "source": "indra/newview/lltoolselect.cpp",
+        "text": "lltoolselect.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 2026,
         "source": "indra/newview/llviewercamera.h",
         "text": "llviewercamera.h"
@@ -210739,9 +211057,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3466",
           "indra/newview/app_settings/settings.xml@6564,14755",
-          "indra/newview/app_settings/settings.xml@29349,2466",
-          "indra/newview/app_settings/settings.xml@31816,209",
-          "indra/newview/app_settings/settings.xml@32026,364"
+          "indra/newview/app_settings/settings.xml@29360,2466",
+          "indra/newview/app_settings/settings.xml@31827,209",
+          "indra/newview/app_settings/settings.xml@32037,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -218434,6 +218752,52 @@
           "LLViewerParcelMedia::getInstance",
           "LLViewerParcelMgr::getInstance",
           "LLWeb::loadURL"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/lltoolselect.cpp": {
+        "includes": [
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llmenugl.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llfloaterscriptdebug.h",
+          "indra/newview/llhudicon.h",
+          "indra/newview/llmanip.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolselect.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermediafocus.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llworld.h",
+          "indra/newview/rlvactions.h",
+          "indra/newview/rlvmodifiers.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFloaterReg::instanceVisible",
+          "LLFloaterScriptDebug::show",
+          "LLSelectMgr::getInstance",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLToolMgr::instance",
+          "LLToolSelect::LLToolSelect",
+          "LLToolSelect::handleDeselect",
+          "LLToolSelect::handleMouseDown",
+          "LLToolSelect::handleMouseUp",
+          "LLToolSelect::handleObjectSelection",
+          "LLToolSelect::onMouseCaptureLost",
+          "LLToolSelect::stopEditing",
+          "LLVOAvatar::findAvatarFromAttachment",
+          "LLViewerMediaFocus::getInstance"
         ],
         "unresolved_includes": []
       },

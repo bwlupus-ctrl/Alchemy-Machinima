@@ -6,11 +6,55 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 734,
-      "HOOK": 526,
+      "HOOK": 528,
       "OWNED": 909,
       "TOOLING": 434
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_kit/gen_report.txt"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,14 +67,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "e2df06f3d3a4d17761dfc79313bd43b9ae3d036a1b9aa7680736bfec24c52f68",
+        "csv_sha256": "9b838df099de341d0c570ecd1b7b87fd28db20a62c40e2489a344e339d788e01",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4776,
+        "entries": 4778,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -72,9 +116,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2567,
+        "generated_kit_rows": 2568,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2163,
+        "interactive_rows": 2164,
         "pages": 39,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -117,7 +161,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3904,
+        "settings_declared": 3905,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -183,19 +227,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2289,
+        "independent_json_rows": 2290,
         "multi_page_settings": 21,
         "owner_roots": 36,
         "pages": 39,
-        "rows": 2289,
+        "rows": 2290,
         "unresolved_rows": 75
       },
-      "wiring_rows": 2289
+      "wiring_rows": 2290
     },
-    "head_source_tree": "9bff55b4af412857ae4c4e910c9257af12ded39e",
-    "hook_files": 526,
-    "hunks": 3274,
-    "input_sha256": "b1380d52bb186f6b90db96785754302476a681df2292183271aaa117c865a1f9",
+    "head_source_tree": "ef86fbe1ead7dd3c78901b1c35a2772c8e0e3315",
+    "hook_files": 528,
+    "hunks": 3276,
+    "input_sha256": "1cf2a92399fb61242d599248fefcd0ced13833889a4172c489cc27dc1bb89da1",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -203,7 +247,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2059
+    "settings": 2060
   },
   "paths": [
     {
@@ -30427,6 +30471,40 @@
       "git_status": "M",
       "layer": 2,
       "path": "indra/newview/lltoolpie.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "looks",
+        "rig",
+        "vcam",
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/lltoolselect.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/lltoolselect.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {

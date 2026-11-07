@@ -38249,6 +38249,26 @@
   },
   {
     "change": "added",
+    "comment": "When off, right-clicking an object or attachment no longer turns your avatar to face it; edit/build selection is unchanged.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "TurnToFaceRightClicked",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "[UIFit] On first open of each floater instance, warn once for panel overflow without usable scrolling and undersized scroll documents. One view-tree pass; no per-frame work.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

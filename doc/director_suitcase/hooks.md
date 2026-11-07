@@ -251,8 +251,7 @@ HEAD coordinates; guards/features are candidate evidence
 | 24173–24204 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 24206–24215 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 24217–24226 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24228–24259 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24261–24358 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLMapDestination |
+| 24228–24358 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLMapDestination |
 | 24360–24369 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 24371–24413 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 24415–24681 (n=267) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
@@ -264,39 +263,38 @@ HEAD coordinates; guards/features are candidate evidence
 | 24804–24813 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 24815–24935 (n=121) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 24937–24957 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24959–25446 (n=488) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits LLSD |
-| 25448–25479 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 25481–25534 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
-| 25536–25666 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 25668–27240 (n=1573) | unknown/non-function (declaration, XML, build list or global scope) | common-ui, environment, roto-tron, sensor | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
-| 27242–27394 (n=153) | unknown/non-function (declaration, XML, build list or global scope) | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits RenderOcclusionTimeout, RenderDelayVBUpdate |
-| 27396–27493 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | camera | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
-| 27495–27515 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 27517–27784 (n=268) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> End of back compatibility settings --> |
-| 27786–27817 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 27819–27927 (n=109) | unknown/non-function (declaration, XML, build list or global scope) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 27929–28157 (n=229) | unknown/non-function (declaration, XML, build list or global scope) | camera | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl |
-| 28159–28190 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28192–28212 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28214–28223 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28225–28245 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28247–28267 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28269–28300 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28302–28355 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28357–28410 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> |
-| 28412–28421 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28423–28487 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: End of back compatibility settings --> |
-| 28489–28531 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28533–28553 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28555–29202 (n=648) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl, RenderMaxTextureResolution |
-| 29204–29303 (n=100) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 29305–29314 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24959–25479 (n=521) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits LLSD |
+| 25481–25545 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
+| 25547–25677 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 25679–27251 (n=1573) | unknown/non-function (declaration, XML, build list or global scope) | common-ui, environment, roto-tron, sensor | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
+| 27253–27405 (n=153) | unknown/non-function (declaration, XML, build list or global scope) | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits RenderOcclusionTimeout, RenderDelayVBUpdate |
+| 27407–27504 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | camera | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
+| 27506–27526 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27528–27795 (n=268) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> End of back compatibility settings --> |
+| 27797–27828 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27830–27938 (n=109) | unknown/non-function (declaration, XML, build list or global scope) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27940–28168 (n=229) | unknown/non-function (declaration, XML, build list or global scope) | camera | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl |
+| 28170–28201 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28203–28223 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28225–28234 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28236–28256 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28258–28278 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28280–28311 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28313–28366 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28368–28421 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> |
+| 28423–28432 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28434–28498 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: End of back compatibility settings --> |
+| 28500–28542 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28544–28564 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28566–29213 (n=648) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl, RenderMaxTextureResolution |
+| 29215–29314 (n=100) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 29316–29325 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 29327–29336 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 29338–29347 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 29349–31814 (n=2466) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, capture-sidecar, crowd, director-shell, environment, gaze, looks, rig, roto-tron, sensor, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> [WebIdle] built-in web page idle cost --> Viewer-native cinematic weather. Master gate defaults off. --> </FSPoser> --> [TronT0] Tron effects package foundation: master enable, shared palette, [TronT1] Tron World: dark grade + world-space neon grid with travelling [ |
-| 31816–32024 (n=209) | unknown/non-function (declaration, XML, build list or global scope) | clones, director-shell, weather | creative-candidate | unknown; no local conditional evidence | Edits RenderDisableVintageMode |
-| 32026–32389 (n=364) | unknown/non-function (declaration, XML, build list or global scope) | camera, clones, director-shell, looks, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> </FSPoser> --> |
+| 29349–29358 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 29360–31825 (n=2466) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, capture-sidecar, crowd, director-shell, environment, gaze, looks, rig, roto-tron, sensor, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> [WebIdle] built-in web page idle cost --> Viewer-native cinematic weather. Master gate defaults off. --> </FSPoser> --> [TronT0] Tron effects package foundation: master enable, shared palette, [TronT1] Tron World: dark grade + world-space neon grid with travelling [ |
+| 31827–32035 (n=209) | unknown/non-function (declaration, XML, build list or global scope) | clones, director-shell, weather | creative-candidate | unknown; no local conditional evidence | Edits RenderDisableVintageMode |
+| 32037–32400 (n=364) | unknown/non-function (declaration, XML, build list or global scope) | camera, clones, director-shell, looks, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> </FSPoser> --> |
 
 ## Slice 1: `indra/newview/llappviewer.cpp`
 
@@ -6395,6 +6393,24 @@ HEAD coordinates; guards/features are candidate evidence
 | 828–839 (n=12) | LLToolPie::handleHover | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): no hover pick, hover object, hover parcel or media hover (each can message the simulator).  Belt and braces with LLViewerWindow::updateUI. |
 | 987–1016 (n=30) | needs_tooltip | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: <SK:Nexii> Restore the interactivity test SL-11532 removed so ShowAllObjectHoverTip is honored again </SK:Nexii> |
 | 1430–1436 (n=7) | LLToolPie::handleToolTip | unknown | unknown-review | unknown; conditional evidence present | Edits gViewerInput |
+| 2112–2118 (n=7) | LLToolPie::handleRightClickPick | unknown | unknown-review | unknown; no local conditional evidence | Edits LLToolSelect |
+
+## Slice 99: `indra/newview/lltoolselect.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 79–85 (n=7) | unknown/non-function (bool LLToolSelect::handleMouseDown(S32 x, S32 y, MASK mask)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLObjectSelectionHandle, LLToolSelect, LLPickInfo |
+| 225–233 (n=9) | LLToolSelect::handleObjectSelection | unknown | unknown-review | unknown; conditional evidence present | Edits gAgentCamera, LLCachedControl, gSavedSettings |
+
+## Slice 99: `indra/newview/lltoolselect.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 44–50 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSafeHandle, LLObjectSelection, LLPickInfo |
 
 ## Slice 99: `indra/newview/llvelopack.cpp`
 

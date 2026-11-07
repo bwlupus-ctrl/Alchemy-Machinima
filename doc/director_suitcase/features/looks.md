@@ -149,7 +149,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 - {"path": "indra/llui/llslider.h", "hunks": ["indra/llui/llslider.h@119,45"]}
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@1103,7", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2107,7", "indra/newview/CMakeLists.txt@2851,32"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@21321,1113", "indra/newview/app_settings/settings.xml@22436,76", "indra/newview/app_settings/settings.xml@22568,407", "indra/newview/app_settings/settings.xml@22976,412", "indra/newview/app_settings/settings.xml@23469,54", "indra/newview/app_settings/settings.xml@23997,164", "indra/newview/app_settings/settings.xml@29349,2466", "indra/newview/app_settings/settings.xml@32026,364"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@21321,1113", "indra/newview/app_settings/settings.xml@22436,76", "indra/newview/app_settings/settings.xml@22568,407", "indra/newview/app_settings/settings.xml@22976,412", "indra/newview/app_settings/settings.xml@23469,54", "indra/newview/app_settings/settings.xml@23997,164", "indra/newview/app_settings/settings.xml@29360,2466", "indra/newview/app_settings/settings.xml@32037,364"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@915,26", "indra/newview/llappviewer.cpp@1954,24", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5930,44", "indra/newview/llappviewer.cpp@6444,15"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@1123,296"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@44,9", "indra/newview/llstartup.cpp@1489,10"]}
@@ -710,6 +710,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 953, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 967, "text": "lltextureview.cpp", "source": "indra/newview/lltextureview.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 991, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 994, "text": "lltoolselect.cpp", "source": "indra/newview/lltoolselect.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1023, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1025, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1027, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}

@@ -78,7 +78,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@910,7", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@1908,8"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@29349,2466"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@29360,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5349,24"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1226,11", "indra/newview/llviewercontrol.cpp@1296,35"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2781,10", "indra/newview/app_settings/settings_alchemy.xml@2792,235"]}
@@ -306,6 +306,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1400, "text": "lltemporalframecontext.h", "source": "indra/newview/lltemporalframecontext.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 967, "text": "lltextureview.cpp", "source": "indra/newview/lltextureview.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 991, "text": "lltoolpie.cpp", "source": "indra/newview/lltoolpie.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 994, "text": "lltoolselect.cpp", "source": "indra/newview/lltoolselect.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1023, "text": "llviewercontrol.cpp", "source": "indra/newview/llviewercontrol.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1025, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1027, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}
