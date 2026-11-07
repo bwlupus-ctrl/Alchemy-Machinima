@@ -54,6 +54,7 @@ def build(tree, out, gl, extend=None):
             'bool LLGLSLShader::createShaderInternal(', 'bool LLGLSLShader::linkInternal(',
             'void LLGLSLShader::attachObjectInternal(', 'bool LLGLSLShader::mapAttributesInternal('))
     split_creation = 'LLGLSLShader::prepareShaderInternal(' in shader
+    parallel_creation = 'std::vector<LLShaderCompileJob>* pending' in shader
     if split_creation:
         methods += '\n' + '\n'.join(function(manager, signature) for signature in (
             'void LLShaderMgr::submitProgramLink(', 'bool LLShaderMgr::finishProgramLinkInternal('))
@@ -238,10 +239,41 @@ struct LLShaderMgr {''')
         job = function(header, 'struct ShaderCreationJob').replace('U64 generation', 'unsigned long long generation') + ';'
         prefix = '#include <memory>\n#include <optional>\n#include <utility>\nstruct LLShaderAttemptContext {};\n' + prefix
         prefix = prefix.replace('struct LLShaderMgr {', 'struct LLShaderMgr {\n struct ShaderAttemptScope { template<class T> ShaderAttemptScope(LLShaderMgr*, T&) {} };')
-        declarations = header[header.index('    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();'):header.index('\npublic:', header.index('struct ShaderCreationJob'))]
+        declaration_start = ('    template<bool diagnostics, bool batching = false> ShaderCreationJob prepareShaderInternal('
+                             if parallel_creation else '    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();')
+        declarations = header[header.index(declaration_start):header.index('\npublic:', header.index('struct ShaderCreationJob'))]
         prefix = prefix.replace('struct LLGLSLShader {', 'struct LLGLSLShader {\n' + job + '\n unsigned long long mShaderAttemptGeneration=0;\n' + declarations)
         prefix = prefix.replace(' bool linkProgramObject(GLuint,bool=false);',
             ' void submitProgramLink(GLuint);\n template<bool diagnostics> bool finishProgramLinkInternal(GLuint,bool,const std::string&);\n bool linkProgramObject(GLuint,bool=false);')
+    if parallel_creation:
+        # This host runs the serial specialization only. Supply the unused batch
+        # service types so the unchanged production template bodies still parse.
+        old_loader = function(manager, 'GLuint LLShaderMgr::loadShaderFileInternal(')
+        if 'std::vector<LLShaderCompileJob>* pending' not in old_loader:
+            # The identity test combines today's program lifecycle with the
+            # immutable historical loader. Adapt its signature only; retain
+            # every assembly/cache/GL statement in the historical body.
+            assert old_loader.count('S32 texture_index_channels)') == 1
+            adapted = old_loader.replace('template<bool diagnostics>', 'template<bool diagnostics, bool batching>', 1)
+            adapted = adapted.replace('S32 texture_index_channels)',
+                                      'S32 texture_index_channels, std::vector<LLShaderCompileJob>* pending)', 1)
+            assert methods.count(old_loader) == 1
+            methods = methods.replace(old_loader, adapted, 1)
+        prefix = '#include <set>\n' + prefix
+        prefix = prefix.replace('struct LLShaderMgr {', '''
+struct LLShaderCompileJob {
+ GLuint object=0;S32 resolved=0;bool submitted=false,forceFailure=false;
+ const char* outcome="not_attempted";int stage=0;
+};
+struct LLShaderMgr {
+ int mShaderStage=0;
+ struct BatchJournal { std::map<std::string,GLuint> compiledObjects;std::set<GLuint> issuedObjects; };
+ std::unique_ptr<BatchJournal> mShaderBatchJournal;
+''')
+        prefix = prefix.replace('template<bool diagnostics> GLuint loadShaderFileInternal(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32);',
+            'template<bool diagnostics, bool batching=false> GLuint loadShaderFileInternal(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32,std::vector<LLShaderCompileJob>* = nullptr);')
+        prefix = prefix.replace('template<bool diagnostics> bool loadCachedProgramBinaryInternal(LLGLSLShader* s)',
+            'template<bool diagnostics, bool batching=false> bool loadCachedProgramBinaryInternal(LLGLSLShader* s)')
     if 'LLGLSLShader::hashWithEpoch(' in shader:
         prefix = prefix.replace('LLUUID hash();', 'LLUUID hash();LLUUID hashWithEpoch(U32);')
     prefix = prefix.replace('CONTEXT_DECLARATION', declaration(tree.read('indra/llrender/llshadermgr.h'), 'sContextGeneration'))

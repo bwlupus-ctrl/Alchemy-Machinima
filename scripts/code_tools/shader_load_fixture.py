@@ -26,7 +26,7 @@ def run(root):
             ('saveCachedProgramBinary', '    ProgramBinaryData binary_info', 'true')):
         method = function(source, 'LLShaderMgr::' + name + ('Internal(' if name == 'loadCachedProgramBinary' else '('))
         if name == 'loadCachedProgramBinary':
-            method = method.replace('template<bool diagnostics>\n', '').replace('loadCachedProgramBinaryInternal(', 'loadCachedProgramBinary(')
+            method = method.replace('template<bool diagnostics, bool batching>\n', '').replace('loadCachedProgramBinaryInternal(', 'loadCachedProgramBinary(')
             method = method.replace('if constexpr (diagnostics)', 'if constexpr (false)')
         binary_guards += method[:method.index(boundary)] + '\n    ++binary_io; return ' + result + ';\n}\n'
     schema = re.search(r'SHADER_CACHE_SCHEMA\s*=\s*"([^"]+)"', header)[1]
@@ -372,3 +372,8 @@ int main(int argc,char** argv){
     assert key('look-b', roots, shared) == before['look-b']
     assert all(key(name, roots, shared + b' edit') != before[name] for name in roots)
     print('program-key model: root edit isolates its consumers; shared edit invalidates all PASS')
+
+
+if __name__ == '__main__':
+    from native_check_tools import ROOT
+    run(ROOT)

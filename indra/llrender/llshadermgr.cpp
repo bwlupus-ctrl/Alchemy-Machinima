@@ -115,6 +115,7 @@ bool LLShaderMgr::ownsShaderObject(GLuint object) const
 {
     for (const auto& entry : mShaderObjects)
         if (entry.second == object) return true;
+    if (mShaderBatchJournal && mShaderBatchJournal->issuedObjects.count(object)) return true;
     return false;
 }
 
@@ -649,15 +650,32 @@ void LLShaderMgr::dumpObjectLog(GLuint ret, bool warns, const std::string& filen
     }
  }
 
-template<bool diagnostics>
-GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines, S32 texture_index_channels)
+template<bool diagnostics, bool batching>
+GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines, S32 texture_index_channels, std::vector<LLShaderCompileJob>* pending)
 {
     const S32 requested_level = shader_level;
+    bool deferred_submitted = false;
+    bool deferred_failure = false;
+    auto finish_stage = [&](bool success, S32 resolved, GLuint object = 0, const char* outcome = "not_attempted")
+    {
+        if constexpr (batching)
+        {
+            LLShaderCompileJob stage;
+            stage.object = object;
+            stage.resolved = resolved;
+            stage.submitted = deferred_submitted;
+            stage.forceFailure = deferred_failure;
+            stage.outcome = outcome;
+            if constexpr (diagnostics) stage.stage = mShaderStage;
+            pending->push_back(std::move(stage));
+        }
+        else if constexpr (diagnostics) finishShaderStage(success, resolved, object, outcome);
+    };
     if constexpr (diagnostics) beginShaderStage(filename, type, requested_level);
     if (type == LLGLSLShader::COMPUTE_STAGE && !computeShadersSupported())
     {
         LL_WARNS("ShaderLoading") << "Compute unavailable: GL 4.3, SSBO, image and barrier support required" << LL_ENDL;
-        if constexpr (diagnostics) finishShaderStage(false, shader_level);
+        finish_stage(false, shader_level);
         return 0;
     }
 
@@ -676,7 +694,7 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
     if (filename.empty())
     {
         LL_WARNS("ShaderLoading") << "tried loading empty filename" << LL_ENDL;
-        if constexpr (diagnostics) finishShaderStage(false, shader_level);
+        finish_stage(false, shader_level);
         return 0;
     }
 
@@ -754,7 +772,7 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
         {
             LL_WARNS("ShaderLoading") << "GLSL Shader file not found: " << open_file_name << LL_ENDL;
         }
-        if constexpr (diagnostics) finishShaderStage(false, shader_level);
+        finish_stage(false, shader_level);
         return 0;
     }
 
@@ -1109,16 +1127,22 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
 
     }
     auto cached = mShaderObjects.find(object_key);
+    GLuint cached_object = cached != mShaderObjects.end() ? cached->second : 0;
+    if constexpr (batching)
+    {
+        const auto pending_object = mShaderBatchJournal->compiledObjects.find(object_key);
+        if (pending_object != mShaderBatchJournal->compiledObjects.end()) cached_object = pending_object->second;
+    }
     bool force_compile_failure = false;
     if constexpr (diagnostics) force_compile_failure = injectShaderFailure("compile", filename, requested_level);
-    if (cached != mShaderObjects.end() && !force_compile_failure)
+    if (cached_object && !force_compile_failure)
     {
         for (GLuint i = 0; i < shader_code_count; ++i) free(shader_code_text[i]);
-        if (type == GL_VERTEX_SHADER) mVertexShaderObjects[filename] = cached->second;
-        if (type == GL_FRAGMENT_SHADER) mFragmentShaderObjects[filename] = cached->second;
+        if (type == GL_VERTEX_SHADER) mVertexShaderObjects[filename] = cached_object;
+        if (type == GL_FRAGMENT_SHADER) mFragmentShaderObjects[filename] = cached_object;
         shader_level = try_gpu_class;
-        if constexpr (diagnostics) finishShaderStage(true, shader_level, cached->second, "reused");
-        return cached->second;
+        finish_stage(true, shader_level, cached_object, "reused");
+        return cached_object;
     }
 
     bool compiled = false;
@@ -1172,8 +1196,13 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
         //check for errors
         LL_DEBUGS("ShaderLoading") << "glCompileShader done" << U32(ret) << LL_ENDL;
         GLint success = GL_TRUE;
-        glGetShaderiv(ret, GL_COMPILE_STATUS, &success);
-        if constexpr (diagnostics) if (force_compile_failure) success = GL_FALSE;
+        if constexpr (batching)
+        {
+            deferred_submitted = true;
+            deferred_failure = force_compile_failure;
+        }
+        else glGetShaderiv(ret, GL_COMPILE_STATUS, &success);
+        if constexpr (diagnostics && !batching) if (force_compile_failure) success = GL_FALSE;
 
         error = glGetError();
         if (error != GL_NO_ERROR || success == GL_FALSE)
@@ -1199,12 +1228,17 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
         free(shader_code_text[i]);
     }
 
-    if constexpr (diagnostics) finishShaderStage(ret != 0, ret ? try_gpu_class : shader_level, ret, compiled ? (ret ? "compiled" : "failed") : "not_attempted");
+    finish_stage(ret != 0, ret ? try_gpu_class : shader_level, ret, compiled ? (ret ? "compiled" : "failed") : "not_attempted");
 
     //successfully loaded, save results
     if (ret)
     {
-        mShaderObjects[object_key] = ret;
+        if constexpr (batching)
+        {
+            mShaderBatchJournal->compiledObjects[object_key] = ret;
+            mShaderBatchJournal->issuedObjects.insert(ret);
+        }
+        else mShaderObjects[object_key] = ret;
         // Add shader file to map
         if (type == GL_VERTEX_SHADER) {
             mVertexShaderObjects[filename] = ret;
@@ -1216,7 +1250,7 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
     }
     else
     {
-        if (shader_level > 1)
+        if (!batching && shader_level > 1)
         {
             shader_level--;
             return loadShaderFileInternal<diagnostics>(filename, shader_level, type, defines, texture_index_channels);
@@ -1234,8 +1268,8 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32& level, GLen
     if (mShaderDiagnosticsEnabled) return loadShaderFileInternal<true>(filename, level, type, defines, channels);
     return loadShaderFileInternal<false>(filename, level, type, defines, channels);
 }
-template GLuint LLShaderMgr::loadShaderFileInternal<true>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32);
-template GLuint LLShaderMgr::loadShaderFileInternal<false>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32);
+template GLuint LLShaderMgr::loadShaderFileInternal<true, false>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32, std::vector<LLShaderCompileJob>*);
+template GLuint LLShaderMgr::loadShaderFileInternal<false, false>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32, std::vector<LLShaderCompileJob>*);
 
 
 void LLShaderMgr::submitProgramLink(GLuint obj)
@@ -1585,7 +1619,7 @@ void LLShaderMgr::persistShaderCacheMetadata()
     outstream.close();
 }
 
-template<bool diagnostics>
+template<bool diagnostics, bool batching>
 bool LLShaderMgr::loadCachedProgramBinaryInternal(LLGLSLShader* shader)
 {
     if constexpr (diagnostics)
@@ -1645,6 +1679,11 @@ bool LLShaderMgr::loadCachedProgramBinaryInternal(LLGLSLShader* shader)
 
                     error = glGetError();
                     GLint success = GL_TRUE;
+                    if constexpr (batching)
+                    {
+                        mShaderBatchJournal->binaryErrors[shader->mProgramObject] = error;
+                        return true; // Issued binary; validation belongs to the barrier.
+                    }
                     glGetProgramiv(shader->mProgramObject, GL_LINK_STATUS, &success);
                     if (error == GL_NO_ERROR && success == GL_TRUE)
                     {
@@ -1666,8 +1705,8 @@ bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
 {
     return loadCachedProgramBinaryInternal<false>(shader);
 }
-template bool LLShaderMgr::loadCachedProgramBinaryInternal<true>(LLGLSLShader*);
-template bool LLShaderMgr::loadCachedProgramBinaryInternal<false>(LLGLSLShader*);
+template bool LLShaderMgr::loadCachedProgramBinaryInternal<true, false>(LLGLSLShader*);
+template bool LLShaderMgr::loadCachedProgramBinaryInternal<false, false>(LLGLSLShader*);
 
 
 bool LLShaderMgr::saveCachedProgramBinary(LLGLSLShader* shader)
@@ -2697,6 +2736,11 @@ bool LLShaderMgr::injectShaderFailure(const std::string& kind, const std::string
 
 bool LLShaderMgr::rejectProgramBinary(LLGLSLShader* shader, const std::string& cache_path)
 {
+    if (mShaderBatchJournal)
+    {
+        mShaderBatchJournal->failed = true;
+        return false; // Replay serially before modifying the rejected disk entry.
+    }
     // Used by both real binary rejection and the synthetic rejection. Injection
     // never reads a binary, touches metadata, or removes a cache entry.
     LL_INFOS() << "Failed to load cached binary for shader: " << shader->mName << " falling back to compilation" << LL_ENDL;
@@ -3026,6 +3070,11 @@ void LLShaderMgr::writeShaderRecord(LLSD record)
 {
     if (!mShaderDumpRequested) return;
     if (!record.has("pass")) record["pass"] = mShaderPassNumber;
+    if (mShaderBatchJournal)
+    {
+        mShaderBatchJournal->records.push_back(std::move(record));
+        return;
+    }
     if (mShaderEquivalence.is_open())
     {
         mShaderEquivalence << LlsdToJson(record) << '\n' << std::flush;
@@ -3055,3 +3104,71 @@ void LLShaderMgr::finishShaderPass()
     writeShaderRecord(record);
     mShaderPassActive = false;
 }
+
+template GLuint LLShaderMgr::loadShaderFileInternal<true, true>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32, std::vector<LLShaderCompileJob>*);
+template GLuint LLShaderMgr::loadShaderFileInternal<false, true>(const std::string&, S32&, GLenum, std::map<std::string, std::string>*, S32, std::vector<LLShaderCompileJob>*);
+
+void LLShaderMgr::beginShaderBatch()
+{
+    llassert_always(!mShaderBatchJournal);
+    llassert_always(mShaderAttemptsActive == 0);
+    // Keep cache metadata even when diagnostics are disabled: speculative saves
+    // must not turn a serial replay into a binary-cache hit.
+    mShaderBatchJournal = std::make_unique<ShaderBatchJournal>();
+    auto& saved = *mShaderBatchJournal;
+    saved.binaries = mShaderBinaryCache;
+    saved.avatarAttachments = sAvatarLightResponseAttachCount;
+    if (!mShaderDiagnosticsEnabled) return;
+    openShaderEquivalence();
+    saved.attempts = mShaderAttemptNumbers;
+    saved.objects = mDiagnosticObjects;
+    saved.injections = mShaderInjections;
+    saved.programs = mShaderPassPrograms;
+    saved.modules = mShaderPassModules;
+    saved.pass = mShaderPassNumber;
+    saved.passActive = mShaderPassActive;
+    saved.stage = mShaderStage;
+}
+
+void LLShaderMgr::endShaderBatch(bool success)
+{
+    auto saved = std::move(mShaderBatchJournal);
+    llassert_always(saved);
+    if (!success)
+    {
+        mShaderBinaryCache = std::move(saved->binaries);
+        sAvatarLightResponseAttachCount = saved->avatarAttachments;
+        if (!mShaderDiagnosticsEnabled) return;
+        llassert_always(mShaderAttemptsActive == 0);
+        mShaderAttemptNumbers = std::move(saved->attempts);
+        mDiagnosticObjects = std::move(saved->objects);
+        mShaderInjections = std::move(saved->injections);
+        mShaderPassPrograms = saved->programs;
+        mShaderPassModules = saved->modules;
+        mShaderPassNumber = saved->pass;
+        mShaderPassActive = saved->passActive;
+        mShaderStage = saved->stage;
+        mShaderStageOwnsPass = false;
+    }
+    else for (auto& record : saved->records) writeShaderRecord(std::move(record));
+}
+
+template<bool diagnostics>
+bool LLShaderMgr::finishBatchBinary(LLGLSLShader* shader)
+{
+    GLint success = GL_FALSE;
+    glGetProgramiv(shader->mProgramObject, GL_LINK_STATUS, &success);
+    if (mShaderBatchJournal->binaryErrors.at(shader->mProgramObject) != GL_NO_ERROR || success != GL_TRUE)
+    {
+        mShaderBatchJournal->failed = true;
+        return false;
+    }
+    if constexpr (diagnostics) mShaderAttempt["binary_outcome"] = "accepted";
+    mShaderBinaryCache.at(shader->mShaderHash).mLastUsedTime = (F32)LLTimer::getTotalSeconds();
+    LL_INFOS() << "Loaded cached binary for shader: " << shader->mName << LL_ENDL;
+    return true;
+}
+template bool LLShaderMgr::finishBatchBinary<true>(LLGLSLShader*);
+template bool LLShaderMgr::finishBatchBinary<false>(LLGLSLShader*);
+template bool LLShaderMgr::loadCachedProgramBinaryInternal<true, true>(LLGLSLShader*);
+template bool LLShaderMgr::loadCachedProgramBinaryInternal<false, true>(LLGLSLShader*);

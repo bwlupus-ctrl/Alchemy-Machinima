@@ -1633,6 +1633,7 @@ void LLGLManager::reloadExtensionsString()
 
 void LLGLManager::initExtensions()
 {
+    mParallelShaderCompilerConfigured = false;
     reloadExtensionsString();
 
     // NOTE: version checks against mGLVersion should bias down by 0.01 because of F32 errors
@@ -3101,3 +3102,31 @@ extern "C"
 #endif
 
 
+
+// Resolve on demand so disabling the setting retains the original GL sequence.
+bool LLGLManager::enableParallelShaderCompile()
+{
+#if !LL_DARWIN
+    if (mParallelShaderCompilerConfigured) return true;
+    using CompilerThreads = void (APIENTRY *)(GLuint);
+    auto resolve = [](const char* name) -> CompilerThreads
+    {
+        auto entry = LL_GET_PROC_ADDRESS(name);
+        const auto address = reinterpret_cast<std::uintptr_t>(entry);
+        if (address <= 3 || address == static_cast<std::uintptr_t>(-1)) return nullptr;
+        return reinterpret_cast<CompilerThreads>(entry);
+    };
+    CompilerThreads compiler_threads = nullptr;
+    if (mGLExtensions.contains("GL_KHR_parallel_shader_compile"))
+        compiler_threads = resolve("glMaxShaderCompilerThreadsKHR");
+    if (!compiler_threads && mGLExtensions.contains("GL_ARB_parallel_shader_compile"))
+        compiler_threads = resolve("glMaxShaderCompilerThreadsARB");
+    if (compiler_threads)
+    {
+        compiler_threads(0xFFFFFFFFu);
+        mParallelShaderCompilerConfigured = true;
+        return true;
+    }
+#endif
+    return false;
+}

@@ -168,6 +168,8 @@ int main() {
     print(result.stdout, end='')
     assert result.returncode == 0, result.stderr
     native_failure_paths(directory)
+    from shader_parallel_fixture import run as parallel_checks
+    parallel_checks(directory)
     from shader_diagnostics_fixture import run
     run(directory)
     check_log_messages()

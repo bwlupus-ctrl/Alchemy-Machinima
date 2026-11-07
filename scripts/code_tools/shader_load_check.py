@@ -26,12 +26,13 @@ REGION = 'indra/newview/llviewerregion.cpp'
 SHADERS = 'indra/newview/app_settings/shaders'
 PINS = 'scripts/code_tools/shader_load_epochs.json'
 SETTINGS = 'indra/newview/app_settings/settings.xml'
-INPUTS = (MGR, HEADER, GLSL, VIEWER, HERO, REGION, SETTINGS, 'indra/llrender/llglslshader.h', 'indra/llrender/llshaderdiagnostics.h')
+INPUTS = ('indra/llrender/llgl.cpp', 'indra/llrender/llgl.h', MGR, HEADER, GLSL, VIEWER, HERO, REGION, SETTINGS, 'indra/llrender/llglslshader.h', 'indra/llrender/llshaderdiagnostics.h')
 # Whole routines, including call/attachment order and all generated text. Header
 # pinning also covers feature representation and inline helpers. The source-site
 # inventory below rejects new injection/attachment sites outside these regions.
 REGIONS = {
-    MGR: ('LLShaderMgr::shaderLanguageVersion(', 'LLShaderMgr::prepareWeatherFeatures(',
+    'indra/llrender/llgl.cpp': ('LLGLManager::enableParallelShaderCompile(', 'LLGLManager::initExtensions('),
+    MGR: ('LLShaderMgr::ownsShaderObject(', 'LLShaderMgr::beginShaderBatch(', 'LLShaderMgr::endShaderBatch(', 'LLShaderMgr::finishBatchBinary(', 'LLShaderMgr::shaderLanguageVersion(', 'LLShaderMgr::prepareWeatherFeatures(',
           'LLShaderMgr::attachShaderFeatures(', 'LLShaderMgr::attachShaderFeaturesInternal(', 'LLShaderMgr::loadShaderFile(', 'LLShaderMgr::loadShaderFileInternal(',
           'LLShaderMgr::linkProgramObject(', 'LLShaderMgr::linkProgramObjectInternal(', 'LLShaderMgr::submitProgramLink(', 'LLShaderMgr::finishProgramLinkInternal(', 'LLShaderMgr::readShaderSource(', 'shader_source_has_main(',
           'shader_shared_source_fingerprint(', 'LLShaderMgr::hashShaderCacheFeatures(',
@@ -46,11 +47,15 @@ REGIONS = {
           'LLShaderMgr::traceAttachment(', 'LLShaderMgr::traceFeatureAttachment(',
           'LLShaderMgr::traceLink(', 'LLShaderMgr::injectShaderFailure(',
           'LLShaderMgr::injectShaderOverflow(', 'LLShaderMgr::finishShaderAttempt('),
-    GLSL: ('LLGLSLShader::unloadInternal(', 'LLGLSLShader::createShader(', 'LLGLSLShader::createShaderInternal(', 'LLGLSLShader::prepareShaderInternal(', 'LLGLSLShader::submitShaderInternal(', 'LLGLSLShader::finishShaderInternal(', 'LLGLSLShader::attachVertexObject(', 'LLGLSLShader::attachVertexObjectInternal(',
+    GLSL: ('LLGLSLShader::finishShaderCompiles(', 'LLGLSLShader::ShaderBatch::ShaderBatch(',
+           'LLGLSLShader::ShaderBatch::~ShaderBatch(', 'LLGLSLShader::ShaderBatch::addInternal(',
+           'LLGLSLShader::ShaderBatch::add(', 'LLGLSLShader::ShaderBatch::finishInternal(',
+           'LLGLSLShader::ShaderBatch::finish(', 'LLGLSLShader::unloadInternal(', 'LLGLSLShader::createShader(', 'LLGLSLShader::createShaderInternal(', 'LLGLSLShader::prepareShaderInternal(', 'LLGLSLShader::submitShaderInternal(', 'LLGLSLShader::finishShaderInternal(', 'LLGLSLShader::attachVertexObject(', 'LLGLSLShader::attachVertexObjectInternal(',
            'LLGLSLShader::attachFragmentObject(', 'LLGLSLShader::attachFragmentObjectInternal(', 'LLGLSLShader::attachObject(', 'LLGLSLShader::attachObjectInternal(',
            'LLGLSLShader::attachObjects(', 'LLGLSLShader::mapAttributes(', 'LLGLSLShader::mapAttributesInternal(', 'LLGLSLShader::bindAttributes(', 'LLGLSLShader::readAttributes(',
            'LLGLSLShader::link(', 'LLGLSLShader::linkInternal(', 'LLGLSLShader::submitLink(', 'LLGLSLShader::finishLinkInternal(', 'LLGLSLShader::hash(', 'LLGLSLShader::hashWithEpoch('),
-    VIEWER: ('LLViewerShaderMgr::LLViewerShaderMgr(', 'LLViewerShaderMgr::setShaders(', 'LLViewerShaderMgr::loadBasicShaders('),
+    VIEWER: ('create_family_shader(', 'after_shader_family(', 'create_family_rigged(',
+             'LLViewerShaderMgr::loadShadersDeferred(', 'LLViewerShaderMgr::LLViewerShaderMgr(', 'LLViewerShaderMgr::setShaders(', 'LLViewerShaderMgr::loadBasicShaders('),
 }
 CPP_TOKENS = re.compile(
     r'R"(?P<delimiter>[^\s()\\]{0,16})\([\s\S]*?\)(?P=delimiter)"'
@@ -88,7 +93,7 @@ def region_digest(files):
     for path, names in REGIONS.items():
         for name in names:
             digest.update((path + '\n' + name + '\n' + function(files[path], name) + '\n').encode())
-    for path in (HEADER, 'indra/llrender/llglslshader.h', 'indra/llrender/llshaderdiagnostics.h'):
+    for path in (HEADER, 'indra/llrender/llglslshader.h', 'indra/llrender/llshaderdiagnostics.h', 'indra/llrender/llgl.h'):
         source = re.sub(r'(SHADER_CACHE_EPOCH\s*=\s*)\d+', r'\1EPOCH', files[path])
         digest.update((path + '\n' + source).encode())
     return digest.hexdigest()
@@ -195,15 +200,16 @@ def source_errors(files, shaders, pins):
         errors.append('failure injection must also disable an already initialized binary cache')
     try:
         items = list(ET.fromstring(files[SETTINGS]).find('map'))
-        for name, kind, default in (('RenderShaderDumpEquivalence', 'Boolean', '0'),
-                                    ('RenderShaderInjectFail', 'String', '')):
+        for name, kind, default, persist in (('RenderShaderDumpEquivalence', 'Boolean', '0', '0'),
+                                             ('RenderShaderInjectFail', 'String', '', '0'),
+                                             ('RenderParallelShaderCompile', 'Boolean', '0', '1')):
             matches = [value for key, value in zip(items[::2], items[1::2]) if key.text == name]
             if len(matches) != 1:
                 errors.append('diagnostic setting must be declared exactly once: ' + name)
                 continue
             entries = list(matches[0])
             metadata = {key.text: value.text or '' for key, value in zip(entries[::2], entries[1::2])}
-            if metadata.get('Type') != kind or metadata.get('Value') != default or metadata.get('Persist') != '0':
+            if metadata.get('Type') != kind or metadata.get('Value') != default or metadata.get('Persist') != persist:
                 errors.append('invalid diagnostic setting type/default/Persist: ' + name)
     except (ET.ParseError, TypeError):
         errors.append('malformed diagnostic settings document')
@@ -274,7 +280,7 @@ def unpinned_sites(path, source):
     source = mask(source)
     # Explicit instantiation declarations have no executable body. Do not
     # confuse these with calls to the newly pinned compile-time entry points.
-    source = re.sub(r'^template (?:bool|void|GLuint) LL(?:ShaderMgr|GLSLShader)::\w+Internal<(?:true|false)>\([^;{}]*\);$',
+    source = re.sub(r'^template (?:bool|void|GLuint) LL(?:ShaderMgr|GLSLShader)::\w+Internal<(?:true|false)(?:, (?:true|false))?>\([^;{}]*\);$',
                     '', source, flags=re.M)
     if path == 'indra/llrender/llgl.cpp':
         # Exact GL entry-point storage declarations and loader assignments,
@@ -405,6 +411,11 @@ def selftest(quiet=False):
         structural.append((name + ' persists', SETTINGS, declaration,
                            declaration.replace('<key>Persist</key><integer>0</integer>',
                                                '<key>Persist</key><integer>1</integer>')))
+    parallel = re.search(r'<key>RenderParallelShaderCompile</key>\s*<map>[\s\S]*?</map>', files[SETTINGS])[0]
+    structural.extend([
+        ('parallel defaults on', SETTINGS, parallel, parallel.replace('<key>Value</key>\n      <integer>0</integer>', '<key>Value</key>\n      <integer>1</integer>')),
+        ('parallel not persistent', SETTINGS, parallel, parallel.replace('<key>Persist</key>\n      <integer>1</integer>', '<key>Persist</key>\n      <integer>0</integer>')),
+    ])
     for label, path, old, new in structural:
         assert old in files[path], 'fixture anchor missing: ' + label
         changed = dict(files)
@@ -430,7 +441,7 @@ def selftest(quiet=False):
         for failure in failures:
             print(failure, file=sys.stderr)
     elif not quiet:
-        print('shader_load_check selftest: 38 planted regressions rejected; epoch transition checked')
+        print('shader_load_check selftest: 40 planted regressions rejected; epoch transition checked')
     return 1 if failures else 0
 
 

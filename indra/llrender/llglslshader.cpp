@@ -438,8 +438,8 @@ bool LLGLSLShader::isCompute() const
     return mShaderFiles.size() == 1 && mShaderFiles.front().second == COMPUTE_STAGE;
 }
 
-template<bool diagnostics>
-LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal()
+template<bool diagnostics, bool batching>
+LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal(std::vector<LLShaderCompileJob>* pending)
 {
     ShaderCreationJob job(this);
 
@@ -487,7 +487,7 @@ LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal()
 
     // The retrievable hint remains inside this cache attempt, before source
     // compilation, to preserve the original GL call order on hits and misses.
-    mUsingBinaryProgram = mgr->loadCachedProgramBinaryInternal<diagnostics>(this);
+    mUsingBinaryProgram = mgr->loadCachedProgramBinaryInternal<diagnostics, batching>(this);
 
     if (!mUsingBinaryProgram)
     {
@@ -499,11 +499,11 @@ LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal()
         vector< pair<string, GLenum> >::iterator fileIter = mShaderFiles.begin();
         for (; fileIter != mShaderFiles.end(); fileIter++)
         {
-            GLuint shaderhandle = mgr->loadShaderFileInternal<diagnostics>((*fileIter).first, mShaderLevel, (*fileIter).second, &mDefines, mFeatures.mIndexedTextureChannels);
+            GLuint shaderhandle = mgr->loadShaderFileInternal<diagnostics, batching>((*fileIter).first, mShaderLevel, (*fileIter).second, &mDefines, mFeatures.mIndexedTextureChannels, pending);
             LL_DEBUGS("ShaderLoading") << "SHADER FILE: " << (*fileIter).first << " mShaderLevel=" << mShaderLevel << LL_ENDL;
             if (shaderhandle)
             {
-                attachObjectInternal<diagnostics>(shaderhandle);
+                if constexpr (!batching) attachObjectInternal<diagnostics>(shaderhandle);
             }
             else
             {
@@ -513,7 +513,7 @@ LLGLSLShader::ShaderCreationJob LLGLSLShader::prepareShaderInternal()
     }
 
     // Attach existing objects
-    if (!isCompute() && !mgr->attachShaderFeaturesInternal<diagnostics>(this))
+    if (!batching && !isCompute() && !mgr->attachShaderFeaturesInternal<diagnostics>(this))
     {
         if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
         unloadInternal();
@@ -541,7 +541,7 @@ void LLGLSLShader::submitShaderInternal(ShaderCreationJob& job)
     job.state = ShaderCreationJob::State::submitted;
 }
 
-template<bool diagnostics>
+template<bool diagnostics, bool batching>
 bool LLGLSLShader::finishShaderInternal(ShaderCreationJob& job)
 {
     llassert_always(job.owner == this && job.state == ShaderCreationJob::State::submitted);
@@ -565,7 +565,7 @@ bool LLGLSLShader::finishShaderInternal(ShaderCreationJob& job)
         LL_SHADER_LOADING_WARNS() << "Failed to link shader: " << mName << LL_ENDL;
 
         // Try again using a lower shader level;
-        if (!isCompute() && mShaderLevel > 0)
+        if (!batching && !isCompute() && mShaderLevel > 0)
         {
             LL_SHADER_LOADING_WARNS() << "Failed to link using shader level " << mShaderLevel << " trying again using shader level " << (mShaderLevel - 1) << LL_ENDL;
             if constexpr (diagnostics) mgr->finishShaderAttempt(this, false);
@@ -2358,3 +2358,128 @@ template bool LLGLSLShader::attachFragmentObjectInternal<false>(std::string);
 
 template void LLGLSLShader::attachObjectInternal<true>(GLuint);
 template void LLGLSLShader::attachObjectInternal<false>(GLuint);
+
+// All family compiles are already in flight before the first status read.
+// Attach and link in logical order, then resolve every link in logical order.
+template<bool diagnostics>
+bool LLGLSLShader::finishShaderCompiles(ShaderCreationJob& job, const std::vector<LLShaderCompileJob>& roots)
+{
+    auto* mgr = LLShaderMgr::instance();
+    std::optional<LLShaderMgr::ShaderAttemptScope> context;
+    if constexpr (diagnostics) context.emplace(mgr, job.context);
+    llassert_always(job.owner == this);
+    if (job.state == ShaderCreationJob::State::failed) return false;
+    llassert_always(job.state == ShaderCreationJob::State::prepared);
+    llassert_always(job.program == mProgramObject && job.generation == mShaderAttemptGeneration);
+    if (mUsingBinaryProgram) job.success = mgr->finishBatchBinary<diagnostics>(this);
+    for (const auto& root : roots)
+    {
+        GLint success = root.object ? GL_TRUE : GL_FALSE;
+        if (root.object)
+        {
+            glGetShaderiv(root.object, GL_COMPILE_STATUS, &success);
+            if (glGetError() != GL_NO_ERROR || root.forceFailure) success = GL_FALSE;
+        }
+        if constexpr (diagnostics)
+        {
+            mgr->restoreShaderStage(root.stage);
+            mgr->finishShaderStage(success != GL_FALSE, root.resolved, root.object,
+                success ? root.outcome : "failed");
+        }
+        if (success) attachObjectInternal<diagnostics>(root.object);
+        else job.success = false;
+    }
+    if (!isCompute() && !mgr->attachShaderFeaturesInternal<diagnostics>(this)) job.success = false;
+    return job.success;
+}
+
+LLGLSLShader::ShaderBatch::ShaderBatch()
+{
+    auto* mgr = LLShaderMgr::instance();
+    mVertex = mgr->mVertexShaderObjects;
+    mFragment = mgr->mFragmentShaderObjects;
+    mgr->beginShaderBatch();
+}
+
+LLGLSLShader::ShaderBatch::~ShaderBatch()
+{
+    llassert_always(mFinished);
+}
+
+template<bool diagnostics>
+void LLGLSLShader::ShaderBatch::addInternal(LLGLSLShader& shader)
+{
+    llassert_always(!mFinished);
+    for (const auto& entry : mJobs) llassert_always(entry.job.owner != &shader);
+    mRecipes.push_back({ &shader, shader.mFeatures, shader.mDefines, shader.mShaderLevel });
+    std::vector<LLShaderCompileJob> roots;
+    auto job = shader.prepareShaderInternal<diagnostics, true>(&roots);
+    mJobs.push_back({std::move(job), std::move(roots)});
+}
+
+void LLGLSLShader::ShaderBatch::add(LLGLSLShader& shader)
+{
+    if (LLShaderMgr::instance()->mShaderDiagnosticsEnabled) addInternal<true>(shader);
+    else addInternal<false>(shader);
+}
+
+template<bool diagnostics>
+bool LLGLSLShader::ShaderBatch::finishInternal()
+{
+    llassert_always(!mFinished);
+    auto* mgr = LLShaderMgr::instance();
+    bool success = true;
+    for (auto& entry : mJobs)
+    {
+        auto& job = entry.job;
+        auto* shader = job.owner;
+        const bool compiled = shader->finishShaderCompiles<diagnostics>(job, entry.roots);
+        success = compiled && success;
+        if (job.state != ShaderCreationJob::State::failed) shader->submitShaderInternal<diagnostics>(job);
+    }
+    success = !mgr->mShaderBatchJournal->failed && success;
+    if (!success) mgr->mShaderBatchJournal->failed = true;
+    for (auto& entry : mJobs)
+    {
+        auto& job = entry.job;
+        if (job.state != ShaderCreationJob::State::failed)
+        {
+            // A failed family is cancelled in order before serial replay. In
+            // particular, do not overwrite a rejected on-disk binary while
+            // finishing other speculative members of that same family.
+            if (!success) job.success = false;
+            const bool finished = job.owner->finishShaderInternal<diagnostics, true>(job);
+            success = finished && job.owner->mActiveTextureChannels <= gGLManager.mNumTextureImageUnits && success;
+        }
+    }
+    if (!success)
+    {
+        // Restore aliases and remove every stage first introduced by this batch.
+        // Programs release attachments while the stage cache still owns them.
+        for (auto& recipe : mRecipes) recipe.shader->unloadInternal();
+        for (GLuint object : mgr->mShaderBatchJournal->issuedObjects) glDeleteShader(object);
+        mgr->mVertexShaderObjects = std::move(mVertex);
+        mgr->mFragmentShaderObjects = std::move(mFragment);
+        for (auto& recipe : mRecipes)
+        {
+            recipe.shader->mFeatures = recipe.features;
+            recipe.shader->mDefines = recipe.defines;
+            recipe.shader->mShaderLevel = recipe.level;
+        }
+    }
+    else
+    {
+        for (const auto& entry : mgr->mShaderBatchJournal->compiledObjects)
+            mgr->mShaderObjects[entry.first] = entry.second;
+    }
+    mgr->endShaderBatch(success);
+    mFinished = true;
+    if (success) for (auto& action : mAfter) action();
+    return success;
+}
+
+bool LLGLSLShader::ShaderBatch::finish()
+{
+    if (LLShaderMgr::instance()->mShaderDiagnosticsEnabled) return finishInternal<true>();
+    return finishInternal<false>();
+}
