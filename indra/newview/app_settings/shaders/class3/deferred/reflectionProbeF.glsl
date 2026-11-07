@@ -25,7 +25,7 @@
 
 #define FLT_MAX 3.402823466e+38
 
-#if defined(SSR)
+#if defined(SSR) || defined(SSR_RUNTIME)
 float tapScreenSpaceReflection(int totalSamples, vec2 tc, vec3 viewPos, vec3 n, inout vec4 collectedColor, sampler2D source, float glossiness);
 #endif
 
@@ -33,6 +33,9 @@ uniform samplerCubeArray   reflectionProbes;
 uniform samplerCubeArray   irradianceProbes;
 
 uniform sampler2D sceneMap;
+#ifdef SSR_RUNTIME
+uniform int ssr_enabled;
+#endif
 uniform int cube_snapshot;
 // Explicit auxiliary-pass guard. SSR iterationCount==0 is not sufficient:
 // callers still enter the trace path, and hero sampling ignores heroProbeCount.
@@ -785,8 +788,12 @@ void doProbeSample(inout vec3 ambenv, inout vec3 glossenv,
         glossenv *= sky_probe_rad_scale;
     }
 
-#if defined(SSR)
-    if (prism_auxiliary == 0 && cube_snapshot != 1 && glossiness >= 0.9)
+#if defined(SSR) || defined(SSR_RUNTIME)
+    if (
+#ifdef SSR_RUNTIME
+        ssr_enabled != 0 &&
+#endif
+        prism_auxiliary == 0 && cube_snapshot != 1 && glossiness >= 0.9)
     {
         vec4 ssr = vec4(0);
         if (transparent)
@@ -913,8 +920,12 @@ void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout 
         }
     }
 
-#if defined(SSR)
-    if (prism_auxiliary == 0 && cube_snapshot != 1)
+#if defined(SSR) || defined(SSR_RUNTIME)
+    if (
+#ifdef SSR_RUNTIME
+        ssr_enabled != 0 &&
+#endif
+        prism_auxiliary == 0 && cube_snapshot != 1)
     {
         vec4 ssr = vec4(0);
 

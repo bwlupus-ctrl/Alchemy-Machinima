@@ -699,6 +699,24 @@ static bool handleReflectionProbeDetailChanged(const LLSD& newvalue)
     return true;
 }
 
+static bool handleScreenSpaceReflectionsChanged(const LLSD& newvalue)
+{
+    gPipeline.mReflectionMapManager.refreshSettings();
+    if (gPipeline.isInit())
+    {
+        LLPipeline::refreshCachedSettings();
+        gPipeline.mReflectionMapManager.reset();
+        gPipeline.mHeroProbeManager.reset();
+        gPipeline.releaseGLBuffers();
+        gPipeline.createGLBuffers();
+        if (!LLViewerShaderMgr::instance()->canToggleSSR())
+        {
+            LLViewerShaderMgr::instance()->setShaders();
+        }
+    }
+    return true;
+}
+
 static bool handleReflectionProbeCountChanged(const LLSD& newvalue)
 {
     gPipeline.mReflectionMapManager.refreshSettings();
@@ -1196,6 +1214,7 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainScale", handleTerrainScaleChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainPBRScale", handlePBRTerrainScaleChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainPBRDetail", handleSetShaderChanged);
+    setting_setup_signal_listener(gSavedSettings, "RenderReservedTextureIndices", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainPBRPlanarSampleCount", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderTerrainPBRTriplanarBlendFactor", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "OctreeStaticObjectSizeFactor", handleRepartition);
@@ -1277,7 +1296,7 @@ void settings_setup_listeners()
 #if LL_DARWIN
     setting_setup_signal_listener(gSavedSettings, "RenderAppleUseMultGL", handleAppleUseMultGLChanged);
 #endif
-    setting_setup_signal_listener(gSavedSettings, "RenderScreenSpaceReflections", handleReflectionProbeDetailChanged);
+    setting_setup_signal_listener(gSavedSettings, "RenderScreenSpaceReflections", handleScreenSpaceReflectionsChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderMirrors", handleReflectionProbeDetailChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderProbeCaptureScale", handleReflectionProbeDetailChanged); // [ProbeCost]
     setting_setup_signal_listener(gSavedSettings, "RenderHeroProbeResolution", handleHeroProbeResolutionChanged);

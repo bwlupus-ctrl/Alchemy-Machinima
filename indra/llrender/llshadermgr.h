@@ -990,7 +990,7 @@ public:
 
     virtual void initAttribsAndUniforms(void);
 
-    template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader* shader);
+    template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader* shader, std::vector<std::pair<std::string, GLenum>>* files = nullptr);
     template<bool diagnostics, bool batching = false> GLuint loadShaderFileInternal(const std::string& filename, S32& level, GLenum type,
         std::map<std::string, std::string>* defines, S32 channels, std::vector<LLShaderCompileJob>* pending = nullptr);
     void submitProgramLink(GLuint obj);
@@ -1021,10 +1021,14 @@ public:
 
     // Schema changes discard metadata. Epoch changes invalidate program keys.
     static constexpr const char* SHADER_CACHE_SCHEMA = "620ec4f7-831c-40d2-b391-8b1c94813245";
-    static constexpr U32 SHADER_CACHE_EPOCH = 4;
+    static constexpr U32 SHADER_CACHE_EPOCH = 5;
     static bool readShaderSource(const std::string& filename, std::string& source);
     void initShaderCache(bool enabled, bool second_instance);
     void hashShaderCacheFeatures();
+    LLUUID shaderFeatureHash(LLGLSLShader* shader);
+    GLuint shaderFeatureObject(const std::string& file, GLenum stage) const;
+    static bool shaderSourceUsesDefine(const std::string& source, const std::string& name);
+    std::map<std::pair<std::string, GLenum>, std::string> mShaderFeatureKeys;
     void disableShaderCache() { mShaderCacheSourceValid = false; mShaderCacheEnabled = false; }
     void clearShaderCache();
     void persistShaderCacheMetadata();
@@ -1040,6 +1044,9 @@ public:
     // Owns compiled objects. The filename maps above are aliases for preloaded
     // graphics feature modules, not a permutation cache.
     std::map<std::string, GLuint> mShaderObjects;
+    // Actual source class of the last successful synchronous file load,
+    // including object-cache hits and missing-file/compile class fallback.
+    S32 mLastShaderSourceLevel = 0;
 
     //global (reserved slot) shader parameters
     std::vector<std::string> mReservedAttribs;

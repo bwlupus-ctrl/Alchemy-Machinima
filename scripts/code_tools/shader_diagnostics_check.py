@@ -88,6 +88,10 @@ void glGetProgramiv(GLuint,GLenum,GLint* status){*status=driver_linked;}
 struct LLShaderMgr {
     static LLShaderMgr* instance();
     std::map<std::string,GLuint> mVertexShaderObjects;
+    GLuint shaderFeatureObject(const std::string& file,GLenum) const {
+        auto it=mVertexShaderObjects.find(file);
+        return it==mVertexShaderObjects.end()?0:it->second;
+    }
     std::vector<LLShaderInjection> mShaderInjections;
     void traceFeatureAttachment(const std::string&,GLenum){}
     void traceAttachment(GLuint){}

@@ -990,6 +990,43 @@ bool LLViewerShaderMgr::gbufferAvatarTagPreferred()
 //============================================================================
 // Shader Management
 
+// Sampler budgets for the largest SSR consumers. Indexed width changes only
+// batching; scalar beauty is the irreducible lower bound. Keep this independent
+// of RenderScreenSpaceReflections so toggling cannot change the selected mode.
+static std::pair<S32, S32> ssr_texture_budget(S32 units, S32 reserved,
+    bool shadows, bool probes, bool mirrors, bool weather)
+{
+    const S32 shadow_maps = shadows ? 4 : 0;
+    const S32 weather_maps = weather ? 3 : 0;
+    const S32 reflection_maps = probes ? 2 : 1; // probes or legacy environment cube
+    const S32 pbr_aux = 1 + shadow_maps + reflection_maps
+        + (mirrors ? 1 : 0) + weather_maps + 2; // BRDF, probes, hero, SSR
+    const S32 alpha_aux = shadow_maps + (probes ? 1 : 0) + weather_maps + 1;
+    // Fullbright shiny shares the generic width, but needs no SSR or shadows.
+    const S32 shiny_aux = reflection_maps + (probes && mirrors ? 1 : 0);
+    const S32 indexed = llmin(llmax(4, units - reserved), units - llmax(alpha_aux, shiny_aux));
+    // A negative width signals that the old compile-time SSR recipe is needed.
+    // Soften: five G-buffer maps, BRDF + light LUT, light map, two area
+    // shadow maps, reflection maps, hero and SSR. Weather is absent here.
+    const S32 soften_units = 10 + reflection_maps + (mirrors ? 1 : 0) + 2;
+    if (llmax(4 + pbr_aux, soften_units) > units || indexed < 4) return { -1, -1 };
+    return { indexed, llclamp((units - pbr_aux) / 4, 1, 8) };
+}
+
+std::vector<S32> LLViewerShaderMgr::ssrCapabilityInputs() const
+{
+    return { gGLManager.mNumTextureImageUnits,
+        gSavedSettings.getS32("RenderReservedTextureIndices"),
+        gSavedSettings.getS32("RenderShadowDetail") > 0,
+        gSavedSettings.getBOOL("RenderReflectionsEnabled") && gGLManager.mGLVersion > 3.99f,
+        gSavedSettings.getBOOL("RenderMirrors"), weatherMaterialsSupported() };
+}
+
+bool LLViewerShaderMgr::canToggleSSR() const
+{
+    return mRuntimeSSR && mRuntimeSSRLoaded && mSSRCapabilityInputs == ssrCapabilityInputs();
+}
+
 void LLViewerShaderMgr::setShaders()
 {
     LL_PROFILE_ZONE_SCOPED;
@@ -1003,6 +1040,8 @@ void LLViewerShaderMgr::setShaders()
         return;
     }
 
+    mRuntimeSSRLoaded = false;
+    const S32 old_texture_channels = LLGLSLShader::sIndexedTextureChannels;
     const S32 old_indexed_channels = LLGLSLShader::sIndexedGLTFChannels;
     const S32 old_shared_channels = LLGLSLShader::sSharedPBRIndexedGLTFChannels;
     mShaderList.clear();
@@ -1030,6 +1069,12 @@ void LLViewerShaderMgr::setShaders()
 
     LLGLSLShader::sIndexedTextureChannels = llmax(4, gGLManager.mNumTextureImageUnits - reserved_texture_units);
 
+    mSSRCapabilityInputs = ssrCapabilityInputs();
+    const auto& inputs = mSSRCapabilityInputs;
+    const auto ssr_budget = ssr_texture_budget(inputs[0], inputs[1], inputs[2], inputs[3], inputs[4], inputs[5]);
+    mRuntimeSSR = ssr_budget.first >= 4;
+    if (mRuntimeSSR) LLGLSLShader::sIndexedTextureChannels = ssr_budget.first;
+
     // Native indexed GLTF PBR uses only four material maps per slot in its
     // GBuffer pass, so retain its full batch width. Shared Actor FX replays
     // rigged indexed PBR through a forward-lighting shader and therefore needs
@@ -1037,12 +1082,15 @@ void LLViewerShaderMgr::setShaders()
     // contract has ten simultaneously active auxiliary samplers: BRDF LUT (1),
     // directional shadows (4), reflection + irradiance probes (2), SSR colour
     // + depth (2), and the hero probe (1). Rigged PBR geometry is split at this
-    // second limit by genDrawInfo; static/native PBR and indexed legacy material
-    // batching keep the native limit. On a 32-unit GPU the shared limit is five
-    // materials; on a 16-unit GPU it is one and shared indexed replay naturally
+    // second limit by genDrawInfo. Weather adds three cover/shelter samplers,
+    // so its reserve is thirteen (including SSR even when runtime-disabled).
+    // Static/native PBR keeps the native limit. With all features supported,
+    // a 32-unit GPU has five shared slots without weather and four with it;
+    // on a 16-unit GPU it is one and shared indexed replay naturally
     // falls back to exact scalar commands.
     LLGLSLShader::sIndexedGLTFChannels = llclamp(
         (gGLManager.mNumTextureImageUnits - (weatherMaterialsSupported() ? 1 : 0)) / 4, 1, 8);
+    // The constrained mode retains main's exact widths and on/off recipes.
     const S32 SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = weatherMaterialsSupported() ? 11 : 10;
     const S32 indexed_gltf_texture_units = llmax(
         gGLManager.mNumTextureImageUnits
@@ -1050,6 +1098,7 @@ void LLViewerShaderMgr::setShaders()
         4);
     LLGLSLShader::sSharedPBRIndexedGLTFChannels = llclamp(
         indexed_gltf_texture_units / 4, 1, 8);
+    if (mRuntimeSSR) LLGLSLShader::sSharedPBRIndexedGLTFChannels = ssr_budget.second;
 
     reentrance = true;
 
@@ -1180,7 +1229,8 @@ void LLViewerShaderMgr::setShaders()
         mShaderLevel[SHADER_AVATAR] = 3;
         mMaxAvatarShaderLevel = 3;
 
-        if (loadShadersObject())
+        loaded = loadShadersObject();
+        if (loaded)
         { //hardware skinning is enabled and rigged attachment shaders loaded correctly
             // cloth is a class3 shader
             S32 avatar_class = 1;
@@ -1209,6 +1259,9 @@ void LLViewerShaderMgr::setShaders()
         llassert(loaded);
     }
 
+    mRuntimeSSRLoaded = mRuntimeSSRLoaded && loaded;
+    gPipeline.mShadersLoaded = loaded;
+
     // We only want to persist shader cache metadata if we successfully loaded shaders, otherwise we might be caching failure states
     if (loaded && !LLAppViewer::instance()->isSecondInstance())
     {
@@ -1223,9 +1276,10 @@ void LLViewerShaderMgr::setShaders()
 
     finalizeShaderList();
 
-    // The cover sampler can narrow indexed material batches. Retire old draw
+    // Sampler budgets can narrow generic or indexed material batches. Retire old draw
     // maps before any draw uses the newly linked, smaller sampler inventory.
-    if (old_indexed_channels != LLGLSLShader::sIndexedGLTFChannels ||
+    if (old_texture_channels != LLGLSLShader::sIndexedTextureChannels ||
+        old_indexed_channels != LLGLSLShader::sIndexedGLTFChannels ||
         old_shared_channels != LLGLSLShader::sSharedPBRIndexedGLTFChannels)
     {
         std::set<LLSpatialGroup*> groups;
@@ -1252,6 +1306,7 @@ void LLViewerShaderMgr::setShaders()
 
 void LLViewerShaderMgr::unloadShaders()
 {
+    mRuntimeSSRLoaded = false;
     ++mColorChartShaderGeneration;
     unloadColorChartShaders();
     unloadSensorShaders();
@@ -1284,6 +1339,8 @@ void LLViewerShaderMgr::unloadShaders()
 
 std::string LLViewerShaderMgr::loadBasicShaders()
 {
+    mRuntimeSSRLoaded = false;
+    bool runtime_ssr_loaded = mRuntimeSSR;
     // Load basic dependency shaders first
     // All of these have to load for any shaders to function
 
@@ -1318,6 +1375,9 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     shaders.push_back( make_pair( "objects/nonindexedTextureV.glsl",        1 ) );
 
     std::map<std::string, std::string> attribs;
+    const bool ssr = gSavedSettings.getBOOL("RenderScreenSpaceReflections");
+    if (mRuntimeSSR) attribs["SSR_RUNTIME"] = "1";
+    else if (ssr) attribs["SSR"] = "1";
     attribs["MAX_JOINTS_PER_MESH_OBJECT"] =
         std::to_string(LLSkinningUtil::getMaxJointCount());
 
@@ -1329,8 +1389,6 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     {
         attribs["EMISSIVE_SILHOUETTE_ONLY"] = "1";
     }
-
-    bool ssr = gSavedSettings.getBOOL("RenderScreenSpaceReflections");
 
     bool mirrors = gSavedSettings.getBOOL("RenderMirrors");
 
@@ -1348,11 +1406,6 @@ std::string LLViewerShaderMgr::loadBasicShaders()
         {
             attribs["SPOT_SHADOW"] = "1";
         }
-    }
-
-    if (ssr)
-    {
-        attribs["SSR"] = "1";
     }
 
     if (has_reflection_probes)
@@ -1379,9 +1432,9 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     // [TronA0] Per-pixel avatar tag in the G-buffer normal .w. HASH-TOKEN
     // global define: LLShaderMgr::loadShaderFile keys the flag-decoder
     // preamble text on it (and emits the real GBUFFER_AVATAR_TAG there), the
-    // binary-cache hash covers it (llglslshader.cpp), and the utility files'
-    // defines loop emits only this token -- so no compile unit ever sees a
-    // duplicate GBUFFER_AVATAR_TAG. Predicate == the GL_RGBA16 vs GL_RGB10_A2
+    // binary-cache hash covers it explicitly (llglslshader.cpp). The hash
+    // token itself is not emitted, so no compile unit ever sees a duplicate
+    // GBUFFER_AVATAR_TAG. Predicate == the GL_RGBA16 vs GL_RGB10_A2
     // normal-format choice in addDeferredAttachments (pipeline.cpp), so odd
     // codes are never written into a 2-bit alpha. No extra shader programs.
     if (gbufferAvatarTagWanted())
@@ -1399,7 +1452,7 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     for (U32 i = 0; i < shaders.size(); i++)
     {
         // Note usage of GL_VERTEX_SHADER
-        if (loadShaderFile(shaders[i].first, shaders[i].second, GL_VERTEX_SHADER, &attribs) == 0)
+        if (loadShaderFile(shaders[i].first, shaders[i].second, GL_VERTEX_SHADER, &LLGLSLShader::sGlobalDefines) == 0)
         {
             LL_WARNS("Shader") << "Failed to load basic vertex shader " << i << ": " << shaders[i].first << LL_ENDL;
             return shaders[i].first;
@@ -1445,7 +1498,7 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     index_channels.push_back(-1);    shaders.push_back( make_pair( "alchemy/actorFxF.glsl",                         1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "alchemy/avatarLightResponseF.glsl",             1) ); // [AvatarLightResponse]
     index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/reflectionProbeF.glsl",                has_reflection_probes ? 3 : 2) );
-    index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/screenSpaceReflUtil.glsl",             ssr ? 3 : 1) );
+    index_channels.push_back(-1);    shaders.push_back( make_pair( "deferred/screenSpaceReflUtil.glsl",             (mRuntimeSSR || ssr) ? 3 : 1) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "lighting/lightNonIndexedF.glsl",                    mShaderLevel[SHADER_LIGHTING] ) );
     index_channels.push_back(-1);    shaders.push_back( make_pair( "lighting/lightAlphaMaskNonIndexedF.glsl",                   mShaderLevel[SHADER_LIGHTING] ) );
     index_channels.push_back(ch);    shaders.push_back( make_pair( "lighting/lightF.glsl",                  mShaderLevel[SHADER_LIGHTING] ) );
@@ -1454,7 +1507,8 @@ std::string LLViewerShaderMgr::loadBasicShaders()
     for (U32 i = 0; i < shaders.size(); i++)
     {
         // Note usage of GL_FRAGMENT_SHADER
-        if (loadShaderFile(shaders[i].first, shaders[i].second, GL_FRAGMENT_SHADER, &attribs, index_channels[i]) == 0)
+        const S32 requested_level = shaders[i].second;
+        if (loadShaderFile(shaders[i].first, shaders[i].second, GL_FRAGMENT_SHADER, &LLGLSLShader::sGlobalDefines, index_channels[i]) == 0)
         {
             LL_WARNS("Shader") << "Failed to load fragment shader " << shaders[i].first << LL_ENDL;
             if (shaders[i].first == "alchemy/actorFxDissolveF.glsl" ||
@@ -1466,7 +1520,17 @@ std::string LLViewerShaderMgr::loadBasicShaders()
             }
             return shaders[i].first;
         }
+        // A successful load may have selected a lower class, including the
+        // no-SSR stub. Only the real, requested modules permit a runtime toggle.
+        if ((shaders[i].first == "deferred/screenSpaceReflUtil.glsl" ||
+             shaders[i].first == "deferred/reflectionProbeF.glsl") &&
+            (shaders[i].second != requested_level || mLastShaderSourceLevel != requested_level))
+        {
+            runtime_ssr_loaded = false;
+        }
     }
+
+    mRuntimeSSRLoaded = runtime_ssr_loaded;
 
     // Snapshot only preloaded modules, before any program roots are compiled.
     // Their assembled-text keys cover class choices, generated text and channels.

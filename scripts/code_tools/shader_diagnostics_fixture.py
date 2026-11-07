@@ -10,7 +10,7 @@ from shader_load_check import function
 from shader_equivalence_diff import compare
 
 
-def run(directory):
+def run(directory, assemble_only=False):
     mgr = (ROOT / 'indra/llrender/llshadermgr.cpp').read_text(encoding='utf-8')
     shader = (ROOT / 'indra/llrender/llglslshader.cpp').read_text(encoding='utf-8')
     mh = (ROOT / 'indra/llrender/llshadermgr.h').read_text(encoding='utf-8')
@@ -19,7 +19,7 @@ def run(directory):
         'shaderLanguageVersion', 'ownsShaderObject', 'clearShaderObjects',
         'loadShaderFileInternal', 'beginShaderBatch', 'endShaderBatch', 'finishBatchBinary', 'linkProgramObjectInternal', 'submitProgramLink', 'finishProgramLinkInternal', 'attachShaderFeaturesInternal',
         'loadCachedProgramBinaryInternal', 'saveCachedProgramBinary', 'rejectProgramBinary',
-        'readShaderSource', 'configureShaderDiagnostics', 'openShaderEquivalence',
+        'readShaderSource', 'shaderSourceUsesDefine', 'hashShaderCacheFeatures', 'shaderFeatureHash', 'shaderFeatureObject', 'configureShaderDiagnostics', 'openShaderEquivalence',
         'ShaderAttemptScope::ShaderAttemptScope', 'ShaderAttemptScope::~ShaderAttemptScope',
         'beginShaderAttempt', 'snapshotShaderAttempt', 'beginShaderStage',
         'assembledShaderStage', 'finishShaderStage', 'traceFeatureAttachment',
@@ -68,6 +68,10 @@ def run(directory):
         assert text.count(anchor) == 1, 'fixture anchor missing/ambiguous: ' + anchor
         return text.replace(anchor, replacement, 1)
 
+    feature_object = function(mgr, 'LLShaderMgr::shaderFeatureObject(')
+    methods = replace_once(methods, feature_object, replace_once(feature_object,
+        '    const auto frozen = mShaderFeatureKeys.find({ file, stage });',
+        '    if (plantScopeAlias) { const auto& aliases = stage == GL_VERTEX_SHADER ? mVertexShaderObjects : mFragmentShaderObjects; auto it = aliases.find(file); return it == aliases.end() ? 0 : it->second; }\n    const auto frozen = mShaderFeatureKeys.find({ file, stage });'))
     loader = function(mgr, 'LLShaderMgr::loadShaderFileInternal(')
     methods = replace_once(methods, loader, replace_once(loader, '{\n    const S32 requested_level',
         '{\n    if constexpr (!batching) if (useLegacyLoader) return loadShaderFileInternalLegacy<diagnostics>(filename, shader_level, type, defines, texture_index_channels);\n    const S32 requested_level'))
@@ -170,7 +174,7 @@ def run(directory):
 #define llassert_always(x) CHECK(x)
 #define stop_glerror() call("stop_glerror")
 #define flush_glerror() call("flush_glerror")
-#define CHECK(x) do{if(!(x))throw std::runtime_error(#x);}while(0)
+#define CHECK(x) do{if(!(x)){std::cerr<<"CHECK failed: "<<#x<<" at "<<__LINE__<<std::endl;throw std::runtime_error(#x);}}while(0)
 using std::vector;using std::pair;using std::string;
 struct NullLog{template<class T> NullLog& operator<<(const T&){return *this;}};
 std::vector<std::string> calls;
@@ -227,6 +231,13 @@ struct FixtureGLManager{int mGLSLVersionMajor=4,mGLSLVersionMinor=60,mNumTexture
 struct LLRender{static constexpr int NUM_MATRIX_MODES=4;};
 
 '''
+    methods = methods.replace('if (defines == &LLGLSLShader::sGlobalDefines &&\n                !shaderSourceUsesDefine(define_source, iter->first)) continue;',
+        'if (defines == &LLGLSLShader::sGlobalDefines && (plantScopeDrop || (!plantScopeLeak && !shaderSourceUsesDefine(define_source, iter->first)))) continue;')
+    methods = methods.replace('hash_obj.update(feature_hash.asString());',
+        'if (!plantScopeMissing) hash_obj.update(feature_hash.asString());')
+    methods = methods.replace('    // Hash declared fields only:',
+        '    if (plantScopeAll) for (const auto& d : sGlobalDefines) { hash_obj.update(d.first); hash_obj.update(d.second); }\n    // Hash declared fields only:')
+
     # Rename only GL symbols in the fixture translation unit, never a body.
     glnames = sorted(set(re.findall(r'\bgl[A-Z]\w*', methods) + ['glUseProgram']))
     prefix += '\n'.join(f'#define {n} spy_{n}' for n in glnames) + '\n'
@@ -285,6 +296,7 @@ void glUniformBlockBinding(GLuint,GLuint,GLuint binding){call("glUniformBlockBin
 void glUseProgram(GLuint h){call("glUseProgram:"+std::to_string(h));}
 
 '''
+    prefix += 'bool plantScopeDrop=false,plantScopeLeak=false,plantScopeMissing=false,plantScopeAll=false,plantScopeAlias=false;\n'
     prefix += function(sh, 'struct LLShaderCompileJob') + ';\n'
     prefix += function(sh, 'struct LLShaderAttemptContext') + ';\n'
     prefix += function(sh, 'class LLShaderFeatures') + ';\n'
@@ -295,10 +307,16 @@ struct LLShaderMgr{
  static LLShaderMgr* instance();
  inline static U32 sContextGeneration=0,sAvatarLightResponseAttachCount=0;
  std::map<std::string,GLuint> mShaderObjects,mVertexShaderObjects,mFragmentShaderObjects;
+ S32 mLastShaderSourceLevel=0;
  std::vector<std::string> mReservedAttribs={"position"},mReservedUniforms={"diffuseMap"};
  std::string root,mShaderCacheDir;
  bool mShaderCacheEnabled=true,mShaderCacheReadOnly=false;
  LLUUID mSharedShaderFingerprint,mShaderCacheFeatureHash;
+ std::map<std::pair<std::string,GLenum>,std::string>mShaderFeatureKeys;
+ void hashShaderCacheFeatures();LLUUID shaderFeatureHash(LLGLSLShader*);
+ GLuint shaderFeatureObject(const std::string&,GLenum) const;
+ void disableShaderCache(){mShaderCacheEnabled=false;}
+ static bool shaderSourceUsesDefine(const std::string&,const std::string&);
 '''
     prefix += function(mh, 'struct ProgramBinaryData') + ';\nstd::map<LLUUID,ProgramBinaryData> mShaderBinaryCache;\n'
     prefix += re.search(r'static constexpr U32 SHADER_CACHE_EPOCH\s*=\s*\d+;', mh)[0] + '\n'
@@ -316,7 +334,7 @@ struct LLShaderMgr{
  template<bool diagnostics> bool linkProgramObjectInternal(GLuint,bool,const std::string&);
  template<bool diagnostics> GLuint loadShaderFileInternalLegacy(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32);
  template<bool diagnostics> bool loadCachedProgramBinaryInternalLegacy(LLGLSLShader*);
- template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader*);
+ template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader*,std::vector<std::pair<std::string,GLenum>>* = nullptr);
  template<bool diagnostics, bool batching=false> bool loadCachedProgramBinaryInternal(LLGLSLShader*);
  bool saveCachedProgramBinary(LLGLSLShader*);
  void dumpObjectLog(GLuint,bool,const std::string&){}
@@ -333,6 +351,7 @@ struct LLGLSLShader{
  inline static std::map<std::string,std::string> sGlobalDefines;
  inline static LLGLSLShader* sCurBoundShaderPtr=nullptr;
  inline static int sIndexedTextureChannels=4;
+ inline static int sIndexedGLTFChannels=7,sSharedPBRIndexedGLTFChannels=4;
  std::vector<std::pair<std::string,GLenum>> mShaderFiles;
  std::map<std::string,std::string> mDefines;
  LLShaderFeatures mFeatures;
@@ -444,6 +463,7 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
      CHECK(text.find("module_load")!=std::string::npos || text.find("pass_begin")!=std::string::npos);
    }
  }
+ mgr.hashShaderCacheFeatures();
  LLGLSLShader s;
  if(mode=="gamma")s.mFeatures.hasGamma=true;
  s.mShaderFiles={{mode=="file_fallback"?"only.glsl":"rootV.glsl",GL_VERTEX_SHADER},{"rootF.glsl",GL_FRAGMENT_SHADER}};
@@ -457,7 +477,11 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
  }
  if(mode=="synthetic_rejected")mgr.configureShaderDiagnostics(diagnostics,"binary:fixture",false);
  if(mode=="disabled")mgr.mShaderCacheEnabled=false;
- if(mode=="attachment_fail")mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+ if(mode=="attachment_fail"){
+   const auto frozen=mgr.mShaderFeatureKeys.at({"deferred/textureUtilV.glsl",GL_VERTEX_SHADER});
+   mgr.mShaderObjects.erase(frozen);
+   mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+ }
  if(mode=="link_fail" || mode=="compute_link_fail")failLink=true;
  if(mode=="binary_retry")failLinkCount=1;
  bool success;
@@ -525,7 +549,11 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
          mode=="batch_binary_reject"?"NOPE":mode=="batch_binary_read"?"A":"ABCD");
      }
    }
-   if(mode=="batch_attach")mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+   if(mode=="batch_attach"){
+   const auto frozen=mgr.mShaderFeatureKeys.at({"deferred/textureUtilV.glsl",GL_VERTEX_SHADER});
+   mgr.mShaderObjects.erase(frozen);
+   mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+ }
    auto beforeObjects=mgr.mShaderObjects,beforeVertex=mgr.mVertexShaderObjects,beforeFragment=mgr.mFragmentShaderObjects;
    auto beforeLiveShaders=liveShaders;auto beforeAttempts=mgr.mShaderAttemptNumbers;
    bool driverMode=mode=="batch_driver_recover" || mode=="batch_driver_compile";
@@ -646,10 +674,108 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
  s.unloadInternal();
  return result;
 }
+
+void scopeScenario(const std::string& root){
+ useLegacyLoader=false;calls.clear();sources.clear();LLGLSLShader::sGlobalDefines.clear();
+ LLShaderMgr mgr;currentMgr=&mgr;mgr.root=root;fixtureDir.root=root;
+ const auto load=[&](const std::string& file,bool global, std::map<std::string,std::string>* permutations=nullptr){
+   S32 level=1;auto h=mgr.loadShaderFileInternal<false>(file,level,GL_FRAGMENT_SHADER,
+       global?&LLGLSLShader::sGlobalDefines:permutations,0);CHECK(h);return h;
+ };
+ const auto key=[&](GLuint h){for(const auto& e:mgr.mShaderObjects)if(e.second==h)return e.first;throw std::runtime_error("missing object key");};
+ const std::vector<std::pair<std::string,std::string>> cases={
+   {"value","float f(){return SCOPE_USED;}\n"},
+   {"defined","#if defined(SCOPE_USED)\nfloat f(){return 1.;}\n#endif\n"},
+   {"ifdef","#ifdef SCOPE_USED\nfloat f(){return 1.;}\n#endif\n"},
+   {"macro","#define BODY SCOPE_USED\nfloat f(){return BODY;}\n"}};
+ LLGLSLShader::sGlobalDefines={{"SCOPE_USED","1"},{"UNUSED","8"}};
+ for(const auto& c:cases){
+   const auto file="scope/"+c.first+".glsl";writeFile(root+"/class1/"+file,c.second);
+   const auto h=load(file,true);CHECK(sources[h].find("#define SCOPE_USED 1\n")!=std::string::npos);
+   CHECK(sources[h].find("#define UNUSED ")==std::string::npos);
+ }
+ writeFile(root+"/class1/scope/unused.glsl","float SCOPE_USED_FOO; float MY_SCOPE_USED; float SCOPE_USED2;\n");
+ const auto unused=load("scope/unused.glsl",true);const auto unusedKey=key(unused);
+ CHECK(sources[unused].find("#define SCOPE_USED ")==std::string::npos);
+ LLGLSLShader::sGlobalDefines["SCOPE_USED"]="2";
+ CHECK(key(load("scope/unused.glsl",true))==unusedKey);
+ const auto used1=key(load("scope/defined.glsl",true));
+ LLGLSLShader::sGlobalDefines["SCOPE_USED"]="3";CHECK(key(load("scope/defined.glsl",true))!=used1);
+ std::map<std::string,std::string> perm={{"UNUSED_PERMUTATION","9"}};
+ auto ph=load("scope/unused.glsl",false,&perm);CHECK(sources[ph].find("#define UNUSED_PERMUTATION 9\n")!=std::string::npos);
+ const std::vector<std::pair<std::string,GLenum>> modules={{"deferred/textureUtilV.glsl",GL_VERTEX_SHADER},
+  {"objects/nonindexedTextureV.glsl",GL_VERTEX_SHADER},{"deferred/globalF.glsl",GL_FRAGMENT_SHADER},
+  {"deferred/shadowUtil.glsl",GL_FRAGMENT_SHADER}};
+ writeFile(root+"/class1/scope/root.glsl","void main(){}\n");
+ for(const auto& m:modules){
+   writeFile(root+"/class1/"+m.first,m.first=="deferred/shadowUtil.glsl"?"#ifdef SCOPE_USED\nfloat shadow(){return SCOPE_USED;}\n#endif\n":"void utility(){}\n");
+   S32 level=1;CHECK(mgr.loadShaderFileInternal<false>(m.first,level,m.second,&LLGLSLShader::sGlobalDefines,0));
+ }
+ mgr.hashShaderCacheFeatures();LLGLSLShader used,neighbor;
+ used.mShaderLevel=neighbor.mShaderLevel=1;used.mFeatures.hasShadows=true;
+ used.mShaderFiles=neighbor.mShaderFiles={{"scope/root.glsl",GL_FRAGMENT_SHADER}};
+ const auto usedKey=used.hash(),neighborKey=neighbor.hash();
+ LLGLSLShader::sGlobalDefines["SCOPE_USED"]="4";
+ for(const auto& m:modules){S32 level=1;CHECK(mgr.loadShaderFileInternal<false>(m.first,level,m.second,&LLGLSLShader::sGlobalDefines,0));}
+ mgr.hashShaderCacheFeatures();CHECK(used.mShaderCacheEligible && neighbor.mShaderCacheEligible);
+ CHECK(used.hash()!=usedKey);CHECK(neighbor.hash()==neighborKey);
+ // A root republishes the same filename with different permutations after freeze.
+ const auto frozenHash=used.hash();
+ const auto frozenObject=mgr.shaderFeatureObject("deferred/shadowUtil.glsl",GL_FRAGMENT_SHADER);
+ std::map<std::string,std::string> rootDefines={{"SCOPE_USED","99"}};
+ S32 replacementLevel=1;
+ const auto replacement=mgr.loadShaderFileInternal<false>("deferred/shadowUtil.glsl",replacementLevel,GL_FRAGMENT_SHADER,&rootDefines,0);
+ CHECK(replacement && replacement!=frozenObject);
+ CHECK(mgr.mFragmentShaderObjects["deferred/shadowUtil.glsl"]==replacement);
+ CHECK(used.hash()==frozenHash && used.mShaderCacheEligible);
+ used.mProgramObject=glCreateProgram();
+ CHECK(used.attachFragmentObjectInternal<false>("deferred/shadowUtil.glsl"));
+ CHECK(attached[used.mProgramObject].back()==frozenObject);
+ // Both stages obey the invariant, even if their live aliases are removed.
+ const auto frozenVertex=mgr.shaderFeatureObject("deferred/textureUtilV.glsl",GL_VERTEX_SHADER);
+ mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+ CHECK(used.attachVertexObjectInternal<false>("deferred/textureUtilV.glsl"));
+ CHECK(attached[used.mProgramObject].back()==frozenVertex);
+ std::cout<<"post-freeze different-map alias: hashes and fragment/vertex attachment select frozen objects PASS\n";
+ const auto frozenKey=mgr.mShaderFeatureKeys.at({"deferred/shadowUtil.glsl",GL_FRAGMENT_SHADER});
+ mgr.mShaderObjects.erase(frozenKey);used.hash();neighbor.hash();
+ CHECK(!used.mShaderCacheEligible && neighbor.mShaderCacheEligible);
+ CHECK(!mgr.shaderFeatureObject("deferred/shadowUtil.glsl",GL_FRAGMENT_SHADER));
+ mgr.mShaderObjects[frozenKey]=frozenObject;
+ // Missing dependency fails only this program's eligibility, without serving a binary.
+ mgr.mShaderFeatureKeys.erase({"deferred/shadowUtil.glsl",GL_FRAGMENT_SHADER});used.hash();neighbor.hash();
+ CHECK(!used.mShaderCacheEligible && neighbor.mShaderCacheEligible);
+ // Intentional hash-only tokens must continue to invalidate even unused programs.
+ auto before=neighbor.hash();LLGLSLShader::sGlobalDefines["GBUFFER_FLAG_ENCODING"]="3";CHECK(neighbor.hash()!=before);
+ LLGLSLShader::sGlobalDefines.clear();
+ std::cout<<"production scope: direct value / defined / ifdef / macro body, substring rejection, unchanged unused object+program keys, changed used keys, permutations, missing dependency and hash-only tokens PASS\n";
+}
+
 int main(int argc,char** argv){
  CHECK(argc==2 || argc==3);std::string root=argv[1];
  if(argc==3){
+
+   if(std::string(argv[2])=="assemble"){
+     LLShaderMgr mgr;currentMgr=&mgr;
+     std::ifstream jobs(root+"/jobs.txt");CHECK(jobs.good());
+     std::string id,tree,file;int type,level,channels,global,count,legacy;
+     while(jobs>>id>>tree>>file>>type>>level>>channels>>global>>legacy>>count){
+       mgr.root=tree;std::map<std::string,std::string> definitions;std::string name,value;
+       for(int i=0;i<count;++i){jobs>>name>>value;definitions[name]=value;}
+       jobs>>count;LLGLSLShader::sGlobalDefines.clear();
+       for(int i=0;i<count;++i){jobs>>name>>value;LLGLSLShader::sGlobalDefines[name]=value;}
+       useLegacyLoader=legacy!=0;
+       auto object=mgr.loadShaderFileInternal<false>(file,level,type,global?&LLGLSLShader::sGlobalDefines:&definitions,channels);
+       CHECK(object);writeFile(root+"/"+id+".glsl",sources.at(object));calls.clear();
+     }
+     CHECK(jobs.eof());return 0;
+   }
    std::string mutation=argv[2];useBatch=true;
+   if(mutation.find("scope_")==0){
+     plantScopeDrop=mutation=="scope_drop";plantScopeLeak=mutation=="scope_leak";
+     plantScopeMissing=mutation=="scope_missing";plantScopeAll=mutation=="scope_all";plantScopeAlias=mutation=="scope_alias";
+     scopeScenario(root+"/scope_mutation_"+mutation);return 0;
+   }
    if(mutation=="compile_status")plantBatchCompileStatus=true;
    else if(mutation=="link_status")plantStatus=true;
    else if(mutation=="cleanup")plantBatchCleanup=true;
@@ -663,6 +789,7 @@ int main(int argc,char** argv){
    scenario<true>(mutation=="replay"?"batch_driver_recover":(mutation=="cleanup" || mutation=="journal")?"batch_recover":"batch_cold",root+"/mutation_"+mutation);
    return 0;
  }
+ scopeScenario(root+"/scope");
  for(bool parallel:{false,true}){
    useBatch=parallel;
    auto off=scenario<false>("material_incoming",root+(parallel?"/incoming_parallel_off":"/incoming_serial_off"));
@@ -807,17 +934,121 @@ int main(int argc,char** argv){
     main_start = main_viewer.index('    gDeferredMaterialProgram[1].mFeatures.hasLighting = false;')
     main_end = main_viewer.index('    // Clear any stale value', main_start)
     suffix = replace_once(suffix, 'MAIN_MATERIAL_BLOCK', main_viewer[main_start:main_end])
+    # Execute the production geometry predicate and basic fragment-load loop,
+    # paired with the real serial loader (compile and missing-file fallbacks).
+    set_shaders = function(viewer, 'LLViewerShaderMgr::setShaders(')
+    basic = function(viewer, 'LLViewerShaderMgr::loadBasicShaders(')
+    unload = function(viewer, 'LLViewerShaderMgr::unloadShaders(')
+    reset = '    mRuntimeSSRLoaded = false;'
+    assert reset in unload and set_shaders.index(reset) < set_shaders.index('if (!gGLManager.mHasRequirements)')
+    completed = '    mRuntimeSSRLoaded = mRuntimeSSRLoaded && loaded;\n    gPipeline.mShadersLoaded = loaded;'
+    assert completed in set_shaders
+    assert 'loaded = loadShadersObject();\n        if (loaded)' in set_shaders
+    initial = basic[basic.index(reset):basic.index('    // Load basic dependency')]
+    # The second loop is fragment loading; retain its complete error handling.
+    fragment_start = basic.index('    for (U32 i = 0; i < shaders.size(); i++)', basic.index('std::vector<S32> index_channels;'))
+    loop = function(basic[fragment_start:], 'for (U32 i = 0; i < shaders.size(); i++)')
+    completed_basic = '    mRuntimeSSRLoaded = runtime_ssr_loaded;'
+    assert completed_basic in basic
+    captures = '\n'.join(re.findall(r'    const S32 old_\w+_channels = LLGLSLShader::\w+;', set_shaders))
+    condition = re.search(r'    if \(old_.*?\)\n    \{', set_shaders, re.S)[0].split('\n    {')[0]
+    assert 'old_texture_channels != LLGLSLShader::sIndexedTextureChannels ||' in condition
+    condition = condition.replace('old_texture_channels != LLGLSLShader::sIndexedTextureChannels',
+        '(!plantGeometry && old_texture_channels != LLGLSLShader::sIndexedTextureChannels)')
+    toggle = function(viewer, 'LLViewerShaderMgr::canToggleSSR(').replace('mRuntimeSSRLoaded &&', '(plantSSRRecipe || mRuntimeSSRLoaded) &&')
+    prefix += '\nbool plantGeometry=false,plantSSRRecipe=false,plantSourceClass=false;\n'
+    assert methods.count('mLastShaderSourceLevel = gpu_class;') == 2
+    methods = methods.replace('mLastShaderSourceLevel = gpu_class;', 'mLastShaderSourceLevel = plantSourceClass ? try_gpu_class : gpu_class;')
+    recipe_fixture = r'''
+struct {bool mShadersLoaded=true;} gPipeline;
+struct LLViewerShaderMgr : LLShaderMgr {
+ bool mRuntimeSSR=true,mRuntimeSSRLoaded=false;
+ std::vector<S32> mSSRCapabilityInputs={1};
+ std::vector<S32> ssrCapabilityInputs()const{return {1};}
+ bool canToggleSSR()const;
+ GLuint loadShaderFile(const std::string& file,S32& level,GLenum type,std::map<std::string,std::string>* defines,S32 channels){
+   return loadShaderFileInternal<true>(file,level,type,defines,channels);
+ }
+ void unloadRecipe(){RESET}
+ void finishRecipe(bool loaded){COMPLETED}
+ std::string loadRecipe(bool probes=true){
+INITIAL
+   std::vector<std::pair<std::string,S32>> shaders={{"deferred/reflectionProbeF.glsl",probes?3:2},{"deferred/screenSpaceReflUtil.glsl",mRuntimeSSR?3:1},{"later.glsl",1}};
+   std::vector<S32> index_channels={-1,-1,-1};
+LOOP
+COMPLETED_BASIC
+   return {};
+ }
+};
+TOGGLE
+bool geometryChanged(S32 generic,S32 native,S32 shared){
+CAPTURES
+ LLGLSLShader::sIndexedTextureChannels=generic;
+ LLGLSLShader::sIndexedGLTFChannels=native;
+ LLGLSLShader::sSharedPBRIndexedGLTFChannels=shared;
+CONDITION
+ {return true;}
+ return false;
+}
+void recipeScenario(const std::string& path){
+ useLegacyLoader=false;useBatch=false;
+ for(bool ssr:{false,true}){
+   LLGLSLShader::sGlobalDefines.clear();if(ssr)LLGLSLShader::sGlobalDefines["SSR"]="1";
+   LLGLSLShader::sIndexedTextureChannels=20;LLGLSLShader::sIndexedGLTFChannels=7;LLGLSLShader::sSharedPBRIndexedGLTFChannels=4;
+   CHECK(geometryChanged(19,7,4));CHECK(!geometryChanged(19,7,4));
+   CHECK(geometryChanged(19,6,4));CHECK(geometryChanged(19,6,3));
+ }
+ for(const std::string mode:{"helper_compile","probe_compile","helper_missing","probe_missing","later_fail","stub","real","legacy_probes"}){
+   LLViewerShaderMgr mgr;currentMgr=&mgr;mgr.root=path+"/"+mode;fixtureDir.root=mgr.root;
+   const std::string helper="deferred/screenSpaceReflUtil.glsl",probe="deferred/reflectionProbeF.glsl";
+   writeFile(mgr.root+"/class1/"+helper,"float stub(){return 0.;}\n");
+   writeFile(mgr.root+"/class2/"+probe,"float probe(){return 0.;}\n");
+   if(mode!="helper_missing")writeFile(mgr.root+"/class3/"+helper,"float trace(){return 1.;}\n");
+   if(mode!="probe_missing")writeFile(mgr.root+"/class3/"+probe,"float probe(){return 1.;}\n");
+   writeFile(mgr.root+"/class1/later.glsl",mode=="later_fail"?"FAIL\n":"float later(){return 1.;}\n");
+   std::string injection=mode=="helper_compile"?"compile:"+helper+":3":mode=="probe_compile"?"compile:"+probe+":3":"";
+   mgr.configureShaderDiagnostics(true,injection,false);
+   mgr.mRuntimeSSR=mode!="stub";
+   bool capable=mode=="real" || mode=="legacy_probes";
+   // Seed prior permission: an incomplete retry must revoke it.
+   mgr.mRuntimeSSRLoaded=true;
+   CHECK(mgr.loadRecipe(mode!="legacy_probes").empty()==(mode!="later_fail"));
+   CHECK(mgr.canToggleSSR()==capable);
+   // Warm object hits must report the same actual source class.
+   CHECK(mgr.loadRecipe(mode!="legacy_probes").empty()==(mode!="later_fail"));
+   CHECK(mgr.canToggleSSR()==capable);
+   mgr.finishRecipe(false);CHECK(!mgr.canToggleSSR() && !gPipeline.mShadersLoaded);
+   mgr.mRuntimeSSRLoaded=true;mgr.unloadRecipe();CHECK(!mgr.canToggleSSR());
+ }
+ std::cout<<"round B: geometry 20->19 with native/shared unchanged; real SSR vs compile/missing-file fallbacks, warm objects, incomplete load and unload PASS\n";
+}
+'''
+    for token, value in {'RESET': reset, 'COMPLETED_BASIC': completed_basic, 'COMPLETED': completed,
+                         'INITIAL': initial, 'LOOP': loop, 'TOGGLE': toggle, 'CAPTURES': captures, 'CONDITION': condition}.items():
+        recipe_fixture = recipe_fixture.replace(token, value)
+    suffix = replace_once(suffix, 'int main(int argc,char** argv){', recipe_fixture + '\nint main(int argc,char** argv){')
+    suffix = replace_once(suffix, '   std::string mutation=argv[2];useBatch=true;',
+        '   std::string mutation=argv[2];useBatch=true;\n'
+        '   if(mutation.find("round_b_")==0){plantGeometry=mutation=="round_b_geometry";plantSSRRecipe=mutation=="round_b_ssr_recipe";plantSourceClass=mutation=="round_b_source_class";recipeScenario(root+"/"+mutation);return 0;}')
+    suffix = replace_once(suffix, ' for(bool parallel:{false,true}){',
+        ' recipeScenario(root+"/round_b");\n for(bool parallel:{false,true}){')
     flags, libraries = viewer_native_flags()
     # Assertions use CHECK and remain enabled with the viewer's Release flags.
     exe = compile_run(directory, prefix + methods + suffix, name='producer_paths', flags=flags,
                       libraries=libraries, run=False)
+    if assemble_only:
+        return exe
     import subprocess
     result = subprocess.run([str(exe), str(directory)], cwd=ROOT, capture_output=True, text=True)
     print(result.stdout, end='')
     assert result.returncode == 0, result.stderr
-    for mutation in ('compile_status', 'link_status', 'cleanup', 'journal', 'replay', 'incoming_off', 'incoming_on'):
+    for mutation in ('round_b_geometry', 'round_b_ssr_recipe', 'round_b_source_class', 'scope_drop', 'scope_leak', 'scope_missing', 'scope_all', 'scope_alias', 'compile_status', 'link_status', 'cleanup', 'journal', 'replay', 'incoming_off', 'incoming_on'):
         rejected = subprocess.run([str(exe), str(directory), mutation], cwd=ROOT, capture_output=True, text=True)
         assert rejected.returncode != 0, 'SURVIVING batch mutation: ' + mutation
+        if mutation.startswith('round_b_'):
+            expected = 'geometryChanged(19,7,4)' if mutation == 'round_b_geometry' else 'mgr.canToggleSSR()==capable'
+            assert 'CHECK failed: ' + expected in rejected.stderr, rejected.stderr
+            (directory / (mutation + '.log')).write_text(rejected.stdout + rejected.stderr, encoding='utf-8')
         print('rejected batch mutation:', mutation)
     from shader_equivalence_diff import load
     dumps = {}
