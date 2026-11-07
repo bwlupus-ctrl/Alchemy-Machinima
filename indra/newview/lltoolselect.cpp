@@ -79,7 +79,7 @@ bool LLToolSelect::handleMouseDown(S32 x, S32 y, MASK mask)
 }
 
 // static
-LLObjectSelectionHandle LLToolSelect::handleObjectSelection(const LLPickInfo& pick, bool ignore_group, bool temp_select, bool select_root)
+LLObjectSelectionHandle LLToolSelect::handleObjectSelection(const LLPickInfo& pick, bool ignore_group, bool temp_select, bool select_root, bool right_click)
 {
     LLViewerObject* object = pick.getObject();
     if (select_root)
@@ -225,7 +225,9 @@ LLObjectSelectionHandle LLToolSelect::handleObjectSelection(const LLPickInfo& pi
             LLSelectMgr::getInstance()->setAgentHUDZoom(target_zoom, current_zoom);
         }
 
-        if (!gAgentCamera.getFocusOnAvatar() &&                                     // if camera not glued to avatar
+        static LLCachedControl<bool> turn_to_face_right_clicked(gSavedSettings, "TurnToFaceRightClicked");
+        if ((!right_click || turn_to_face_right_clicked) &&
+            !gAgentCamera.getFocusOnAvatar() &&                                     // if camera not glued to avatar
             LLVOAvatar::findAvatarFromAttachment(object) != gAgentAvatarp &&    // and it's not one of your attachments
             object != gAgentAvatarp)                                    // and it's not you
         {

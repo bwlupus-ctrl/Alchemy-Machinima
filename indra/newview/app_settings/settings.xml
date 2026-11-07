@@ -25525,6 +25525,17 @@
         <key>Value</key>
         <string></string>
     </map>
+    <key>TurnToFaceRightClicked</key>
+    <map>
+      <key>Comment</key>
+      <string>When off, right-clicking an object or attachment no longer turns your avatar to face it; edit/build selection is unchanged.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>TutorialURL</key>
     <map>
       <key>Comment</key>
