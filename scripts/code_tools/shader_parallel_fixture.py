@@ -1,4 +1,4 @@
-"""Native parallel-compiler capability dispatch; no GL context or viewer build."""
+"""Native compiler dispatch and real GLSL sampler budgets; no viewer build."""
 import subprocess
 import xml.etree.ElementTree as ET
 
@@ -76,7 +76,31 @@ int main(){
     viewer = (ROOT / 'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8')
     original = subprocess.check_output(['git', 'show', 'HEAD:indra/newview/llviewershadermgr.cpp'],
                                        cwd=ROOT, text=True, encoding='utf-8')
-    assert function(viewer, 'LLViewerShaderMgr::loadBasicShaders(') == function(original, 'LLViewerShaderMgr::loadBasicShaders(')
+    expected_basic = function(original, 'LLViewerShaderMgr::loadBasicShaders(')
+    expected_basic = expected_basic.replace('    bool ssr = gSavedSettings.getBOOL("RenderScreenSpaceReflections");\n\n', '')
+    expected_basic = expected_basic.replace('    if (ssr)\n    {\n        attribs["SSR"] = "1";\n    }\n\n', '')
+    expected_basic = expected_basic.replace('ssr ? 3 : 1', '(mRuntimeSSR || ssr) ? 3 : 1')
+    expected_basic = expected_basic.replace('    std::map<std::string, std::string> attribs;\n', '    std::map<std::string, std::string> attribs;\n    const bool ssr = gSavedSettings.getBOOL("RenderScreenSpaceReflections");\n    if (mRuntimeSSR) attribs["SSR_RUNTIME"] = "1";\n    else if (ssr) attribs["SSR"] = "1";\n')
+    expected_basic = expected_basic.replace('GL_VERTEX_SHADER, &attribs)', 'GL_VERTEX_SHADER, &LLGLSLShader::sGlobalDefines)')
+    expected_basic = expected_basic.replace('GL_FRAGMENT_SHADER, &attribs, index_channels[i])', 'GL_FRAGMENT_SHADER, &LLGLSLShader::sGlobalDefines, index_channels[i])')
+    expected_basic = expected_basic.replace("    // binary-cache hash covers it (llglslshader.cpp), and the utility files'\n    // defines loop emits only this token -- so no compile unit ever sees a\n    // duplicate GBUFFER_AVATAR_TAG.", "    // binary-cache hash covers it explicitly (llglslshader.cpp). The hash\n    // token itself is not emitted, so no compile unit ever sees a duplicate\n    // GBUFFER_AVATAR_TAG.")
+    expected_basic = expected_basic.replace('    // Load basic dependency shaders first', '    mRuntimeSSRLoaded = false;\n    bool runtime_ssr_loaded = mRuntimeSSR;\n    // Load basic dependency shaders first')
+    expected_basic = expected_basic.replace('        // Note usage of GL_FRAGMENT_SHADER\n', '        // Note usage of GL_FRAGMENT_SHADER\n        const S32 requested_level = shaders[i].second;\n')
+    expected_basic = expected_basic.replace('            return shaders[i].first;\n        }\n    }\n\n    // Snapshot', '''            return shaders[i].first;
+        }
+        // A successful load may have selected a lower class, including the
+        // no-SSR stub. Only the real, requested modules permit a runtime toggle.
+        if ((shaders[i].first == "deferred/screenSpaceReflUtil.glsl" ||
+             shaders[i].first == "deferred/reflectionProbeF.glsl") &&
+            (shaders[i].second != requested_level || mLastShaderSourceLevel != requested_level))
+        {
+            runtime_ssr_loaded = false;
+        }
+    }
+
+    // Snapshot''')
+    expected_basic = expected_basic.replace('    // Snapshot only preloaded modules', '    mRuntimeSSRLoaded = runtime_ssr_loaded;\n\n    // Snapshot only preloaded modules')
+    assert function(viewer, 'LLViewerShaderMgr::loadBasicShaders(') == expected_basic
     deferred = function(viewer, 'LLViewerShaderMgr::loadShadersDeferred(')
     assert 'parallel_requested && gGLManager.enableParallelShaderCompile()' in deferred
     assert deferred.count('load_family(') == 14
@@ -87,6 +111,9 @@ int main(){
     for expression in ('mActiveTextureChannels > gGLManager.mNumTextureImageUnits',
                        'gRigRimAuxCompiled = false;', 'disable_indexed_gltf_batching();'):
         assert expression in deferred
+    assert 'SHARED_FORWARD_PBR_AUX_TEXTURE_UNITS = weatherMaterialsSupported() ? 11 : 10;' in viewer
+    from shader_sampler_fixture import run as sampler_inventories
+    sampler_inventories(directory)
     print('parallel setting and serial basic/sampler/eligibility barriers PASS')
 
 

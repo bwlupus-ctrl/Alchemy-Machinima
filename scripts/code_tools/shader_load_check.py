@@ -32,10 +32,10 @@ INPUTS = ('indra/llrender/llgl.cpp', 'indra/llrender/llgl.h', MGR, HEADER, GLSL,
 # inventory below rejects new injection/attachment sites outside these regions.
 REGIONS = {
     'indra/llrender/llgl.cpp': ('LLGLManager::enableParallelShaderCompile(', 'LLGLManager::initExtensions('),
-    MGR: ('LLShaderMgr::ownsShaderObject(', 'LLShaderMgr::beginShaderBatch(', 'LLShaderMgr::endShaderBatch(', 'LLShaderMgr::finishBatchBinary(', 'LLShaderMgr::shaderLanguageVersion(', 'LLShaderMgr::prepareWeatherFeatures(',
+    MGR: ('LLShaderMgr::clearShaderObjects(', 'LLShaderMgr::ownsShaderObject(', 'LLShaderMgr::beginShaderBatch(', 'LLShaderMgr::endShaderBatch(', 'LLShaderMgr::finishBatchBinary(', 'LLShaderMgr::shaderLanguageVersion(', 'LLShaderMgr::prepareWeatherFeatures(',
           'LLShaderMgr::attachShaderFeatures(', 'LLShaderMgr::attachShaderFeaturesInternal(', 'LLShaderMgr::loadShaderFile(', 'LLShaderMgr::loadShaderFileInternal(',
           'LLShaderMgr::linkProgramObject(', 'LLShaderMgr::linkProgramObjectInternal(', 'LLShaderMgr::submitProgramLink(', 'LLShaderMgr::finishProgramLinkInternal(', 'LLShaderMgr::readShaderSource(', 'shader_source_has_main(',
-          'shader_shared_source_fingerprint(', 'LLShaderMgr::hashShaderCacheFeatures(',
+          'shader_shared_source_fingerprint(', 'LLShaderMgr::hashShaderCacheFeatures(', 'LLShaderMgr::shaderFeatureHash(', 'LLShaderMgr::shaderFeatureObject(', 'LLShaderMgr::shaderSourceUsesDefine(',
           'LLShaderMgr::initShaderCache(', 'LLShaderMgr::loadCachedProgramBinary(', 'LLShaderMgr::loadCachedProgramBinaryInternal(',
           'LLShaderMgr::saveCachedProgramBinary(', 'LLShaderMgr::configureShaderDiagnostics(',
           'LLShaderMgr::openShaderEquivalence(', 'LLShaderMgr::rejectProgramBinary(',
@@ -54,7 +54,7 @@ REGIONS = {
            'LLGLSLShader::attachFragmentObject(', 'LLGLSLShader::attachFragmentObjectInternal(', 'LLGLSLShader::attachObject(', 'LLGLSLShader::attachObjectInternal(',
            'LLGLSLShader::attachObjects(', 'LLGLSLShader::mapAttributes(', 'LLGLSLShader::mapAttributesInternal(', 'LLGLSLShader::bindAttributes(', 'LLGLSLShader::readAttributes(',
            'LLGLSLShader::link(', 'LLGLSLShader::linkInternal(', 'LLGLSLShader::submitLink(', 'LLGLSLShader::finishLinkInternal(', 'LLGLSLShader::hash(', 'LLGLSLShader::hashWithEpoch('),
-    VIEWER: ('create_family_shader(', 'after_shader_family(', 'create_family_rigged(',
+    VIEWER: ('ssr_texture_budget(', 'LLViewerShaderMgr::ssrCapabilityInputs(', 'LLViewerShaderMgr::canToggleSSR(', 'create_family_shader(', 'after_shader_family(', 'create_family_rigged(',
              'LLViewerShaderMgr::loadShadersDeferred(', 'LLViewerShaderMgr::LLViewerShaderMgr(', 'LLViewerShaderMgr::setShaders(', 'LLViewerShaderMgr::loadBasicShaders('),
 }
 CPP_TOKENS = re.compile(
@@ -188,6 +188,19 @@ def source_errors(files, shaders, pins):
     for item in ('mSharedShaderFingerprint', 'hash_obj.update(&epoch, sizeof(epoch));', 'mReservedAttribs', 'mShaderCacheFeatureHash'):
         if item not in hashed:
             errors.append('program hash missing input/fail-safe: ' + item)
+    loader = function(files[MGR], 'LLShaderMgr::loadShaderFileInternal(')
+    scoped = function(files[MGR], 'LLShaderMgr::shaderFeatureHash(')
+    if 'defines == &LLGLSLShader::sGlobalDefines &&' not in loader or '!shaderSourceUsesDefine(define_source, iter->first)' not in loader:
+        errors.append('global emission must filter whole identifiers without filtering program permutations')
+    if 'attachShaderFeaturesInternal<false>(shader, &files);' not in scoped or 'mShaderFeatureKeys.find(file)' not in scoped:
+        errors.append('program dependency keys must use the actual feature attachment selector')
+    if 'manager->shaderFeatureHash(this)' not in hashed or 'mShaderCacheEligible &= feature_hash.notNull();' not in hashed:
+        errors.append('program cache must include effective dependencies and reject missing keys')
+    if 'GBUFFER_FLAG_ENCODING' not in hashed or 'GBUFFER_AVATAR_TAG_ENABLED' not in hashed:
+        errors.append('intentional hash-only and C++ preamble tokens must remain program cache inputs')
+    snapshot_keys = function(files[MGR], 'LLShaderMgr::hashShaderCacheFeatures(')
+    if 'hash_obj.update(object->first)' in snapshot_keys:
+        errors.append('unrelated preloaded module keys must not invalidate every program')
     declared = feature_fields(files['indra/llrender/llglslshader.h'])
     snapshot = function(files[MGR], 'LLShaderMgr::snapshotShaderAttempt(')
     dumped = re.findall(r'features\["(\w+)"\] = shader->mFeatures\.\1;', snapshot)
@@ -387,6 +400,11 @@ def selftest(quiet=False):
     # Refresh the epoch digest in these structural fixtures so they must fail
     # their own contracts, independently of the injection pin.
     structural = [
+        ('global filtering removed', MGR, '!shaderSourceUsesDefine(define_source, iter->first)', 'false'),
+        ('dependency selector bypassed', MGR, 'attachShaderFeaturesInternal<false>(shader, &files);', ''),
+        ('effective feature hash omitted', GLSL, 'manager->shaderFeatureHash(this)', 'LLUUID::null'),
+        ('hash-only invalidation token lost', GLSL, '"GBUFFER_FLAG_ENCODING", "GBUFFER_AVATAR_TAG_ENABLED"', '"IGNORED", "GBUFFER_AVATAR_TAG_ENABLED"'),
+
         ('wrong production epoch', GLSL, 'return hashWithEpoch(LLShaderMgr::SHADER_CACHE_EPOCH);', 'return hashWithEpoch(0);'),
         ('epoch feed omitted', GLSL, '    hash_obj.update(&epoch, sizeof(epoch));', ''),
         ('feature field omitted', GLSL,
@@ -441,7 +459,7 @@ def selftest(quiet=False):
         for failure in failures:
             print(failure, file=sys.stderr)
     elif not quiet:
-        print('shader_load_check selftest: 40 planted regressions rejected; epoch transition checked')
+        print('shader_load_check selftest: 44 planted regressions rejected; epoch transition checked')
     return 1 if failures else 0
 
 

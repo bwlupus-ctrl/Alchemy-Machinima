@@ -86,6 +86,9 @@ public:
     bool loadShadersWater();
     bool loadShadersInterface();
 
+    // True only for a resident SSR recipe loaded with the current budget inputs.
+    bool canToggleSSR() const;
+
     // True only while both authored Actor FX fragment modules are available.
     // Shared replay must not publish programs linked against identity fallbacks,
     // because it suppresses the matching native material pass after preflight.
@@ -166,6 +169,10 @@ public:
     /* virtual */ void updateShaderUniforms(LLGLSLShader * shader);
 
 private:
+    std::vector<S32> ssrCapabilityInputs() const;
+    std::vector<S32> mSSRCapabilityInputs;
+    bool mRuntimeSSR = false;
+    bool mRuntimeSSRLoaded = false;
     // the list of shaders we need to propagate parameters to.
     std::vector<LLGLSLShader *> mShaderList;
     bool mColorChartAttempted = false;

@@ -28125,6 +28125,8 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniformMatrix4fv(LLShaderMgr::MODELVIEW_DELTA_MATRIX, 1, GL_FALSE, glm::value_ptr(gGLDeltaModelView));
     shader.uniformMatrix4fv(LLShaderMgr::INVERSE_MODELVIEW_DELTA_MATRIX, 1, GL_FALSE, glm::value_ptr(gGLInverseDeltaModelView));
 
+    static const LLStaticHashedString ssr_enabled("ssr_enabled");
+    shader.uniform1i(ssr_enabled, RenderScreenSpaceReflections ? 1 : 0);
     shader.uniform1i(LLShaderMgr::CUBE_SNAPSHOT, gCubeSnapshot ? 1 : 0);
 
     if (shader.getUniformLocation(LLShaderMgr::DEFERRED_NORM_MATRIX) >= 0)
@@ -34184,16 +34186,36 @@ void LLPipeline::setEnvMat(LLGLSLShader& shader)
 
 void LLPipeline::bindReflectionProbes(LLGLSLShader& shader)
 {
+    static const LLStaticHashedString ssr_enabled("ssr_enabled");
+    shader.uniform1i(ssr_enabled, RenderScreenSpaceReflections ? 1 : 0);
     static const LLStaticHashedString sPrismAuxiliary("prism_auxiliary");
     shader.uniform1i(sPrismAuxiliary, sPrismLensRender ? 1 : 0);
+
+    const bool prism_auxiliary = sPrismLensRender;
+    // SSR samplers stay active with the runtime gate off. Never bind a released
+    // target (or a target belonging to the main camera during an auxiliary pass).
+    const bool use_scene_map = RenderScreenSpaceReflections && !prism_auxiliary &&
+        mSceneMap.isComplete() && mSceneMap.getDepth() != 0;
+    S32 channel = shader.enableTexture(LLShaderMgr::SCENE_MAP);
+    if (channel > -1)
+    {
+        if (use_scene_map) gGL.getTexUnit(channel)->bind(&mSceneMap);
+        else gGL.getTexUnit(channel)->bind(LLViewerTexture::sBlackImagep);
+    }
+
+    channel = shader.enableTexture(LLShaderMgr::SCENE_DEPTH);
+    if (channel > -1)
+    {
+        if (use_scene_map) gGL.getTexUnit(channel)->bind(&mSceneMap, true);
+        else gGL.getTexUnit(channel)->bind(LLViewerTexture::sBlackImagep);
+    }
 
     if (!sReflectionProbesEnabled)
     {
         return;
     }
 
-    const bool prism_auxiliary = sPrismLensRender;
-    S32 channel = shader.enableTexture(LLShaderMgr::REFLECTION_PROBES, LLTexUnit::TT_CUBE_MAP_ARRAY);
+    channel = shader.enableTexture(LLShaderMgr::REFLECTION_PROBES, LLTexUnit::TT_CUBE_MAP_ARRAY);
     bool bound = false;
     if (channel > -1 && mReflectionMapManager.mTexture.notNull())
     {
@@ -34232,18 +34254,6 @@ void LLPipeline::bindReflectionProbes(LLGLSLShader& shader)
         setEnvMat(shader);
     }
 
-    // The shared scene map belongs to the main camera. Sampling it from a
-    // remote G-buffer produces unrelated rays and advancing its Poisson phase
-    // makes the main view's temporal sequence depend on capture cadence.
-    if (!prism_auxiliary)
-    {
-        channel = shader.enableTexture(LLShaderMgr::SCENE_MAP);
-        if (channel > -1)
-        {
-            gGL.getTexUnit(channel)->bind(&mSceneMap);
-        }
-    }
-
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_ITR_COUNT,
                      prism_auxiliary ? 0.f :
                          static_cast<GLfloat>(RenderScreenSpaceReflectionIterations));
@@ -34265,14 +34275,7 @@ void LLPipeline::bindReflectionProbes(LLGLSLShader& shader)
                      prism_auxiliary ? 0.f : static_cast<GLfloat>(mPoissonOffset));
     shader.uniform1f(LLShaderMgr::DEFERRED_SSR_ADAPTIVE_STEP_MULT, RenderScreenSpaceReflectionAdaptiveStepMultiplier);
 
-    if (!prism_auxiliary)
-    {
-        channel = shader.enableTexture(LLShaderMgr::SCENE_DEPTH);
-        if (channel > -1)
-        {
-            gGL.getTexUnit(channel)->bind(&mSceneMap, true);
-        }
-    }
+
 
 
 }

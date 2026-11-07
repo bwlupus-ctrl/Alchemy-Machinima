@@ -669,11 +669,12 @@ template<bool diagnostics>
 bool LLGLSLShader::attachVertexObjectInternal(std::string object_path)
 {
     if constexpr (diagnostics) LLShaderMgr::instance()->traceFeatureAttachment(object_path, GL_VERTEX_SHADER);
-    if (LLShaderMgr::instance()->mVertexShaderObjects.count(object_path) > 0)
+    const GLuint object = LLShaderMgr::instance()->shaderFeatureObject(object_path, GL_VERTEX_SHADER);
+    if (object)
     {
         stop_glerror();
-        glAttachShader(mProgramObject, LLShaderMgr::instance()->mVertexShaderObjects[object_path]);
-        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(LLShaderMgr::instance()->mVertexShaderObjects[object_path]);
+        glAttachShader(mProgramObject, object);
+        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(object);
 #if DEBUG_SHADER_INCLUDES
         dumpAttachObject("attachVertexObject", mProgramObject, object_path);
 #endif // DEBUG_SHADER_INCLUDES
@@ -702,11 +703,12 @@ bool LLGLSLShader::attachFragmentObjectInternal(std::string object_path)
     }
     if constexpr (diagnostics) LLShaderMgr::instance()->traceFeatureAttachment(object_path, GL_FRAGMENT_SHADER);
 
-    if (LLShaderMgr::instance()->mFragmentShaderObjects.count(object_path) > 0)
+    const GLuint object = LLShaderMgr::instance()->shaderFeatureObject(object_path, GL_FRAGMENT_SHADER);
+    if (object)
     {
         stop_glerror();
-        glAttachShader(mProgramObject, LLShaderMgr::instance()->mFragmentShaderObjects[object_path]);
-        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(LLShaderMgr::instance()->mFragmentShaderObjects[object_path]);
+        glAttachShader(mProgramObject, object);
+        if constexpr (diagnostics) LLShaderMgr::instance()->traceAttachment(object);
 #if DEBUG_SHADER_INCLUDES
         dumpAttachObject("attachFragmentObject", mProgramObject, object_path);
 #endif // DEBUG_SHADER_INCLUDES
@@ -2264,11 +2266,18 @@ LLUUID LLGLSLShader::hashWithEpoch(U32 epoch)
         hash_obj.update(define_pair.second);
 
     }
-    for (const auto& define_pair : LLGLSLShader::sGlobalDefines)
+    // The G-buffer tokens explicitly invalidate generated decoder contracts.
+    // SSR mode/state stays explicit even for programs without an SSR consumer:
+    // binaries must never cross resident and compile-time recipes.
+    // Other globals are represented by the effective linked module keys.
+    for (const char* token : { "GBUFFER_FLAG_ENCODING", "GBUFFER_AVATAR_TAG_ENABLED", "SSR_RUNTIME", "SSR" })
     {
-        hash_obj.update(define_pair.first);
-        hash_obj.update(define_pair.second);
-
+        const auto define = sGlobalDefines.find(token);
+        if (define != sGlobalDefines.end())
+        {
+            hash_obj.update(define->first);
+            hash_obj.update(define->second);
+        }
     }
     // Hash declared fields only: LLShaderFeatures can have padding whose bytes
     // differ between otherwise identical (including heap-allocated) variants.
@@ -2309,6 +2318,12 @@ LLUUID LLGLSLShader::hashWithEpoch(U32 epoch)
     auto* manager = LLShaderMgr::instance();
     hash_obj.update(manager->mSharedShaderFingerprint.asString());
     hash_obj.update(manager->mShaderCacheFeatureHash.asString());
+    if (!isCompute())
+    {
+        const LLUUID feature_hash = manager->shaderFeatureHash(this);
+        mShaderCacheEligible &= feature_hash.notNull();
+        hash_obj.update(feature_hash.asString());
+    }
     hash_obj.update(&epoch, sizeof(epoch));
     hash_obj.update(&sIndexedTextureChannels, sizeof(sIndexedTextureChannels));
     for (const auto& attribute : manager->mReservedAttribs)

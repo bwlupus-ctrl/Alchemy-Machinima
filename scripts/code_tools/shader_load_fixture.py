@@ -15,7 +15,7 @@ def run(root):
     init = function(source, 'LLShaderMgr::readShaderSource(') + '\n' + function(source, 'LLShaderMgr::initShaderCache(')
     shader = (root / GLSL).read_text(encoding='utf-8')
     hashed = function(shader, 'LLGLSLShader::hash(') + '\n' + function(shader, 'LLGLSLShader::hashWithEpoch(')
-    features = function(source, 'LLShaderMgr::hashShaderCacheFeatures(')
+    features = '\n'.join(function(source, name + '(') for name in ('LLShaderMgr::hashShaderCacheFeatures', 'LLShaderMgr::attachShaderFeaturesInternal', 'LLShaderMgr::shaderFeatureHash', 'LLShaderMgr::shaderFeatureObject', 'LLShaderMgr::shaderSourceUsesDefine'))
     feature_class = function((root / 'indra/llrender/llglslshader.h').read_text(encoding='utf-8'), 'class LLShaderFeatures') + ';'
     fields = feature_fields((root / 'indra/llrender/llglslshader.h').read_text(encoding='utf-8'))
     # Retain the production entry guards, replacing only the binary I/O tail
@@ -51,15 +51,19 @@ using S32=int;
 using U32=unsigned;
 std::string llformat(const char*,int n){return std::to_string(n);}
 using GLsizei=int;
-using GLenum=unsigned;
+template<class T>T llmax(T a,T b){return std::max(a,b);}
+using GLenum=unsigned; using GLuint=unsigned;
+constexpr GLenum GL_VERTEX_SHADER=35633,GL_FRAGMENT_SHADER=35632;
 namespace fs=std::filesystem;
 struct LLUUID {
+ static const LLUUID null;
  std::string value;
  LLUUID()=default; LLUUID(const std::string& s):value(s){} LLUUID(const char* s):value(s){}
  bool notNull()const{return !value.empty();}std::string asString()const{return value;}
  bool operator==(const LLUUID& b)const{return value==b.value;}
  bool operator<(const LLUUID& b)const{return value<b.value;}
 };
+const LLUUID LLUUID::null;
 std::string last_hash_input;
 struct HBXXH128 { // Test-only deterministic digest; production feeds/ordering unchanged.
  std::string input;
@@ -76,6 +80,7 @@ struct fsyspath:fs::path {
 };
 #define LL_PROFILE_ZONE_SCOPED
 #define LL_INFOS(x) std::ostringstream()
+#define llassert_always(x) require(x,"assert")
 #define LL_WARNS(x) std::ostringstream()
 #define LL_ENDL std::endl
 using llifstream=std::ifstream;
@@ -109,6 +114,12 @@ struct LLShaderMgr {
  std::vector<std::string>mReservedAttribs;
  LLUUID mShaderCacheFeatureHash;
  void hashShaderCacheFeatures();
+ std::map<std::pair<std::string,GLenum>,std::string>mShaderFeatureKeys;
+ LLUUID shaderFeatureHash(LLGLSLShader*);
+ GLuint shaderFeatureObject(const std::string&,GLenum) const;
+ static bool shaderSourceUsesDefine(const std::string&,const std::string&);
+ template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader*,std::vector<std::pair<std::string,GLenum>>* = nullptr);
+ inline static int sAvatarLightResponseAttachCount=0;
  void disableShaderCache(){mShaderCacheSourceValid=false;mShaderCacheEnabled=false;}
  static constexpr const char* SHADER_CACHE_SCHEMA="SCHEMA_VALUE";
  struct ProgramBinaryData{GLsizei mBinaryLength=0;GLenum mBinaryFormat=0;F32 mLastUsedTime=0;};
@@ -134,6 +145,11 @@ LLShaderMgr* active_manager=nullptr;
 LLShaderMgr* LLShaderMgr::instance(){return active_manager;}
 FEATURE_CLASS
 struct LLGLSLShader {
+ inline static constexpr GLenum COMPUTE_STAGE=37305;
+ bool isCompute()const{return mShaderFiles.size()==1 && mShaderFiles[0].second==COMPUTE_STAGE;}
+ LLGLSLShader* mRiggedVariant=nullptr;
+ template<bool diagnostics> bool attachVertexObjectInternal(const std::string&){throw 1;}
+ template<bool diagnostics> bool attachFragmentObjectInternal(const std::string&){throw 1;}
  bool mShaderCacheEligible=true;
  std::string mName;int mShaderGroup=0,mShaderLevel=2;LLShaderFeatures mFeatures{};
  std::vector<std::pair<std::string,GLenum>>mShaderFiles;
@@ -149,8 +165,10 @@ INIT
 bool LLShaderMgr::readShaderSource(const std::string& path,std::string& content){
  return (denied_source.empty() || !fs::equivalent(fsyspath(path),fsyspath(denied_source))) && readShaderSourceActual(path,content);
 }
+static void require(bool,const char*);
 FEATURES
 HASH
+LLGLSLShader padding_dependency_shader;
 PADDED_HASH
 BINARY_GUARDS
 static void write(const fs::path& path,const std::string& source){fs::create_directories(path.parent_path());std::ofstream(path,std::ios::binary)<<source;}
@@ -198,12 +216,19 @@ int main(int argc,char** argv){
  write(tree/"class2/util.glsl","float utility() {return 2.;}\n");
  LLShaderMgr key_manager;key_manager.prefix=prefix;active_manager=&key_manager;
  key_manager.mReservedAttribs={"position","texcoord"};
- key_manager.mShaderObjects={{"compiled-feature-A",7}};
- key_manager.mFragmentShaderObjects={{"util.glsl",7}};key_manager.hashShaderCacheFeatures();
+ key_manager.mShaderObjects={{"compiled-feature-A",7},{"stable",8}};
+ key_manager.mVertexShaderObjects={{"deferred/textureUtilV.glsl",8},{"objects/nonindexedTextureV.glsl",8}};
+ key_manager.mFragmentShaderObjects={{"deferred/shadowUtil.glsl",7},{"deferred/globalF.glsl",8}};key_manager.hashShaderCacheFeatures();
  require(shader_shared_source_fingerprint(prefix,key_manager.mSharedShaderFingerprint),"key scan failed");
  LLGLSLShader look_a,look_b;look_a.mName="look A";look_b.mName="look B";
- look_a.mShaderFiles={{"lookF.glsl",1}};look_b.mShaderFiles={{"otherF.glsl",1}};
+ look_a.mFeatures.hasShadows=true;look_a.mShaderFiles={{"lookF.glsl",1}};look_b.mShaderFiles={{"otherF.glsl",1}};
  const auto a_before=look_a.hash(),b_before=look_b.hash();
+ LLGLSLShader::sGlobalDefines["SSR_RUNTIME"]="1";const auto runtime_key=look_b.hash();
+ LLGLSLShader::sGlobalDefines.erase("SSR_RUNTIME");const auto fallback_off=look_b.hash();
+ LLGLSLShader::sGlobalDefines["SSR"]="1";const auto fallback_on=look_b.hash();
+ require(!(runtime_key==fallback_off) && !(runtime_key==fallback_on) && !(fallback_on==fallback_off),"SSR modes/states share binary keys");
+ LLGLSLShader::sGlobalDefines.erase("SSR");
+
  // Force a permitted layout with tail padding while preserving the exact
  // production fields and hash feeds. The current MSVC layout may have none.
  PaddedShader padded_a,padded_b;
@@ -253,11 +278,11 @@ int main(int argc,char** argv){
  std::reverse(key_manager.mReservedAttribs.begin(),key_manager.mReservedAttribs.end());
  require(!(look_a.hash()==with_attributes),"attribute binding order escaped key");
  const auto feature_before=key_manager.mShaderCacheFeatureHash;
- key_manager.mShaderObjects={{"compiled-feature-A",99}};key_manager.mFragmentShaderObjects={{"util.glsl",99}};
+ key_manager.mShaderObjects={{"compiled-feature-A",99},{"stable",8}};key_manager.mFragmentShaderObjects={{"deferred/shadowUtil.glsl",99},{"deferred/globalF.glsl",8}};
  key_manager.hashShaderCacheFeatures();require(feature_before==key_manager.mShaderCacheFeatureHash,"process-local handles changed feature key");
- const auto code_before=look_a.hash();
- key_manager.mShaderObjects={{"compiled-feature-B",99}};key_manager.hashShaderCacheFeatures();
- require(!(look_a.hash()==code_before),"assembled feature code escaped key");
+ const auto code_before=look_a.hash(),neighbor_before=look_b.hash();
+ key_manager.mShaderObjects={{"compiled-feature-B",99},{"stable",8}};key_manager.hashShaderCacheFeatures();
+ require(!(look_a.hash()==code_before) && look_b.hash()==neighbor_before,"assembled feature code escaped key or invalidated unrelated program");
  write(tree/"class2/lookF.glsl","void main(){int top=1;}\n");
  const auto fallback_before=look_a.hash();write(tree/"class1/lookF.glsl","void main(){int fallback=2;}\n");
  require(!(look_a.hash()==fallback_before),"lower-class root fallback escaped key");
@@ -318,7 +343,7 @@ int main(int argc,char** argv){
             .replace('EPOCH_VALUE', re.search(r'SHADER_CACHE_EPOCH\s*=\s*(\d+)', header)[1])
             .replace('FEATURE_CLASS', feature_class + '\n' + feature_class.replace('class LLShaderFeatures', 'class alignas(64) PaddedFeatures'))
             .replace('PADDED_SHADER', shader_shell.replace('LLGLSLShader', 'PaddedShader').replace('LLShaderFeatures', 'PaddedFeatures'))
-            .replace('PADDED_HASH', hashed.replace('LLGLSLShader::hash', 'PaddedShader::hash'))
+            .replace('PADDED_HASH', hashed.replace('LLGLSLShader::hash', 'PaddedShader::hash').replace('manager->shaderFeatureHash(this)', 'manager->shaderFeatureHash(&padding_dependency_shader)'))
             .replace('SAME_FIELDS', '\n'.join(' padded_a.mFeatures.%s=padded_b.mFeatures.%s={};' % (name, name) for name in fields))
             .replace('BINARY_GUARDS', binary_guards)
             .replace('SCANNER', scanner).replace('INIT', init.replace('LLShaderMgr::readShaderSource(', 'LLShaderMgr::readShaderSourceActual(', 1))
@@ -377,3 +402,5 @@ int main(int argc,char** argv){
 if __name__ == '__main__':
     from native_check_tools import ROOT
     run(ROOT)
+    from shader_scope_runtime_fixture import run as runtime_scope
+    runtime_scope()

@@ -23,6 +23,9 @@
  * $/LicenseInfo$
  */
 
+#ifdef SSR_RUNTIME
+uniform int ssr_enabled;
+#endif
 uniform sampler2D sceneMap;
 uniform sampler2D sceneDepth;
 
@@ -321,6 +324,16 @@ vec3 getPoissonSample(int i) {
 
 float tapScreenSpaceReflection(int totalSamples, vec2 tc, vec3 viewPos, vec3 n, inout vec4 collectedColor, sampler2D source, float glossiness)
 {
+#ifdef SSR_RUNTIME
+    // Preserve the class1 no-SSR stub for direct callers as well as probes.
+    // The post program is resident even when SSR is disabled.
+    if (ssr_enabled == 0)
+    {
+        collectedColor = vec4(0);
+        return 0.f;
+    }
+#endif
+
 #ifdef TRANSPARENT_SURFACE
 collectedColor = vec4(1, 0, 1, 1);
     return 0;

@@ -127,6 +127,7 @@ void LLShaderMgr::clearShaderObjects()
     mDiagnosticObjects.clear();
     mVertexShaderObjects.clear();
     mFragmentShaderObjects.clear();
+    mShaderFeatureKeys.clear();
 }
 
 void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
@@ -168,10 +169,20 @@ void LLShaderMgr::prepareWeatherFeatures(LLGLSLShader* shader)
 }
 
 template<bool diagnostics>
-bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
+bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader, std::vector<std::pair<std::string, GLenum>>* files)
 {
     llassert_always(shader != NULL);
     LLShaderFeatures *features = & shader->mFeatures;
+    auto attach_vertex = [&](const std::string& file)
+    {
+        if (files) { files->emplace_back(file, GL_VERTEX_SHADER); return true; }
+        return shader->attachVertexObjectInternal<diagnostics>(file);
+    };
+    auto attach_fragment = [&](const std::string& file)
+    {
+        if (files) { files->emplace_back(file, GL_FRAGMENT_SHADER); return true; }
+        return shader->attachFragmentObjectInternal<diagnostics>(file);
+    };
 
     if (features->attachNothing)
     {
@@ -184,7 +195,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
     // NOTE order of shader object attaching is VERY IMPORTANT!!!
     if (features->calculatesAtmospherics || features->hasGamma || features->isDeferred)
     {
-        if (!shader->attachVertexObjectInternal<diagnostics>("windlight/atmosphericsVarsV.glsl"))
+        if (!attach_vertex("windlight/atmosphericsVarsV.glsl"))
         {
             return false;
         }
@@ -192,7 +203,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->calculatesLighting || features->calculatesAtmospherics)
     {
-        if (!shader->attachVertexObjectInternal<diagnostics>("windlight/atmosphericsHelpersV.glsl"))
+        if (!attach_vertex("windlight/atmosphericsHelpersV.glsl"))
         {
             return false;
         }
@@ -202,40 +213,40 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
     {
         if (features->isSpecular)
         {
-            if (!shader->attachVertexObjectInternal<diagnostics>("lighting/lightFuncSpecularV.glsl"))
+            if (!attach_vertex("lighting/lightFuncSpecularV.glsl"))
             {
                 return false;
             }
 
             if (!features->isAlphaLighting)
             {
-                if (!shader->attachVertexObjectInternal<diagnostics>("lighting/sumLightsSpecularV.glsl"))
+                if (!attach_vertex("lighting/sumLightsSpecularV.glsl"))
                 {
                     return false;
                 }
             }
 
-            if (!shader->attachVertexObjectInternal<diagnostics>("lighting/lightSpecularV.glsl"))
+            if (!attach_vertex("lighting/lightSpecularV.glsl"))
             {
                 return false;
             }
         }
         else
         {
-            if (!shader->attachVertexObjectInternal<diagnostics>("lighting/lightFuncV.glsl"))
+            if (!attach_vertex("lighting/lightFuncV.glsl"))
             {
                 return false;
             }
 
             if (!features->isAlphaLighting)
             {
-                if (!shader->attachVertexObjectInternal<diagnostics>("lighting/sumLightsV.glsl"))
+                if (!attach_vertex("lighting/sumLightsV.glsl"))
                 {
                     return false;
                 }
             }
 
-            if (!shader->attachVertexObjectInternal<diagnostics>("lighting/lightV.glsl"))
+            if (!attach_vertex("lighting/lightV.glsl"))
             {
                 return false;
             }
@@ -245,16 +256,16 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
     // NOTE order of shader object attaching is VERY IMPORTANT!!!
     if (features->calculatesAtmospherics)
     {
-        if (!shader->attachVertexObjectInternal<diagnostics>("environment/srgbF.glsl")) // NOTE -- "F" suffix is superfluous here, there is nothing fragment specific in srgbF
+        if (!attach_vertex("environment/srgbF.glsl")) // NOTE -- "F" suffix is superfluous here, there is nothing fragment specific in srgbF
         {
             return false;
         }
 
-        if (!shader->attachVertexObjectInternal<diagnostics>("windlight/atmosphericsFuncs.glsl")) {
+        if (!attach_vertex("windlight/atmosphericsFuncs.glsl")) {
             return false;
         }
 
-        if (!shader->attachVertexObjectInternal<diagnostics>("windlight/atmosphericsV.glsl"))
+        if (!attach_vertex("windlight/atmosphericsV.glsl"))
         {
             return false;
         }
@@ -262,7 +273,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasSkinning)
     {
-        if (!shader->attachVertexObjectInternal<diagnostics>("avatar/avatarSkinV.glsl"))
+        if (!attach_vertex("avatar/avatarSkinV.glsl"))
         {
             return false;
         }
@@ -270,14 +281,14 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasObjectSkinning)
     {
-        shader->mRiggedVariant = shader;
-        if (!shader->attachVertexObjectInternal<diagnostics>("avatar/objectSkinV.glsl"))
+        if (!files) shader->mRiggedVariant = shader;
+        if (!attach_vertex("avatar/objectSkinV.glsl"))
         {
             return false;
         }
     }
 
-    if (!shader->attachVertexObjectInternal<diagnostics>("deferred/textureUtilV.glsl"))
+    if (!attach_vertex("deferred/textureUtilV.glsl"))
     {
         return false;
     }
@@ -288,16 +299,16 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     // NOTE order of shader object attaching is VERY IMPORTANT!!!
 
-    if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/globalF.glsl"))
+    if (!attach_fragment("deferred/globalF.glsl"))
     {
         return false;
     }
 
-    if (features->hasWeatherMaterial && !shader->attachFragmentObjectInternal<diagnostics>("deferred/weatherMaterialF.glsl"))
+    if (features->hasWeatherMaterial && !attach_fragment("deferred/weatherMaterialF.glsl"))
     {
         return false;
     }
-    if (features->hasWeatherMaterial && !shader->attachFragmentObjectInternal<diagnostics>("deferred/weatherShelterF.glsl"))
+    if (features->hasWeatherMaterial && !attach_fragment("deferred/weatherShelterF.glsl"))
     {
         return false;
     }
@@ -310,7 +321,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
             mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") != 0 &&
             mFragmentShaderObjects.count("alchemy/actorFxF.glsl") != 0;
 
-        if (!actor_fx_primary_available)
+        if (!files && !actor_fx_primary_available)
         {
             LL_WARNS("Shader") << "Actor FX primary modules unavailable for "
                                 << shader->mName << "; attaching coupled identity fallbacks" << LL_ENDL;
@@ -319,7 +330,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
         const char* dissolve_module = actor_fx_primary_available
                                           ? "alchemy/actorFxDissolveF.glsl"
                                           : "alchemy/actorFxDissolveFallbackF.glsl";
-        if (!shader->attachFragmentObjectInternal<diagnostics>(dissolve_module))
+        if (!attach_fragment(dissolve_module))
         {
             return false;
         }
@@ -329,23 +340,23 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
             const char* beauty_module = actor_fx_primary_available
                                             ? "alchemy/actorFxF.glsl"
                                             : "alchemy/actorFxFallbackF.glsl";
-            if (!shader->attachFragmentObjectInternal<diagnostics>(beauty_module))
+            if (!attach_fragment(beauty_module))
             {
                 return false;
             }
 
             // [AvatarLightResponse] per-avatar response trim; identity while alrEnabled == 0.
-            if (!shader->attachFragmentObjectInternal<diagnostics>("alchemy/avatarLightResponseF.glsl"))
+            if (!attach_fragment("alchemy/avatarLightResponseF.glsl"))
             {
                 return false;
             }
-            ++sAvatarLightResponseAttachCount;
+            if (!files) ++sAvatarLightResponseAttachCount;
         }
     }
 
     if (features->hasSrgb || features->hasAtmospherics || features->calculatesAtmospherics || features->isDeferred || features->hasWeatherMaterial)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("environment/srgbF.glsl"))
+        if (!attach_fragment("environment/srgbF.glsl"))
         {
             return false;
         }
@@ -353,7 +364,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if(features->calculatesAtmospherics || features->hasGamma || features->isDeferred)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("windlight/atmosphericsVarsF.glsl"))
+        if (!attach_fragment("windlight/atmosphericsVarsF.glsl"))
         {
             return false;
         }
@@ -361,7 +372,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->calculatesLighting || features->calculatesAtmospherics)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("windlight/atmosphericsHelpersF.glsl"))
+        if (!attach_fragment("windlight/atmosphericsHelpersF.glsl"))
         {
             return false;
         }
@@ -373,7 +384,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
     if ((features->isDeferred || features->hasReflectionProbes) &&
         shader->mDefines.count("PROJVOL_CLASSIC_UTIL") == 0)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/deferredUtil.glsl"))
+        if (!attach_fragment("deferred/deferredUtil.glsl"))
         {
             return false;
         }
@@ -381,7 +392,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasFullGBuffer)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/gbufferUtil.glsl"))
+        if (!attach_fragment("deferred/gbufferUtil.glsl"))
         {
             return false;
         }
@@ -389,7 +400,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasScreenSpaceReflections || features->hasReflectionProbes)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/screenSpaceReflUtil.glsl"))
+        if (!attach_fragment("deferred/screenSpaceReflUtil.glsl"))
         {
             return false;
         }
@@ -399,7 +410,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
     // its rim passes a receiver normal and must never enter the detail path.
     if (features->hasShadows && shader->mDefines.count("PROJVOL_CLASSIC_UTIL") == 0)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/shadowUtil.glsl"))
+        if (!attach_fragment("deferred/shadowUtil.glsl"))
         {
             return false;
         }
@@ -407,7 +418,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasReflectionProbes)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/reflectionProbeF.glsl"))
+        if (!attach_fragment("deferred/reflectionProbeF.glsl"))
         {
             return false;
         }
@@ -415,7 +426,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasAmbientOcclusion)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/aoUtil.glsl"))
+        if (!attach_fragment("deferred/aoUtil.glsl"))
         {
             return false;
         }
@@ -423,7 +434,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasGamma || features->isDeferred)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("windlight/gammaF.glsl"))
+        if (!attach_fragment("windlight/gammaF.glsl"))
         {
             return false;
         }
@@ -431,11 +442,11 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasAtmospherics || features->isDeferred)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("windlight/atmosphericsFuncs.glsl")) {
+        if (!attach_fragment("windlight/atmosphericsFuncs.glsl")) {
             return false;
         }
 
-        if (!shader->attachFragmentObjectInternal<diagnostics>("windlight/atmosphericsF.glsl"))
+        if (!attach_fragment("windlight/atmosphericsF.glsl"))
         {
             return false;
         }
@@ -444,7 +455,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
         // functions + uniforms (all uniform-gated), attached to exactly the set of
         // programs that can call it: the deferred haze pass and every forward
         // shader that links environment/waterFogF.glsl (hasAtmospherics).
-        if (!shader->attachFragmentObjectInternal<diagnostics>("windlight/cineHazeF.glsl"))
+        if (!attach_fragment("windlight/cineHazeF.glsl"))
         {
             return false;
         }
@@ -452,7 +463,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->isPBRTerrain)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/pbrterrainUtilF.glsl"))
+        if (!attach_fragment("deferred/pbrterrainUtilF.glsl"))
         {
             return false;
         }
@@ -460,13 +471,13 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasTonemap)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/tonemapUtilF.glsl"))
+        if (!attach_fragment("deferred/tonemapUtilF.glsl"))
         {
             return false;
         }
         // AMD FidelityFX LPM (tonemap type 7) lives in its own object so that
         // RunLPMFilter() (called from tonemapUtilF.glsl) resolves at link time.
-        if (!shader->attachFragmentObjectInternal<diagnostics>("deferred/LPMUtil.glsl"))
+        if (!attach_fragment("deferred/LPMUtil.glsl"))
         {
             return false;
         }
@@ -474,7 +485,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasColorGrade)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("alchemy/colorGradeUtilF.glsl"))
+        if (!attach_fragment("alchemy/colorGradeUtilF.glsl"))
         {
             return false;
         }
@@ -482,7 +493,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
 
     if (features->hasPostEffects)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("alchemy/postEffectUtilsF.glsl"))
+        if (!attach_fragment("alchemy/postEffectUtilsF.glsl"))
         {
             return false;
         }
@@ -491,7 +502,7 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
     // NOTE order of shader object attaching is VERY IMPORTANT!!!
     if (features->hasAtmospherics)
     {
-        if (!shader->attachFragmentObjectInternal<diagnostics>("environment/waterFogF.glsl"))
+        if (!attach_fragment("environment/waterFogF.glsl"))
         {
             return false;
         }
@@ -503,14 +514,14 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
         {
             if (features->hasAlphaMask)
             {
-                if (!shader->attachFragmentObjectInternal<diagnostics>("lighting/lightAlphaMaskNonIndexedF.glsl"))
+                if (!attach_fragment("lighting/lightAlphaMaskNonIndexedF.glsl"))
                 {
                     return false;
                 }
             }
             else
             {
-                if (!shader->attachFragmentObjectInternal<diagnostics>("lighting/lightNonIndexedF.glsl"))
+                if (!attach_fragment("lighting/lightNonIndexedF.glsl"))
                 {
                     return false;
                 }
@@ -520,32 +531,32 @@ bool LLShaderMgr::attachShaderFeaturesInternal(LLGLSLShader * shader)
         {
             if (features->hasAlphaMask)
             {
-                if (!shader->attachFragmentObjectInternal<diagnostics>("lighting/lightAlphaMaskF.glsl"))
+                if (!attach_fragment("lighting/lightAlphaMaskF.glsl"))
                 {
                     return false;
                 }
             }
             else
             {
-                if (!shader->attachFragmentObjectInternal<diagnostics>("lighting/lightF.glsl"))
+                if (!attach_fragment("lighting/lightF.glsl"))
                 {
                     return false;
                 }
             }
-            shader->mFeatures.mIndexedTextureChannels = llmax(LLGLSLShader::sIndexedTextureChannels, 1);
+            if (!files) shader->mFeatures.mIndexedTextureChannels = llmax(LLGLSLShader::sIndexedTextureChannels, 1);
         }
     }
 
     if (features->mIndexedTextureChannels <= 1)
     {
-        if (!shader->attachVertexObjectInternal<diagnostics>("objects/nonindexedTextureV.glsl"))
+        if (!attach_vertex("objects/nonindexedTextureV.glsl"))
         {
             return false;
         }
     }
     else
     {
-        if (!shader->attachVertexObjectInternal<diagnostics>("objects/indexedTextureV.glsl"))
+        if (!attach_vertex("objects/indexedTextureV.glsl"))
         {
             return false;
         }
@@ -558,8 +569,8 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader* shader)
 {
     return attachShaderFeaturesInternal<false>(shader);
 }
-template bool LLShaderMgr::attachShaderFeaturesInternal<true>(LLGLSLShader*);
-template bool LLShaderMgr::attachShaderFeaturesInternal<false>(LLGLSLShader*);
+template bool LLShaderMgr::attachShaderFeaturesInternal<true>(LLGLSLShader*, std::vector<std::pair<std::string, GLenum>>*);
+template bool LLShaderMgr::attachShaderFeaturesInternal<false>(LLGLSLShader*, std::vector<std::pair<std::string, GLenum>>*);
 
 
 //============================================================================
@@ -649,6 +660,25 @@ void LLShaderMgr::dumpObjectLog(GLuint ret, bool warns, const std::string& filen
         LL_SHADER_LOADING_WARNS() << "\n" << log << LL_ENDL;
     }
  }
+
+bool LLShaderMgr::shaderSourceUsesDefine(const std::string& source, const std::string& name)
+{
+    auto identifier = [](unsigned char c)
+    {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || c == '_';
+    };
+    if (name.empty()) return false;
+    size_t offset = 0;
+    while ((offset = source.find(name, offset)) != std::string::npos)
+    {
+        const size_t end = offset + name.size();
+        if ((offset == 0 || !identifier(source[offset - 1])) &&
+            (end == source.size() || !identifier(source[end]))) return true;
+        offset = end;
+    }
+    return false;
+}
 
 template<bool diagnostics, bool batching>
 GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & shader_level, GLenum type, std::map<std::string, std::string>* defines, S32 texture_index_channels, std::vector<LLShaderCompileJob>* pending)
@@ -776,6 +806,23 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
         return 0;
     }
 
+    // Global maps are distinct from per-program permutations. No GLSL includes
+    // are supported here; the load gate rejects real #include directives (the
+    // three current occurrences are documentation in comments).
+    std::string define_source;
+    if (defines == &LLGLSLShader::sGlobalDefines)
+    {
+        char source_line[1024];
+        while (fgets(source_line, sizeof(source_line), file)) define_source += source_line;
+        if (ferror(file))
+        {
+            fclose(file);
+            finish_stage(false, shader_level);
+            return 0;
+        }
+        rewind(file);
+    }
+
     //we can't have any lines longer than 1024 characters
     //or any shaders longer than 4096 lines... deal - DaveP
     GLchar buff[1024];
@@ -869,8 +916,8 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
     // (set by LLViewerShaderMgr::setShaders under exactly the RGBA16-normals
     // predicate, and part of the binary-cache key) so that every compile unit
     // of every program -- utility files included -- sees ONE definition of
-    // GBUFFER_AVATAR_TAG. The utility files' own `defines` loop below emits
-    // GBUFFER_AVATAR_TAG_ENABLED (a different token), never a duplicate.
+    // GBUFFER_AVATAR_TAG. The selector is retained explicitly in program keys;
+    // the unused hash token itself is not emitted into GLSL.
     // Encoding 2: .w is a 7-level code at multiples of 1/6. Even codes are the
     // existing flags (0 SKIP_ATMOS, 2 HAS_ATMOS, 4 HAS_PBR, 6 HAS_HDRI -- all
     // inside the 0.1 window of the constants above); odd codes are
@@ -899,6 +946,8 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
     {
         for (auto iter = defines->begin(); iter != defines->end(); ++iter)
         {
+            if (defines == &LLGLSLShader::sGlobalDefines &&
+                !shaderSourceUsesDefine(define_source, iter->first)) continue;
             std::string define = "#define " + iter->first + " " + iter->second + "\n";
             extra_code_text[extra_code_count++] = (GLchar *) strdup(define.c_str());
         }
@@ -1140,6 +1189,7 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
         for (GLuint i = 0; i < shader_code_count; ++i) free(shader_code_text[i]);
         if (type == GL_VERTEX_SHADER) mVertexShaderObjects[filename] = cached_object;
         if (type == GL_FRAGMENT_SHADER) mFragmentShaderObjects[filename] = cached_object;
+        mLastShaderSourceLevel = gpu_class;
         shader_level = try_gpu_class;
         finish_stage(true, shader_level, cached_object, "reused");
         return cached_object;
@@ -1246,6 +1296,7 @@ GLuint LLShaderMgr::loadShaderFileInternal(const std::string& filename, S32 & sh
         else if (type == GL_FRAGMENT_SHADER) {
             mFragmentShaderObjects[filename] = ret;
         }
+        mLastShaderSourceLevel = gpu_class;
         shader_level = try_gpu_class;
     }
     else
@@ -1477,7 +1528,9 @@ static bool shader_shared_source_fingerprint(const std::string& prefix, LLUUID& 
 void LLShaderMgr::hashShaderCacheFeatures()
 {
     HBXXH128 hash_obj;
-    // Alias names AND assembled-text keys: never hash process-local GL handles.
+    mShaderFeatureKeys.clear();
+    // Freeze aliases before program roots can overwrite them. Validate every
+    // alias, but hash assembled keys only in programs that attach that module.
     for (const auto* aliases : { &mVertexShaderObjects, &mFragmentShaderObjects })
     {
         for (const auto& alias : *aliases)
@@ -1490,10 +1543,42 @@ void LLShaderMgr::hashShaderCacheFeatures()
                 return;
             }
             hash_obj.update(alias.first);
-            hash_obj.update(object->first);
+            const GLenum stage = aliases == &mVertexShaderObjects ? GL_VERTEX_SHADER : GL_FRAGMENT_SHADER;
+            mShaderFeatureKeys[{ alias.first, stage }] = object->first;
         }
     }
     mShaderCacheFeatureHash = hash_obj.digest();
+}
+
+GLuint LLShaderMgr::shaderFeatureObject(const std::string& file, GLenum stage) const
+{
+    // Roots may republish an alias with different permutations after the basic
+    // modules are frozen. Attachment must resolve the same object as hashing.
+    const auto frozen = mShaderFeatureKeys.find({ file, stage });
+    if (frozen != mShaderFeatureKeys.end())
+    {
+        const auto object = mShaderObjects.find(frozen->second);
+        return object != mShaderObjects.end() ? object->second : 0;
+    }
+    const auto& aliases = stage == GL_VERTEX_SHADER ? mVertexShaderObjects : mFragmentShaderObjects;
+    const auto alias = aliases.find(file);
+    return alias != aliases.end() ? alias->second : 0;
+}
+
+LLUUID LLShaderMgr::shaderFeatureHash(LLGLSLShader* shader)
+{
+    std::vector<std::pair<std::string, GLenum>> files;
+    attachShaderFeaturesInternal<false>(shader, &files);
+    HBXXH128 hash_obj;
+    for (const auto& file : files)
+    {
+        const auto key = mShaderFeatureKeys.find(file);
+        if (key == mShaderFeatureKeys.end() || !shaderFeatureObject(file.first, file.second)) return LLUUID::null;
+        hash_obj.update(file.first);
+        hash_obj.update(&file.second, sizeof(file.second));
+        hash_obj.update(key->second);
+    }
+    return hash_obj.digest();
 }
 
 void LLShaderMgr::initShaderCache(bool enabled, bool second_instance)
