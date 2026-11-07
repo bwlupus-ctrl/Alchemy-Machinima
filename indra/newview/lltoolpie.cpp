@@ -2112,7 +2112,7 @@ bool LLToolPie::handleRightClickPick()
     LLViewerObject *object = mPick.getObject();
 
     // Can't ignore children here.
-    LLToolSelect::handleObjectSelection(mPick, false, true);
+    LLToolSelect::handleObjectSelection(mPick, false, true, false, true);
 
     // Spawn pie menu
     if (mPick.mPickType == LLPickInfo::PICK_LAND)
