@@ -6,9 +6,9 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 734,
-      "HOOK": 523,
+      "HOOK": 525,
       "OWNED": 909,
-      "TOOLING": 430
+      "TOOLING": 431
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -117,7 +117,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3903,
+        "settings_declared": 3904,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -192,10 +192,10 @@
       },
       "wiring_rows": 2289
     },
-    "head_source_tree": "80514cbe8101db64ff4bb26a55c658dab457bfb2",
-    "hook_files": 523,
-    "hunks": 3269,
-    "input_sha256": "0e0c48fd3842183d1e79c83c4040f22b3ff8e52aa0707ac945a53230d352223e",
+    "head_source_tree": "1bdf7acb9d9c7548e6e8b2cb98cc941eaf5617da",
+    "hook_files": 525,
+    "hunks": 3271,
+    "input_sha256": "00740f444fe14756693f3be7332d747622ed80c8fa0185c8aa00659d22890259",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -203,7 +203,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2058
+    "settings": 2059
   },
   "paths": [
     {
@@ -10960,6 +10960,39 @@
       "reason": "pure performance/governor/pool/frame-limiter feature; adapt any creative caller"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "capture-sidecar",
+        "clones",
+        "looks",
+        "rig",
+        "roto-tron",
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 4,
+      "path": "indra/llrender/llgl.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llrender/llgl.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "weather"
       ],
@@ -11129,8 +11162,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "sensor"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -11156,8 +11188,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "sensor"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -43362,6 +43393,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/shader_load_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_parallel_fixture.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

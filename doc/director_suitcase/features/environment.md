@@ -108,7 +108,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@555,7", "indra/newview/CMakeLists.txt@653,7", "indra/newview/CMakeLists.txt@1122,13", "indra/newview/CMakeLists.txt@1563,7", "indra/newview/CMakeLists.txt@1665,7"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@25657,1573", "indra/newview/app_settings/settings.xml@27808,109", "indra/newview/app_settings/settings.xml@29338,2466"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@25668,1573", "indra/newview/app_settings/settings.xml@27819,109", "indra/newview/app_settings/settings.xml@29349,2466"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@27,39", "indra/newview/llfloaterenvironmentadjust.cpp@88,26", "indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@666,14", "indra/newview/llfloaterenvironmentadjust.cpp@767,14", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@103,99"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
@@ -121,8 +121,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@1493,27"]}
 - {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13580,368"]}
 - {"path": "indra/newview/skins/default/xui/en/strings.xml", "hunks": ["indra/newview/skins/default/xui/en/strings.xml@4233,10", "indra/newview/skins/default/xui/en/strings.xml@4283,10"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@1387,26"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@183,7", "indra/llrender/llshadermgr.cpp@191,7", "indra/llrender/llshadermgr.cpp@244,16", "indra/llrender/llshadermgr.cpp@352,7", "indra/llrender/llshadermgr.cpp@360,19", "indra/llrender/llshadermgr.cpp@422,7", "indra/llrender/llshadermgr.cpp@430,20"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@1424,26"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@184,7", "indra/llrender/llshadermgr.cpp@192,7", "indra/llrender/llshadermgr.cpp@245,16", "indra/llrender/llshadermgr.cpp@353,7", "indra/llrender/llshadermgr.cpp@361,19", "indra/llrender/llshadermgr.cpp@423,7", "indra/llrender/llshadermgr.cpp@431,20"]}
 - {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@591,396"]}
 - {"path": "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@130,9"]}
 - {"path": "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@45,15", "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@104,30"]}

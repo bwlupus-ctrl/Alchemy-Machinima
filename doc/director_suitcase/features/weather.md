@@ -68,7 +68,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@2851,32", "indra/newview/CMakeLists.txt@2889,20"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@29338,2466", "indra/newview/app_settings/settings.xml@31805,209", "indra/newview/app_settings/settings.xml@32015,364"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@29349,2466", "indra/newview/app_settings/settings.xml@31816,209", "indra/newview/app_settings/settings.xml@32026,364"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5809,119"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@53,10", "indra/newview/llviewercontrol.cpp@1133,66", "indra/newview/llviewercontrol.cpp@1279,33"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2114,223"]}
@@ -83,9 +83,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@305,18", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@423,25"]}
 - {"path": "indra/newview/llagent.cpp", "hunks": ["indra/newview/llagent.cpp@26,12", "indra/newview/llagent.cpp@1087,17", "indra/newview/llagent.cpp@4783,9"]}
 - {"path": "indra/newview/llviewermessage.cpp", "hunks": ["indra/newview/llviewermessage.cpp@25,11", "indra/newview/llviewermessage.cpp@3349,7", "indra/newview/llviewermessage.cpp@6679,7"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@275,47", "indra/newview/llviewershadermgr.cpp@723,81", "indra/newview/llviewershadermgr.cpp@993,31", "indra/newview/llviewershadermgr.cpp@1387,26", "indra/newview/llviewershadermgr.cpp@2010,46", "indra/newview/llviewershadermgr.cpp@4508,633", "indra/newview/llviewershadermgr.cpp@6043,115", "indra/newview/llviewershadermgr.cpp@6877,30"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@276,47", "indra/newview/llviewershadermgr.cpp@760,81", "indra/newview/llviewershadermgr.cpp@1030,31", "indra/newview/llviewershadermgr.cpp@1424,26", "indra/newview/llviewershadermgr.cpp@2047,46", "indra/newview/llviewershadermgr.cpp@4442,816", "indra/newview/llviewershadermgr.cpp@6160,115", "indra/newview/llviewershadermgr.cpp@6994,30"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@160,17", "indra/newview/llviewershadermgr.h@351,58"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@76,98", "indra/llrender/llshadermgr.cpp@287,64", "indra/llrender/llshadermgr.cpp@1737,13", "indra/llrender/llshadermgr.cpp@2270,363", "indra/llrender/llshadermgr.cpp@2641,417"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@76,99", "indra/llrender/llshadermgr.cpp@288,64", "indra/llrender/llshadermgr.cpp@1776,13", "indra/llrender/llshadermgr.cpp@2309,363", "indra/llrender/llshadermgr.cpp@2680,495"]}
 - {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@53,13", "indra/llrender/llshadermgr.h@591,396", "indra/llrender/llshadermgr.h@990,46"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@62,95", "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@158,108"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@41,41", "indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@84,79"]}
@@ -99,7 +99,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@164,84", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@259,55", "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl@324,98"]}
 - {"path": "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@543,25", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@570,88", "indra/newview/app_settings/shaders/class3/deferred/materialF.glsl@881,34"]}
 - {"path": "indra/llrender/llglslshader.cpp", "hunks": ["indra/llrender/llglslshader.cpp@460,19", "indra/llrender/llglslshader.cpp@933,35", "indra/llrender/llglslshader.cpp@1248,19", "indra/llrender/llglslshader.cpp@2270,77"]}
-- {"path": "indra/llrender/llglslshader.h", "hunks": ["indra/llrender/llglslshader.h@78,14"]}
+- {"path": "indra/llrender/llglslshader.h", "hunks": ["indra/llrender/llglslshader.h@91,14"]}
 - {"path": "indra/newview/llreflectionmapmanager.h", "hunks": ["indra/newview/llreflectionmapmanager.h@26,15", "indra/newview/llreflectionmapmanager.h@357,16"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@1,4", "indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@182,13", "indra/newview/app_settings/shaders/class1/deferred/pbrterrainF.glsl@435,30"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/pbrterrainV.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/pbrterrainV.glsl@35,7"]}
@@ -286,6 +286,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## cmake entries
 
 - {"file": "indra/llrender/CMakeLists.txt", "line": 4, "text": "llcubemap.cpp", "source": "indra/llrender/llcubemap.cpp"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 14, "text": "llgl.cpp", "source": "indra/llrender/llgl.cpp"}
+- {"file": "indra/llrender/CMakeLists.txt", "line": 110, "text": "# llgl.cpp talks to WGL directly on Windows (wglGetCurrentDC for the", "source": "indra/llrender/llgl.cpp"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 15, "text": "llglslshader.cpp", "source": "indra/llrender/llglslshader.cpp"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 45, "text": "llglslshader.h", "source": "indra/llrender/llglslshader.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 17, "text": "llimagegl.cpp", "source": "indra/llrender/llimagegl.cpp"}

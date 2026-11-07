@@ -568,7 +568,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32279,
+          "line": 32290,
           "group": "Global",
           "type": "Boolean"
         }
@@ -596,7 +596,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32265,
+          "line": 32276,
           "group": "Global",
           "type": "F32"
         }
@@ -624,7 +624,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32244,
+          "line": 32255,
           "group": "Global",
           "type": "Color3"
         }
@@ -652,7 +652,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32237,
+          "line": 32248,
           "group": "Global",
           "type": "U32"
         }
@@ -680,7 +680,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32363,
+          "line": 32374,
           "group": "Global",
           "type": "U32"
         }
@@ -708,7 +708,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32272,
+          "line": 32283,
           "group": "Global",
           "type": "U32"
         }
@@ -736,7 +736,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32202,
+          "line": 32213,
           "group": "Global",
           "type": "Boolean"
         }
@@ -764,7 +764,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32258,
+          "line": 32269,
           "group": "Global",
           "type": "F32"
         }
@@ -792,7 +792,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32356,
+          "line": 32367,
           "group": "Global",
           "type": "U32"
         }
@@ -820,7 +820,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32286,
+          "line": 32297,
           "group": "Global",
           "type": "Boolean"
         }
@@ -848,7 +848,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32223,
+          "line": 32234,
           "group": "Global",
           "type": "Boolean"
         }
@@ -876,7 +876,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32216,
+          "line": 32227,
           "group": "Global",
           "type": "Boolean"
         }
@@ -904,7 +904,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32251,
+          "line": 32262,
           "group": "Global",
           "type": "Boolean"
         }
@@ -932,7 +932,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32328,
+          "line": 32339,
           "group": "Global",
           "type": "Boolean"
         }
@@ -960,7 +960,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32230,
+          "line": 32241,
           "group": "Global",
           "type": "U32"
         }
@@ -988,7 +988,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32293,
+          "line": 32304,
           "group": "Global",
           "type": "Boolean"
         }
@@ -1016,7 +1016,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32314,
+          "line": 32325,
           "group": "Global",
           "type": "U32"
         }
@@ -1044,7 +1044,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32300,
+          "line": 32311,
           "group": "Global",
           "type": "U32"
         }
@@ -1072,7 +1072,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32321,
+          "line": 32332,
           "group": "Global",
           "type": "F32"
         }
@@ -1100,7 +1100,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32307,
+          "line": 32318,
           "group": "Global",
           "type": "F32"
         }
@@ -1128,7 +1128,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32209,
+          "line": 32220,
           "group": "Global",
           "type": "U32"
         }
@@ -1474,7 +1474,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32090,
+          "line": 32101,
           "group": "Global",
           "type": "S32"
         }
@@ -1513,7 +1513,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32069,
+          "line": 32080,
           "group": "Global",
           "type": "S32"
         }
@@ -1552,7 +1552,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32076,
+          "line": 32087,
           "group": "Global",
           "type": "S32"
         }
@@ -1591,7 +1591,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32062,
+          "line": 32073,
           "group": "Global",
           "type": "Boolean"
         }
@@ -1630,7 +1630,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32083,
+          "line": 32094,
           "group": "Global",
           "type": "F32"
         }
@@ -3449,7 +3449,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31952,
+          "line": 31963,
           "group": "Global",
           "type": "Boolean"
         }
@@ -3477,7 +3477,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30172,
+          "line": 30183,
           "group": "Global",
           "type": "U32"
         }
@@ -3505,7 +3505,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31861,
+          "line": 31872,
           "group": "Global",
           "type": "F32"
         }
@@ -3544,7 +3544,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30516,
+          "line": 30527,
           "group": "Global",
           "type": "F32"
         }
@@ -3572,7 +3572,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30270,
+          "line": 30281,
           "group": "Global",
           "type": "Boolean"
         }
@@ -3611,7 +3611,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30502,
+          "line": 30513,
           "group": "Global",
           "type": "Boolean"
         }
@@ -3650,7 +3650,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30509,
+          "line": 30520,
           "group": "Global",
           "type": "F32"
         }
@@ -3689,7 +3689,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30664,
+          "line": 30675,
           "group": "Global",
           "type": "F32"
         }
@@ -3728,7 +3728,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30586,
+          "line": 30597,
           "group": "Global",
           "type": "F32"
         }
@@ -3767,7 +3767,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30544,
+          "line": 30555,
           "group": "Global",
           "type": "F32"
         }
@@ -3806,7 +3806,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30565,
+          "line": 30576,
           "group": "Global",
           "type": "F32"
         }
@@ -3845,7 +3845,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30572,
+          "line": 30583,
           "group": "Global",
           "type": "F32"
         }
@@ -3884,7 +3884,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30579,
+          "line": 30590,
           "group": "Global",
           "type": "F32"
         }
@@ -3912,7 +3912,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30593,
+          "line": 30604,
           "group": "Global",
           "type": "Color3"
         }
@@ -3951,7 +3951,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30636,
+          "line": 30647,
           "group": "Global",
           "type": "F32"
         }
@@ -3990,7 +3990,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30657,
+          "line": 30668,
           "group": "Global",
           "type": "F32"
         }
@@ -4029,7 +4029,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30671,
+          "line": 30682,
           "group": "Global",
           "type": "F32"
         }
@@ -4068,7 +4068,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30537,
+          "line": 30548,
           "group": "Global",
           "type": "F32"
         }
@@ -4107,7 +4107,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30558,
+          "line": 30569,
           "group": "Global",
           "type": "F32"
         }
@@ -4146,7 +4146,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30551,
+          "line": 30562,
           "group": "Global",
           "type": "F32"
         }
@@ -4185,7 +4185,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30615,
+          "line": 30626,
           "group": "Global",
           "type": "U32"
         }
@@ -4224,7 +4224,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30530,
+          "line": 30541,
           "group": "Global",
           "type": "F32"
         }
@@ -4263,7 +4263,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30622,
+          "line": 30633,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4302,7 +4302,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30629,
+          "line": 30640,
           "group": "Global",
           "type": "F32"
         }
@@ -4330,7 +4330,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30263,
+          "line": 30274,
           "group": "Global",
           "type": "U32"
         }
@@ -4369,7 +4369,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30643,
+          "line": 30654,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4408,7 +4408,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30650,
+          "line": 30661,
           "group": "Global",
           "type": "F32"
         }
@@ -4436,7 +4436,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30179,
+          "line": 30190,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4475,7 +4475,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30481,
+          "line": 30492,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4514,7 +4514,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30495,
+          "line": 30506,
           "group": "Global",
           "type": "F32"
         }
@@ -4553,7 +4553,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30488,
+          "line": 30499,
           "group": "Global",
           "type": "F32"
         }
@@ -4581,7 +4581,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31819,
+          "line": 31830,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4609,7 +4609,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31896,
+          "line": 31907,
           "group": "Global",
           "type": "U32"
         }
@@ -4637,7 +4637,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30193,
+          "line": 30204,
           "group": "Global",
           "type": "F32"
         }
@@ -4665,7 +4665,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31945,
+          "line": 31956,
           "group": "Global",
           "type": "F32"
         }
@@ -4693,7 +4693,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31938,
+          "line": 31949,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4721,7 +4721,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31840,
+          "line": 31851,
           "group": "Global",
           "type": "F32"
         }
@@ -4749,7 +4749,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31826,
+          "line": 31837,
           "group": "Global",
           "type": "Boolean"
         }
@@ -4777,7 +4777,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30417,
+          "line": 30428,
           "group": "Global",
           "type": "Color3"
         }
@@ -4816,7 +4816,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30291,
+          "line": 30302,
           "group": "Global",
           "type": "F32"
         }
@@ -4855,7 +4855,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30298,
+          "line": 30309,
           "group": "Global",
           "type": "F32"
         }
@@ -4894,7 +4894,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30347,
+          "line": 30358,
           "group": "Global",
           "type": "F32"
         }
@@ -4933,7 +4933,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30284,
+          "line": 30295,
           "group": "Global",
           "type": "F32"
         }
@@ -4972,7 +4972,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30326,
+          "line": 30337,
           "group": "Global",
           "type": "U32"
         }
@@ -5011,7 +5011,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30305,
+          "line": 30316,
           "group": "Global",
           "type": "F32"
         }
@@ -5050,7 +5050,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30340,
+          "line": 30351,
           "group": "Global",
           "type": "F32"
         }
@@ -5089,7 +5089,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30396,
+          "line": 30407,
           "group": "Global",
           "type": "F32"
         }
@@ -5128,7 +5128,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30389,
+          "line": 30400,
           "group": "Global",
           "type": "F32"
         }
@@ -5167,7 +5167,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30382,
+          "line": 30393,
           "group": "Global",
           "type": "U32"
         }
@@ -5206,7 +5206,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30403,
+          "line": 30414,
           "group": "Global",
           "type": "F32"
         }
@@ -5234,7 +5234,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30186,
+          "line": 30197,
           "group": "Global",
           "type": "F32"
         }
@@ -5273,7 +5273,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30319,
+          "line": 30330,
           "group": "Global",
           "type": "U32"
         }
@@ -5312,7 +5312,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30312,
+          "line": 30323,
           "group": "Global",
           "type": "U32"
         }
@@ -5351,7 +5351,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30333,
+          "line": 30344,
           "group": "Global",
           "type": "F32"
         }
@@ -5379,7 +5379,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31847,
+          "line": 31858,
           "group": "Global",
           "type": "F32"
         }
@@ -5407,7 +5407,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32029,
+          "line": 32040,
           "group": "Global",
           "type": "F32"
         }
@@ -5435,7 +5435,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32051,
+          "line": 32062,
           "group": "Global",
           "type": "Boolean"
         }
@@ -5474,7 +5474,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30354,
+          "line": 30365,
           "group": "Global",
           "type": "Boolean"
         }
@@ -5502,7 +5502,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31996,
+          "line": 32007,
           "group": "Global",
           "type": "F32"
         }
@@ -5530,7 +5530,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31974,
+          "line": 31985,
           "group": "Global",
           "type": "U32"
         }
@@ -5569,7 +5569,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30361,
+          "line": 30372,
           "group": "Global",
           "type": "F32"
         }
@@ -5597,7 +5597,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31985,
+          "line": 31996,
           "group": "Global",
           "type": "F32"
         }
@@ -5625,7 +5625,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31963,
+          "line": 31974,
           "group": "Global",
           "type": "U32"
         }
@@ -5653,7 +5653,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32040,
+          "line": 32051,
           "group": "Global",
           "type": "F32"
         }
@@ -5681,7 +5681,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32007,
+          "line": 32018,
           "group": "Global",
           "type": "Boolean"
         }
@@ -5709,7 +5709,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32018,
+          "line": 32029,
           "group": "Global",
           "type": "U32"
         }
@@ -5737,7 +5737,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31889,
+          "line": 31900,
           "group": "Global",
           "type": "Boolean"
         }
@@ -5765,7 +5765,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31917,
+          "line": 31928,
           "group": "Global",
           "type": "F32"
         }
@@ -5793,7 +5793,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31910,
+          "line": 31921,
           "group": "Global",
           "type": "F32"
         }
@@ -5821,7 +5821,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31931,
+          "line": 31942,
           "group": "Global",
           "type": "U32"
         }
@@ -5849,7 +5849,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31924,
+          "line": 31935,
           "group": "Global",
           "type": "F32"
         }
@@ -5877,7 +5877,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31903,
+          "line": 31914,
           "group": "Global",
           "type": "F32"
         }
@@ -5916,7 +5916,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30432,
+          "line": 30443,
           "group": "Global",
           "type": "F32"
         }
@@ -5955,7 +5955,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30446,
+          "line": 30457,
           "group": "Global",
           "type": "F32"
         }
@@ -5994,7 +5994,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30460,
+          "line": 30471,
           "group": "Global",
           "type": "F32"
         }
@@ -6033,7 +6033,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30439,
+          "line": 30450,
           "group": "Global",
           "type": "F32"
         }
@@ -6072,7 +6072,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30453,
+          "line": 30464,
           "group": "Global",
           "type": "F32"
         }
@@ -6100,7 +6100,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31868,
+          "line": 31879,
           "group": "Global",
           "type": "F32"
         }
@@ -6128,7 +6128,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30256,
+          "line": 30267,
           "group": "Global",
           "type": "F32"
         }
@@ -6156,7 +6156,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31882,
+          "line": 31893,
           "group": "Global",
           "type": "F32"
         }
@@ -6184,7 +6184,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31875,
+          "line": 31886,
           "group": "Global",
           "type": "U32"
         }
@@ -6212,7 +6212,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30242,
+          "line": 30253,
           "group": "Global",
           "type": "F32"
         }
@@ -6240,7 +6240,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31833,
+          "line": 31844,
           "group": "Global",
           "type": "F32"
         }
@@ -6268,7 +6268,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31854,
+          "line": 31865,
           "group": "Global",
           "type": "F32"
         }
@@ -6307,7 +6307,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30467,
+          "line": 30478,
           "group": "Global",
           "type": "Boolean"
         }
@@ -6346,7 +6346,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30474,
+          "line": 30485,
           "group": "Global",
           "type": "F32"
         }
@@ -6374,7 +6374,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30235,
+          "line": 30246,
           "group": "Global",
           "type": "F32"
         }
@@ -6402,7 +6402,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30207,
+          "line": 30218,
           "group": "Global",
           "type": "F32"
         }
@@ -6430,7 +6430,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30228,
+          "line": 30239,
           "group": "Global",
           "type": "F32"
         }
@@ -6469,7 +6469,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30410,
+          "line": 30421,
           "group": "Global",
           "type": "F32"
         }
@@ -6497,7 +6497,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30200,
+          "line": 30211,
           "group": "Global",
           "type": "U32"
         }
@@ -6525,7 +6525,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30214,
+          "line": 30225,
           "group": "Global",
           "type": "F32"
         }
@@ -6553,7 +6553,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30221,
+          "line": 30232,
           "group": "Global",
           "type": "F32"
         }
@@ -6631,7 +6631,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31762,
+          "line": 31773,
           "group": "Global",
           "type": "Boolean"
         }
@@ -6659,7 +6659,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31741,
+          "line": 31752,
           "group": "Global",
           "type": "Boolean"
         }
@@ -6698,7 +6698,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31748,
+          "line": 31759,
           "group": "Global",
           "type": "Boolean"
         }
@@ -6954,7 +6954,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30114,
+          "line": 30125,
           "group": "Global",
           "type": "F32"
         }
@@ -14802,7 +14802,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31321,
+          "line": 31332,
           "group": "Global",
           "type": "Boolean"
         }
@@ -19160,7 +19160,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31314,
+          "line": 31325,
           "group": "Global",
           "type": "S32"
         }
@@ -19211,7 +19211,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31307,
+          "line": 31318,
           "group": "Global",
           "type": "F32"
         }
@@ -19262,7 +19262,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31300,
+          "line": 31311,
           "group": "Global",
           "type": "S32"
         }
@@ -36649,7 +36649,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 27399,
+          "line": 27410,
           "group": "Global",
           "type": "Boolean"
         }
@@ -36688,7 +36688,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 27377,
+          "line": 27388,
           "group": "Global",
           "type": "Boolean"
         }
@@ -36727,7 +36727,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 27388,
+          "line": 27399,
           "group": "Global",
           "type": "U32"
         }
@@ -36883,7 +36883,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31808,
+          "line": 31819,
           "group": "Global",
           "type": "F32"
         }
@@ -37457,7 +37457,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 29185,
+          "line": 29196,
           "group": "Global",
           "type": "Boolean"
         }
@@ -37485,7 +37485,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32174,
+          "line": 32185,
           "group": "Global",
           "type": "Boolean"
         }
@@ -37513,7 +37513,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32160,
+          "line": 32171,
           "group": "Global",
           "type": "F32"
         }
@@ -37541,7 +37541,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32111,
+          "line": 32122,
           "group": "Global",
           "type": "F32"
         }
@@ -37569,7 +37569,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32139,
+          "line": 32150,
           "group": "Global",
           "type": "F32"
         }
@@ -37597,7 +37597,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32153,
+          "line": 32164,
           "group": "Global",
           "type": "F32"
         }
@@ -37625,7 +37625,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32132,
+          "line": 32143,
           "group": "Global",
           "type": "F32"
         }
@@ -37653,7 +37653,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32118,
+          "line": 32129,
           "group": "Global",
           "type": "F32"
         }
@@ -37681,7 +37681,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32125,
+          "line": 32136,
           "group": "Global",
           "type": "F32"
         }
@@ -37709,7 +37709,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32195,
+          "line": 32206,
           "group": "Global",
           "type": "U32"
         }
@@ -37737,7 +37737,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32188,
+          "line": 32199,
           "group": "Global",
           "type": "U32"
         }
@@ -37765,7 +37765,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32181,
+          "line": 32192,
           "group": "Global",
           "type": "F32"
         }
@@ -37793,7 +37793,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32146,
+          "line": 32157,
           "group": "Global",
           "type": "F32"
         }
@@ -37821,7 +37821,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 32167,
+          "line": 32178,
           "group": "Global",
           "type": "U32"
         }
@@ -38016,7 +38016,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30724,
+          "line": 30735,
           "group": "Global",
           "type": "Boolean"
         }
@@ -38055,7 +38055,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30766,
+          "line": 30777,
           "group": "Global",
           "type": "F32"
         }
@@ -38094,7 +38094,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30780,
+          "line": 30791,
           "group": "Global",
           "type": "F32"
         }
@@ -38133,7 +38133,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30759,
+          "line": 30770,
           "group": "Global",
           "type": "F32"
         }
@@ -38172,7 +38172,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30773,
+          "line": 30784,
           "group": "Global",
           "type": "F32"
         }
@@ -39337,7 +39337,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 23472,
+          "line": 23483,
           "group": "Global",
           "type": "F32"
         }
@@ -43494,7 +43494,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31797,
+          "line": 31808,
           "group": "Global",
           "type": "Boolean"
         }
@@ -44770,7 +44770,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 23483,
+          "line": 23494,
           "group": "Global",
           "type": "F32"
         }
@@ -46841,7 +46841,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30904,
+          "line": 30915,
           "group": "Global",
           "type": "Boolean"
         }
@@ -46880,7 +46880,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30897,
+          "line": 30908,
           "group": "Global",
           "type": "Boolean"
         }
@@ -46919,7 +46919,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30890,
+          "line": 30901,
           "group": "Global",
           "type": "F32"
         }
@@ -46958,7 +46958,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31291,
+          "line": 31302,
           "group": "Global",
           "type": "F32"
         }
@@ -46997,7 +46997,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30876,
+          "line": 30887,
           "group": "Global",
           "type": "Color3"
         }
@@ -47036,7 +47036,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30862,
+          "line": 30873,
           "group": "Global",
           "type": "Color3"
         }
@@ -47075,7 +47075,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30883,
+          "line": 30894,
           "group": "Global",
           "type": "Color3"
         }
@@ -47114,7 +47114,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30869,
+          "line": 30880,
           "group": "Global",
           "type": "Color3"
         }
@@ -47142,7 +47142,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30848,
+          "line": 30859,
           "group": "Global",
           "type": "Boolean"
         }
@@ -47181,7 +47181,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30969,
+          "line": 30980,
           "group": "Global",
           "type": "F32"
         }
@@ -47220,7 +47220,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30955,
+          "line": 30966,
           "group": "Global",
           "type": "F32"
         }
@@ -47259,7 +47259,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30962,
+          "line": 30973,
           "group": "Global",
           "type": "F32"
         }
@@ -47298,7 +47298,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30997,
+          "line": 31008,
           "group": "Global",
           "type": "F32"
         }
@@ -47337,7 +47337,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30990,
+          "line": 31001,
           "group": "Global",
           "type": "F32"
         }
@@ -47376,7 +47376,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31004,
+          "line": 31015,
           "group": "Global",
           "type": "F32"
         }
@@ -47415,7 +47415,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31011,
+          "line": 31022,
           "group": "Global",
           "type": "F32"
         }
@@ -47454,7 +47454,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30948,
+          "line": 30959,
           "group": "Global",
           "type": "F32"
         }
@@ -47493,7 +47493,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30976,
+          "line": 30987,
           "group": "Global",
           "type": "Color3"
         }
@@ -47532,7 +47532,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30983,
+          "line": 30994,
           "group": "Global",
           "type": "F32"
         }
@@ -47571,7 +47571,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31095,
+          "line": 31106,
           "group": "Global",
           "type": "F32"
         }
@@ -47610,7 +47610,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31018,
+          "line": 31029,
           "group": "Global",
           "type": "Boolean"
         }
@@ -47649,7 +47649,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31074,
+          "line": 31085,
           "group": "Global",
           "type": "F32"
         }
@@ -47688,7 +47688,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31081,
+          "line": 31092,
           "group": "Global",
           "type": "F32"
         }
@@ -47727,7 +47727,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31116,
+          "line": 31127,
           "group": "Global",
           "type": "F32"
         }
@@ -47766,7 +47766,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31025,
+          "line": 31036,
           "group": "Global",
           "type": "F32"
         }
@@ -47805,7 +47805,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31053,
+          "line": 31064,
           "group": "Global",
           "type": "S32"
         }
@@ -47844,7 +47844,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31067,
+          "line": 31078,
           "group": "Global",
           "type": "F32"
         }
@@ -47883,7 +47883,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31060,
+          "line": 31071,
           "group": "Global",
           "type": "F32"
         }
@@ -47922,7 +47922,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31046,
+          "line": 31057,
           "group": "Global",
           "type": "F32"
         }
@@ -47961,7 +47961,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31109,
+          "line": 31120,
           "group": "Global",
           "type": "S32"
         }
@@ -48000,7 +48000,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31102,
+          "line": 31113,
           "group": "Global",
           "type": "F32"
         }
@@ -48039,7 +48039,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31032,
+          "line": 31043,
           "group": "Global",
           "type": "F32"
         }
@@ -48078,7 +48078,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31123,
+          "line": 31134,
           "group": "Global",
           "type": "F32"
         }
@@ -48117,7 +48117,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31130,
+          "line": 31141,
           "group": "Global",
           "type": "F32"
         }
@@ -48156,7 +48156,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31137,
+          "line": 31148,
           "group": "Global",
           "type": "F32"
         }
@@ -48195,7 +48195,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31088,
+          "line": 31099,
           "group": "Global",
           "type": "F32"
         }
@@ -48234,7 +48234,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31144,
+          "line": 31155,
           "group": "Global",
           "type": "S32"
         }
@@ -48273,7 +48273,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31151,
+          "line": 31162,
           "group": "Global",
           "type": "F32"
         }
@@ -48312,7 +48312,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31039,
+          "line": 31050,
           "group": "Global",
           "type": "F32"
         }
@@ -48351,7 +48351,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30941,
+          "line": 30952,
           "group": "Global",
           "type": "S32"
         }
@@ -48390,7 +48390,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31284,
+          "line": 31295,
           "group": "Global",
           "type": "F32"
         }
@@ -48429,7 +48429,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30855,
+          "line": 30866,
           "group": "Global",
           "type": "S32"
         }
@@ -48468,7 +48468,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31335,
+          "line": 31346,
           "group": "Global",
           "type": "Boolean"
         }
@@ -48507,7 +48507,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31328,
+          "line": 31339,
           "group": "Global",
           "type": "Boolean"
         }
@@ -48546,7 +48546,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30925,
+          "line": 30936,
           "group": "Global",
           "type": "F32"
         }
@@ -48585,7 +48585,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31158,
+          "line": 31169,
           "group": "Global",
           "type": "F32"
         }
@@ -48624,7 +48624,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31200,
+          "line": 31211,
           "group": "Global",
           "type": "S32"
         }
@@ -48663,7 +48663,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31186,
+          "line": 31197,
           "group": "Global",
           "type": "F32"
         }
@@ -48702,7 +48702,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31193,
+          "line": 31204,
           "group": "Global",
           "type": "S32"
         }
@@ -48741,7 +48741,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31172,
+          "line": 31183,
           "group": "Global",
           "type": "F32"
         }
@@ -48780,7 +48780,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31165,
+          "line": 31176,
           "group": "Global",
           "type": "F32"
         }
@@ -48819,7 +48819,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31179,
+          "line": 31190,
           "group": "Global",
           "type": "F32"
         }
@@ -48858,7 +48858,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30911,
+          "line": 30922,
           "group": "Global",
           "type": "F32"
         }
@@ -48897,7 +48897,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31207,
+          "line": 31218,
           "group": "Global",
           "type": "F32"
         }
@@ -48936,7 +48936,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 30918,
+          "line": 30929,
           "group": "Global",
           "type": "S32"
         }
@@ -48975,7 +48975,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31500,
+          "line": 31511,
           "group": "Global",
           "type": "S32"
         }
@@ -49014,7 +49014,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31437,
+          "line": 31448,
           "group": "Global",
           "type": "Boolean"
         }
@@ -49053,7 +49053,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31451,
+          "line": 31462,
           "group": "Global",
           "type": "F32"
         }
@@ -49092,7 +49092,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31444,
+          "line": 31455,
           "group": "Global",
           "type": "F32"
         }
@@ -49131,7 +49131,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31472,
+          "line": 31483,
           "group": "Global",
           "type": "F32"
         }
@@ -49170,7 +49170,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31507,
+          "line": 31518,
           "group": "Global",
           "type": "Boolean"
         }
@@ -49209,7 +49209,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31479,
+          "line": 31490,
           "group": "Global",
           "type": "F32"
         }
@@ -49248,7 +49248,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31486,
+          "line": 31497,
           "group": "Global",
           "type": "F32"
         }
@@ -49287,7 +49287,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31493,
+          "line": 31504,
           "group": "Global",
           "type": "F32"
         }
@@ -49326,7 +49326,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31458,
+          "line": 31469,
           "group": "Global",
           "type": "F32"
         }
@@ -49365,7 +49365,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31465,
+          "line": 31476,
           "group": "Global",
           "type": "F32"
         }
@@ -49404,7 +49404,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31249,
+          "line": 31260,
           "group": "Global",
           "type": "F32"
         }
@@ -49443,7 +49443,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31256,
+          "line": 31267,
           "group": "Global",
           "type": "F32"
         }
@@ -49482,7 +49482,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31242,
+          "line": 31253,
           "group": "Global",
           "type": "F32"
         }
@@ -49521,7 +49521,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31277,
+          "line": 31288,
           "group": "Global",
           "type": "Boolean"
         }
@@ -49560,7 +49560,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31228,
+          "line": 31239,
           "group": "Global",
           "type": "S32"
         }
@@ -49599,7 +49599,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31235,
+          "line": 31246,
           "group": "Global",
           "type": "S32"
         }
@@ -49638,7 +49638,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31263,
+          "line": 31274,
           "group": "Global",
           "type": "S32"
         }
@@ -49677,7 +49677,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31270,
+          "line": 31281,
           "group": "Global",
           "type": "S32"
         }
@@ -49716,7 +49716,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31214,
+          "line": 31225,
           "group": "Global",
           "type": "S32"
         }
@@ -49755,7 +49755,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31221,
+          "line": 31232,
           "group": "Global",
           "type": "S32"
         }
@@ -49794,7 +49794,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31551,
+          "line": 31562,
           "group": "Global",
           "type": "F32"
         }
@@ -49833,7 +49833,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31523,
+          "line": 31534,
           "group": "Global",
           "type": "F32"
         }
@@ -49872,7 +49872,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31537,
+          "line": 31548,
           "group": "Global",
           "type": "F32"
         }
@@ -49911,7 +49911,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31544,
+          "line": 31555,
           "group": "Global",
           "type": "F32"
         }
@@ -49950,7 +49950,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31530,
+          "line": 31541,
           "group": "Global",
           "type": "F32"
         }
@@ -49989,7 +49989,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31516,
+          "line": 31527,
           "group": "Global",
           "type": "Boolean"
         }
@@ -50028,7 +50028,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31358,
+          "line": 31369,
           "group": "Global",
           "type": "F32"
         }
@@ -50067,7 +50067,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31372,
+          "line": 31383,
           "group": "Global",
           "type": "F32"
         }
@@ -50106,7 +50106,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31386,
+          "line": 31397,
           "group": "Global",
           "type": "F32"
         }
@@ -50145,7 +50145,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31344,
+          "line": 31355,
           "group": "Global",
           "type": "Boolean"
         }
@@ -50184,7 +50184,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31400,
+          "line": 31411,
           "group": "Global",
           "type": "F32"
         }
@@ -50223,7 +50223,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31351,
+          "line": 31362,
           "group": "Global",
           "type": "F32"
         }
@@ -50262,7 +50262,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31379,
+          "line": 31390,
           "group": "Global",
           "type": "F32"
         }
@@ -50301,7 +50301,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31407,
+          "line": 31418,
           "group": "Global",
           "type": "F32"
         }
@@ -50340,7 +50340,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31421,
+          "line": 31432,
           "group": "Global",
           "type": "F32"
         }
@@ -50379,7 +50379,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31414,
+          "line": 31425,
           "group": "Global",
           "type": "F32"
         }
@@ -50418,7 +50418,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31428,
+          "line": 31439,
           "group": "Global",
           "type": "F32"
         }
@@ -50457,7 +50457,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31393,
+          "line": 31404,
           "group": "Global",
           "type": "F32"
         }
@@ -50496,7 +50496,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31365,
+          "line": 31376,
           "group": "Global",
           "type": "F32"
         }
@@ -50535,7 +50535,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31663,
+          "line": 31674,
           "group": "Global",
           "type": "F32"
         }
@@ -50574,7 +50574,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31712,
+          "line": 31723,
           "group": "Global",
           "type": "F32"
         }
@@ -50613,7 +50613,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31733,
+          "line": 31744,
           "group": "Global",
           "type": "Boolean"
         }
@@ -50652,7 +50652,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31600,
+          "line": 31611,
           "group": "Global",
           "type": "S32"
         }
@@ -50691,7 +50691,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31649,
+          "line": 31660,
           "group": "Global",
           "type": "F32"
         }
@@ -50730,7 +50730,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31656,
+          "line": 31667,
           "group": "Global",
           "type": "F32"
         }
@@ -50769,7 +50769,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31558,
+          "line": 31569,
           "group": "Global",
           "type": "Boolean"
         }
@@ -50808,7 +50808,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31642,
+          "line": 31653,
           "group": "Global",
           "type": "F32"
         }
@@ -50847,7 +50847,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31635,
+          "line": 31646,
           "group": "Global",
           "type": "F32"
         }
@@ -50886,7 +50886,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31677,
+          "line": 31688,
           "group": "Global",
           "type": "S32"
         }
@@ -50925,7 +50925,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31684,
+          "line": 31695,
           "group": "Global",
           "type": "F32"
         }
@@ -50964,7 +50964,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31670,
+          "line": 31681,
           "group": "Global",
           "type": "F32"
         }
@@ -51003,7 +51003,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31607,
+          "line": 31618,
           "group": "Global",
           "type": "F32"
         }
@@ -51042,7 +51042,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31705,
+          "line": 31716,
           "group": "Global",
           "type": "F32"
         }
@@ -51081,7 +51081,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31593,
+          "line": 31604,
           "group": "Global",
           "type": "F32"
         }
@@ -51120,7 +51120,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31628,
+          "line": 31639,
           "group": "Global",
           "type": "F32"
         }
@@ -51159,7 +51159,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31586,
+          "line": 31597,
           "group": "Global",
           "type": "S32"
         }
@@ -51198,7 +51198,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31719,
+          "line": 31730,
           "group": "Global",
           "type": "S32"
         }
@@ -51237,7 +51237,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31726,
+          "line": 31737,
           "group": "Global",
           "type": "S32"
         }
@@ -51276,7 +51276,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31698,
+          "line": 31709,
           "group": "Global",
           "type": "F32"
         }
@@ -51315,7 +51315,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31621,
+          "line": 31632,
           "group": "Global",
           "type": "Boolean"
         }
@@ -51354,7 +51354,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31691,
+          "line": 31702,
           "group": "Global",
           "type": "F32"
         }
@@ -51393,7 +51393,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31565,
+          "line": 31576,
           "group": "Global",
           "type": "S32"
         }
@@ -51432,7 +51432,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31572,
+          "line": 31583,
           "group": "Global",
           "type": "S32"
         }
@@ -51471,7 +51471,7 @@
       "declarations": [
         {
           "file": "indra/newview/app_settings/settings.xml",
-          "line": 31614,
+          "line": 31625,
           "group": "Global",
           "type": "F32"
         }
@@ -70698,7 +70698,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31808,
+              "line": 31819,
               "group": "Global",
               "type": "F32"
             }
@@ -97587,7 +97587,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30114,
+              "line": 30125,
               "group": "Global",
               "type": "F32"
             }
@@ -136294,7 +136294,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30759,
+              "line": 30770,
               "group": "Global",
               "type": "F32"
             }
@@ -136372,7 +136372,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30766,
+              "line": 30777,
               "group": "Global",
               "type": "F32"
             }
@@ -136450,7 +136450,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30773,
+              "line": 30784,
               "group": "Global",
               "type": "F32"
             }
@@ -136528,7 +136528,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30780,
+              "line": 30791,
               "group": "Global",
               "type": "F32"
             }
@@ -149236,7 +149236,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30724,
+              "line": 30735,
               "group": "Global",
               "type": "Boolean"
             }
@@ -153982,7 +153982,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32111,
+              "line": 32122,
               "group": "Global",
               "type": "F32"
             }
@@ -154046,7 +154046,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32118,
+              "line": 32129,
               "group": "Global",
               "type": "F32"
             }
@@ -154110,7 +154110,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32125,
+              "line": 32136,
               "group": "Global",
               "type": "F32"
             }
@@ -154174,7 +154174,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32132,
+              "line": 32143,
               "group": "Global",
               "type": "F32"
             }
@@ -154238,7 +154238,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32139,
+              "line": 32150,
               "group": "Global",
               "type": "F32"
             }
@@ -154302,7 +154302,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32146,
+              "line": 32157,
               "group": "Global",
               "type": "F32"
             }
@@ -154366,7 +154366,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32153,
+              "line": 32164,
               "group": "Global",
               "type": "F32"
             }
@@ -154430,7 +154430,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32160,
+              "line": 32171,
               "group": "Global",
               "type": "F32"
             }
@@ -154494,7 +154494,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32167,
+              "line": 32178,
               "group": "Global",
               "type": "U32"
             }
@@ -154561,7 +154561,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32174,
+              "line": 32185,
               "group": "Global",
               "type": "Boolean"
             }
@@ -154625,7 +154625,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32181,
+              "line": 32192,
               "group": "Global",
               "type": "F32"
             }
@@ -154689,7 +154689,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32188,
+              "line": 32199,
               "group": "Global",
               "type": "U32"
             }
@@ -154772,7 +154772,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32195,
+              "line": 32206,
               "group": "Global",
               "type": "U32"
             }
@@ -175539,7 +175539,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31300,
+              "line": 31311,
               "group": "Global",
               "type": "S32"
             }
@@ -175649,7 +175649,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31307,
+              "line": 31318,
               "group": "Global",
               "type": "F32"
             }
@@ -175755,7 +175755,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31314,
+              "line": 31325,
               "group": "Global",
               "type": "S32"
             }
@@ -180734,7 +180734,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 23483,
+              "line": 23494,
               "group": "Global",
               "type": "F32"
             }
@@ -190978,7 +190978,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31748,
+              "line": 31759,
               "group": "Global",
               "type": "Boolean"
             }
@@ -192567,7 +192567,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31762,
+              "line": 31773,
               "group": "Global",
               "type": "Boolean"
             }
@@ -194452,7 +194452,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 23472,
+              "line": 23483,
               "group": "Global",
               "type": "F32"
             }
@@ -199056,7 +199056,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32062,
+              "line": 32073,
               "group": "Global",
               "type": "Boolean"
             }
@@ -199134,7 +199134,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32069,
+              "line": 32080,
               "group": "Global",
               "type": "S32"
             }
@@ -199215,7 +199215,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32076,
+              "line": 32087,
               "group": "Global",
               "type": "S32"
             }
@@ -199296,7 +199296,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32083,
+              "line": 32094,
               "group": "Global",
               "type": "F32"
             }
@@ -199374,7 +199374,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32090,
+              "line": 32101,
               "group": "Global",
               "type": "S32"
             }
@@ -207733,7 +207733,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30941,
+              "line": 30952,
               "group": "Global",
               "type": "S32"
             }
@@ -207814,7 +207814,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30855,
+              "line": 30866,
               "group": "Global",
               "type": "S32"
             }
@@ -207919,7 +207919,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30862,
+              "line": 30873,
               "group": "Global",
               "type": "Color3"
             }
@@ -208012,7 +208012,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30869,
+              "line": 30880,
               "group": "Global",
               "type": "Color3"
             }
@@ -208105,7 +208105,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30876,
+              "line": 30887,
               "group": "Global",
               "type": "Color3"
             }
@@ -208198,7 +208198,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30883,
+              "line": 30894,
               "group": "Global",
               "type": "Color3"
             }
@@ -208291,7 +208291,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31328,
+              "line": 31339,
               "group": "Global",
               "type": "Boolean"
             }
@@ -208369,7 +208369,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31335,
+              "line": 31346,
               "group": "Global",
               "type": "Boolean"
             }
@@ -208699,7 +208699,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30890,
+              "line": 30901,
               "group": "Global",
               "type": "F32"
             }
@@ -208777,7 +208777,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30897,
+              "line": 30908,
               "group": "Global",
               "type": "Boolean"
             }
@@ -208855,7 +208855,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30911,
+              "line": 30922,
               "group": "Global",
               "type": "F32"
             }
@@ -208933,7 +208933,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30918,
+              "line": 30929,
               "group": "Global",
               "type": "S32"
             }
@@ -209016,7 +209016,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30925,
+              "line": 30936,
               "group": "Global",
               "type": "F32"
             }
@@ -209094,7 +209094,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31321,
+              "line": 31332,
               "group": "Global",
               "type": "Boolean"
             }
@@ -209184,7 +209184,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30904,
+              "line": 30915,
               "group": "Global",
               "type": "Boolean"
             }
@@ -209262,7 +209262,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30948,
+              "line": 30959,
               "group": "Global",
               "type": "F32"
             }
@@ -209340,7 +209340,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30955,
+              "line": 30966,
               "group": "Global",
               "type": "F32"
             }
@@ -209430,7 +209430,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30962,
+              "line": 30973,
               "group": "Global",
               "type": "F32"
             }
@@ -209520,7 +209520,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30969,
+              "line": 30980,
               "group": "Global",
               "type": "F32"
             }
@@ -209610,7 +209610,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31011,
+              "line": 31022,
               "group": "Global",
               "type": "F32"
             }
@@ -209700,7 +209700,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30976,
+              "line": 30987,
               "group": "Global",
               "type": "Color3"
             }
@@ -209790,7 +209790,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30983,
+              "line": 30994,
               "group": "Global",
               "type": "F32"
             }
@@ -209880,7 +209880,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30990,
+              "line": 31001,
               "group": "Global",
               "type": "F32"
             }
@@ -209970,7 +209970,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30997,
+              "line": 31008,
               "group": "Global",
               "type": "F32"
             }
@@ -210060,7 +210060,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31004,
+              "line": 31015,
               "group": "Global",
               "type": "F32"
             }
@@ -210150,7 +210150,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31018,
+              "line": 31029,
               "group": "Global",
               "type": "Boolean"
             }
@@ -210228,7 +210228,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31025,
+              "line": 31036,
               "group": "Global",
               "type": "F32"
             }
@@ -210318,7 +210318,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31032,
+              "line": 31043,
               "group": "Global",
               "type": "F32"
             }
@@ -210408,7 +210408,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31039,
+              "line": 31050,
               "group": "Global",
               "type": "F32"
             }
@@ -210498,7 +210498,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31116,
+              "line": 31127,
               "group": "Global",
               "type": "F32"
             }
@@ -210588,7 +210588,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31046,
+              "line": 31057,
               "group": "Global",
               "type": "F32"
             }
@@ -210678,7 +210678,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31053,
+              "line": 31064,
               "group": "Global",
               "type": "S32"
             }
@@ -210768,7 +210768,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31060,
+              "line": 31071,
               "group": "Global",
               "type": "F32"
             }
@@ -210858,7 +210858,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31067,
+              "line": 31078,
               "group": "Global",
               "type": "F32"
             }
@@ -210948,7 +210948,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31081,
+              "line": 31092,
               "group": "Global",
               "type": "F32"
             }
@@ -211038,7 +211038,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31088,
+              "line": 31099,
               "group": "Global",
               "type": "F32"
             }
@@ -211128,7 +211128,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31095,
+              "line": 31106,
               "group": "Global",
               "type": "F32"
             }
@@ -211218,7 +211218,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31102,
+              "line": 31113,
               "group": "Global",
               "type": "F32"
             }
@@ -211308,7 +211308,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31109,
+              "line": 31120,
               "group": "Global",
               "type": "S32"
             }
@@ -211401,7 +211401,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31074,
+              "line": 31085,
               "group": "Global",
               "type": "F32"
             }
@@ -211491,7 +211491,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31144,
+              "line": 31155,
               "group": "Global",
               "type": "S32"
             }
@@ -211585,7 +211585,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31151,
+              "line": 31162,
               "group": "Global",
               "type": "F32"
             }
@@ -211675,7 +211675,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31123,
+              "line": 31134,
               "group": "Global",
               "type": "F32"
             }
@@ -211765,7 +211765,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31130,
+              "line": 31141,
               "group": "Global",
               "type": "F32"
             }
@@ -211855,7 +211855,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31137,
+              "line": 31148,
               "group": "Global",
               "type": "F32"
             }
@@ -212137,7 +212137,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31158,
+              "line": 31169,
               "group": "Global",
               "type": "F32"
             }
@@ -212227,7 +212227,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31165,
+              "line": 31176,
               "group": "Global",
               "type": "F32"
             }
@@ -212317,7 +212317,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31172,
+              "line": 31183,
               "group": "Global",
               "type": "F32"
             }
@@ -212407,7 +212407,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31179,
+              "line": 31190,
               "group": "Global",
               "type": "F32"
             }
@@ -212497,7 +212497,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31186,
+              "line": 31197,
               "group": "Global",
               "type": "F32"
             }
@@ -212587,7 +212587,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31193,
+              "line": 31204,
               "group": "Global",
               "type": "S32"
             }
@@ -212682,7 +212682,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31200,
+              "line": 31211,
               "group": "Global",
               "type": "S32"
             }
@@ -212776,7 +212776,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31207,
+              "line": 31218,
               "group": "Global",
               "type": "F32"
             }
@@ -212866,7 +212866,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31344,
+              "line": 31355,
               "group": "Global",
               "type": "Boolean"
             }
@@ -212944,7 +212944,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31351,
+              "line": 31362,
               "group": "Global",
               "type": "F32"
             }
@@ -213034,7 +213034,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31372,
+              "line": 31383,
               "group": "Global",
               "type": "F32"
             }
@@ -213124,7 +213124,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31358,
+              "line": 31369,
               "group": "Global",
               "type": "F32"
             }
@@ -213214,7 +213214,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31365,
+              "line": 31376,
               "group": "Global",
               "type": "F32"
             }
@@ -213304,7 +213304,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31379,
+              "line": 31390,
               "group": "Global",
               "type": "F32"
             }
@@ -213394,7 +213394,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31386,
+              "line": 31397,
               "group": "Global",
               "type": "F32"
             }
@@ -213484,7 +213484,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31393,
+              "line": 31404,
               "group": "Global",
               "type": "F32"
             }
@@ -213574,7 +213574,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31400,
+              "line": 31411,
               "group": "Global",
               "type": "F32"
             }
@@ -213664,7 +213664,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31407,
+              "line": 31418,
               "group": "Global",
               "type": "F32"
             }
@@ -213754,7 +213754,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31414,
+              "line": 31425,
               "group": "Global",
               "type": "F32"
             }
@@ -213844,7 +213844,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31421,
+              "line": 31432,
               "group": "Global",
               "type": "F32"
             }
@@ -213934,7 +213934,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31428,
+              "line": 31439,
               "group": "Global",
               "type": "F32"
             }
@@ -214024,7 +214024,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31437,
+              "line": 31448,
               "group": "Global",
               "type": "Boolean"
             }
@@ -214102,7 +214102,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31444,
+              "line": 31455,
               "group": "Global",
               "type": "F32"
             }
@@ -214192,7 +214192,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31451,
+              "line": 31462,
               "group": "Global",
               "type": "F32"
             }
@@ -214282,7 +214282,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31479,
+              "line": 31490,
               "group": "Global",
               "type": "F32"
             }
@@ -214372,7 +214372,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31486,
+              "line": 31497,
               "group": "Global",
               "type": "F32"
             }
@@ -214462,7 +214462,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31493,
+              "line": 31504,
               "group": "Global",
               "type": "F32"
             }
@@ -214552,7 +214552,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31458,
+              "line": 31469,
               "group": "Global",
               "type": "F32"
             }
@@ -214642,7 +214642,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31465,
+              "line": 31476,
               "group": "Global",
               "type": "F32"
             }
@@ -214732,7 +214732,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31472,
+              "line": 31483,
               "group": "Global",
               "type": "F32"
             }
@@ -214822,7 +214822,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31500,
+              "line": 31511,
               "group": "Global",
               "type": "S32"
             }
@@ -214916,7 +214916,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31507,
+              "line": 31518,
               "group": "Global",
               "type": "Boolean"
             }
@@ -215006,7 +215006,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31516,
+              "line": 31527,
               "group": "Global",
               "type": "Boolean"
             }
@@ -215084,7 +215084,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31544,
+              "line": 31555,
               "group": "Global",
               "type": "F32"
             }
@@ -215162,7 +215162,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31551,
+              "line": 31562,
               "group": "Global",
               "type": "F32"
             }
@@ -215240,7 +215240,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31523,
+              "line": 31534,
               "group": "Global",
               "type": "F32"
             }
@@ -215318,7 +215318,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31530,
+              "line": 31541,
               "group": "Global",
               "type": "F32"
             }
@@ -215396,7 +215396,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31537,
+              "line": 31548,
               "group": "Global",
               "type": "F32"
             }
@@ -215474,7 +215474,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31558,
+              "line": 31569,
               "group": "Global",
               "type": "Boolean"
             }
@@ -215552,7 +215552,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31565,
+              "line": 31576,
               "group": "Global",
               "type": "S32"
             }
@@ -215646,7 +215646,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31572,
+              "line": 31583,
               "group": "Global",
               "type": "S32"
             }
@@ -215745,7 +215745,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31593,
+              "line": 31604,
               "group": "Global",
               "type": "F32"
             }
@@ -215835,7 +215835,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31607,
+              "line": 31618,
               "group": "Global",
               "type": "F32"
             }
@@ -215925,7 +215925,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31614,
+              "line": 31625,
               "group": "Global",
               "type": "F32"
             }
@@ -216015,7 +216015,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31635,
+              "line": 31646,
               "group": "Global",
               "type": "F32"
             }
@@ -216105,7 +216105,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31600,
+              "line": 31611,
               "group": "Global",
               "type": "S32"
             }
@@ -216199,7 +216199,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31586,
+              "line": 31597,
               "group": "Global",
               "type": "S32"
             }
@@ -216289,7 +216289,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31621,
+              "line": 31632,
               "group": "Global",
               "type": "Boolean"
             }
@@ -216379,7 +216379,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31628,
+              "line": 31639,
               "group": "Global",
               "type": "F32"
             }
@@ -216469,7 +216469,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31642,
+              "line": 31653,
               "group": "Global",
               "type": "F32"
             }
@@ -216559,7 +216559,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31649,
+              "line": 31660,
               "group": "Global",
               "type": "F32"
             }
@@ -216649,7 +216649,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31656,
+              "line": 31667,
               "group": "Global",
               "type": "F32"
             }
@@ -216739,7 +216739,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31663,
+              "line": 31674,
               "group": "Global",
               "type": "F32"
             }
@@ -216829,7 +216829,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31670,
+              "line": 31681,
               "group": "Global",
               "type": "F32"
             }
@@ -216919,7 +216919,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31677,
+              "line": 31688,
               "group": "Global",
               "type": "S32"
             }
@@ -217012,7 +217012,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31684,
+              "line": 31695,
               "group": "Global",
               "type": "F32"
             }
@@ -217102,7 +217102,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31691,
+              "line": 31702,
               "group": "Global",
               "type": "F32"
             }
@@ -217192,7 +217192,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31698,
+              "line": 31709,
               "group": "Global",
               "type": "F32"
             }
@@ -217282,7 +217282,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31705,
+              "line": 31716,
               "group": "Global",
               "type": "F32"
             }
@@ -217372,7 +217372,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31712,
+              "line": 31723,
               "group": "Global",
               "type": "F32"
             }
@@ -217462,7 +217462,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31719,
+              "line": 31730,
               "group": "Global",
               "type": "S32"
             }
@@ -217552,7 +217552,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31726,
+              "line": 31737,
               "group": "Global",
               "type": "S32"
             }
@@ -217642,7 +217642,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31733,
+              "line": 31744,
               "group": "Global",
               "type": "Boolean"
             }
@@ -217828,7 +217828,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31221,
+              "line": 31232,
               "group": "Global",
               "type": "S32"
             }
@@ -217927,7 +217927,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31214,
+              "line": 31225,
               "group": "Global",
               "type": "S32"
             }
@@ -218047,7 +218047,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31228,
+              "line": 31239,
               "group": "Global",
               "type": "S32"
             }
@@ -218137,7 +218137,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31235,
+              "line": 31246,
               "group": "Global",
               "type": "S32"
             }
@@ -218231,7 +218231,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31242,
+              "line": 31253,
               "group": "Global",
               "type": "F32"
             }
@@ -218321,7 +218321,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31249,
+              "line": 31260,
               "group": "Global",
               "type": "F32"
             }
@@ -218411,7 +218411,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31256,
+              "line": 31267,
               "group": "Global",
               "type": "F32"
             }
@@ -218501,7 +218501,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31263,
+              "line": 31274,
               "group": "Global",
               "type": "S32"
             }
@@ -218596,7 +218596,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31270,
+              "line": 31281,
               "group": "Global",
               "type": "S32"
             }
@@ -218691,7 +218691,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31277,
+              "line": 31288,
               "group": "Global",
               "type": "Boolean"
             }
@@ -218781,7 +218781,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31300,
+              "line": 31311,
               "group": "Global",
               "type": "S32"
             }
@@ -218863,7 +218863,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31307,
+              "line": 31318,
               "group": "Global",
               "type": "F32"
             }
@@ -218941,7 +218941,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31314,
+              "line": 31325,
               "group": "Global",
               "type": "S32"
             }
@@ -219023,7 +219023,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31284,
+              "line": 31295,
               "group": "Global",
               "type": "F32"
             }
@@ -219101,7 +219101,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31291,
+              "line": 31302,
               "group": "Global",
               "type": "F32"
             }
@@ -224787,7 +224787,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30172,
+              "line": 30183,
               "group": "Global",
               "type": "U32"
             }
@@ -224854,7 +224854,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30179,
+              "line": 30190,
               "group": "Global",
               "type": "Boolean"
             }
@@ -224930,7 +224930,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30186,
+              "line": 30197,
               "group": "Global",
               "type": "F32"
             }
@@ -224994,7 +224994,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30193,
+              "line": 30204,
               "group": "Global",
               "type": "F32"
             }
@@ -225058,7 +225058,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30200,
+              "line": 30211,
               "group": "Global",
               "type": "U32"
             }
@@ -225125,7 +225125,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30207,
+              "line": 30218,
               "group": "Global",
               "type": "F32"
             }
@@ -225189,7 +225189,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30214,
+              "line": 30225,
               "group": "Global",
               "type": "F32"
             }
@@ -225253,7 +225253,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30221,
+              "line": 30232,
               "group": "Global",
               "type": "F32"
             }
@@ -225317,7 +225317,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30228,
+              "line": 30239,
               "group": "Global",
               "type": "F32"
             }
@@ -225381,7 +225381,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30235,
+              "line": 30246,
               "group": "Global",
               "type": "F32"
             }
@@ -225445,7 +225445,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30242,
+              "line": 30253,
               "group": "Global",
               "type": "F32"
             }
@@ -225509,7 +225509,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30249,
+              "line": 30260,
               "group": "Global",
               "type": "U32"
             }
@@ -225574,7 +225574,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30256,
+              "line": 30267,
               "group": "Global",
               "type": "F32"
             }
@@ -225638,7 +225638,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30263,
+              "line": 30274,
               "group": "Global",
               "type": "U32"
             }
@@ -225964,7 +225964,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30284,
+              "line": 30295,
               "group": "Global",
               "type": "F32"
             }
@@ -226081,7 +226081,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30291,
+              "line": 30302,
               "group": "Global",
               "type": "F32"
             }
@@ -226159,7 +226159,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30298,
+              "line": 30309,
               "group": "Global",
               "type": "F32"
             }
@@ -226237,7 +226237,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30410,
+              "line": 30421,
               "group": "Global",
               "type": "F32"
             }
@@ -226315,7 +226315,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30347,
+              "line": 30358,
               "group": "Global",
               "type": "F32"
             }
@@ -226393,7 +226393,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30516,
+              "line": 30527,
               "group": "Global",
               "type": "F32"
             }
@@ -226471,7 +226471,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30305,
+              "line": 30316,
               "group": "Global",
               "type": "F32"
             }
@@ -226549,7 +226549,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30312,
+              "line": 30323,
               "group": "Global",
               "type": "U32"
             }
@@ -226627,7 +226627,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30319,
+              "line": 30330,
               "group": "Global",
               "type": "U32"
             }
@@ -226705,7 +226705,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30326,
+              "line": 30337,
               "group": "Global",
               "type": "U32"
             }
@@ -226783,7 +226783,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30333,
+              "line": 30344,
               "group": "Global",
               "type": "F32"
             }
@@ -226861,7 +226861,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30340,
+              "line": 30351,
               "group": "Global",
               "type": "F32"
             }
@@ -226939,7 +226939,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30417,
+              "line": 30428,
               "group": "Global",
               "type": "Color3"
             }
@@ -227016,7 +227016,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30432,
+              "line": 30443,
               "group": "Global",
               "type": "F32"
             }
@@ -227107,7 +227107,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30439,
+              "line": 30450,
               "group": "Global",
               "type": "F32"
             }
@@ -227185,7 +227185,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30460,
+              "line": 30471,
               "group": "Global",
               "type": "F32"
             }
@@ -227263,7 +227263,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30446,
+              "line": 30457,
               "group": "Global",
               "type": "F32"
             }
@@ -227354,7 +227354,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30453,
+              "line": 30464,
               "group": "Global",
               "type": "F32"
             }
@@ -227432,7 +227432,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30467,
+              "line": 30478,
               "group": "Global",
               "type": "Boolean"
             }
@@ -227523,7 +227523,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30474,
+              "line": 30485,
               "group": "Global",
               "type": "F32"
             }
@@ -227614,7 +227614,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30481,
+              "line": 30492,
               "group": "Global",
               "type": "Boolean"
             }
@@ -227705,7 +227705,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30488,
+              "line": 30499,
               "group": "Global",
               "type": "F32"
             }
@@ -227796,7 +227796,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30495,
+              "line": 30506,
               "group": "Global",
               "type": "F32"
             }
@@ -227887,7 +227887,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30502,
+              "line": 30513,
               "group": "Global",
               "type": "Boolean"
             }
@@ -227978,7 +227978,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30509,
+              "line": 30520,
               "group": "Global",
               "type": "F32"
             }
@@ -228069,7 +228069,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30389,
+              "line": 30400,
               "group": "Global",
               "type": "F32"
             }
@@ -228147,7 +228147,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30396,
+              "line": 30407,
               "group": "Global",
               "type": "F32"
             }
@@ -228238,7 +228238,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30403,
+              "line": 30414,
               "group": "Global",
               "type": "F32"
             }
@@ -228329,7 +228329,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30354,
+              "line": 30365,
               "group": "Global",
               "type": "Boolean"
             }
@@ -228407,7 +228407,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30382,
+              "line": 30393,
               "group": "Global",
               "type": "U32"
             }
@@ -228485,7 +228485,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30361,
+              "line": 30372,
               "group": "Global",
               "type": "F32"
             }
@@ -228563,7 +228563,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30530,
+              "line": 30541,
               "group": "Global",
               "type": "F32"
             }
@@ -228641,7 +228641,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30579,
+              "line": 30590,
               "group": "Global",
               "type": "F32"
             }
@@ -228732,7 +228732,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30537,
+              "line": 30548,
               "group": "Global",
               "type": "F32"
             }
@@ -228911,7 +228911,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30544,
+              "line": 30555,
               "group": "Global",
               "type": "F32"
             }
@@ -228989,7 +228989,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30586,
+              "line": 30597,
               "group": "Global",
               "type": "F32"
             }
@@ -229080,7 +229080,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30572,
+              "line": 30583,
               "group": "Global",
               "type": "F32"
             }
@@ -229171,7 +229171,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30565,
+              "line": 30576,
               "group": "Global",
               "type": "F32"
             }
@@ -229249,7 +229249,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30551,
+              "line": 30562,
               "group": "Global",
               "type": "F32"
             }
@@ -229350,7 +229350,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30558,
+              "line": 30569,
               "group": "Global",
               "type": "F32"
             }
@@ -229451,7 +229451,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30593,
+              "line": 30604,
               "group": "Global",
               "type": "Color3"
             }
@@ -229528,7 +229528,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30615,
+              "line": 30626,
               "group": "Global",
               "type": "U32"
             }
@@ -229606,7 +229606,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30622,
+              "line": 30633,
               "group": "Global",
               "type": "Boolean"
             }
@@ -229684,7 +229684,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30629,
+              "line": 30640,
               "group": "Global",
               "type": "F32"
             }
@@ -229762,7 +229762,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30636,
+              "line": 30647,
               "group": "Global",
               "type": "F32"
             }
@@ -229840,7 +229840,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30664,
+              "line": 30675,
               "group": "Global",
               "type": "F32"
             }
@@ -229931,7 +229931,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30657,
+              "line": 30668,
               "group": "Global",
               "type": "F32"
             }
@@ -230009,7 +230009,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30643,
+              "line": 30654,
               "group": "Global",
               "type": "Boolean"
             }
@@ -230087,7 +230087,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30650,
+              "line": 30661,
               "group": "Global",
               "type": "F32"
             }
@@ -230165,7 +230165,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 30671,
+              "line": 30682,
               "group": "Global",
               "type": "F32"
             }
@@ -230256,7 +230256,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31819,
+              "line": 31830,
               "group": "Global",
               "type": "Boolean"
             }
@@ -230332,7 +230332,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31826,
+              "line": 31837,
               "group": "Global",
               "type": "Boolean"
             }
@@ -230408,7 +230408,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31833,
+              "line": 31844,
               "group": "Global",
               "type": "F32"
             }
@@ -230484,7 +230484,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31840,
+              "line": 31851,
               "group": "Global",
               "type": "F32"
             }
@@ -230560,7 +230560,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31847,
+              "line": 31858,
               "group": "Global",
               "type": "F32"
             }
@@ -230636,7 +230636,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31854,
+              "line": 31865,
               "group": "Global",
               "type": "F32"
             }
@@ -230712,7 +230712,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31861,
+              "line": 31872,
               "group": "Global",
               "type": "F32"
             }
@@ -230788,7 +230788,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31868,
+              "line": 31879,
               "group": "Global",
               "type": "F32"
             }
@@ -230864,7 +230864,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31875,
+              "line": 31886,
               "group": "Global",
               "type": "U32"
             }
@@ -230944,7 +230944,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31882,
+              "line": 31893,
               "group": "Global",
               "type": "F32"
             }
@@ -231226,7 +231226,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31889,
+              "line": 31900,
               "group": "Global",
               "type": "Boolean"
             }
@@ -231313,7 +231313,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31896,
+              "line": 31907,
               "group": "Global",
               "type": "U32"
             }
@@ -231404,7 +231404,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31903,
+              "line": 31914,
               "group": "Global",
               "type": "F32"
             }
@@ -231480,7 +231480,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31910,
+              "line": 31921,
               "group": "Global",
               "type": "F32"
             }
@@ -231556,7 +231556,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31917,
+              "line": 31928,
               "group": "Global",
               "type": "F32"
             }
@@ -231632,7 +231632,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31924,
+              "line": 31935,
               "group": "Global",
               "type": "F32"
             }
@@ -231708,7 +231708,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31931,
+              "line": 31942,
               "group": "Global",
               "type": "U32"
             }
@@ -231784,7 +231784,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31938,
+              "line": 31949,
               "group": "Global",
               "type": "Boolean"
             }
@@ -231860,7 +231860,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31945,
+              "line": 31956,
               "group": "Global",
               "type": "F32"
             }
@@ -232001,7 +232001,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31952,
+              "line": 31963,
               "group": "Global",
               "type": "Boolean"
             }
@@ -232065,7 +232065,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31963,
+              "line": 31974,
               "group": "Global",
               "type": "U32"
             }
@@ -232134,7 +232134,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31974,
+              "line": 31985,
               "group": "Global",
               "type": "U32"
             }
@@ -232202,7 +232202,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31985,
+              "line": 31996,
               "group": "Global",
               "type": "F32"
             }
@@ -232266,7 +232266,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31996,
+              "line": 32007,
               "group": "Global",
               "type": "F32"
             }
@@ -232330,7 +232330,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32007,
+              "line": 32018,
               "group": "Global",
               "type": "Boolean"
             }
@@ -232394,7 +232394,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32018,
+              "line": 32029,
               "group": "Global",
               "type": "U32"
             }
@@ -232458,7 +232458,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32029,
+              "line": 32040,
               "group": "Global",
               "type": "F32"
             }
@@ -232522,7 +232522,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32040,
+              "line": 32051,
               "group": "Global",
               "type": "F32"
             }
@@ -232586,7 +232586,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32051,
+              "line": 32062,
               "group": "Global",
               "type": "Boolean"
             }
@@ -241647,7 +241647,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 27377,
+              "line": 27388,
               "group": "Global",
               "type": "Boolean"
             }
@@ -241746,7 +241746,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 27388,
+              "line": 27399,
               "group": "Global",
               "type": "U32"
             }
@@ -241834,7 +241834,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 27399,
+              "line": 27410,
               "group": "Global",
               "type": "Boolean"
             }
@@ -242255,7 +242255,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32202,
+              "line": 32213,
               "group": "Global",
               "type": "Boolean"
             }
@@ -242356,7 +242356,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32230,
+              "line": 32241,
               "group": "Global",
               "type": "U32"
             }
@@ -242409,7 +242409,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32237,
+              "line": 32248,
               "group": "Global",
               "type": "U32"
             }
@@ -242468,7 +242468,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32244,
+              "line": 32255,
               "group": "Global",
               "type": "Color3"
             }
@@ -242581,7 +242581,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32251,
+              "line": 32262,
               "group": "Global",
               "type": "Boolean"
             }
@@ -242642,7 +242642,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32209,
+              "line": 32220,
               "group": "Global",
               "type": "U32"
             }
@@ -242696,7 +242696,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32216,
+              "line": 32227,
               "group": "Global",
               "type": "Boolean"
             }
@@ -242745,7 +242745,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32356,
+              "line": 32367,
               "group": "Global",
               "type": "U32"
             }
@@ -242809,7 +242809,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32223,
+              "line": 32234,
               "group": "Global",
               "type": "Boolean"
             }
@@ -242910,7 +242910,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32258,
+              "line": 32269,
               "group": "Global",
               "type": "F32"
             }
@@ -242959,7 +242959,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32265,
+              "line": 32276,
               "group": "Global",
               "type": "F32"
             }
@@ -243008,7 +243008,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32272,
+              "line": 32283,
               "group": "Global",
               "type": "U32"
             }
@@ -243060,7 +243060,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32279,
+              "line": 32290,
               "group": "Global",
               "type": "Boolean"
             }
@@ -243109,7 +243109,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32293,
+              "line": 32304,
               "group": "Global",
               "type": "Boolean"
             }
@@ -243181,7 +243181,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32300,
+              "line": 32311,
               "group": "Global",
               "type": "U32"
             }
@@ -243246,7 +243246,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32307,
+              "line": 32318,
               "group": "Global",
               "type": "F32"
             }
@@ -243307,7 +243307,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32314,
+              "line": 32325,
               "group": "Global",
               "type": "U32"
             }
@@ -243373,7 +243373,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32321,
+              "line": 32332,
               "group": "Global",
               "type": "F32"
             }
@@ -243497,7 +243497,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32328,
+              "line": 32339,
               "group": "Global",
               "type": "Boolean"
             }
@@ -243558,7 +243558,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32286,
+              "line": 32297,
               "group": "Global",
               "type": "Boolean"
             }
@@ -243711,7 +243711,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32363,
+              "line": 32374,
               "group": "Global",
               "type": "U32"
             }
@@ -243766,7 +243766,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32342,
+              "line": 32353,
               "group": "Global",
               "type": "U32"
             }
@@ -243827,7 +243827,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 32335,
+              "line": 32346,
               "group": "Global",
               "type": "U32"
             }
@@ -244420,7 +244420,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 29185,
+              "line": 29196,
               "group": "Global",
               "type": "Boolean"
             }
@@ -244621,7 +244621,7 @@
           "setting_declarations": [
             {
               "file": "indra/newview/app_settings/settings.xml",
-              "line": 31797,
+              "line": 31808,
               "group": "Global",
               "type": "Boolean"
             }

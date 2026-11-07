@@ -33032,6 +33032,26 @@
   },
   {
     "change": "added",
+    "comment": "Overlap shader compilation and linking in audited deferred families using the driver parallel compiler.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderParallelShaderCompile",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "[ProbeCost] Ordinary and Live Probe capture supersampling: 4 stock, 2 or 1. Clamped to 1/2/4. Lower values trade shimmer for less pixel work, use extra VRAM and rebuild probes/mirrors. Hero capture scale is unchanged.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
