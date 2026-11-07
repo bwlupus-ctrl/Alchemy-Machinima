@@ -59,7 +59,7 @@ def reverse_post_chroma_main(source, name):
     import json
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "post_chroma_main_hunks.json").read_bytes().replace(b"\r\n", b"\n")
-    assert hashlib.sha256(raw).hexdigest() == "39deffb197687a391641de1d4ab46ddda0a6b24bf4e804567f724837b99aa2b8", "post-chroma allowance pin"
+    assert hashlib.sha256(raw).hexdigest() == "54c1dfa5a34174b277dfec9072386a81d0f9eaf0c099fe34c9232f68a4f447e2", "post-chroma allowance pin"
     data = json.loads(raw)
     path = "indra/newview/" + name
     if path not in data["files"]:
