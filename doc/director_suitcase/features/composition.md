@@ -63,7 +63,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@203,7", "indra/newview/llviewerwindow.cpp@264,272", "indra/newview/llviewerwindow.cpp@3368,14"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@49,24", "indra/newview/llvoavatar.cpp@2948,33", "indra/newview/llvoavatar.cpp@5070,21", "indra/newview/llvoavatar.cpp@5153,25", "indra/newview/llvoavatar.cpp@5831,13", "indra/newview/llvoavatar.cpp@5923,45", "indra/newview/llvoavatar.cpp@9423,10", "indra/newview/llvoavatar.cpp@9467,15", "indra/newview/llvoavatar.cpp@9488,12", "indra/newview/llvoavatar.cpp@12836,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@551,45", "indra/newview/llvoavatar.h@1260,17"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@89,17", "indra/newview/pipeline.cpp@1701,30008"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@89,17", "indra/newview/pipeline.cpp@1701,9113", "indra/newview/pipeline.cpp@10815,20896"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@911,100"]}
 - {"path": "indra/newview/skins/default/xui/en/fonts.xml", "hunks": ["indra/newview/skins/default/xui/en/fonts.xml@663,26"]}
 - {"path": "indra/llcommon/llstring.cpp", "hunks": ["indra/llcommon/llstring.cpp@858,131"]}

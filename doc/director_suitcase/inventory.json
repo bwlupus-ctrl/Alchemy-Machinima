@@ -6,9 +6,9 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 734,
-      "HOOK": 525,
+      "HOOK": 526,
       "OWNED": 909,
-      "TOOLING": 431
+      "TOOLING": 434
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -192,10 +192,10 @@
       },
       "wiring_rows": 2289
     },
-    "head_source_tree": "1bdf7acb9d9c7548e6e8b2cb98cc941eaf5617da",
-    "hook_files": 525,
-    "hunks": 3271,
-    "input_sha256": "00740f444fe14756693f3be7332d747622ed80c8fa0185c8aa00659d22890259",
+    "head_source_tree": "9bff55b4af412857ae4c4e910c9257af12ded39e",
+    "hook_files": 526,
+    "hunks": 3274,
+    "input_sha256": "b1380d52bb186f6b90db96785754302476a681df2292183271aaa117c865a1f9",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -10993,9 +10993,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "weather"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -11161,9 +11159,7 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -11187,9 +11183,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -24497,8 +24491,7 @@
     {
       "candidate_features_from_subjects": [
         "looks",
-        "roto-tron",
-        "vcam"
+        "roto-tron"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -24526,6 +24519,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflPostF.glsl",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/app_settings/shaders/class3/deferred/screenSpaceReflUtil.glsl",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -31048,7 +31054,6 @@
     {
       "candidate_features_from_subjects": [
         "roto-tron",
-        "sensor",
         "weather"
       ],
       "class": "HOOK",
@@ -43406,6 +43411,45 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/shader_parallel_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_sampler_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_sampler_recipes.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shader_scope_runtime_fixture.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

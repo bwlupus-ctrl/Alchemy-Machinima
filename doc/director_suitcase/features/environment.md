@@ -115,14 +115,14 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/app_settings/commands.xml", "hunks": ["indra/newview/app_settings/commands.xml@421,43"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3674,1119"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@434,11"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@1701,30008"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@1701,9113", "indra/newview/pipeline.cpp@10815,20896"]}
 - {"path": "indra/newview/skins/default/textures/textures.xml", "hunks": ["indra/newview/skins/default/textures/textures.xml@184,10"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@1493,27"]}
 - {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13580,368"]}
 - {"path": "indra/newview/skins/default/xui/en/strings.xml", "hunks": ["indra/newview/skins/default/xui/en/strings.xml@4233,10", "indra/newview/skins/default/xui/en/strings.xml@4283,10"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@1424,26"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@184,7", "indra/llrender/llshadermgr.cpp@192,7", "indra/llrender/llshadermgr.cpp@245,16", "indra/llrender/llshadermgr.cpp@353,7", "indra/llrender/llshadermgr.cpp@361,19", "indra/llrender/llshadermgr.cpp@423,7", "indra/llrender/llshadermgr.cpp@431,20"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@1477,28"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@195,7", "indra/llrender/llshadermgr.cpp@203,7", "indra/llrender/llshadermgr.cpp@256,16", "indra/llrender/llshadermgr.cpp@364,7", "indra/llrender/llshadermgr.cpp@372,19", "indra/llrender/llshadermgr.cpp@434,7", "indra/llrender/llshadermgr.cpp@442,20"]}
 - {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@591,396"]}
 - {"path": "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@130,9"]}
 - {"path": "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl", "hunks": ["indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@45,15", "indra/newview/app_settings/shaders/class3/deferred/hazeF.glsl@104,30"]}
