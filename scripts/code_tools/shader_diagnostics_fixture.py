@@ -17,7 +17,7 @@ def run(directory):
     sh = (ROOT / 'indra/llrender/llglslshader.h').read_text(encoding='utf-8')
     methods = '\n'.join(function(mgr, 'LLShaderMgr::' + name + '(') for name in (
         'shaderLanguageVersion', 'ownsShaderObject', 'clearShaderObjects',
-        'loadShaderFileInternal', 'linkProgramObjectInternal', 'submitProgramLink', 'finishProgramLinkInternal', 'attachShaderFeaturesInternal',
+        'loadShaderFileInternal', 'beginShaderBatch', 'endShaderBatch', 'finishBatchBinary', 'linkProgramObjectInternal', 'submitProgramLink', 'finishProgramLinkInternal', 'attachShaderFeaturesInternal',
         'loadCachedProgramBinaryInternal', 'saveCachedProgramBinary', 'rejectProgramBinary',
         'readShaderSource', 'configureShaderDiagnostics', 'openShaderEquivalence',
         'ShaderAttemptScope::ShaderAttemptScope', 'ShaderAttemptScope::~ShaderAttemptScope',
@@ -27,12 +27,17 @@ def run(directory):
         'finishShaderAttempt', 'writeShaderRecord', 'beginShaderPass', 'finishShaderPass'))
     methods += '\n' + '\n'.join(function(shader, 'LLGLSLShader::' + name + '(') for name in (
         'isCompute', 'unloadInternal', 'createShaderInternal', 'createShader',
-        'prepareShaderInternal', 'submitShaderInternal', 'finishShaderInternal',
+        'prepareShaderInternal', 'submitShaderInternal', 'finishShaderInternal', 'finishShaderCompiles',
+        'ShaderBatch::ShaderBatch', 'ShaderBatch::~ShaderBatch', 'ShaderBatch::addInternal',
+        'ShaderBatch::add', 'ShaderBatch::finishInternal', 'ShaderBatch::finish',
         'bindAttributes', 'readAttributes', 'submitLink', 'finishLinkInternal',
         'attachVertexObjectInternal', 'attachFragmentObjectInternal', 'attachObjectInternal',
         'mapAttributesInternal', 'linkInternal', 'hash', 'hashWithEpoch',
-        'mapUniform', 'mapUniformTextureChannel', 'mapUniforms'))
+        'mapUniform', 'mapUniformTextureChannel', 'mapUniforms', 'addPermutation'))
     methods = function(shader, 'static bool is_sampler_type(') + '\n' + methods
+    viewer = (ROOT / 'indra/newview/llviewershadermgr.cpp').read_text(encoding='utf-8')
+    methods += '\n' + '\n'.join(function(viewer, name + '(') for name in
+        ('make_rigged_variant', 'create_family_shader', 'after_shader_family', 'create_family_rigged'))
     # Immutable local Step-1 baseline. Execute its four unsplit algorithms with
     # the same loader, cache, reflection and driver spies as the split algorithms.
     import subprocess
@@ -47,6 +52,15 @@ def run(directory):
         assert name in legacy, 'legacy rename anchor missing: ' + name
         legacy = legacy.replace(name, name + 'Legacy')
     methods += '\n' + legacy
+    # Phase 2 changes the loader as well as creation. Run main's immutable
+    # source/binary loaders on the legacy side, so OFF GL-order equivalence
+    # cannot accidentally compare two copies of the new loader.
+    main_loaders = baseline('indra/llrender/llshadermgr.cpp', [
+        'LLShaderMgr::loadShaderFileInternal', 'LLShaderMgr::loadCachedProgramBinaryInternal'])
+    for name in ('loadShaderFileInternal', 'loadCachedProgramBinaryInternal'):
+        assert name in main_loaders
+        main_loaders = main_loaders.replace(name, name + 'Legacy')
+    methods += '\n' + main_loaders
 
     # All instrumentation anchors fail closed. These mutations run in BOTH
     # template variants, so OFF/ON agreement alone cannot detect them.
@@ -54,6 +68,12 @@ def run(directory):
         assert text.count(anchor) == 1, 'fixture anchor missing/ambiguous: ' + anchor
         return text.replace(anchor, replacement, 1)
 
+    loader = function(mgr, 'LLShaderMgr::loadShaderFileInternal(')
+    methods = replace_once(methods, loader, replace_once(loader, '{\n    const S32 requested_level',
+        '{\n    if constexpr (!batching) if (useLegacyLoader) return loadShaderFileInternalLegacy<diagnostics>(filename, shader_level, type, defines, texture_index_channels);\n    const S32 requested_level'))
+    binary = function(mgr, 'LLShaderMgr::loadCachedProgramBinaryInternal(')
+    methods = replace_once(methods, binary, replace_once(binary, '{\n    if constexpr (diagnostics)',
+        '{\n    if constexpr (!batching) if (useLegacyLoader) return loadCachedProgramBinaryInternalLegacy<diagnostics>(shader);\n    if constexpr (diagnostics)'))
     finish_link = function(shader, 'LLGLSLShader::finishLinkInternal(')
     methods = replace_once(methods, finish_link, replace_once(finish_link,
         'if (success)', 'if (success && !plantSeam)'))
@@ -86,6 +106,13 @@ def run(directory):
     methods = replace_once(methods, vertex, planted + '\n' + replace_once(vertex, anchor,
         '    if (plantRegression) return attachVertexObjectPlanted<diagnostics>(object_path);\n' + anchor))
 
+    methods = replace_once(methods, '            deferred_submitted = true;',
+        '            if (plantBatchCompileStatus) glGetShaderiv(ret, GL_COMPILE_STATUS, &success);\n            deferred_submitted = true;')
+    methods = replace_once(methods, 'for (GLuint object : mgr->mShaderBatchJournal->issuedObjects) glDeleteShader(object);',
+        'for (GLuint object : mgr->mShaderBatchJournal->issuedObjects) if (!plantBatchCleanup) glDeleteShader(object);')
+    methods = replace_once(methods, 'mShaderAttemptNumbers = std::move(saved->attempts);',
+        'if (!plantBatchJournal) mShaderAttemptNumbers = std::move(saved->attempts);')
+
     # Only diagnostic reflection reads are excluded from the differential trace.
     # A state-changing GL call inside an observer must still be detected.
     finish = function(mgr, 'LLShaderMgr::finishShaderAttempt(')
@@ -117,9 +144,11 @@ def run(directory):
 #include <sstream>
 #include <vector>
 #include <memory>
+#include <functional>
 #include <optional>
 #include <utility>
 #include <type_traits>
+#include <cstddef>
 #undef LL_PROFILE_ZONE_SCOPED_CATEGORY_SHADER
 #undef LL_PROFILE_ZONE_NAMED_CATEGORY_SHADER
 #undef LL_WARNS
@@ -149,6 +178,10 @@ GLuint nextHandle=1;
 std::map<GLuint,std::string> sources;
 std::map<GLuint,std::vector<GLuint>> attached;
 bool useLegacy=false, useDirect=false, plantSeam=false, plantRelocation=false, plantStatus=false;
+bool useBatch=false,useLegacyLoader=false; GLuint failBatchLink=0;
+bool plantBatchCompileStatus=false,plantBatchCleanup=false,plantBatchJournal=false,plantBatchReplay=false;
+bool plantIncomingReset=false;
+std::set<GLuint> badBinaries, liveShaders, livePrograms;
 int failLinkCount=0;
 int activeCreateDepth=0,maxCreateDepth=0,createEntries=0;
 struct CreationDepth {
@@ -199,8 +232,8 @@ struct LLRender{static constexpr int NUM_MATRIX_MODES=4;};
     prefix += '\n'.join(f'#define {n} spy_{n}' for n in glnames) + '\n'
     prefix += r'''
 GLenum glGetError(){call("glGetError");return GL_NO_ERROR;}
-GLuint glCreateProgram(){call("glCreateProgram");return nextHandle++;}
-GLuint glCreateShader(GLenum t){call("glCreateShader:"+std::to_string(t));return nextHandle++;}
+GLuint glCreateProgram(){call("glCreateProgram");livePrograms.insert(nextHandle);return nextHandle++;}
+GLuint glCreateShader(GLenum t){call("glCreateShader:"+std::to_string(t));liveShaders.insert(nextHandle);return nextHandle++;}
 void glShaderSource(GLuint h,GLsizei n,const GLchar** s,const GLint* lengths){
  std::string event="glShaderSource:"+std::to_string(h)+":"+std::to_string(n);
  for(int i=0;i<n;++i){std::string text=lengths&&lengths[i]>=0?std::string(s[i],lengths[i]):s[i];
@@ -208,8 +241,8 @@ void glShaderSource(GLuint h,GLsizei n,const GLchar** s,const GLint* lengths){
  call(event);}
 void glCompileShader(GLuint h){call("glCompileShader:"+std::to_string(h));}
 void glGetShaderiv(GLuint h,GLenum k,GLint* p){call("glGetShaderiv:"+std::to_string(h)+":"+std::to_string(k));*p=sources[h].find("FAIL")==std::string::npos;}
-void glDeleteShader(GLuint h){call("glDeleteShader:"+std::to_string(h));}
-void glDeleteProgram(GLuint h){call("glDeleteProgram:"+std::to_string(h));attached.erase(h);}
+void glDeleteShader(GLuint h){call("glDeleteShader:"+std::to_string(h));liveShaders.erase(h);}
+void glDeleteProgram(GLuint h){call("glDeleteProgram:"+std::to_string(h));attached.erase(h);livePrograms.erase(h);}
 void glAttachShader(GLuint p,GLuint s){call("glAttachShader:"+std::to_string(p)+":"+std::to_string(s));attached[p].push_back(s);}
 void glDetachShader(GLuint p,GLuint s){call("glDetachShader:"+std::to_string(p)+":"+std::to_string(s));}
 void glGetAttachedShaders(GLuint h,GLsizei max,GLsizei* n,GLuint* p){call("glGetAttachedShaders:"+std::to_string(h)+":"+std::to_string(max));*n=(GLsizei)attached[h].size();std::copy(attached[h].begin(),attached[h].end(),p);}
@@ -218,7 +251,7 @@ void glDeleteQueries(GLsizei n,const GLuint* h){std::string e="glDeleteQueries:"
 void glLinkProgram(GLuint h){call("glLinkProgram:"+std::to_string(h));}
 void glGetProgramiv(GLuint h,GLenum k,GLint* p){
  // Only queries made exclusively by finishShaderAttempt are observers.
- if(k==GL_LINK_STATUS){call("glGetProgramiv:link:"+std::to_string(h));*p=!(failLink || rejectBinary || failLinkCount>0);if(!rejectBinary && failLinkCount>0)--failLinkCount;rejectBinary=false;}
+ if(k==GL_LINK_STATUS){call("glGetProgramiv:link:"+std::to_string(h));*p=!(failLink || rejectBinary || failLinkCount>0 || badBinaries.count(h) || h==failBatchLink);if(h==failBatchLink)failBatchLink=0;if(!rejectBinary && failLinkCount>0)--failLinkCount;rejectBinary=false;}
  else if(k==GL_PROGRAM_BINARY_LENGTH){call("glGetProgramiv:binary_length:"+std::to_string(h));*p=0;}
  else {
    CHECK(k==GL_ACTIVE_ATTRIBUTES || k==GL_ACTIVE_ATTRIBUTE_MAX_LENGTH ||
@@ -232,7 +265,7 @@ void glBindAttribLocation(GLuint h,GLuint i,const GLchar* n){call("glBindAttribL
 GLint glGetAttribLocation(GLuint h,const GLchar* n){query("glGetAttribLocation:"+std::to_string(h)+":"+n);return 0;}
 void glBindFragDataLocation(GLuint h,GLuint i,const GLchar* n){call("glBindFragDataLocation:"+std::to_string(h)+":"+std::to_string(i)+":"+n);}
 void glProgramParameteri(GLuint h,GLenum k,GLint v){call("glProgramParameteri:"+std::to_string(h)+":"+std::to_string(k)+":"+std::to_string(v));}
-void glProgramBinary(GLuint h,GLenum f,const void* p,GLsizei n){call("glProgramBinary:"+std::to_string(h)+":"+std::to_string(f)+":"+std::string((const char*)p,n));}
+void glProgramBinary(GLuint h,GLenum f,const void* p,GLsizei n){call("glProgramBinary:"+std::to_string(h)+":"+std::to_string(f)+":"+std::string((const char*)p,n));if(std::string((const char*)p,n)=="NOPE")badBinaries.insert(h);}
 void glGetProgramBinary(GLuint h,GLsizei n,GLsizei*,GLenum*,void*){call("glGetProgramBinary:"+std::to_string(h)+":"+std::to_string(n));}
 void reflect(const char* text,GLsizei max,GLsizei* length,GLchar* name){
  CHECK(max>(GLsizei)strlen(text));strcpy(name,text);*length=(GLsizei)strlen(text);}
@@ -252,6 +285,7 @@ void glUniformBlockBinding(GLuint,GLuint,GLuint binding){call("glUniformBlockBin
 void glUseProgram(GLuint h){call("glUseProgram:"+std::to_string(h));}
 
 '''
+    prefix += function(sh, 'struct LLShaderCompileJob') + ';\n'
     prefix += function(sh, 'struct LLShaderAttemptContext') + ';\n'
     prefix += function(sh, 'class LLShaderFeatures') + ';\n'
     diagnostic = mh[mh.index('    // Configured by the viewer,'):mh.index('\nprotected:', mh.index('    // Configured by the viewer,'))]
@@ -275,13 +309,15 @@ struct LLShaderMgr{
  static bool readShaderSource(const std::string&,std::string&);
  std::string getShaderDirPrefix(){return root+"/class";}
  void prepareWeatherFeatures(LLGLSLShader*){}
- template<bool diagnostics> GLuint loadShaderFileInternal(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32);
+ template<bool diagnostics, bool batching=false> GLuint loadShaderFileInternal(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32,std::vector<LLShaderCompileJob>* = nullptr);
  void submitProgramLink(GLuint);
  template<bool diagnostics> bool finishProgramLinkInternal(GLuint,bool,const std::string&);
  template<bool diagnostics> bool linkProgramObjectInternalLegacy(GLuint,bool,const std::string&);
  template<bool diagnostics> bool linkProgramObjectInternal(GLuint,bool,const std::string&);
+ template<bool diagnostics> GLuint loadShaderFileInternalLegacy(const std::string&,S32&,GLenum,std::map<std::string,std::string>*,S32);
+ template<bool diagnostics> bool loadCachedProgramBinaryInternalLegacy(LLGLSLShader*);
  template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader*);
- template<bool diagnostics> bool loadCachedProgramBinaryInternal(LLGLSLShader*);
+ template<bool diagnostics, bool batching=false> bool loadCachedProgramBinaryInternal(LLGLSLShader*);
  bool saveCachedProgramBinary(LLGLSLShader*);
  void dumpObjectLog(GLuint,bool,const std::string&){}
  void dumpShaderSource(U32,GLchar**){}
@@ -309,6 +345,8 @@ struct LLGLSLShader{
  bool mUsingBinaryProgram=false,mShaderCacheEligible=true;
  int mShaderLevel=3,mShaderGroup=0,mActiveTextureChannels=0;
  std::string mName="fixture";LLUUID mShaderHash;
+ void addPermutation(std::string,std::string);
+ void clearPermutations(){mDefines.clear();}
  bool isCompute()const;bool createShader();void unloadInternal();LLUUID hash();LLUUID hashWithEpoch(U32);
  JOB_DECLARATIONS
  std::vector<std::string> preparedCalls;
@@ -343,13 +381,21 @@ struct LLGLSLShader{
 '''
     job = function(sh, 'struct ShaderCreationJob') + ';'
     job = replace_once(job, 'bool retry = false;', 'bool retry = false; bool linkResult = true;')
-    declarations = sh[sh.index('    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();'):sh.index('\npublic:', sh.index('struct ShaderCreationJob'))]
-    prefix = replace_once(prefix, 'JOB_DECLARATIONS', job + '\n U64 mShaderAttemptGeneration=0;\n' + declarations)
+    declarations = sh[sh.index('    template<bool diagnostics, bool batching = false> ShaderCreationJob prepareShaderInternal(std::vector<LLShaderCompileJob>* pending = nullptr);'):sh.index('\npublic:', sh.index('struct ShaderCreationJob'))]
+    prefix = replace_once(prefix, 'JOB_DECLARATIONS', job + '\n U64 mShaderAttemptGeneration=0;\n' + declarations + '\n' + function(sh, 'class ShaderBatch') + ';')
     prefix = replace_once(prefix, 'UNIFORM_DATA', function(sh, 'struct gl_uniform_data_t') + ';')
     suffix = r'''
 static_assert(!std::is_copy_constructible_v<LLGLSLShader::ShaderCreationJob>);
 static_assert(!std::is_copy_assignable_v<LLGLSLShader::ShaderCreationJob>);
 struct Result{std::vector<std::string> gl;};
+struct LLMaterial{static constexpr U32 SHADER_COUNT=16,DIFFUSE_ALPHA_MODE_BLEND=1;};
+using std::make_pair;
+std::string llformat(const char* format,U32 value){
+ std::string text=format;auto pos=text.find("%d");CHECK(pos!=std::string::npos);
+ text.replace(pos,2,std::to_string(value));return text;
+}
+void add_common_permutations(LLGLSLShader*){}
+
 template<bool diagnostics> bool direct(LLGLSLShader& shader){
  for(;;){
    auto prepared=shader.prepareShaderInternal<diagnostics>();
@@ -366,7 +412,8 @@ void writeFile(const std::string& p,const std::string& text){
  std::ofstream(p,std::ios::binary)<<text;
 }
 template<bool diagnostics> Result scenario(const std::string& mode,const std::string& path){
- calls.clear();sources.clear();attached.clear();nextHandle=1;LLGLSLShader::sInstances.clear();
+ useLegacyLoader=useLegacy || (mode.find("batch_")==0 && !useBatch);
+ calls.clear();sources.clear();attached.clear();badBinaries.clear();liveShaders.clear();livePrograms.clear();nextHandle=1;LLGLSLShader::sInstances.clear();
  failLink=false;failLinkCount=0;rejectBinary=false;units.clear();blockBinding=0;
  CHECK(activeCreateDepth==0);maxCreateDepth=0;createEntries=0;
  LLShaderMgr mgr;currentMgr=&mgr;mgr.root=path;mgr.mShaderCacheDir=path;
@@ -414,7 +461,134 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
  if(mode=="link_fail" || mode=="compute_link_fail")failLink=true;
  if(mode=="binary_retry")failLinkCount=1;
  bool success;
- if(mode.find("interleave")==0){
+ if(mode=="material_incoming"){
+   bool parallel_compile=useBatch;
+   std::vector<LLGLSLShader*> mShaderList;
+   LLGLSLShader gDeferredMaterialProgram[32],gVelocityMaterialProgram[32];
+   constexpr int SHADER_DEFERRED=0;int mShaderLevel[1]={3};bool use_sun_shadow=false;
+   LOAD_FAMILY_DECLARATION;
+   for(int level=1;level<=3;++level){
+     mShaderLevel[0]=level;
+     for(int passIndex=0;passIndex<2;++passIndex){
+       // Exhaust every fallback level in a preceding required shader. Materials
+       // have valid sources, so the old reset-to-true driver would run them.
+       for(int fileLevel=1;fileLevel<=3;++fileLevel){
+         auto dir=path+"/class"+std::to_string(fileLevel)+"/";
+         writeFile(dir+"precedingV.glsl","FAIL\n");
+         writeFile(dir+"deferred/materialV.glsl","void fixture(){}\n");
+         writeFile(dir+"deferred/materialF.glsl","void fixture(){}\n");
+       }
+       LLGLSLShader required;required.mName="Deferred Bump Shader";
+       required.mShaderLevel=level;required.mShaderFiles={{"precedingV.glsl",GL_VERTEX_SHADER}};
+       bool incoming=required.createShader();CHECK(!incoming);
+       auto callsBefore=calls;int entriesBefore=createEntries;
+       auto loadMaterials=[&](){
+         bool success=incoming;
+         if(useLegacy){MAIN_MATERIAL_BLOCK}else{MATERIAL_FAMILY_BLOCK}
+         return success;
+       };
+       CHECK(!loadMaterials());
+       CHECK(calls==callsBefore && createEntries==entriesBefore && mShaderList.empty());
+       CHECK(required.mProgramObject==0);
+       for(int i=0;i<32;++i){
+         CHECK(gDeferredMaterialProgram[i].mProgramObject==0 && gVelocityMaterialProgram[i].mProgramObject==0);
+         if((i&3)==1)CHECK(gDeferredMaterialProgram[i].mFeatures.hasLighting);
+         gDeferredMaterialProgram[i].unloadInternal();gVelocityMaterialProgram[i].unloadInternal();
+       }
+       required.unloadInternal();mgr.clearShaderObjects();
+     }
+   }
+   success=false;
+ }else if(mode.find("batch_")==0){
+   LLGLSLShader family[4];
+   std::string injection;
+   if(mode=="batch_compile3" || mode=="batch_driver_compile")injection="compile:middleF.glsl:3";
+   if(mode=="batch_compile1")injection="compile:middleF.glsl:1";
+   if(mode=="batch_link")injection="link:batch B";
+   if(mode=="batch_overflow")injection="overflow:batch B:99";
+   if(mode=="batch_binary_injected")injection="binary:batch B";
+   if(mode=="batch_missing")injection="missing:middleF.glsl";
+   mgr.configureShaderDiagnostics(diagnostics,injection,false);
+   for(const auto& file:{"rootV.glsl","rootF.glsl","middleF.glsl"}){
+     writeFile(path+"/class1/"+file,"void fixture(){}\n");
+     writeFile(path+"/class2/"+file,"void fixture(){}\n");
+   }
+   if(mode=="batch_native_compile")writeFile(path+"/class3/middleF.glsl","FAIL\n");
+   for(int i=0;i<4;++i){
+     auto& item=family[i];item.mName=std::string("batch ")+char('A'+i);
+     item.mShaderLevel=mode=="batch_compile1"?1:3;
+     item.mDefines["VARIANT"]=mode=="batch_shared"?"0":std::to_string(i);
+     item.mShaderFiles={{"rootV.glsl",GL_VERTEX_SHADER},{i==1?"middleF.glsl":"rootF.glsl",GL_FRAGMENT_SHADER}};
+     if(mode=="batch_warm" || ((mode=="batch_binary_reject" || mode=="batch_binary_read") && i==1)){
+       item.mShaderHash=item.hash();mgr.mShaderBinaryCache[item.mShaderHash]={4,1,0};
+       writeFile(path+"/"+item.mShaderHash.asString()+".shaderbin",
+         mode=="batch_binary_reject"?"NOPE":mode=="batch_binary_read"?"A":"ABCD");
+     }
+   }
+   if(mode=="batch_attach")mgr.mVertexShaderObjects.erase("deferred/textureUtilV.glsl");
+   auto beforeObjects=mgr.mShaderObjects,beforeVertex=mgr.mVertexShaderObjects,beforeFragment=mgr.mFragmentShaderObjects;
+   auto beforeLiveShaders=liveShaders;auto beforeAttempts=mgr.mShaderAttemptNumbers;
+   bool driverMode=mode=="batch_driver_recover" || mode=="batch_driver_compile";
+   int callbacks=0;bool batchSuccess=false;size_t issuingBegin=calls.size();
+   if(useBatch && !driverMode){
+     LLGLSLShader::ShaderBatch batch;
+     for(auto& item:family){
+       batch.add(item);
+       batch.after([&callbacks](){++callbacks;});
+     }
+     for(size_t i=issuingBegin;i<calls.size();++i){
+       CHECK(calls[i].find("glGetShaderiv:")==std::string::npos);
+       CHECK(calls[i].find("glGetProgramiv:link:")==std::string::npos);
+       CHECK(calls[i].find("glLinkProgram:")==std::string::npos);
+     }
+     if(mode=="batch_recover")failBatchLink=family[1].mProgramObject;
+     std::vector<GLuint> programs;for(auto& item:family)programs.push_back(item.mProgramObject);
+     size_t resolveBegin=calls.size();
+     batchSuccess=batch.finish();
+     bool expected=mode=="batch_cold" || mode=="batch_warm" || mode=="batch_shared";
+     CHECK(batchSuccess==expected);
+     if(batchSuccess && mode=="batch_cold"){
+       size_t lastLink=0,firstStatus=calls.size();std::vector<GLuint> linked,resolved;
+       for(size_t i=resolveBegin;i<calls.size();++i){
+         auto& c=calls[i];
+         if(c.find("glLinkProgram:")==0){lastLink=i;linked.push_back((GLuint)std::stoul(c.substr(14)));}
+         if(c.find("glGetProgramiv:link:")==0){firstStatus=std::min(firstStatus,i);resolved.push_back((GLuint)std::stoul(c.substr(20)));}
+       }
+       CHECK(lastLink<firstStatus && linked==programs && resolved==programs);
+     }
+     if(!batchSuccess){
+       CHECK(callbacks==0 && livePrograms.empty() && liveShaders==beforeLiveShaders);
+       CHECK(mgr.mShaderObjects==beforeObjects && mgr.mVertexShaderObjects==beforeVertex && mgr.mFragmentShaderObjects==beforeFragment);
+       for(auto& item:family)CHECK(item.mProgramObject==0 && item.mShaderLevel==(mode=="batch_compile1"?1:3));
+       CHECK(mgr.mShaderAttemptsActive==0 && !mgr.mShaderBatchJournal && mgr.mShaderAttemptNumbers==beforeAttempts);
+     }else CHECK(callbacks==4);
+   }
+   success=true;
+   if(driverMode){
+     bool parallel_compile=useBatch;
+     std::vector<LLGLSLShader*> mShaderList;
+     LOAD_FAMILY_DECLARATION;
+     success=load_family(success,[&](auto* batch,bool& result){
+       for(int i=0;i<4 && result;++i){
+         auto& item=family[i];mShaderList.push_back(&item);
+         create_family_shader(batch,item,result);
+         if constexpr (!std::is_same_v<std::remove_pointer_t<decltype(batch)>,std::nullptr_t>){
+           if(mode=="batch_driver_recover" && i==1)failBatchLink=item.mProgramObject;
+         }
+         after_shader_family(batch,[&item,&callbacks](){item.mFeatures.hasLighting=true;++callbacks;});
+       }
+     });
+     CHECK(success && callbacks==4 && mShaderList.size()==4);
+     for(auto& item:family)CHECK(item.mProgramObject!=0 && item.mFeatures.hasLighting);
+   }else if(!useBatch || !batchSuccess){
+     for(auto& item:family){
+       const bool created=item.createShader();success=created&&success;
+       if(created)++callbacks;
+     }
+   }
+   CHECK(success==(mode!="batch_compile1" && mode!="batch_link" && mode!="batch_attach" && mode!="batch_missing"));
+   for(auto& item:family)item.unloadInternal();
+ }else if(mode.find("interleave")==0){
    s.mName="job A";s.mDefines["JOB_A"]="1";
    LLGLSLShader b;b.mName="job B";b.mShaderLevel=2;b.mFeatures.hasGamma=true;
    b.mDefines["JOB_B"]="2";b.mShaderFiles=s.mShaderFiles;
@@ -459,12 +633,12 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
    s.submitShaderInternal<false>(moved);success=s.finishShaderInternal<false>(moved);
    rejected=false;try{s.finishShaderInternal<false>(moved);}catch(const std::runtime_error&){rejected=true;}CHECK(rejected);
  }else success=useLegacy?s.createShaderInternalLegacy<diagnostics>():(useDirect?direct<diagnostics>(s):s.createShader());
- CHECK(success==(mode!="all_fail" && mode!="startup_inject" && mode!="attachment_fail" && mode!="link_fail" && mode!="compute_link_fail"));
+ CHECK(success==(mode!="material_incoming" && mode!="batch_compile1" && mode!="batch_link" && mode!="batch_attach" && mode!="batch_missing" && mode!="all_fail" && mode!="startup_inject" && mode!="attachment_fail" && mode!="link_fail" && mode!="compute_link_fail"));
  if(mode=="reload")CHECK(useLegacy?s.createShaderInternalLegacy<diagnostics>():(useDirect?direct<diagnostics>(s):s.createShader()));
  pass.reset();
  if(mode=="all_fail")CHECK(mgr.mVertexShaderObjects.count("rootV.glsl")==0);
  CHECK(activeCreateDepth==0 && maxCreateDepth<=1);
- if(!useLegacy && !useDirect && mode.find("interleave")!=0 && mode!="ticket_guards")
+ if(!useLegacy && !useDirect && mode.find("interleave")!=0 && mode.find("batch_")!=0 && mode!="ticket_guards" && mode!="material_incoming")
    CHECK(createEntries==(mode=="reload"?2:1));
  Result result;result.gl=calls;
  if(diagnostics){CHECK(mgr.mShaderDumpOpened && mgr.mShaderEquivalence.is_open());}
@@ -473,7 +647,33 @@ template<bool diagnostics> Result scenario(const std::string& mode,const std::st
  return result;
 }
 int main(int argc,char** argv){
- CHECK(argc==2);std::string root=argv[1];
+ CHECK(argc==2 || argc==3);std::string root=argv[1];
+ if(argc==3){
+   std::string mutation=argv[2];useBatch=true;
+   if(mutation=="compile_status")plantBatchCompileStatus=true;
+   else if(mutation=="link_status")plantStatus=true;
+   else if(mutation=="cleanup")plantBatchCleanup=true;
+   else if(mutation=="journal")plantBatchJournal=true;
+   else if(mutation=="replay")plantBatchReplay=true;
+   else if(mutation=="incoming_off" || mutation=="incoming_on"){
+     plantIncomingReset=true;useBatch=mutation=="incoming_on";
+     scenario<true>("material_incoming",root+"/mutation_"+mutation);return 0;
+   }
+   else CHECK(false);
+   scenario<true>(mutation=="replay"?"batch_driver_recover":(mutation=="cleanup" || mutation=="journal")?"batch_recover":"batch_cold",root+"/mutation_"+mutation);
+   return 0;
+ }
+ for(bool parallel:{false,true}){
+   useBatch=parallel;
+   auto off=scenario<false>("material_incoming",root+(parallel?"/incoming_parallel_off":"/incoming_serial_off"));
+   auto on=scenario<true>("material_incoming",root+(parallel?"/incoming_parallel_on":"/incoming_serial_on"));
+   CHECK(off.gl==on.gl);
+   useLegacy=true;
+   auto main=scenario<true>("material_incoming",root+(parallel?"/incoming_main_on":"/incoming_main_off"));
+   useLegacy=false;CHECK(on.gl==main.gl);
+ }
+ useBatch=false;
+ std::cout<<"production material family: incoming required failure at levels 1/2/3, two unload/reload passes, switch OFF/ON and diagnostics OFF/ON PASS\n";
  for(const auto& mode:{"cold","all_fail","file_fallback","shared_fallback","shared_direct2","reload","compute","startup","accepted_binary","gamma","disabled","read_failure","driver_rejected","synthetic_rejected","attachment_fail","link_fail","compute_link_fail","binary_retry"}){
    // Identical filesystem inputs and reset driver state for both algorithms.
    std::string path=root+"/"+mode;
@@ -492,6 +692,18 @@ int main(int argc,char** argv){
    CHECK(directOff.gl==legacyOff.gl && directOn.gl==legacyOn.gl);
    std::cout<<"producer/differential "<<mode<<" PASS ("<<on.gl.size()<<" calls)\n";
  }
+ for(const auto& mode:{"batch_cold","batch_warm","batch_recover","batch_compile3","batch_compile1","batch_link","batch_overflow","batch_attach","batch_missing","batch_binary_reject","batch_binary_read","batch_binary_injected","batch_driver_recover","batch_driver_compile","batch_shared","batch_native_compile"}){
+   useBatch=false;scenario<true>(mode,root+"/serial_"+mode);
+   useBatch=true;scenario<true>(mode,root+"/parallel_"+mode);useBatch=false;
+   std::cout<<"batch native "<<mode<<" PASS\n";
+ }
+ for(const auto& mode:{"batch_cold","batch_warm","batch_recover","batch_shared","batch_native_compile","batch_driver_recover"}){
+   useBatch=true;
+   auto off=scenario<false>(mode,root+"/off_"+mode);
+   auto on=scenario<true>(mode,root+"/on_"+mode);
+   CHECK(off.gl==on.gl);useBatch=false;
+ }
+ std::cout<<"batch diagnostic OFF/ON ordered GL traces identical, including shared pending stages and native compile failure PASS\n";
  for(const auto& mode:{"interleave","interleave_standalone"}){
    scenario<true>(mode,root+"/"+mode);
    useLegacy=true;scenario<true>(mode,root+"/legacy_"+mode);useLegacy=false;
@@ -573,6 +785,28 @@ int main(int argc,char** argv){
  std::cout<<"startup journal: stale file replaced at first operation, early records flushed, second instance preserves file PASS\n";
 }
 '''
+    driver = function(viewer, 'auto load_family =')
+    driver = replace_once(driver, 'if (batch.finish()) return true;', 'if (batch.finish() || plantBatchReplay) return true;')
+    driver = replace_once(driver, 'if (!incoming_success) return false;',
+                          'if (!incoming_success && !plantIncomingReset) return false;')
+    driver = replace_once(driver, 'bool result = incoming_success;',
+                          'bool result = plantIncomingReset ? true : incoming_success;')
+    assert suffix.count('LOAD_FAMILY_DECLARATION') == 2
+    suffix = suffix.replace('LOAD_FAMILY_DECLARATION', driver)
+    # Extract the actual production material call AND its unconditional lighting
+    # assignments. This catches a call-site reset as well as a driver reset.
+    start = viewer.index('    gDeferredMaterialProgram[1].mFeatures.hasLighting = false;',
+                         viewer.index('auto load_family ='))
+    end = viewer.index('    // Clear any stale value', start)
+    material = viewer[start:end]
+    assert material.count('load_family(') == 1
+    suffix = replace_once(suffix, 'MATERIAL_FAMILY_BLOCK', material)
+    main_viewer = subprocess.check_output(
+        ['git', 'show', base + ':indra/newview/llviewershadermgr.cpp'],
+        cwd=ROOT, text=True, encoding='utf-8')
+    main_start = main_viewer.index('    gDeferredMaterialProgram[1].mFeatures.hasLighting = false;')
+    main_end = main_viewer.index('    // Clear any stale value', main_start)
+    suffix = replace_once(suffix, 'MAIN_MATERIAL_BLOCK', main_viewer[main_start:main_end])
     flags, libraries = viewer_native_flags()
     # Assertions use CHECK and remain enabled with the viewer's Release flags.
     exe = compile_run(directory, prefix + methods + suffix, name='producer_paths', flags=flags,
@@ -581,6 +815,10 @@ int main(int argc,char** argv){
     result = subprocess.run([str(exe), str(directory)], cwd=ROOT, capture_output=True, text=True)
     print(result.stdout, end='')
     assert result.returncode == 0, result.stderr
+    for mutation in ('compile_status', 'link_status', 'cleanup', 'journal', 'replay', 'incoming_off', 'incoming_on'):
+        rejected = subprocess.run([str(exe), str(directory), mutation], cwd=ROOT, capture_output=True, text=True)
+        assert rejected.returncode != 0, 'SURVIVING batch mutation: ' + mutation
+        print('rejected batch mutation:', mutation)
     from shader_equivalence_diff import load
     dumps = {}
     for mode in ('cold', 'all_fail', 'file_fallback', 'shared_fallback', 'shared_direct2',
@@ -592,7 +830,16 @@ int main(int argc,char** argv){
         if mode not in ('planted', 'startup_inject'):
             assert not compare(records, load(directory / ('legacy_' + mode) / 'shader_equivalence.jsonl')), mode
             assert not compare(records, load(directory / ('direct_' + mode) / 'shader_equivalence.jsonl')), mode
-    print('Step-1 unsplit vs wrapper AND direct stages: ordered GL traces and full dumps identical in both variants PASS')
+    for mode in ('batch_cold', 'batch_warm', 'batch_recover', 'batch_compile3', 'batch_compile1',
+                 'batch_link', 'batch_overflow', 'batch_attach', 'batch_missing',
+                 'batch_binary_reject', 'batch_binary_read', 'batch_binary_injected',
+                 'batch_driver_recover', 'batch_driver_compile', 'batch_shared', 'batch_native_compile'):
+        serial = load(directory / ('serial_' + mode) / 'shader_equivalence.jsonl')
+        parallel = load(directory / ('parallel_' + mode) / 'shader_equivalence.jsonl')
+        differences = compare(serial, parallel)
+        assert not differences, (mode, differences[:5])
+    print('batch journals: cold/warm, mid-family recovery, level 3/1 compile, link, overflow, missing root/feature and binary rejection/read/injection match serial PASS')
+    print('Step-1 unsplit/main source+binary loaders vs wrapper AND direct stages: ordered GL traces and full dumps identical in both variants PASS')
     # Validate the entire interleaved journal, including complete pass counts,
     # with the unchanged strict validator. Compare every record to serial legacy
     # creation within the same logical pass (including standalone ownership).
@@ -650,3 +897,8 @@ int main(int argc,char** argv){
     startup = load(directory / 'startup/shader_equivalence.jsonl')
     assert any(r.get('name') == 'Benchmark Shader' for r in startup)
     print('production records: binary outcomes and glProgramBinary execution, real mapper, attributes/sampler arrays/UBOs/gamma;  fallback history, levels, binary skips, reload, compute, startup injection and planted attachment regression PASS')
+
+
+if __name__ == '__main__':
+    from native_check_tools import check_directory
+    run(check_directory('shader_diagnostics'))

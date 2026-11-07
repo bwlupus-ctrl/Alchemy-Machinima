@@ -69,6 +69,8 @@ public:
     LLGLManager();
 
     bool initGL();
+    bool enableParallelShaderCompile();
+    bool mParallelShaderCompilerConfigured = false;
     void shutdownGL();
 
     void initWGL(); // Initializes WGL extensions

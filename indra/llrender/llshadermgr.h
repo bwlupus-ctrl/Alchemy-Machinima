@@ -991,8 +991,8 @@ public:
     virtual void initAttribsAndUniforms(void);
 
     template<bool diagnostics> bool attachShaderFeaturesInternal(LLGLSLShader* shader);
-    template<bool diagnostics> GLuint loadShaderFileInternal(const std::string& filename, S32& level, GLenum type,
-        std::map<std::string, std::string>* defines, S32 channels);
+    template<bool diagnostics, bool batching = false> GLuint loadShaderFileInternal(const std::string& filename, S32& level, GLenum type,
+        std::map<std::string, std::string>* defines, S32 channels, std::vector<LLShaderCompileJob>* pending = nullptr);
     void submitProgramLink(GLuint obj);
     template<bool diagnostics> bool finishProgramLinkInternal(GLuint obj, bool suppress_errors, const std::string& name);
     template<bool diagnostics> bool linkProgramObjectInternal(GLuint obj, bool suppress_errors, const std::string& name);
@@ -1021,7 +1021,7 @@ public:
 
     // Schema changes discard metadata. Epoch changes invalidate program keys.
     static constexpr const char* SHADER_CACHE_SCHEMA = "620ec4f7-831c-40d2-b391-8b1c94813245";
-    static constexpr U32 SHADER_CACHE_EPOCH = 3;
+    static constexpr U32 SHADER_CACHE_EPOCH = 4;
     static bool readShaderSource(const std::string& filename, std::string& source);
     void initShaderCache(bool enabled, bool second_instance);
     void hashShaderCacheFeatures();
@@ -1029,7 +1029,7 @@ public:
     void clearShaderCache();
     void persistShaderCacheMetadata();
 
-    template<bool diagnostics> bool loadCachedProgramBinaryInternal(LLGLSLShader* shader);
+    template<bool diagnostics, bool batching = false> bool loadCachedProgramBinaryInternal(LLGLSLShader* shader);
     bool loadCachedProgramBinary(LLGLSLShader* shader);
     bool saveCachedProgramBinary(LLGLSLShader* shader);
 
@@ -1066,6 +1066,27 @@ public:
     void configureShaderDiagnostics(bool dump, const std::string& injection, bool second_instance);
     void openShaderEquivalence();
     void writeShaderRecord(LLSD record);
+    void beginShaderBatch();
+    template<bool diagnostics> bool finishBatchBinary(LLGLSLShader* shader);
+    void endShaderBatch(bool success);
+    void restoreShaderStage(const LLSD& stage) { mShaderStage = stage; mShaderStageOwnsPass = false; }
+    struct ShaderBatchJournal
+    {
+        bool failed = false;
+        std::map<std::string, GLuint> compiledObjects;
+        std::set<GLuint> issuedObjects;
+        std::map<GLuint, GLenum> binaryErrors;
+        std::vector<LLSD> records;
+        std::map<std::string, S32> attempts;
+        std::map<GLuint, LLSD> objects;
+        std::vector<LLShaderInjection> injections;
+        std::map<LLUUID, ProgramBinaryData> binaries;
+        LLSD stage;
+        S32 programs, modules, pass;
+        U32 avatarAttachments;
+        bool passActive;
+    };
+    std::unique_ptr<ShaderBatchJournal> mShaderBatchJournal;
     void beginShaderPass(const std::string& name);
     void finishShaderPass();
     class ShaderDiagnosticPass

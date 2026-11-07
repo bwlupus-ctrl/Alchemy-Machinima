@@ -33,8 +33,21 @@
 #include "llstaticstringtable.h"
 #include <boost/unordered_map.hpp>
 #include <memory>
+#include <functional>
 #include <optional>
 #include <utility>
+
+// A root stage issued during a family batch. Success is determined only at
+// the compile barrier; pending handles never escape the batch to a caller.
+struct LLShaderCompileJob
+{
+    GLuint object = 0;
+    S32 resolved = 0;
+    bool submitted = false;
+    bool forceFailure = false;
+    const char* outcome = "not_attempted";
+    LLSD stage;
+};
 
 // One creation attempt owns its journal and any standalone pass across seams.
 struct LLShaderAttemptContext
@@ -272,9 +285,10 @@ private:
         std::unique_ptr<LLShaderAttemptContext> context;
     };
     U64 mShaderAttemptGeneration = 0;
-    template<bool diagnostics> ShaderCreationJob prepareShaderInternal();
+    template<bool diagnostics, bool batching = false> ShaderCreationJob prepareShaderInternal(std::vector<LLShaderCompileJob>* pending = nullptr);
+    template<bool diagnostics> bool finishShaderCompiles(ShaderCreationJob& job, const std::vector<LLShaderCompileJob>& roots);
     template<bool diagnostics> void submitShaderInternal(ShaderCreationJob& job);
-    template<bool diagnostics> bool finishShaderInternal(ShaderCreationJob& job);
+    template<bool diagnostics, bool batching = false> bool finishShaderInternal(ShaderCreationJob& job);
     void bindAttributes();
     bool readAttributes(bool res);
     void submitLink();
@@ -282,6 +296,40 @@ private:
 
 public:
     bool createShader();
+    // add() issues compilation, never a provisional result. finish() resolves
+    // every ticket in order. A failed family is fully torn down and restored;
+    // the loader must replay its original family routine serially.
+    class ShaderBatch
+    {
+        struct Recipe
+        {
+            LLGLSLShader* shader;
+            LLShaderFeatures features;
+            std::map<std::string, std::string> defines;
+            S32 level;
+        };
+        struct Entry
+        {
+            ShaderCreationJob job;
+            std::vector<LLShaderCompileJob> roots;
+        };
+        std::vector<Entry> mJobs;
+        std::vector<Recipe> mRecipes;
+        std::vector<std::function<void()>> mAfter;
+        std::map<std::string, GLuint> mVertex, mFragment;
+        bool mFinished = false;
+        template<bool diagnostics> void addInternal(LLGLSLShader& shader);
+        template<bool diagnostics> bool finishInternal();
+    public:
+        ShaderBatch();
+        ~ShaderBatch();
+        ShaderBatch(const ShaderBatch&) = delete;
+        ShaderBatch& operator=(const ShaderBatch&) = delete;
+        void add(LLGLSLShader& shader);
+        void after(std::function<void()> action) { mAfter.push_back(std::move(action)); }
+        bool finish();
+    };
+
     // Shader-load-only compile-time variants: no diagnostic work on the off path.
     template<bool diagnostics> bool createShaderInternal();
     template<bool diagnostics> bool attachVertexObjectInternal(std::string object_path);
