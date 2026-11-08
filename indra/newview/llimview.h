@@ -222,6 +222,13 @@ public:
      */
     bool clearSession(const LLUUID& session_id);
 
+    // Session-only deadlines; keep the server session joined and its history intact.
+    bool snoozeGroupChat(const LLUUID& session_id, S32 minutes);
+    bool isGroupChatSnoozed(const LLUUID& session_id);
+    void endGroupChatSnooze(const LLUUID& session_id);
+    void clearGroupChatSnoozes();
+    U32 getGroupChatSnoozeGeneration() const { return mGroupChatSnoozeGeneration; }
+
     /**
      * Sends no unread messages signal.
      */
@@ -251,13 +258,13 @@ public:
                     const std::string& utf8_text,
                     bool log2file,
                     bool is_region_msg,
-                    U32 time_stamp);
+                    U32 time_stamp, bool notify = true);
 
     /**
      * Similar to addMessage(...) above but won't send a signal about a new message added
      */
     LLIMModel::LLIMSession* addMessageSilently(const LLUUID& session_id, const std::string& from, const LLUUID& from_id,
-        const std::string& utf8_text, bool log2file = true, bool is_region_msg = false, U32 timestamp = 0);
+        const std::string& utf8_text, bool log2file = true, bool is_region_msg = false, U32 timestamp = 0, bool count_unread = true);
 
     /**
      * Add a system message to an IM Model
@@ -325,6 +332,8 @@ public:
     bool logToFile(const std::string& file_name, const std::string& from, const LLUUID& from_id, const std::string& utf8_text);
 
 private:
+    std::map<LLUUID, F64> mGroupChatSnoozes;
+    U32 mGroupChatSnoozeGeneration = 0;
 
     /**
      * Populate supplied std::list with messages starting from index specified by start_index without

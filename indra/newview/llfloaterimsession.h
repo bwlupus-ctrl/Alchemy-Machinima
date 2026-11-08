@@ -142,6 +142,7 @@ public:
     S32 getLastChatMessageIndex() {return mLastMessageIndex;}
 
     bool handleKeyHere(KEY key, MASK mask) override;
+    void onSnoozeClicked();
 private:
 
     /*virtual*/ void refresh() override;
@@ -161,6 +162,8 @@ private:
     static void onInputEditorKeystroke(LLTextEditor* caller, void* userdata);
     void setTyping(bool typing);
     void onAddButtonClicked();
+    void requestGroupChatSnooze(S32 minutes, bool voice_confirmed = false);
+    bool mClosingForSnooze = false;
     void addSessionParticipants(const uuid_vec_t& uuids);
     void addP2PSessionParticipants(const LLSD& notification, const LLSD& response, const uuid_vec_t& uuids);
     void sendParticipantsAddedNotification(const uuid_vec_t& uuids);
@@ -181,6 +184,7 @@ private:
     static void confirmLeaveCallCallback(const LLSD& notification, const LLSD& response);
 
     S32 mLastMessageIndex;
+    S32 mSnoozeReplayThrough = -1;
 
     EInstantMessage mDialog;
     LLUUID mOtherParticipantUUID;

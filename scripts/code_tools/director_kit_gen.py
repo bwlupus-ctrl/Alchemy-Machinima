@@ -362,8 +362,9 @@ def validate_data(data: dict) -> None:
     # Integrated census: 2400 + 17 Clone QoL + 15 POV blink + 23 Hot targets + 30 Capture Key (D56 removes 3 ReShade rows) = 2485; Variable ND adds 4 = 2489; six clone FX sliders = 2495.
     # ALL OFF adds two gear rows: the mode preference and Restore last reset.
     # Includes the DirectorThemeInvert row in Director settings.
-    if len(pages) != 39 or row_count != 2499:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2499")
+    # Group chat Snooze: two settings rows, 2499 -> 2501.
+    if len(pages) != 39 or row_count != 2501:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2501")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

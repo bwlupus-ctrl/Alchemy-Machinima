@@ -2,6 +2,7 @@
 # Kept in the repository so every worktree gets the permanent safety gate.
 # clone_looks_gl_check includes the runtime fixtures and real-SL safety suite.
 $kitPy += @(
+  @{ Label = 'Group chat Snooze native regressions and planted failures'; File = 'scripts\code_tools\group_chat_snooze_fixture.py'; PyArgs = @('--negative-check') }
   @{ Label = 'Shader load contract'; File = 'scripts\code_tools\shader_load_check.py'; PyArgs = @('--check') }
   @{ Label = 'Shader load planted fixtures'; File = 'scripts\code_tools\shader_load_check.py'; PyArgs = @('--selftest') }
   # Requires built Release llcommon/llmath and CMake/vcpkg dependencies; hard-fails if missing.

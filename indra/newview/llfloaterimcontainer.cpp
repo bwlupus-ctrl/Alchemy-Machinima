@@ -143,6 +143,9 @@ void LLFloaterIMContainer::sessionAdded(const LLUUID& session_id, const std::str
 
 void LLFloaterIMContainer::sessionActivated(const LLUUID& session_id, const std::string& name, const LLUUID& other_participant_id)
 {
+    LLIMModel::instance().endGroupChatSnooze(session_id);
+    addConversationListItem(session_id);
+    LLFloaterIMSessionTab::addToHost(session_id);
     if(!isInVisibleChain())
     {
         setVisibleAndFrontmost(false);
@@ -1441,6 +1444,10 @@ void LLFloaterIMContainer::doToSelectedConversation(const std::string& command, 
         {
             LLFloater::onClickClose(conversationFloater);
         }
+        else if("snooze_group_chat" == command)
+        {
+            conversationFloater->onSnoozeClicked();
+        }
         else if("close_selected_conversations" == command)
         {
             getSelectedUUIDs(selectedIDS,false);
@@ -1574,6 +1581,13 @@ void LLFloaterIMContainer::doToSelectedGroup(const LLSD& userdata)
 bool LLFloaterIMContainer::enableContextMenuItem(const LLSD& userdata)
 {
     const std::string& item = userdata.asString();
+    if (item == "can_snooze_group_chat")
+    {
+        const LLConversationItem* conversation = getCurSelectedViewModelItem();
+        return !gDisconnected && mConversationsRoot->getSelectionList().size() == 1
+            && conversation && conversation->getType() == LLConversationItem::CONV_SESSION_GROUP
+            && LLFloaterIMSession::findInstance(conversation->getUUID());
+    }
     uuid_vec_t uuids;
     getParticipantUUIDs(uuids);
 
@@ -1830,6 +1844,13 @@ bool LLFloaterIMContainer::visibleContextMenuItem(const LLSD& userdata)
 
 void LLFloaterIMContainer::showConversation(const LLUUID& session_id)
 {
+    LLIMModel::instance().endGroupChatSnooze(session_id);
+    if (session_id.notNull() && gIMMgr->hasSession(session_id)
+        && !LLFloaterIMSessionTab::findConversation(session_id))
+    {
+        addConversationListItem(session_id);
+        LLFloaterIMSessionTab::addToHost(session_id);
+    }
     setVisibleAndFrontmost(false);
     selectConversationPair(session_id, true);
 
