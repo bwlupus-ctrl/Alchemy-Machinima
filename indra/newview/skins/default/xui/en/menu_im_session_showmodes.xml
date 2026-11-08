@@ -3,6 +3,13 @@
  name="menu_modes"
  left="0" bottom="0" visible="false"
  mouse_opaque="false">
+    <menu_item_call
+       label="Snooze..."
+       name="snooze_group_chat">
+        <menu_item_call.on_click function="IMSession.Snooze"/>
+        <menu_item_call.on_enable function="IMSession.CanSnooze"/>
+        <menu_item_call.on_visible function="IMSession.CanSnooze"/>
+    </menu_item_call>
     <menu_item_check
        label="IRC view"
        name="fancy_compact_view">

@@ -9953,6 +9953,25 @@ Failed to apply GLTF material. You can not apply a no-copy material to multiple 
      yestext="OK"/>
   </notification>
 
+    <notification
+     icon="alertmodal.tga"
+     name="GroupChatSnoozeDuration"
+     type="alertmodal">
+  How long would you like to snooze this group chat?
+      <form name="form">
+        <button index="0" name="minutes15" text="15 minutes" />
+        <button index="1" name="minutes30" text="30 minutes" />
+        <button index="2" name="hour1" text="1 hour" />
+        <button default="true" index="3" name="cancel" text="Cancel" />
+      </form>
+    </notification>
+    <notification
+     icon="alertmodal.tga"
+     name="ConfirmGroupChatSnoozeCall"
+     type="alertmodal">
+  Snoozing this group chat will leave its voice call. Continue?
+      <usetemplate name="okcancelbuttons" yestext="Snooze" notext="Cancel" />
+    </notification>
   <notification
    icon="alertmodal.tga"
    name="ConfirmLeaveCall"

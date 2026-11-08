@@ -169,6 +169,8 @@ static void on_avatar_name_cache_toast(const LLUUID& agent_id,
                                        const LLAvatarName& av_name,
                                        LLSD msg)
 {
+    // Avatar-name lookup can finish after the user snoozes the conversation.
+    if (LLIMModel::instance().isGroupChatSnoozed(msg["session_id"].asUUID())) return;
     LLSD args;
     args["MESSAGE"] = msg["message"];
     args["TIME"] = msg["time"];
@@ -186,6 +188,7 @@ void notify_of_message(const LLSD& msg, bool is_dnd_msg)
     LLUUID participant_id = msg[is_dnd_msg ? "FROM_ID" : "from_id"].asUUID();
     LLUUID session_id = msg[is_dnd_msg ? "SESSION_ID" : "session_id"].asUUID();
     LLIMModel::LLIMSession* session = LLIMModel::instance().findIMSession(session_id);
+    if (LLIMModel::instance().isGroupChatSnoozed(session_id)) return;
 
     // do not show notification which goes from agent
     if (gAgent.getID() == participant_id)
@@ -622,7 +625,7 @@ void translateSuccess(const LLUUID& session_id, const std::string& from, const L
     bool is_region_msg = (bool)(time_n_flags & (1LL << 33));
     U32 time_stamp = (U32)(time_n_flags & 0x00000000ffffffff);
 
-    LLIMModel::getInstance()->processAddingMessage(session_id, from, from_id, message_txt, log2file, is_region_msg, time_stamp);
+    LLIMModel::getInstance()->processAddingMessage(session_id, from, from_id, message_txt, log2file, is_region_msg, time_stamp, !(time_n_flags & (1LL << 34)));
 }
 
 void translateFailure(const LLUUID& session_id, const std::string& from, const LLUUID& from_id, const std::string& utf8_text,
@@ -638,7 +641,7 @@ void translateFailure(const LLUUID& session_id, const std::string& from, const L
     bool is_region_msg = (bool)(time_n_flags & (1LL << 33));
     U32 time_stamp = (U32)(time_n_flags & 0x00000000ffffffff);
 
-    LLIMModel::getInstance()->processAddingMessage(session_id, from, from_id, message_txt, log2file, is_region_msg, time_stamp);
+    LLIMModel::getInstance()->processAddingMessage(session_id, from, from_id, message_txt, log2file, is_region_msg, time_stamp, !(time_n_flags & (1LL << 34)));
 }
 
 void chatterBoxHistoryCoro(std::string url, LLUUID sessionId, std::string from, std::string message, U32 timestamp)
@@ -1619,8 +1622,40 @@ bool LLIMModel::newSession(const LLUUID& session_id, const std::string& name, co
     return newSession(session_id, name, type, other_participant_id, ids, voiceChannelInfo, has_offline_msg);
 }
 
+bool LLIMModel::snoozeGroupChat(const LLUUID& session_id, S32 minutes)
+{
+    if (gDisconnected) return false;
+    LLIMSession* session = findIMSession(session_id);
+    if (!session || !session->isGroupSessionType()) return false;
+    mGroupChatSnoozes[session_id] = LLFrameTimer::getTotalSeconds() + llclamp(minutes, 1, 240) * 60.0;
+    sendNoUnreadMessages(session_id);
+    return true;
+}
+
+bool LLIMModel::isGroupChatSnoozed(const LLUUID& session_id)
+{
+    auto it = mGroupChatSnoozes.find(session_id);
+    if (it == mGroupChatSnoozes.end()) return false;
+    if (LLFrameTimer::getTotalSeconds() < it->second) return true;
+    mGroupChatSnoozes.erase(it);
+    return false;
+}
+
+void LLIMModel::endGroupChatSnooze(const LLUUID& session_id)
+{
+    mGroupChatSnoozes.erase(session_id);
+}
+
+void LLIMModel::clearGroupChatSnoozes()
+{
+    mGroupChatSnoozes.clear();
+    // Invalidate duration and voice confirmations still pending across logout.
+    ++mGroupChatSnoozeGeneration;
+}
+
 bool LLIMModel::clearSession(const LLUUID& session_id)
 {
+    endGroupChatSnooze(session_id);
     if (mId2SessionMap.find(session_id) == mId2SessionMap.end()) return false;
     delete (mId2SessionMap[session_id]);
     mId2SessionMap.erase(session_id);
@@ -1746,26 +1781,35 @@ void LLIMModel::proccessOnlineOfflineNotification(
 void LLIMModel::addMessage(const LLUUID& session_id, const std::string& from, const LLUUID& from_id,
                            const std::string& utf8_text, bool log2file /* = true */, bool is_region_msg, /* = false */ U32 time_stamp /* = 0 */)
 {
+    const bool notify = !isGroupChatSnoozed(session_id);
     if (gSavedSettings.getBOOL("TranslateChat") && (from != SYSTEM_FROM))
     {
         const std::string from_lang = ""; // leave empty to trigger autodetect
         const std::string to_lang = LLTranslate::getTranslateLanguage();
-        U64 time_n_flags = ((U64) time_stamp) | (log2file ? (1LL << 32) : 0) | (is_region_msg ? (1LL << 33) : 0);   // boost::bind has limited parameters
+        U64 time_n_flags = ((U64) time_stamp) | (log2file ? (1LL << 32) : 0) | (is_region_msg ? (1LL << 33) : 0) | (notify ? 0 : (1LL << 34));   // boost::bind has limited parameters
         LLTranslate::translateMessage(from_lang, to_lang, utf8_text,
             boost::bind(&translateSuccess, session_id, from, from_id, utf8_text, time_n_flags, utf8_text, from_lang, _1, _2),
             boost::bind(&translateFailure, session_id, from, from_id, utf8_text, time_n_flags, _1, _2));
     }
     else
     {
-        processAddingMessage(session_id, from, from_id, utf8_text, log2file, is_region_msg, time_stamp);
+        processAddingMessage(session_id, from, from_id, utf8_text, log2file, is_region_msg, time_stamp, notify);
     }
 }
 
 void LLIMModel::processAddingMessage(const LLUUID& session_id, const std::string& from, const LLUUID& from_id,
-    const std::string& utf8_text, bool log2file, bool is_region_msg, U32 time_stamp)
+    const std::string& utf8_text, bool log2file, bool is_region_msg, U32 time_stamp, bool notify)
 {
-    LLIMSession* session = addMessageSilently(session_id, from, from_id, utf8_text, log2file, is_region_msg, time_stamp);
-    if (!session)
+    notify = notify && !isGroupChatSnoozed(session_id);
+    LLIMSession* session = findIMSession(session_id);
+    // Rebuild before inserting the new message so the floater can distinguish
+    // retained backlog from this first normal message after expiry.
+    if (notify && session && session->isGroupSessionType() && !LLFloaterIMSession::findInstance(session_id))
+    {
+        LLFloaterIMContainer::getInstance()->sessionAdded(session_id, session->mName, session->mOtherParticipantID, false);
+    }
+    session = addMessageSilently(session_id, from, from_id, utf8_text, log2file, is_region_msg, time_stamp, notify);
+    if (!session || !notify)
         return;
 
     //good place to add some1 to recent list
@@ -1791,7 +1835,7 @@ void LLIMModel::processAddingMessage(const LLUUID& session_id, const std::string
 
 LLIMModel::LLIMSession* LLIMModel::addMessageSilently(const LLUUID& session_id, const std::string& from, const LLUUID& from_id,
                                                       const std::string& utf8_text, bool log2file /* = true */, bool is_region_msg, /* false */
-                                                      U32 timestamp /* = 0 */)
+                                                      U32 timestamp /* = 0 */, bool count_unread /* = true */)
 {
     LLIMSession* session = findIMSession(session_id);
 
@@ -1807,12 +1851,17 @@ LLIMModel::LLIMSession* LLIMModel::addMessageSilently(const LLUUID& session_id, 
         from_name = SYSTEM_FROM;
     }
 
+    const bool suppress_alerts = !count_unread || isGroupChatSnoozed(session_id);
     addToHistory(session_id, from_name, from_id, utf8_text, is_region_msg, timestamp);
+    // Keep arrival-time suppression even when translation finishes after reopening.
+    session->mMsgs.front()["suppress_alerts"] = suppress_alerts;
     if (log2file)
     {
         logToFile(getHistoryFileName(session_id), from_name, from_id, utf8_text);
     }
 
+    // Always retain history/transcripts, but never publish snoozed unread state.
+    if (suppress_alerts) return session;
     session->mNumUnread++;
 
     //update count of unread messages from real participant
@@ -1960,6 +2009,7 @@ void LLIMModel::sendMessage(const std::string& utf8_text,
                      const LLUUID& other_participant_id,
                      EInstantMessage dialog)
 {
+    LLIMModel::instance().endGroupChatSnooze(im_session_id);
     std::string name;
     bool sent = false;
     LLAgentUI::buildFullname(name);
@@ -3387,7 +3437,7 @@ void LLIMMgr::addMessage(
     }
 
     // Open conversation floater if offline messages are present
-    if (is_offline_msg && !skip_message)
+    if (is_offline_msg && !skip_message && !LLIMModel::instance().isGroupChatSnoozed(new_session_id))
     {
         LLFloaterReg::showInstance("im_container");
         LLFloaterReg::getTypedInstance<LLFloaterIMContainer>("im_container")->
@@ -3522,6 +3572,7 @@ LLUUID LLIMMgr::addSession(
     }
 
     LLUUID session_id = computeSessionID(dialog,other_participant_id);
+    LLIMModel::instance().endGroupChatSnooze(session_id);
 
     if (floater_id.notNull())
     {
@@ -3670,6 +3721,15 @@ void LLIMMgr::inviteToSession(
     payload["notify_box_type"] = notify_box_type;
     payload["question_type"] = question_type;
 
+    // Decline only the incoming call; keep the snoozed text session joined.
+    // Do this before either showing the dialog or scheduling its name lookup.
+    if (LLIMModel::instance().isGroupChatSnoozed(session_id))
+    {
+        payload["voice_channel_info"] = voice_channel_info;
+        LLIncomingCallDialog::processCallResponse(1, payload);
+        return;
+    }
+
     LL_WARNS("Voice") << "INVITE PAYLOAD: " << payload << LL_ENDL;
 
     //ignore invites from muted residents
@@ -3786,6 +3846,12 @@ void LLIMMgr::inviteToSession(
 
 void LLIMMgr::onInviteNameLookup(LLSD payload, const LLUUID& id, const LLAvatarName& av_name)
 {
+    // Snooze may have started while the caller's name was being resolved.
+    if (LLIMModel::instance().isGroupChatSnoozed(payload["session_id"].asUUID()))
+    {
+        LLIncomingCallDialog::processCallResponse(1, payload);
+        return;
+    }
     payload["caller_name"] = av_name.getUserName();
     payload["session_name"] = payload["caller_name"].asString();
 
@@ -3797,6 +3863,7 @@ void LLIMMgr::onInviteNameLookup(LLSD payload, const LLUUID& id, const LLAvatarN
 //*TODO disconnects all sessions
 void LLIMMgr::disconnectAllSessions()
 {
+    LLIMModel::instance().clearGroupChatSnoozes();
     //*TODO disconnects all IM sessions
 }
 

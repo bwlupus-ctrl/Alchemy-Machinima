@@ -423,6 +423,10 @@ void LLFloaterIMSession::initIMSession(const LLUUID& session_id)
         mIsP2PChat = mSession->isP2PSessionType();
         mSessionInitialized = mSession->mSessionInitialized;
         mDialog = mSession->mType;
+        // Retained group messages predate this floater. Replay them without alerts;
+        // the first post-expiry message is inserted only after reconstruction.
+        mSnoozeReplayThrough = mSession->isGroupSessionType() && !mSession->mMsgs.empty()
+            ? mSession->mMsgs.front()["index"].asInteger() : -1;
     }
 }
 
@@ -511,6 +515,59 @@ bool LLFloaterIMSession::postBuild()
     initIMFloater();
 
     return result;
+}
+
+void LLFloaterIMSession::onSnoozeClicked()
+{
+    if (gDisconnected || !mSession || !mSession->isGroupSessionType()) return;
+    if (!gSavedSettings.getBOOL("GroupChatSnoozeAsk"))
+    {
+        requestGroupChatSnooze(gSavedSettings.getS32("GroupChatSnoozeMinutes"));
+        return;
+    }
+    const LLHandle<LLFloater> handle = getHandle();
+    const U32 generation = LLIMModel::instance().getGroupChatSnoozeGeneration();
+    LLNotificationsUtil::add("GroupChatSnoozeDuration", LLSD(), LLSD(),
+        [handle, generation](const LLSD& notification, const LLSD& response)
+        {
+            if (generation != LLIMModel::instance().getGroupChatSnoozeGeneration()) return;
+            const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);
+            auto* floater = dynamic_cast<LLFloaterIMSession*>(handle.get());
+            if (floater && !floater->isDead() && option >= 0 && option < 3)
+            {
+                const S32 minutes[] = {15, 30, 60};
+                floater->requestGroupChatSnooze(minutes[option]);
+            }
+        });
+}
+
+void LLFloaterIMSession::requestGroupChatSnooze(S32 minutes, bool voice_confirmed)
+{
+    if (gDisconnected || !mSession || !mSession->isGroupSessionType()) return;
+    LLVoiceChannel* voice = mSession->mVoiceChannel;
+    if (voice && voice->isActive())
+    {
+        if (!voice_confirmed)
+        {
+            const LLHandle<LLFloater> handle = getHandle();
+            const U32 generation = LLIMModel::instance().getGroupChatSnoozeGeneration();
+            LLNotificationsUtil::add("ConfirmGroupChatSnoozeCall", LLSD(), LLSD(),
+                [handle, minutes, generation](const LLSD& notification, const LLSD& response)
+                {
+                    if (generation != LLIMModel::instance().getGroupChatSnoozeGeneration()) return;
+                    auto* floater = dynamic_cast<LLFloaterIMSession*>(handle.get());
+                    if (floater && !floater->isDead() && LLNotificationsUtil::getSelectedOption(notification, response) == 0)
+                        floater->requestGroupChatSnooze(minutes, true);
+                });
+            return;
+        }
+        gIMMgr->endCall(mSessionID);
+    }
+    if (LLIMModel::instance().snoozeGroupChat(mSessionID, minutes))
+    {
+        mClosingForSnooze = true;
+        closeFloater();
+    }
 }
 
 void LLFloaterIMSession::onAddButtonClicked()
@@ -713,6 +770,7 @@ void LLFloaterIMSession::updateSessionName(const std::string& name)
 //static
 LLFloaterIMSession* LLFloaterIMSession::show(const LLUUID& session_id)
 {
+    LLIMModel::instance().endGroupChatSnooze(session_id);
     closeHiddenIMToasts();
 
     if (!gIMMgr->hasSession(session_id))
@@ -727,6 +785,8 @@ LLFloaterIMSession* LLFloaterIMSession::show(const LLUUID& session_id)
         return NULL;
 
     LLFloaterIMContainer* floater_container = LLFloaterIMContainer::getInstance();
+
+    floater_container->addConversationListItem(session_id);
 
     // Do not add again existing floaters
     if (!exist)
@@ -772,8 +832,21 @@ void LLFloaterIMSession::onClose(bool app_quitting)
     //
     // Last change:
     // EXT-3516 X Button should end IM session, _ button should hide
-    gIMMgr->leaveSession(mSessionID);
-    mSession = nullptr; // leaveSession should have deleted it.
+    if (mClosingForSnooze && !app_quitting)
+    {
+        // Remove just the conversation UI; leave the model and server session joined.
+        LLFloaterIMContainer* container = LLFloaterIMContainer::getInstance();
+        container->removeConversationListItem(mSessionID);
+        // A hidden container does not reselect on removal; do not leave its
+        // selected ID pointing at a snoozed conversation that polling can recreate.
+        if (container->getSelectedSession() == mSessionID)
+            container->selectConversationPair(LLUUID::null, true, false);
+    }
+    else
+    {
+        gIMMgr->leaveSession(mSessionID);
+        mSession = nullptr; // leaveSession should have deleted it.
+    }
     // *TODO: Study why we need to restore the floater before we close it.
     // Might be because we want to save some state data in some clean open state.
     LLFloaterIMSessionTab::restoreFloater();
@@ -1020,7 +1093,17 @@ void LLFloaterIMSession::updateMessages()
             }
 
             // Add the message to the chat log
-            appendMessage(chat);
+            {
+                struct ParseMaskRestore
+                {
+                    LLChatHistory* history;
+                    U32 mask;
+                    ~ParseMaskRestore() { history->setParseHighlightTypeMask(mask); }
+                } restore{mChatHistory, mChatHistory->getParseHighlightTypeMask()};
+                if (msg["index"].asInteger() <= mSnoozeReplayThrough || msg["suppress_alerts"].asBoolean())
+                    mChatHistory->setParseHighlightTypeMask(LLChatHistory::PARSE_NONE);
+                appendMessage(chat);
+            }
             mLastMessageIndex = msg["index"].asInteger();
 
             // if it is a notification - next message is a notification history log, so skip it

@@ -6444,6 +6444,7 @@ void LLAppViewer::idleNetwork()
 
 void LLAppViewer::disconnectViewer()
 {
+    if (LLIMModel::instanceExists()) LLIMModel::instance().clearGroupChatSnoozes();
     if (LLPresentationTime::instanceExists())
     {
         LLPresentationTime::instance().cancelWorldWindDown();

@@ -1812,7 +1812,10 @@ void LLIMProcessing::processNewMessage(LLUUID from_id,
     }
 
     LLWindow* viewer_window = gViewerWindow->getWindow();
-    if (viewer_window && viewer_window->getMinimized())
+    // Group snooze still passed through the normal history/transcript path above.
+    // The final taskbar flash is independent of the model's message signal.
+    if (viewer_window && viewer_window->getMinimized()
+        && !(dialog == IM_SESSION_SEND && LLIMModel::instance().isGroupChatSnoozed(session_id)))
     {
         viewer_window->flashIcon(5.f);
     }

@@ -459,6 +459,7 @@ void LLConversationItemSession::buildContextMenu(LLMenuGL& menu, U32 flags)
     else if(this->getType() == CONV_SESSION_GROUP)
     {
         items.push_back(std::string("close_conversation"));
+        items.push_back(std::string("snooze_group_chat"));
         addVoiceOptions(items);
         items.push_back(std::string("chat_history"));
         items.push_back(std::string("separator_chat_history"));
