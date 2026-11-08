@@ -8,9 +8,53 @@
       "GENERATED": 734,
       "HOOK": 535,
       "OWNED": 909,
-      "TOOLING": 435
+      "TOOLING": 436
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_kit/gen_report.txt"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,7 +67,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "7d0b92f44105e616196f6dbe825fb34cd8ca7e02fee857030fff40a778fd7439",
+        "csv_sha256": "dc24e2346acdc6e8822e65dfb8687b67fe509185afe678d00759fcc984495e64",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
@@ -192,10 +236,10 @@
       },
       "wiring_rows": 2292
     },
-    "head_source_tree": "2e617c4279e788eca4c1ab2f81b3bf4ba79391ef",
+    "head_source_tree": "981432a896fee86d2ebe18d57d1b3df14893b117",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "aa051e630531b87f44acecab5011dd3283e97f82ac1811848e109537fdf3cc5e",
+    "input_sha256": "a17410e95573de0975721fe8ac2bbb8d9d5ca1e91fe996baea831ba164c0c76f",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -17312,8 +17356,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -17339,8 +17382,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "clones",
-        "gaze",
-        "roto-tron"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -19019,7 +19061,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "common-ui"
+        "common-ui",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -37414,8 +37457,7 @@
     {
       "candidate_features_from_subjects": [
         "director-shell",
-        "gaze",
-        "looks"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -42086,6 +42128,19 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/hot_clone_interplay_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/hot_combo_refresh_fixture.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
