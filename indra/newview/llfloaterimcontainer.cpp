@@ -727,6 +727,7 @@ void LLFloaterIMContainer::handleConversationModelEvent(const LLSD& event)
 
 void LLFloaterIMContainer::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     LLFloater::draw();
 }
 

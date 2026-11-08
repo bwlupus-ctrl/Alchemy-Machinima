@@ -403,6 +403,7 @@ LLParticipantList* LLFloaterIMSessionTab::getParticipantList()
 // virtual
 void LLFloaterIMSessionTab::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (mRefreshTimer->hasExpired())
     {
         LLParticipantList* item = getParticipantList();

@@ -1345,6 +1345,7 @@ void LLFloaterIMSession::processSessionUpdate(const LLSD& session_update)
 // virtual
 void LLFloaterIMSession::draw()
 {
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // add people who were added via dropPerson()
     if (!mPendingParticipants.empty())
     {
