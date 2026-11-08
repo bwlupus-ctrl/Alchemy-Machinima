@@ -99,10 +99,11 @@
 #include "llframetimer.h"
 #include "llviewercontrol.h"
 
-#include <array>
+#include <algorithm>
 #include <cmath>
 #include <initializer_list>
 #include <string>
+#include <vector>
 
 // ---------------------------------------------------------------------------
 // Debug switch
@@ -371,7 +372,7 @@ inline bool setLabelIfChanged(LLCheckBoxCtrl* w, const std::string& label)
 // ---------------------------------------------------------------------------
 // Revision gate
 // ---------------------------------------------------------------------------
-// Remembers up to kMax model revisions. changed() is true on the very first call,
+// Remembers every supplied model revision. changed() is true on the very first call,
 // after reset(), and whenever any watched revision differs from the one last
 // accepted; it records the new values when it returns true.
 //
@@ -388,7 +389,6 @@ inline bool setLabelIfChanged(LLCheckBoxCtrl* w, const std::string& label)
 // frames in which the work was not allowed to run. accept() restarts the fallback timer.
 struct ALRevisionGate
 {
-    static constexpr size_t kMax = 6;
     static constexpr F32 kFallbackSeconds = 1.f;
 
     // Check + record. `force` is a per-call extra switch (a panel-specific debug
@@ -411,18 +411,13 @@ struct ALRevisionGate
     bool isStale(std::initializer_list<U64> now)
     {
         mFallbackOnly = false;
-        if (!mPrimed)
+        if (!mPrimed || mSeen.size() != now.size())
         {
             return true;
         }
-        size_t i = 0;
-        for (U64 value : now)
+        if (!std::equal(now.begin(), now.end(), mSeen.begin()))
         {
-            if (i < kMax && mSeen[i] != value)
-            {
-                return true;
-            }
-            ++i;
+            return true;
         }
         if (alUiRefreshForceAlways() ||
             mFallbackTimer.getElapsedTimeF32() >= kFallbackSeconds)
@@ -439,15 +434,7 @@ struct ALRevisionGate
 
     void accept(std::initializer_list<U64> now)
     {
-        size_t i = 0;
-        for (U64 value : now)
-        {
-            if (i < kMax)
-            {
-                mSeen[i] = value;
-            }
-            ++i;
-        }
+        mSeen.assign(now.begin(), now.end());
         mPrimed = true;
         mFallbackTimer.reset();
     }
@@ -456,7 +443,7 @@ struct ALRevisionGate
     void reset() { mPrimed = false; }
 
 private:
-    std::array<U64, kMax> mSeen{};
+    std::vector<U64> mSeen;
     LLFrameTimer mFallbackTimer;
     bool mPrimed = false;
     bool mFallbackOnly = false;

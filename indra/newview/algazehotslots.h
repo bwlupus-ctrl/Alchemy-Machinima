@@ -14,7 +14,7 @@ struct Slot
     std::string mGroup, mTargetName;
     F32 mSnap = .12f, mHead = 1.f, mEyes = 1.f, mTorso = .2f;
     F32 mDwell = 2.f, mReturn = 1.2f;
-    bool mHold = false, mStay = false, mHasTarget = false;
+    bool mHold = false, mStay = true, mHasTarget = false;
 };
 using Slots = std::array<Slot, 4>;
 
@@ -57,6 +57,7 @@ LLSD writeSlots(const Slots& slots, Persistable persistable)
         s["snap"] = slot.mSnap; s["head"] = slot.mHead; s["eyes"] = slot.mEyes;
         s["torso"] = slot.mTorso; s["dwell"] = slot.mDwell; s["return"] = slot.mReturn;
         s["hold"] = slot.mHold; s["stay"] = slot.mStay;
+        s["return_after"] = !slot.mStay; // Keep stay as a compatibility mirror for older builds.
         out.append(s);
     }
     return out;
@@ -93,7 +94,9 @@ inline Slots readSlots(const LLSD& data)
         slot.mHead = number(s, "head", 1.f, 1.f); slot.mEyes = number(s, "eyes", 1.f, 1.f);
         slot.mTorso = number(s, "torso", .2f, 1.f); slot.mDwell = number(s, "dwell", 2.f, 3600.f);
         slot.mReturn = number(s, "return", 1.2f, 60.f);
-        slot.mHold = s["hold"].asBoolean(); slot.mStay = s["stay"].asBoolean();
+        slot.mHold = s["hold"].asBoolean();
+        // Legacy slots used automatic return by default; require an explicit new opt-in.
+        slot.mStay = !s.has("return_after") || !s["return_after"].asBoolean();
     }
     return slots;
 }

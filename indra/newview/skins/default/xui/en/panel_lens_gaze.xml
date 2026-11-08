@@ -848,8 +848,8 @@
 <slider follows="left|top" height="20" layout="topleft" left="140" name="hot_eyes" top="2140" width="336" tool_tip="Independent eyes reaction strength from zero to one." min_val="0" max_val="1" increment="0.05" decimal_digits="2" />
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_torso_label" top="2166" width="124">Torso</text>
 <slider follows="left|top" height="20" layout="topleft" left="140" name="hot_torso" top="2166" width="336" tool_tip="Independent torso reaction strength from zero to one." min_val="0" max_val="1" increment="0.05" decimal_digits="2" />
-<text follows="left|top" height="20" layout="topleft" left="12" name="hot_after_label" top="2192" width="124">After</text>
-<combo_box follows="left|top" height="20" layout="topleft" left="140" name="hot_after" top="2192" width="336" tool_tip="Stay fixated until released, or return after the selected dwell following acquisition. Hold mode lasts until release."><combo_box.item label="Return after" value="0" /><combo_box.item label="Stay fixated" value="1" /></combo_box>
+<text follows="left|top" height="20" layout="topleft" left="12" name="hot_after_label" top="2192" width="124">Return after dwell</text>
+<check_box follows="left|top" height="20" layout="topleft" left="140" name="hot_after" top="2192" width="336" tool_tip="When on, the look returns after the dwell time; when off, it stays on the target until you release it or fire another." label="" initial_value="false" />
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_dwell_label" top="2218" width="124">Dwell (s)</text>
 <spinner follows="left|top" height="20" layout="topleft" left="140" name="hot_dwell" top="2218" width="336" tool_tip="Seconds to stay after acquisition in Tap / Return mode." min_val="0" max_val="3600" increment="0.1" decimal_digits="1" />
 <text follows="left|top" height="20" layout="topleft" left="12" name="hot_return_label" top="2244" width="124">Return (s)</text>
