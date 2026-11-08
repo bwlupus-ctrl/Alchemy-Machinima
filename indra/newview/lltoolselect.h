@@ -44,7 +44,7 @@ public:
 
     virtual void        stopEditing();
 
-    static LLSafeHandle<LLObjectSelection>  handleObjectSelection(const LLPickInfo& pick, bool ignore_group, bool temp_select, bool select_root = false, bool right_click = false);
+    static LLSafeHandle<LLObjectSelection>  handleObjectSelection(const LLPickInfo& pick, bool ignore_group, bool temp_select, bool select_root = false);
 
     virtual void        onMouseCaptureLost();
     virtual void        handleDeselect();
