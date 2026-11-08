@@ -25525,10 +25525,10 @@
         <key>Value</key>
         <string></string>
     </map>
-    <key>TurnToFaceRightClicked</key>
+    <key>TurnToFaceSelectedObjects</key>
     <map>
       <key>Comment</key>
-      <string>When off, right-clicking an object or attachment no longer turns your avatar to face it; edit/build selection is unchanged.</string>
+      <string>When off, selecting an object (right-click, edit, build, pay, buy, open) no longer turns your avatar to face it.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
