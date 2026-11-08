@@ -30578,6 +30578,46 @@
   },
   {
     "change": "added",
+    "comment": "Ask how long to snooze when the group chat Snooze button is pressed.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GroupChatSnoozeAsk",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Group chat snooze length in minutes used when not asking for a duration.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "30",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "GroupChatSnoozeMinutes",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "S32"
+  },
+  {
+    "change": "added",
     "comment": "Hide the cursor over the viewer client area while the interface is hidden. Global filming preference; not saved in Director scenes.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

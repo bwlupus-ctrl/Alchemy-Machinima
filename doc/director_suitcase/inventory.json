@@ -6,9 +6,9 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 734,
-      "HOOK": 527,
+      "HOOK": 535,
       "OWNED": 909,
-      "TOOLING": 434
+      "TOOLING": 435
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -67,14 +67,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "bf8b7e4429658f8d396d801c19316e51cec7f061a5e1ec19fd80be498ce5814a",
+        "csv_sha256": "7d0b92f44105e616196f6dbe825fb34cd8ca7e02fee857030fff40a778fd7439",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4779,
+        "entries": 4782,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -116,9 +116,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2568,
+        "generated_kit_rows": 2570,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2165,
+        "interactive_rows": 2166,
         "pages": 39,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -161,7 +161,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3905,
+        "settings_declared": 3907,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -227,19 +227,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2290,
+        "independent_json_rows": 2292,
         "multi_page_settings": 21,
         "owner_roots": 36,
         "pages": 39,
-        "rows": 2290,
+        "rows": 2292,
         "unresolved_rows": 75
       },
-      "wiring_rows": 2291
+      "wiring_rows": 2292
     },
-    "head_source_tree": "b2dda81e21bb7c6ac1cd85382fe1e8abe68f2b41",
-    "hook_files": 527,
-    "hunks": 3273,
-    "input_sha256": "63313f484b43c13ec139d3ee990ba428159f20bc90242b01f4e38b4079f7a30c",
+    "head_source_tree": "574096e41c8ffc902bb379da5753cb52bebf888e",
+    "hook_files": 535,
+    "hunks": 3310,
+    "input_sha256": "237288069f30c8886a1a87cdd7c22be65474c5da21bef43eb3f5cb770372c1cd",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -247,7 +247,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2060
+    "settings": 2062
   },
   "paths": [
     {
@@ -20280,9 +20280,7 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -27254,6 +27252,19 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/llconversationmodel.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "clones",
         "crowd",
@@ -28304,6 +28315,72 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-bar",
+        "actor-path",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "roto-tron",
+        "stepped-animation"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llfloaterimcontainer.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/llfloaterimsession.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "M",
+      "layer": 9,
+      "path": "indra/newview/llfloaterimsession.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/llfloaterimsessiontab.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "camera"
       ],
@@ -28929,6 +29006,19 @@
       "git_status": "M",
       "layer": 4,
       "path": "indra/newview/llhudtext.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/llimprocessing.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -35791,6 +35881,19 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/en/menu_conversation.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "director-shell"
       ],
@@ -35916,6 +36019,19 @@
       "layer": 99,
       "path": "indra/newview/skins/default/xui/en/menu_fs_radar_options.xml",
       "reason": "unrelated inventory/radar/local-asset feature"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
       "candidate_features_from_subjects": [],
@@ -41985,6 +42101,19 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/group_chat_snooze_fixture.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

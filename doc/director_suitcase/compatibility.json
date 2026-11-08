@@ -9459,6 +9459,15 @@
     "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "base-owned",
+    "consumer": "indra/newview/llfloaterimcontainer.cpp",
+    "dependency": "indra/newview/alavataractions.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at base"
+  },
+  {
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterjoystick.cpp",

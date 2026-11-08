@@ -232,69 +232,69 @@ HEAD coordinates; guards/features are candidate evidence
 | 5893–5913 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | camera | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 5915–6441 (n=527) | unknown/non-function (declaration, XML, build list or global scope) | camera, roto-tron | creative-candidate | unknown; no local conditional evidence | Edits RenderAnisotropic, RenderAnisotropicLevel, RenderAppleUseMultGL, RenderAttachedLights, RenderAttachedParticles, RenderAvatarCloth, RenderCanUseGLTFPBROpaqueShaders, RenderCanUseTerrainBakeShaders, RenderClass1MemoryBandwidth, RenderCPUBasis |
 | 6443–6562 (n=120) | unknown/non-function (declaration, XML, build list or global scope) | camera | creative-candidate | unknown; no local conditional evidence | Edits RenderBufferVisualization, RenderCompressTextures, RenderHiDPI, RenderPerformanceTest |
-| 6564–21318 (n=14755) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, environment, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, vcam, weather | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [AutoAnimate] Learned performance settings. --> [TrueMirror] begin: DRIVE_TRUE_MIRROR settings --> [TrueMirror] end --> AvatarBakedTextureUploadTimeout is in use by QA--> deprecated (see SL-12429) --> deprecated (see MAINT-8091) --> deprecated (see MAINT-8091) --> *HACK: On first |
-| 21321–22433 (n=1113) | unknown/non-function (declaration, XML, build list or global scope) | director-shell, looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; no local conditional evidence | Edits RenderShadowBias, RenderShadowGaussian, RenderShadowBlurSize, RenderShadowOffset, RenderShadowBlurSamples, RenderShadowBlurDistFactor, RenderShadowBiasError, RenderShadowSoftenMode, RenderDeferredSSAO, RenderShadowSoftenPx |
-| 22436–22511 (n=76) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits RenderHoverGlowEnable, RenderHighlightFadeTime, RenderReflectionProbeDrawDistance, RenderHighlightBrightness, RenderReflectionProbeAmbiance, RenderHighlightThickness, RenderDefaultProbeUpdatePeriod, RenderReflectionProbeLevel, RenderHighlightColor, RenderSpecularPrecision |
-| 22513–22522 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderDeferredSun, RenderProbeUpdateBeforePresent |
-| 22524–22566 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits RenderDeferredAtmospheric, RenderProbeOnDemand, RenderDeferredSSAO, RenderProbeMinInterval, RenderDeferredBlurLight, RenderProbeMaxAge, RenderDeferredSunWash, RenderProbeDirtySunDeg |
-| 22568–22974 (n=407) | unknown/non-function (declaration, XML, build list or global scope) | looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits RenderShadowNoise, RenderProbeRealtimeFacesPerFrame, RenderShadowErrorCutoff, RenderProbeTinyCullPixels, RenderShadowFOVCutoff, RenderProbeSchedLog, RenderShadowGaussian, RenderReflectionProbeLevel, RenderShadowBlurSize, RenderReflectionRes |
-| 22976–23387 (n=412) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd, looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits RenderNameShowTime, RenderTransparentWater, RenderTreeLODFactor, RenderObjectBump, RenderUIInSnapshot, RenderQualityPerformance, RenderBalanceInSnapshot, RenderReflectionDetail, RenderUIBuffer, RenderReflectionProbeDetail |
-| 23389–23409 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderTerrainPBRNormalsEnabled, RenderWaterMaterials, RenderTrackerBeacon, RenderWaterMipNormal |
-| 23411–23442 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderTransparentWater, RenderWaterRefResolution, RenderTreeLODFactor, RenderParcelSelection, RenderUIInSnapshot, RenderParallelShaderCompile |
-| 23444–23467 (n=24) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderBalanceInSnapshot, RenderShaderDumpEquivalence, RenderShaderInjectFail, RenderShaderCacheEnabled |
-| 23469–23522 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits RenderShaderCacheVersion, RenderCASSharpness, RenderTonemapMix, RenderTonemapType, RenderHighPrecisionPostProcess |
-| 23524–23885 (n=362) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd | creative-candidate | unknown; no local conditional evidence | Edits RenderUIBuffer, RenderUnloadedAvatar, RenderUseAdvancedAtmospherics, RenderUseTriStrips, RenderUseFarClip, RenderAvatarFriendsOnly, RenderAvatarComplexityMode, RenderAvatarMaxNonImpostors, RenderAutoMuteRenderWeightLimit, RenderAvatarMaxComplexity |
-| 23887–23896 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderUseVAO |
-| 23898–23995 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderVBOMappingDisable, RenderUseStreamVBO, RenderPreferStreamDraw, RenderVolumeLODFactor, RenderWater, RenderWaterMaterials |
-| 23997–24160 (n=164) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits RenderWaterMipNormal, RenderWaterRefResolution, RenderParcelSelection, RenderShaderCacheEnabled, RenderShaderCacheVersion, RenderCASSharpness, RenderTonemapMix, RenderTonemapType, RenderHighPrecisionPostProcess |
-| 24162–24171 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24173–24204 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24206–24215 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24217–24226 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24228–24358 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLMapDestination |
-| 24360–24369 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24371–24413 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24415–24681 (n=267) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24683–24703 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24705–24736 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24738–24747 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24749–24791 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24793–24802 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24804–24813 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24815–24935 (n=121) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24937–24957 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 24959–25479 (n=521) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits LLSD |
-| 25481–25545 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
-| 25547–25677 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 25679–27251 (n=1573) | unknown/non-function (declaration, XML, build list or global scope) | common-ui, environment, roto-tron, sensor | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
-| 27253–27405 (n=153) | unknown/non-function (declaration, XML, build list or global scope) | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits RenderOcclusionTimeout, RenderDelayVBUpdate |
-| 27407–27504 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | camera | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
-| 27506–27526 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 27528–27795 (n=268) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> End of back compatibility settings --> |
-| 27797–27828 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 27830–27938 (n=109) | unknown/non-function (declaration, XML, build list or global scope) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 27940–28168 (n=229) | unknown/non-function (declaration, XML, build list or global scope) | camera | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl |
-| 28170–28201 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28203–28223 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28225–28234 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28236–28256 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 6564–21340 (n=14777) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, environment, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, vcam, weather | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [AutoAnimate] Learned performance settings. --> [TrueMirror] begin: DRIVE_TRUE_MIRROR settings --> [TrueMirror] end --> AvatarBakedTextureUploadTimeout is in use by QA--> deprecated (see SL-12429) --> deprecated (see MAINT-8091) --> deprecated (see MAINT-8091) --> *HACK: On first |
+| 21343–22455 (n=1113) | unknown/non-function (declaration, XML, build list or global scope) | director-shell, looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; no local conditional evidence | Edits RenderShadowBias, RenderShadowGaussian, RenderShadowBlurSize, RenderShadowOffset, RenderShadowBlurSamples, RenderShadowBlurDistFactor, RenderShadowBiasError, RenderShadowSoftenMode, RenderDeferredSSAO, RenderShadowSoftenPx |
+| 22458–22533 (n=76) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits RenderHoverGlowEnable, RenderHighlightFadeTime, RenderReflectionProbeDrawDistance, RenderHighlightBrightness, RenderReflectionProbeAmbiance, RenderHighlightThickness, RenderDefaultProbeUpdatePeriod, RenderReflectionProbeLevel, RenderHighlightColor, RenderSpecularPrecision |
+| 22535–22544 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderDeferredSun, RenderProbeUpdateBeforePresent |
+| 22546–22588 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits RenderDeferredAtmospheric, RenderProbeOnDemand, RenderDeferredSSAO, RenderProbeMinInterval, RenderDeferredBlurLight, RenderProbeMaxAge, RenderDeferredSunWash, RenderProbeDirtySunDeg |
+| 22590–22996 (n=407) | unknown/non-function (declaration, XML, build list or global scope) | looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits RenderShadowNoise, RenderProbeRealtimeFacesPerFrame, RenderShadowErrorCutoff, RenderProbeTinyCullPixels, RenderShadowFOVCutoff, RenderProbeSchedLog, RenderShadowGaussian, RenderReflectionProbeLevel, RenderShadowBlurSize, RenderReflectionRes |
+| 22998–23409 (n=412) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd, looks, sensor | creative-candidate | unknown; no local conditional evidence | Edits RenderNameShowTime, RenderTransparentWater, RenderTreeLODFactor, RenderObjectBump, RenderUIInSnapshot, RenderQualityPerformance, RenderBalanceInSnapshot, RenderReflectionDetail, RenderUIBuffer, RenderReflectionProbeDetail |
+| 23411–23431 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderTerrainPBRNormalsEnabled, RenderWaterMaterials, RenderTrackerBeacon, RenderWaterMipNormal |
+| 23433–23464 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderTransparentWater, RenderWaterRefResolution, RenderTreeLODFactor, RenderParcelSelection, RenderUIInSnapshot, RenderParallelShaderCompile |
+| 23466–23489 (n=24) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderBalanceInSnapshot, RenderShaderDumpEquivalence, RenderShaderInjectFail, RenderShaderCacheEnabled |
+| 23491–23544 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits RenderShaderCacheVersion, RenderCASSharpness, RenderTonemapMix, RenderTonemapType, RenderHighPrecisionPostProcess |
+| 23546–23907 (n=362) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd | creative-candidate | unknown; no local conditional evidence | Edits RenderUIBuffer, RenderUnloadedAvatar, RenderUseAdvancedAtmospherics, RenderUseTriStrips, RenderUseFarClip, RenderAvatarFriendsOnly, RenderAvatarComplexityMode, RenderAvatarMaxNonImpostors, RenderAutoMuteRenderWeightLimit, RenderAvatarMaxComplexity |
+| 23909–23918 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderUseVAO |
+| 23920–24017 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits RenderVBOMappingDisable, RenderUseStreamVBO, RenderPreferStreamDraw, RenderVolumeLODFactor, RenderWater, RenderWaterMaterials |
+| 24019–24182 (n=164) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits RenderWaterMipNormal, RenderWaterRefResolution, RenderParcelSelection, RenderShaderCacheEnabled, RenderShaderCacheVersion, RenderCASSharpness, RenderTonemapMix, RenderTonemapType, RenderHighPrecisionPostProcess |
+| 24184–24193 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24195–24226 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24228–24237 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24239–24248 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24250–24380 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLMapDestination |
+| 24382–24391 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24393–24435 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24437–24703 (n=267) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24705–24725 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24727–24758 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24760–24769 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24771–24813 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24815–24824 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24826–24835 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24837–24957 (n=121) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24959–24979 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 24981–25501 (n=521) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits LLSD |
+| 25503–25567 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
+| 25569–25699 (n=131) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 25701–27273 (n=1573) | unknown/non-function (declaration, XML, build list or global scope) | common-ui, environment, roto-tron, sensor | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
+| 27275–27427 (n=153) | unknown/non-function (declaration, XML, build list or global scope) | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits RenderOcclusionTimeout, RenderDelayVBUpdate |
+| 27429–27526 (n=98) | unknown/non-function (declaration, XML, build list or global scope) | camera | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: deprecated (see SL-12871) --> |
+| 27528–27548 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27550–27817 (n=268) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> End of back compatibility settings --> |
+| 27819–27850 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27852–27960 (n=109) | unknown/non-function (declaration, XML, build list or global scope) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27962–28190 (n=229) | unknown/non-function (declaration, XML, build list or global scope) | camera | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl |
+| 28192–28223 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28225–28245 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28247–28256 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 28258–28278 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28280–28311 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28313–28366 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28368–28421 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> |
-| 28423–28432 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28434–28498 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: End of back compatibility settings --> |
-| 28500–28542 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28544–28564 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 28566–29213 (n=648) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl, RenderMaxTextureResolution |
-| 29215–29314 (n=100) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 29316–29325 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 29327–29336 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28280–28300 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28302–28333 (n=32) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28335–28388 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28390–28443 (n=54) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Settings below are for back compatibility only. 1.23 settings --> |
+| 28445–28454 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28456–28520 (n=65) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: End of back compatibility settings --> |
+| 28522–28564 (n=43) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28566–28586 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28588–29235 (n=648) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLMediaControl, RenderMaxTextureResolution |
+| 29237–29336 (n=100) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, crowd | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 29338–29347 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 29349–29358 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 29360–31825 (n=2466) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, capture-sidecar, crowd, director-shell, environment, gaze, looks, rig, roto-tron, sensor, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> [WebIdle] built-in web page idle cost --> Viewer-native cinematic weather. Master gate defaults off. --> </FSPoser> --> [TronT0] Tron effects package foundation: master enable, shared palette, [TronT1] Tron World: dark grade + world-space neon grid with travelling [ |
-| 31827–32035 (n=209) | unknown/non-function (declaration, XML, build list or global scope) | clones, director-shell, weather | creative-candidate | unknown; no local conditional evidence | Edits RenderDisableVintageMode |
-| 32037–32400 (n=364) | unknown/non-function (declaration, XML, build list or global scope) | camera, clones, director-shell, looks, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> </FSPoser> --> |
+| 29360–29369 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 29371–29380 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 29382–31847 (n=2466) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, capture-sidecar, crowd, director-shell, environment, gaze, looks, rig, roto-tron, sensor, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> [WebIdle] built-in web page idle cost --> Viewer-native cinematic weather. Master gate defaults off. --> </FSPoser> --> [TronT0] Tron effects package foundation: master enable, shared palette, [TronT1] Tron World: dark grade + world-space neon grid with travelling [ |
+| 31849–32057 (n=209) | unknown/non-function (declaration, XML, build list or global scope) | clones, director-shell, weather | creative-candidate | unknown; no local conditional evidence | Edits RenderDisableVintageMode |
+| 32059–32422 (n=364) | unknown/non-function (declaration, XML, build list or global scope) | camera, clones, director-shell, looks, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: <FSPoser> --> </FSPoser> --> |
 
 ## Slice 1: `indra/newview/llappviewer.cpp`
 
@@ -350,9 +350,9 @@ HEAD coordinates; guards/features are candidate evidence
 | 5983–6012 (n=30) | LLAppViewer::idle | actor-path, clones, gaze, stepped-animation, tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b |
 | 6036–6043 (n=8) | LLAppViewer::idleShutdown | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles |
 | 6119–6125 (n=7) | LLAppViewer::sendLogoutRequest | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
-| 6444–6458 (n=15) | LLAppViewer::disconnectViewer | clones, director-shell, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched. |
-| 6464–6471 (n=8) | LLAppViewer::disconnectViewer | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALExposureSettingsHistory |
-| 6482–6526 (n=45) | LLAppViewer::disconnectViewer | actor-bar, actor-path, clones, composition, director-shell, rig, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses |
+| 6444–6459 (n=16) | LLAppViewer::disconnectViewer | clones, director-shell, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched. |
+| 6465–6472 (n=8) | LLAppViewer::disconnectViewer | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALExposureSettingsHistory |
+| 6483–6527 (n=45) | LLAppViewer::disconnectViewer | actor-bar, actor-path, clones, composition, director-shell, rig, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses |
 
 ## Slice 1: `indra/newview/llfloaterenvironmentadjust.cpp`
 
@@ -1692,8 +1692,9 @@ HEAD coordinates; guards/features are candidate evidence
 | 9277–9300 (n=24) | unknown/non-function (Multiple SLurls were received from an untrusted browser within a short period.) | camera | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 9340–9359 (n=20) | unknown/non-function (Failed to save snapshot to [PATH]: Disk is full. [NEED_MEMORY]KB is required but) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] high-res snapshot unlock warning (donor: Black Dragon |
 | 9395–9432 (n=38) | unknown/non-function (this preset or choose another name.) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B2] Camera preset rename (donor: Black Dragon "Unlimited Camera |
-| 13550–13561 (n=12) | unknown/non-function (Incoming friendship requests will now be rejected with your configured autorespo) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 13580–13947 (n=368) | unknown/non-function (Incoming instant messages from anyone who is not your friend will now be answere) | camera, director-shell, environment, looks, sensor, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD local Windlight preset notifications (donor: BD [FileSafety] --> [FileSafety] --> [F4] Phototools environment quick-switcher (donor: Firestorm I:\enve Shared cinematic Weather panel: named complete-state presets and reset. --> Ultimate Diopter Custom-bank state m |
+| 9953–9977 (n=25) | unknown/non-function (Failed to apply GLTF material. You can not apply a no-copy material to multiple) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 13569–13580 (n=12) | unknown/non-function (Incoming friendship requests will now be rejected with your configured autorespo) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 13599–13966 (n=368) | unknown/non-function (Incoming instant messages from anyone who is not your friend will now be answere) | camera, director-shell, environment, looks, sensor, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD local Windlight preset notifications (donor: BD [FileSafety] --> [FileSafety] --> [F4] Phototools environment quick-switcher (donor: Firestorm I:\enve Shared cinematic Weather panel: named complete-state presets and reset. --> Ultimate Diopter Custom-bank state m |
 
 ## Slice 2: `indra/newview/skins/default/xui/en/panel_preferences_advanced.xml`
 
@@ -5794,6 +5795,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 109–115 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 162–168 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/llconversationmodel.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 459–465 (n=7) | LLConversationItemSession::buildContextMenu | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/lldrawable.h`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -5906,6 +5915,49 @@ HEAD coordinates; guards/features are candidate evidence
 | 22–30 (n=9) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B2] Rename UI for camera preset list items — donor: Black Dragon "Unlimited Camera Presets" UX (commit 152762d400). Gated by BDMergeCameraPresets; hidden when the gate is off. |
 | 67–79 (n=13) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge B2] |
 
+## Slice 99: `indra/newview/llfloaterimcontainer.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 143–151 (n=9) | LLFloaterIMContainer::sessionActivated | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel, LLFloaterIMSessionTab |
+| 1444–1453 (n=10) | LLFloaterIMContainer::doToSelectedConversation | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1581–1593 (n=13) | LLFloaterIMContainer::enableContextMenuItem | unknown | unknown-review | unknown; conditional evidence present | Edits LLConversationItem, gDisconnected, LLFloaterIMSession |
+| 1844–1856 (n=13) | LLFloaterIMContainer::showConversation | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel, gIMMgr, LLFloaterIMSessionTab |
+
+## Slice 99: `indra/newview/llfloaterimsession.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 423–432 (n=10) | LLFloaterIMSession::initIMSession | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Retained group messages predate this floater. Replay them without alerts; the first post-expiry message is inserted only after reconstruction. |
+| 517–575 (n=59) | LLFloaterIMSession::onSnoozeClicked, LLFloaterIMSession::requestGroupChatSnooze, LLNotificationsUtil::add | unknown | unknown-review | unknown; conditional evidence present | Edits LLFloaterIMSession, gDisconnected, gSavedSettings, LLHandle, LLFloater, LLIMModel, LLNotificationsUtil, LLSD, LLVoiceChannel, gIMMgr |
+| 770–776 (n=7) | LLFloaterIMSession::show | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
+| 786–793 (n=8) | LLFloaterIMSession::show | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 832–852 (n=21) | LLFloaterIMSession::onClose | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Remove just the conversation UI; leave the model and server session joined. A hidden container does not reselect on removal; do not leave its selected ID pointing at a snoozed conversation that polling can recreate. |
+| 1093–1109 (n=17) | LLFloaterIMSession::updateMessages, ~ParseMaskRestore | unknown | unknown-review | unknown; conditional evidence present | Edits LLChatHistory |
+
+## Slice 99: `indra/newview/llfloaterimsession.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 142–148 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 162–169 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 184–190 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/llfloaterimsessiontab.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 93–104 (n=12) | LLFloaterIMSessionTab::LLFloaterIMSessionTab, add | unknown | unknown-review | unknown; conditional evidence present | Edits LLUICtrl, LLSD, LLFloaterIMSession, gDisconnected |
+| 1234–1245 (n=12) | LLFloaterIMSessionTab::onOpen | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel, LLFloaterIMContainer |
+
 ## Slice 99: `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6006,20 +6058,42 @@ HEAD coordinates; guards/features are candidate evidence
 | 39–45 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 265–279 (n=15) | LLHUDEffectSpiral::render | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge HideUI] Selection/edit/script beams are particle effects, so hiding the 2D interface never touched them. Treat a hidden interface exactly like ShowSelectionBeam=off: kill the part source. Effects are re-sent continuously while active (edits, scripted effects), so beams r |
 
+## Slice 99: `indra/newview/llimprocessing.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 1812–1821 (n=10) | LLIMProcessing::processNewMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Group snooze still passed through the normal history/transcript path above. The final taskbar flash is independent of the model's message signal. |
+
 ## Slice 99: `indra/newview/llimview.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 1040–1048 (n=9) | LLIMModel::LLIMSession::addMessage | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge ChatCap] Absolute index = position since session start = live count (mMsgs.size()) plus however many were already trimmed (mMsgTrimOffset). |
-| 1050–1073 (n=24) | LLIMModel::LLIMSession::addMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge ChatCap] Bound the in-RAM per-session backlog so a long, busy session (heavy group / nearby chat) doesn't accumulate an unbounded LLSD list that costs memory and slows shutdown teardown. The full transcript is already persisted to disk per message (logToFile), and re-ope |
-| 1311–1317 (n=7) | LLIMModel::LLIMSession::addMessagesFromServerHistory | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
-| 1335–1341 (n=7) | LLIMModel::LLIMSession::addMessagesFromServerHistory | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
-| 1371–1377 (n=7) | LLIMModel::LLIMSession::loadHistory | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1646–1662 (n=17) | LLIMModel::getMessagesSilently | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge ChatCap] "index" is absolute (position since session start), so the count of messages at or after start_index is total-ever (live size + trimmed) minus start_index. Clamp to what is still physically in mMsgs: if the caller is further behind than the cap, the oldest wante |
-| 3361–3371 (n=11) | LLIMMgr::addMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The Group chat and Conference rows' Play sound also cover the first message; it uses the same sound, so it reads as those rows being ignored. |
-| 3701–3729 (n=29) | LLIMMgr::inviteToSession | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: "Reject Ad-Hoc (conferences)" (0 Off, 1 Friends Only, 2 All) also covers conference voice calls, mirroring the text-conference rule in processIMMessage. silently decline the call |
+| 169–176 (n=8) | on_avatar_name_cache_toast | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Avatar-name lookup can finish after the user snoozes the conversation. |
+| 188–194 (n=7) | notify_of_message | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel |
+| 625–631 (n=7) | translateSuccess | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
+| 641–647 (n=7) | translateFailure | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
+| 1043–1051 (n=9) | LLIMModel::LLIMSession::addMessage | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge ChatCap] Absolute index = position since session start = live count (mMsgs.size()) plus however many were already trimmed (mMsgTrimOffset). |
+| 1053–1076 (n=24) | LLIMModel::LLIMSession::addMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge ChatCap] Bound the in-RAM per-session backlog so a long, busy session (heavy group / nearby chat) doesn't accumulate an unbounded LLSD list that costs memory and slows shutdown teardown. The full transcript is already persisted to disk per message (logToFile), and re-ope |
+| 1314–1320 (n=7) | LLIMModel::LLIMSession::addMessagesFromServerHistory | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
+| 1338–1344 (n=7) | LLIMModel::LLIMSession::addMessagesFromServerHistory | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSD |
+| 1374–1380 (n=7) | LLIMModel::LLIMSession::loadHistory | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1622–1661 (n=40) | LLIMModel::clearGroupChatSnoozes, LLIMModel::clearSession, LLIMModel::endGroupChatSnooze, LLIMModel::isGroupChatSnoozed, LLIMModel::snoozeGroupChat | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Invalidate duration and voice confirmations still pending across logout. |
+| 1681–1697 (n=17) | LLIMModel::getMessagesSilently | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge ChatCap] "index" is absolute (position since session start), so the count of messages at or after start_index is total-ever (live size + trimmed) minus start_index. Clamp to what is still physically in mMsgs: if the caller is further behind than the cap, the oldest wante |
+| 1781–1815 (n=35) | LLIMModel::addMessage, LLIMModel::processAddingMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Rebuild before inserting the new message so the floater can distinguish retained backlog from this first normal message after expiry. |
+| 1835–1841 (n=7) | unknown/non-function (void LLIMModel::processAddingMessage(const LLUUID& session_id, const std::string) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1851–1867 (n=17) | LLIMModel::addMessageSilently | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep arrival-time suppression even when translation finishes after reopening. Always retain history/transcripts, but never publish snoozed unread state. |
+| 2009–2015 (n=7) | LLIMModel::sendMessage | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
+| 3411–3421 (n=11) | LLIMMgr::addMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The Group chat and Conference rows' Play sound also cover the first message; it uses the same sound, so it reads as those rows being ignored. |
+| 3437–3443 (n=7) | LLIMMgr::addMessage | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel |
+| 3572–3578 (n=7) | LLIMMgr::addSession | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
+| 3721–3735 (n=15) | LLIMMgr::inviteToSession | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Decline only the incoming call; keep the snoozed text session joined. Do this before either showing the dialog or scheduling its name lookup. |
+| 3761–3789 (n=29) | LLIMMgr::inviteToSession | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: "Reject Ad-Hoc (conferences)" (0 Off, 1 Friends Only, 2 All) also covers conference voice calls, mirroring the text-conference rule in processIMMessage. silently decline the call |
+| 3846–3857 (n=12) | LLIMMgr::onInviteNameLookup | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Snooze may have started while the caller's name was being resolved. |
+| 3863–3869 (n=7) | LLIMMgr::disconnectAllSessions | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
 
 ## Slice 99: `indra/newview/llimview.h`
 
@@ -6028,6 +6102,9 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 141–156 (n=16) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge ChatCap] Number of oldest messages dropped from mMsgs by the in-RAM cap (BDMergeMaxSessionChatMessages). Every message's "index" is its absolute position since session start; when we trim the oldest off the back of mMsgs we bump this instead of re-indexing, so the invari |
+| 222–234 (n=13) | getGroupChatSnoozeGeneration | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Session-only deadlines; keep the server session joined and its history intact. |
+| 258–270 (n=13) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 332–339 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID |
 
 ## Slice 99: `indra/newview/llinspectobject.cpp`
 
@@ -6667,6 +6744,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 485–497 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 499–523 (n=25) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Hidden at the legacy extent; bottom anchoring moves this into the added Static latent rectangles overlap only while this note is hidden. The xui-check: allow-overlap panel_container actor_key_snapshot_note --> xui-check: allow-overlap thumbnail_placeholder actor_key_snapshot_note |
 
+## Slice 99: `indra/newview/skins/default/xui/en/menu_conversation.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 13–25 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6674,6 +6759,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 32–43 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 3–15 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml`
 

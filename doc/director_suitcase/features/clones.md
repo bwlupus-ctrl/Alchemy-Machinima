@@ -189,8 +189,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@664,7", "indra/newview/CMakeLists.txt@1290,167", "indra/newview/CMakeLists.txt@1676,7", "indra/newview/CMakeLists.txt@2851,32", "indra/newview/CMakeLists.txt@2957,186"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14755", "indra/newview/app_settings/settings.xml@31827,209", "indra/newview/app_settings/settings.xml@32037,364"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5349,24", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5809,119", "indra/newview/llappviewer.cpp@5983,30", "indra/newview/llappviewer.cpp@6444,15", "indra/newview/llappviewer.cpp@6482,45"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14777", "indra/newview/app_settings/settings.xml@31849,209", "indra/newview/app_settings/settings.xml@32059,364"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5349,24", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5809,119", "indra/newview/llappviewer.cpp@5983,30", "indra/newview/llappviewer.cpp@6444,16", "indra/newview/llappviewer.cpp@6483,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@788,19", "indra/newview/llfloaterenvironmentadjust.cpp@810,33", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterhoverheight.cpp", "hunks": ["indra/newview/llfloaterhoverheight.cpp@29,50", "indra/newview/llfloaterhoverheight.cpp@228,216"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@25,8", "indra/newview/llstartup.cpp@3380,11"]}
@@ -641,6 +641,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 557, "text": "llfloaterenvironmentadjust.cpp", "source": "indra/newview/llfloaterenvironmentadjust.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 563, "text": "llfloaterfixedenvironment.cpp", "source": "indra/newview/llfloaterfixedenvironment.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 576, "text": "llfloaterhoverheight.cpp", "source": "indra/newview/llfloaterhoverheight.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 582, "text": "llfloaterimcontainer.cpp", "source": "indra/newview/llfloaterimcontainer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 615, "text": "llfloaterpay.cpp", "source": "indra/newview/llfloaterpay.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 620, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1394, "text": "llfloaterprismmanager.h", "source": "indra/newview/llfloaterprismmanager.h"}

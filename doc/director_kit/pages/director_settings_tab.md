@@ -1,11 +1,11 @@
 # Settings — Director Kit page contract
 
 Page key: `director_settings_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (11/18 setting-bound rows; 6 C++-referenced rows).
+Computed class: **code-driven** (13/20 setting-bound rows; 6 C++-referenced rows).
 
 ## Real owners
 
-- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (17 matching rows).
+- `director_settings_tab_logic` / `panel` at `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:3` (19 matching rows).
 - Referencing classes: `LLFloaterDirector` (5), `LLNotifications` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
@@ -38,6 +38,8 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `settings_performance` / `settings_vbo_pool_clean_check` (VBO pool cleanup) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:87` | kit `toggle` ↔ `RenderVBOPoolCleanAtFrameEnd` `Boolean` | none |
 | `settings_performance` / `settings_emergency_purge_sliced` (Spread texture purges) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:90` | kit `toggle` ↔ `AlchemyEmergencyPurgeSliced` `Boolean` | none |
 | `settings_performance` / `settings_capture_quality_pin` (Pin scene textures (no degrade during takes)) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:93` | kit `toggle` ↔ `BDMergeCaptureModePin` `Boolean` | `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:4704` `capture_quality_pin` |
+| `settings_group_chat` / `settings_group_chat_snooze_minutes` (Snooze minutes) | `spinner` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:98` | kit `number` ↔ `GroupChatSnoozeMinutes` `S32` | none |
+| `settings_group_chat` / `settings_group_chat_snooze_ask` (Ask snooze duration) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:101` | kit `toggle` ↔ `GroupChatSnoozeAsk` `Boolean` | none |
 
 ## Adapter extraction
 
@@ -54,7 +56,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **24 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **27 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -82,6 +84,9 @@ Manifest size: **24 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `settings_vbo_pool_clean_check-on` | Only `settings_vbo_pool_clean_check` is on; dependent visibility is measured. |
 | `settings_emergency_purge_sliced-on` | Only `settings_emergency_purge_sliced` is on; dependent visibility is measured. |
 | `settings_capture_quality_pin-on` | Only `settings_capture_quality_pin` is on; dependent visibility is measured. |
+| `card-settings_group_chat-tallest-850` | Only `settings_group_chat` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-settings_group_chat-tallest-1160` | Only `settings_group_chat` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `settings_group_chat_snooze_ask-on` | Only `settings_group_chat_snooze_ask` is on; dependent visibility is measured. |
 
 ## Parity check
 
