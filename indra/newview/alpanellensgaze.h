@@ -67,11 +67,12 @@ private:
     // closed. (Formerly the panel method updateRandomPerformance, driven by draw.)
 
     void buildHotControls();
-    void refreshHotControls();
-    void commitHotControls();
+    void refreshHotControls(bool force_choices = false);
+    void commitHotControls(LLUICtrl* source);
     S32 mHotSlotIndex = 0, mHotButtonSlot = -1;
     LLComboBox *mHotSlot = nullptr, *mHotWho = nullptr, *mHotTarget = nullptr, *mHotActor = nullptr;
-    LLComboBox *mHotAfter = nullptr, *mHotMode = nullptr, *mHotSpot = nullptr;
+    LLCheckBoxCtrl* mHotAfter = nullptr;
+    LLComboBox *mHotMode = nullptr, *mHotSpot = nullptr;
     LLSpinCtrl *mHotX = nullptr, *mHotY = nullptr, *mHotZ = nullptr;
     LLSpinCtrl *mHotSnap = nullptr, *mHotDwell = nullptr, *mHotReturn = nullptr;
     LLSliderCtrl *mHotHead = nullptr, *mHotEyes = nullptr, *mHotTorso = nullptr;

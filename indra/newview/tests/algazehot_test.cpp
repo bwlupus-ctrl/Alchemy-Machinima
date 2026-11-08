@@ -18,6 +18,7 @@ void hotGazeContract()
 {
     ALGazeHot::State s;
     hotRequire(s.finished(0) && s.weight(0) == 0);
+    hotRequire(s.mStay);
     s.fire(0, 10, .2f, 2, 1, false, false);
     hotRequire(hotNear(s.weight(10.1), .5f));
     hotRequire(s.weight(12.2) == 1 && !s.finished(12.2));
@@ -33,7 +34,7 @@ void hotGazeContract()
     hotRequire(s.weight(30) == 1 && !s.finished(3000));
     s.release(31); hotRequire(s.finished(32));
     s.fire(0, 40, .2f, 2, 1, true, false);
-    hotRequire(!s.finished(4000)); // Hold ignores After.
+    hotRequire(!s.finished(4000)); // Hold ignores Return after dwell.
     const F32 before = s.weight(40.1);
     s.fire(0, 40.1, .4f, 2, 1, true, false); // retrigger acquisition
     hotRequire(hotNear(s.weight(40.1), before));
@@ -46,13 +47,14 @@ void hotGazeContract()
     hotRequire(s.mRelease == 40.6 && s.finished(41.61));
 
     ALGazeHot::Slots slots;
+    for (const auto& slot : slots) hotRequire(slot.mStay && !slot.mHold);
     const LLUUID actor = LLUUID::generateNewID(), clone = LLUUID::generateNewID();
     const LLUUID recovered = LLUUID::generateNewID(), object = LLUUID::generateNewID();
     slots[0].mWho = actor; slots[0].mTarget.mMode = LLActorMover::GazeTarget::OBJECT;
     slots[0].mTarget.mObjectRef = object; slots[0].mTargetName = "Moving fist";
     slots[0].mTarget.mPickedSpot = true; slots[0].mTarget.mObjectOffset = LLVector3(.1f, .2f, .3f);
     slots[0].mTarget.mObjectJoint = "mWristLeft";
-    slots[0].mHasTarget = true; slots[0].mSnap = .3f; slots[0].mEyes = .7f;
+    slots[0].mHasTarget = true; slots[0].mSnap = .3f; slots[0].mEyes = .7f; slots[0].mStay = false;
     slots[1].mGroup = "Fighters"; slots[1].mHold = true; slots[1].mStay = true;
     slots[1].mTarget.mMode = LLActorMover::GazeTarget::FIXED_POINT;
     slots[1].mTarget.mPointNudge = LLVector3(-.2f, .3f, .4f);
@@ -60,12 +62,18 @@ void hotGazeContract()
     slots[2].mWho = clone; slots[2].mTarget.mMode = LLActorMover::GazeTarget::CAST_MEMBER;
     slots[2].mTarget.mCastRef = clone; slots[2].mHasTarget = true;
     const LLSD saved = ALGazeHot::writeSlots(slots, [&](const LLUUID& id) { return id != clone; });
+    for (S32 i = 0; i < 4; ++i)
+    {
+        hotRequire(saved[i].has("return_after") && saved[i]["return_after"].asBoolean() == !slots[i].mStay);
+        hotRequire(saved[i].has("stay") && saved[i]["stay"].asBoolean() == slots[i].mStay);
+    }
     const auto loaded = ALGazeHot::readSlots(saved);
     hotRequire(loaded[0].mWho == actor && loaded[0].mTarget.mObjectRef == object);
     hotRequire(loaded[0].mTarget.mPickedSpot && loaded[0].mTarget.mObjectOffset == LLVector3(.1f, .2f, .3f));
     hotRequire(loaded[0].mTarget.mObjectJoint == "mWristLeft");
     hotRequire(loaded[1].mTarget.mPointNudge == LLVector3(-.2f, .3f, .4f));
     hotRequire(loaded[0].mTargetName == "Moving fist" && hotNear(loaded[0].mEyes, .7f));
+    hotRequire(!loaded[0].mStay && loaded[2].mStay && loaded[3].mStay);
     hotRequire(loaded[1].mGroup == "Fighters" && loaded[1].mHold && loaded[1].mStay);
     hotRequire(loaded[1].mTarget.mFixedPoint == LLVector3d(4, 5, 6));
     hotRequire(loaded[2].mWho.isNull() && !loaded[2].mHasTarget);
@@ -75,6 +83,20 @@ void hotGazeContract()
     hotRequire(ALGazeHot::rewrite(slots, recovered, LLUUID::null));
     hotRequire(slots[2].mWho.isNull() && !slots[2].mHasTarget);
     hotRequire(ALGazeHot::readSlots(LLSD())[0].mSnap == .12f);
+    hotRequire(ALGazeHot::readSlots(LLSD())[0].mStay);
+    slots[0] = {};
+    hotRequire(slots[0].mStay && !slots[0].mHold); // Reset slot uses the default-off switch.
+
+    LLSD legacy = saved;
+    for (S32 i = 0; i < 4; ++i) legacy[i].erase("return_after");
+    legacy[0]["stay"] = false; legacy[1]["stay"] = true; legacy[2].erase("stay");
+    const auto migrated = ALGazeHot::readSlots(legacy);
+    for (const auto& slot : migrated) hotRequire(slot.mStay);
+    hotRequire(migrated[0].mTargetName == "Moving fist" && migrated[1].mHold);
+    LLSD explicit_choice = saved;
+    explicit_choice[0]["stay"] = true; explicit_choice[1]["stay"] = false;
+    const auto preferred = ALGazeHot::readSlots(explicit_choice);
+    hotRequire(!preferred[0].mStay && preferred[1].mStay); // New key wins over legacy stay.
 }
 }
 

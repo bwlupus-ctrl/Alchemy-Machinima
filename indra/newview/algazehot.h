@@ -68,7 +68,7 @@ struct State
     F64 mStart = 0.0, mRelease = -1.0;
     F32 mAcquire = .12f, mReturn = 1.2f, mFrom = 0.f, mReleaseWeight = 0.f;
     F64 mDwell = 2.0;
-    bool mHold = false, mStay = false;
+    bool mHold = false, mStay = true;
 
     F32 weight(F64 now) const
     {
