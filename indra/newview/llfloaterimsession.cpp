@@ -485,6 +485,7 @@ bool LLFloaterIMSession::postBuild()
     }
 // [/SL:KB]
 
+    setCanSnooze(mSession && mSession->isGroupSessionType());
     bool result = LLFloaterIMSessionTab::postBuild();
 
 //  mInputEditor->setMaxTextLength(DB_CHAT_MSG_STR_LEN);
@@ -515,6 +516,11 @@ bool LLFloaterIMSession::postBuild()
     initIMFloater();
 
     return result;
+}
+
+void LLFloaterIMSession::onSnooze()
+{
+    onSnoozeClicked();
 }
 
 void LLFloaterIMSession::onSnoozeClicked()

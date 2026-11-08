@@ -142,6 +142,7 @@ public:
     enum EFloaterButton
     {
         BUTTON_CLOSE = 0,
+        BUTTON_SNOOZE,
         BUTTON_RESTORE,
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
         BUTTON_COLLAPSE,
@@ -169,6 +170,7 @@ public:
                                 can_collapse,
 // [/SL:KB]
                                 can_close,
+                                can_snooze,
                                 can_drag_on_left,
                                 can_tear_off,
                                 save_rect,
@@ -190,6 +192,7 @@ public:
 
         // Images for top-right controls
         Optional<LLUIImage*>    close_image,
+                                snooze_image,
                                 restore_image,
                                 minimize_image,
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
@@ -199,6 +202,7 @@ public:
                                 dock_image,
                                 help_image;
         Optional<LLUIImage*>    close_pressed_image,
+                                snooze_pressed_image,
                                 restore_pressed_image,
                                 minimize_pressed_image,
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
@@ -301,6 +305,7 @@ public:
     void            setCanCollapse(bool can_collapse);
 // [/SL:KB]
     void            setCanClose(bool can_close);
+    void            setCanSnooze(bool can_snooze);
     void            setCanTearOff(bool can_tear_off);
     virtual void    setCanResize(bool can_resize);
     void            setCanDrag(bool can_drag);
@@ -337,6 +342,7 @@ public:
 
     virtual void    onOpen(const LLSD& key) {}
     virtual void    onClose(bool app_quitting) {}
+    virtual void    onSnooze() {}
 
     // This cannot be "const" until all derived floater canClose()
     // methods are const as well.  JC
@@ -392,6 +398,7 @@ public:
 
     static void     onClickClose(LLFloater* floater);
     static void     onClickClose(LLFloater* floater, bool app_quitting);
+    static void     onClickSnooze(LLFloater* floater);
     static void     onClickMinimize(LLFloater* floater);
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
     static void     onClickCollapse(LLFloater* floater);

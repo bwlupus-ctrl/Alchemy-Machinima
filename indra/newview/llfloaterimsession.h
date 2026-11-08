@@ -143,6 +143,7 @@ public:
 
     bool handleKeyHere(KEY key, MASK mask) override;
     void onSnoozeClicked();
+    void onSnooze() override;
 private:
 
     /*virtual*/ void refresh() override;
