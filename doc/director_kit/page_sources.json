@@ -51479,7 +51479,7 @@
       "writable_home": null
     },
     {
-      "setting": "TurnToFaceRightClicked",
+      "setting": "TurnToFaceSelectedObjects",
       "pages": [
         "director_settings_tab"
       ],
@@ -51487,7 +51487,7 @@
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
           "line": 68,
-          "widget": "settings_turn_to_face_right_clicked",
+          "widget": "settings_turn_to_face_selected",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
             "tag": "panel",
@@ -244485,14 +244485,14 @@
           "option_index": null,
           "option_label": null,
           "index": 3,
-          "label": "Turn to face right-clicked objects",
+          "label": "Turn to face selected objects",
           "kind": "toggle",
-          "widget": "settings_turn_to_face_right_clicked",
-          "matched_widget": "settings_turn_to_face_right_clicked",
-          "declared_setting": "TurnToFaceRightClicked",
-          "resolved_setting": "TurnToFaceRightClicked",
+          "widget": "settings_turn_to_face_selected",
+          "matched_widget": "settings_turn_to_face_selected",
+          "declared_setting": "TurnToFaceSelectedObjects",
+          "resolved_setting": "TurnToFaceSelectedObjects",
           "setting_candidates": [
-            "TurnToFaceRightClicked"
+            "TurnToFaceSelectedObjects"
           ],
           "setting_declarations": [
             {
@@ -244508,7 +244508,7 @@
               "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
               "line": 68,
               "tag": "kit_switch",
-              "control_name": "TurnToFaceRightClicked",
+              "control_name": "TurnToFaceSelectedObjects",
               "callbacks": [],
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",

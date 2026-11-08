@@ -6,7 +6,7 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 734,
-      "HOOK": 528,
+      "HOOK": 527,
       "OWNED": 909,
       "TOOLING": 434
     },
@@ -67,14 +67,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "9b838df099de341d0c570ecd1b7b87fd28db20a62c40e2489a344e339d788e01",
+        "csv_sha256": "bf8b7e4429658f8d396d801c19316e51cec7f061a5e1ec19fd80be498ce5814a",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4778,
+        "entries": 4779,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -118,7 +118,7 @@
         ],
         "generated_kit_rows": 2568,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2164,
+        "interactive_rows": 2165,
         "pages": 39,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -234,12 +234,12 @@
         "rows": 2290,
         "unresolved_rows": 75
       },
-      "wiring_rows": 2290
+      "wiring_rows": 2291
     },
-    "head_source_tree": "ef86fbe1ead7dd3c78901b1c35a2772c8e0e3315",
-    "hook_files": 528,
-    "hunks": 3276,
-    "input_sha256": "1cf2a92399fb61242d599248fefcd0ced13833889a4172c489cc27dc1bb89da1",
+    "head_source_tree": "b2dda81e21bb7c6ac1cd85382fe1e8abe68f2b41",
+    "hook_files": 527,
+    "hunks": 3273,
+    "input_sha256": "63313f484b43c13ec139d3ee990ba428159f20bc90242b01f4e38b4079f7a30c",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -30492,19 +30492,6 @@
       "git_status": "M",
       "layer": 3,
       "path": "indra/newview/lltoolselect.cpp",
-      "reason": "present at local base; adapt individual hunks, never copy wholesale"
-    },
-    {
-      "candidate_features_from_subjects": [],
-      "class": "HOOK",
-      "deleted": false,
-      "feature_evidence": [],
-      "features": [
-        "unknown"
-      ],
-      "git_status": "M",
-      "layer": 99,
-      "path": "indra/newview/lltoolselect.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {

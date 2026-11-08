@@ -38249,7 +38249,7 @@
   },
   {
     "change": "added",
-    "comment": "When off, right-clicking an object or attachment no longer turns your avatar to face it; edit/build selection is unchanged.",
+    "comment": "When off, selecting an object (right-click, edit, build, pay, buy, open) no longer turns your avatar to face it.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
     "default": "1",
@@ -38259,7 +38259,7 @@
     ],
     "file": "indra/newview/app_settings/settings.xml",
     "head_declarations": [],
-    "name": "TurnToFaceRightClicked",
+    "name": "TurnToFaceSelectedObjects",
     "persisted": "1",
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",

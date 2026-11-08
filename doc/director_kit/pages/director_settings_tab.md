@@ -30,7 +30,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `settings_appearance` / `settings_theme` (Theme) | `combo_box` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:42` | kit `combo` ↔ `DirectorTheme` `String` | none |
 | `settings_appearance` / `settings_theme_invert` (Invert theme) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:62` | kit `toggle` ↔ `DirectorThemeInvert` `Boolean` | none |
 | `settings_appearance` / `hide_cursor_with_ui` (Hide cursor with interface) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:65` | kit `toggle` ↔ `HideCursorWithUI` `Boolean` | none |
-| `settings_appearance` / `settings_turn_to_face_right_clicked` (Turn to face right-clicked objects) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:68` | kit `toggle` ↔ `TurnToFaceRightClicked` `Boolean` | none |
+| `settings_appearance` / `settings_turn_to_face_selected` (Turn to face selected objects) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:68` | kit `toggle` ↔ `TurnToFaceSelectedObjects` `Boolean` | none |
 | `settings_appearance` / `settings_action_all_off` (Replace ACTION with All Off) | `kit_switch` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:71` | kit `toggle` ↔ `DirectorActionAllOffMode` `Boolean` | none |
 | `settings_appearance` / `settings_restore_last_reset` (Restore last reset) | `button` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:74` | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 | `settings_performance` / `settings_rigged_lod_hysteresis` (LOD hysteresis) | `slider` `indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml:79` | kit `slider` ↔ `RenderRiggedLODHysteresis` `F32` | none |
@@ -74,7 +74,7 @@ Manifest size: **24 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `card-settings_appearance-tallest-1160` | Only `settings_appearance` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `settings_theme_invert-on` | Only `settings_theme_invert` is on; dependent visibility is measured. |
 | `hide_cursor_with_ui-on` | Only `hide_cursor_with_ui` is on; dependent visibility is measured. |
-| `settings_turn_to_face_right_clicked-on` | Only `settings_turn_to_face_right_clicked` is on; dependent visibility is measured. |
+| `settings_turn_to_face_selected-on` | Only `settings_turn_to_face_selected` is on; dependent visibility is measured. |
 | `settings_action_all_off-on` | Only `settings_action_all_off` is on; dependent visibility is measured. |
 | `card-settings_performance-tallest-850` | Only `settings_performance` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-settings_performance-tallest-1160` | Only `settings_performance` is put in its tallest local state at 1160 px; all other cards stay default. |

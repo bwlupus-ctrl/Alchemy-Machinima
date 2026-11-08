@@ -6393,7 +6393,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 828–839 (n=12) | LLToolPie::handleHover | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): no hover pick, hover object, hover parcel or media hover (each can message the simulator).  Belt and braces with LLViewerWindow::updateUI. |
 | 987–1016 (n=30) | needs_tooltip | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: <SK:Nexii> Restore the interactivity test SL-11532 removed so ShowAllObjectHoverTip is honored again </SK:Nexii> |
 | 1430–1436 (n=7) | LLToolPie::handleToolTip | unknown | unknown-review | unknown; conditional evidence present | Edits gViewerInput |
-| 2112–2118 (n=7) | LLToolPie::handleRightClickPick | unknown | unknown-review | unknown; no local conditional evidence | Edits LLToolSelect |
 
 ## Slice 99: `indra/newview/lltoolselect.cpp`
 
@@ -6401,16 +6400,7 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 79–85 (n=7) | unknown/non-function (bool LLToolSelect::handleMouseDown(S32 x, S32 y, MASK mask)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLObjectSelectionHandle, LLToolSelect, LLPickInfo |
 | 225–233 (n=9) | LLToolSelect::handleObjectSelection | unknown | unknown-review | unknown; conditional evidence present | Edits gAgentCamera, LLCachedControl, gSavedSettings |
-
-## Slice 99: `indra/newview/lltoolselect.h`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 44–50 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLSafeHandle, LLObjectSelection, LLPickInfo |
 
 ## Slice 99: `indra/newview/llvelopack.cpp`
 
