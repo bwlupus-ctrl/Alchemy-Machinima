@@ -45,6 +45,7 @@ class LLLayoutPanel;
 class LLLayoutStack;
 class LLTabContainer;
 class LLFloaterIMContainer;
+class LLFloaterIMSession;
 class LLSpeaker;
 class LLSpeakerMgr;
 
@@ -70,6 +71,8 @@ public:
     /*virtual*/ void addFloater(LLFloater* floaterp,
                                 bool select_added_floater,
                                 LLTabContainer::eInsertionPoint insertion_point = LLTabContainer::END);
+    void removeFloater(LLFloater* floaterp) override;
+    void onSnooze() override;
     void returnFloaterToHost();
     void showConversation(const LLUUID& session_id);
     void selectConversation(const LLUUID& session_id);
@@ -104,7 +107,7 @@ public:
 
     LLConversationViewModel& getRootViewModel() { return mConversationViewModel; }
     LLUUID getSelectedSession() { return mSelectedSession; }
-    void setSelectedSession(LLUUID sessionID) { mSelectedSession = sessionID; }
+    void setSelectedSession(LLUUID sessionID);
     LLConversationItem* getSessionModel(const LLUUID& session_id);
     LLConversationSort& getSortOrder() { return mConversationViewModel.getSorter(); }
 
@@ -144,6 +147,8 @@ private:
     void reshapeFloaterAndSetResizeLimits(bool collapse, S32 delta_width);
 
     void onAddButtonClicked();
+    LLFloaterIMSession* getSelectedSnoozeFloater();
+    void updateSnoozeButton();
     void onAvatarPicked(const uuid_vec_t& ids);
 
     bool isActionChecked(const LLSD& userdata);

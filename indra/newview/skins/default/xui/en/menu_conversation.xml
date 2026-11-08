@@ -13,13 +13,6 @@
         <on_click function="Avatar.DoToSelected" parameter="close_conversation"/>
 	 </menu_item_call>	 
      <menu_item_call
-     label="Snooze..."
-     layout="topleft"
-     name="snooze_group_chat">
-        <on_click function="Avatar.DoToSelected" parameter="snooze_group_chat"/>
-        <on_enable function="Avatar.EnableItem" parameter="can_snooze_group_chat"/>
-     </menu_item_call>
-     <menu_item_call
      label="Open voice conversation"
      layout="topleft"
      name="open_voice_conversation">

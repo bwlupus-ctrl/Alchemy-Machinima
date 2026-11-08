@@ -93,12 +93,6 @@ LLFloaterIMSessionTab::LLFloaterIMSessionTab(const LLSD& session_id)
             boost::bind(&LLFloaterIMSessionTab::onIMShowModesMenuItemCheck,   this, _2));
     mEnableCallbackRegistrar.add("IMSession.Menu.ShowModes.Enable",
             boost::bind(&LLFloaterIMSessionTab::onIMShowModesMenuItemEnable,  this, _2));
-    mCommitCallbackRegistrar.add("IMSession.Snooze", [this](LLUICtrl*, const LLSD&)
-        {
-            if (auto* floater = dynamic_cast<LLFloaterIMSession*>(this)) floater->onSnoozeClicked();
-        });
-    mEnableCallbackRegistrar.add("IMSession.CanSnooze", [this](LLUICtrl*, const LLSD&)
-        { return !gDisconnected && mSession && mSession->isGroupSessionType(); });
 
     // Right click menu handling
     mEnableCallbackRegistrar.add("Avatar.CheckItem",  boost::bind(&LLFloaterIMSessionTab::checkContextMenuItem, this, _2));

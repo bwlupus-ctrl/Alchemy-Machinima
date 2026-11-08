@@ -247,6 +247,7 @@ bool LLFloaterIMContainer::postBuild()
     p.use_ellipses = true;
     p.options_menu = "menu_conversation.xml";
     mConversationsRoot = LLUICtrlFactory::create<LLFolderView>(p);
+    mConversationsRoot->setSelectCallback(boost::bind(&LLFloaterIMContainer::updateSnoozeButton, this));
     mConversationsRoot->setCallbackRegistrar(&mCommitCallbackRegistrar);
     mConversationsRoot->setEnableRegistrar(&mEnableCallbackRegistrar);
 
@@ -393,6 +394,58 @@ void LLFloaterIMContainer::addFloater(LLFloater* floaterp,
     floaterp->setRect(wrapper_rect);
 
     mTabContainer->setTabImage(floaterp, icon);
+    updateSnoozeButton();
+}
+
+void LLFloaterIMContainer::removeFloater(LLFloater* floaterp)
+{
+    LLMultiFloater::removeFloater(floaterp);
+    updateSnoozeButton();
+}
+
+LLFloaterIMSession* LLFloaterIMContainer::getSelectedSnoozeFloater()
+{
+    LLFolderViewItem* selected = mConversationsRoot ? mConversationsRoot->getCurSelectedItem() : nullptr;
+    if (!selected)
+        return nullptr;
+
+    // Participant rows belong to their parent conversation. Keyboard selection
+    // need not change the displayed conversation (mSelectedSession).
+    LLUUID session_id;
+    for (const auto& entry : mConversationsWidgets)
+    {
+        if (entry.second == selected || entry.second == selected->getParentFolder())
+        {
+            session_id = entry.first;
+            break;
+        }
+    }
+
+    // A retained snoozed model alone is not a live, hosted conversation.
+    if (session_id.isNull() || mConversationsItems.find(session_id) == mConversationsItems.end())
+        return nullptr;
+
+    LLIMModel::LLIMSession* session = LLIMModel::instance().findIMSession(session_id);
+    LLFloaterIMSession* floater = LLFloaterIMSession::findInstance(session_id);
+    return session && session->isGroupSessionType() && floater && !floater->isDead()
+        && floater->getHost() == this ? floater : nullptr;
+}
+
+void LLFloaterIMContainer::updateSnoozeButton()
+{
+    setCanSnooze(getSelectedSnoozeFloater() != nullptr);
+}
+
+void LLFloaterIMContainer::onSnooze()
+{
+    if (LLFloaterIMSession* floater = getSelectedSnoozeFloater())
+        floater->onSnoozeClicked();
+}
+
+void LLFloaterIMContainer::setSelectedSession(LLUUID sessionID)
+{
+    mSelectedSession = sessionID;
+    updateSnoozeButton();
 }
 
 
@@ -511,6 +564,10 @@ void LLFloaterIMContainer::idleUpdate()
 
     if (mParticipantRefreshTimer.hasExpired())
     {
+        // Clearing selection and removing participant rows do not emit the
+        // folder view's selection signal. Reconcile on the one-second refresh.
+        updateSnoozeButton();
+
         const LLConversationItem *current_session = getCurSelectedViewModelItem();
         if (current_session)
         {
@@ -1445,10 +1502,6 @@ void LLFloaterIMContainer::doToSelectedConversation(const std::string& command, 
         {
             LLFloater::onClickClose(conversationFloater);
         }
-        else if("snooze_group_chat" == command)
-        {
-            conversationFloater->onSnoozeClicked();
-        }
         else if("close_selected_conversations" == command)
         {
             getSelectedUUIDs(selectedIDS,false);
@@ -1582,13 +1635,6 @@ void LLFloaterIMContainer::doToSelectedGroup(const LLSD& userdata)
 bool LLFloaterIMContainer::enableContextMenuItem(const LLSD& userdata)
 {
     const std::string& item = userdata.asString();
-    if (item == "can_snooze_group_chat")
-    {
-        const LLConversationItem* conversation = getCurSelectedViewModelItem();
-        return !gDisconnected && mConversationsRoot->getSelectionList().size() == 1
-            && conversation && conversation->getType() == LLConversationItem::CONV_SESSION_GROUP
-            && LLFloaterIMSession::findInstance(conversation->getUUID());
-    }
     uuid_vec_t uuids;
     getParticipantUUIDs(uuids);
 
@@ -1953,6 +1999,7 @@ bool LLFloaterIMContainer::selectConversationPair(const LLUUID& session_id, bool
         }
     }
     flashConversationItemWidget(session_id,false);
+    updateSnoozeButton();
     return handled;
 }
 
@@ -2107,6 +2154,7 @@ bool LLFloaterIMContainer::removeConversationListItem(const LLUUID& uuid, bool c
     mConversationsWidgets.erase(uuid);
     // Clear event query (otherwise reopening session in some way can bombard session with stale data)
     mConversationEventQueue.erase(uuid);
+    updateSnoozeButton();
 
     // Don't let the focus fall IW, select and refocus on the first conversation in the list
     if (change_focus && is_widget_selected && isInVisibleChain())

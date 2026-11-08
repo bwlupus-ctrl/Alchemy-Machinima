@@ -83,6 +83,7 @@ namespace LLInitParam
 std::string LLFloater::sButtonNames[BUTTON_COUNT] =
 {
     "llfloater_close_btn",      //BUTTON_CLOSE
+    "llfloater_snooze_btn",     //BUTTON_SNOOZE
     "llfloater_restore_btn",    //BUTTON_RESTORE
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
     "llfloater_collapse_btn",   //BUTTON_COLLAPSE
@@ -102,6 +103,7 @@ std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=
 #else
     "BUTTON_CLOSE_WIN",     //"Close (Ctrl-W)", //BUTTON_CLOSE
 #endif
+    "BUTTON_SNOOZE",
     "BUTTON_RESTORE",       //"Restore",    //BUTTON_RESTORE
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
     "BUTTON_COLLAPSE",      //"Collapse",   //BUTTON_COLLAPSE
@@ -115,6 +117,7 @@ std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=
 LLFloater::click_callback LLFloater::sButtonCallbacks[BUTTON_COUNT] =
 {
     LLFloater::onClickClose,    //BUTTON_CLOSE
+    LLFloater::onClickSnooze,   //BUTTON_SNOOZE
     LLFloater::onClickMinimize, //BUTTON_RESTORE
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
     LLFloater::onClickCollapse, //BUTTON_COLLAPSE
@@ -193,6 +196,7 @@ LLFloater::Params::Params()
     can_collapse("can_collapse", true),
 // [/SL:KB]
     can_close("can_close", true),
+    can_snooze("can_snooze", false),
     can_drag_on_left("can_drag_on_left", false),
     can_tear_off("can_tear_off", true),
     save_dock_state("save_dock_state", false),
@@ -207,6 +211,7 @@ LLFloater::Params::Params()
     legacy_header_height("legacy_header_height", 0),
     header_vpad("header_vpad", 7),
     close_image("close_image"),
+    snooze_image("snooze_image"),
     restore_image("restore_image"),
     minimize_image("minimize_image"),
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
@@ -216,6 +221,7 @@ LLFloater::Params::Params()
     dock_image("dock_image"),
     help_image("help_image"),
     close_pressed_image("close_pressed_image"),
+    snooze_pressed_image("snooze_pressed_image"),
     restore_pressed_image("restore_pressed_image"),
     minimize_pressed_image("minimize_pressed_image"),
 // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2
@@ -1859,6 +1865,7 @@ bool LLFloater::handleMouseDown(S32 x, S32 y, MASK mask)
         // because the parent container will handle it for us but we'll keep it here
         // for safety until after reworking the panel code to manage hidden children.
         if(offerClickToButton(x, y, mask, BUTTON_CLOSE)) return true;
+        if(offerClickToButton(x, y, mask, BUTTON_SNOOZE)) return true;
         if(offerClickToButton(x, y, mask, BUTTON_RESTORE)) return true;
         if(offerClickToButton(x, y, mask, BUTTON_TEAR_OFF)) return true;
         if(offerClickToButton(x, y, mask, BUTTON_DOCK)) return true;
@@ -2174,6 +2181,11 @@ void LLFloater::onClickClose(LLFloater* self, bool app_quitting)
     self->onClickCloseBtn(app_quitting);
 }
 
+void LLFloater::onClickSnooze(LLFloater* self)
+{
+    self->onSnooze();
+}
+
 void LLFloater::onClickCloseBtn(bool app_quitting)
 {
     closeFloater(false);
@@ -2363,6 +2375,15 @@ void    LLFloater::setCanClose(bool can_close)
     updateTitleButtons();
 }
 
+void LLFloater::setCanSnooze(bool can_snooze)
+{
+    if (mButtonsEnabled[BUTTON_SNOOZE] != can_snooze)
+    {
+        mButtonsEnabled[BUTTON_SNOOZE] = can_snooze;
+        updateTitleButtons();
+    }
+}
+
 void    LLFloater::setCanTearOff(bool can_tear_off)
 {
     mCanTearOff = can_tear_off;
@@ -2412,6 +2433,11 @@ void LLFloater::updateTitleButtons()
         }
 
         bool enabled = mButtonsEnabled[i];
+        if (i == BUTTON_SNOOZE && !mHostHandle.isDead())
+        {
+            // Hosted content delegates Snooze to its host's title bar.
+            enabled = false;
+        }
         if (i == BUTTON_HELP)
         {
             // don't show the help button if the floater is minimized
@@ -2603,6 +2629,8 @@ LLUIImage* LLFloater::getButtonImage(const Params& p, EFloaterButton e)
         default:
         case BUTTON_CLOSE:
             return p.close_image;
+        case BUTTON_SNOOZE:
+            return p.snooze_image;
         case BUTTON_RESTORE:
             return p.restore_image;
         case BUTTON_MINIMIZE:
@@ -2628,6 +2656,8 @@ LLUIImage* LLFloater::getButtonPressedImage(const Params& p, EFloaterButton e)
         default:
         case BUTTON_CLOSE:
             return p.close_pressed_image;
+        case BUTTON_SNOOZE:
+            return p.snooze_pressed_image;
         case BUTTON_RESTORE:
             return p.restore_pressed_image;
         case BUTTON_MINIMIZE:
@@ -3584,6 +3614,7 @@ void LLFloater::initFromParams(const LLFloater::Params& p)
     setCanCollapse( (p.can_collapse.isProvided()) ? p.can_collapse : p.can_minimize );
 // [/SL:KB]
     setCanClose(p.can_close);
+    setCanSnooze(p.can_snooze);
     setCanDock(p.can_dock);
     mResizableWidth = p.can_resize_width;
     mResizableHeight = p.can_resize_height;
