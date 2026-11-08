@@ -2,9 +2,9 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3310 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3340 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
-## Unknown product-path features (177)
+## Unknown product-path features (176)
 
 - `indra/llappearance/llavatarappearance.h` (HOOK)
 - `indra/llaudio/llaudiodecodemgr.cpp` (HOOK)
@@ -89,7 +89,6 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/fsmaniptranslatejoint.h` (HOOK)
 - `indra/newview/fsposestate.cpp` (HOOK)
 - `indra/newview/llaisapi.h` (HOOK)
-- `indra/newview/llconversationmodel.cpp` (HOOK)
 - `indra/newview/llfilepicker.h` (HOOK)
 - `indra/newview/llfloaterbigpreview.cpp` (OWNED)
 - `indra/newview/llfloatercamerapresets.cpp` (HOOK)
@@ -145,10 +144,8 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_preferences_view_advanced.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/floater_preview_animation.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml` (HOOK)
-- `indra/newview/skins/default/xui/en/menu_conversation.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/menu_explore_sounds.xml` (OWNED)
 - `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml` (HOOK)
-- `indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/panel_preferences_chat_rejection.xml` (HOOK)
@@ -157,6 +154,7 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/panel_prim_media_controls.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/panel_settings_water.xml` (HOOK)
 - `indra/newview/skins/default/xui/en/panel_snapshot_local.xml` (HOOK)
+- `indra/newview/skins/default/xui/en/widgets/floater.xml` (HOOK)
 - `indra/newview/skins/default/xui/es/floater_adjust_environment.xml` (HOOK)
 - `indra/newview/skins/default/xui/es/panel_preferences_setup.xml` (HOOK)
 - `indra/newview/skins/default/xui/es/strings.xml` (HOOK)
@@ -183,15 +181,35 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml` (HOOK)
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
+- `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1761)
+## Unknown hunk features (1791)
 
-- `indra/llui/llfloater.cpp@2180,30`
-- `indra/llui/llfloater.cpp@2311,18`
-- `indra/llui/llfloater.cpp@3257,7`
-- `indra/llui/llfloater.h@499,10`
-- `indra/llui/llfloater.h@567,8`
-- `indra/llui/llfloater.h@696,3`
+- `indra/llui/llfloater.cpp@83,7`
+- `indra/llui/llfloater.cpp@103,7`
+- `indra/llui/llfloater.cpp@117,7`
+- `indra/llui/llfloater.cpp@196,7`
+- `indra/llui/llfloater.cpp@211,7`
+- `indra/llui/llfloater.cpp@221,7`
+- `indra/llui/llfloater.cpp@1865,7`
+- `indra/llui/llfloater.cpp@2181,41`
+- `indra/llui/llfloater.cpp@2323,18`
+- `indra/llui/llfloater.cpp@2375,15`
+- `indra/llui/llfloater.cpp@2433,11`
+- `indra/llui/llfloater.cpp@2629,8`
+- `indra/llui/llfloater.cpp@2656,8`
+- `indra/llui/llfloater.cpp@3287,7`
+- `indra/llui/llfloater.cpp@3614,7`
+- `indra/llui/llfloater.h@142,7`
+- `indra/llui/llfloater.h@170,7`
+- `indra/llui/llfloater.h@192,7`
+- `indra/llui/llfloater.h@202,7`
+- `indra/llui/llfloater.h@305,7`
+- `indra/llui/llfloater.h@342,7`
+- `indra/llui/llfloater.h@398,7`
+- `indra/llui/llfloater.h@506,10`
+- `indra/llui/llfloater.h@574,8`
+- `indra/llui/llfloater.h@703,3`
 - `indra/llui/llscrollbar.cpp@135,21`
 - `indra/llui/llscrollcontainer.cpp@512,17`
 - `indra/llui/llscrollcontainer.cpp@567,11`
@@ -762,7 +780,8 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/notifications.xml@9953,25`
 - `indra/newview/skins/default/xui/en/notifications.xml@13569,12`
 - `indra/newview/skins/default/xui/en/strings.xml@21,9`
-- `indra/newview/skins/default/xui/en/strings.xml@4543,28`
+- `indra/newview/skins/default/xui/en/strings.xml@312,7`
+- `indra/newview/skins/default/xui/en/strings.xml@4544,28`
 - `indra/newview/viewer_manifest.py@76,12`
 - `indra/newview/viewer_manifest.py@91,6`
 - `indra/llcharacter/CMakeLists.txt@79,7`
@@ -1599,7 +1618,6 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llaisapi.cpp@1825,3`
 - `indra/newview/llaisapi.h@109,7`
 - `indra/newview/llaisapi.h@162,7`
-- `indra/newview/llconversationmodel.cpp@459,7`
 - `indra/newview/lldrawable.h@182,8`
 - `indra/newview/lldrawable.h@284,14`
 - `indra/newview/lldrawpoolwater.cpp@109,16`
@@ -1629,20 +1647,30 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloatercamerapresets.h@22,9`
 - `indra/newview/llfloatercamerapresets.h@67,13`
 - `indra/newview/llfloaterimcontainer.cpp@143,9`
-- `indra/newview/llfloaterimcontainer.cpp@1444,10`
-- `indra/newview/llfloaterimcontainer.cpp@1581,13`
-- `indra/newview/llfloaterimcontainer.cpp@1844,13`
+- `indra/newview/llfloaterimcontainer.cpp@247,7`
+- `indra/newview/llfloaterimcontainer.cpp@394,58`
+- `indra/newview/llfloaterimcontainer.cpp@564,10`
+- `indra/newview/llfloaterimcontainer.cpp@784,7`
+- `indra/newview/llfloaterimcontainer.cpp@1891,13`
+- `indra/newview/llfloaterimcontainer.cpp@1999,7`
+- `indra/newview/llfloaterimcontainer.cpp@2154,7`
+- `indra/newview/llfloaterimcontainer.h@45,7`
+- `indra/newview/llfloaterimcontainer.h@71,8`
+- `indra/newview/llfloaterimcontainer.h@107,7`
+- `indra/newview/llfloaterimcontainer.h@147,8`
 - `indra/newview/llfloaterimsession.cpp@423,10`
-- `indra/newview/llfloaterimsession.cpp@517,59`
-- `indra/newview/llfloaterimsession.cpp@770,7`
-- `indra/newview/llfloaterimsession.cpp@786,8`
-- `indra/newview/llfloaterimsession.cpp@832,21`
-- `indra/newview/llfloaterimsession.cpp@1093,17`
-- `indra/newview/llfloaterimsession.h@142,7`
-- `indra/newview/llfloaterimsession.h@162,8`
-- `indra/newview/llfloaterimsession.h@184,7`
-- `indra/newview/llfloaterimsessiontab.cpp@93,12`
-- `indra/newview/llfloaterimsessiontab.cpp@1234,12`
+- `indra/newview/llfloaterimsession.cpp@485,7`
+- `indra/newview/llfloaterimsession.cpp@518,64`
+- `indra/newview/llfloaterimsession.cpp@776,7`
+- `indra/newview/llfloaterimsession.cpp@792,8`
+- `indra/newview/llfloaterimsession.cpp@838,21`
+- `indra/newview/llfloaterimsession.cpp@1099,17`
+- `indra/newview/llfloaterimsession.cpp@1351,7`
+- `indra/newview/llfloaterimsession.h@142,8`
+- `indra/newview/llfloaterimsession.h@163,8`
+- `indra/newview/llfloaterimsession.h@185,7`
+- `indra/newview/llfloaterimsessiontab.cpp@397,7`
+- `indra/newview/llfloaterimsessiontab.cpp@1229,12`
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@38,7`
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@52,7`
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@111,27`
@@ -1897,9 +1925,7 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@477,7`
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@485,13`
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@499,25`
-- `indra/newview/skins/default/xui/en/menu_conversation.xml@13,13`
 - `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml@32,12`
-- `indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml@3,13`
 - `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml@39,25`
 - `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml@13,7`
 - `indra/newview/skins/default/xui/en/panel_preferences_chat_rejection.xml@81,7`
@@ -1919,6 +1945,8 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/panel_prim_media_controls.xml@373,7`
 - `indra/newview/skins/default/xui/en/panel_settings_water.xml@144,31`
 - `indra/newview/skins/default/xui/en/panel_snapshot_local.xml@197,21`
+- `indra/newview/skins/default/xui/en/widgets/floater.xml@13,7`
+- `indra/newview/skins/default/xui/en/widgets/floater.xml@21,7`
 - `indra/newview/skins/default/xui/es/floater_adjust_environment.xml@1,28`
 - `indra/newview/skins/default/xui/es/panel_preferences_setup.xml@22,6`
 - `indra/newview/skins/default/xui/es/strings.xml@22,9`
@@ -1947,8 +1975,9 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`
 - `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml@22,6`
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
+- `indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14`
 
-## Unknown/non-function contexts (1209)
+## Unknown/non-function contexts (1227)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -1958,12 +1987,24 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/CMakeLists.txt@222,7`: unknown/non-function (target_sources(llui)
 - `indra/llui/CMakeLists.txt@306,7`: unknown/non-function (if(BUILD_TESTING))
 - `indra/llui/llfloater.cpp@58,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/llui/llfloater.cpp@300,7`: unknown/non-function (LLFloater::LLFloater(const LLSD& key, const LLFloater::Params& p))
-- `indra/llui/llfloater.h@499,10`: unknown/non-function (public:)
-- `indra/llui/llfloater.h@557,7`: unknown/non-function (private:)
-- `indra/llui/llfloater.h@567,8`: unknown/non-function (private:)
-- `indra/llui/llfloater.h@578,12`: unknown/non-function (private:)
-- `indra/llui/llfloater.h@696,3`: unknown/non-function (private:)
+- `indra/llui/llfloater.cpp@83,7`: unknown/non-function (namespace LLInitParam)
+- `indra/llui/llfloater.cpp@103,7`: unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=)
+- `indra/llui/llfloater.cpp@117,7`: unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=)
+- `indra/llui/llfloater.cpp@196,7`: unknown/non-function (LLFloater::Params::Params())
+- `indra/llui/llfloater.cpp@211,7`: unknown/non-function (LLFloater::Params::Params())
+- `indra/llui/llfloater.cpp@221,7`: unknown/non-function (LLFloater::Params::Params())
+- `indra/llui/llfloater.cpp@306,7`: unknown/non-function (LLFloater::LLFloater(const LLSD& key, const LLFloater::Params& p))
+- `indra/llui/llfloater.h@142,7`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@170,7`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@192,7`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@202,7`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@305,7`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@398,7`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@506,10`: unknown/non-function (public:)
+- `indra/llui/llfloater.h@564,7`: unknown/non-function (private:)
+- `indra/llui/llfloater.h@574,8`: unknown/non-function (private:)
+- `indra/llui/llfloater.h@585,12`: unknown/non-function (private:)
+- `indra/llui/llfloater.h@703,3`: unknown/non-function (private:)
 - `indra/llui/llscrollbar.cpp@35,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llui/llscrollcontainer.cpp@32,12`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llui/llslider.cpp@24,18`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2429,10 +2470,11 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/panel_preferences_advanced.xml@234,39`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml@383,19`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/strings.xml@21,9`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/strings.xml@4233,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
-- `indra/newview/skins/default/xui/en/strings.xml@4283,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
-- `indra/newview/skins/default/xui/en/strings.xml@4324,9`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
-- `indra/newview/skins/default/xui/en/strings.xml@4543,28`: unknown/non-function (and report the problem.)
+- `indra/newview/skins/default/xui/en/strings.xml@312,7`: unknown/non-function (If you feel this is an error, please contact support@secondlife.com</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4234,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4284,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4325,9`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
+- `indra/newview/skins/default/xui/en/strings.xml@4544,28`: unknown/non-function (and report the problem.)
 - `indra/newview/viewer_manifest.py@76,12`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@91,6`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@108,12`: unknown/non-function (class ViewerManifest(LLManifest):)
@@ -2997,9 +3039,13 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloatercamerapresets.cpp@22,9`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatercamerapresets.h@22,9`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloatercamerapresets.h@67,13`: unknown/non-function (public:)
-- `indra/newview/llfloaterimsession.h@142,7`: unknown/non-function (public:)
-- `indra/newview/llfloaterimsession.h@162,8`: unknown/non-function (private:)
-- `indra/newview/llfloaterimsession.h@184,7`: unknown/non-function (private:)
+- `indra/newview/llfloaterimcontainer.h@45,7`: unknown/non-function (class LLLayoutPanel;)
+- `indra/newview/llfloaterimcontainer.h@71,8`: unknown/non-function (public:)
+- `indra/newview/llfloaterimcontainer.h@107,7`: unknown/non-function (public:)
+- `indra/newview/llfloaterimcontainer.h@147,8`: unknown/non-function (private:)
+- `indra/newview/llfloaterimsession.h@142,8`: unknown/non-function (public:)
+- `indra/newview/llfloaterimsession.h@163,8`: unknown/non-function (private:)
+- `indra/newview/llfloaterimsession.h@185,7`: unknown/non-function (private:)
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp@38,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@38,7`: unknown/non-function (public:)
 - `indra/newview/llfloaterpreferencesgraphicsadvanced.h@52,8`: unknown/non-function (public:)
@@ -3109,9 +3155,7 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@477,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@485,13`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/floater_snapshot.xml@499,25`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_conversation.xml@13,13`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml@32,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml@3,13`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml@39,25`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_inbox_inventory.xml@13,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_preferences_chat_rejection.xml@81,7`: unknown/non-function (declaration, XML, build list or global scope)
@@ -3131,6 +3175,8 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/panel_prim_media_controls.xml@373,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_settings_water.xml@144,31`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_snapshot_local.xml@197,21`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/widgets/floater.xml@13,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/widgets/floater.xml@21,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/es/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/es/panel_preferences_setup.xml@22,6`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/es/strings.xml@22,9`: unknown/non-function (declaration, XML, build list or global scope)
@@ -3159,5 +3205,6 @@ All 3310 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/floater_adjust_environment.xml@1,28`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/zh/panel_preferences_setup.xml@22,6`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14`: unknown/non-function (declaration, XML, build list or global scope)
 
 Other classified paths with unknown tags remain in inventory.json, including excluded artifacts and generated docs.

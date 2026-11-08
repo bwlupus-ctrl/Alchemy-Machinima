@@ -26,13 +26,25 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 58–65 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 300–306 (n=7) | unknown/non-function (LLFloater::LLFloater(const LLSD& key, const LLFloater::Params& p)) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 720–735 (n=16) | LLFloater::openFloater | common-ui | creative-candidate | unknown; conditional evidence present | Edits LLViewerEventRecorder |
-| 769–791 (n=23) | LLFloater::closeFloater, LLFloater::openFloater | common-ui | creative-candidate | unknown; conditional evidence present | Comment evidence: [UIFitNoise] Retry on a later open if layout animation made this pass incomplete. |
-| 857–889 (n=33) | LLFloater::closeFloater | common-ui | creative-candidate | unknown; conditional evidence present | Comment evidence: [SliderWheel] design v7 4.2/4.2a: flush pending slider wheel settles (the single final mouse-up of a wheel gesture) while the whole floater, derived class included, is still alive: canClose() passed, dependents are closed, onClose has NOT run, nothing is hidden or destroyed. The  |
-| 2180–2209 (n=30) | LLFloater::draw, LLFloater::profileZoneName | unknown | unknown-review | unknown; conditional evidence present | Edits LLFloater, LL_PROFILE_ZONE_TEXT, LL_PROFILER_CATEGORY_ENABLE_UI, LL_PROFILE_ZONE_TRANSIENT |
-| 2311–2328 (n=18) | LLFloater::updateTransparency | unknown | unknown-review | unknown; conditional evidence present | Edits LLUICtrl, LLView |
-| 3257–3263 (n=7) | LLFloaterView::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 83–89 (n=7) | unknown/non-function (namespace LLInitParam) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 103–109 (n=7) | unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 117–123 (n=7) | unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloater |
+| 196–202 (n=7) | unknown/non-function (LLFloater::Params::Params()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 211–217 (n=7) | unknown/non-function (LLFloater::Params::Params()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 221–227 (n=7) | unknown/non-function (LLFloater::Params::Params()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 306–312 (n=7) | unknown/non-function (LLFloater::LLFloater(const LLSD& key, const LLFloater::Params& p)) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 726–741 (n=16) | LLFloater::openFloater | common-ui | creative-candidate | unknown; conditional evidence present | Edits LLViewerEventRecorder |
+| 775–797 (n=23) | LLFloater::closeFloater, LLFloater::openFloater | common-ui | creative-candidate | unknown; conditional evidence present | Comment evidence: [UIFitNoise] Retry on a later open if layout animation made this pass incomplete. |
+| 863–895 (n=33) | LLFloater::closeFloater | common-ui | creative-candidate | unknown; conditional evidence present | Comment evidence: [SliderWheel] design v7 4.2/4.2a: flush pending slider wheel settles (the single final mouse-up of a wheel gesture) while the whole floater, derived class included, is still alive: canClose() passed, dependents are closed, onClose has NOT run, nothing is hidden or destroyed. The  |
+| 1865–1871 (n=7) | LLFloater::handleMouseDown | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2181–2221 (n=41) | LLFloater::draw, LLFloater::onClickSnooze, LLFloater::profileZoneName | unknown | unknown-review | unknown; conditional evidence present | Edits LLFloater, LL_PROFILE_ZONE_TEXT, LL_PROFILER_CATEGORY_ENABLE_UI, LL_PROFILE_ZONE_TRANSIENT |
+| 2323–2340 (n=18) | LLFloater::updateTransparency | unknown | unknown-review | unknown; conditional evidence present | Edits LLUICtrl, LLView |
+| 2375–2389 (n=15) | LLFloater::setCanSnooze | unknown | unknown-review | unknown; conditional evidence present | Edits LLFloater |
+| 2433–2443 (n=11) | LLFloater::updateTitleButtons | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Hosted content delegates Snooze to its host's title bar. |
+| 2629–2636 (n=8) | LLFloater::getButtonImage | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2656–2663 (n=8) | LLFloater::getButtonPressedImage | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3287–3293 (n=7) | LLFloaterView::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 3614–3620 (n=7) | LLFloater::initFromParams | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 1: `indra/llui/llfloater.h`
 
@@ -40,12 +52,19 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 374–381 (n=8) | getLifecycleSerial | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] see mLifecycleSerial |
-| 499–508 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 557–563 (n=7) | unknown/non-function (private:) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 567–574 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 578–589 (n=12) | unknown/non-function (private:) | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] design v7 4.2a: close-flush re-entrancy guard. mLifecycleSerial is bumped by openFloater and by every closeFloater that reaches the flush point, so a flush callback that reopens or re-closes this floater is detected by the outer closeFloater. |
-| 696–698 (n=3) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 142–148 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 170–176 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 192–198 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 202–208 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 305–311 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 342–348 (n=7) | onSnooze | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 380–387 (n=8) | getLifecycleSerial | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] see mLifecycleSerial |
+| 398–404 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloater |
+| 506–515 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 564–570 (n=7) | unknown/non-function (private:) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 574–581 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 585–596 (n=12) | unknown/non-function (private:) | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] design v7 4.2a: close-flush re-entrancy guard. mLifecycleSerial is bumped by openFloater and by every closeFloater that reaches the flush point, so a flush callback that reopens or re-closes this floater is detected by the outer closeFloater. |
+| 703–705 (n=3) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 1: `indra/llui/llscrollbar.cpp`
 
@@ -1719,10 +1738,11 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 21–29 (n=9) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 4233–4242 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
-| 4283–4292 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
-| 4324–4332 (n=9) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 4543–4570 (n=28) | unknown/non-function (and report the problem.) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names |
+| 312–318 (n=7) | unknown/non-function (If you feel this is an error, please contact support@secondlife.com</string>) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 4234–4243 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
+| 4284–4293 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
+| 4325–4333 (n=9) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 4544–4571 (n=28) | unknown/non-function (and report the problem.) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names |
 
 ## Slice 2: `indra/newview/viewer_manifest.py`
 
@@ -5795,14 +5815,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 109–115 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 162–168 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
-## Slice 99: `indra/newview/llconversationmodel.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 459–465 (n=7) | LLConversationItemSession::buildContextMenu | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 99: `indra/newview/lldrawable.h`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -5922,9 +5934,24 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 143–151 (n=9) | LLFloaterIMContainer::sessionActivated | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel, LLFloaterIMSessionTab |
-| 1444–1453 (n=10) | LLFloaterIMContainer::doToSelectedConversation | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1581–1593 (n=13) | LLFloaterIMContainer::enableContextMenuItem | unknown | unknown-review | unknown; conditional evidence present | Edits LLConversationItem, gDisconnected, LLFloaterIMSession |
-| 1844–1856 (n=13) | LLFloaterIMContainer::showConversation | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel, gIMMgr, LLFloaterIMSessionTab |
+| 247–253 (n=7) | LLFloaterIMContainer::postBuild | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloaterIMContainer |
+| 394–451 (n=58) | LLFloaterIMContainer::addFloater, LLFloaterIMContainer::getSelectedSnoozeFloater, LLFloaterIMContainer::onSnooze, LLFloaterIMContainer::removeFloater, LLFloaterIMContainer::setSelectedSession, LLFloaterIMContainer::updateSnoozeButton | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Participant rows belong to their parent conversation. Keyboard selection need not change the displayed conversation (mSelectedSession). A retained snoozed model alone is not a live, hosted conversation. |
+| 564–573 (n=10) | LLFloaterIMContainer::idleUpdate | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Clearing selection and removing participant rows do not emit the folder view's selection signal. Reconcile on the one-second refresh. |
+| 784–790 (n=7) | LLFloaterIMContainer::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 1891–1903 (n=13) | LLFloaterIMContainer::showConversation | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel, gIMMgr, LLFloaterIMSessionTab |
+| 1999–2005 (n=7) | LLFloaterIMContainer::selectConversationPair | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2154–2160 (n=7) | LLFloaterIMContainer::removeConversationListItem | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/llfloaterimcontainer.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 45–51 (n=7) | unknown/non-function (class LLLayoutPanel;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloaterIMSession |
+| 71–78 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloater |
+| 107–113 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID |
+| 147–154 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFloaterIMSession |
 
 ## Slice 99: `indra/newview/llfloaterimsession.cpp`
 
@@ -5933,11 +5960,13 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 423–432 (n=10) | LLFloaterIMSession::initIMSession | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Retained group messages predate this floater. Replay them without alerts; the first post-expiry message is inserted only after reconstruction. |
-| 517–575 (n=59) | LLFloaterIMSession::onSnoozeClicked, LLFloaterIMSession::requestGroupChatSnooze, LLNotificationsUtil::add | unknown | unknown-review | unknown; conditional evidence present | Edits LLFloaterIMSession, gDisconnected, gSavedSettings, LLHandle, LLFloater, LLIMModel, LLNotificationsUtil, LLSD, LLVoiceChannel, gIMMgr |
-| 770–776 (n=7) | LLFloaterIMSession::show | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
-| 786–793 (n=8) | LLFloaterIMSession::show | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 832–852 (n=21) | LLFloaterIMSession::onClose | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Remove just the conversation UI; leave the model and server session joined. A hidden container does not reselect on removal; do not leave its selected ID pointing at a snoozed conversation that polling can recreate. |
-| 1093–1109 (n=17) | LLFloaterIMSession::updateMessages, ~ParseMaskRestore | unknown | unknown-review | unknown; conditional evidence present | Edits LLChatHistory |
+| 485–491 (n=7) | LLFloaterIMSession::postBuild | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 518–581 (n=64) | LLFloaterIMSession::onSnooze, LLFloaterIMSession::onSnoozeClicked, LLFloaterIMSession::requestGroupChatSnooze, LLNotificationsUtil::add | unknown | unknown-review | unknown; conditional evidence present | Edits LLFloaterIMSession, gDisconnected, gSavedSettings, LLHandle, LLFloater, LLIMModel, LLNotificationsUtil, LLSD, LLVoiceChannel, gIMMgr |
+| 776–782 (n=7) | LLFloaterIMSession::show | unknown | unknown-review | unknown; no local conditional evidence | Edits LLIMModel |
+| 792–799 (n=8) | LLFloaterIMSession::show | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 838–858 (n=21) | LLFloaterIMSession::onClose | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Remove just the conversation UI; leave the model and server session joined. A hidden container does not reselect on removal; do not leave its selected ID pointing at a snoozed conversation that polling can recreate. |
+| 1099–1115 (n=17) | LLFloaterIMSession::updateMessages, ~ParseMaskRestore | unknown | unknown-review | unknown; conditional evidence present | Edits LLChatHistory |
+| 1351–1357 (n=7) | LLFloaterIMSession::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
 
 ## Slice 99: `indra/newview/llfloaterimsession.h`
 
@@ -5945,9 +5974,9 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 142–148 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 162–169 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 184–190 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 142–149 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 163–170 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 185–191 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/llfloaterimsessiontab.cpp`
 
@@ -5955,8 +5984,8 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 93–104 (n=12) | LLFloaterIMSessionTab::LLFloaterIMSessionTab, add | unknown | unknown-review | unknown; conditional evidence present | Edits LLUICtrl, LLSD, LLFloaterIMSession, gDisconnected |
-| 1234–1245 (n=12) | LLFloaterIMSessionTab::onOpen | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel, LLFloaterIMContainer |
+| 397–403 (n=7) | LLFloaterIMSessionTab::draw | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 1229–1240 (n=12) | LLFloaterIMSessionTab::onOpen | unknown | unknown-review | unknown; conditional evidence present | Edits LLIMModel, LLFloaterIMContainer |
 
 ## Slice 99: `indra/newview/llfloaterpreferencesgraphicsadvanced.cpp`
 
@@ -6744,14 +6773,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 485–497 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 499–523 (n=25) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Hidden at the legacy extent; bottom anchoring moves this into the added Static latent rectangles overlap only while this note is hidden. The xui-check: allow-overlap panel_container actor_key_snapshot_note --> xui-check: allow-overlap thumbnail_placeholder actor_key_snapshot_note |
 
-## Slice 99: `indra/newview/skins/default/xui/en/menu_conversation.xml`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 13–25 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 99: `indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6759,14 +6780,6 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 32–43 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 99: `indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 3–15 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/en/panel_camera_preset_item.xml`
 
@@ -6849,6 +6862,15 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 197–217 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] high-res override toggle (donor: Black Dragon "Allow High |
+
+## Slice 99: `indra/newview/skins/default/xui/en/widgets/floater.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 13–19 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 21–27 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/es/floater_adjust_environment.xml`
 
@@ -7059,4 +7081,12 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 31–39 (n=9) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/skins/gemini/xui/en/widgets/floater.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 12–25 (n=14) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 

@@ -369,6 +369,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
             },
@@ -383,15 +387,333 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
-            },
-            {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
             }
           ],
           "scope": "creative-candidate",
           "settings_references": [],
           "slice": 1
+        },
+        {
+          "base_count": 6,
+          "base_start": 81,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (namespace LLInitParam)"
+          ],
+          "git_context": "namespace LLInitParam",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 89,
+          "head_start": 83,
+          "id": "indra/llui/llfloater.cpp@83,7",
+          "patch": " std::string LLFloater::sButtonNames[BUTTON_COUNT] =\n {\n     \"llfloater_close_btn\",      //BUTTON_CLOSE\n+    \"llfloater_snooze_btn\",     //BUTTON_SNOOZE\n     \"llfloater_restore_btn\",    //BUTTON_RESTORE\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n     \"llfloater_collapse_btn\",   //BUTTON_COLLAPSE\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "llfloater_snooze_btn"
+          ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 100,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=)"
+          ],
+          "git_context": "std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 109,
+          "head_start": 103,
+          "id": "indra/llui/llfloater.cpp@103,7",
+          "patch": " #else\n     \"BUTTON_CLOSE_WIN\",     //\"Close (Ctrl-W)\", //BUTTON_CLOSE\n #endif\n+    \"BUTTON_SNOOZE\",\n     \"BUTTON_RESTORE\",       //\"Restore\",    //BUTTON_RESTORE\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n     \"BUTTON_COLLAPSE\",      //\"Collapse\",   //BUTTON_COLLAPSE\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "BUTTON_SNOOZE"
+          ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 113,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=)"
+          ],
+          "git_context": "std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 123,
+          "head_start": 117,
+          "id": "indra/llui/llfloater.cpp@117,7",
+          "patch": " LLFloater::click_callback LLFloater::sButtonCallbacks[BUTTON_COUNT] =\n {\n     LLFloater::onClickClose,    //BUTTON_CLOSE\n+    LLFloater::onClickSnooze,   //BUTTON_SNOOZE\n     LLFloater::onClickMinimize, //BUTTON_RESTORE\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n     LLFloater::onClickCollapse, //BUTTON_COLLAPSE\n",
+          "purpose": "Edits LLFloater",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 191,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (LLFloater::Params::Params())"
+          ],
+          "git_context": "LLFloater::Params::Params()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 202,
+          "head_start": 196,
+          "id": "indra/llui/llfloater.cpp@196,7",
+          "patch": "     can_collapse(\"can_collapse\", true),\n // [/SL:KB]\n     can_close(\"can_close\", true),\n+    can_snooze(\"can_snooze\", false),\n     can_drag_on_left(\"can_drag_on_left\", false),\n     can_tear_off(\"can_tear_off\", true),\n     save_dock_state(\"save_dock_state\", false),\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "can_snooze"
+          ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 205,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (LLFloater::Params::Params())"
+          ],
+          "git_context": "LLFloater::Params::Params()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 217,
+          "head_start": 211,
+          "id": "indra/llui/llfloater.cpp@211,7",
+          "patch": "     legacy_header_height(\"legacy_header_height\", 0),\n     header_vpad(\"header_vpad\", 7),\n     close_image(\"close_image\"),\n+    snooze_image(\"snooze_image\"),\n     restore_image(\"restore_image\"),\n     minimize_image(\"minimize_image\"),\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "snooze_image"
+          ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 214,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (LLFloater::Params::Params())"
+          ],
+          "git_context": "LLFloater::Params::Params()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 227,
+          "head_start": 221,
+          "id": "indra/llui/llfloater.cpp@221,7",
+          "patch": "     dock_image(\"dock_image\"),\n     help_image(\"help_image\"),\n     close_pressed_image(\"close_pressed_image\"),\n+    snooze_pressed_image(\"snooze_pressed_image\"),\n     restore_pressed_image(\"restore_pressed_image\"),\n     minimize_pressed_image(\"minimize_pressed_image\"),\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "snooze_pressed_image"
+          ],
+          "slice": 99
         },
         {
           "base_count": 6,
@@ -415,13 +737,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 306,
-          "head_start": 300,
-          "id": "indra/llui/llfloater.cpp@300,7",
+          "head_end": 312,
+          "head_start": 306,
+          "id": "indra/llui/llfloater.cpp@306,7",
           "patch": " // [/SL:KB]\n     mForeground(false),\n     mFirstLook(true),\n+    mUIFitDiagnosed(false),\n     mButtonScale(1.0f),\n     mAutoFocus(true), // automatically take focus when opened\n     mCanDock(false),\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -437,10 +763,6 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
-            },
-            {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
             }
           ],
           "scope": "creative-candidate",
@@ -471,13 +793,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 16,
-          "head_end": 735,
-          "head_start": 720,
-          "id": "indra/llui/llfloater.cpp@720,16",
+          "head_end": 741,
+          "head_start": 726,
+          "id": "indra/llui/llfloater.cpp@726,16",
           "patch": " {\n     LL_INFOS() << \"Opening floater \" << getName() << \" full path: \" << getPathname() << LL_ENDL;\n \n-    LLViewerEventRecorder::instance().logVisibilityChange( getPathname(), getName(), true,\"floater\"); // Last param is event subtype or empty string\n+    LLViewerEventRecorder& recorder = LLViewerEventRecorder::instance();\n+    if (recorder.getLoggingStatus())\n+    {\n+        recorder.logVisibilityChange(getPathname(), getName(), true, \"floater\");\n+    }\n \n     mKey = key; // in case we need to open ourselves again\n \n+    ++mLifecycleSerial; // [SliderWheel] a reopen supersedes an in-progress close flush (design 4.2a)\n+\n     if (getSoundFlags() != SILENT\n     // don't play open sound for hosted (tabbed) windows\n         && !getHost()\n",
           "purpose": "Edits LLViewerEventRecorder",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -493,10 +819,6 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
-            },
-            {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
             }
           ],
           "scope": "creative-candidate",
@@ -531,13 +853,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 23,
-          "head_end": 791,
-          "head_start": 769,
-          "id": "indra/llui/llfloater.cpp@769,23",
+          "head_end": 797,
+          "head_start": 775,
+          "id": "indra/llui/llfloater.cpp@775,23",
           "patch": "     mOpenSignal(this, key);\n     onOpen(key);\n \n+    if (!mUIFitDiagnosed)\n+    {\n+        // [UIFitNoise] Retry on a later open if layout animation made this pass incomplete.\n+        mUIFitDiagnosed = LLUIFitDiag::diagnoseFloater(this);\n+    }\n+\n     dirtyRect();\n }\n \n void LLFloater::closeFloater(bool app_quitting)\n {\n     LL_INFOS() << \"Closing floater \" << getName() << LL_ENDL;\n-    LLViewerEventRecorder::instance().logVisibilityChange( getPathname(), getName(), false,\"floater\"); // Last param is event subtype or empty string\n+    LLViewerEventRecorder& recorder = LLViewerEventRecorder::instance();\n+    if (recorder.getLoggingStatus())\n+    {\n+        recorder.logVisibilityChange(getPathname(), getName(), false, \"floater\");\n+    }\n     if (app_quitting)\n     {\n         LLFloater::sQuitting = true;\n",
           "purpose": "Comment evidence: [UIFitNoise] Retry on a later open if layout animation made this pass incomplete.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -553,10 +879,6 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
-            },
-            {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
             }
           ],
           "scope": "creative-candidate",
@@ -591,13 +913,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 33,
-          "head_end": 889,
-          "head_start": 857,
-          "id": "indra/llui/llfloater.cpp@857,33",
+          "head_end": 895,
+          "head_start": 863,
+          "id": "indra/llui/llfloater.cpp@863,33",
           "patch": " \n         dirtyRect();\n \n+        // [SliderWheel] design v7 4.2/4.2a: flush pending slider wheel settles (the single final\n+        // mouse-up of a wheel gesture) while the whole floater, derived class included, is still\n+        // alive: canClose() passed, dependents are closed, onClose has NOT run, nothing is hidden or\n+        // destroyed. The flush runs arbitrary mouse-up callbacks that may re-enter closeFloater,\n+        // reopen, die() or delete this floater, so: self handle + lifecycle serial + active flag.\n+        if (!mCloseFlushActive)                         // nested close: the outer call owns the flush\n+        {\n+            LLHandle<LLFloater> self = getHandle();\n+            const U32 serial = ++mLifecycleSerial;\n+            mCloseFlushActive = true;\n+            LLSliderWheel::settleForClose(self, serial, app_quitting);   // may run arbitrary callbacks\n+            LLFloater* f = self.get();\n+            if (!f)\n+            {\n+                return;                                 // deleted (destroyInstance -> delete): touch nothing\n+            }\n+            f->mCloseFlushActive = false;\n+            if (f->mLifecycleSerial != serial || f->isDead())\n+            {\n+                return;                                 // nested close / reopen / die(): superseded\n+            }\n+        }\n+        else\n+        {\n+            ++mLifecycleSerial;                         // a nested close supersedes the outer one\n+        }\n+\n         // Close callbacks\n         onClose(app_quitting);\n         mCloseSignal(this, LLSD(app_quitting));\n",
           "purpose": "Comment evidence: [SliderWheel] design v7 4.2/4.2a: flush pending slider wheel settles (the single final mouse-up of a wheel gesture) while the whole floater, derived class included, is still alive: canClose() passed, dependents are closed, onClose has NOT run, nothing is hidden or destroyed. The ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -613,10 +939,6 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
-            },
-            {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
             }
           ],
           "scope": "creative-candidate",
@@ -624,8 +946,62 @@
           "slice": 1
         },
         {
-          "base_count": 11,
-          "base_start": 2134,
+          "base_count": 6,
+          "base_start": 1813,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater::handleMouseDown"
+          ],
+          "git_context": "bool LLFloater::handleMouseDown(S32 x, S32 y, MASK mask)",
+          "guard_evidence": [
+            "if(offerClickToButton(x, y, mask, BUTTON_SNOOZE)) return true;"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 7,
+          "head_end": 1871,
+          "head_start": 1865,
+          "id": "indra/llui/llfloater.cpp@1865,7",
+          "patch": "         // because the parent container will handle it for us but we'll keep it here\n         // for safety until after reworking the panel code to manage hidden children.\n         if(offerClickToButton(x, y, mask, BUTTON_CLOSE)) return true;\n+        if(offerClickToButton(x, y, mask, BUTTON_SNOOZE)) return true;\n         if(offerClickToButton(x, y, mask, BUTTON_RESTORE)) return true;\n         if(offerClickToButton(x, y, mask, BUTTON_TEAR_OFF)) return true;\n         if(offerClickToButton(x, y, mask, BUTTON_DOCK)) return true;\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 17,
+          "base_start": 2128,
           "candidate_features_from_subjects": [
             "camera",
             "capture-sidecar",
@@ -638,9 +1014,10 @@
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
             "LLFloater::draw",
+            "LLFloater::onClickSnooze",
             "LLFloater::profileZoneName"
           ],
-          "git_context": "void LLFloater::onClickCloseBtn(bool app_quitting)",
+          "git_context": "void LLFloater::onClickClose(LLFloater* self, bool app_quitting)",
           "guard_evidence": [
             "if (mProfileZoneName.empty())",
             "#if LL_PROFILER_CATEGORY_ENABLE_UI",
@@ -648,14 +1025,18 @@
             "if (TracyIsConnected)"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 30,
-          "head_end": 2209,
-          "head_start": 2180,
-          "id": "indra/llui/llfloater.cpp@2180,30",
-          "patch": " }\n \n \n+const std::string& LLFloater::profileZoneName() const\n+{\n+    if (mProfileZoneName.empty())\n+    {\n+        mProfileZoneName = \"Floater:\" +\n+            (mInstanceName.empty() ? getName() : mInstanceName);\n+    }\n+    return mProfileZoneName;\n+}\n+\n // virtual\n void LLFloater::draw()\n {\n     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n-    LL_PROFILE_ZONE_TEXT(getTitle().c_str(), getTitle().length());\n+#if LL_PROFILER_CATEGORY_ENABLE_UI\n+    LL_PROFILE_ZONE_TRANSIENT(profileZoneName().c_str());\n+#endif\n+#ifdef TRACY_ENABLE\n+    if (TracyIsConnected)\n+    {\n+        const std::string title = getTitle();\n+        LL_PROFILE_ZONE_TEXT(title.c_str(), title.size());\n+    }\n+#endif\n \n     // draw background\n     if( isBackgroundVisible() )\n",
+          "head_count": 41,
+          "head_end": 2221,
+          "head_start": 2181,
+          "id": "indra/llui/llfloater.cpp@2181,41",
+          "patch": "     self->onClickCloseBtn(app_quitting);\n }\n \n+void LLFloater::onClickSnooze(LLFloater* self)\n+{\n+    self->onSnooze();\n+}\n+\n void LLFloater::onClickCloseBtn(bool app_quitting)\n {\n     closeFloater(false);\n }\n \n \n+const std::string& LLFloater::profileZoneName() const\n+{\n+    if (mProfileZoneName.empty())\n+    {\n+        mProfileZoneName = \"Floater:\" +\n+            (mInstanceName.empty() ? getName() : mInstanceName);\n+    }\n+    return mProfileZoneName;\n+}\n+\n // virtual\n void LLFloater::draw()\n {\n     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n-    LL_PROFILE_ZONE_TEXT(getTitle().c_str(), getTitle().length());\n+#if LL_PROFILER_CATEGORY_ENABLE_UI\n+    LL_PROFILE_ZONE_TRANSIENT(profileZoneName().c_str());\n+#endif\n+#ifdef TRACY_ENABLE\n+    if (TracyIsConnected)\n+    {\n+        const std::string title = getTitle();\n+        LL_PROFILE_ZONE_TEXT(title.c_str(), title.size());\n+    }\n+#endif\n \n     // draw background\n     if( isBackgroundVisible() )\n",
           "purpose": "Edits LLFloater, LL_PROFILE_ZONE_TEXT, LL_PROFILER_CATEGORY_ENABLE_UI, LL_PROFILE_ZONE_TRANSIENT",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -671,10 +1052,6 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
-            },
-            {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
             }
           ],
           "scope": "unknown-review",
@@ -704,13 +1081,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 18,
-          "head_end": 2328,
-          "head_start": 2311,
-          "id": "indra/llui/llfloater.cpp@2311,18",
+          "head_end": 2340,
+          "head_start": 2323,
+          "id": "indra/llui/llfloater.cpp@2323,18",
           "patch": " void LLFloater::updateTransparency(LLView* view, ETypeTransparency transparency_type)\n {\n     if (!view) return;\n-    child_list_t children = *view->getChildList();\n-    child_list_t::iterator it = children.begin();\n-\n-    LLUICtrl* ctrl = dynamic_cast<LLUICtrl*>(view);\n-    if (ctrl)\n-    {\n-        ctrl->setTransparencyType(transparency_type);\n-    }\n-\n-    for(; it != children.end(); ++it)\n-    {\n-        updateTransparency(*it, transparency_type);\n-    }\n+    view->applyTransparencyType((U8)transparency_type);\n }\n \n void LLFloater::updateTransparency(ETypeTransparency transparency_type)\n {\n+    if (mAppliedTransparency == transparency_type &&\n+        mAppliedTreeGeneration == LLView::sTreeGeneration)\n+    {\n+        return;\n+    }\n+    mAppliedTransparency = transparency_type;\n+    mAppliedTreeGeneration = LLView::sTreeGeneration;\n     updateTransparency(this, transparency_type);\n }\n \n",
           "purpose": "Edits LLUICtrl, LLView",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -726,10 +1107,218 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 2303,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater::setCanSnooze"
+          ],
+          "git_context": "void    LLFloater::setCanClose(bool can_close)",
+          "guard_evidence": [
+            "if (mButtonsEnabled[BUTTON_SNOOZE] != can_snooze)"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 15,
+          "head_end": 2389,
+          "head_start": 2375,
+          "id": "indra/llui/llfloater.cpp@2375,15",
+          "patch": "     updateTitleButtons();\n }\n \n+void LLFloater::setCanSnooze(bool can_snooze)\n+{\n+    if (mButtonsEnabled[BUTTON_SNOOZE] != can_snooze)\n+    {\n+        mButtonsEnabled[BUTTON_SNOOZE] = can_snooze;\n+        updateTitleButtons();\n+    }\n+}\n+\n void    LLFloater::setCanTearOff(bool can_tear_off)\n {\n     mCanTearOff = can_tear_off;\n",
+          "purpose": "Edits LLFloater",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
             },
             {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 2352,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater::updateTitleButtons"
+          ],
+          "git_context": "void LLFloater::updateTitleButtons()",
+          "guard_evidence": [
+            "if (i == BUTTON_SNOOZE && !mHostHandle.isDead())"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 11,
+          "head_end": 2443,
+          "head_start": 2433,
+          "id": "indra/llui/llfloater.cpp@2433,11",
+          "patch": "         }\n \n         bool enabled = mButtonsEnabled[i];\n+        if (i == BUTTON_SNOOZE && !mHostHandle.isDead())\n+        {\n+            // Hosted content delegates Snooze to its host's title bar.\n+            enabled = false;\n+        }\n         if (i == BUTTON_HELP)\n         {\n             // don't show the help button if the floater is minimized\n",
+          "purpose": "Comment evidence: Hosted content delegates Snooze to its host's title bar.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 2543,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater::getButtonImage"
+          ],
+          "git_context": "LLUIImage* LLFloater::getButtonImage(const Params& p, EFloaterButton e)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 2636,
+          "head_start": 2629,
+          "id": "indra/llui/llfloater.cpp@2629,8",
+          "patch": "         default:\n         case BUTTON_CLOSE:\n             return p.close_image;\n+        case BUTTON_SNOOZE:\n+            return p.snooze_image;\n         case BUTTON_RESTORE:\n             return p.restore_image;\n         case BUTTON_MINIMIZE:\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 2568,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater::getButtonPressedImage"
+          ],
+          "git_context": "LLUIImage* LLFloater::getButtonPressedImage(const Params& p, EFloaterButton e)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 2663,
+          "head_start": 2656,
+          "id": "indra/llui/llfloater.cpp@2656,8",
+          "patch": "         default:\n         case BUTTON_CLOSE:\n             return p.close_pressed_image;\n+        case BUTTON_SNOOZE:\n+            return p.snooze_pressed_image;\n         case BUTTON_RESTORE:\n             return p.restore_pressed_image;\n         case BUTTON_MINIMIZE:\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
             }
           ],
           "scope": "unknown-review",
@@ -756,13 +1345,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 3263,
-          "head_start": 3257,
-          "id": "indra/llui/llfloater.cpp@3257,7",
+          "head_end": 3293,
+          "head_start": 3287,
+          "id": "indra/llui/llfloater.cpp@3287,7",
           "patch": " \n void LLFloaterView::draw()\n {\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     refresh();\n \n     // hide focused floater if in cycle mode, so that it can be drawn on top\n",
           "purpose": "Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -778,10 +1371,58 @@
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 3523,
+          "candidate_features_from_subjects": [
+            "camera",
+            "capture-sidecar",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloater::initFromParams"
+          ],
+          "git_context": "void LLFloater::initFromParams(const LLFloater::Params& p)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 3620,
+          "head_start": 3614,
+          "id": "indra/llui/llfloater.cpp@3614,7",
+          "patch": "     setCanCollapse( (p.can_collapse.isProvided()) ? p.can_collapse : p.can_minimize );\n // [/SL:KB]\n     setCanClose(p.can_close);\n+    setCanSnooze(p.can_snooze);\n     setCanDock(p.can_dock);\n     mResizableWidth = p.can_resize_width;\n     mResizableHeight = p.can_resize_height;\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
             },
             {
-              "commit": "8b2dad5ef13",
-              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "abd13eaa5eb",
+              "subject": "ReShade history resets on hard cuts/teleports + UIFit diagnostic noise fix"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
             }
           ],
           "scope": "unknown-review",
@@ -798,6 +1439,312 @@
         "common-ui"
       ],
       "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 142,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 148,
+          "head_start": 142,
+          "id": "indra/llui/llfloater.h@142,7",
+          "patch": "     enum EFloaterButton\n     {\n         BUTTON_CLOSE = 0,\n+        BUTTON_SNOOZE,\n         BUTTON_RESTORE,\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n         BUTTON_COLLAPSE,\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 169,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 176,
+          "head_start": 170,
+          "id": "indra/llui/llfloater.h@170,7",
+          "patch": "                                 can_collapse,\n // [/SL:KB]\n                                 can_close,\n+                                can_snooze,\n                                 can_drag_on_left,\n                                 can_tear_off,\n                                 save_rect,\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 190,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 198,
+          "head_start": 192,
+          "id": "indra/llui/llfloater.h@192,7",
+          "patch": " \n         // Images for top-right controls\n         Optional<LLUIImage*>    close_image,\n+                                snooze_image,\n                                 restore_image,\n                                 minimize_image,\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 199,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 208,
+          "head_start": 202,
+          "id": "indra/llui/llfloater.h@202,7",
+          "patch": "                                 dock_image,\n                                 help_image;\n         Optional<LLUIImage*>    close_pressed_image,\n+                                snooze_pressed_image,\n                                 restore_pressed_image,\n                                 minimize_pressed_image,\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 301,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 311,
+          "head_start": 305,
+          "id": "indra/llui/llfloater.h@305,7",
+          "patch": "     void            setCanCollapse(bool can_collapse);\n // [/SL:KB]\n     void            setCanClose(bool can_close);\n+    void            setCanSnooze(bool can_snooze);\n     void            setCanTearOff(bool can_tear_off);\n     virtual void    setCanResize(bool can_resize);\n     void            setCanDrag(bool can_drag);\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 337,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "onSnooze"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 348,
+          "head_start": 342,
+          "id": "indra/llui/llfloater.h@342,7",
+          "patch": " \n     virtual void    onOpen(const LLSD& key) {}\n     virtual void    onClose(bool app_quitting) {}\n+    virtual void    onSnooze() {}\n \n     // This cannot be \"const\" until all derived floater canClose()\n     // methods are const as well.  JC\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
         {
           "base_count": 6,
           "base_start": 374,
@@ -819,13 +1766,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 381,
-          "head_start": 374,
-          "id": "indra/llui/llfloater.h@374,8",
+          "head_end": 387,
+          "head_start": 380,
+          "id": "indra/llui/llfloater.h@380,8",
           "patch": " \n     virtual void    setTornOff(bool torn_off) { mTornOff = torn_off; }\n     bool isTornOff() const { return mTornOff; }\n+    // [SliderWheel] see mLifecycleSerial\n+    U32  getLifecycleSerial() const { return mLifecycleSerial; }\n     void setOpenPositioning(LLFloaterEnums::EOpenPositioning pos) {mPositioning = pos;}\n \n \n",
           "purpose": "Comment evidence: [SliderWheel] see mLifecycleSerial",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -848,6 +1799,57 @@
           "slice": 1
         },
         {
+          "base_count": 6,
+          "base_start": 390,
+          "candidate_features_from_subjects": [
+            "camera",
+            "common-ui"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 404,
+          "head_start": 398,
+          "id": "indra/llui/llfloater.h@398,7",
+          "patch": " \n     static void     onClickClose(LLFloater* floater);\n     static void     onClickClose(LLFloater* floater, bool app_quitting);\n+    static void     onClickSnooze(LLFloater* floater);\n     static void     onClickMinimize(LLFloater* floater);\n // [SL:KB] - Patch: UI-FloaterCollapse | Checked: Catznip-3.2\n     static void     onClickCollapse(LLFloater* floater);\n",
+          "purpose": "Edits LLFloater",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "adac4362c9c",
+              "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
+            },
+            {
+              "commit": "939e9838594",
+              "subject": "UI draw cost batch 2: clip-cull, torn-off menu fix, draw lint gate, login-screen UI self-test"
+            },
+            {
+              "commit": "8aa3c922f7d",
+              "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
+            },
+            {
+              "commit": "8b2dad5ef13",
+              "subject": "Viewer-wide slider mouse wheel with scroll-through guard [SliderWheel]"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
           "base_count": 7,
           "base_start": 497,
           "candidate_features_from_subjects": [
@@ -866,13 +1868,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 508,
-          "head_start": 499,
-          "id": "indra/llui/llfloater.h@499,10",
+          "head_end": 515,
+          "head_start": 506,
+          "id": "indra/llui/llfloater.h@506,10",
           "patch": "     commit_signal_t* mMinimizeSignal;\n \n protected:\n+    const std::string& profileZoneName() const;\n+\n     bool            mSaveRect;\n+    mutable std::string mProfileZoneName;\n     bool            mDefaultRectForGroup;\n     std::string     mRectControl;\n     std::string     mPosXControl;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -915,13 +1921,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 563,
-          "head_start": 557,
-          "id": "indra/llui/llfloater.h@557,7",
+          "head_end": 570,
+          "head_start": 564,
+          "id": "indra/llui/llfloater.h@564,7",
           "patch": " \n \n     bool            mFirstLook;         // true if the _next_ time this floater is visible will be the first time in the session that it is visible.\n+    bool            mUIFitDiagnosed;    // [UIFit] one view-tree diagnostic pass per instance\n \n     typedef std::set<LLHandle<LLFloater> > handle_set_t;\n     typedef std::set<LLHandle<LLFloater> >::iterator handle_set_iter_t;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -962,13 +1972,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 574,
-          "head_start": 567,
-          "id": "indra/llui/llfloater.h@567,8",
+          "head_end": 581,
+          "head_start": 574,
+          "id": "indra/llui/llfloater.h@574,8",
           "patch": "     bool            mButtonsEnabled[BUTTON_COUNT];\n     F32             mButtonScale;\n     bool            mAutoFocus;\n+    ETypeTransparency mAppliedTransparency { TT_DEFAULT };\n+    U32               mAppliedTreeGeneration { 0 };\n     LLHandle<LLFloater> mSnappedTo;\n \n     LLHandle<LLFloater> mHostHandle;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -1011,13 +2025,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 12,
-          "head_end": 589,
-          "head_start": 578,
-          "id": "indra/llui/llfloater.h@578,12",
+          "head_end": 596,
+          "head_start": 585,
+          "id": "indra/llui/llfloater.h@585,12",
           "patch": "     bool            mDocked;\n     bool            mTornOff;\n \n+    // [SliderWheel] design v7 4.2a: close-flush re-entrancy guard. mLifecycleSerial is bumped by\n+    // openFloater and by every closeFloater that reaches the flush point, so a flush callback that\n+    // reopens or re-closes this floater is detected by the outer closeFloater.\n+    bool            mCloseFlushActive = false;\n+    U32             mLifecycleSerial = 0;\n+\n     static LLMultiFloater* sHostp;\n     static bool     sQuitting;\n     static std::string  sButtonNames[BUTTON_COUNT];\n",
           "purpose": "Comment evidence: [SliderWheel] design v7 4.2a: close-flush re-entrancy guard. mLifecycleSerial is bumped by openFloater and by every closeFloater that reaches the flush point, so a flush callback that reopens or re-closes this floater is detected by the outer closeFloater.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -1058,13 +2076,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 3,
-          "head_end": 698,
-          "head_start": 696,
-          "id": "indra/llui/llfloater.h@696,3",
+          "head_end": 705,
+          "head_start": 703,
+          "id": "indra/llui/llfloater.h@703,3",
           "patch": " extern LLFloaterView* gFloaterView;\n \n #endif  // LL_FLOATER_H\n-\n-\n-\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "adac4362c9c",
               "subject": "Inventory performance: upstream ports + synthetic inventory stress test"
@@ -77347,8 +78369,7 @@
           "base_count": 8,
           "base_start": 21,
           "candidate_features_from_subjects": [
-            "director-shell",
-            "environment"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -77370,6 +78391,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
             },
@@ -77384,10 +78409,6 @@
             {
               "commit": "b378bf71746",
               "subject": "F6: Pose Stand + Undeform (movelock excluded)"
-            },
-            {
-              "commit": "bf3a94f798f",
-              "subject": "[BDMerge B13] BD EEP environment editor rework: local Windlight presets, water adjust, env settings window, toolbar buttons"
             }
           ],
           "scope": "unknown-review",
@@ -77396,10 +78417,61 @@
         },
         {
           "base_count": 6,
+          "base_start": 311,
+          "candidate_features_from_subjects": [
+            "director-shell"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (If you feel this is an error, please contact support@secondlife.com</string>)"
+          ],
+          "git_context": "If you feel this is an error, please contact support@secondlife.com</string>",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 318,
+          "head_start": 312,
+          "id": "indra/newview/skins/default/xui/en/strings.xml@312,7",
+          "patch": " \t<string name=\"BUTTON_CLOSE_DARWIN\">Close (&#8984;W)</string>\n \t<string name=\"BUTTON_CLOSE_WIN\">Close (Ctrl+W)</string>\n \t<string name=\"BUTTON_CLOSE_CHROME\">Close</string>\n+\t<string name=\"BUTTON_SNOOZE\">Snooze group chat</string>\n \t<string name=\"BUTTON_RESTORE\">Restore</string>\n \t<string name=\"BUTTON_COLLAPSE\">Collapse</string>\n \t<string name=\"BUTTON_MINIMIZE\">Minimize</string>\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "ba980568fa4",
+              "subject": "About: Absolute Cinema name, fork notice, credits"
+            },
+            {
+              "commit": "1f92ed02c8e",
+              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
+            },
+            {
+              "commit": "6b0e9f70ecf",
+              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
+            },
+            {
+              "commit": "b378bf71746",
+              "subject": "F6: Pose Stand + Undeform (movelock excluded)"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "BUTTON_SNOOZE"
+          ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
           "base_start": 4232,
           "candidate_features_from_subjects": [
-            "director-shell",
-            "environment"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -77415,13 +78487,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 4242,
-          "head_start": 4233,
-          "id": "indra/newview/skins/default/xui/en/strings.xml@4233,10",
+          "head_end": 4243,
+          "head_start": 4234,
+          "id": "indra/newview/skins/default/xui/en/strings.xml@4234,10",
           "patch": "   <string name=\"Command_Debug_Label\">Debug Settings</string>\n   <string name=\"Command_Destinations_Label\">Destinations</string>\n   <string name=\"Command_Environments_Label\">My Environments</string>\n+  <!-- [BDMerge B13] BD environment editor toolbar buttons -->\n+  <string name=\"Command_Sky_Label\">Sky Editor</string>\n+  <string name=\"Command_Water_Label\">Water Editor</string>\n+  <string name=\"Command_Windlight_Label\">Environment Editor</string>\n   <string name=\"Command_Gestures_Label\">Gestures</string>\n   <string name=\"Command_Grid_Status_Label\">Grid status</string>\n   <string name=\"Command_HowTo_Label\">Guidebook</string>\n",
           "purpose": "Comment evidence: [BDMerge B13] BD environment editor toolbar buttons -->",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
@@ -77437,10 +78513,6 @@
             {
               "commit": "b378bf71746",
               "subject": "F6: Pose Stand + Undeform (movelock excluded)"
-            },
-            {
-              "commit": "bf3a94f798f",
-              "subject": "[BDMerge B13] BD EEP environment editor rework: local Windlight presets, water adjust, env settings window, toolbar buttons"
             }
           ],
           "scope": "creative-candidate",
@@ -77455,8 +78527,7 @@
           "base_count": 6,
           "base_start": 4278,
           "candidate_features_from_subjects": [
-            "director-shell",
-            "environment"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -77472,13 +78543,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 4292,
-          "head_start": 4283,
-          "id": "indra/newview/skins/default/xui/en/strings.xml@4283,10",
+          "head_end": 4293,
+          "head_start": 4284,
+          "id": "indra/newview/skins/default/xui/en/strings.xml@4284,10",
           "patch": "   <string name=\"Command_Debug_Tooltip\">Debug settings for advanced users</string>\n   <string name=\"Command_Destinations_Tooltip\">Destinations of interest</string>\n   <string name=\"Command_Environments_Tooltip\">My Environments</string>\n+  <!-- [BDMerge B13] BD environment editor toolbar buttons -->\n+  <string name=\"Command_Sky_Tooltip\">Edit a sky preset or create a new one</string>\n+  <string name=\"Command_Water_Tooltip\">Edit a water preset or create a new one</string>\n+  <string name=\"Command_Windlight_Tooltip\">Set your preferred sky and water preset</string>\n   <string name=\"Command_Gestures_Tooltip\">Gestures for your avatar</string>\n   <string name=\"Command_Grid_Status_Tooltip\">Show current Grid status</string>\n   <string name=\"Command_HowTo_Tooltip\">How to do common tasks</string>\n",
           "purpose": "Comment evidence: [BDMerge B13] BD environment editor toolbar buttons -->",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
@@ -77494,10 +78569,6 @@
             {
               "commit": "b378bf71746",
               "subject": "F6: Pose Stand + Undeform (movelock excluded)"
-            },
-            {
-              "commit": "bf3a94f798f",
-              "subject": "[BDMerge B13] BD EEP environment editor rework: local Windlight presets, water adjust, env settings window, toolbar buttons"
             }
           ],
           "scope": "creative-candidate",
@@ -77512,8 +78583,7 @@
           "base_count": 6,
           "base_start": 4315,
           "candidate_features_from_subjects": [
-            "director-shell",
-            "environment"
+            "director-shell"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -77529,13 +78599,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 4332,
-          "head_start": 4324,
-          "id": "indra/newview/skins/default/xui/en/strings.xml@4324,9",
+          "head_end": 4333,
+          "head_start": 4325,
+          "id": "indra/newview/skins/default/xui/en/strings.xml@4325,9",
           "patch": "   <string name=\"Command_Poser_Label\">Poser</string>\n   <string name=\"Command_Poser_Tooltip\">Pose your avatar and animated objects</string>\n \n+  <string name=\"Command_Director_Label\">Director</string>\n+  <string name=\"Command_Director_Tooltip\">Open the Director Console</string>\n+\n   <string name=\"Toolbar_Top_Tooltip\">currently in your top toolbar</string>\n   <string name=\"Toolbar_Bottom_Tooltip\">currently in your bottom toolbar</string>\n   <string name=\"Toolbar_Left_Tooltip\"  >currently in your left toolbar</string>\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
@@ -77551,10 +78625,6 @@
             {
               "commit": "b378bf71746",
               "subject": "F6: Pose Stand + Undeform (movelock excluded)"
-            },
-            {
-              "commit": "bf3a94f798f",
-              "subject": "[BDMerge B13] BD EEP environment editor rework: local Windlight presets, water adjust, env settings window, toolbar buttons"
             }
           ],
           "scope": "creative-candidate",
@@ -77568,8 +78638,7 @@
           "base_count": 4,
           "base_start": 4531,
           "candidate_features_from_subjects": [
-            "director-shell",
-            "environment"
+            "director-shell"
           ],
           "feature_evidence": [],
           "features": [
@@ -77583,13 +78652,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 28,
-          "head_end": 4570,
-          "head_start": 4543,
-          "id": "indra/newview/skins/default/xui/en/strings.xml@4543,28",
+          "head_end": 4571,
+          "head_start": 4544,
+          "id": "indra/newview/skins/default/xui/en/strings.xml@4544,28",
           "patch": "     <string name=\"TooltipDistance\">\n         Distance: [OBJECT_DISTANCE]\n     </string>\n+\n+    <!-- [F4] Phototools environment quick-switcher combo placeholder entries\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F4, alfloaterphototools.cpp) -->\n+    <string name=\"QP_WL_Region_Default\">Shared Environment</string>\n+    <string name=\"QP_WL_Day_Cycle_Based\">Day cycle based</string>\n+    <string name=\"QP_WL_None\">None</string>\n+\n+    <!-- [BDMerge F6] Pose Stand animation display names\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F6, fsfloaterposestand.cpp / app_settings/posestand.xml) -->\n+    <string name=\"PS_T_Pose\">T-Pose</string>\n+    <string name=\"PS_Arms_Down_Legs_together\">Arms down, Legs together</string>\n+    <string name=\"PS_Arms_down_sitting\">Arms down, sitting</string>\n+    <string name=\"PS_Arms_downward_Legs_together\">Arms downward, Legs together</string>\n+    <string name=\"PS_Arms_downward_Legs_apart\">Arms downward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_apart\">Arms forward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_together\">Arms forward, Legs together</string>\n+    <string name=\"PS_Arms_straight_Legs_apart\">Arms straight, Legs apart</string>\n+    <string name=\"PS_Arms_straight_sitting\">Arms straight, sitting</string>\n+    <string name=\"PS_Arms_upward_Legs_apart\">Arms upward, Legs apart</string>\n+    <string name=\"PS_Arms_upward_Legs_together\">Arms upward, Legs together</string>\n+    <string name=\"FSInventoryCustomTabDefaultName\">Custom</string>\n+    <string name=\"FSInventoryCustomTabShowHidden\">Show hidden tabs</string>\n </strings>\n",
           "purpose": "Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
@@ -77605,10 +78678,6 @@
             {
               "commit": "b378bf71746",
               "subject": "F6: Pose Stand + Undeform (movelock excluded)"
-            },
-            {
-              "commit": "bf3a94f798f",
-              "subject": "[BDMerge B13] BD EEP environment editor rework: local Windlight presets, water adjust, env settings window, toolbar buttons"
             }
           ],
           "scope": "unknown-review",
@@ -167922,50 +168991,6 @@
     },
     {
       "features": [
-        "unknown"
-      ],
-      "hunks": [
-        {
-          "base_count": 6,
-          "base_start": 459,
-          "candidate_features_from_subjects": [],
-          "feature_evidence": [],
-          "features": [
-            "unknown"
-          ],
-          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
-          "functions": [
-            "LLConversationItemSession::buildContextMenu"
-          ],
-          "git_context": "void LLConversationItemSession::buildContextMenu(LLMenuGL& menu, U32 flags)",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 7,
-          "head_end": 465,
-          "head_start": 459,
-          "id": "indra/newview/llconversationmodel.cpp@459,7",
-          "patch": "     else if(this->getType() == CONV_SESSION_GROUP)\n     {\n         items.push_back(std::string(\"close_conversation\"));\n+        items.push_back(std::string(\"snooze_group_chat\"));\n         addVoiceOptions(items);\n         items.push_back(std::string(\"chat_history\"));\n         items.push_back(std::string(\"separator_chat_history\"));\n",
-          "purpose": "Edits declarations/data/build wiring; purpose unknown",
-          "range_note": "includes three context lines; count=0 is deletion anchor",
-          "recent_file_subjects": [
-            {
-              "commit": "b2779796c86",
-              "subject": "Group chat: Snooze"
-            }
-          ],
-          "scope": "unknown-review",
-          "settings_references": [
-            "snooze_group_chat"
-          ],
-          "slice": 99
-        }
-      ],
-      "note": "HEAD coordinates; guards/features are candidate evidence",
-      "path": "indra/newview/llconversationmodel.cpp",
-      "slice": 99
-    },
-    {
-      "features": [
         "capture-sidecar",
         "clones",
         "looks",
@@ -169168,6 +170193,14 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
             }
@@ -169178,7 +170211,7 @@
         },
         {
           "base_count": 6,
-          "base_start": 1441,
+          "base_start": 244,
           "candidate_features_from_subjects": [],
           "feature_evidence": [],
           "features": [
@@ -169186,35 +170219,39 @@
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
-            "LLFloaterIMContainer::doToSelectedConversation"
+            "LLFloaterIMContainer::postBuild"
           ],
-          "git_context": "void LLFloaterIMContainer::doToSelectedConversation(const std::string& command,",
-          "guard_evidence": [
-            "else if(\"snooze_group_chat\" == command)"
-          ],
-          "guarded": "unknown; conditional evidence present",
-          "head_count": 10,
-          "head_end": 1453,
-          "head_start": 1444,
-          "id": "indra/newview/llfloaterimcontainer.cpp@1444,10",
-          "patch": "         {\n             LLFloater::onClickClose(conversationFloater);\n         }\n+        else if(\"snooze_group_chat\" == command)\n+        {\n+            conversationFloater->onSnoozeClicked();\n+        }\n         else if(\"close_selected_conversations\" == command)\n         {\n             getSelectedUUIDs(selectedIDS,false);\n",
-          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "git_context": "bool LLFloaterIMContainer::postBuild()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 253,
+          "head_start": 247,
+          "id": "indra/newview/llfloaterimcontainer.cpp@247,7",
+          "patch": "     p.use_ellipses = true;\n     p.options_menu = \"menu_conversation.xml\";\n     mConversationsRoot = LLUICtrlFactory::create<LLFolderView>(p);\n+    mConversationsRoot->setSelectCallback(boost::bind(&LLFloaterIMContainer::updateSnoozeButton, this));\n     mConversationsRoot->setCallbackRegistrar(&mCommitCallbackRegistrar);\n     mConversationsRoot->setEnableRegistrar(&mEnableCallbackRegistrar);\n \n",
+          "purpose": "Edits LLFloaterIMContainer",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
             }
           ],
           "scope": "unknown-review",
-          "settings_references": [
-            "snooze_group_chat"
-          ],
+          "settings_references": [],
           "slice": 99
         },
         {
           "base_count": 6,
-          "base_start": 1574,
+          "base_start": 390,
           "candidate_features_from_subjects": [],
           "feature_evidence": [],
           "features": [
@@ -169222,30 +170259,124 @@
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
-            "LLFloaterIMContainer::enableContextMenuItem"
+            "LLFloaterIMContainer::addFloater",
+            "LLFloaterIMContainer::getSelectedSnoozeFloater",
+            "LLFloaterIMContainer::onSnooze",
+            "LLFloaterIMContainer::removeFloater",
+            "LLFloaterIMContainer::setSelectedSession",
+            "LLFloaterIMContainer::updateSnoozeButton"
           ],
-          "git_context": "void LLFloaterIMContainer::doToSelectedGroup(const LLSD& userdata)",
+          "git_context": "void LLFloaterIMContainer::addFloater(LLFloater* floaterp,",
           "guard_evidence": [
-            "if (item == \"can_snooze_group_chat\")"
+            "if (!selected)",
+            "if (entry.second == selected || entry.second == selected->getParentFolder())",
+            "if (session_id.isNull() || mConversationsItems.find(session_id) == mConversationsItems.end())",
+            "if (LLFloaterIMSession* floater = getSelectedSnoozeFloater())"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 13,
-          "head_end": 1593,
-          "head_start": 1581,
-          "id": "indra/newview/llfloaterimcontainer.cpp@1581,13",
-          "patch": " bool LLFloaterIMContainer::enableContextMenuItem(const LLSD& userdata)\n {\n     const std::string& item = userdata.asString();\n+    if (item == \"can_snooze_group_chat\")\n+    {\n+        const LLConversationItem* conversation = getCurSelectedViewModelItem();\n+        return !gDisconnected && mConversationsRoot->getSelectionList().size() == 1\n+            && conversation && conversation->getType() == LLConversationItem::CONV_SESSION_GROUP\n+            && LLFloaterIMSession::findInstance(conversation->getUUID());\n+    }\n     uuid_vec_t uuids;\n     getParticipantUUIDs(uuids);\n \n",
-          "purpose": "Edits LLConversationItem, gDisconnected, LLFloaterIMSession",
+          "head_count": 58,
+          "head_end": 451,
+          "head_start": 394,
+          "id": "indra/newview/llfloaterimcontainer.cpp@394,58",
+          "patch": "     floaterp->setRect(wrapper_rect);\n \n     mTabContainer->setTabImage(floaterp, icon);\n+    updateSnoozeButton();\n+}\n+\n+void LLFloaterIMContainer::removeFloater(LLFloater* floaterp)\n+{\n+    LLMultiFloater::removeFloater(floaterp);\n+    updateSnoozeButton();\n+}\n+\n+LLFloaterIMSession* LLFloaterIMContainer::getSelectedSnoozeFloater()\n+{\n+    LLFolderViewItem* selected = mConversationsRoot ? mConversationsRoot->getCurSelectedItem() : nullptr;\n+    if (!selected)\n+        return nullptr;\n+\n+    // Participant rows belong to their parent conversation. Keyboard selection\n+    // need not change the displayed conversation (mSelectedSession).\n+    LLUUID session_id;\n+    for (const auto& entry : mConversationsWidgets)\n+    {\n+        if (entry.second == selected || entry.second == selected->getParentFolder())\n+        {\n+            session_id = entry.first;\n+            break;\n+        }\n+    }\n+\n+    // A retained snoozed model alone is not a live, hosted conversation.\n+    if (session_id.isNull() || mConversationsItems.find(session_id) == mConversationsItems.end())\n+        return nullptr;\n+\n+    LLIMModel::LLIMSession* session = LLIMModel::instance().findIMSession(session_id);\n+    LLFloaterIMSession* floater = LLFloaterIMSession::findInstance(session_id);\n+    return session && session->isGroupSessionType() && floater && !floater->isDead()\n+        && floater->getHost() == this ? floater : nullptr;\n+}\n+\n+void LLFloaterIMContainer::updateSnoozeButton()\n+{\n+    setCanSnooze(getSelectedSnoozeFloater() != nullptr);\n+}\n+\n+void LLFloaterIMContainer::onSnooze()\n+{\n+    if (LLFloaterIMSession* floater = getSelectedSnoozeFloater())\n+        floater->onSnoozeClicked();\n+}\n+\n+void LLFloaterIMContainer::setSelectedSession(LLUUID sessionID)\n+{\n+    mSelectedSession = sessionID;\n+    updateSnoozeButton();\n }\n \n \n",
+          "purpose": "Comment evidence: Participant rows belong to their parent conversation. Keyboard selection need not change the displayed conversation (mSelectedSession). A retained snoozed model alone is not a live, hosted conversation.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
             }
           ],
           "scope": "unknown-review",
-          "settings_references": [
-            "can_snooze_group_chat"
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 508,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
           ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterIMContainer::idleUpdate"
+          ],
+          "git_context": "void LLFloaterIMContainer::idleUpdate()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 10,
+          "head_end": 573,
+          "head_start": 564,
+          "id": "indra/newview/llfloaterimcontainer.cpp@564,10",
+          "patch": " \n     if (mParticipantRefreshTimer.hasExpired())\n     {\n+        // Clearing selection and removing participant rows do not emit the\n+        // folder view's selection signal. Reconcile on the one-second refresh.\n+        updateSnoozeButton();\n+\n         const LLConversationItem *current_session = getCurSelectedViewModelItem();\n         if (current_session)\n         {\n",
+          "purpose": "Comment evidence: Clearing selection and removing participant rows do not emit the folder view's selection signal. Reconcile on the one-second refresh.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
+              "commit": "b2779796c86",
+              "subject": "Group chat: Snooze"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 724,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterIMContainer::draw"
+          ],
+          "git_context": "void LLFloaterIMContainer::handleConversationModelEvent(const LLSD& event)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 790,
+          "head_start": 784,
+          "id": "indra/newview/llfloaterimcontainer.cpp@784,7",
+          "patch": " \n void LLFloaterIMContainer::draw()\n {\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     LLFloater::draw();\n }\n \n",
+          "purpose": "Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
+              "commit": "b2779796c86",
+              "subject": "Group chat: Snooze"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
           "slice": 99
         },
         {
@@ -169266,13 +170397,101 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 13,
-          "head_end": 1856,
-          "head_start": 1844,
-          "id": "indra/newview/llfloaterimcontainer.cpp@1844,13",
+          "head_end": 1903,
+          "head_start": 1891,
+          "id": "indra/newview/llfloaterimcontainer.cpp@1891,13",
           "patch": " \n void LLFloaterIMContainer::showConversation(const LLUUID& session_id)\n {\n+    LLIMModel::instance().endGroupChatSnooze(session_id);\n+    if (session_id.notNull() && gIMMgr->hasSession(session_id)\n+        && !LLFloaterIMSessionTab::findConversation(session_id))\n+    {\n+        addConversationListItem(session_id);\n+        LLFloaterIMSessionTab::addToHost(session_id);\n+    }\n     setVisibleAndFrontmost(false);\n     selectConversationPair(session_id, true);\n \n",
           "purpose": "Edits LLIMModel, gIMMgr, LLFloaterIMSessionTab",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
+              "commit": "b2779796c86",
+              "subject": "Group chat: Snooze"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 1931,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterIMContainer::selectConversationPair"
+          ],
+          "git_context": "bool LLFloaterIMContainer::selectConversationPair(const LLUUID& session_id, bool",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 2005,
+          "head_start": 1999,
+          "id": "indra/newview/llfloaterimcontainer.cpp@1999,7",
+          "patch": "         }\n     }\n     flashConversationItemWidget(session_id,false);\n+    updateSnoozeButton();\n     return handled;\n }\n \n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
+              "commit": "b2779796c86",
+              "subject": "Group chat: Snooze"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 2085,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterIMContainer::removeConversationListItem"
+          ],
+          "git_context": "bool LLFloaterIMContainer::removeConversationListItem(const LLUUID& uuid, bool c",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 2160,
+          "head_start": 2154,
+          "id": "indra/newview/llfloaterimcontainer.cpp@2154,7",
+          "patch": "     mConversationsWidgets.erase(uuid);\n     // Clear event query (otherwise reopening session in some way can bombard session with stale data)\n     mConversationEventQueue.erase(uuid);\n+    updateSnoozeButton();\n \n     // Don't let the focus fall IW, select and refocus on the first conversation in the list\n     if (change_focus && is_widget_selected && isInVisibleChain())\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169285,6 +170504,144 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/llfloaterimcontainer.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
+        "common-ui"
+      ],
+      "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 45,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (class LLLayoutPanel;)"
+          ],
+          "git_context": "class LLLayoutPanel;",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 51,
+          "head_start": 45,
+          "id": "indra/newview/llfloaterimcontainer.h@45,7",
+          "patch": " class LLLayoutStack;\n class LLTabContainer;\n class LLFloaterIMContainer;\n+class LLFloaterIMSession;\n class LLSpeaker;\n class LLSpeakerMgr;\n \n",
+          "purpose": "Edits LLFloaterIMSession",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 70,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 78,
+          "head_start": 71,
+          "id": "indra/newview/llfloaterimcontainer.h@71,8",
+          "patch": "     /*virtual*/ void addFloater(LLFloater* floaterp,\n                                 bool select_added_floater,\n                                 LLTabContainer::eInsertionPoint insertion_point = LLTabContainer::END);\n+    void removeFloater(LLFloater* floaterp) override;\n+    void onSnooze() override;\n     void returnFloaterToHost();\n     void showConversation(const LLUUID& session_id);\n     void selectConversation(const LLUUID& session_id);\n",
+          "purpose": "Edits LLFloater",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 104,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 113,
+          "head_start": 107,
+          "id": "indra/newview/llfloaterimcontainer.h@107,7",
+          "patch": " \n     LLConversationViewModel& getRootViewModel() { return mConversationViewModel; }\n     LLUUID getSelectedSession() { return mSelectedSession; }\n-    void setSelectedSession(LLUUID sessionID) { mSelectedSession = sessionID; }\n+    void setSelectedSession(LLUUID sessionID);\n     LLConversationItem* getSessionModel(const LLUUID& session_id);\n     LLConversationSort& getSortOrder() { return mConversationViewModel.getSorter(); }\n \n",
+          "purpose": "Edits LLUUID",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 144,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (private:)"
+          ],
+          "git_context": "private:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 154,
+          "head_start": 147,
+          "id": "indra/newview/llfloaterimcontainer.h@147,8",
+          "patch": "     void reshapeFloaterAndSetResizeLimits(bool collapse, S32 delta_width);\n \n     void onAddButtonClicked();\n+    LLFloaterIMSession* getSelectedSnoozeFloater();\n+    void updateSnoozeButton();\n     void onAvatarPicked(const uuid_vec_t& ids);\n \n     bool isActionChecked(const LLSD& userdata);\n",
+          "purpose": "Edits LLFloaterIMSession",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/llfloaterimcontainer.h",
       "slice": 99
     },
     {
@@ -169316,6 +170673,14 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
             }
@@ -169328,6 +170693,46 @@
         },
         {
           "base_count": 6,
+          "base_start": 481,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterIMSession::postBuild"
+          ],
+          "git_context": "bool LLFloaterIMSession::postBuild()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 491,
+          "head_start": 485,
+          "id": "indra/newview/llfloaterimsession.cpp@485,7",
+          "patch": "     }\n // [/SL:KB]\n \n+    setCanSnooze(mSession && mSession->isGroupSessionType());\n     bool result = LLFloaterIMSessionTab::postBuild();\n \n //  mInputEditor->setMaxTextLength(DB_CHAT_MSG_STR_LEN);\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
+              "commit": "b2779796c86",
+              "subject": "Group chat: Snooze"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
           "base_start": 513,
           "candidate_features_from_subjects": [],
           "feature_evidence": [],
@@ -169336,6 +170741,7 @@
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
+            "LLFloaterIMSession::onSnooze",
             "LLFloaterIMSession::onSnoozeClicked",
             "LLFloaterIMSession::requestGroupChatSnooze",
             "LLNotificationsUtil::add"
@@ -169355,14 +170761,22 @@
             "if (LLIMModel::instance().snoozeGroupChat(mSessionID, minutes))"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 59,
-          "head_end": 575,
-          "head_start": 517,
-          "id": "indra/newview/llfloaterimsession.cpp@517,59",
-          "patch": "     return result;\n }\n \n+void LLFloaterIMSession::onSnoozeClicked()\n+{\n+    if (gDisconnected || !mSession || !mSession->isGroupSessionType()) return;\n+    if (!gSavedSettings.getBOOL(\"GroupChatSnoozeAsk\"))\n+    {\n+        requestGroupChatSnooze(gSavedSettings.getS32(\"GroupChatSnoozeMinutes\"));\n+        return;\n+    }\n+    const LLHandle<LLFloater> handle = getHandle();\n+    const U32 generation = LLIMModel::instance().getGroupChatSnoozeGeneration();\n+    LLNotificationsUtil::add(\"GroupChatSnoozeDuration\", LLSD(), LLSD(),\n+        [handle, generation](const LLSD& notification, const LLSD& response)\n+        {\n+            if (generation != LLIMModel::instance().getGroupChatSnoozeGeneration()) return;\n+            const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);\n+            auto* floater = dynamic_cast<LLFloaterIMSession*>(handle.get());\n+            if (floater && !floater->isDead() && option >= 0 && option < 3)\n+            {\n+                const S32 minutes[] = {15, 30, 60};\n+                floater->requestGroupChatSnooze(minutes[option]);\n+            }\n+        });\n+}\n+\n+void LLFloaterIMSession::requestGroupChatSnooze(S32 minutes, bool voice_confirmed)\n+{\n+    if (gDisconnected || !mSession || !mSession->isGroupSessionType()) return;\n+    LLVoiceChannel* voice = mSession->mVoiceChannel;\n+    if (voice && voice->isActive())\n+    {\n+        if (!voice_confirmed)\n+        {\n+            const LLHandle<LLFloater> handle = getHandle();\n+            const U32 generation = LLIMModel::instance().getGroupChatSnoozeGeneration();\n+            LLNotificationsUtil::add(\"ConfirmGroupChatSnoozeCall\", LLSD(), LLSD(),\n+                [handle, minutes, generation](const LLSD& notification, const LLSD& response)\n+                {\n+                    if (generation != LLIMModel::instance().getGroupChatSnoozeGeneration()) return;\n+                    auto* floater = dynamic_cast<LLFloaterIMSession*>(handle.get());\n+                    if (floater && !floater->isDead() && LLNotificationsUtil::getSelectedOption(notification, response) == 0)\n+                        floater->requestGroupChatSnooze(minutes, true);\n+                });\n+            return;\n+        }\n+        gIMMgr->endCall(mSessionID);\n+    }\n+    if (LLIMModel::instance().snoozeGroupChat(mSessionID, minutes))\n+    {\n+        mClosingForSnooze = true;\n+        closeFloater();\n+    }\n+}\n+\n void LLFloaterIMSession::onAddButtonClicked()\n {\n     LLView * button = findChild<LLView>(\"toolbar_panel\")->findChild<LLButton>(\"add_btn\");\n",
+          "head_count": 64,
+          "head_end": 581,
+          "head_start": 518,
+          "id": "indra/newview/llfloaterimsession.cpp@518,64",
+          "patch": "     return result;\n }\n \n+void LLFloaterIMSession::onSnooze()\n+{\n+    onSnoozeClicked();\n+}\n+\n+void LLFloaterIMSession::onSnoozeClicked()\n+{\n+    if (gDisconnected || !mSession || !mSession->isGroupSessionType()) return;\n+    if (!gSavedSettings.getBOOL(\"GroupChatSnoozeAsk\"))\n+    {\n+        requestGroupChatSnooze(gSavedSettings.getS32(\"GroupChatSnoozeMinutes\"));\n+        return;\n+    }\n+    const LLHandle<LLFloater> handle = getHandle();\n+    const U32 generation = LLIMModel::instance().getGroupChatSnoozeGeneration();\n+    LLNotificationsUtil::add(\"GroupChatSnoozeDuration\", LLSD(), LLSD(),\n+        [handle, generation](const LLSD& notification, const LLSD& response)\n+        {\n+            if (generation != LLIMModel::instance().getGroupChatSnoozeGeneration()) return;\n+            const S32 option = LLNotificationsUtil::getSelectedOption(notification, response);\n+            auto* floater = dynamic_cast<LLFloaterIMSession*>(handle.get());\n+            if (floater && !floater->isDead() && option >= 0 && option < 3)\n+            {\n+                const S32 minutes[] = {15, 30, 60};\n+                floater->requestGroupChatSnooze(minutes[option]);\n+            }\n+        });\n+}\n+\n+void LLFloaterIMSession::requestGroupChatSnooze(S32 minutes, bool voice_confirmed)\n+{\n+    if (gDisconnected || !mSession || !mSession->isGroupSessionType()) return;\n+    LLVoiceChannel* voice = mSession->mVoiceChannel;\n+    if (voice && voice->isActive())\n+    {\n+        if (!voice_confirmed)\n+        {\n+            const LLHandle<LLFloater> handle = getHandle();\n+            const U32 generation = LLIMModel::instance().getGroupChatSnoozeGeneration();\n+            LLNotificationsUtil::add(\"ConfirmGroupChatSnoozeCall\", LLSD(), LLSD(),\n+                [handle, minutes, generation](const LLSD& notification, const LLSD& response)\n+                {\n+                    if (generation != LLIMModel::instance().getGroupChatSnoozeGeneration()) return;\n+                    auto* floater = dynamic_cast<LLFloaterIMSession*>(handle.get());\n+                    if (floater && !floater->isDead() && LLNotificationsUtil::getSelectedOption(notification, response) == 0)\n+                        floater->requestGroupChatSnooze(minutes, true);\n+                });\n+            return;\n+        }\n+        gIMMgr->endCall(mSessionID);\n+    }\n+    if (LLIMModel::instance().snoozeGroupChat(mSessionID, minutes))\n+    {\n+        mClosingForSnooze = true;\n+        closeFloater();\n+    }\n+}\n+\n void LLFloaterIMSession::onAddButtonClicked()\n {\n     LLView * button = findChild<LLView>(\"toolbar_panel\")->findChild<LLButton>(\"add_btn\");\n",
           "purpose": "Edits LLFloaterIMSession, gDisconnected, gSavedSettings, LLHandle, LLFloater, LLIMModel, LLNotificationsUtil, LLSD, LLVoiceChannel, gIMMgr",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169393,13 +170807,21 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 776,
-          "head_start": 770,
-          "id": "indra/newview/llfloaterimsession.cpp@770,7",
+          "head_end": 782,
+          "head_start": 776,
+          "id": "indra/newview/llfloaterimsession.cpp@776,7",
           "patch": " //static\n LLFloaterIMSession* LLFloaterIMSession::show(const LLUUID& session_id)\n {\n+    LLIMModel::instance().endGroupChatSnooze(session_id);\n     closeHiddenIMToasts();\n \n     if (!gIMMgr->hasSession(session_id))\n",
           "purpose": "Edits LLIMModel",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169425,13 +170847,21 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 793,
-          "head_start": 786,
-          "id": "indra/newview/llfloaterimsession.cpp@786,8",
+          "head_end": 799,
+          "head_start": 792,
+          "id": "indra/newview/llfloaterimsession.cpp@792,8",
           "patch": " \n     LLFloaterIMContainer* floater_container = LLFloaterIMContainer::getInstance();\n \n+    floater_container->addConversationListItem(session_id);\n+\n     // Do not add again existing floaters\n     if (!exist)\n     {\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169460,13 +170890,21 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 21,
-          "head_end": 852,
-          "head_start": 832,
-          "id": "indra/newview/llfloaterimsession.cpp@832,21",
+          "head_end": 858,
+          "head_start": 838,
+          "id": "indra/newview/llfloaterimsession.cpp@838,21",
           "patch": "     //\n     // Last change:\n     // EXT-3516 X Button should end IM session, _ button should hide\n-    gIMMgr->leaveSession(mSessionID);\n-    mSession = nullptr; // leaveSession should have deleted it.\n+    if (mClosingForSnooze && !app_quitting)\n+    {\n+        // Remove just the conversation UI; leave the model and server session joined.\n+        LLFloaterIMContainer* container = LLFloaterIMContainer::getInstance();\n+        container->removeConversationListItem(mSessionID);\n+        // A hidden container does not reselect on removal; do not leave its\n+        // selected ID pointing at a snoozed conversation that polling can recreate.\n+        if (container->getSelectedSession() == mSessionID)\n+            container->selectConversationPair(LLUUID::null, true, false);\n+    }\n+    else\n+    {\n+        gIMMgr->leaveSession(mSessionID);\n+        mSession = nullptr; // leaveSession should have deleted it.\n+    }\n     // *TODO: Study why we need to restore the floater before we close it.\n     // Might be because we want to save some state data in some clean open state.\n     LLFloaterIMSessionTab::restoreFloater();\n",
           "purpose": "Comment evidence: Remove just the conversation UI; leave the model and server session joined. A hidden container does not reselect on removal; do not leave its selected ID pointing at a snoozed conversation that polling can recreate.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169495,13 +170933,21 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 17,
-          "head_end": 1109,
-          "head_start": 1093,
-          "id": "indra/newview/llfloaterimsession.cpp@1093,17",
+          "head_end": 1115,
+          "head_start": 1099,
+          "id": "indra/newview/llfloaterimsession.cpp@1099,17",
           "patch": "             }\n \n             // Add the message to the chat log\n-            appendMessage(chat);\n+            {\n+                struct ParseMaskRestore\n+                {\n+                    LLChatHistory* history;\n+                    U32 mask;\n+                    ~ParseMaskRestore() { history->setParseHighlightTypeMask(mask); }\n+                } restore{mChatHistory, mChatHistory->getParseHighlightTypeMask()};\n+                if (msg[\"index\"].asInteger() <= mSnoozeReplayThrough || msg[\"suppress_alerts\"].asBoolean())\n+                    mChatHistory->setParseHighlightTypeMask(LLChatHistory::PARSE_NONE);\n+                appendMessage(chat);\n+            }\n             mLastMessageIndex = msg[\"index\"].asInteger();\n \n             // if it is a notification - next message is a notification history log, so skip it\n",
           "purpose": "Edits LLChatHistory",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169512,6 +170958,46 @@
             "index",
             "suppress_alerts"
           ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 1262,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLFloaterIMSession::draw"
+          ],
+          "git_context": "void LLFloaterIMSession::processSessionUpdate(const LLSD& session_update)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 1357,
+          "head_start": 1351,
+          "id": "indra/newview/llfloaterimsession.cpp@1351,7",
+          "patch": " // virtual\n void LLFloaterIMSession::draw()\n {\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     // add people who were added via dropPerson()\n     if (!mPendingParticipants.empty())\n     {\n",
+          "purpose": "Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
+            {
+              "commit": "b2779796c86",
+              "subject": "Group chat: Snooze"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
           "slice": 99
         }
       ],
@@ -169539,14 +171025,18 @@
           "git_context": "public:",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 7,
-          "head_end": 148,
+          "head_count": 8,
+          "head_end": 149,
           "head_start": 142,
-          "id": "indra/newview/llfloaterimsession.h@142,7",
-          "patch": "     S32 getLastChatMessageIndex() {return mLastMessageIndex;}\n \n     bool handleKeyHere(KEY key, MASK mask) override;\n+    void onSnoozeClicked();\n private:\n \n     /*virtual*/ void refresh() override;\n",
+          "id": "indra/newview/llfloaterimsession.h@142,8",
+          "patch": "     S32 getLastChatMessageIndex() {return mLastMessageIndex;}\n \n     bool handleKeyHere(KEY key, MASK mask) override;\n+    void onSnoozeClicked();\n+    void onSnooze() override;\n private:\n \n     /*virtual*/ void refresh() override;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169572,13 +171062,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 169,
-          "head_start": 162,
-          "id": "indra/newview/llfloaterimsession.h@162,8",
+          "head_end": 170,
+          "head_start": 163,
+          "id": "indra/newview/llfloaterimsession.h@163,8",
           "patch": "     static void onInputEditorKeystroke(LLTextEditor* caller, void* userdata);\n     void setTyping(bool typing);\n     void onAddButtonClicked();\n+    void requestGroupChatSnooze(S32 minutes, bool voice_confirmed = false);\n+    bool mClosingForSnooze = false;\n     void addSessionParticipants(const uuid_vec_t& uuids);\n     void addP2PSessionParticipants(const LLSD& notification, const LLSD& response, const uuid_vec_t& uuids);\n     void sendParticipantsAddedNotification(const uuid_vec_t& uuids);\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169604,13 +171098,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 190,
-          "head_start": 184,
-          "id": "indra/newview/llfloaterimsession.h@184,7",
+          "head_end": 191,
+          "head_start": 185,
+          "id": "indra/newview/llfloaterimsession.h@185,7",
           "patch": "     static void confirmLeaveCallCallback(const LLSD& notification, const LLSD& response);\n \n     S32 mLastMessageIndex;\n+    S32 mSnoozeReplayThrough = -1;\n \n     EInstantMessage mDialog;\n     LLUUID mOtherParticipantUUID;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169632,7 +171130,7 @@
       "hunks": [
         {
           "base_count": 6,
-          "base_start": 93,
+          "base_start": 397,
           "candidate_features_from_subjects": [],
           "feature_evidence": [],
           "features": [
@@ -169640,22 +171138,27 @@
           ],
           "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
           "functions": [
-            "LLFloaterIMSessionTab::LLFloaterIMSessionTab",
-            "add"
+            "LLFloaterIMSessionTab::draw"
           ],
-          "git_context": "LLFloaterIMSessionTab::LLFloaterIMSessionTab(const LLSD& session_id)",
-          "guard_evidence": [
-            "if (auto* floater = dynamic_cast<LLFloaterIMSession*>(this)) floater->onSnoozeClicked();"
-          ],
-          "guarded": "unknown; conditional evidence present",
-          "head_count": 12,
-          "head_end": 104,
-          "head_start": 93,
-          "id": "indra/newview/llfloaterimsessiontab.cpp@93,12",
-          "patch": "             boost::bind(&LLFloaterIMSessionTab::onIMShowModesMenuItemCheck,   this, _2));\n     mEnableCallbackRegistrar.add(\"IMSession.Menu.ShowModes.Enable\",\n             boost::bind(&LLFloaterIMSessionTab::onIMShowModesMenuItemEnable,  this, _2));\n+    mCommitCallbackRegistrar.add(\"IMSession.Snooze\", [this](LLUICtrl*, const LLSD&)\n+        {\n+            if (auto* floater = dynamic_cast<LLFloaterIMSession*>(this)) floater->onSnoozeClicked();\n+        });\n+    mEnableCallbackRegistrar.add(\"IMSession.CanSnooze\", [this](LLUICtrl*, const LLSD&)\n+        { return !gDisconnected && mSession && mSession->isGroupSessionType(); });\n \n     // Right click menu handling\n     mEnableCallbackRegistrar.add(\"Avatar.CheckItem\",  boost::bind(&LLFloaterIMSessionTab::checkContextMenuItem, this, _2));\n",
-          "purpose": "Edits LLUICtrl, LLSD, LLFloaterIMSession, gDisconnected",
+          "git_context": "LLParticipantList* LLFloaterIMSessionTab::getParticipantList()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 403,
+          "head_start": 397,
+          "id": "indra/newview/llfloaterimsessiontab.cpp@397,7",
+          "patch": " // virtual\n void LLFloaterIMSessionTab::draw()\n {\n+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;\n     if (mRefreshTimer->hasExpired())\n     {\n         LLParticipantList* item = getParticipantList();\n",
+          "purpose": "Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -169683,13 +171186,21 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 12,
-          "head_end": 1245,
-          "head_start": 1234,
-          "id": "indra/newview/llfloaterimsessiontab.cpp@1234,12",
+          "head_end": 1240,
+          "head_start": 1229,
+          "id": "indra/newview/llfloaterimsessiontab.cpp@1229,12",
           "patch": " /*virtual*/\n void LLFloaterIMSessionTab::onOpen(const LLSD& key)\n {\n+    LLIMModel::instance().endGroupChatSnooze(mSessionID);\n+    if (mSession && mSession->isGroupSessionType())\n+    {\n+        LLFloaterIMContainer::getInstance()->addConversationListItem(mSessionID);\n+        addToHost(mSessionID);\n+    }\n     if (!checkIfTornOff())\n     {\n         if(LLFloaterIMContainer* host_floater = dynamic_cast<LLFloaterIMContainer*>(getHost()))\n",
           "purpose": "Edits LLIMModel, LLFloaterIMContainer",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            },
+            {
+              "commit": "5906bc2be45",
+              "subject": "IM floaters: add UI Tracy zones to draw()"
+            },
             {
               "commit": "b2779796c86",
               "subject": "Group chat: Snooze"
@@ -180767,52 +182278,6 @@
       ],
       "hunks": [
         {
-          "base_count": 6,
-          "base_start": 13,
-          "candidate_features_from_subjects": [],
-          "feature_evidence": [],
-          "features": [
-            "unknown"
-          ],
-          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
-          "functions": [
-            "unknown/non-function (declaration, XML, build list or global scope)"
-          ],
-          "git_context": "",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 13,
-          "head_end": 25,
-          "head_start": 13,
-          "id": "indra/newview/skins/default/xui/en/menu_conversation.xml@13,13",
-          "patch": "         <on_click function=\"Avatar.DoToSelected\" parameter=\"close_conversation\"/>\n \t </menu_item_call>\t \n      <menu_item_call\n+     label=\"Snooze...\"\n+     layout=\"topleft\"\n+     name=\"snooze_group_chat\">\n+        <on_click function=\"Avatar.DoToSelected\" parameter=\"snooze_group_chat\"/>\n+        <on_enable function=\"Avatar.EnableItem\" parameter=\"can_snooze_group_chat\"/>\n+     </menu_item_call>\n+     <menu_item_call\n      label=\"Open voice conversation\"\n      layout=\"topleft\"\n      name=\"open_voice_conversation\">\n",
-          "purpose": "Edits declarations/data/build wiring; purpose unknown",
-          "range_note": "includes three context lines; count=0 is deletion anchor",
-          "recent_file_subjects": [
-            {
-              "commit": "b2779796c86",
-              "subject": "Group chat: Snooze"
-            }
-          ],
-          "scope": "unknown-review",
-          "settings_references": [
-            "can_snooze_group_chat",
-            "snooze_group_chat",
-            "topleft"
-          ],
-          "slice": 99
-        }
-      ],
-      "note": "HEAD coordinates; guards/features are candidate evidence",
-      "path": "indra/newview/skins/default/xui/en/menu_conversation.xml",
-      "slice": 99
-    },
-    {
-      "features": [
-        "unknown"
-      ],
-      "hunks": [
-        {
           "base_count": 4,
           "base_start": 32,
           "candidate_features_from_subjects": [
@@ -180854,50 +182319,6 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/skins/default/xui/en/menu_fs_poser_poses_btn.xml",
-      "slice": 99
-    },
-    {
-      "features": [
-        "unknown"
-      ],
-      "hunks": [
-        {
-          "base_count": 6,
-          "base_start": 3,
-          "candidate_features_from_subjects": [],
-          "feature_evidence": [],
-          "features": [
-            "unknown"
-          ],
-          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
-          "functions": [
-            "unknown/non-function (declaration, XML, build list or global scope)"
-          ],
-          "git_context": "",
-          "guard_evidence": [],
-          "guarded": "unknown; no local conditional evidence",
-          "head_count": 13,
-          "head_end": 15,
-          "head_start": 3,
-          "id": "indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml@3,13",
-          "patch": "  name=\"menu_modes\"\n  left=\"0\" bottom=\"0\" visible=\"false\"\n  mouse_opaque=\"false\">\n+    <menu_item_call\n+       label=\"Snooze...\"\n+       name=\"snooze_group_chat\">\n+        <menu_item_call.on_click function=\"IMSession.Snooze\"/>\n+        <menu_item_call.on_enable function=\"IMSession.CanSnooze\"/>\n+        <menu_item_call.on_visible function=\"IMSession.CanSnooze\"/>\n+    </menu_item_call>\n     <menu_item_check\n        label=\"IRC view\"\n        name=\"fancy_compact_view\">\n",
-          "purpose": "Edits declarations/data/build wiring; purpose unknown",
-          "range_note": "includes three context lines; count=0 is deletion anchor",
-          "recent_file_subjects": [
-            {
-              "commit": "b2779796c86",
-              "subject": "Group chat: Snooze"
-            }
-          ],
-          "scope": "unknown-review",
-          "settings_references": [
-            "snooze_group_chat"
-          ],
-          "slice": 99
-        }
-      ],
-      "note": "HEAD coordinates; guards/features are candidate evidence",
-      "path": "indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml",
       "slice": 99
     },
     {
@@ -181671,6 +183092,84 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/skins/default/xui/en/panel_snapshot_local.xml",
+      "slice": 99
+    },
+    {
+      "features": [
+        "unknown"
+      ],
+      "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 13,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 19,
+          "head_start": 13,
+          "id": "indra/newview/skins/default/xui/en/widgets/floater.xml@13,7",
+          "patch": "  header_height=\"25\"\n  header_vpad=\"5\"\n  close_image=\"Icon_Close_Foreground\"\n+ snooze_image=\"Conv_toolbar_snooze\"\n  restore_image=\"Icon_Restore_Foreground\"\n  minimize_image=\"Icon_Minimize_Foreground\"\n  collapse_image=\"Icon_Collapse_Foreground\"\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "Conv_toolbar_snooze"
+          ],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
+          "base_start": 20,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 27,
+          "head_start": 21,
+          "id": "indra/newview/skins/default/xui/en/widgets/floater.xml@21,7",
+          "patch": "  dock_image=\"Icon_Dock_Foreground\"\n  help_image=\"Icon_Help_Foreground\"\n  close_pressed_image=\"Icon_Close_Press\"\n+ snooze_pressed_image=\"Conv_toolbar_snooze\"\n  restore_pressed_image=\"Icon_Restore_Press\"\n  minimize_pressed_image=\"Icon_Minimize_Press\"\n  collapse_pressed_image=\"Icon_Collapse_Press\"\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "Conv_toolbar_snooze"
+          ],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/skins/default/xui/en/widgets/floater.xml",
       "slice": 99
     },
     {
@@ -182959,6 +184458,52 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/skins/default/xui/zh/strings.xml",
+      "slice": 99
+    },
+    {
+      "features": [
+        "unknown"
+      ],
+      "hunks": [
+        {
+          "base_count": 14,
+          "base_start": 12,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 14,
+          "head_end": 25,
+          "head_start": 12,
+          "id": "indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14",
+          "patch": "  background_opaque=\"false\"\n  header_height=\"20\"\n  close_image=\"Icon_Close_Foreground\"\n- snooze_image=\"Icon_Snooze_Foreground\"\n+ snooze_image=\"Conv_toolbar_snooze\"\n  restore_image=\"Icon_Restore_Foreground\"\n  minimize_image=\"Icon_Minimize_Foreground\"\n  tear_off_image=\"tearoffbox.tga\"\n  dock_image=\"Icon_Dock_Foreground\"\n  help_image=\"Icon_Help_Foreground\"\n  close_pressed_image=\"Icon_Close_Press\"\n- snooze_pressed_image=\"Icon_Snooze_Press\"\n+ snooze_pressed_image=\"Conv_toolbar_snooze\"\n  restore_pressed_image=\"Icon_Restore_Press\"\n  minimize_pressed_image=\"Icon_Minimize_Press\"\n  tear_off_pressed_image=\"tearoff_pressed.tga\"\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "8953faf4f48",
+              "subject": "Group chat Snooze: title-bar button left of Close"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "Conv_toolbar_snooze",
+            "Icon_Snooze_Foreground",
+            "Icon_Snooze_Press"
+          ],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/skins/gemini/xui/en/widgets/floater.xml",
       "slice": 99
     }
   ]

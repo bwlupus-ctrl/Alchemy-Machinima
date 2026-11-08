@@ -10,51 +10,7 @@
       "OWNED": 909,
       "TOOLING": 435
     },
-    "dirty_product_inputs": [
-      "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
-    ],
+    "dirty_product_inputs": [],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -236,10 +192,10 @@
       },
       "wiring_rows": 2292
     },
-    "head_source_tree": "574096e41c8ffc902bb379da5753cb52bebf888e",
+    "head_source_tree": "2e617c4279e788eca4c1ab2f81b3bf4ba79391ef",
     "hook_files": 535,
-    "hunks": 3310,
-    "input_sha256": "237288069f30c8886a1a87cdd7c22be65474c5da21bef43eb3f5cb770372c1cd",
+    "hunks": 3340,
+    "input_sha256": "aa051e630531b87f44acecab5011dd3283e97f82ac1811848e109537fdf3cc5e",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -27252,19 +27208,6 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
-      "class": "HOOK",
-      "deleted": false,
-      "feature_evidence": [],
-      "features": [
-        "unknown"
-      ],
-      "git_status": "M",
-      "layer": 99,
-      "path": "indra/newview/llconversationmodel.cpp",
-      "reason": "present at local base; adapt individual hunks, never copy wholesale"
-    },
-    {
       "candidate_features_from_subjects": [
         "clones",
         "crowd",
@@ -28335,6 +28278,21 @@
       "git_status": "M",
       "layer": 2,
       "path": "indra/newview/llfloaterimcontainer.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "common-ui"
+      ],
+      "git_status": "M",
+      "layer": 1,
+      "path": "indra/newview/llfloaterimcontainer.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -35881,19 +35839,6 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
-      "class": "HOOK",
-      "deleted": false,
-      "feature_evidence": [],
-      "features": [
-        "unknown"
-      ],
-      "git_status": "M",
-      "layer": 99,
-      "path": "indra/newview/skins/default/xui/en/menu_conversation.xml",
-      "reason": "present at local base; adapt individual hunks, never copy wholesale"
-    },
-    {
       "candidate_features_from_subjects": [
         "director-shell"
       ],
@@ -36019,19 +35964,6 @@
       "layer": 99,
       "path": "indra/newview/skins/default/xui/en/menu_fs_radar_options.xml",
       "reason": "unrelated inventory/radar/local-asset feature"
-    },
-    {
-      "candidate_features_from_subjects": [],
-      "class": "HOOK",
-      "deleted": false,
-      "feature_evidence": [],
-      "features": [
-        "unknown"
-      ],
-      "git_status": "M",
-      "layer": 99,
-      "path": "indra/newview/skins/default/xui/en/menu_im_session_showmodes.xml",
-      "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
       "candidate_features_from_subjects": [],
@@ -37853,8 +37785,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
-        "environment"
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -37887,6 +37818,19 @@
       "layer": 1,
       "path": "indra/newview/skins/default/xui/en/widgets/compass_dial.xml",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/en/widgets/floater.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
       "candidate_features_from_subjects": [
@@ -38409,6 +38353,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/skins/default/xui/zh/strings.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/gemini/xui/en/widgets/floater.xml",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {

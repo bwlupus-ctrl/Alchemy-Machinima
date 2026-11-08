@@ -96,8 +96,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/llui/CMakeLists.txt", "hunks": ["indra/llui/CMakeLists.txt@4,7", "indra/llui/CMakeLists.txt@71,8", "indra/llui/CMakeLists.txt@92,7", "indra/llui/CMakeLists.txt@117,7", "indra/llui/CMakeLists.txt@193,8", "indra/llui/CMakeLists.txt@222,7", "indra/llui/CMakeLists.txt@306,7"]}
-- {"path": "indra/llui/llfloater.cpp", "hunks": ["indra/llui/llfloater.cpp@58,8", "indra/llui/llfloater.cpp@300,7", "indra/llui/llfloater.cpp@720,16", "indra/llui/llfloater.cpp@769,23", "indra/llui/llfloater.cpp@857,33"]}
-- {"path": "indra/llui/llfloater.h", "hunks": ["indra/llui/llfloater.h@374,8", "indra/llui/llfloater.h@557,7", "indra/llui/llfloater.h@578,12"]}
+- {"path": "indra/llui/llfloater.cpp", "hunks": ["indra/llui/llfloater.cpp@58,8", "indra/llui/llfloater.cpp@306,7", "indra/llui/llfloater.cpp@726,16", "indra/llui/llfloater.cpp@775,23", "indra/llui/llfloater.cpp@863,33"]}
+- {"path": "indra/llui/llfloater.h", "hunks": ["indra/llui/llfloater.h@380,8", "indra/llui/llfloater.h@564,7", "indra/llui/llfloater.h@585,12"]}
 - {"path": "indra/llui/llscrollbar.cpp", "hunks": ["indra/llui/llscrollbar.cpp@35,7", "indra/llui/llscrollbar.cpp@433,9"]}
 - {"path": "indra/llui/llscrollcontainer.cpp", "hunks": ["indra/llui/llscrollcontainer.cpp@32,12", "indra/llui/llscrollcontainer.cpp@272,19", "indra/llui/llscrollcontainer.cpp@322,19"]}
 - {"path": "indra/llui/llslider.cpp", "hunks": ["indra/llui/llslider.cpp@24,18", "indra/llui/llslider.cpp@60,28", "indra/llui/llslider.cpp@119,39", "indra/llui/llslider.cpp@314,10", "indra/llui/llslider.cpp@363,9", "indra/llui/llslider.cpp@396,230", "indra/llui/llslider.cpp@628,44"]}
@@ -247,6 +247,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 557, "text": "llfloaterenvironmentadjust.cpp", "source": "indra/newview/llfloaterenvironmentadjust.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1565, "text": "llfloaterenvironmentadjust.h", "source": "indra/newview/llfloaterenvironmentadjust.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 576, "text": "llfloaterhoverheight.cpp", "source": "indra/newview/llfloaterhoverheight.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1593, "text": "llfloaterimcontainer.h", "source": "indra/newview/llfloaterimcontainer.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 586, "text": "llfloaterjoystick.cpp", "source": "indra/newview/llfloaterjoystick.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1597, "text": "llfloaterjoystick.h", "source": "indra/newview/llfloaterjoystick.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 620, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
