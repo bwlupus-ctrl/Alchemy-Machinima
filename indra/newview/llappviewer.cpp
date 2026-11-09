@@ -5858,6 +5858,8 @@ void LLAppViewer::idle()
     // pilot/recorder/path cameras still win below.
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle director switcher");
+        // Capture the outgoing slot/mark before tick can yield its enable lease.
+        LLCinematicCamera::instance().prepareFlycamHandover();
         ALDirectorSwitcher::instance().tick(
             LLPresentationTime::currentFrame().presentation_time);
     }
@@ -5886,6 +5888,7 @@ void LLAppViewer::idle()
             LLPresentationTime::currentFrame().presentation_time);
     }
 
+    const ECameraOwner previous_camera_owner = gCameraDispatchOwner;
     ++gCameraDispatchSerial;
     gCameraDispatchFlycamWrote = false;
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
@@ -5917,7 +5920,14 @@ void LLAppViewer::idle()
     else if (LLViewerJoystick::getInstance()->getOverrideCamera())
     {
         gCameraDispatchOwner = ECameraOwner::FLYCAM;
-        LLViewerJoystick::getInstance()->moveFlycam();
+        auto& cine = LLCinematicCamera::instance();
+        const bool seed = alSeedBoneLockFlycam(cine.flycamHandoverActive(),
+            cine.flycamSuspended(), gCameraDispatchForeignSinceFlycamWrite, previous_camera_owner);
+        if (LLViewerJoystick::getInstance()->moveFlycam(seed) && cine.flycamHandoverActive())
+        {
+            // Acknowledge only a successful seed/write, never a readiness veto.
+            cine.suspendForFlycam();
+        }
     }
     else
     {

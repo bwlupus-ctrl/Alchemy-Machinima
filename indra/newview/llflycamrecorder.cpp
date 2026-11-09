@@ -18,6 +18,7 @@
 #include "llagent.h"
 #include "llappviewer.h"        // gFrameIntervalSeconds
 #include "llcameraoperator.h"
+#include "llcinematiccamera.h"
 #include "llfile.h"
 #include "llsdserialize.h"
 #include "llsdutil.h"           // llsd::inArray
@@ -717,6 +718,8 @@ void LLFlycamRecorder::updateCamera()
     cam->mXAxis = LLVector3(final_axes.mMatrix[0]);
     cam->mYAxis = LLVector3(final_axes.mMatrix[1]);
     cam->mZAxis = LLVector3(final_axes.mMatrix[2]);
+    LLCinematicCamera::rememberPreOperatorPresentation(
+        gAgent.getPosAgentFromGlobal(pos_global), rot, fov);
 }
 
 // ---------------------------------------------------------------------------

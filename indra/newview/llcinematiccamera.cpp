@@ -14,6 +14,7 @@
 #include <cmath>
 
 #include "alcameradispatch.h"     // [ReShadeReset] presented camera owner
+#include "alcineflycamhandover.h"
 #include "alcameracurve.h"
 #include "llagent.h"
 #include "lldrawable.h"
@@ -489,6 +490,68 @@ F32 LLCinematicCamera::applyFrameLens(F32 plain_fov, LLViewerCamera* cam)
     return cc_applyFrameLens(plain_fov, cam);
 }
 
+namespace
+{
+ALPreOperatorPresentation sPreOperatorPresentation;
+}
+
+void LLCinematicCamera::rememberPreOperatorPresentation(
+    const LLVector3& position, const LLQuaternion& rotation, F32 fov,
+    const F32* plain_fov, F32 operator_multiplier, const F32* seed_fov)
+{
+    const LLViewerCamera* cam = LLViewerCamera::getInstance();
+    sPreOperatorPresentation = {gAgent.getPosGlobalFromAgent(position),
+        gAgent.getPosGlobalFromAgent(cam->getOrigin()), rotation, cam->getQuaternion(),
+        fov, cam->getView(), plain_fov ? *plain_fov : 0.f,
+        seed_fov ? *seed_fov : plain_fov ? *plain_fov : 0.f, operator_multiplier,
+        gCameraDispatchSerial, true, plain_fov != nullptr};
+}
+
+bool LLCinematicCamera::preOperatorPresentedPose(LLVector3& position, LLQuaternion& rotation, F32& fov,
+    F32* plain_fov, F32* operator_multiplier)
+{
+    const LLViewerCamera* cam = LLViewerCamera::getInstance();
+    position = cam->getOrigin();
+    rotation = cam->getQuaternion();
+    fov = cam->getView();
+    U64 last_serial = gCameraDispatchSerial;
+    if (sPreOperatorPresentation.serial != last_serial && gCameraDispatchSampleCount)
+    {
+        const U32 newest = (gCameraDispatchSampleStart + gCameraDispatchSampleCount - 1) %
+            gCameraDispatchSamples.size();
+        last_serial = gCameraDispatchSamples[newest].serial;
+    }
+    if (sPreOperatorPresentation.matches(last_serial,
+        gAgent.getPosGlobalFromAgent(position), rotation, fov))
+    {
+        position = gAgent.getPosAgentFromGlobal(sPreOperatorPresentation.position);
+        rotation = sPreOperatorPresentation.rotation;
+        fov = sPreOperatorPresentation.fov;
+        if (plain_fov) *plain_fov = sPreOperatorPresentation.seedFov;
+        if (operator_multiplier) *operator_multiplier = sPreOperatorPresentation.operatorMultiplier;
+        return sPreOperatorPresentation.reversibleFov;
+    }
+    return false;
+}
+
+F32 LLCinematicCamera::seedFlycamHandoverZoom(F32 rendered_fov, F32 orbit_multiplier, LLViewerCamera* cam,
+    const F32* plain_fov)
+{
+    if (plain_fov)
+        return *plain_fov / orbit_multiplier;
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicFrameLensEnabled", false);
+    static LLCachedControl<F32> focal(gSavedSettings, "CinematicFrameFocalLengthMM", 50.f);
+    F32 aspect = 0.f;
+    F32 shift = 0.f;
+    const F32 window = cam->getAspect();
+    if (enabled && cc_targetFrameAspect(aspect) && std::isfinite(aspect) &&
+        std::isfinite(window) && std::isfinite((F32)focal) &&
+        aspect > 0.f && window > 0.f && focal > 0.f &&
+        fabsf(aspect - window) > 0.0001f * llmax(aspect, window))
+        shift = (12.f / (F32)focal) * (aspect / window - 1.f);
+    return alSeedHandoverZoom(rendered_fov, shift, orbit_multiplier);
+}
+
 void LLCinematicCamera::requestAutoReframe()
 {
     ++mAutoFrameRequestSerial;
@@ -503,6 +566,8 @@ LLCinematicCamera::LLCinematicCamera()
             [this](LLControlVariable*, const LLSD&, const LLSD&)
             {
                 const S32 selected_mode = gSavedSettings.getS32("CinematicCamMode");
+                if (selected_mode != MODE_BONE_LOCK)
+                    endFlycamHandover();
                 if (selected_mode == MODE_OBJECT_LOCK && mObservedMode != MODE_OBJECT_LOCK)
                 {
                     mObjectPreviousMode = migrateLegacyMode(mObservedMode);
@@ -515,6 +580,17 @@ LLCinematicCamera::LLCinematicCamera()
                     mObjectHavePrevious = false;
                 }
                 mObservedMode = selected_mode;
+            });
+    }
+    if (LLControlVariable* enabled = gSavedSettings.getControl("CinematicCamEnabled"))
+    {
+        // Explicit writes (including a same-value CUT after lease restore)
+        // replace the captured shot. Switcher lease writes are not an exit.
+        mFlycamEnableConnection = enabled->getWriteSignal()->connect(
+            [this](LLControlVariable*)
+            {
+                if (!ALDirectorSwitcher::instance().writingCameraEnable())
+                    endFlycamHandover();
             });
     }
 }
@@ -710,6 +786,8 @@ void LLCinematicCamera::updateObjectLock(bool entering, bool new_take)
     F32 ease_weight = 1.f;
     const bool easing_this_frame = mCutEase.apply(
         ALDirectorSwitcher::instance().cutEaseElapsedSeconds(), position, rotation, ease_weight);
+    const LLVector3 pre_operator_position = position;
+    const LLQuaternion pre_operator_rotation = rotation;
     F32 fov_mul = 1.f;
     if (mObjectResolved && (use_operator || apply_active))
     {
@@ -731,6 +809,14 @@ void LLCinematicCamera::updateObjectLock(bool entering, bool new_take)
     const F32 final_fov = mCutEase.blendFov(
         applyFrameLens(cam->getDefaultFOV() * fov_mul, cam), easing_this_frame, ease_weight);
     ALCineCamPresentation::writeCamera(*cam, position, rotation, final_fov, easing_this_frame);
+    const F32 plain_boundary_fov = cam->getDefaultFOV();
+    // Preserve the authored input even during a lens-space cut blend. Its
+    // effective seed separately accounts for that blend and operator layer.
+    const F32 seed_boundary_fov = easing_this_frame
+        ? seedFlycamHandoverZoom(final_fov, 1.f, cam) / fov_mul : plain_boundary_fov;
+    rememberPreOperatorPresentation(pre_operator_position, pre_operator_rotation,
+        mCutEase.blendFov(applyFrameLens(cam->getDefaultFOV(), cam), easing_this_frame, ease_weight),
+        &plain_boundary_fov, fov_mul, &seed_boundary_fov);
     mObjectOutputGlobal = gAgent.getPosGlobalFromAgent(position);
     mObjectOutputRotation = rotation;
     mObjectOutputFov = cam->getView();
@@ -770,6 +856,90 @@ void LLCinematicCamera::onRuntimeTargetReplaced(const LLUUID& old_id,
     }
 }
 
+void LLCinematicCamera::endFlycamHandover()
+{
+    if (mFlycamSourceValid)
+        mFlycamSourceExited = true;
+    mFlycamSourceValid = false;
+}
+
+void LLCinematicCamera::prepareFlycamHandover(bool engaging)
+{
+    static LLCachedControl<bool> handover(gSavedSettings, "CinematicBoneLockFlycamHandover", true);
+    if (!handover || (!engaging && !LLViewerJoystick::getInstance()->getOverrideCamera()))
+    {
+        mFlycamSourceValid = false;
+        mFlycamSourceExited = false;
+        return;
+    }
+    if (engaging)
+        mFlycamSourceExited = false;
+    if (mFlycamSourceValid && !flycamSourceConfigured())
+        endFlycamHandover();
+    if (mFlycamSourceExited)
+        return;
+    if (LLViewerJoystick::getInstance()->getOverrideCamera() && mFlycamSourceValid)
+        return;
+    mFlycamSourceValid = false;
+    mFlycamSourceSlot = -1;
+    mFlycamSourceSubject = ALDirectorSwitcher::SUBJECT_DEFAULT;
+    const bool switcher_bone = ALDirectorSwitcher::instance().boneLockFlycamSource(
+        mFlycamSourceSlot, mFlycamSourceSubject);
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    static LLCachedControl<S32> mode(gSavedSettings, "CinematicCamMode", 1);
+    if (switcher_bone || (enabled && mode == MODE_BONE_LOCK &&
+                         !ALDirectorSwitcher::instance().isDrivingCamera()))
+    {
+        LLVOAvatar* target = switcher_bone ? resolveMarkedTarget(mFlycamSourceSubject) : nullptr;
+        if (!target) target = resolveDefaultTarget();
+        mFlycamSourceTarget = target ? target->getID() : LLUUID::null;
+        mFlycamSourceValid = true;
+    }
+}
+
+bool LLCinematicCamera::flycamSourceConfigured() const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    static LLCachedControl<S32> mode(gSavedSettings, "CinematicCamMode", 1);
+    static LLCachedControl<bool> armed(gSavedSettings, "DirectorSwitcherArmed", false);
+    // The switcher's enable lease may already have restored a false baseline;
+    // its armed/mode configuration must still describe a Bone Lock shot.
+    return mFlycamSourceValid && (mFlycamSourceSlot >= 0 ?
+        (armed && ALDirectorSwitcher::instance().activeMode() == MODE_BONE_LOCK) :
+        (enabled && mode == MODE_BONE_LOCK));
+}
+
+LLVOAvatar* LLCinematicCamera::resolveFlycamSource() const
+{
+    if (LLVOAvatar* marked = resolveMarkedTarget(mFlycamSourceSubject))
+        return marked;
+    LLViewerObject* object = gObjectList.findObject(mFlycamSourceTarget);
+    LLVOAvatar* target = object ? object->asAvatar() : nullptr;
+    return target && !target->isDead() ? target : resolveDefaultTarget();
+}
+
+bool LLCinematicCamera::flycamHandoverActive() const
+{
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    static LLCachedControl<S32> mode(gSavedSettings, "CinematicCamMode", 1);
+    static LLCachedControl<bool> handover(gSavedSettings, "CinematicBoneLockFlycamHandover", true);
+    static LLCachedControl<bool> orbit(gSavedSettings, "FlycamOrbitEnabled", false);
+    if (!handover || !LLViewerJoystick::getInstance()->getOverrideCamera())
+        return false;
+    if (mFlycamSourceExited || (mFlycamSourceValid && !flycamSourceConfigured()))
+        return false;
+    const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
+    const S32 effective_mode = switcher.isDrivingCamera() ? switcher.activeMode() : (S32)mode;
+    const auto decision = alResolveCineFlycamOwner(true,
+        flycamSourceConfigured() || (enabled && effective_mode == MODE_BONE_LOCK),
+        LLViewerJoystick::getInstance()->getOverrideCamera(), handover, orbit, false,
+        LLViewerJoystick::getInstance()->canPresentFlycam());
+    return decision.owner == ECameraOwner::FLYCAM && decision.handover &&
+        !(gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera()) &&
+        !LLFlycamRecorder::instance().isPlaybackActive() &&
+        !LLPathCamera::instance().isActive();
+}
+
 bool LLCinematicCamera::isActive() const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
@@ -780,7 +950,7 @@ bool LLCinematicCamera::isActive() const
     {
         gSavedSettings.setS32("CinematicCamMode", migrated_mode);
     }
-    if (!enabled)
+    if (!enabled || flycamHandoverActive())
     {
         return false;
     }
@@ -798,7 +968,7 @@ bool LLCinematicCamera::isActiveMountedTarget(const LLUUID& avatar_id) const
 {
     static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
     static LLCachedControl<S32>  mode(gSavedSettings, "CinematicCamMode", 1);
-    if (avatar_id.isNull() || !enabled)
+    if (avatar_id.isNull() || !enabled || flycamHandoverActive())
     {
         return false;
     }
@@ -855,7 +1025,8 @@ bool LLCinematicCamera::isActiveOrbitAnchor(const LLUUID& avatar_id) const
 {
     static LLCachedControl<bool> orbit_enabled(
         gSavedSettings, "FlycamOrbitEnabled", false);
-    if (avatar_id.isNull() || !orbit_enabled ||
+    const bool handover = flycamHandoverActive();
+    if (avatar_id.isNull() || (!orbit_enabled && !handover) ||
         !LLViewerJoystick::getInstance()->getOverrideCamera())
     {
         return false;
@@ -870,12 +1041,17 @@ bool LLCinematicCamera::isActiveOrbitAnchor(const LLUUID& avatar_id) const
         return false;
     }
 
-    LLVOAvatar* target = resolveDefaultTarget();
+    LLVOAvatar* target = handover ? resolveTarget() : resolveDefaultTarget();
     return target && !target->isDead() && target->getID() == avatar_id;
 }
 
 LLVOAvatar* LLCinematicCamera::resolveTarget(std::string* source) const
 {
+    if (flycamHandoverActive() && flycamSourceConfigured())
+    {
+        if (source) *source = "Bone Lock handover";
+        return resolveFlycamSource();
+    }
     const ALDirectorSwitcher& switcher = ALDirectorSwitcher::instance();
     if (switcher.isDrivingCamera())
     {
@@ -971,16 +1147,18 @@ LLVOAvatar* LLCinematicCamera::resolveSecondaryTarget(std::string* source) const
 
 // anchor transform for external riders (Flycam Orbit): same target/joint
 // resolution as Bone Lock, without the mount/aim trim
-bool LLCinematicCamera::resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon) const
+bool LLCinematicCamera::resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon,
+                                      LLUUID* avatar_id) const
 {
     // Flycam Orbit is an external rider, not a switcher-owned CineCam shot.
-    // Preserve its legacy A/follow/selected/self anchor while slots target
-    // their own marks inside the cinematic-camera path.
-    LLVOAvatar* av = resolveDefaultTarget();
+    // Preserve its legacy A/follow/selected/self anchor unless it is taking
+    // over Bone Lock, in which case the mount's switcher subject also applies.
+    LLVOAvatar* av = flycamHandoverActive() ? resolveTarget() : resolveDefaultTarget();
     if (!av)
     {
         return false;
     }
+    if (avatar_id) *avatar_id = av->getID();
 
     static LLCachedControl<std::string> joint_name(gSavedSettings, "CinematicCamJoint", std::string("mHead"));
     LLJoint* joint = av->getJoint(std::string(joint_name));
@@ -2861,7 +3039,8 @@ void LLCinematicCamera::updateCamera()
     static LLCachedControl<std::string> object_target(gSavedSettings, "CinematicCamObjectLockTarget", "");
     const LLUUID current_target = object_lock ? LLUUID((std::string)object_target) : av->getID();
     const bool fresh_activation =
-        gFrameCount > mLastUpdateFrame + 3;
+        mFlycamSuspended || gFrameCount > mLastUpdateFrame + 3;
+    mFlycamSuspended = false;
     const bool mode_changed =
         current_mode != mLastMode;
     const bool target_changed =
@@ -3223,4 +3402,11 @@ void LLCinematicCamera::updateCamera()
     final_fov = cc_applyFrameLens(final_fov, cam);
     final_fov = mCutEase.blendFov(final_fov, easing_this_frame, ease_weight);
     ALCineCamPresentation::writeCamera(*cam, out_pos, out_rot, final_fov, easing_this_frame);
+    const F32 plain_boundary_fov = cam->getDefaultFOV() * mode_fov_mul;
+    const F32 seed_boundary_fov = easing_this_frame
+        ? seedFlycamHandoverZoom(final_fov, 1.f, cam) / fov_mul
+        : plain_boundary_fov;
+    rememberPreOperatorPresentation(base_pos, base_rot, mCutEase.blendFov(
+        applyFrameLens(cam->getDefaultFOV() * mode_fov_mul, cam), easing_this_frame, ease_weight),
+        &plain_boundary_fov, fov_mul, &seed_boundary_fov);
 }

@@ -129,7 +129,8 @@ public:
     void scanJoystick();
     void moveObjects(bool reset = false);
     void moveAvatar(bool reset = false);
-    void moveFlycam(bool reset = false);
+    bool moveFlycam(bool reset = false);
+    bool canPresentFlycam() const;
     F32 getJoystickAxis(U32 axis) const;
     U32 getJoystickButton(U32 button) const;
     std::string povBlinkPadConflict(U32 mask) const;

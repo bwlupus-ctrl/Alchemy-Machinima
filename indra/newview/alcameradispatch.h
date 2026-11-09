@@ -24,6 +24,36 @@ enum class ECameraOwner
     AGENT
 };
 
+// Arbitration below pilot/recorder/path. A missing Bone Lock anchor releases
+// to free flight; it must never give the suspended mount camera ownership.
+struct ALCineFlycamDecision
+{
+    ECameraOwner owner;
+    bool handover;
+    bool orbit;
+};
+
+inline ALCineFlycamDecision alResolveCineFlycamOwner(
+    bool cinematicActive, bool boneLockEnabled, bool flycamEngaged,
+    bool handoverEnabled, bool userOrbitEnabled, bool anchorResolved,
+    bool flycamReady = true)
+{
+    const bool handover = boneLockEnabled && flycamEngaged &&
+        handoverEnabled && flycamReady;
+    const ECameraOwner owner = cinematicActive && !handover
+        ? ECameraOwner::CINE
+        : flycamEngaged ? ECameraOwner::FLYCAM : ECameraOwner::AGENT;
+    return {owner, handover, owner == ECameraOwner::FLYCAM &&
+        (handover || userOrbitEnabled) && anchorResolved};
+}
+
+// Suspension bookkeeping is independent of actual dispatch entry/re-entry.
+inline bool alSeedBoneLockFlycam(bool handover, bool suspended,
+                                bool foreignSinceWrite, ECameraOwner previous)
+{
+    return handover && (!suspended || foreignSinceWrite || previous != ECameraOwner::FLYCAM);
+}
+
 enum class ALFlycamPoseOwner
 {
     CLASSIC,
