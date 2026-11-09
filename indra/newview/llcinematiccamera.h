@@ -126,6 +126,14 @@ public:
     // Shared aspect-aware Frame lens used by cinematic camera owners. Identity
     // when the lens is disabled or the target frame is Native.
     static F32 applyFrameLens(F32 plain_fov, LLViewerCamera* cam);
+    static F32 seedFlycamHandoverZoom(F32 rendered_fov, F32 orbit_multiplier, LLViewerCamera* cam,
+        const F32* plain_fov = nullptr);
+    // Handover seeds exclude the last presented operator/shake layer.
+    static bool preOperatorPresentedPose(LLVector3& position, LLQuaternion& rotation, F32& fov,
+        F32* plain_fov = nullptr, F32* operator_multiplier = nullptr);
+    static void rememberPreOperatorPresentation(const LLVector3& position,
+        const LLQuaternion& rotation, F32 fov, const F32* plain_fov = nullptr,
+        F32 operator_multiplier = 1.f, const F32* seed_fov = nullptr);
 
     // Session-only locked follow subject (right-click avatar > Cinematic Cam
     // Follow). Beats the selection-based targeting while set; toggling the
@@ -147,6 +155,14 @@ public:
     // True when the system should own the render camera this frame.
     bool isActive() const;
 
+    // Runtime-only Bone Lock suspension, including the unresolved-anchor case.
+    // Mirrors pilot/recorder/path precedence even before the idle dispatch.
+    bool flycamHandoverActive() const;
+    void prepareFlycamHandover(bool engaging = false);
+    void endFlycamHandover();
+    bool flycamSuspended() const { return mFlycamSuspended; }
+    void suspendForFlycam() { mFlycamSuspended = true; }
+
     // Changes only when update() resets a presented take, including manual
     // mode/target/trigger changes. Lens evolution within a take is continuous.
     U64 takeGeneration() const { return mTakeGeneration; }
@@ -165,8 +181,11 @@ public:
     // Anchor transform for external riders (Flycam Orbit): the resolved
     // target's CinematicCamJoint world pose in agent region coordinates.
     // level_horizon strips bone roll/pitch so the frame's Z stays world-up.
+    // During handover uses Bone Lock's resolveTarget(), including switcher
+    // subjects; ordinary user-enabled Orbit retains its default target chain.
     // Returns false when no target avatar resolves.
-    bool resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon) const;
+    bool resolveAnchor(LLVector3& pos, LLQuaternion& rot, bool level_horizon,
+                       LLUUID* avatar_id = nullptr) const;
 
     // Snapshot the currently rendered camera as a subject-relative static rig.
     // FOV is returned in degrees. False means no valid subject/camera pose.
@@ -198,6 +217,7 @@ private:
     bool mObjectResolved = false;
     S32 mObservedMode = MODE_OFF;
     boost::signals2::scoped_connection mObjectModeConnection;
+    boost::signals2::scoped_connection mFlycamEnableConnection;
     S32 mObjectPreviousMode = MODE_OFF;
     bool mObjectPreviousEnabled = false;
     bool mObjectHavePrevious = false;
@@ -281,6 +301,14 @@ private:
     LLUUID      mLastTargetId;
     LLVector3   mTripodPos = LLVector3::zero;   // camera pos captured at activation (zoom modes)
     bool        mWasActive = false;
+    bool        mFlycamSuspended = false;
+    bool        mFlycamSourceValid = false;
+    bool        mFlycamSourceExited = false;
+    S32         mFlycamSourceSlot = -1;
+    S32         mFlycamSourceSubject = 0;
+    LLUUID      mFlycamSourceTarget;
+    bool flycamSourceConfigured() const;
+    LLVOAvatar* resolveFlycamSource() const;
     F32         mPhase = 0.f;           // wrapped pattern clock, seconds*speed
     F32         mPrevTime = 0.f;
     // Shared per-shot motion-start basis. Captured once after the subject

@@ -82,6 +82,9 @@ public:
     void onDirectorCut();
 
     bool isDrivingCamera() const;
+    // Outgoing descriptor remains readable across the flycam override edge.
+    bool boneLockFlycamSource(S32& slot, S32& subject) const;
+    bool writingCameraEnable() const { return mWritingCameraEnable; }
     S32  activeSlot() const       { return mActiveSlot; }
     S32  activeMode() const       { return mActiveMode; }
     U64  cutSerial() const        { return mCutSerial; }
@@ -138,6 +141,7 @@ private:
     bool mWroteEnable = false;
     bool mLastWrittenEnable = false;
     bool mYieldingToFlycam = false;
+    bool mWritingCameraEnable = false;
 
     S32 mActiveSlot = -1;
     S32 mActiveMode = 0;
