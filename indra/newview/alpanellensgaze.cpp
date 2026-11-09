@@ -922,6 +922,23 @@ uuid_vec_t ALPanelLensGaze::commitActors() const
     return mSelected.empty() ? uuid_vec_t(1, LLUUID::null) : mSelected;
 }
 
+std::string ALPanelLensGaze::appliedGroup() const
+{
+    return mApplyTo && mApplyGroup && mApplyTo->getValue().asInteger() == 1
+        ? mApplyGroup->getValue().asString() : std::string();
+}
+
+std::string ALPanelLensGaze::selectedApplyGroup() const
+{
+    return mApplyGroup ? mApplyGroup->getValue().asString() : std::string();
+}
+
+void ALPanelLensGaze::restoreApplyGroup(const std::string& name)
+{
+    refreshApplyGroupCombo();
+    if (mApplyGroup && !mApplyGroup->setSelectedByValue(name, true)) mApplyGroup->clear();
+}
+
 uuid_vec_t ALPanelLensGaze::editActors() const
 {
     uuid_vec_t out;
@@ -1140,7 +1157,8 @@ void ALPanelLensGaze::refreshApplyGroupCombo()
             for (const auto& group : groups) mApplyGroup->add(group, group);
             // Never redirect a broadcast when its group disappears. An empty
             // choice has no edit actors until the operator picks a group.
-            if (!mApplyGroup->setSelectedByValue(selected, true)) mApplyGroup->clear();
+            if (!mApplyGroup->setSelectedByValue(selected, true))
+                mApplyGroup->clear();
             mLastApplyGroups = groups;
         }
         setVisibleIfChanged(mApplyGroup->getParent(), mApplyTo->getValue().asInteger() == 1);

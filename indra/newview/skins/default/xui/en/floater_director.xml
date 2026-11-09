@@ -246,30 +246,6 @@
      width="166">
         Right-click an avatar or animesh in world &gt; Add to Cast
     </text>
-    <!-- group assign: tag the selected member(s); type a new name or pick an
-         existing one (Enter commits, empty ungroups). Groups drive the Move
-         tab's Start/Stop group transport. -->
-    <text
-     follows="left|bottom"
-     height="16"
-     layout="topleft"
-     left="8"
-     top="367"
-     name="group_assign_lbl"
-     width="42">
-        Group
-    </text>
-    <combo_box
-     allow_text_entry="true"
-     follows="left|bottom"
-     height="20"
-     layout="topleft"
-     left="52"
-     max_chars="32"
-     top="364"
-     name="group_assign_combo"
-     tool_tip="Group tag for the selected member(s): type a new name or pick an existing one, Enter commits. Empty ungroups"
-     width="136" />
     <!-- "Show path" moved to the global top strip (show_paths_global_check),
          next to Action fires; one toggle drives ActorMoverShowHeading for all tabs. -->
     <button
@@ -341,6 +317,7 @@
                  layout="topleft"
                  left="0"
                  name="move_scroll_content"
+                 height="539"
                  top="0"
                  width="354">
             <!-- shared Actor Mover transport (ALPanelActorMover): scope,
@@ -515,6 +492,7 @@
                  left="0"
                  top="0"
                  name="path_scroll_content"
+                 height="1168"
                  width="500">
                     <panel
                      class="panel_path_editor"
@@ -599,8 +577,9 @@
                  layout="topleft"
                  left="0"
                  name="animate_scroll_content"
+                 height="544"
                  top="0"
-                 width="354">
+                 width="364">
             <text
              follows="left|top"
              font="SansSerifBold"
@@ -1495,6 +1474,7 @@
                  layout="topleft"
                  left="0"
                  name="actor_style_scroll_content"
+                 height="586"
                  top="0"
                  width="354">
                     <text
@@ -1678,6 +1658,7 @@
                  left="0"
                  top="0"
                  name="weather_scroll_content"
+                 height="710"
                  width="354">
                     <panel
                      class="panel_weather_settings"
@@ -1832,7 +1813,7 @@ M column: a flag means a mark (a saved position) is set for that actor.
 
 L column: L marks a cast member flagged for the local Look at camera override (Camera &gt; Shot). The master toggle must also be on; clones and animesh are never affected.
 
-Groups: the dot-suffix after a name is the member's group tag (set in the Group box under the list); the Move tab's Start/Stop group drive every member of a group at once.
+Groups: the dot-suffix after a name is the member's group tag. Right-click cast members to edit their groups; Start/Stop group drives every member of a group at once.
 
 Paths: each actor's in-world path preview and its numbered nodes are drawn in a stable per-actor color, so overlapping routes stay readable.
 

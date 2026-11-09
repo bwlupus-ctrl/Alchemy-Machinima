@@ -26,7 +26,7 @@
  *
  * Engine only -- no UI includes here. The Director Console floater (D2) is
  * a pure view over this. Cast membership, subjects and marks are
- * session-only; nothing persists except the Director arming/delay settings.
+ * saved with Director scenes; runtime transport remains session-only.
  */
 
 #ifndef LL_LLDIRECTORCAST_H
@@ -42,6 +42,7 @@
 
 #include <set>
 #include <boost/signals2.hpp>
+#include "aldirectorgroups.h"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -265,7 +266,7 @@ public:
         bool                    mHasMark = false;
         LLUUID                  mLocoAnim;       // per-actor locomotion override (null = stock walk)
         LocomotionSet           mLocomotionSet;  // sparse V2 role set with deterministic fallbacks
-        std::string             mGroup;          // production group tag ("" = ungrouped; session-only)
+        std::string             mGroup;          // production group tag ("" = ungrouped; saved with scenes)
         LLActorMover::GazeTarget mGazeTarget;    // per-cast authored gaze target config
         bool                    mEyeGazeTargetEnabled = false;
         LLActorMover::GazeTarget mEyeGazeTarget; // optional eyes-only target
@@ -311,7 +312,7 @@ public:
         const boost::signals2::signal<void()>::slot_type& callback)
         { return mActiveActorChanged.connect(callback); }
 
-    // ---- membership (ordered, session-only) ----
+    // ---- membership (ordered, saved with scenes) ----
     void add(const LLUUID& id, bool touch_scene = true);
     void remove(const LLUUID& id);
     void toggle(const LLUUID& id);
@@ -394,7 +395,7 @@ public:
     // cached mLastName whenever a name is available.
     LLVOAvatar* resolve(const LLUUID& id);
 
-    // ---- Subjects A / B / C / D (ids into the cast; session-only) ----
+    // ---- Subjects A / B / C / D (ids into the cast; saved with scenes) ----
     // A doubles as the CineCam/orbit anchor; B is the second body for
     // legacy Two-Shot/OTS. C/D are additional switcher-addressable marks.
     // resolveSubject*() returns nullptr when unset or dead, which every
@@ -412,12 +413,27 @@ public:
     LLVOAvatar* resolveSubjectC();
     LLVOAvatar* resolveSubjectD();
 
-    // ---- groups (session-only production tags) ----
+    // ---- groups (production tags saved with scenes) ----
     // Free-form label per member ("guards", "crowd B", ...) so console ops can
     // address a subset of the cast at once (group-scoped Start/Stop today;
     // group-scoped triggering later). A group exists only as the union of the
     // members carrying its tag -- there is no separate registry to hold stale
     // names, so removing/re-tagging the last member retires the group.
+    using GroupSnapshot = ALDirectorGroups::GroupSnapshot;
+    struct GroupEvent
+    {
+        enum Type { MEMBERS, RENAMED, DISSOLVED } type = MEMBERS;
+        std::string oldName;
+        std::string newName;
+    };
+    boost::signals2::signal<void(const GroupEvent&)> groupEvent;
+    std::string makeGroup(const uuid_vec_t& ids, const std::string& name = {});
+    void addToGroup(const uuid_vec_t& ids, const std::string& name);
+    void removeFromGroup(const uuid_vec_t& ids);
+    GroupSnapshot captureGroups() const;
+    void restoreGroups(const GroupSnapshot& snapshot);
+    U64 getGroupRevision() const { return mGroupRevision; }
+
     void        setGroup(const LLUUID& id, const std::string& name);   // "" = ungroup
     std::string getGroup(const LLUUID& id) const;                      // "" when none/unknown
     // distinct non-empty group names in first-appearance cast order (stable,
@@ -524,6 +540,8 @@ private:
     void servicePendingStarts();
     // drop a group's delay and stepped rate once its last member is gone/retagged (the
     // no-stale-registry rule); safe on names that never had either
+    void changedGroups(const GroupEvent& event);
+    U64 mGroupRevision = 1;
     void pruneGroupData(const std::string& name);
 
     std::vector<CastMember> mCast;

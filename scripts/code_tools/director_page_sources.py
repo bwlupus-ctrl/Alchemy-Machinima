@@ -38,6 +38,7 @@ METHOD_RE = re.compile(
 # C++ references are accepted only from the classes which own/build those
 # roots.  Same-name hits outside this scope are retained as ambiguity evidence.
 PAGE_OWNER_FILES = {
+    "groups_tab": {"panel_director_move_src.xml"},
     "move_tab": {"panel_actor_mover.xml", "floater_director.xml", "panel_avatar_anim_speed.xml"},
     "path_tab": {"panel_path_editor.xml"},
     "props_tab": {"panel_prop_mover.xml"},
@@ -80,6 +81,7 @@ PAGE_OWNER_FILES = {
 }
 
 PAGE_OWNER_CLASSES = {
+    "groups_tab": {"LLFloaterDirector"},
     "move_tab": {"ALPanelActorMover", "LLFloaterDirector"},
     "path_tab": {"ALPanelPathEditor"},
     "props_tab": {"ALPanelPropMover"},
@@ -210,7 +212,7 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         hit = binding("indra/newview/llfloaterdirector.cpp", line, "LLFloaterDirector", "bindAnimSpeedPage")
         hit.update(wired_function="bindAnimSpeedPage", text="shared v1/v2 inline callbacks; spread is consumed by Vary all")
         return hit
-    if page == "move_tab" and widget == "group_run_combo":
+    if page == "groups_tab" and widget == "group_run_combo":
         return binding("indra/newview/llfloaterdirector.cpp", 2107, "LLFloaterDirector", "onClickGroup")
     if page == "props_tab" and widget in {
         "shuttle_sign_combo", "shuttle_distance_spin", "shuttle_speed_spin", "shuttle_slope_spin"
@@ -370,6 +372,7 @@ EXPECTED_SHORTCUTS = {
 }
 
 ADAPTERS = {
+    "groups_tab": "LLFloaterDirector::bindGroupsPage",
     "key_tab": "ALPanelActorKey",
     "move_tab": "ALActorMoverKitAdapter", "path_tab": "ALPathKitAdapter",
     "props_tab": "ALPropMoverKitAdapter", "ghosts_tab": "ALGhostStudioKitAdapter",

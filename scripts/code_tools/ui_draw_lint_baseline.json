@@ -345,7 +345,6 @@
     "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshCastList | raw-write | cell->setValue(icon); | 0",
     "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshCastList | raw-write | cell->setValue(mark); | 0",
     "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshCastList | raw-write | mCastList->deleteAllItems(); | 0",
-    "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshGroupControls | raw-write | mGroupAssignCombo->clearRows(); | 0",
     "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshGroupControls | raw-write | mGroupDelaySpinner->setValue(have_managed ? cast.getGroupDelay(managed) : 0.f); | 0",
     "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshGroupControls | raw-write | mGroupRunCombo->clearRows(); | 0",
     "indra/newview/llfloaterdirector.cpp | LLFloaterDirector::refreshGroupControls | raw-write | mGroupRunCombo->setLabel(LLStringExplicit(\"Group\")); | 0",

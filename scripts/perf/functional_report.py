@@ -580,7 +580,8 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
         calls = set(re.findall(r"(?<![.&>])\b((?:[A-Za-z_]\w*::)*[A-Za-z_]\w*)\s*\(", text))
         calls.update(re.findall(r"&([A-Za-z_]\w*(?:::[A-Za-z_]\w*)+)", text))
         member_calls = set(re.findall(r"(?:\.|->)\s*([A-Za-z_]\w*)\s*\(", text))
-        for called in calls:
+        # Bounded walks/cache population must not depend on Python hash order.
+        for called in sorted(calls):
             leaf = called.rsplit("::", 1)[-1]
             if leaf in ignored:
                 continue
@@ -611,7 +612,7 @@ def _expand_callback_calls(seed: list[tuple[str, Path | None]], owner_class: str
         # candidate body and add every owning TU to the NETWORK union, but do
         # not recursively fan out: LOCAL reachability is marked unresolved and
         # therefore remains SKIP at login.
-        for leaf in member_calls - ignored:
+        for leaf in sorted(member_calls - ignored):
             candidates = _source_bodies_by_leaf(sources, leaf, source, body_cache, None)
             if len(candidates) > 1:
                 if unresolved_member_calls is not None:
@@ -706,7 +707,7 @@ def _setting_reachability(setting: str, sources: dict[Path, str],
         aliases = set(re.findall(
             r"\b([A-Za-z_]\w*)\s*=\s*[^;{}]*getControl\s*\(\s*" +
             re.escape(literal) + r"\s*\)", body))
-        for alias in aliases:
+        for alias in sorted(aliases):
             listener_matches.extend(re.finditer(
                 r"\b" + re.escape(alias) +
                 r"\s*->\s*get(?:Commit)?Signal\s*\(\s*\)\s*->\s*connect\s*\(", body))
@@ -980,7 +981,7 @@ def _handler_hazards(row: dict[str, object], cpp_sources: dict[Path, str],
                 handlers.update(owner_class + "::" + name for name in
                                 re.findall(r"\b(on[A-Z][A-Za-z0-9_]*)\s*\(", legacy_window))
             bodies.append((legacy_window, owner_source))
-            for handler in handlers:
+            for handler in sorted(handlers):
                 body, source = _source_body(cpp_sources, handler, owner_source)
                 if body:
                     bodies.append((body, source))
@@ -1211,7 +1212,7 @@ def _enforce_inworld_run1_baseline(document: dict[str, object], repo: Path) -> l
     return denied
 
 
-def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, int, int]:
+def prepare_manifest(path: Path, repo: Path, output: Path, check: bool = False) -> tuple[int, int, int, int]:
     """Enrich the generated plan from XUI and owner refresh patterns.
 
     This deliberately runs after director_functional_manifest.py: that script
@@ -1224,7 +1225,7 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     defaults = load_setting_defaults(repo)
     xui_cache: dict[Path, tuple[ET.Element, dict[ET.Element, ET.Element]]] = {}
     cpp_sources = {p: _cpp_without_comments(p.read_text(encoding="utf-8", errors="replace"))
-                   for p in (repo / "indra/newview").glob("*.cpp")}
+                   for p in sorted((repo / "indra/newview").glob("*.cpp"))}
     cpp_text = "\n".join(cpp_sources.values())
     owner_enable = _owner_enable_index(cpp_sources)
     cinecam_text = cpp_sources.get(repo / "indra/newview/alpanelcinecamparams.cpp", "")
@@ -2058,8 +2059,13 @@ def prepare_manifest(path: Path, repo: Path, output: Path) -> tuple[int, int, in
     _enforce_inworld_run1_baseline(document, repo)
     if document["meta"]["r5_total_consumers"] < required_consumers:
         raise SystemExit(f"consumer preflight failed: expected at least {required_consumers}, got {document['meta']['r5_total_consumers']}")
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(json.dumps(document, indent=1, ensure_ascii=True) + "\n", encoding="utf-8")
+    payload = (json.dumps(document, indent=1, ensure_ascii=True) + "\n").encode("utf-8")
+    if check:
+        if not output.is_file() or output.read_bytes() != payload:
+            raise SystemExit(f"prepared manifest check: STALE {output}")
+    else:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_bytes(payload)
     return (document["meta"]["r4_enabled_control_rows"], len(set(unresolved)),
             document["meta"]["r5_total_consumers"], len(set(unresolved_hazards)))
 
@@ -2746,6 +2752,7 @@ def main() -> int:
     parser.add_argument("left", nargs="?", help="functional.csv or its run directory")
     parser.add_argument("right", nargs="?", help="optional comparison CSV/run directory")
     parser.add_argument("-o", "--output", help="write Markdown here (default: stdout)")
+    parser.add_argument("--check", action="store_true", help="check --prepared-output without writing")
     parser.add_argument("--prepare-manifest", type=Path,
                         help="enrich a generated functional manifest for the R4 runner")
     parser.add_argument("--prepared-output", type=Path,
@@ -2775,10 +2782,14 @@ def main() -> int:
         if not args.prepared_output:
             parser.error("--prepare-manifest requires --prepared-output")
         enabled, unresolved, consumers, unknown = prepare_manifest(
-            args.prepare_manifest, args.repo_root, args.prepared_output)
+            args.prepare_manifest, args.repo_root, args.prepared_output, check=args.check)
+        if args.check:
+            print("prepared manifest check: PASS")
         print(f"R5 manifest: {enabled} prerequisite row(s), {unresolved} unresolved owner gate(s), "
               f"{consumers} consumers, {unknown} unresolved-handler SKIP row(s)")
         return 0
+    if args.check:
+        parser.error("--check requires --prepare-manifest")
     if not args.left:
         parser.error("left is required unless --prepare-manifest is used")
     left = load(args.left)

@@ -1,14 +1,13 @@
 # Move — Director Kit page contract
 
 Page key: `move_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (8/26 setting-bound rows; 18 C++-referenced rows).
+Computed class: **code-driven** (8/19 setting-bound rows; 10 C++-referenced rows).
 
 ## Real owners
 
 - `panel_actor_mover` / `panel` at `indra/newview/skins/default/xui/en/panel_actor_mover.xml:19` (11 matching rows).
-- `floater_director` / `floater` at `indra/newview/skins/default/xui/en/floater_director.xml:15` (8 matching rows).
 - `avatar_anim_speed` / `panel` at `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:3` (6 matching rows).
-- Referencing classes: `LLFloaterDirector` (42), `ALPanelActorMover` (9).
+- Referencing classes: `LLFloaterDirector` (11), `ALPanelActorMover` (9).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -33,21 +32,14 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `straight` / `cadence_slider` (Cadence) | `slider` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:200` | kit `slider` ↔ `ActorMoverWalkNominal` `F32` | `indra/newview/skins/default/xui/en/panel_actor_mover.xml:216` `cadence_spinner`, `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:56` `cadence_slider` |
 | `custom_anim` / `custom_anim_editor` (Anim UUID) | `line_editor` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:262` | kit `text` ↔ `ActorMoverCustomAnim` `String` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:64` `custom_anim_editor` |
 | `custom_anim` / `custom_anim_priority_combo` (Priority) | `combo_box` `indra/newview/skins/default/xui/en/panel_actor_mover.xml:272` | kit `combo` ↔ `ActorMoverCustomAnimPriority` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml:67` `custom_anim_priority_combo` |
-| `group_run` / `group_run_combo` (Group) | `combo_box` `indra/newview/skins/default/xui/en/floater_director.xml:383` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:2107`) | none |
-| `group_run` / `group_delay_spinner` (Delay (s)) | `spinner` `indra/newview/skins/default/xui/en/floater_director.xml:456` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onCommitGroupDelay()` (`indra/newview/llfloaterdirector.cpp:1516`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onCommitGroupDelay()` (`indra/newview/llfloaterdirector.cpp:2786`) | none |
-| `group_run` / `btn_group_start` (Start group) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:393` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:1505`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:2783`) | none |
-| `group_run` / `btn_group_stop` (Stop group) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:402` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:1506`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroup()` (`indra/newview/llfloaterdirector.cpp:2784`) | none |
-| `groups` / `groups_list` (Groups) | `scroll_list` `indra/newview/skins/default/xui/en/floater_director.xml:429` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onGroupsListSelect()` (`indra/newview/llfloaterdirector.cpp:1515`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onGroupsListSelect()` (`indra/newview/llfloaterdirector.cpp:2785`) | none |
-| `groups` / `group_rename_editor` (Rename to) | `line_editor` `indra/newview/skins/default/xui/en/floater_director.xml:477` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:1517`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:2787`) | none |
-| `groups` / `btn_group_rename` (Rename) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:488` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:1518`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroupRename()` (`indra/newview/llfloaterdirector.cpp:2788`) | none |
-| `groups` / `btn_group_dissolve` (Dissolve) | `button` `indra/newview/skins/default/xui/en/floater_director.xml:467` | `ALActorMoverKitAdapter` command/model binding → wired in `LLFloaterDirector::postBuild()`; behavior `LLFloaterDirector::onClickGroupDissolve()` (`indra/newview/llfloaterdirector.cpp:1519`), wired in `LLFloaterDirector::bindMovePage()`; behavior `LLFloaterDirector::onClickGroupDissolve()` (`indra/newview/llfloaterdirector.cpp:2789`) | none |
 | `my_avatar` / `my_heading_dial` (My heading) | none | `ALActorMoverKitAdapter` command/model binding → wired in `ALPanelActorMover::postBuild()`; behavior `ALPanelActorMover::onMyHeadingCommit()` (`indra/newview/alpanelactormover.cpp:63`) | none |
-| `anim_speed` / `anim_speed_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:7` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2723`) | none |
-| `anim_speed` / `anim_speed_reset` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:11` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2723`) | none |
-| `anim_speed` / `anim_speed_spread` (Vary spread (%)) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:13` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2723`) | none |
-| `anim_speed` / `anim_speed_vary_all` (Vary all) | `button` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:17` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2723`) | none |
-| `anim_speed` / `anim_speed_reset_all` (Reset all) | `button` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:19` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2723`) | none |
+| `anim_speed` / `anim_speed_slider` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:7` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2728`) | none |
+| `anim_speed` / `anim_speed_reset` (Reset) | `button` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:11` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2728`) | none |
+| `anim_speed` / `anim_speed_spread` (Vary spread (%)) | `slider` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:13` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2728`) | none |
+| `anim_speed` / `anim_speed_vary_all` (Vary all) | `button` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:17` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2728`) | none |
+| `anim_speed` / `anim_speed_reset_all` (Reset all) | `button` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:19` | `ALActorMoverKitAdapter` command/model binding → behavior `LLFloaterDirector::bindAnimSpeedPage()` (`indra/newview/llfloaterdirector.cpp:2728`) | none |
 | `anim_speed` / `anim_speed_status` (Changed) | `text` `indra/newview/skins/default/xui/en/panel_avatar_anim_speed.xml:21` | kit readout ← approved static copy; no runtime writer | none |
+| `manage_groups` / `manage_groups_link` (Manage groups...) | none | kit-native action `link_to:cast_group/groups_tab`; no duplicate widget is required | none |
 
 ## Adapter extraction
 
@@ -57,12 +49,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 | `ALPanelActorMover::onClickWalk()` — `indra/newview/alpanelactormover.cpp:75` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelActorMover::onMyHeadingCommit()` — `indra/newview/alpanelactormover.cpp:63` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 | `ALPanelActorMover::onScopeCommit()` — `indra/newview/alpanelactormover.cpp:45` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::bindAnimSpeedPage()` — `indra/newview/llfloaterdirector.cpp:2723` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onClickGroup()` — `indra/newview/llfloaterdirector.cpp:1505, 1506, 2107, 2783, 2784` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onClickGroupDissolve()` — `indra/newview/llfloaterdirector.cpp:1519, 2789` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onClickGroupRename()` — `indra/newview/llfloaterdirector.cpp:1517, 1518, 2787, 2788` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onCommitGroupDelay()` — `indra/newview/llfloaterdirector.cpp:1516, 2786` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
-| `LLFloaterDirector::onGroupsListSelect()` — `indra/newview/llfloaterdirector.cpp:1515, 2785` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
+| `LLFloaterDirector::bindAnimSpeedPage()` — `indra/newview/llfloaterdirector.cpp:2728` | Move model-facing work into `ALActorMoverKitAdapter` or its controller; keep a v1 forwarding call and diff its behavior. Presentation-only refresh stays in the owner. |
 
 ## Live state and refresh
 
@@ -73,7 +60,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **35 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **30 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -97,17 +84,12 @@ Manifest size: **35 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `custom_anim_priority_combo-option-3` | Only `custom_anim_priority_combo` selects `Pri 2 - High`; other selectors remain default. |
 | `custom_anim_priority_combo-option-4` | Only `custom_anim_priority_combo` selects `Pri 3 - Higher`; other selectors remain default. |
 | `custom_anim_priority_combo-option-5` | Only `custom_anim_priority_combo` selects `Pri 4 - Highest`; other selectors remain default. |
-| `card-group_run-tallest-850` | Only `group_run` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-group_run-tallest-1160` | Only `group_run` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `card-groups-tallest-850` | Only `groups` is put in its tallest local state at 850 px; all other cards stay default. |
-| `card-groups-tallest-1160` | Only `groups` is put in its tallest local state at 1160 px; all other cards stay default. |
-| `groups_list-empty` | `groups_list` is empty with no selection. |
-| `groups_list-one` | `groups_list` has one selected item. |
-| `groups_list-overflow` | `groups_list` has 51 items and a visible scrollbar. |
 | `card-my_avatar-tallest-850` | Only `my_avatar` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-my_avatar-tallest-1160` | Only `my_avatar` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `card-anim_speed-tallest-850` | Only `anim_speed` is put in its tallest local state at 850 px; all other cards stay default. |
 | `card-anim_speed-tallest-1160` | Only `anim_speed` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `card-manage_groups-tallest-850` | Only `manage_groups` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-manage_groups-tallest-1160` | Only `manage_groups` is put in its tallest local state at 1160 px; all other cards stay default. |
 | `actor-none` | Rail has no actor; target-dependent rows are disabled with an explicit empty state. |
 | `actor-selected` | One rail actor is selected and unpinned. |
 | `actor-pinned-rail-changes` | Page target is pinned while the rail changes to another actor. |
@@ -126,7 +108,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-48 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+32 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 

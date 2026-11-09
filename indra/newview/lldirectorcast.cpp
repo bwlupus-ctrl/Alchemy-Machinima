@@ -402,14 +402,20 @@ LLUUID canonicalSceneActorId(const LLUUID& id,
         found != actor_ids.end() ? found->second : id);
 }
 
-// Normalize ownership only. Embedded gaze/path target references retain their
-// established resolution rules; a stable Studio target already resolves live.
+// Entity clones are session identities, whether live (runtime UUID) or parked
+// (Studio UUID). Use the same identity lookup as Hot gaze scene filtering.
+bool isSceneClone(const LLUUID& id)
+{
+    const auto& studio = ALGhostStudio::instance();
+    const auto* clone = studio.getInstance(id);
+    if (!clone) clone = studio.findInstanceByRuntime(id);
+    return clone && clone->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+}
+
 LLUUID loadedSceneMemberId(const LLUUID& id, const SceneActorIdRemap& actor_ids)
 {
     const LLUUID canonical = canonicalSceneActorId(id, actor_ids);
-    const auto* clone = ALGhostStudio::instance().getInstance(canonical);
-    return clone && clone->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && clone->mEntityId.notNull()
-        ? clone->mEntityId : canonical;
+    return isSceneClone(id) || isSceneClone(canonical) ? LLUUID::null : canonical;
 }
 
 // Pre-stable-ID scenes cached animated-object names as AO_<root UUID>.  Only
@@ -1250,6 +1256,7 @@ void LLDirectorCast::remove(const LLUUID& id)
     // Explicit removal clears the edit selection. Region departure alone does
     // not remove membership and therefore retains the away actor.
     if (mActiveActorId == actor_id) setActiveActorId(LLUUID::null);
+    if (!group.empty()) changedGroups({ GroupEvent::MEMBERS, {}, {} });
 }
 
 bool LLDirectorCast::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
@@ -1336,13 +1343,15 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
         return;
     }
     auto old = std::find_if(mCast.begin(), mCast.end(), [&](const CastMember& m) { return m.mId == old_id; });
-    if (old != mCast.end())
+    const bool had_member = old != mCast.end();
+    if (had_member)
     {
         CastMember saved = *old;
         saved.mCloneFading = false; // presentation never survives park/recovery
         // The migrating alias is the current owner of edits while live/parked.
         // Normalized scene loads also install directly under that owner. A
         // duplicate destination is discarded wholesale, never field-merged.
+        const std::string replaced_group = getGroup(new_id);
         if (contains(new_id))
         {
             LL_WARNS("Director") << "Actor alias collision on recovery " << old_id
@@ -1359,6 +1368,7 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
         mIds.clear();
         for (const auto& member : mCast) mIds.push_back(member.mId);
         rebuildMemberIndex();
+        pruneGroupData(replaced_group);
         ++mCastRevision;
         ++mGazeCueRevision;
     }
@@ -1381,7 +1391,8 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
     ALPanelLensGaze::rewriteActorReferences(old_id, new_id);
     LLFloaterDirector::rewriteActorReferences(old_id, new_id);
     ALPanelGhostStudio::rewriteActorReferences(old_id, new_id);
-    touchScene();
+    if (had_member) changedGroups({ GroupEvent::MEMBERS, {}, {} });
+    else touchScene();
 }
 
 void LLDirectorCast::toggle(const LLUUID& id)
@@ -2093,23 +2104,115 @@ LLVOAvatar* LLDirectorCast::resolveSubjectD()
 // ---------------------------------------------------------------------------
 // groups
 // ---------------------------------------------------------------------------
+void LLDirectorCast::changedGroups(const GroupEvent& event)
+{
+    ++mGroupRevision;
+    ++mCastRevision;
+    touchScene();
+    groupEvent(event);
+}
+
+std::string LLDirectorCast::makeGroup(const uuid_vec_t& ids, const std::string& name)
+{
+    if (std::none_of(ids.begin(), ids.end(), [this](const LLUUID& id) { return contains(id); }))
+        return {};
+    const std::string used = ALDirectorGroups::uniqueGroupName(getGroupNames(), name);
+    addToGroup(ids, used);
+    return used;
+}
+
+void LLDirectorCast::addToGroup(const uuid_vec_t& ids, const std::string& name)
+{
+    const std::string used = ALDirectorGroups::resolveGroupName(getGroupNames(), name);
+    if (used.empty()) return;
+    std::set<std::string> affected;
+    bool changed = false;
+    for (const LLUUID& id : ids)
+        if (CastMember* member = getMember(id))
+            if (member->mGroup != used)
+            {
+                affected.insert(member->mGroup);
+                member->mGroup = used;
+                changed = true;
+            }
+    if (!changed) return;
+    affected.insert(used);
+    for (S32 i = 0; i < 4; ++i)
+        if (!mHotGazeSlots[i].mGroup.empty() && affected.count(mHotGazeSlots[i].mGroup))
+            LLActorMover::instance().releaseHotGazeSlot(i);
+    for (const auto& old : affected) pruneGroupData(old);
+    changedGroups({ GroupEvent::MEMBERS, {}, {} });
+}
+
+void LLDirectorCast::removeFromGroup(const uuid_vec_t& ids)
+{
+    auto snapshot = captureGroups();
+    for (const auto& id : ids)
+    {
+        auto found = snapshot.tags.find(canonicalActorId(id));
+        if (found != snapshot.tags.end()) found->second.clear();
+    }
+    restoreGroups(snapshot);
+}
+
 void LLDirectorCast::setGroup(const LLUUID& id, const std::string& name)
 {
-    if (CastMember* m = getMember(id))
+    if (ALDirectorGroups::resolveGroupName(getGroupNames(), name).empty()) removeFromGroup({ id });
+    else addToGroup({ id }, name);
+}
+
+LLDirectorCast::GroupSnapshot LLDirectorCast::captureGroups() const
+{
+    GroupSnapshot result;
+    for (const auto& member : mCast) result.tags[member.mId] = member.mGroup;
+    result.delays = mGroupDelays;
+    result.rates = mGroupRates;
+    for (S32 i = 0; i < 4; ++i) result.hotGroups[i] = { mHotGazeSlots[i].mGroup, mHotGazeSlots[i].mWho };
+    return result;
+}
+
+void LLDirectorCast::restoreGroups(const GroupSnapshot& snapshot)
+{
+    const auto before = captureGroups();
+    std::set<std::string> affected;
+    // Snapshot spelling is authoritative, including case. Never normalize an undo.
+    for (auto& member : mCast)
     {
-        const std::string old = m->mGroup;
-        m->mGroup = name;   // "" = ungroup; no registry to keep in sync
-        if (old != name)
+        auto found = snapshot.tags.find(member.mId);
+        if (found != snapshot.tags.end() && member.mGroup != found->second)
         {
-            for (S32 i = 0; i < 4; ++i)
-                if ((!old.empty() && mHotGazeSlots[i].mGroup == old) ||
-                    (!name.empty() && mHotGazeSlots[i].mGroup == name))
-                    LLActorMover::instance().releaseHotGazeSlot(i);
-            pruneGroupData(old);   // retagging the last member retires the group
-            ++mCastRevision;       // group pickers and their representatives
-            touchScene();
+            affected.insert(member.mGroup);
+            affected.insert(found->second);
+            member.mGroup = found->second;
         }
     }
+    mGroupDelays.clear();
+    mGroupRates.clear();
+    for (const auto& delay : snapshot.delays)
+        if (!membersInGroup(delay.first).empty()) mGroupDelays.insert(delay);
+    for (const auto& rate : snapshot.rates)
+        if (!membersInGroup(rate.first).empty()) mGroupRates.insert(rate);
+    const bool bindings_changed = before.hotGroups != snapshot.hotGroups;
+    if (before == captureGroups() && !bindings_changed) return;
+    for (S32 i = 0; i < 4; ++i)
+        if (!mHotGazeSlots[i].mGroup.empty() && affected.count(mHotGazeSlots[i].mGroup))
+        {
+            LLActorMover::instance().releaseHotGazeSlot(i);
+            const std::string group = mHotGazeSlots[i].mGroup;
+            pruneGroupData(group);
+        }
+    for (const auto& binding : snapshot.hotGroups)
+        if (binding.first >= 0 && binding.first < 4)
+        {
+            const auto group = membersInGroup(binding.second.first).empty() ? std::string() : binding.second.first;
+            if (mHotGazeSlots[binding.first].mGroup == group &&
+                mHotGazeSlots[binding.first].mWho == binding.second.second) continue;
+            LLActorMover::instance().releaseHotGazeSlot(binding.first);
+            mHotGazeSlots[binding.first].mGroup = group;
+            mHotGazeSlots[binding.first].mWho = binding.second.second;
+            ++mHotGazeRevision;
+        }
+    changedGroups({ GroupEvent::MEMBERS, {}, {} });
 }
 
 std::string LLDirectorCast::getGroup(const LLUUID& id) const
@@ -2151,8 +2254,12 @@ uuid_vec_t LLDirectorCast::membersInGroup(const std::string& name) const
     return ids;
 }
 
-bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string& new_name)
+bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string& requested)
 {
+    if (requested == old_name) return false;
+    auto names = getGroupNames();
+    names.erase(std::remove(names.begin(), names.end(), old_name), names.end());
+    const std::string new_name = ALDirectorGroups::resolveGroupName(names, requested);
     if (old_name.empty() || new_name.empty() || old_name == new_name)
     {
         return false;
@@ -2187,8 +2294,7 @@ bool LLDirectorCast::renameGroup(const std::string& old_name, const std::string&
     ALSteppedAnim::renameGroupRate(mGroupRates, old_name, new_name);
     for (auto& slot : mHotGazeSlots)
         if (slot.mGroup == old_name) { slot.mGroup = new_name; ++mHotGazeRevision; }
-    ++mCastRevision;
-    touchScene();
+    changedGroups({ GroupEvent::RENAMED, old_name, new_name });
     return true;
 }
 
@@ -2218,8 +2324,7 @@ bool LLDirectorCast::dissolveGroup(const std::string& name)
     mGroupRates.erase(name);
     if (any)
     {
-        ++mCastRevision;
-        touchScene();
+        changedGroups({ GroupEvent::DISSOLVED, name, {} });
     }
     return any;
 }
@@ -2458,15 +2563,16 @@ bool LLDirectorCast::resetToMark(const LLUUID& id)
 LLSD LLDirectorCast::sceneData() const
 {
     LLSD data = LLSD::emptyMap();
-    data["hot_gaze_slots"] = ALGazeHot::writeSlots(mHotGazeSlots, [](const LLUUID& id) {
-        auto& studio = ALGhostStudio::instance();
-        const auto* clone = studio.getInstance(id);
-        if (!clone) clone = studio.findInstanceByRuntime(id);
-        return !clone || clone->mKind != ALGhostStudio::BACKING_ENTITY_CLONE;
-    });
+    const auto saved_actor = [](const LLUUID& id) { return !isSceneClone(id); };
+    const auto saved_id = [&](const LLUUID& id) { return saved_actor(id) ? id : LLUUID::null; };
+    data["hot_gaze_slots"] = ALGazeHot::writeSlots(mHotGazeSlots, saved_actor);
+    std::vector<std::string> saved_groups;
     LLSD cast_arr = LLSD::emptyArray();
     for (const CastMember& m : mCast)
     {
+        if (!saved_actor(m.mId)) continue;
+        if (!m.mGroup.empty() && std::find(saved_groups.begin(), saved_groups.end(), m.mGroup) == saved_groups.end())
+            saved_groups.push_back(m.mGroup);
         LLSD e = LLSD::emptyMap();
         e["id"] = m.mId;
         e["name"] = m.mLastName;
@@ -2525,10 +2631,10 @@ LLSD LLDirectorCast::sceneData() const
         cast_arr.append(e);
     }
     data["cast"] = cast_arr;
-    data["subject_a"] = mSubjectA;
-    data["subject_b"] = mSubjectB;
-    data["subject_c"] = mSubjectC;
-    data["subject_d"] = mSubjectD;
+    data["subject_a"] = saved_id(mSubjectA);
+    data["subject_b"] = saved_id(mSubjectB);
+    data["subject_c"] = saved_id(mSubjectC);
+    data["subject_d"] = saved_id(mSubjectD);
 
     LLSD self_gaze_sd = LLSD::emptyMap();
     self_gaze_sd["mode"] = static_cast<S32>(mSelfGazeTarget.mMode);
@@ -2561,7 +2667,7 @@ LLSD LLDirectorCast::sceneData() const
     }
     data["self_actor_style"] = writeActorStyle(mSelfActorStyle);
     // Selected/Mixed rendering is functional scene state, even though the editor is session state.
-    data["stepped_actor"] = getSteppedActorId();
+    data["stepped_actor"] = saved_id(getSteppedActorId());
     const LLSD self_path = LLActorMover::instance().pathSceneData(LLUUID::null);
     if (self_path.isMap())
     {
@@ -2571,7 +2677,7 @@ LLSD LLDirectorCast::sceneData() const
     // per-group start delays, only for groups that still exist (the members
     // above carry the tags; this map just annotates them)
     LLSD delays = LLSD::emptyMap();
-    for (const std::string& name : getGroupNames())
+    for (const std::string& name : saved_groups)
     {
         const F32 d = getGroupDelay(name);
         if (d > 0.01f)
@@ -2581,14 +2687,14 @@ LLSD LLDirectorCast::sceneData() const
     }
     data["group_delays"] = delays;
     // per-group stepped rate offsets ride with the scene beside the delays (same live-groups rule)
-    data["group_rates"] = ALSteppedAnim::writeGroupRates(mGroupRates, getGroupNames());
+    data["group_rates"] = ALSteppedAnim::writeGroupRates(mGroupRates, saved_groups);
 
     // [AvatarLightResponse] each cast member's light response rides with the scene (a null id would mean You)
     std::vector<LLUUID> light_response_ids;
     light_response_ids.reserve(mCast.size());
     for (const CastMember& m : mCast)
     {
-        light_response_ids.push_back(m.mId);
+        if (saved_actor(m.mId)) light_response_ids.push_back(m.mId);
     }
     data["light_response"] = ALAvatarLightResponse::instance().exportFor(light_response_ids);
     return data;
@@ -2757,7 +2863,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
             legacy.mAllowAO = false;
             m.mLocomotionSet.edit(LOCO_WALK_FORWARD) = legacy;
         }
-        m.mGroup = e["group"].asString();   // absent in pre-group scenes -> ""
+        m.mGroup = e["group"].asString(); // Saved identities are exact; validation is for authoring.
         if (e.has("actor_style"))
         {
             m.mActorStyle = readActorStyle(e["actor_style"]);
@@ -2903,6 +3009,7 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     // Keep the session choice only if it still has a row in the loaded cast.
     if (!has_stepped_actor && !isSelf(getActiveActorId()) && !contains(getActiveActorId()))
         setActiveActorId(LLUUID::null);
+    changedGroups({ GroupEvent::MEMBERS, {}, {} });
 }
 
 // ---------------------------------------------------------------------------

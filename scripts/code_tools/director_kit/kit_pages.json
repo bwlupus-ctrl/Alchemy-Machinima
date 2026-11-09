@@ -479,21 +479,62 @@
    "label_names": {}
   },
   "cast_group/move_tab": {
-   "v1_sources": ["panel_actor_mover.xml", "panel_director_move_src.xml", "panel_avatar_anim_speed.xml"],
-   "root_class": "panel_actor_mover", "root_name": "move_tab_logic",
-
+   "v1_sources": [
+    "panel_actor_mover.xml",
+    "panel_avatar_anim_speed.xml"
+   ],
+   "root_class": "panel_actor_mover",
+   "root_name": "move_tab_logic",
    "row_overrides": {
-    "anim_speed_slider": {"k": "slider"},
-    "btn_stop": {"w": "move_btn_stop", "source_widget": "btn_stop"},
-    "speed_slider": {"value_editor_name": "speed_spinner"},
-    "dist_slider": {"value_editor_name": "dist_spinner"},
-    "cadence_slider": {"value_editor_name": "cadence_spinner"},
-    "heading_spinner": {"k": "number"},
-    "groups_list": {"row_height": 110}
+    "anim_speed_slider": {
+     "k": "slider"
+    },
+    "btn_stop": {
+     "w": "move_btn_stop",
+     "source_widget": "btn_stop"
+    },
+    "speed_slider": {
+     "value_editor_name": "speed_spinner"
+    },
+    "dist_slider": {
+     "value_editor_name": "dist_spinner"
+    },
+    "cadence_slider": {
+     "value_editor_name": "cadence_spinner"
+    },
+    "heading_spinner": {
+     "k": "number"
+    }
    },
    "add_rows": [
-    {"card": "straight", "after": "heading_spinner", "row": {"w": "move_heading_dial", "source_widget": "heading_dial", "k": "dial", "l": "Heading dial", "bind": "code", "d": 0, "no_widget_history": true, "h": "Drag the needle or turn the wheel to trim the travel bearing relative to the actor's facing.", "kw": "heading compass dial bearing drag wheel"}}
+    {
+     "card": "straight",
+     "after": "heading_spinner",
+     "row": {
+      "w": "move_heading_dial",
+      "source_widget": "heading_dial",
+      "k": "dial",
+      "l": "Heading dial",
+      "bind": "code",
+      "d": 0,
+      "no_widget_history": true,
+      "h": "Drag the needle or turn the wheel to trim the travel bearing relative to the actor's facing.",
+      "kw": "heading compass dial bearing drag wheel"
+     }
+    }
    ],
+   "label_names": {}
+  },
+  "cast_group/groups_tab": {
+   "v1_sources": [
+    "panel_director_move_src.xml"
+   ],
+   "root_name": "groups_tab_logic",
+   "row_overrides": {
+    "groups_list": {
+     "row_height": 130
+    }
+   },
    "label_names": {}
   },
   "cast_group/props_tab": {
@@ -645,7 +686,12 @@
   "performance_group/gaze_tab": {"history": "none"},
   "performance_group/gaze_cues_tab": {"no_history_rows": ["cue_list"]},
   "performance_group/switchboard_tab": {"history": "none"},
-  "cast_group/move_tab": {"scope": "global", "no_history_rows": ["groups_list", "group_rename_editor", "group_run_combo", "group_delay_spinner"]},
+  "cast_group/move_tab": {
+   "scope": "global"
+  },
+  "cast_group/groups_tab": {
+   "history": "none"
+  },
   "cast_group/path_tab": {"history": "none"},
   "cast_group/props_tab": {"history": "none"},
   "cast_group/dance_tab": {"scope": "global"},

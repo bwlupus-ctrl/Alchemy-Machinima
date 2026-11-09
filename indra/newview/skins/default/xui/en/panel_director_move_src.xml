@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
-<!-- Source nodes for the generated Director > Cast > Move kit page
-     (scripts/code_tools/director_kit/kit_pages.json "cast_group/move_tab").
+<!-- Source nodes for the generated Director > Cast > Groups kit page
+     (scripts/code_tools/director_kit/kit_pages.json "cast_group/groups_tab").
      These are the console-only group widgets that used to be typed inline in the v1
      floater_director.xml Move tab (the transport half comes from the shared
      panel_actor_mover.xml, also a generator input). The generator hosts each node inside a
-     kit row; the names are the ones LLFloaterDirector::bindMovePage looks up. This file is a
+     kit row; the names are the ones LLFloaterDirector::bindGroupsPage looks up. This file is a
      generator input and is not loaded by the viewer by name. -->
 <panel
  background_visible="false"
@@ -55,13 +55,14 @@
         <scroll_list.columns
          label="Group"
          name="group"
-         width="180" />
+         dynamic_width="true" />
         <scroll_list.columns
          label="Members"
          name="members"
-         width="70" />
+         width="58" />
+        <scroll_list.columns label="Here" name="here" width="44" />
         <scroll_list.columns
-         label="Delay"
+         label="Start delay"
          name="delay"
          width="80" />
     </scroll_list>

@@ -30,10 +30,15 @@ ROW_KINDS = {"slider", "number", "toggle", "combo", "color", "dial", "arc",
              "vec2", "vec3", "readout", "button", "text", "list", "link"}
 PRESET_MODES = {"widgets", "provider"}
 TOP_KEYS = {"version", "page_features", "p0_pages", "launcher_targets", "parity_allow"}
-PAGE_REQUIRED = {"v1_sources", "root_class", "root_name", "preset",
-                 "selector_settings", "card_enables", "add_rows", "label_names"}
-PAGE_OPTIONAL = {"undo_context", "who_adapter", "mode_adapter", "mode_on",
-                 "option_enables", "row_overrides", "chip_mode", "card_copy_types"}
+TOP_OPTIONAL = {"header_quick_allowlist", "header_quick_policy", "layout_overrides", "undo_owners"}
+# Kit-native pages may author controls directly in JSON. The generator supplies
+# empty preset/selector/enable/add-row defaults; do not require legacy filler.
+PAGE_REQUIRED = {"v1_sources", "label_names"}
+PAGE_OPTIONAL = {"root_class", "root_name", "preset", "selector_settings", "card_enables", "add_rows",
+                 "undo_context", "who_adapter", "mode_adapter", "mode_on",
+                 "option_enables", "row_overrides", "chip_mode", "card_copy_types",
+                 "watch_extra", "copy_strings", "no_history", "own_history",
+                 "persistent_chrome", "omit_empty_cards", "omit_rows", "omit_rows_note"}
 LAUNCHER_REQUIRED = {"target", "target_tab", "button_label", "help"}
 
 
@@ -165,9 +170,9 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
 
     # v1 sources and name resolution scope for this page
     vfiles = entry.get("v1_sources", [])
-    chk.ok(isinstance(vfiles, list) and len(vfiles) > 0 and
+    chk.ok(isinstance(vfiles, list) and
            all(isinstance(x, str) and x.endswith(".xml") for x in vfiles),
-           where, "v1_sources must be a non-empty list of .xml names")
+           where, "v1_sources must be a list of .xml names (empty for JSON-native pages)")
     v1, missing = v1_names(vfiles if isinstance(vfiles, list) else [])
     for m in missing:
         chk.err(where, "v1 source not found under xui/en: %s" % m)
@@ -176,7 +181,7 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
         return name in data_names or name in ps_names or name in v1
 
     for k_ in ("root_class", "root_name"):
-        chk.ok(isinstance(entry.get(k_), str) and entry.get(k_), where,
+        chk.ok(k_ not in entry or (isinstance(entry.get(k_), str) and entry.get(k_)), where,
                "%s must be a non-empty string" % k_)
     for k_ in ("undo_context", "who_adapter", "mode_adapter", "mode_on"):
         if k_ in entry:
@@ -189,7 +194,7 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
     # modes / who consistency with the data (who_adapter and mode_adapter come from config)
     if dpage.get("who"):
         chk.ok("who_adapter" in entry, where, "data has a who row; who_adapter required")
-    if dpage.get("modes"):
+    if dpage.get("modes") and not dpage["modes"].get("setting"):
         chk.ok("mode_adapter" in entry and "mode_on" in entry, where,
                "data has modes; mode_adapter and mode_on required")
         if "mode_on" in entry:
@@ -199,14 +204,14 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
 
     # preset
     preset = entry.get("preset")
-    if chk.ok(isinstance(preset, dict), where, "preset must be an object"):
+    if preset is not None and chk.ok(isinstance(preset, dict), where, "preset must be an object"):
         pm = preset.get("mode")
         chk.ok(pm in PRESET_MODES, where, "preset.mode must be one of %s" % sorted(PRESET_MODES))
         if pm == "widgets":
             pk = set(preset)
-            chk.ok(pk == {"mode", "combo", "save", "delete"}, where,
-                   "preset(mode=widgets) must have exactly mode, combo, save, delete")
-            for pk_ in ("combo", "save", "delete"):
+            chk.ok(pk in ({"mode", "combo", "save", "delete"}, {"mode", "combo", "apply"}), where,
+                   "preset(mode=widgets) needs combo with save/delete or apply")
+            for pk_ in pk - {"mode"}:
                 n = preset.get(pk_)
                 chk.ok(isinstance(n, str) and resolves(n), where,
                        "preset.%s '%s' does not resolve" % (pk_, n))
@@ -217,7 +222,7 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                    "preset.provider must be a non-empty string")
 
     # selector_settings: config fallback for sel_setting of selector cards
-    sel = entry.get("selector_settings")
+    sel = entry.get("selector_settings", {})
     if chk.ok(isinstance(sel, dict), where, "selector_settings must be an object"):
         for cid, setting in sel.items():
             c = cards.get(cid)
@@ -231,7 +236,7 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                        "selector card '%s' has no sel_setting and no selector_settings entry" % cid)
 
     # card_enables: fallback for enable_widget when data ew is missing
-    ce = entry.get("card_enables")
+    ce = entry.get("card_enables", {})
     if chk.ok(isinstance(ce, dict), where, "card_enables must be an object"):
         for cid, widget in ce.items():
             c = cards.get(cid)
@@ -280,10 +285,10 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                 continue
             for pk_, pv in patch.items():
                 if pk_ == "w":
-                    chk.ok(isinstance(pv, str) and resolves(pv), where,
+                    chk.ok(isinstance(pv, str) and (resolves(pv) or resolves(patch.get("source_widget", ""))), where,
                            "row_overrides '%s'.w '%s' does not resolve" % (rw, pv))
                 elif pk_ == "k":
-                    chk.ok(pv in ROW_KINDS or pv == "gobo", where,
+                    chk.ok(pv in ROW_KINDS or pv in {"gobo", "viewport"}, where,
                            "row_overrides '%s'.k '%s' is not a known kind" % (rw, pv))
                 elif pk_ == "a":
                     chk.ok(pv in (0, 1) and not isinstance(pv, bool), where,
@@ -294,11 +299,26 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                 elif pk_ == "shortcut_of":
                     chk.ok(isinstance(pv, str) and re.fullmatch(r"[^/]+/[^/]+", pv) is not None,
                            where, "row_overrides '%s'.shortcut_of must be '<page>/<row>'" % rw)
+                elif pk_ in {"source_widget", "value_editor_name", "enabled_control"}:
+                    chk.ok(isinstance(pv, str) and bool(pv), where, "row_overrides '%s'.%s must name a widget/setting" % (rw, pk_))
+                    if pk_ == "source_widget":
+                        chk.ok(resolves(pv), where, "source_widget '%s' does not resolve" % pv)
+                elif pk_ in {"allow_text_entry", "bulk_reset", "fill_width", "inherit_selectable", "no_widget_history", "toggle_button"}:
+                    chk.ok(isinstance(pv, bool), where, "row_overrides '%s'.%s must be bool" % (rw, pk_))
+                elif pk_ in {"mn", "row_height"}:
+                    chk.ok(isinstance(pv, (int, float)), where, "row_overrides '%s'.%s must be numeric" % (rw, pk_))
+                elif pk_ == "reset_settings":
+                    chk.ok(isinstance(pv, str) and bool(pv), where, "reset_settings must be comma-separated setting names")
+                elif pk_ in {"it", "iv"}:
+                    chk.ok(isinstance(pv, list), where, "row_overrides '%s'.%s must be a list" % (rw, pk_))
+                elif pk_ == "child_names":
+                    chk.ok(isinstance(pv, dict) and all(isinstance(a, str) and isinstance(b, str) for a, b in pv.items()), where,
+                           "row_overrides '%s'.child_names must map widget names" % rw)
                 else:
                     chk.err(where, "row_overrides '%s' has unknown key '%s'" % (rw, pk_))
 
     # add_rows
-    ar = entry.get("add_rows")
+    ar = entry.get("add_rows", [])
     if chk.ok(isinstance(ar, list), where, "add_rows must be a list"):
         seen_w = set()
         for i, item in enumerate(ar):
@@ -341,13 +361,14 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                        "row.hidden must be 0 or 1")
             w = row.get("w")
             if isinstance(w, str) and w:
-                chk.ok(resolves(w), iw, "row.w '%s' does not resolve (data, page_sources or v1)" % w)
+                if row.get("source_widget"):
+                    chk.ok(resolves(row["source_widget"]), iw, "source_widget '%s' does not resolve" % row["source_widget"])
                 chk.ok(w not in rows and w not in seen_w, iw,
                        "row.w '%s' duplicates an existing or added row" % w)
                 seen_w.add(w)
 
     # label_names: row widget -> label widget, both must resolve
-    ln = entry.get("label_names")
+    ln = entry.get("label_names", {})
     if chk.ok(isinstance(ln, dict), where, "label_names must be an object"):
         for rw, lw in ln.items():
             chk.ok(rw in rows, where, "label_names key '%s' is not a row in the data" % rw)
@@ -357,6 +378,7 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
+    ap.add_argument("--check", action="store_true", help="validate without writing (the default)")
     ap.add_argument("--config", default=DEFAULT_CONFIG)
     ap.add_argument("--data", default=DEFAULT_DATA)
     ap.add_argument("--page-sources", default=DEFAULT_PAGE_SOURCES)
@@ -365,6 +387,12 @@ def main(argv=None):
 
     cfg = load_json(args.config, "kit_pages.json")
     data = load_json(args.data, "director_mockup_data.json")
+    # VCam has its own source document, exactly as director_kit_gen consumes it.
+    vcam_path = os.path.join(os.path.dirname(args.data), "vcam_page.json")
+    if os.path.isfile(vcam_path):
+        vcam = load_json(vcam_path, "vcam_page.json")
+        for group in data.get("groups", []):
+            group["pages"] = [vcam if page.get("name") == "vcam_tab" else page for page in group.get("pages", [])]
     ps = load_json(args.page_sources, "page_sources.json")
     policy = load_json(args.policy, "gate_policy.json")
 
@@ -373,7 +401,7 @@ def main(argv=None):
     ps_names = collect_page_sources(ps)
 
     if chk.ok(isinstance(cfg, dict), "kit_pages.json", "top level must be an object"):
-        for extra in sorted(set(cfg) - TOP_KEYS):
+        for extra in sorted(set(cfg) - TOP_KEYS - TOP_OPTIONAL):
             chk.err("kit_pages.json", "unknown top-level key '%s'" % extra)
         for missing in sorted(TOP_KEYS - set(cfg)):
             chk.err("kit_pages.json", "missing top-level key '%s'" % missing)

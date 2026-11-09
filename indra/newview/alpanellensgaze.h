@@ -44,6 +44,9 @@ public:
     // Commits address every selected actor. Empty selection deliberately means
     // the agent avatar; refresh presents the first selected actor's state.
     void setSelectedActors(const uuid_vec_t& ids);
+    std::string appliedGroup() const;
+    std::string selectedApplyGroup() const;
+    void restoreApplyGroup(const std::string& name);
     static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
 private:

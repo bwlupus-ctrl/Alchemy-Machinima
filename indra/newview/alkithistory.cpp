@@ -256,7 +256,10 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
     if (suspended() || mReplaying)
         return;
     ALKitPage* input = sKitInputSourceSet ? dynamic_cast<ALKitPage*>(inputPage()) : nullptr;
-    const std::string page = input ? input->pageKey() : rowPage(owner);
+    // Explicit shell commands (cast group edits) belong to chrome regardless
+    // of which lazy page supplied the input gesture.
+    const std::string page = dynamic_cast<ALKitShell*>(owner) ? "chrome"
+        : input ? input->pageKey() : rowPage(owner);
     if (page.empty())
         return;
     if (join_gesture && mOpen && mOpen->page == page)

@@ -20,6 +20,7 @@
 
 #include "alscrollfit.h" // [DirFix] D1: mScrollFit (wrap/fit/focus-reveal/wheel guard, per instance)
 #include "aluirefresh.h"
+#include "aldirectorgroups.h"
 #include "llfloater.h"
 #include "llframetimer.h"
 #include "lltimer.h"
@@ -107,6 +108,7 @@ private:
     void bindChrome(LLView* root);
     void bindPage(const std::string& page, LLView* root);
     void bindMovePage(LLView* root);
+    void bindGroupsPage(LLView* root);
     void bindPathPage(LLView* root);
     void bindActorStylePage(LLView* root);
     void bindAnimatePage(LLView* root);
@@ -224,10 +226,9 @@ private:
     void onCastCopyUUID();
     void onCastRemove();
     // ---- groups ----
-    void onCommitGroupAssign();         // tag the selected member(s) ("" / "(none)" = ungroup)
     void onClickGroup(bool start);      // Start/Stop every member of the picked group
     void refreshGroupControls();        // combos rebuilt only when the name set changed
-    // Groups management section (Move tab): list of groups with member counts
+    // Groups management page: list of groups with member counts
     // + start delays; selecting a row highlights its members in the cast list
     // and loads the delay spinner / rename editor
     std::string selectedManagedGroup() const;   // groups_list selection ("" = none)
@@ -235,6 +236,13 @@ private:
     void onCommitGroupDelay();          // spinner -> the selected group's start delay
     void onClickGroupRename();          // rename editor commit / Rename button
     void onClickGroupDissolve();
+    void clearGroupMergeConfirmation();
+    void editGroupMembers(const uuid_vec_t& ids, const std::string& name, bool make = false);
+    void selectGroupMembers(const std::string& name);
+    void recordGroupEdit(const ALDirectorGroups::GroupSnapshot& before, const std::string& label,
+                         const std::string& renamed_from = {}, const std::string& renamed_to = {});
+    void updateCastGroupMenu(LLContextMenu* menu);
+
 
     // ---- Move tab ----
     // [DirFix] D10: the per-frame cast selection is computed once in draw() and passed in
@@ -445,18 +453,28 @@ private:
     S32 mAnimPrioCol = 0;
     S32 mAnimPlayingCol = 0;
 
-    // groups: the assign combo under the cast list (free-typed or picked) and
-    // the Move tab's group transport (selector + Start/Stop). Both combos are
-    // rebuilt only when the distinct-name set changes (draw()-rate friendly).
-    LLComboBox* mGroupAssignCombo = nullptr;
+    // Cast > Groups owns the membership editor and group walk transport.
+    // Rebuild lists only when their names/member/availability snapshots change.
     LLComboBox* mGroupRunCombo = nullptr;
     LLButton*   mGroupStartBtn = nullptr;
     LLButton*   mGroupStopBtn = nullptr;
     std::vector<std::string> mLastGroupNames;   // last set the combos were built from
-    LLUUID      mGroupShownFor;                 // whose group the assign combo shows
-    // Groups management section (Move tab): the list is rebuilt only when its
+    // Groups management page: the list is rebuilt only when its
     // composed name/count/delay snapshot changes (draw()-rate friendly)
     LLScrollListCtrl* mGroupsList = nullptr;
+    LLScrollListCtrl* mGroupMembersList = nullptr;
+    LLButton* mGroupNewBtn = nullptr;
+    LLButton* mGroupAddSelectedBtn = nullptr;
+    LLButton* mGroupAddBtn = nullptr;
+    LLButton* mGroupRemoveBtn = nullptr;
+    LLTextBox* mGroupUsedBy = nullptr;
+    LLHandle<LLContextMenu> mGroupPickerMenu;
+    std::vector<std::string> mLastGroupMembersSnapshot;
+    std::string mGroupMergeFrom;
+    std::string mGroupMergeTo;
+    std::string mGroupMergeText;
+    U64 mGroupMergeRevision = 0;
+
     LLSpinCtrl*       mGroupDelaySpinner = nullptr;
     LLLineEditor*     mGroupRenameEditor = nullptr;
     LLButton*         mGroupRenameBtn = nullptr;

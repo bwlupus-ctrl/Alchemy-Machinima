@@ -11,8 +11,22 @@
       "TOOLING": 436
     },
     "dirty_product_inputs": [
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/alkithistory.cpp",
+      "indra/newview/alkitpage.cpp",
+      "indra/newview/alkitshell.cpp",
+      "indra/newview/alkitshell.h",
+      "indra/newview/alpanellensgaze.cpp",
+      "indra/newview/alpanellensgaze.h",
+      "indra/newview/lldirectorcast.cpp",
+      "indra/newview/lldirectorcast.h",
+      "indra/newview/llfloaterdirector.cpp",
+      "indra/newview/llfloaterdirector.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/menu_director_cast.xml",
+      "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
@@ -53,7 +67,15 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
+      "scripts/code_tools/director_kit/check_kit_pages.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit/kit_pages.json",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_page_sources.py",
+      "scripts/code_tools/director_wiring_table.py",
+      "scripts/code_tools/ui_draw_lint_baseline.json",
+      "scripts/perf/functional_report.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -67,14 +89,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "dc24e2346acdc6e8822e65dfb8687b67fe509185afe678d00759fcc984495e64",
+        "csv_sha256": "2a30fb3dccb04ad6e3c62b4474bb3033066d1c752905037e55e264f1b4463764",
         "director_rules": {
           "known_legacy": 0,
-          "links": 17,
-          "pages": 40,
+          "links": 18,
+          "pages": 41,
           "popovers": 6
         },
-        "entries": 4782,
+        "entries": 4795,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -87,6 +109,7 @@
           "temporal_tab",
           "dance_tab",
           "ghosts_tab",
+          "groups_tab",
           "move_tab",
           "path_tab",
           "props_tab",
@@ -116,10 +139,10 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2570,
+        "generated_kit_rows": 2577,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2166,
-        "pages": 39,
+        "interactive_rows": 2172,
+        "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
           "CineRigRimRoughnessSoften",
@@ -185,6 +208,7 @@
         "capture_group/temporal_tab",
         "cast_group/dance_tab",
         "cast_group/ghosts_tab",
+        "cast_group/groups_tab",
         "cast_group/move_tab",
         "cast_group/path_tab",
         "cast_group/props_tab",
@@ -227,19 +251,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2292,
+        "independent_json_rows": 2299,
         "multi_page_settings": 21,
-        "owner_roots": 36,
-        "pages": 39,
-        "rows": 2292,
-        "unresolved_rows": 75
+        "owner_roots": 37,
+        "pages": 40,
+        "rows": 2299,
+        "unresolved_rows": 80
       },
-      "wiring_rows": 2292
+      "wiring_rows": 2299
     },
-    "head_source_tree": "981432a896fee86d2ebe18d57d1b3df14893b117",
+    "head_source_tree": "4610e0cce128255ec5cb96bd3e9f0b68f6edb92c",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "a17410e95573de0975721fe8ac2bbb8d9d5ca1e91fe996baea831ba164c0c76f",
+    "input_sha256": "413033d5b1670563f42c51a236d6b4bea8c9c018a42c69810709cd3d4e30d3bf",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
