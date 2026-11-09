@@ -30,6 +30,13 @@ def fixture():
 #include <memory>
 #include <boost/signals2.hpp>
 ''' + header + r'''
+struct ALCineLightRigManager {
+ enum Slot { A=1, B, C, D };
+ static bool instanceExists(){return true;}
+ static ALCineLightRigManager& instance(){static ALCineLightRigManager value;return value;}
+ void subjectRigOff(Slot slot){retired.push_back(slot);}
+ std::vector<Slot> retired;
+};
 struct LLActorMover {
  struct GazeTarget { enum EMode { MOTION, CAMERA, OBJECT }; EMode mMode=MOTION; LLUUID mCastRef,mObjectRef; LLVector3d mFixedPoint; };
  static LLActorMover& instance(){static LLActorMover value;return value;}
@@ -110,6 +117,10 @@ struct LLDirectorCast {
  void rebuildMemberIndex(){}
  U64 getGroupRevision()const{return mGroupRevision;}
  void applySceneData(const LLSD&);void remove(const LLUUID&);
+ U64 mSubjectRevision=1;U32 mSubjectAssignmentDepth=0;LLUUID mSubjectAssignmentBefore[4];
+ void beginSubjectAssignment();void endSubjectAssignment();
+ void setSubjectA(const LLUUID&);void setSubjectB(const LLUUID&);
+ void setSubjectC(const LLUUID&);void setSubjectD(const LLUUID&);
  ALGazeHot::Slots mHotGazeSlots;
  LLUUID mSubjectA,mSubjectB,mSubjectC,mSubjectD,mActiveActorId;
  LLActorMover::GazeTarget mSelfGazeTarget,mSelfEyeGazeTarget;
@@ -142,6 +153,9 @@ LLDirectorCast* LLDirectorCast::active=nullptr;
 ''' + history_ui_adapters() + r'''
 '''
     signatures = [
+        "void LLDirectorCast::beginSubjectAssignment(", "void LLDirectorCast::endSubjectAssignment(",
+        "void LLDirectorCast::setSubjectA(", "void LLDirectorCast::setSubjectB(",
+        "void LLDirectorCast::setSubjectC(", "void LLDirectorCast::setSubjectD(",
         "LLUUID canonicalSceneActorId(", "bool isSceneClone(", "LLUUID loadedSceneMemberId(",
         "void LLDirectorCast::changedGroups(", "std::string LLDirectorCast::makeGroup(",
         "void LLDirectorCast::addToGroup(", "void LLDirectorCast::removeFromGroup(",
@@ -179,6 +193,15 @@ int main() {
  assert(uniqueGroupName({"gRoUp 1","GROUP 2"})=="Group 3");
  assert(uniqueGroupName({"GUARDS"},"guards")!="guards");
  const LLUUID a("00000000-0000-0000-0000-000000000001"), b("00000000-0000-0000-0000-000000000002"), c("00000000-0000-0000-0000-000000000003");
+ // Merged remove() must execute the real A-D setters and retire each rig.
+ LLDirectorCast subjectCast;
+ LLDirectorCast::CastMember subjectMember;subjectMember.mId=a;subjectCast.mCast.push_back(subjectMember);subjectCast.mIds.push_back(a);
+ subjectCast.mSubjectA=subjectCast.mSubjectB=subjectCast.mSubjectC=subjectCast.mSubjectD=a;
+ auto& rig=ALCineLightRigManager::instance();rig.retired.clear();
+ subjectCast.remove(a);
+ assert(subjectCast.mSubjectA.isNull() && subjectCast.mSubjectB.isNull() && subjectCast.mSubjectC.isNull() && subjectCast.mSubjectD.isNull());
+ assert(subjectCast.mSubjectRevision==5 && subjectCast.mSubjectAssignmentDepth==0);
+ assert((rig.retired==std::vector<ALCineLightRigManager::Slot>{ALCineLightRigManager::A,ALCineLightRigManager::B,ALCineLightRigManager::C,ALCineLightRigManager::D}));
  LLDirectorCast cast;LLDirectorCast::active=&cast;
  for(const auto& id:{a,b,c}){LLDirectorCast::CastMember member;member.mId=id;cast.mCast.push_back(member);}
  int events=0;LLDirectorCast::GroupEvent last;
