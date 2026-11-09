@@ -343,6 +343,10 @@ public:
     // parallel id list, kept in membership order; this is what
     // LLActorMover::getRoster() hands out (empty = "my avatar")
     const uuid_vec_t& getIds() const { return mIds; }
+    // Exact roster identity; callers already holding cast-list IDs must not canonicalize again.
+    CastMember* getStoredMember(const LLUUID& id);
+    const CastMember* getStoredMember(const LLUUID& id) const;
+    static LLUUID savedSceneActorId(const LLUUID& id);
     CastMember*       getMember(const LLUUID& id);
     const CastMember* getMember(const LLUUID& id) const;
 
@@ -434,7 +438,8 @@ public:
     void addToGroup(const uuid_vec_t& ids, const std::string& name);
     void removeFromGroup(const uuid_vec_t& ids);
     GroupSnapshot captureGroups() const;
-    void restoreGroups(const GroupSnapshot& snapshot);
+    void restoreGroups(const GroupSnapshot& snapshot, const std::string& renamed_from = {},
+                       const std::string& renamed_to = {});
     U64 getGroupRevision() const { return mGroupRevision; }
 
     void        setGroup(const LLUUID& id, const std::string& name);   // "" = ungroup

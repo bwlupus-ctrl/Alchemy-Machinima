@@ -95,13 +95,24 @@ bool patchDelta(Map& current, const Map& expected, const Map& target, bool apply
     return true;
 }
 
+// Hot bindings are ancillary: a later rebind must not invalidate membership undo.
 inline bool patchDelta(GroupSnapshot& current, const GroupSnapshot& expected,
-                       const GroupSnapshot& target, bool apply)
+                       const GroupSnapshot& target, bool apply, bool* skipped_hot = nullptr)
 {
-    return patchDelta(current.tags, expected.tags, target.tags, apply) &&
-        patchDelta(current.delays, expected.delays, target.delays, apply) &&
-        patchDelta(current.rates, expected.rates, target.rates, apply) &&
-        patchDelta(current.hotGroups, expected.hotGroups, target.hotGroups, apply);
+    if (!patchDelta(current.tags, expected.tags, target.tags, apply) ||
+        !patchDelta(current.delays, expected.delays, target.delays, apply) ||
+        !patchDelta(current.rates, expected.rates, target.rates, apply)) return false;
+    if (apply)
+        for (const auto& binding : expected.hotGroups)
+        {
+            const auto next = target.hotGroups.find(binding.first);
+            if (next == target.hotGroups.end() || next->second == binding.second) continue;
+            const auto now = current.hotGroups.find(binding.first);
+            if (now != current.hotGroups.end() && now->second == binding.second)
+                now->second = next->second;
+            else if (skipped_hot) *skipped_hot = true;
+        }
+    return true;
 }
 } // namespace ALDirectorGroups
 #endif

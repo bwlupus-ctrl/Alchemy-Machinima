@@ -50,7 +50,7 @@
      left="0"
      top="30"
      name="groups_list"
-     tool_tip="Every group with its member count and start delay. Select a row to highlight its members in the cast list and load the delay / rename fields below"
+     tool_tip="Every group with its member count and start delay. Select a row to inspect its members and load the delay / rename fields below. Cast selection stays unchanged"
      width="344">
         <scroll_list.columns
          label="Group"

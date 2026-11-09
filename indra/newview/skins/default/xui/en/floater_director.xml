@@ -379,8 +379,8 @@
              name="btn_group_stop"
              width="92" />
             <!-- Groups MANAGEMENT: every group at a glance (member count +
-                 start delay), select a row to highlight its members in the
-                 cast list and edit its delay / name below. Dissolve only
+                 start delay), select a row to inspect its members and edit
+                 its delay / name below. Cast selection stays unchanged. Dissolve only
                  untags; nobody leaves the cast. Delays drive the staggered
                  starts (ACTION / Start group launch a delayed group's members
                  N seconds late) and save with the scene. -->
@@ -404,7 +404,7 @@
              left="10"
              top="410"
              name="groups_list"
-             tool_tip="Every group with its member count and start delay. Select a row to highlight its members in the cast list and load the delay / rename fields below"
+             tool_tip="Every group with its member count and start delay. Select a row to inspect its members and load the delay / rename fields below. Cast selection stays unchanged"
              width="344">
                 <columns
                  label="Group"

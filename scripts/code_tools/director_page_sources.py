@@ -151,7 +151,7 @@ KIT_ACTION_OVERRIDES = {
 
 def model_binding_override(page: str, widget: str) -> dict | None:
     def binding(file_name: str, line: int, class_name: str, function: str, pattern: str | None = None) -> dict:
-        if class_name in ("ALPanelGhostStudio", "LLPipeline", "ALPanelWeatherSettings", "ALProjectorTracker"):
+        if class_name in ("ALPanelGhostStudio", "LLPipeline", "ALPanelWeatherSettings", "ALProjectorTracker", "LLFloaterDirector", "ALPanelPathEditor"):
             source = (ROOT / file_name).read_text(encoding="utf-8")
             match = re.search(r"(?m)^.*\b" + re.escape(class_name + "::" + function) + r"\s*\(", source)
             if match is None:
@@ -213,7 +213,7 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         hit.update(wired_function="bindAnimSpeedPage", text="shared v1/v2 inline callbacks; spread is consumed by Vary all")
         return hit
     if page == "groups_tab" and widget == "group_run_combo":
-        return binding("indra/newview/llfloaterdirector.cpp", 2107, "LLFloaterDirector", "onClickGroup")
+        return binding("indra/newview/llfloaterdirector.cpp", 0, "LLFloaterDirector", "onClickGroup")
     if page == "props_tab" and widget in {
         "shuttle_sign_combo", "shuttle_distance_spin", "shuttle_speed_spin", "shuttle_slope_spin"
     }:
