@@ -1968,8 +1968,8 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     legend_body = copy_chrome("legend_body", v1)
     if legend_body.text:
         legend_body.text = legend_body.text.replace(
-            "(set in the Group box under the list); the Move tab's Start/Stop group",
-            "(edit with right-click or Cast > Groups); Group walk in Cast > Groups")
+            "Right-click cast members to edit their groups; Start/Stop group",
+            "Right-click cast members or use Cast > Groups to edit groups; Group walk in Cast > Groups")
         legend_body.text = legend_body.text.replace("see Capture > Scene options", "use F1 or ?, or choose Hotkeys below")
         # [Connectedness B7] The per-actor Look-at-camera flag and its master toggle live on
         # Performance > Gaze, not Camera > Shot (the A/B subjects are the Camera > Shot part).

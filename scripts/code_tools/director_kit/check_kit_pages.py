@@ -9,14 +9,15 @@ name= attribute in the page's own v1 source XML (v1_sources). The v1 XML is
 needed because several 4.7 names (cine_setup_combo, cine_group_status, ...)
 are v1 widgets that the mockup data and page_sources do not carry.
 
-add_rows row widgets are new kit rows that host v1 nodes, so they are checked
-for resolution and for duplication inside the page, not for prior existence.
+add_rows must resolve an existing control, a C++-consumed native control, or a
+validated declarative navigation/launcher target, and must not duplicate a row.
 """
 import argparse
 import json
 import os
 import re
 import sys
+from functools import lru_cache
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
@@ -31,8 +32,7 @@ ROW_KINDS = {"slider", "number", "toggle", "combo", "color", "dial", "arc",
 PRESET_MODES = {"widgets", "provider"}
 TOP_KEYS = {"version", "page_features", "p0_pages", "launcher_targets", "parity_allow"}
 TOP_OPTIONAL = {"header_quick_allowlist", "header_quick_policy", "layout_overrides", "undo_owners"}
-# Kit-native pages may author controls directly in JSON. The generator supplies
-# empty preset/selector/enable/add-row defaults; do not require legacy filler.
+# JSON-native pages use generator defaults for these optional legacy fields.
 PAGE_REQUIRED = {"v1_sources", "label_names"}
 PAGE_OPTIONAL = {"root_class", "root_name", "preset", "selector_settings", "card_enables", "add_rows",
                  "undo_context", "who_adapter", "mode_adapter", "mode_on",
@@ -147,6 +147,19 @@ def page_rows(page):
                 if r.get("w"):
                     out.setdefault(r["w"], (c.get("id"), o.get("label"), r))
     return out
+
+
+@lru_cache(maxsize=1)
+def cpp_widget_names():
+    # Require actual widget lookups, not serialization keys or other literals.
+    from pathlib import Path
+    lookup = re.compile(r'\b(?:getChild|findChild)(?:\s*<[^;{}()]+>)?\s*\(\s*"([A-Za-z_][A-Za-z0-9_]*)"')
+    names = set()
+    for path in Path(REPO, "indra/newview").glob("*.cpp"):
+        source = path.read_text(encoding="utf-8", errors="replace")
+        source = re.sub(r'/\*.*?\*/|//[^\n]*', '', source, flags=re.S)
+        names.update(lookup.findall(source))
+    return names
 
 
 def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg):
@@ -361,8 +374,18 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
                        "row.hidden must be 0 or 1")
             w = row.get("w")
             if isinstance(w, str) and w:
-                if row.get("source_widget"):
-                    chk.ok(resolves(row["source_widget"]), iw, "source_widget '%s' does not resolve" % row["source_widget"])
+                source = row.get("source_widget", w)
+                native_link = row.get("k") == "link" and row.get("to") in data_pages
+                target_file = "floater_lightbox_settings.xml" if row.get("target") == "lightbox" else "floater_%s.xml" % row.get("target")
+                target_names, target_missing = v1_names([target_file]) if row.get("target") else (set(), [])
+                native_launcher = (row.get("k") == "button" and bool(row.get("target")) and
+                                   not target_missing and row.get("target_tab") in target_names)
+                # Native JSON rows may create a control rather than hosting a v1 node.
+                # Still require an existing widget or a real C++ consumer, including
+                # when source_widget is absent (previously unchecked).
+                native = not row.get("source_widget") and (source in cpp_widget_names() or native_link or native_launcher)
+                chk.ok(resolves(source) or native, iw,
+                       "row.w/source_widget '%s' does not resolve (data, page_sources, v1 or C++)" % source)
                 chk.ok(w not in rows and w not in seen_w, iw,
                        "row.w '%s' duplicates an existing or added row" % w)
                 seen_w.add(w)
@@ -379,6 +402,7 @@ def check_page(chk, key, entry, data_pages, data_names, ps_names, pages_src_cfg)
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--check", action="store_true", help="validate without writing (the default)")
+    ap.add_argument("--selftest", action="store_true", help="test native row-name validation")
     ap.add_argument("--config", default=DEFAULT_CONFIG)
     ap.add_argument("--data", default=DEFAULT_DATA)
     ap.add_argument("--page-sources", default=DEFAULT_PAGE_SOURCES)
@@ -399,6 +423,26 @@ def main(argv=None):
     chk = Checker()
     data_pages, data_names = collect_data(data)
     ps_names = collect_page_sources(ps)
+
+    if args.selftest:
+        import copy
+        key = "camera_group/shot_tab"
+        clean = cfg["p0_pages"][key]
+        check_page(chk, key, clean, data_pages, data_names, ps_names, None)
+        if chk.errors:
+            print("FAIL: clean row fixture: " + "; ".join(chk.errors))
+            return 1
+        for name in ("cast_ref", "arrival_target", "nonexistent_group_widget"):
+            entry = copy.deepcopy(clean)
+            entry["add_rows"][0]["row"]["w"] = name
+            entry["add_rows"][0]["row"].pop("source_widget", None)
+            negative = Checker()
+            check_page(negative, key, entry, data_pages, data_names, ps_names, None)
+            if not any("'%s' does not resolve" % name in error for error in negative.errors):
+                print("FAIL: accepted planted row.w=" + name)
+                return 1
+            print("PASS: rejected planted row.w=" + name + " without source_widget")
+        return 0
 
     if chk.ok(isinstance(cfg, dict), "kit_pages.json", "top level must be an object"):
         for extra in sorted(set(cfg) - TOP_KEYS - TOP_OPTIONAL):

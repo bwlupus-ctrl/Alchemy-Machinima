@@ -456,7 +456,7 @@ LLSD writeGazeAimTarget(const LLActorMover::GazeTarget& target)
     data["mode"] = static_cast<S32>(target.mMode);
     if (target.mCastRef.notNull())
     {
-        data["cast_ref"] = target.mCastRef;
+        data["cast_ref"] = LLDirectorCast::savedSceneActorId(target.mCastRef);
     }
     if (!target.mFixedPoint.isExactlyZero())
     {
@@ -464,7 +464,7 @@ LLSD writeGazeAimTarget(const LLActorMover::GazeTarget& target)
     }
     if (target.mObjectRef.notNull())
     {
-        data["object_ref"] = target.mObjectRef;
+        data["object_ref"] = LLDirectorCast::savedSceneActorId(target.mObjectRef);
     }
     return data;
 }
@@ -877,7 +877,7 @@ LLSD writeCueTarget(const LLActorMover::GazeTarget& target)
     data["mode"] = static_cast<S32>(target.mMode);
     if (target.mCastRef.notNull())
     {
-        data["cast_ref"] = target.mCastRef;
+        data["cast_ref"] = LLDirectorCast::savedSceneActorId(target.mCastRef);
     }
     if (!target.mFixedPoint.isExactlyZero())
     {
@@ -885,7 +885,7 @@ LLSD writeCueTarget(const LLActorMover::GazeTarget& target)
     }
     if (target.mObjectRef.notNull())
     {
-        data["object_ref"] = target.mObjectRef;
+        data["object_ref"] = LLDirectorCast::savedSceneActorId(target.mObjectRef);
     }
     writeGazeExpression(data, target, target.mPersonaOverride);
     return data;
@@ -1141,7 +1141,7 @@ LLUUID LLDirectorCast::canonicalActorId(const LLUUID& id)
     LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
     LLControlAvatar* control = avatar && avatar->isControlAvatar()
         ? static_cast<LLControlAvatar*>(avatar) : nullptr;
-    if (!control && object)
+    if (!avatar && object)
     {
         LLViewerObject* root = object->getRootEdit();
         control = root ? root->getControlAvatar() : nullptr;
@@ -1413,8 +1413,7 @@ void LLDirectorCast::toggle(const LLUUID& id)
 
 bool LLDirectorCast::contains(const LLUUID& id) const
 {
-    const LLUUID actor_id = canonicalActorId(id);
-    return actor_id.notNull() && mMemberIndex.find(actor_id) != mMemberIndex.end();
+    return containsStored(id) || containsStored(canonicalActorId(id));
 }
 
 bool LLDirectorCast::containsStored(const LLUUID& id) const
@@ -1467,7 +1466,12 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
 
 LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 {
-    const auto it = mMemberIndex.find(canonicalActorId(id));
+    return getStoredMember(canonicalActorId(id));
+}
+
+LLDirectorCast::CastMember* LLDirectorCast::getStoredMember(const LLUUID& id)
+{
+    const auto it = mMemberIndex.find(id);
     if (it == mMemberIndex.end() || it->second >= mCast.size())
     {
         return nullptr;
@@ -1478,6 +1482,16 @@ LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 const LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id) const
 {
     return const_cast<LLDirectorCast*>(this)->getMember(id);
+}
+
+const LLDirectorCast::CastMember* LLDirectorCast::getStoredMember(const LLUUID& id) const
+{
+    return const_cast<LLDirectorCast*>(this)->getStoredMember(id);
+}
+
+LLUUID LLDirectorCast::savedSceneActorId(const LLUUID& id)
+{
+    return isSceneClone(id) ? LLUUID::null : id;
 }
 
 const LLDirectorCast::ActorStyle& LLDirectorCast::getActorStyle(const LLUUID& id) const
@@ -2174,7 +2188,7 @@ void LLDirectorCast::changedGroups(const GroupEvent& event)
 
 std::string LLDirectorCast::makeGroup(const uuid_vec_t& ids, const std::string& name)
 {
-    if (std::none_of(ids.begin(), ids.end(), [this](const LLUUID& id) { return contains(id); }))
+    if (std::none_of(ids.begin(), ids.end(), [this](const LLUUID& id) { return containsStored(id); }))
         return {};
     const std::string used = ALDirectorGroups::uniqueGroupName(getGroupNames(), name);
     addToGroup(ids, used);
@@ -2188,7 +2202,7 @@ void LLDirectorCast::addToGroup(const uuid_vec_t& ids, const std::string& name)
     std::set<std::string> affected;
     bool changed = false;
     for (const LLUUID& id : ids)
-        if (CastMember* member = getMember(id))
+        if (CastMember* member = getStoredMember(id))
             if (member->mGroup != used)
             {
                 affected.insert(member->mGroup);
@@ -2209,7 +2223,7 @@ void LLDirectorCast::removeFromGroup(const uuid_vec_t& ids)
     auto snapshot = captureGroups();
     for (const auto& id : ids)
     {
-        auto found = snapshot.tags.find(canonicalActorId(id));
+        auto found = snapshot.tags.find(id);
         if (found != snapshot.tags.end()) found->second.clear();
     }
     restoreGroups(snapshot);
@@ -2231,7 +2245,8 @@ LLDirectorCast::GroupSnapshot LLDirectorCast::captureGroups() const
     return result;
 }
 
-void LLDirectorCast::restoreGroups(const GroupSnapshot& snapshot)
+void LLDirectorCast::restoreGroups(const GroupSnapshot& snapshot, const std::string& renamed_from,
+                                   const std::string& renamed_to)
 {
     const auto before = captureGroups();
     std::set<std::string> affected;
@@ -2265,19 +2280,21 @@ void LLDirectorCast::restoreGroups(const GroupSnapshot& snapshot)
         if (binding.first >= 0 && binding.first < 4)
         {
             const auto group = membersInGroup(binding.second.first).empty() ? std::string() : binding.second.first;
+            const LLUUID who = !binding.second.first.empty() && group.empty() ? LLUUID::null : binding.second.second;
             if (mHotGazeSlots[binding.first].mGroup == group &&
-                mHotGazeSlots[binding.first].mWho == binding.second.second) continue;
+                mHotGazeSlots[binding.first].mWho == who) continue;
             LLActorMover::instance().releaseHotGazeSlot(binding.first);
             mHotGazeSlots[binding.first].mGroup = group;
-            mHotGazeSlots[binding.first].mWho = binding.second.second;
+            mHotGazeSlots[binding.first].mWho = who;
             ++mHotGazeRevision;
         }
-    changedGroups({ GroupEvent::MEMBERS, {}, {} });
+    changedGroups({ renamed_from.empty() ? GroupEvent::MEMBERS : GroupEvent::RENAMED,
+                    renamed_from, renamed_to });
 }
 
 std::string LLDirectorCast::getGroup(const LLUUID& id) const
 {
-    const CastMember* m = getMember(id);
+    const CastMember* m = getStoredMember(id);
     return m ? m->mGroup : std::string();
 }
 
@@ -2405,7 +2422,10 @@ void LLDirectorCast::setGroupDelay(const std::string& name, F32 seconds)
         mGroupDelays.erase(name);   // 0 = no entry, so the map never bloats
     }
     if (!is_approx_equal(old_seconds, getGroupDelay(name)))
+    {
+        ++mGroupRevision;
         touchScene();
+    }
 }
 
 F32 LLDirectorCast::getGroupDelay(const std::string& name) const
@@ -2428,7 +2448,10 @@ void LLDirectorCast::setGroupRate(const std::string& name, S32 offset)
     const S32 old_offset = getGroupRate(name);
     ALSteppedAnim::setGroupRate(mGroupRates, name, offset);
     if (old_offset != getGroupRate(name))
+    {
+        ++mGroupRevision;
         touchScene();
+    }
 }
 
 void LLDirectorCast::pruneGroupData(const std::string& name)
@@ -2623,9 +2646,8 @@ bool LLDirectorCast::resetToMark(const LLUUID& id)
 LLSD LLDirectorCast::sceneData() const
 {
     LLSD data = LLSD::emptyMap();
-    const auto saved_actor = [](const LLUUID& id) { return !isSceneClone(id); };
+    const auto saved_actor = [](const LLUUID& id) { return savedSceneActorId(id) == id; };
     const auto saved_id = [&](const LLUUID& id) { return saved_actor(id) ? id : LLUUID::null; };
-    data["hot_gaze_slots"] = ALGazeHot::writeSlots(mHotGazeSlots, saved_actor);
     std::vector<std::string> saved_groups;
     LLSD cast_arr = LLSD::emptyArray();
     for (const CastMember& m : mCast)
@@ -2663,7 +2685,7 @@ LLSD LLDirectorCast::sceneData() const
         gaze_sd["mode"] = static_cast<S32>(m.mGazeTarget.mMode);
         if (m.mGazeTarget.mCastRef.notNull())
         {
-            gaze_sd["cast_ref"] = m.mGazeTarget.mCastRef;
+            gaze_sd["cast_ref"] = saved_id(m.mGazeTarget.mCastRef);
         }
         if (!m.mGazeTarget.mFixedPoint.isExactlyZero())
         {
@@ -2671,7 +2693,7 @@ LLSD LLDirectorCast::sceneData() const
         }
         if (m.mGazeTarget.mObjectRef.notNull())
         {
-            gaze_sd["object_ref"] = m.mGazeTarget.mObjectRef;
+            gaze_sd["object_ref"] = saved_id(m.mGazeTarget.mObjectRef);
         }
         writeGazeExpression(gaze_sd, m.mGazeTarget);
         e["gaze_target"] = gaze_sd;
@@ -2690,6 +2712,14 @@ LLSD LLDirectorCast::sceneData() const
 
         cast_arr.append(e);
     }
+    auto saved_slots = mHotGazeSlots;
+    for (auto& slot : saved_slots)
+        if (!slot.mGroup.empty() && std::find(saved_groups.begin(), saved_groups.end(), slot.mGroup) == saved_groups.end())
+        {
+            slot.mGroup.clear();
+            slot.mWho.setNull();
+        }
+    data["hot_gaze_slots"] = ALGazeHot::writeSlots(saved_slots, saved_actor);
     data["cast"] = cast_arr;
     data["subject_a"] = saved_id(mSubjectA);
     data["subject_b"] = saved_id(mSubjectB);
@@ -2701,7 +2731,7 @@ LLSD LLDirectorCast::sceneData() const
     self_gaze_sd["look_at_camera"] = mSelfLookAtCamera;
     if (mSelfGazeTarget.mCastRef.notNull())
     {
-        self_gaze_sd["cast_ref"] = mSelfGazeTarget.mCastRef;
+        self_gaze_sd["cast_ref"] = saved_id(mSelfGazeTarget.mCastRef);
     }
     if (!mSelfGazeTarget.mFixedPoint.isExactlyZero())
     {
@@ -2709,7 +2739,7 @@ LLSD LLDirectorCast::sceneData() const
     }
     if (mSelfGazeTarget.mObjectRef.notNull())
     {
-        self_gaze_sd["object_ref"] = mSelfGazeTarget.mObjectRef;
+        self_gaze_sd["object_ref"] = saved_id(mSelfGazeTarget.mObjectRef);
     }
     writeGazeExpression(self_gaze_sd, mSelfGazeTarget);
     data["self_gaze_target"] = self_gaze_sd;
@@ -3045,6 +3075,11 @@ void LLDirectorCast::applySceneData(const LLSD& data)
     mHotGazeSlots = ALGazeHot::readSlots(data["hot_gaze_slots"]);
     for (auto& slot : mHotGazeSlots)
     {
+        if (!slot.mGroup.empty() && membersInGroup(slot.mGroup).empty())
+        {
+            slot.mGroup.clear();
+            slot.mWho.setNull();
+        }
         if (slot.mWho.notNull()) slot.mWho = loadedSceneMemberId(slot.mWho, scene_actor_ids);
         if (slot.mTarget.mCastRef.notNull())
             slot.mTarget.mCastRef = canonicalSceneActorId(slot.mTarget.mCastRef, scene_actor_ids);

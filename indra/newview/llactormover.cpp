@@ -1892,7 +1892,7 @@ LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
     data["ease_out"] = path->mEaseOut;
     data["arrival_facing_mode"] = path->mArrivalFacingMode;
     data["arrival_dir"] = path->mArrivalDir;
-    data["arrival_target"] = path->mArrivalTarget;
+    data["arrival_target"] = LLDirectorCast::savedSceneActorId(path->mArrivalTarget);
     data["ground_follow"] = path->mGroundFollow;
     data["pitch_to_slope"] = path->mPitchToSlope;
     data["airborne"] = path->mAirborne;
