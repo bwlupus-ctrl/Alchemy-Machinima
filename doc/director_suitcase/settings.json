@@ -17987,6 +17987,26 @@
   },
   {
     "change": "added",
+    "comment": "When on, engaging the flycam during a Bone Lock camera move flies an orbit around the same actor and joint; Bone Lock resumes when the flycam is turned off.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "camera"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "CinematicBoneLockFlycamHandover",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "[Cinematic] Arc Move: distance from subject (m).",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
