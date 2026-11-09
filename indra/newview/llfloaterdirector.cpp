@@ -6930,8 +6930,8 @@ void LLFloaterDirector::refreshGroupControls()
             const S32 delay_column = mGroupMembersList ? 3 : 2;
             row["columns"][delay_column]["column"] = "delay";
             row["columns"][delay_column]["value"] = llformat("%.1f s", cast.getGroupDelay(name));
-            auto* item = mGroupsList->addElement(row, ADD_BOTTOM);
-            if (auto* cell = item->getColumn(0)) cell->setColor(group_tint(name));
+            // V2 Groups list inherits themed list text; no per-group tint override.
+            mGroupsList->addElement(row, ADD_BOTTOM);
         }
         if (!selected.empty()) mGroupsList->setSelectedByValue(selected, true);
     }
