@@ -12,8 +12,8 @@ Interactive controls: 2166 (of 2292 catalog rows; readout/text rows excluded fro
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | ORIG | 1617 | 1035 | 1 | 581 | 0 | 54 | 495 |
-| V1 | 1727 | 1089 | 1 | 637 | 0 | 55 | 384 |
-| V2 | 1964 | 1385 | 0 | 579 | 72 | 97 | 33 |
+| V1 | 1725 | 1089 | 1 | 635 | 0 | 55 | 386 |
+| V2 | 1962 | 1385 | 0 | 577 | 72 | 97 | 35 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
@@ -38,7 +38,7 @@ Interactive controls: 2166 (of 2292 catalog rows; readout/text rows excluded fro
 | focus_tab (Focus) | Lens | 17 | 14 | 14 | 16 | 0 | 1 | 0 | 1 |
 | filters_tab (Filters) | Lens | 48 | 29 | 29 | 43 | 3 | 2 | 0 | 0 |
 | diopter_tab (Diopter) | Lens | 4 | 3 | 3 | 3 | 0 | 1 | 0 | 0 |
-| cine_light_rig_tab (Rig) | Light | 194 | 156 | 167 | 177 | 0 | 16 | 1 | 0 |
+| cine_light_rig_tab (Rig) | Light | 194 | 156 | 165 | 175 | 0 | 16 | 3 | 0 |
 | light_rim_tab (Rim) | Light | 81 | 40 | 43 | 77 | 0 | 4 | 0 | 0 |
 | exposure_tab (Exposure) | Light | 48 | 23 | 24 | 46 | 1 | 1 | 0 | 0 |
 | practicals_tab (Practicals) | Light | 21 | 14 | 14 | 19 | 0 | 2 | 0 | 0 |
@@ -61,8 +61,8 @@ Interactive controls: 2166 (of 2292 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1928 mockup rows + 364 page_sources-only (page, widget) rows = 2292 controls. page_sources.json lists 2292 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
-Of the page_sources-only rows, 360 are interactive.
+Catalog = 1926 mockup rows + 366 page_sources-only (page, widget) rows = 2292 controls. page_sources.json lists 2292 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Of the page_sources-only rows, 362 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
 
@@ -72,8 +72,8 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3287 LLFloaterDirector::bindFrameOrbitPage |
-| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3280 LLFloaterDirector::bindFrameOrbitPage |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3294 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3287 LLFloaterDirector::bindFrameOrbitPage |
 
 ### vcam_tab (1)
 
@@ -85,7 +85,7 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2420 LLFloaterDirector::bindLensFocusPage |
+| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2423 LLFloaterDirector::bindLensFocusPage |
 
 ### atmosphere_tab (22)
 
@@ -190,11 +190,11 @@ Names present in the ORIG page closure but absent from the V1 closure: 258 entri
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-kit=1, kit=18, none=33, xui=2114.
+- V2 resolution by source: alias-kit=1, kit=18, none=35, xui=2112.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
 - Launcher-stub pages (V2 opens V1 floater): none.
-- Interactive rows missing in ALL three versions (mockup-only, never implemented): 1.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2166 interactive.
+- Interactive rows missing in ALL three versions (mockup-only, never implemented): 3.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 37 of 2166 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 

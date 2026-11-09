@@ -8,7 +8,7 @@
       "GENERATED": 734,
       "HOOK": 535,
       "OWNED": 909,
-      "TOOLING": 436
+      "TOOLING": 438
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -67,14 +67,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "dc24e2346acdc6e8822e65dfb8687b67fe509185afe678d00759fcc984495e64",
+        "csv_sha256": "e0b40f8052934305656d948a25ec94d8dc5d22d1e9e7097884e0e5303b913963",
         "director_rules": {
           "known_legacy": 0,
           "links": 17,
           "pages": 40,
           "popovers": 6
         },
-        "entries": 4782,
+        "entries": 4780,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -116,7 +116,7 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2570,
+        "generated_kit_rows": 2568,
         "generator": "scripts/code_tools/director_functional_manifest.py",
         "interactive_rows": 2166,
         "pages": 39,
@@ -227,19 +227,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2292,
+        "independent_json_rows": 2290,
         "multi_page_settings": 21,
         "owner_roots": 36,
         "pages": 39,
-        "rows": 2292,
-        "unresolved_rows": 75
+        "rows": 2290,
+        "unresolved_rows": 71
       },
       "wiring_rows": 2292
     },
-    "head_source_tree": "981432a896fee86d2ebe18d57d1b3df14893b117",
+    "head_source_tree": "f36f716aaf2dfb84240e543d580fb2c348514a8c",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "a17410e95573de0975721fe8ac2bbb8d9d5ca1e91fe996baea831ba164c0c76f",
+    "input_sha256": "0cabe816aa3bf9207bc91c850933ed00bed3516dd6628b7d8edd1714e0c88353",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13162,8 +13162,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
-        "rig"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -16121,8 +16120,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
-        "weather"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27253,7 +27251,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
         "gaze"
       ],
       "class": "OWNED",
@@ -27284,7 +27281,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
         "gaze"
       ],
       "class": "OWNED",
@@ -28057,7 +28053,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -43159,6 +43154,19 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/rig_group_history_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/rig_mirror_shadow_test.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -43264,6 +43272,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/rig_shadow_review_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/rig_subject_assignment_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
