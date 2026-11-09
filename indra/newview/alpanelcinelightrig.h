@@ -123,6 +123,7 @@ private:
     void onClearObjectTarget();
     void onGroupEnabledCommit();
     void onGroupSlotsCommit();
+    void commitGroupState(U32 slots, bool enabled);
     void adjustSelectedLightAim(const char* axis, F32 delta);
     void resetAim();
     void onSetupSelected();
@@ -150,8 +151,6 @@ private:
     void onClickShadowFixIt();
 
     LLComboBox* mAnchorCombo = nullptr;
-    LLButton* mCreateRigGroup = nullptr;
-    LLButton* mLeaveRigGroup = nullptr;
     LLButton* mAllRigsOff = nullptr;
     LLTextBox* mRigGroupStatus = nullptr;
     ALKitPage* mRigKitPage = nullptr;

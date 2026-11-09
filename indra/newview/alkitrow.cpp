@@ -573,6 +573,15 @@ S32 ALKitRow::heightForWidth(S32 width) const
     return llmax(mCodeReadout ? 56 : 28, mRowHeight);
 }
 
+void ALKitRow::setDisplayLabel(const std::string& label)
+{
+    if (mMeta.label == label)
+        return;
+    mMeta.label = label;
+    if (mLabel)
+        fitLabel(mLabel->getRect().getWidth());
+}
+
 // A label wider than its box is elided with an ellipsis; the full text moves to the tooltip.
 void ALKitRow::fitLabel(S32 box_width)
 {

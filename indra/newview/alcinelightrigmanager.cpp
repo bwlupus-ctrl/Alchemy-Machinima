@@ -790,20 +790,21 @@ void ALCineLightRigManager::onEnabledChanged(bool enabled)
     persist();
 }
 
-void ALCineLightRigManager::createRigGroup()
+void ALCineLightRigManager::subjectRigOff(Slot slot)
 {
-    if (isRigGroup()) return;
+    if (!validSlot(slot) || slot == SLOT_SELF) return;
     mBlobs[slotIndex(mSelected)] = captureSelected();
-    mRigSession.createGroup();
+    mRigSession.setEnabled(mBlobs, slot, false,
+        [this](S32 index) { shutdownSlot(index); });
+    if (slot == mSelected) writeSelectedSettings();
     ++mConfigurationRevision;
-    logSelectedTarget();
+    persist();
 }
 
-void ALCineLightRigManager::leaveRigGroup()
+void ALCineLightRigManager::subjectRigsOff()
 {
-    if (!isRigGroup()) return;
     mBlobs[slotIndex(mSelected)] = captureSelected();
-    mRigSession.leaveGroup(mBlobs, [this](S32 index) { shutdownSlot(index); });
+    mRigSession.subjectRigsOff(mBlobs, [this](S32 index) { shutdownSlot(index); });
     mSelected = SLOT_SELF;
     writeSelectedSettings();
     ++mConfigurationRevision;
@@ -1428,17 +1429,14 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     updateAutoShadowSlots();
     updateRandomCycle(presentation_time);
     resolveCameraFocus();
-    // The dispatcher is the final solo boundary, including stale blob flags.
-    const bool grouped = isRigGroup();
-    const U32 enabled_mask = enabledMask() & (grouped ? ~0u : 1u);
-    const Slot dispatch_selected = grouped ? mSelected : SLOT_SELF;
+    const U32 enabled_mask = enabledMask();
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         const Slot slot = static_cast<Slot>(i);
         const bool owns_shadows = slot == mFocusState.mFocus;
         mInstances[i].setLiveProbeBounceScale(
             liveProbeBounceScaleFor(slot));
-        switch (pathFor(enabled_mask, dispatch_selected, slot))
+        switch (pathFor(enabled_mask, mSelected, slot))
         {
             case TickPath::TICK_SELECTED_VERBATIM:
                 mInstances[i].tickSelected(presentation_time, owns_shadows);

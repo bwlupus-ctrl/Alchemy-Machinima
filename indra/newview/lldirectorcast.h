@@ -399,6 +399,9 @@ public:
     // legacy Two-Shot/OTS. C/D are additional switcher-addressable marks.
     // resolveSubject*() returns nullptr when unset or dead, which every
     // consumer treats as "fall back to stock behavior".
+    // Nest across a complete assignment, including temporary clears and bulk drops.
+    void beginSubjectAssignment();
+    void endSubjectAssignment();
     void setSubjectA(const LLUUID& id);
     void setSubjectB(const LLUUID& id);
     void setSubjectC(const LLUUID& id);
@@ -548,6 +551,8 @@ private:
     ALGazeHot::Slots mHotGazeSlots;
     U64 mHotGazeRevision = 1;
     U64 mGazeConfigRevision = 1;
+    U32 mSubjectAssignmentDepth = 0;
+    LLUUID mSubjectAssignmentBefore[4];
     U64 mSubjectRevision = 1;
     U64 mCastRevision = 1;      // [GhostPanelPerf] membership + cached names
     U64 mSceneRevision = 1;     // every authored value captured by sceneData()

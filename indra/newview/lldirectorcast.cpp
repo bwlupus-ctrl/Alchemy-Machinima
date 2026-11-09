@@ -1229,19 +1229,19 @@ void LLDirectorCast::remove(const LLUUID& id)
     // a subject that leaves the cast stops being a subject
     if (mSubjectA == actor_id)
     {
-        mSubjectA.setNull();
+        setSubjectA(LLUUID::null);
     }
     if (mSubjectB == actor_id)
     {
-        mSubjectB.setNull();
+        setSubjectB(LLUUID::null);
     }
     if (mSubjectC == actor_id)
     {
-        mSubjectC.setNull();
+        setSubjectC(LLUUID::null);
     }
     if (mSubjectD == actor_id)
     {
-        mSubjectD.setNull();
+        setSubjectD(LLUUID::null);
     }
     // leaving the cast also leaves the start queue, and may retire the group
     cancelPendingStart(actor_id);
@@ -1306,13 +1306,19 @@ void LLDirectorCast::replaceActorId(const LLUUID& old_id, const LLUUID& new_id,
         remove(old_id);
         // remove() is a membership operation and can early-return for an
         // unenrolled clone; subject assignment is independent of membership.
-        for (LLUUID* subject : { &mSubjectA, &mSubjectB, &mSubjectC, &mSubjectD })
-            if (*subject == old_id || *subject == stable)
+        const LLUUID subjects[] = { mSubjectA, mSubjectB, mSubjectC, mSubjectD };
+        const auto setters = { &LLDirectorCast::setSubjectA, &LLDirectorCast::setSubjectB,
+                               &LLDirectorCast::setSubjectC, &LLDirectorCast::setSubjectD };
+        S32 subject_index = 0;
+        for (auto setter : setters)
+        {
+            const LLUUID& subject = subjects[subject_index++];
+            if (subject == old_id || subject == stable)
             {
-                subject->setNull();
-                ++mSubjectRevision;
+                (this->*setter)(LLUUID::null);
                 references_changed = true;
             }
+        }
         mLookAtCameraIds.erase(old_id);
         mLookAtCameraIds.erase(stable);
         cancelPendingStart(old_id);
@@ -2049,25 +2055,79 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     return av;
 }
 
+void LLDirectorCast::beginSubjectAssignment()
+{
+    if (mSubjectAssignmentDepth++ == 0)
+    {
+        const LLUUID subjects[] = { mSubjectA, mSubjectB, mSubjectC, mSubjectD };
+        for (S32 i = 0; i < 4; ++i)
+            mSubjectAssignmentBefore[i] = canonicalActorId(subjects[i]);
+    }
+}
+
+void LLDirectorCast::endSubjectAssignment()
+{
+    llassert(mSubjectAssignmentDepth > 0);
+    if (--mSubjectAssignmentDepth != 0) return;
+    const LLUUID subjects[] = { mSubjectA, mSubjectB, mSubjectC, mSubjectD };
+    if (ALCineLightRigManager::instanceExists())
+        for (S32 i = 0; i < 4; ++i)
+            if (mSubjectAssignmentBefore[i] != canonicalActorId(subjects[i]))
+                ALCineLightRigManager::instance().subjectRigOff(
+                    static_cast<ALCineLightRigManager::Slot>(i + 1));
+}
+
 void LLDirectorCast::setSubjectA(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectA != value) { mSubjectA = value; ++mSubjectRevision; touchScene(); }
+    if (mSubjectA != value)
+    {
+        // Scene loading and clone identity rekeys write the member directly.
+        beginSubjectAssignment();
+        mSubjectA = value;
+        ++mSubjectRevision;
+        touchScene();
+        endSubjectAssignment();
+    }
 }
 void LLDirectorCast::setSubjectB(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectB != value) { mSubjectB = value; ++mSubjectRevision; touchScene(); }
+    if (mSubjectB != value)
+    {
+        // Scene loading and clone identity rekeys write the member directly.
+        beginSubjectAssignment();
+        mSubjectB = value;
+        ++mSubjectRevision;
+        touchScene();
+        endSubjectAssignment();
+    }
 }
 void LLDirectorCast::setSubjectC(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectC != value) { mSubjectC = value; ++mSubjectRevision; touchScene(); }
+    if (mSubjectC != value)
+    {
+        // Scene loading and clone identity rekeys write the member directly.
+        beginSubjectAssignment();
+        mSubjectC = value;
+        ++mSubjectRevision;
+        touchScene();
+        endSubjectAssignment();
+    }
 }
 void LLDirectorCast::setSubjectD(const LLUUID& id)
 {
     const LLUUID value = canonicalActorId(id);
-    if (mSubjectD != value) { mSubjectD = value; ++mSubjectRevision; touchScene(); }
+    if (mSubjectD != value)
+    {
+        // Scene loading and clone identity rekeys write the member directly.
+        beginSubjectAssignment();
+        mSubjectD = value;
+        ++mSubjectRevision;
+        touchScene();
+        endSubjectAssignment();
+    }
 }
 
 LLVOAvatar* LLDirectorCast::resolveSubjectA()

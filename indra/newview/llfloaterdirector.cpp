@@ -852,20 +852,23 @@ void assign_subject(LLDirectorCast& cast, S32 subject, const LLUUID& id)
     {
         return;
     }
+    cast.beginSubjectAssignment();
+    const LLUUID actor = LLDirectorCast::canonicalActorId(id);
     // One cast member carries at most one subject mark. With C/D empty this
     // produces exactly the existing A/B reassignment behavior.
-    if (cast.getSubjectA() == id) cast.setSubjectA(LLUUID::null);
-    if (cast.getSubjectB() == id) cast.setSubjectB(LLUUID::null);
-    if (cast.getSubjectC() == id) cast.setSubjectC(LLUUID::null);
-    if (cast.getSubjectD() == id) cast.setSubjectD(LLUUID::null);
+    if (LLDirectorCast::canonicalActorId(cast.getSubjectA()) == actor) cast.setSubjectA(LLUUID::null);
+    if (LLDirectorCast::canonicalActorId(cast.getSubjectB()) == actor) cast.setSubjectB(LLUUID::null);
+    if (LLDirectorCast::canonicalActorId(cast.getSubjectC()) == actor) cast.setSubjectC(LLUUID::null);
+    if (LLDirectorCast::canonicalActorId(cast.getSubjectD()) == actor) cast.setSubjectD(LLUUID::null);
     switch (subject)
     {
-        case SUBJECT_A: cast.setSubjectA(id); break;
-        case SUBJECT_B: cast.setSubjectB(id); break;
-        case SUBJECT_C: cast.setSubjectC(id); break;
-        case SUBJECT_D: cast.setSubjectD(id); break;
+        case SUBJECT_A: cast.setSubjectA(actor); break;
+        case SUBJECT_B: cast.setSubjectB(actor); break;
+        case SUBJECT_C: cast.setSubjectC(actor); break;
+        case SUBJECT_D: cast.setSubjectD(actor); break;
         default: break;
     }
+    cast.endSubjectAssignment();
 }
 
 // Stable per-group tint for cast rows: hash the name to a hue, keep it a
@@ -3144,6 +3147,8 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
                                 LLDirectorCast& cast = LLDirectorCast::instance();
                                 const S32 index = batch ? tool->getCargoIndex() : 0;
                                 if (batch && index == 0)
+                                    cast.beginSubjectAssignment();
+                                if (batch && index == 0)
                                     for (S32 mark = SUBJECT_A; mark <= SUBJECT_D; ++mark)
                                         clear_subject(cast, mark);
                                 if (!batch || index < 4)
@@ -3152,6 +3157,8 @@ void LLFloaterDirector::bindCameraPage(LLView* root)
                                     cast.add(id);
                                     assign_subject(cast, subject + index, id);
                                 }
+                                if (batch && index == tool->getCargoCount() - 1)
+                                    cast.endSubjectAssignment();
                             }
                             return true;
                         });
@@ -7899,11 +7906,13 @@ void LLFloaterDirector::onClickAssignSubjects()
     }
     const std::vector<LLUUID> ordered = ALDirectorQol::subjectAssignment(selected);
     LLDirectorCast& cast = LLDirectorCast::instance();
+    cast.beginSubjectAssignment();
     for (S32 subject = SUBJECT_A; subject <= SUBJECT_D; ++subject)
         clear_subject(cast, subject);
     // Subjects are 1-based (SUBJECT_A == 1); the ordered list is 0-based.
     for (S32 index = 0; index < (S32)ordered.size() && SUBJECT_A + index <= SUBJECT_D; ++index)
         assign_subject(cast, SUBJECT_A + index, ordered[index]);
+    cast.endSubjectAssignment();
     LLSD args;
     args["MESSAGE"] = selected.size() > 4
         ? "Assigned the first four selected cast rows to Subjects A-D; extra selections were ignored."
