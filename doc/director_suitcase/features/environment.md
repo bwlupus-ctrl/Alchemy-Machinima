@@ -107,8 +107,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@555,7", "indra/newview/CMakeLists.txt@653,7", "indra/newview/CMakeLists.txt@1122,13", "indra/newview/CMakeLists.txt@1564,7", "indra/newview/CMakeLists.txt@1666,7"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14777", "indra/newview/app_settings/settings.xml@25701,1573", "indra/newview/app_settings/settings.xml@27852,109", "indra/newview/app_settings/settings.xml@29382,2466"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@555,7", "indra/newview/CMakeLists.txt@653,7", "indra/newview/CMakeLists.txt@1122,13", "indra/newview/CMakeLists.txt@1565,7", "indra/newview/CMakeLists.txt@1667,7"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@25712,1573", "indra/newview/app_settings/settings.xml@27863,109", "indra/newview/app_settings/settings.xml@29393,2466"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@27,39", "indra/newview/llfloaterenvironmentadjust.cpp@88,26", "indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@666,14", "indra/newview/llfloaterenvironmentadjust.cpp@767,14", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@103,99"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}

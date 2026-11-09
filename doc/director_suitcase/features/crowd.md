@@ -10,6 +10,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alavatarstaging.h`
 - `indra/newview/alavatarstagingmodel.cpp`
 - `indra/newview/alavatarstagingmodel.h`
+- `indra/newview/alcineflycamhandover.h`
 - `indra/newview/aldanceball.cpp`
 - `indra/newview/aldanceball.h`
 - `indra/newview/alformationsolver.cpp`
@@ -55,8 +56,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@1290,168", "indra/newview/CMakeLists.txt@2852,32"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3466", "indra/newview/app_settings/settings.xml@6564,14777", "indra/newview/app_settings/settings.xml@22998,412", "indra/newview/app_settings/settings.xml@23546,362", "indra/newview/app_settings/settings.xml@29237,100", "indra/newview/app_settings/settings.xml@29382,2466"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,117", "indra/newview/CMakeLists.txt@1291,168", "indra/newview/CMakeLists.txt@2853,32"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@23009,412", "indra/newview/app_settings/settings.xml@23557,362", "indra/newview/app_settings/settings.xml@29248,100", "indra/newview/app_settings/settings.xml@29393,2466"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1800,13"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@2083,28"]}
@@ -121,6 +122,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 2868, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1144, "text": "alavatarstagingmodel.h", "source": "indra/newview/alavatarstagingmodel.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 185, "text": "alchatcommand.cpp", "source": "indra/newview/alchatcommand.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1206, "text": "alcineflycamhandover.h", "source": "indra/newview/alcineflycamhandover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 190, "text": "aldanceball.cpp", "source": "indra/newview/aldanceball.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1141, "text": "aldanceball.h", "source": "indra/newview/aldanceball.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 347, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}

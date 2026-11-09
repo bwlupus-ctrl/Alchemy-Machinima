@@ -551,9 +551,9 @@
           "indra/newview/CMakeLists.txt@186,54",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -562,7 +562,7 @@
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@2625,53",
           "indra/newview/llappviewer.cpp@5671,49",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -611,7 +611,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@4160,242"
+          "indra/newview/llviewerjoystick.cpp@4332,242"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -1339,7 +1339,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -1351,7 +1350,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -1380,6 +1378,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -1767,6 +1767,7 @@
           "ALDirectorSwitcher::activeSecondarySubject",
           "ALDirectorSwitcher::applyEaseWorldScale",
           "ALDirectorSwitcher::applySlot",
+          "ALDirectorSwitcher::boneLockFlycamSource",
           "ALDirectorSwitcher::cameraEnableBaseline",
           "ALDirectorSwitcher::cancelEaseWorldTime",
           "ALDirectorSwitcher::defaultBank",
@@ -1793,6 +1794,7 @@
           "ALDirectorSwitcher::updateEaseWorldTime",
           "ALDirectorSwitcher::writeCameraEnabled",
           "ALWorldWindDown::switcherMayEase",
+          "LLCinematicCamera::instance",
           "LLCinematicCamera::migrateLegacyMode",
           "LLDirectorCast::instance",
           "LLPresentationTime::currentFrame",
@@ -2480,6 +2482,7 @@
           "ALKitRow::resolveBinding",
           "ALKitRow::setBoundValue",
           "ALKitRow::setControlVisible",
+          "ALKitRow::setDisplayLabel",
           "ALKitRow::setSubjectDisplayValues",
           "ALKitRow::showContextMenu",
           "ALKitRow::styleValueEditor",
@@ -2918,6 +2921,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -2988,6 +2992,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -5567,6 +5572,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -5606,6 +5612,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -5661,13 +5670,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -5868,6 +5882,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -5881,6 +5896,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -6532,6 +6548,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -7894,6 +7911,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -7952,6 +7970,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -7978,6 +7999,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -10406,6 +10428,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1206,
+        "source": "indra/newview/alcineflycamhandover.h",
+        "text": "alcineflycamhandover.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1311,
         "source": "indra/newview/alcinelightrigmodel.h",
         "text": "alcinelightrigmodel.h"
@@ -11202,20 +11230,20 @@
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1122,13",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@22998,412",
-          "indra/newview/app_settings/settings.xml@23546,362",
-          "indra/newview/app_settings/settings.xml@29237,100",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@23009,412",
+          "indra/newview/app_settings/settings.xml@23557,362",
+          "indra/newview/app_settings/settings.xml@29248,100",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -11225,9 +11253,9 @@
           "indra/newview/llappviewer.cpp@1728,12",
           "indra/newview/llappviewer.cpp@2625,53",
           "indra/newview/llappviewer.cpp@5671,49",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@5983,30",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@5993,30",
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -11303,7 +11331,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@1884,2002"
+          "indra/newview/llviewerjoystick.cpp@1887,2171"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -11498,6 +11526,7 @@
       "indra/newview/alavatarstaging.h",
       "indra/newview/alavatarstagingmodel.cpp",
       "indra/newview/alavatarstagingmodel.h",
+      "indra/newview/alcineflycamhandover.h",
       "indra/newview/alcinelightrigmodel.h",
       "indra/newview/alcontactstab.h",
       "indra/newview/aldanceball.cpp",
@@ -12107,6 +12136,17 @@
           "LLViewerCamera::getInstance",
           "LLVolumeMessage::packVolumeParams"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alcineflycamhandover.h": {
+        "includes": [
+          "indra/llmath/llmath.h",
+          "indra/llmath/llquaternion.h",
+          "indra/llmath/m3math.h",
+          "indra/llmath/v3dmath.h",
+          "indra/llmath/v3math.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/alcinelightrigmodel.h": {
@@ -16157,6 +16197,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -16196,6 +16237,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -16251,13 +16295,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -16466,6 +16515,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -16479,6 +16529,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -17382,6 +17433,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -19517,6 +19569,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -19575,6 +19628,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -19601,6 +19657,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -22920,6 +22977,7 @@
   "camera": {
     "checkpoint": "Arm/release, switch/ease, object/bone lock, orbit, operator modes and recording; restore main camera.",
     "checks": [
+      "scripts/code_tools/test_bonelock_flycam_handover.py",
       "scripts/code_tools/test_cinecam_object_lock.py"
     ],
     "cmake_entries": [
@@ -22970,6 +23028,12 @@
         "line": 1326,
         "source": "indra/newview/alcinecampresentation.h",
         "text": "alcinecampresentation.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1206,
+        "source": "indra/newview/alcineflycamhandover.h",
+        "text": "alcineflycamhandover.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -23746,34 +23810,35 @@
           "indra/newview/CMakeLists.txt@242,11",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1196,13",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2890,20",
-          "indra/newview/CMakeLists.txt@2958,187",
-          "indra/newview/CMakeLists.txt@3206,40"
+          "indra/newview/CMakeLists.txt@1196,14",
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2891,20",
+          "indra/newview/CMakeLists.txt@2959,193",
+          "indra/newview/CMakeLists.txt@3213,40"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@3469,1044",
-          "indra/newview/app_settings/settings.xml@4514,839",
-          "indra/newview/app_settings/settings.xml@5354,175",
-          "indra/newview/app_settings/settings.xml@5585,186",
-          "indra/newview/app_settings/settings.xml@5772,21",
-          "indra/newview/app_settings/settings.xml@5794,10",
-          "indra/newview/app_settings/settings.xml@5805,21",
-          "indra/newview/app_settings/settings.xml@5827,65",
-          "indra/newview/app_settings/settings.xml@5893,21",
-          "indra/newview/app_settings/settings.xml@5915,527",
-          "indra/newview/app_settings/settings.xml@6443,120",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@27429,98",
-          "indra/newview/app_settings/settings.xml@27962,229",
-          "indra/newview/app_settings/settings.xml@29382,2466",
-          "indra/newview/app_settings/settings.xml@32059,364"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@3458,10",
+          "indra/newview/app_settings/settings.xml@3469,1055",
+          "indra/newview/app_settings/settings.xml@4525,773",
+          "indra/newview/app_settings/settings.xml@5299,241",
+          "indra/newview/app_settings/settings.xml@5596,186",
+          "indra/newview/app_settings/settings.xml@5783,21",
+          "indra/newview/app_settings/settings.xml@5805,10",
+          "indra/newview/app_settings/settings.xml@5816,21",
+          "indra/newview/app_settings/settings.xml@5838,65",
+          "indra/newview/app_settings/settings.xml@5904,21",
+          "indra/newview/app_settings/settings.xml@5926,527",
+          "indra/newview/app_settings/settings.xml@6454,120",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@27440,98",
+          "indra/newview/app_settings/settings.xml@27973,229",
+          "indra/newview/app_settings/settings.xml@29393,2466",
+          "indra/newview/app_settings/settings.xml@32070,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -23786,8 +23851,8 @@
           "indra/newview/llappviewer.cpp@1954,24",
           "indra/newview/llappviewer.cpp@2625,53",
           "indra/newview/llappviewer.cpp@4589,17",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@5930,44"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@5940,44"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -23849,46 +23914,46 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@53,21",
-          "indra/newview/llviewerjoystick.cpp@81,8",
-          "indra/newview/llviewerjoystick.cpp@92,413",
-          "indra/newview/llviewerjoystick.cpp@539,144",
-          "indra/newview/llviewerjoystick.cpp@710,7",
-          "indra/newview/llviewerjoystick.cpp@758,11",
-          "indra/newview/llviewerjoystick.cpp@778,7",
-          "indra/newview/llviewerjoystick.cpp@788,7",
-          "indra/newview/llviewerjoystick.cpp@811,35",
-          "indra/newview/llviewerjoystick.cpp@860,7",
-          "indra/newview/llviewerjoystick.cpp@878,7",
-          "indra/newview/llviewerjoystick.cpp@890,9",
-          "indra/newview/llviewerjoystick.cpp@902,169",
-          "indra/newview/llviewerjoystick.cpp@1077,25",
-          "indra/newview/llviewerjoystick.cpp@1156,10",
-          "indra/newview/llviewerjoystick.cpp@1177,7",
-          "indra/newview/llviewerjoystick.cpp@1187,13",
-          "indra/newview/llviewerjoystick.cpp@1211,95",
-          "indra/newview/llviewerjoystick.cpp@1340,10",
-          "indra/newview/llviewerjoystick.cpp@1354,10",
-          "indra/newview/llviewerjoystick.cpp@1375,10",
-          "indra/newview/llviewerjoystick.cpp@1390,7",
-          "indra/newview/llviewerjoystick.cpp@1419,7",
-          "indra/newview/llviewerjoystick.cpp@1429,14",
-          "indra/newview/llviewerjoystick.cpp@1451,33",
-          "indra/newview/llviewerjoystick.cpp@1499,43",
-          "indra/newview/llviewerjoystick.cpp@1551,8",
-          "indra/newview/llviewerjoystick.cpp@1621,14",
-          "indra/newview/llviewerjoystick.cpp@1660,8",
-          "indra/newview/llviewerjoystick.cpp@1685,7",
-          "indra/newview/llviewerjoystick.cpp@1696,133",
-          "indra/newview/llviewerjoystick.cpp@1835,6",
-          "indra/newview/llviewerjoystick.cpp@1863,18",
-          "indra/newview/llviewerjoystick.cpp@1884,2002",
-          "indra/newview/llviewerjoystick.cpp@3894,41",
-          "indra/newview/llviewerjoystick.cpp@4063,7",
-          "indra/newview/llviewerjoystick.cpp@4078,7",
-          "indra/newview/llviewerjoystick.cpp@4088,7",
-          "indra/newview/llviewerjoystick.cpp@4098,23",
-          "indra/newview/llviewerjoystick.cpp@4160,242"
+          "indra/newview/llviewerjoystick.cpp@53,22",
+          "indra/newview/llviewerjoystick.cpp@82,8",
+          "indra/newview/llviewerjoystick.cpp@93,413",
+          "indra/newview/llviewerjoystick.cpp@540,144",
+          "indra/newview/llviewerjoystick.cpp@711,7",
+          "indra/newview/llviewerjoystick.cpp@759,11",
+          "indra/newview/llviewerjoystick.cpp@779,7",
+          "indra/newview/llviewerjoystick.cpp@789,7",
+          "indra/newview/llviewerjoystick.cpp@812,37",
+          "indra/newview/llviewerjoystick.cpp@863,7",
+          "indra/newview/llviewerjoystick.cpp@881,7",
+          "indra/newview/llviewerjoystick.cpp@893,9",
+          "indra/newview/llviewerjoystick.cpp@905,169",
+          "indra/newview/llviewerjoystick.cpp@1080,25",
+          "indra/newview/llviewerjoystick.cpp@1159,10",
+          "indra/newview/llviewerjoystick.cpp@1180,7",
+          "indra/newview/llviewerjoystick.cpp@1190,13",
+          "indra/newview/llviewerjoystick.cpp@1214,95",
+          "indra/newview/llviewerjoystick.cpp@1343,10",
+          "indra/newview/llviewerjoystick.cpp@1357,10",
+          "indra/newview/llviewerjoystick.cpp@1378,10",
+          "indra/newview/llviewerjoystick.cpp@1393,7",
+          "indra/newview/llviewerjoystick.cpp@1422,7",
+          "indra/newview/llviewerjoystick.cpp@1432,14",
+          "indra/newview/llviewerjoystick.cpp@1454,33",
+          "indra/newview/llviewerjoystick.cpp@1502,43",
+          "indra/newview/llviewerjoystick.cpp@1554,8",
+          "indra/newview/llviewerjoystick.cpp@1624,14",
+          "indra/newview/llviewerjoystick.cpp@1663,8",
+          "indra/newview/llviewerjoystick.cpp@1688,7",
+          "indra/newview/llviewerjoystick.cpp@1699,133",
+          "indra/newview/llviewerjoystick.cpp@1838,6",
+          "indra/newview/llviewerjoystick.cpp@1866,18",
+          "indra/newview/llviewerjoystick.cpp@1887,2171",
+          "indra/newview/llviewerjoystick.cpp@4066,41",
+          "indra/newview/llviewerjoystick.cpp@4235,7",
+          "indra/newview/llviewerjoystick.cpp@4250,7",
+          "indra/newview/llviewerjoystick.cpp@4260,7",
+          "indra/newview/llviewerjoystick.cpp@4270,23",
+          "indra/newview/llviewerjoystick.cpp@4332,242"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -23993,8 +24058,8 @@
           "indra/newview/llagentcamera.cpp@222,12",
           "indra/newview/llagentcamera.cpp@1294,32",
           "indra/newview/llagentcamera.cpp@1573,85",
-          "indra/newview/llagentcamera.cpp@1776,93",
-          "indra/newview/llagentcamera.cpp@2105,29"
+          "indra/newview/llagentcamera.cpp@1776,97",
+          "indra/newview/llagentcamera.cpp@2109,29"
         ],
         "path": "indra/newview/llagentcamera.cpp"
       },
@@ -24014,11 +24079,10 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.h@28,11",
-          "indra/newview/llviewerjoystick.h@51,78",
-          "indra/newview/llviewerjoystick.h@132,7",
-          "indra/newview/llviewerjoystick.h@142,19",
-          "indra/newview/llviewerjoystick.h@171,83",
-          "indra/newview/llviewerjoystick.h@263,46"
+          "indra/newview/llviewerjoystick.h@51,89",
+          "indra/newview/llviewerjoystick.h@143,19",
+          "indra/newview/llviewerjoystick.h@172,83",
+          "indra/newview/llviewerjoystick.h@264,46"
         ],
         "path": "indra/newview/llviewerjoystick.h"
       },
@@ -24052,6 +24116,7 @@
       "indra/newview/alcinecamobjectlock.h",
       "indra/newview/alcinecamobjectlockui.h",
       "indra/newview/alcinecampresentation.h",
+      "indra/newview/alcineflycamhandover.h",
       "indra/newview/aldiopterrelevance.h",
       "indra/newview/aldirectoralloff.cpp",
       "indra/newview/aldirectoralloff.h",
@@ -24155,6 +24220,7 @@
       "CinematicAutoFrameSettleMaxRatio",
       "CinematicAutoFrameSettleMode",
       "CinematicAutoFrameSettleSeconds",
+      "CinematicBoneLockFlycamHandover",
       "CinematicCamArcDistance",
       "CinematicCamArcDuration",
       "CinematicCamArcEndMode",
@@ -24753,6 +24819,17 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/alcineflycamhandover.h": {
+        "includes": [
+          "indra/llmath/llmath.h",
+          "indra/llmath/llquaternion.h",
+          "indra/llmath/m3math.h",
+          "indra/llmath/v3dmath.h",
+          "indra/llmath/v3math.h"
+        ],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/aldiopterrelevance.h": {
         "includes": [
           "indra/llcommon/lldefs.h",
@@ -24918,6 +24995,7 @@
           "ALDirectorSwitcher::activeSecondarySubject",
           "ALDirectorSwitcher::applyEaseWorldScale",
           "ALDirectorSwitcher::applySlot",
+          "ALDirectorSwitcher::boneLockFlycamSource",
           "ALDirectorSwitcher::cameraEnableBaseline",
           "ALDirectorSwitcher::cancelEaseWorldTime",
           "ALDirectorSwitcher::defaultBank",
@@ -24944,6 +25022,7 @@
           "ALDirectorSwitcher::updateEaseWorldTime",
           "ALDirectorSwitcher::writeCameraEnabled",
           "ALWorldWindDown::switcherMayEase",
+          "LLCinematicCamera::instance",
           "LLCinematicCamera::migrateLegacyMode",
           "LLDirectorCast::instance",
           "LLPresentationTime::currentFrame",
@@ -27212,6 +27291,7 @@
           "LLAgentCamera::validateFocusObject",
           "LLCameraOperator::instance",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLFloaterCamera::inFreeCameraMode",
           "LLFloaterReg::hideInstance",
           "LLFloaterReg::instanceVisible",
@@ -28055,6 +28135,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -28094,6 +28175,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -28149,13 +28233,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -28259,6 +28348,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -28272,6 +28362,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -28729,6 +28820,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -29296,6 +29388,7 @@
           "indra/newview/llagent.h",
           "indra/newview/llappviewer.h",
           "indra/newview/llcameraoperator.h",
+          "indra/newview/llcinematiccamera.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llselectmgr.h",
           "indra/newview/llviewercamera.h",
@@ -29310,6 +29403,7 @@
         "qualified_call_candidates": [
           "ALAvatarAnimationTime::startPlaybackProgress",
           "LLCameraOperator::instance",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLFlycamRecorder::applyAnchor",
           "LLFlycamRecorder::canonicalizeRotations",
           "LLFlycamRecorder::clear",
@@ -32011,6 +32105,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -32069,6 +32164,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -32095,6 +32193,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -35890,15 +35989,15 @@
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@910,7",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@1909,8"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@1910,8"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -35966,7 +36065,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1884,2002"
+          "indra/newview/llviewerjoystick.cpp@1887,2171"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -40367,6 +40466,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -40406,6 +40506,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -40461,13 +40564,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -43904,6 +44012,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -43962,6 +44071,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -43988,6 +44100,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -48489,19 +48602,19 @@
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@664,7",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@1677,7",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@1678,7",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@31849,209",
-          "indra/newview/app_settings/settings.xml@32059,364"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@31860,209",
+          "indra/newview/app_settings/settings.xml@32070,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -48511,10 +48624,10 @@
           "indra/newview/llappviewer.cpp@2625,53",
           "indra/newview/llappviewer.cpp@5349,24",
           "indra/newview/llappviewer.cpp@5671,49",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@5983,30",
-          "indra/newview/llappviewer.cpp@6444,16",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@5993,30",
+          "indra/newview/llappviewer.cpp@6454,16",
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -48647,7 +48760,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@1884,2002"
+          "indra/newview/llviewerjoystick.cpp@1887,2171"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -52140,7 +52253,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -52152,7 +52264,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -52181,6 +52292,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -52683,6 +52796,7 @@
           "ALDirectorSwitcher::activeSecondarySubject",
           "ALDirectorSwitcher::applyEaseWorldScale",
           "ALDirectorSwitcher::applySlot",
+          "ALDirectorSwitcher::boneLockFlycamSource",
           "ALDirectorSwitcher::cameraEnableBaseline",
           "ALDirectorSwitcher::cancelEaseWorldTime",
           "ALDirectorSwitcher::defaultBank",
@@ -52709,6 +52823,7 @@
           "ALDirectorSwitcher::updateEaseWorldTime",
           "ALDirectorSwitcher::writeCameraEnabled",
           "ALWorldWindDown::switcherMayEase",
+          "LLCinematicCamera::instance",
           "LLCinematicCamera::migrateLegacyMode",
           "LLDirectorCast::instance",
           "LLPresentationTime::currentFrame",
@@ -54440,6 +54555,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -54510,6 +54626,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -58387,6 +58504,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -58426,6 +58544,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -58481,13 +58602,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -58705,6 +58831,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -58718,6 +58845,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -59931,6 +60059,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -61003,6 +61132,7 @@
           "indra/newview/llagent.h",
           "indra/newview/llappviewer.h",
           "indra/newview/llcameraoperator.h",
+          "indra/newview/llcinematiccamera.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llselectmgr.h",
           "indra/newview/llviewercamera.h",
@@ -61017,6 +61147,7 @@
         "qualified_call_candidates": [
           "ALAvatarAnimationTime::startPlaybackProgress",
           "LLCameraOperator::instance",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLFlycamRecorder::applyAnchor",
           "LLFlycamRecorder::canonicalizeRotations",
           "LLFlycamRecorder::clear",
@@ -64750,6 +64881,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -64808,6 +64940,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -64834,6 +64969,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -69827,15 +69963,15 @@
           "indra/newview/CMakeLists.txt@186,54",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@25701,1573"
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@25712,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -69844,7 +69980,7 @@
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@4659,10",
-          "indra/newview/llappviewer.cpp@6036,8"
+          "indra/newview/llappviewer.cpp@6046,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -71821,6 +71957,7 @@
           "ALKitRow::resolveBinding",
           "ALKitRow::setBoundValue",
           "ALKitRow::setControlVisible",
+          "ALKitRow::setDisplayLabel",
           "ALKitRow::setSubjectDisplayValues",
           "ALKitRow::showContextMenu",
           "ALKitRow::styleValueEditor",
@@ -72312,6 +72449,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -72382,6 +72520,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -75565,6 +75704,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -77784,23 +77924,23 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@5530,32",
-          "indra/newview/app_settings/settings.xml@5563,21",
-          "indra/newview/app_settings/settings.xml@6564,14777"
+          "indra/newview/app_settings/settings.xml@5541,32",
+          "indra/newview/app_settings/settings.xml@5574,21",
+          "indra/newview/app_settings/settings.xml@6575,14777"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -77923,7 +78063,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llagentcamera.cpp@2509,15"
+          "indra/newview/llagentcamera.cpp@2513,15"
         ],
         "path": "indra/newview/llagentcamera.cpp"
       },
@@ -80150,6 +80290,7 @@
           "LLAgentCamera::validateFocusObject",
           "LLCameraOperator::instance",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLFloaterCamera::inFreeCameraMode",
           "LLFloaterReg::hideInstance",
           "LLFloaterReg::instanceVisible",
@@ -80868,6 +81009,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -80907,6 +81049,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -80962,13 +81107,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -81121,6 +81271,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -81134,6 +81285,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -85923,6 +86075,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1206,
+        "source": "indra/newview/alcineflycamhandover.h",
+        "text": "alcineflycamhandover.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 190,
         "source": "indra/newview/aldanceball.cpp",
         "text": "aldanceball.cpp"
@@ -86221,19 +86379,19 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@22998,412",
-          "indra/newview/app_settings/settings.xml@23546,362",
-          "indra/newview/app_settings/settings.xml@29237,100",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@23009,412",
+          "indra/newview/app_settings/settings.xml@23557,362",
+          "indra/newview/app_settings/settings.xml@29248,100",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -86300,6 +86458,7 @@
       "indra/newview/alavatarstaging.h",
       "indra/newview/alavatarstagingmodel.cpp",
       "indra/newview/alavatarstagingmodel.h",
+      "indra/newview/alcineflycamhandover.h",
       "indra/newview/aldanceball.cpp",
       "indra/newview/aldanceball.h",
       "indra/newview/alformationsolver.cpp",
@@ -86550,6 +86709,17 @@
           "LLViewerCamera::getInstance",
           "LLVolumeMessage::packVolumeParams"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alcineflycamhandover.h": {
+        "includes": [
+          "indra/llmath/llmath.h",
+          "indra/llmath/llquaternion.h",
+          "indra/llmath/m3math.h",
+          "indra/llmath/v3dmath.h",
+          "indra/llmath/v3math.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/aldanceball.cpp": {
@@ -91676,23 +91846,22 @@
           "indra/newview/CMakeLists.txt@186,54",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@4514,839",
-          "indra/newview/app_settings/settings.xml@5354,175",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@21343,1113",
-          "indra/newview/app_settings/settings.xml@28588,648",
-          "indra/newview/app_settings/settings.xml@29382,2466",
-          "indra/newview/app_settings/settings.xml@31849,209",
-          "indra/newview/app_settings/settings.xml@32059,364"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@5299,241",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@21354,1113",
+          "indra/newview/app_settings/settings.xml@28599,648",
+          "indra/newview/app_settings/settings.xml@29393,2466",
+          "indra/newview/app_settings/settings.xml@31860,209",
+          "indra/newview/app_settings/settings.xml@32070,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -91706,9 +91875,9 @@
           "indra/newview/llappviewer.cpp@4589,17",
           "indra/newview/llappviewer.cpp@4618,10",
           "indra/newview/llappviewer.cpp@4729,11",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@6444,16",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@6454,16",
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -91899,9 +92068,9 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@1499,43",
-          "indra/newview/llviewerjoystick.cpp@1884,2002",
-          "indra/newview/llviewerjoystick.cpp@4160,242"
+          "indra/newview/llviewerjoystick.cpp@1502,43",
+          "indra/newview/llviewerjoystick.cpp@1887,2171",
+          "indra/newview/llviewerjoystick.cpp@4332,242"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -93529,7 +93698,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -93541,7 +93709,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -93570,6 +93737,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -94010,6 +94179,7 @@
           "ALDirectorSwitcher::activeSecondarySubject",
           "ALDirectorSwitcher::applyEaseWorldScale",
           "ALDirectorSwitcher::applySlot",
+          "ALDirectorSwitcher::boneLockFlycamSource",
           "ALDirectorSwitcher::cameraEnableBaseline",
           "ALDirectorSwitcher::cancelEaseWorldTime",
           "ALDirectorSwitcher::defaultBank",
@@ -94036,6 +94206,7 @@
           "ALDirectorSwitcher::updateEaseWorldTime",
           "ALDirectorSwitcher::writeCameraEnabled",
           "ALWorldWindDown::switcherMayEase",
+          "LLCinematicCamera::instance",
           "LLCinematicCamera::migrateLegacyMode",
           "LLDirectorCast::instance",
           "LLPresentationTime::currentFrame",
@@ -95654,6 +95825,7 @@
           "ALKitRow::resolveBinding",
           "ALKitRow::setBoundValue",
           "ALKitRow::setControlVisible",
+          "ALKitRow::setDisplayLabel",
           "ALKitRow::setSubjectDisplayValues",
           "ALKitRow::showContextMenu",
           "ALKitRow::styleValueEditor",
@@ -96530,6 +96702,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -96600,6 +96773,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -100338,6 +100512,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -100377,6 +100552,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -100432,13 +100610,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -100651,6 +100834,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -100664,6 +100848,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -101441,6 +101626,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -105292,6 +105478,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -105350,6 +105537,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -105376,6 +105566,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -110175,18 +110366,18 @@
           "indra/newview/CMakeLists.txt@555,7",
           "indra/newview/CMakeLists.txt@653,7",
           "indra/newview/CMakeLists.txt@1122,13",
-          "indra/newview/CMakeLists.txt@1564,7",
-          "indra/newview/CMakeLists.txt@1666,7"
+          "indra/newview/CMakeLists.txt@1565,7",
+          "indra/newview/CMakeLists.txt@1667,7"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@25701,1573",
-          "indra/newview/app_settings/settings.xml@27852,109",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@25712,1573",
+          "indra/newview/app_settings/settings.xml@27863,109",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -114738,16 +114929,16 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -114757,7 +114948,7 @@
           "indra/newview/llappviewer.cpp@1728,12",
           "indra/newview/llappviewer.cpp@5383,37",
           "indra/newview/llappviewer.cpp@5671,49",
-          "indra/newview/llappviewer.cpp@5983,30"
+          "indra/newview/llappviewer.cpp@5993,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -114810,9 +115001,9 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1499,43",
-          "indra/newview/llviewerjoystick.cpp@1884,2002",
-          "indra/newview/llviewerjoystick.cpp@4160,242"
+          "indra/newview/llviewerjoystick.cpp@1502,43",
+          "indra/newview/llviewerjoystick.cpp@1887,2171",
+          "indra/newview/llviewerjoystick.cpp@4332,242"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -114900,7 +115091,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.h@171,83"
+          "indra/newview/llviewerjoystick.h@172,83"
         ],
         "path": "indra/newview/llviewerjoystick.h"
       },
@@ -116298,6 +116489,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -116368,6 +116560,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -118191,6 +118384,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -118230,6 +118424,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -118285,13 +118482,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -118395,6 +118597,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -118408,6 +118611,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -118800,6 +119004,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -120412,6 +120617,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -120470,6 +120676,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -120496,6 +120705,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -122420,24 +122630,24 @@
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1103,7",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2108,7",
-          "indra/newview/CMakeLists.txt@2852,32"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2109,7",
+          "indra/newview/CMakeLists.txt@2853,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@21343,1113",
-          "indra/newview/app_settings/settings.xml@22458,76",
-          "indra/newview/app_settings/settings.xml@22590,407",
-          "indra/newview/app_settings/settings.xml@22998,412",
-          "indra/newview/app_settings/settings.xml@23491,54",
-          "indra/newview/app_settings/settings.xml@24019,164",
-          "indra/newview/app_settings/settings.xml@29382,2466",
-          "indra/newview/app_settings/settings.xml@32059,364"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@21354,1113",
+          "indra/newview/app_settings/settings.xml@22469,76",
+          "indra/newview/app_settings/settings.xml@22601,407",
+          "indra/newview/app_settings/settings.xml@23009,412",
+          "indra/newview/app_settings/settings.xml@23502,54",
+          "indra/newview/app_settings/settings.xml@24030,164",
+          "indra/newview/app_settings/settings.xml@29393,2466",
+          "indra/newview/app_settings/settings.xml@32070,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -122449,8 +122659,8 @@
           "indra/newview/llappviewer.cpp@1954,24",
           "indra/newview/llappviewer.cpp@2625,53",
           "indra/newview/llappviewer.cpp@5671,49",
-          "indra/newview/llappviewer.cpp@5930,44",
-          "indra/newview/llappviewer.cpp@6444,16"
+          "indra/newview/llappviewer.cpp@5940,44",
+          "indra/newview/llappviewer.cpp@6454,16"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -122579,8 +122789,8 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@902,169",
-          "indra/newview/llviewerjoystick.cpp@4160,242"
+          "indra/newview/llviewerjoystick.cpp@905,169",
+          "indra/newview/llviewerjoystick.cpp@4332,242"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -124878,7 +125088,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -124890,7 +125099,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -124919,6 +125127,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -125716,6 +125926,7 @@
           "ALKitRow::resolveBinding",
           "ALKitRow::setBoundValue",
           "ALKitRow::setControlVisible",
+          "ALKitRow::setDisplayLabel",
           "ALKitRow::setSubjectDisplayValues",
           "ALKitRow::showContextMenu",
           "ALKitRow::styleValueEditor",
@@ -126175,6 +126386,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -126245,6 +126457,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -129458,6 +129671,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -129471,6 +129685,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -130667,6 +130882,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -134402,6 +134618,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -134460,6 +134677,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -134486,6 +134706,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -138906,19 +139127,19 @@
           "indra/newview/CMakeLists.txt@186,54",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@21343,1113",
-          "indra/newview/app_settings/settings.xml@22546,43",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@21354,1113",
+          "indra/newview/app_settings/settings.xml@22557,43",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -138927,8 +139148,8 @@
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@2303,8",
           "indra/newview/llappviewer.cpp@2625,53",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -139018,7 +139239,7 @@
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@1884,2002"
+          "indra/newview/llviewerjoystick.cpp@1887,2171"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -141676,7 +141897,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -141688,7 +141908,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -141717,6 +141936,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -143033,6 +143254,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -143103,6 +143325,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -145328,6 +145551,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -145341,6 +145565,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -146169,6 +146394,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -146738,6 +146964,7 @@
           "indra/newview/llagent.h",
           "indra/newview/llappviewer.h",
           "indra/newview/llcameraoperator.h",
+          "indra/newview/llcinematiccamera.h",
           "indra/newview/llflycamrecorder.h",
           "indra/newview/llselectmgr.h",
           "indra/newview/llviewercamera.h",
@@ -146752,6 +146979,7 @@
         "qualified_call_candidates": [
           "ALAvatarAnimationTime::startPlaybackProgress",
           "LLCameraOperator::instance",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLFlycamRecorder::applyAnchor",
           "LLFlycamRecorder::canonicalizeRotations",
           "LLFlycamRecorder::clear",
@@ -149797,6 +150025,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -149855,6 +150084,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -149881,6 +150113,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -155448,20 +155681,20 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1290,168"
+          "indra/newview/CMakeLists.txt@1291,168"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@5354,175",
-          "indra/newview/app_settings/settings.xml@5915,527",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@21343,1113",
-          "indra/newview/app_settings/settings.xml@25701,1573",
-          "indra/newview/app_settings/settings.xml@27275,153",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@5299,241",
+          "indra/newview/app_settings/settings.xml@5926,527",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@21354,1113",
+          "indra/newview/app_settings/settings.xml@25712,1573",
+          "indra/newview/app_settings/settings.xml@27286,153",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -158204,7 +158437,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -158216,7 +158448,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -158245,6 +158476,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -159321,6 +159554,7 @@
           "ALKitRow::resolveBinding",
           "ALKitRow::setBoundValue",
           "ALKitRow::setControlVisible",
+          "ALKitRow::setDisplayLabel",
           "ALKitRow::setSubjectDisplayValues",
           "ALKitRow::showContextMenu",
           "ALKitRow::styleValueEditor",
@@ -159730,6 +159964,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -159800,6 +160035,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -162441,6 +162677,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -162454,6 +162691,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -163243,6 +163481,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -169366,21 +169605,21 @@
           "indra/newview/CMakeLists.txt@186,54",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@3469,1044",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@21343,1113",
-          "indra/newview/app_settings/settings.xml@22590,407",
-          "indra/newview/app_settings/settings.xml@22998,412",
-          "indra/newview/app_settings/settings.xml@25701,1573",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@3469,1055",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@21354,1113",
+          "indra/newview/app_settings/settings.xml@22601,407",
+          "indra/newview/app_settings/settings.xml@23009,412",
+          "indra/newview/app_settings/settings.xml@25712,1573",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -169390,7 +169629,7 @@
           "indra/newview/llappviewer.cpp@2197,17",
           "indra/newview/llappviewer.cpp@3621,7",
           "indra/newview/llappviewer.cpp@3631,7",
-          "indra/newview/llappviewer.cpp@6465,8"
+          "indra/newview/llappviewer.cpp@6475,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -169481,7 +169720,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerjoystick.cpp@1884,2002"
+          "indra/newview/llviewerjoystick.cpp@1887,2171"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -171099,6 +171338,7 @@
           "ALKitRow::resolveBinding",
           "ALKitRow::setBoundValue",
           "ALKitRow::setControlVisible",
+          "ALKitRow::setDisplayLabel",
           "ALKitRow::setSubjectDisplayValues",
           "ALKitRow::showContextMenu",
           "ALKitRow::styleValueEditor",
@@ -171527,6 +171767,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -171597,6 +171838,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -174050,6 +174292,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -177280,6 +177523,7 @@
           "indra/llwindow/llkeyboard.h",
           "indra/llwindow/llwindow.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/alcinelightrig.h",
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alflycamclassic.h",
@@ -177338,6 +177582,9 @@
           "LLCameraOperator::instance",
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::instance",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLDirectorCast::instance",
           "LLFlycamDrone::compile",
           "LLFlycamDrone::effectiveJerk",
@@ -177364,6 +177611,7 @@
           "LLViewerJoystick::applyDronePreset",
           "LLViewerJoystick::applyWeightedPreset",
           "LLViewerJoystick::beginMainLoop",
+          "LLViewerJoystick::canPresentFlycam",
           "LLViewerJoystick::computeTriggerOutputs",
           "LLViewerJoystick::getDescription",
           "LLViewerJoystick::getDeviceUUID",
@@ -179901,23 +180149,23 @@
           "indra/newview/CMakeLists.txt@186,54",
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14777"
+          "indra/newview/app_settings/settings.xml@6575,14777"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -181198,6 +181446,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -181268,6 +181517,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -182881,6 +183131,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -186504,16 +186755,16 @@
         "hunks": [
           "indra/newview/CMakeLists.txt@242,11",
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1196,13",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1196,14",
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -186523,7 +186774,7 @@
           "indra/newview/llappviewer.cpp@915,26",
           "indra/newview/llappviewer.cpp@1728,12",
           "indra/newview/llappviewer.cpp@5349,24",
-          "indra/newview/llappviewer.cpp@5983,30"
+          "indra/newview/llappviewer.cpp@5993,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -187356,7 +187607,6 @@
           "ALCineLightRigManager::byteForOwner",
           "ALCineLightRigManager::captureSelected",
           "ALCineLightRigManager::clearShadowSuppression",
-          "ALCineLightRigManager::createRigGroup",
           "ALCineLightRigManager::destroyLiveProbe",
           "ALCineLightRigManager::drawByte",
           "ALCineLightRigManager::enabledCount",
@@ -187368,7 +187618,6 @@
           "ALCineLightRigManager::isMirrorLight",
           "ALCineLightRigManager::isSlotEnabled",
           "ALCineLightRigManager::isSlotLit",
-          "ALCineLightRigManager::leaveRigGroup",
           "ALCineLightRigManager::lightShapeSourceFor",
           "ALCineLightRigManager::liveProbeAnimating",
           "ALCineLightRigManager::liveProbeBounceScaleFor",
@@ -187397,6 +187646,8 @@
           "ALCineLightRigManager::setSelectedSlot",
           "ALCineLightRigManager::shutdown",
           "ALCineLightRigManager::shutdownSlot",
+          "ALCineLightRigManager::subjectRigOff",
+          "ALCineLightRigManager::subjectRigsOff",
           "ALCineLightRigManager::tick",
           "ALCineLightRigManager::updateAutoShadowSlots",
           "ALCineLightRigManager::updateLiveProbe",
@@ -190037,6 +190288,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -190050,6 +190302,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -190448,6 +190701,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -193503,8 +193757,8 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -193513,8 +193767,8 @@
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@1954,24",
           "indra/newview/llappviewer.cpp@5627,9",
-          "indra/newview/llappviewer.cpp@5983,30",
-          "indra/newview/llappviewer.cpp@6119,7"
+          "indra/newview/llappviewer.cpp@5993,30",
+          "indra/newview/llappviewer.cpp@6129,7"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -195352,6 +195606,7 @@
           "LLDirectorCast::add",
           "LLDirectorCast::addToGroup",
           "LLDirectorCast::applySceneData",
+          "LLDirectorCast::beginSubjectAssignment",
           "LLDirectorCast::buildActorChoices",
           "LLDirectorCast::cancelCountdown",
           "LLDirectorCast::cancelPendingStart",
@@ -195365,6 +195620,7 @@
           "LLDirectorCast::countdownRemaining",
           "LLDirectorCast::cut",
           "LLDirectorCast::dissolveGroup",
+          "LLDirectorCast::endSubjectAssignment",
           "LLDirectorCast::evaluateGazeCues",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::fireAction",
@@ -195808,6 +196064,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -198998,19 +199255,19 @@
           "indra/newview/CMakeLists.txt@334,117",
           "indra/newview/CMakeLists.txt@896,11",
           "indra/newview/CMakeLists.txt@1137,57",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@1893,13",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2890,20",
-          "indra/newview/CMakeLists.txt@2958,187"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@1894,13",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2891,20",
+          "indra/newview/CMakeLists.txt@2959,193"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@21343,1113",
-          "indra/newview/app_settings/settings.xml@29382,2466"
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@21354,1113",
+          "indra/newview/app_settings/settings.xml@29393,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -199022,10 +199279,10 @@
           "indra/newview/llappviewer.cpp@1954,24",
           "indra/newview/llappviewer.cpp@4841,12",
           "indra/newview/llappviewer.cpp@4970,12",
-          "indra/newview/llappviewer.cpp@5809,119",
-          "indra/newview/llappviewer.cpp@5930,44",
-          "indra/newview/llappviewer.cpp@6444,16",
-          "indra/newview/llappviewer.cpp@6483,45"
+          "indra/newview/llappviewer.cpp@5809,129",
+          "indra/newview/llappviewer.cpp@5940,44",
+          "indra/newview/llappviewer.cpp@6454,16",
+          "indra/newview/llappviewer.cpp@6493,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -202121,6 +202378,7 @@
           "ALPanelCineLightRig::applyEasyMode",
           "ALPanelCineLightRig::applyManualLock",
           "ALPanelCineLightRig::applyRigRimPresetByName",
+          "ALPanelCineLightRig::commitGroupState",
           "ALPanelCineLightRig::commitSeed",
           "ALPanelCineLightRig::computeRequestedShadowSlots",
           "ALPanelCineLightRig::deleteSetup",
@@ -202191,6 +202449,7 @@
           "ALPresetLook::replaying",
           "ALPresetLook::reset",
           "ALRigRimController::applyPresetByName",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
           "LLEnvironment::instance",
@@ -204825,6 +205084,7 @@
           "indra/llui/llpanel.h",
           "indra/newview/alcameracurve.h",
           "indra/newview/alcameradispatch.h",
+          "indra/newview/alcineflycamhandover.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/llagent.h",
           "indra/newview/llagentpilot.h",
@@ -204864,6 +205124,9 @@
           "LLCinematicCamera::applyFrameLens",
           "LLCinematicCamera::captureCurrentSwitcherView",
           "LLCinematicCamera::captureMotionStart",
+          "LLCinematicCamera::endFlycamHandover",
+          "LLCinematicCamera::flycamHandoverActive",
+          "LLCinematicCamera::flycamSourceConfigured",
           "LLCinematicCamera::instance",
           "LLCinematicCamera::isActive",
           "LLCinematicCamera::isActiveHeadFramingTarget",
@@ -204919,13 +205182,18 @@
           "LLCinematicCamera::patternTurntable",
           "LLCinematicCamera::patternTwoShot",
           "LLCinematicCamera::patternWhipArc",
+          "LLCinematicCamera::preOperatorPresentedPose",
+          "LLCinematicCamera::prepareFlycamHandover",
           "LLCinematicCamera::releaseObjectLock",
+          "LLCinematicCamera::rememberPreOperatorPresentation",
           "LLCinematicCamera::requestAutoReframe",
           "LLCinematicCamera::resolveAnchor",
           "LLCinematicCamera::resolveDefaultTarget",
+          "LLCinematicCamera::resolveFlycamSource",
           "LLCinematicCamera::resolveMarkedTarget",
           "LLCinematicCamera::resolveSecondaryTarget",
           "LLCinematicCamera::resolveTarget",
+          "LLCinematicCamera::seedFlycamHandoverZoom",
           "LLCinematicCamera::toggleFollowTarget",
           "LLCinematicCamera::triggerMode",
           "LLCinematicCamera::updateCamera",
@@ -205640,6 +205908,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
@@ -213174,19 +213443,19 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@334,117",
-          "indra/newview/CMakeLists.txt@1290,168",
-          "indra/newview/CMakeLists.txt@2852,32",
-          "indra/newview/CMakeLists.txt@2890,20"
+          "indra/newview/CMakeLists.txt@1291,168",
+          "indra/newview/CMakeLists.txt@2853,32",
+          "indra/newview/CMakeLists.txt@2891,20"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3466",
-          "indra/newview/app_settings/settings.xml@6564,14777",
-          "indra/newview/app_settings/settings.xml@29382,2466",
-          "indra/newview/app_settings/settings.xml@31849,209",
-          "indra/newview/app_settings/settings.xml@32059,364"
+          "indra/newview/app_settings/settings.xml@2,3455",
+          "indra/newview/app_settings/settings.xml@6575,14777",
+          "indra/newview/app_settings/settings.xml@29393,2466",
+          "indra/newview/app_settings/settings.xml@31860,209",
+          "indra/newview/app_settings/settings.xml@32070,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -213194,7 +213463,7 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@2625,53",
-          "indra/newview/llappviewer.cpp@5809,119"
+          "indra/newview/llappviewer.cpp@5809,129"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -219200,6 +219469,7 @@
           "LLCinematicCamera::modeName",
           "LLCinematicCamera::requestAutoReframe",
           "LLClipboard::instance",
+          "LLDirectorCast::canonicalActorId",
           "LLDirectorCast::instance",
           "LLDirectorCast::instanceExists",
           "LLDirectorCast::isSelf",
