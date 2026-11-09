@@ -1974,11 +1974,24 @@ void ALKitPage::undoOnPage(bool redo)
         shell->history().finishGesture();
         ALExposureSettingsHistory::finishPage(this);
         const U64 kit = shell->history().stepSequence(mPage, redo);
+        const U64 chrome = shell->history().stepSequence("chrome", redo);
         const U64 owned = mOwnedGroupSequence ? mOwnedGroupSequence(redo) : (mOwnedSequence ? mOwnedSequence(redo) : 0);
         const U64 exposure = ALExposureSettingsHistory::pageStepSequence(this, redo);
-        const U64 sequence = std::max({kit, owned, exposure});
+        const U64 sequence = std::max({kit, chrome, owned, exposure});
         if (!sequence)
             return;
+        if (chrome == sequence)
+        {
+            std::string reason;
+            if (!shell->history().prepareReplay("chrome", redo, reason))
+            {
+                shell->history().discardStep("chrome", redo);
+                LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+            }
+            else if (redo) shell->history().redo("chrome");
+            else shell->history().undo("chrome");
+            return;
+        }
         // A walking actor temporarily blocks the entire action, retaining every part.
         if (owned == sequence && mOwnedReady && !mOwnedReady(redo, sequence))
         {
@@ -2021,7 +2034,8 @@ bool ALKitPage::canUndoOnPage(bool redo)
     ALKitShell* shell = ALKitShell::find(this);
     return ALExposureSettingsHistory::pageStepSequence(this, redo) ||
         (mOwnedSequence && mOwnedSequence(redo)) ||
-        (shell && (redo ? shell->history().canRedo(mPage) : shell->history().canUndo(mPage)));
+        (shell && (shell->history().stepSequence("chrome", redo) ||
+            (redo ? shell->history().canRedo(mPage) : shell->history().canUndo(mPage))));
 }
 
 void ALKitPage::historyEdited(bool owned)

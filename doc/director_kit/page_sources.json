@@ -3,13 +3,13 @@
   "source": "scripts/code_tools/director_kit/director_mockup_data.json",
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
-    "pages": 39,
-    "rows": 2290,
-    "owner_roots": 36,
-    "unresolved_rows": 71,
+    "pages": 40,
+    "rows": 2297,
+    "owner_roots": 37,
+    "unresolved_rows": 76,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2290
+    "independent_json_rows": 2297
   },
   "setting_conflicts": [
     {
@@ -20501,7 +20501,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1194,
+          "line": 1173,
           "widget": "hero_arc_duration",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -20641,7 +20641,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1190,
+          "line": 1169,
           "widget": "hero_arc_angle",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -20731,7 +20731,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1198,
+          "line": 1177,
           "widget": "hero_arc_height_drift",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -27837,7 +27837,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1201,
+          "line": 1180,
           "widget": "hero_arc_speed_ramp",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -27876,7 +27876,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1206,
+          "line": 1185,
           "widget": "hero_arc_ramp_strength",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -30696,7 +30696,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1180,
+          "line": 1159,
           "widget": "zolly_direction",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -30747,7 +30747,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1177,
+          "line": 1156,
           "widget": "zolly_duration",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -31572,7 +31572,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 746,
+          "line": 725,
           "widget": "play_local_priority_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -32118,7 +32118,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1760,
+          "line": 1741,
           "widget": "scene_hotkeys_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -38048,7 +38048,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1349,
+          "line": 1328,
           "widget": "prism_lens_enabled",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -38087,7 +38087,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1162,
+          "line": 1141,
           "widget": "prism_ots_distance",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -38126,7 +38126,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1170,
+          "line": 1149,
           "widget": "prism_ots_height_bias",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -38165,7 +38165,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1158,
+          "line": 1137,
           "widget": "prism_ots_shoulder",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -38204,7 +38204,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "line": 1166,
+          "line": 1145,
           "widget": "prism_ots_fov",
           "root": {
             "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -51881,7 +51881,7 @@
       "label": "Move",
       "group": "cast_group",
       "group_label": "Cast",
-      "row_count": 26,
+      "row_count": 19,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_actor_mover.xml",
@@ -51889,14 +51889,6 @@
           "name": "panel_actor_mover",
           "line": 19,
           "matched_rows": 11,
-          "evidence": "row-widget match"
-        },
-        {
-          "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-          "tag": "floater",
-          "name": "floater_director",
-          "line": 15,
-          "matched_rows": 8,
           "evidence": "row-widget match"
         },
         {
@@ -51911,7 +51903,7 @@
       "owner_classes": [
         {
           "class": "LLFloaterDirector",
-          "reference_count": 42
+          "reference_count": 11
         },
         {
           "class": "ALPanelActorMover",
@@ -51921,8 +51913,8 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 8,
-        "setting_coverage": 0.307692,
-        "cpp_referenced_rows": 18,
+        "setting_coverage": 0.421053,
+        "cpp_referenced_rows": 10,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -53031,927 +53023,6 @@
           ]
         },
         {
-          "card": "group_run",
-          "card_title": "Group walk",
-          "option_index": null,
-          "option_label": null,
-          "index": 0,
-          "label": "Group",
-          "kind": "combo",
-          "widget": "group_run_combo",
-          "matched_widget": "group_run_combo",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 383,
-              "tag": "combo_box",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1505,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupRunCombo = getChild<LLComboBox>(\"group_run_combo\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2775,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupRunCombo = root->findChild<LLComboBox>(\"group_run_combo\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2107,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroup",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "explicit scoped model binding"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 23,
-              "tag": "combo_box",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 81,
-              "tag": "combo_box",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "group_run",
-          "card_title": "Group walk",
-          "option_index": null,
-          "option_label": null,
-          "index": 1,
-          "label": "Delay (s)",
-          "kind": "number",
-          "widget": "group_delay_spinner",
-          "matched_widget": "group_delay_spinner",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 456,
-              "tag": "spinner",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1514,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupDelaySpinner = getChild<LLSpinCtrl>(\"group_delay_spinner\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1519,
-              "class": "LLFloaterDirector",
-              "function": "onCommitGroupDelay",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupDelaySpinner->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupDelay(); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2779,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupDelaySpinner = root->findChild<LLSpinCtrl>(\"group_delay_spinner\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2789,
-              "class": "LLFloaterDirector",
-              "function": "onCommitGroupDelay",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupDelaySpinner->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupDelay(); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 79,
-              "tag": "spinner",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 87,
-              "tag": "spinner",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "group_run",
-          "card_title": "Group walk",
-          "option_index": null,
-          "option_label": null,
-          "index": 2,
-          "label": "Start group",
-          "kind": "button",
-          "widget": "btn_group_start",
-          "matched_widget": "btn_group_start",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 393,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1506,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupStartBtn = getChild<LLButton>(\"btn_group_start\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1508,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroup",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2776,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupStartBtn = root->findChild<LLButton>(\"btn_group_start\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2786,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroup",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 33,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 90,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "group_run",
-          "card_title": "Group walk",
-          "option_index": null,
-          "option_label": null,
-          "index": 3,
-          "label": "Stop group",
-          "kind": "button",
-          "widget": "btn_group_stop",
-          "matched_widget": "btn_group_stop",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 402,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1507,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupStopBtn = getChild<LLButton>(\"btn_group_stop\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1509,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroup",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2777,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupStopBtn = root->findChild<LLButton>(\"btn_group_stop\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2787,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroup",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 42,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 93,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "groups",
-          "card_title": "Manage groups",
-          "option_index": null,
-          "option_label": null,
-          "index": 0,
-          "label": "Groups",
-          "kind": "list",
-          "widget": "groups_list",
-          "matched_widget": "groups_list",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [
-            "Crowd | 4 | 0.0 s",
-            "Dancers | 3 | 1.5 s",
-            "Principals | 2 | 0.0 s"
-          ],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 429,
-              "tag": "scroll_list",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1513,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupsList = getChild<LLScrollListCtrl>(\"groups_list\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1518,
-              "class": "LLFloaterDirector",
-              "function": "onGroupsListSelect",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupsList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupsListSelect(); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2778,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupsList = root->findChild<LLScrollListCtrl>(\"groups_list\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2788,
-              "class": "LLFloaterDirector",
-              "function": "onGroupsListSelect",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupsList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupsListSelect(); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 52,
-              "tag": "scroll_list",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 98,
-              "tag": "scroll_list",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "groups",
-          "card_title": "Manage groups",
-          "option_index": null,
-          "option_label": null,
-          "index": 1,
-          "label": "Rename to",
-          "kind": "text",
-          "widget": "group_rename_editor",
-          "matched_widget": "group_rename_editor",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 477,
-              "tag": "line_editor",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1515,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupRenameEditor = getChild<LLLineEditor>(\"group_rename_editor\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1520,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroupRename",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupRenameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2780,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupRenameEditor = root->findChild<LLLineEditor>(\"group_rename_editor\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2790,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroupRename",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupRenameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 100,
-              "tag": "line_editor",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 105,
-              "tag": "line_editor",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "groups",
-          "card_title": "Manage groups",
-          "option_index": null,
-          "option_label": null,
-          "index": 2,
-          "label": "Rename",
-          "kind": "button",
-          "widget": "btn_group_rename",
-          "matched_widget": "btn_group_rename",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 488,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1516,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupRenameBtn = getChild<LLButton>(\"btn_group_rename\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1521,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroupRename",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2781,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupRenameBtn = root->findChild<LLButton>(\"btn_group_rename\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2791,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroupRename",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 111,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 108,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "groups",
-          "card_title": "Manage groups",
-          "option_index": null,
-          "option_label": null,
-          "index": 3,
-          "label": "Dissolve",
-          "kind": "button",
-          "widget": "btn_group_dissolve",
-          "matched_widget": "btn_group_dissolve",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [
-            {
-              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 467,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-                "tag": "floater",
-                "name": "floater_director",
-                "line": 15
-              }
-            }
-          ],
-          "cpp": [
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1517,
-              "class": "LLFloaterDirector",
-              "function": "postBuild",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupDissolveBtn = getChild<LLButton>(\"btn_group_dissolve\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1522,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroupDissolve",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2782,
-              "class": "LLFloaterDirector",
-              "function": "bindMovePage",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mGroupDissolveBtn = root->findChild<LLButton>(\"btn_group_dissolve\");"
-            },
-            {
-              "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2792,
-              "class": "LLFloaterDirector",
-              "function": "onClickGroupDissolve",
-              "wired_class": "LLFloaterDirector",
-              "wired_function": "bindMovePage",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-              "line": 90,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
-                "tag": "panel",
-                "name": "panel_director_move_src",
-                "line": 14
-              }
-            },
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 111,
-              "tag": "button",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-                "tag": "panel",
-                "name": "move_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
           "card": "my_avatar",
           "card_title": "My avatar",
           "option_index": null,
@@ -54001,7 +53072,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 116,
+              "line": 81,
               "tag": "compass_dial",
               "control_name": null,
               "callbacks": [],
@@ -54049,7 +53120,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2730,
+              "line": 2735,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54060,7 +53131,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2726,
+              "line": 2731,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54080,7 +53151,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 121,
+              "line": 86,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -54128,7 +53199,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2733,
+              "line": 2738,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54139,7 +53210,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2726,
+              "line": 2731,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54159,7 +53230,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 126,
+              "line": 91,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -54207,7 +53278,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2731,
+              "line": 2736,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54218,7 +53289,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2726,
+              "line": 2731,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54238,7 +53309,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 129,
+              "line": 94,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -54286,7 +53357,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2762,
+              "line": 2767,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54297,7 +53368,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2726,
+              "line": 2731,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54317,7 +53388,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 134,
+              "line": 99,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -54365,7 +53436,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2765,
+              "line": 2770,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54376,7 +53447,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2726,
+              "line": 2731,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54396,7 +53467,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 137,
+              "line": 102,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -54444,7 +53515,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2732,
+              "line": 2737,
               "class": "LLFloaterDirector",
               "function": "bindAnimSpeedPage",
               "wired_class": "LLFloaterDirector",
@@ -54464,7 +53535,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-              "line": 140,
+              "line": 105,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -54472,6 +53543,1327 @@
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
                 "tag": "panel",
                 "name": "move_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "manage_groups",
+          "card_title": "Groups",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Manage groups...",
+          "kind": "link",
+          "widget": "manage_groups_link",
+          "matched_widget": "manage_groups_link",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": "link_to:cast_group/groups_tab",
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [],
+          "unresolved": [],
+          "other_writers": []
+        }
+      ]
+    },
+    {
+      "key": "groups_tab",
+      "label": "Groups",
+      "group": "cast_group",
+      "group_label": "Cast",
+      "row_count": 14,
+      "owner_roots": [
+        {
+          "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+          "tag": "panel",
+          "name": "panel_director_move_src",
+          "line": 14,
+          "matched_rows": 8,
+          "evidence": "row-widget match"
+        }
+      ],
+      "owner_classes": [
+        {
+          "class": "LLFloaterDirector",
+          "reference_count": 38
+        }
+      ],
+      "classification": {
+        "logic_class": "code-driven",
+        "setting_bound_rows": 0,
+        "setting_coverage": 0.0,
+        "cpp_referenced_rows": 14,
+        "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
+      },
+      "unresolved_row_count": 5,
+      "rows": [
+        {
+          "card": "groups",
+          "card_title": "Groups",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Groups",
+          "kind": "list",
+          "widget": "groups_list",
+          "matched_widget": "groups_list",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 52,
+              "tag": "scroll_list",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1511,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupsList = getChild<LLScrollListCtrl>(\"groups_list\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1516,
+              "class": "LLFloaterDirector",
+              "function": "onGroupsListSelect",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupsList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupsListSelect(); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2796,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupsList = root->findChild<LLScrollListCtrl>(\"groups_list\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2806,
+              "class": "LLFloaterDirector",
+              "function": "onGroupsListSelect",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupsList->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGroupsListSelect(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 406,
+              "tag": "scroll_list",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 11,
+              "tag": "scroll_list",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "groups",
+          "card_title": "Groups",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "New",
+          "kind": "button",
+          "widget": "btn_group_new",
+          "matched_widget": "btn_group_new",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2821,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupNewBtn = root->getChild<LLButton>(\"btn_group_new\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 19,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "groups",
+          "card_title": "Groups",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Rename to",
+          "kind": "text",
+          "widget": "group_rename_editor",
+          "matched_widget": "group_rename_editor",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 101,
+              "tag": "line_editor",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1513,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRenameEditor = getChild<LLLineEditor>(\"group_rename_editor\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1518,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroupRename",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupRenameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2798,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRenameEditor = root->findChild<LLLineEditor>(\"group_rename_editor\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2808,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroupRename",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupRenameEditor->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 454,
+              "tag": "line_editor",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 22,
+              "tag": "line_editor",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "groups",
+          "card_title": "Groups",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Rename",
+          "kind": "button",
+          "widget": "btn_group_rename",
+          "matched_widget": "btn_group_rename",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 112,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1514,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRenameBtn = getChild<LLButton>(\"btn_group_rename\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1521,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroupRename",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2799,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRenameBtn = root->findChild<LLButton>(\"btn_group_rename\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2811,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroupRename",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 465,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 25,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "groups",
+          "card_title": "Groups",
+          "option_index": null,
+          "option_label": null,
+          "index": 4,
+          "label": "Dissolve",
+          "kind": "button",
+          "widget": "btn_group_dissolve",
+          "matched_widget": "btn_group_dissolve",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 91,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1515,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupDissolveBtn = getChild<LLButton>(\"btn_group_dissolve\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1522,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroupDissolve",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2800,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupDissolveBtn = root->findChild<LLButton>(\"btn_group_dissolve\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2812,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroupDissolve",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 444,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 28,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "cast_group_members",
+          "card_title": "Members",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Members",
+          "kind": "list",
+          "widget": "group_members_list",
+          "matched_widget": "group_members_list",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2819,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupMembersList = root->getChild<LLScrollListCtrl>(\"group_members_list\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 33,
+              "tag": "scroll_list",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "cast_group_members",
+          "card_title": "Members",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Add selected cast",
+          "kind": "button",
+          "widget": "btn_group_add_selected",
+          "matched_widget": "btn_group_add_selected",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2822,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupAddSelectedBtn = root->getChild<LLButton>(\"btn_group_add_selected\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 38,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "cast_group_members",
+          "card_title": "Members",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Add...",
+          "kind": "button",
+          "widget": "btn_group_add",
+          "matched_widget": "btn_group_add",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2823,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupAddBtn = root->getChild<LLButton>(\"btn_group_add\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 41,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "cast_group_members",
+          "card_title": "Members",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Remove",
+          "kind": "button",
+          "widget": "btn_group_remove",
+          "matched_widget": "btn_group_remove",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2824,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRemoveBtn = root->getChild<LLButton>(\"btn_group_remove\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 44,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "group_used_by",
+          "card_title": "Used by",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Used by",
+          "kind": "readout",
+          "widget": "group_used_by",
+          "matched_widget": "group_used_by",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2825,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupUsedBy = root->getChild<LLTextBox>(\"group_used_by\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 49,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "group_run",
+          "card_title": "Group walk",
+          "option_index": null,
+          "option_label": null,
+          "index": 0,
+          "label": "Group",
+          "kind": "combo",
+          "widget": "group_run_combo",
+          "matched_widget": "group_run_combo",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 23,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1503,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRunCombo = getChild<LLComboBox>(\"group_run_combo\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2793,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupRunCombo = root->findChild<LLComboBox>(\"group_run_combo\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2814,
+              "class": "LLFloaterDirector",
+              "function": "onGroupsListSelect",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupRunCombo->setCommitCallback([this](LLUICtrl*, const LLSD&)"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2107,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroup",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "explicit scoped model binding"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 360,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 54,
+              "tag": "combo_box",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "group_run",
+          "card_title": "Group walk",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Delay (s)",
+          "kind": "number",
+          "widget": "group_delay_spinner",
+          "matched_widget": "group_delay_spinner",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 80,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1512,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupDelaySpinner = getChild<LLSpinCtrl>(\"group_delay_spinner\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1517,
+              "class": "LLFloaterDirector",
+              "function": "onCommitGroupDelay",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupDelaySpinner->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupDelay(); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2797,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupDelaySpinner = root->findChild<LLSpinCtrl>(\"group_delay_spinner\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2807,
+              "class": "LLFloaterDirector",
+              "function": "onCommitGroupDelay",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupDelaySpinner->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCommitGroupDelay(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 433,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 60,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "group_run",
+          "card_title": "Group walk",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
+          "label": "Start group",
+          "kind": "button",
+          "widget": "btn_group_start",
+          "matched_widget": "btn_group_start",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 33,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1504,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupStartBtn = getChild<LLButton>(\"btn_group_start\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1506,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroup",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2794,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupStartBtn = root->findChild<LLButton>(\"btn_group_start\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2804,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroup",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupStartBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(true); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 370,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 63,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "group_run",
+          "card_title": "Group walk",
+          "option_index": null,
+          "option_label": null,
+          "index": 3,
+          "label": "Stop group",
+          "kind": "button",
+          "widget": "btn_group_stop",
+          "matched_widget": "btn_group_stop",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [
+            {
+              "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+              "line": 42,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+                "tag": "panel",
+                "name": "panel_director_move_src",
+                "line": 14
+              }
+            }
+          ],
+          "cpp": [
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1505,
+              "class": "LLFloaterDirector",
+              "function": "postBuild",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupStopBtn = getChild<LLButton>(\"btn_group_stop\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 1507,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroup",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2795,
+              "class": "LLFloaterDirector",
+              "function": "bindGroupsPage",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mGroupStopBtn = root->findChild<LLButton>(\"btn_group_stop\");"
+            },
+            {
+              "file": "indra/newview/llfloaterdirector.cpp",
+              "line": 2805,
+              "class": "LLFloaterDirector",
+              "function": "onClickGroup",
+              "wired_class": "LLFloaterDirector",
+              "wired_function": "bindGroupsPage",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mGroupStopBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroup(false); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+              "line": 379,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/floater_director.xml",
+                "tag": "floater",
+                "name": "floater_director",
+                "line": 15
+              }
+            },
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+              "line": 66,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+                "tag": "panel",
+                "name": "groups_tab_logic",
                 "line": 3
               }
             }
@@ -61761,7 +62153,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 292,
+              "line": 268,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -61776,7 +62168,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-              "line": 43,
+              "line": 40,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -61806,7 +62198,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitshell.cpp",
-              "line": 1020,
+              "line": 1023,
               "class": "ALKitShell",
               "function": "layoutRoster",
               "wired_class": "ALKitShell",
@@ -61819,7 +62211,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1422,
+              "line": 1420,
               "class": "LLFloaterDirector",
               "function": "postBuild",
               "wired_class": "LLFloaterDirector",
@@ -61832,7 +62224,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 1434,
+              "line": 1432,
               "class": "LLFloaterDirector",
               "function": "onCastRemove",
               "wired_class": "LLFloaterDirector",
@@ -79968,7 +80360,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 570,
+              "line": 548,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79994,7 +80386,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3193,
+              "line": 3241,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -86992,7 +87384,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 611,
+              "line": 590,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -87018,7 +87410,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3015,
+              "line": 3063,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87076,7 +87468,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 624,
+              "line": 603,
               "tag": "scroll_list",
               "control_name": null,
               "callbacks": [],
@@ -87102,7 +87494,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3016,
+              "line": 3064,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87181,7 +87573,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 663,
+              "line": 642,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -87218,7 +87610,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3018,
+              "line": 3066,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87229,7 +87621,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3068,
+              "line": 3116,
               "class": "LLFloaterDirector",
               "function": "onAnimCopyUUID",
               "wired_class": "LLFloaterDirector",
@@ -87282,7 +87674,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 672,
+              "line": 651,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -87319,7 +87711,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3019,
+              "line": 3067,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87330,7 +87722,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3069,
+              "line": 3117,
               "class": "LLFloaterDirector",
               "function": "onAnimSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -87383,7 +87775,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 681,
+              "line": 660,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -87420,7 +87812,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3020,
+              "line": 3068,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87431,7 +87823,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3070,
+              "line": 3118,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -87484,7 +87876,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 690,
+              "line": 669,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -87521,7 +87913,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3021,
+              "line": 3069,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87532,7 +87924,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3071,
+              "line": 3119,
               "class": "LLFloaterDirector",
               "function": "onAnimPlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -87585,7 +87977,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 650,
+              "line": 629,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -87611,7 +88003,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3017,
+              "line": 3065,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87664,7 +88056,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 698,
+              "line": 677,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -87720,7 +88112,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 709,
+              "line": 688,
               "tag": "line_editor",
               "control_name": null,
               "callbacks": [],
@@ -87746,7 +88138,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3022,
+              "line": 3070,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87810,7 +88202,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 719,
+              "line": 698,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -87847,7 +88239,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3023,
+              "line": 3071,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87858,7 +88250,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3072,
+              "line": 3120,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -87911,7 +88303,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 728,
+              "line": 707,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -87948,7 +88340,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3024,
+              "line": 3072,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -87959,7 +88351,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3073,
+              "line": 3121,
               "class": "LLFloaterDirector",
               "function": "onPastePlayLocal",
               "wired_class": "LLFloaterDirector",
@@ -88012,7 +88404,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 737,
+              "line": 716,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -88049,7 +88441,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3025,
+              "line": 3073,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88060,7 +88452,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3074,
+              "line": 3122,
               "class": "LLFloaterDirector",
               "function": "onPasteSetLoco",
               "wired_class": "LLFloaterDirector",
@@ -88129,7 +88521,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 746,
+              "line": 725,
               "tag": "combo_box",
               "control_name": "DirectorAnimPlayLocalPriority",
               "callbacks": [],
@@ -88204,7 +88596,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 772,
+              "line": 751,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -88241,7 +88633,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3026,
+              "line": 3074,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88252,7 +88644,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3076,
+              "line": 3124,
               "class": "LLFloaterDirector",
               "function": "onLocomotionRoleChanged",
               "wired_class": "LLFloaterDirector",
@@ -88305,7 +88697,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 791,
+              "line": 770,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -88331,7 +88723,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3027,
+              "line": 3075,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88395,7 +88787,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 805,
+              "line": 784,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -88421,7 +88813,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3028,
+              "line": 3076,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88485,7 +88877,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 815,
+              "line": 794,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -88511,7 +88903,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3029,
+              "line": 3077,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88575,7 +88967,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 825,
+              "line": 804,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -88601,7 +88993,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3030,
+              "line": 3078,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88654,7 +89046,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 838,
+              "line": 817,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -88691,7 +89083,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3031,
+              "line": 3079,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88702,7 +89094,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3075,
+              "line": 3123,
               "class": "LLFloaterDirector",
               "function": "onClickClearLoco",
               "wired_class": "LLFloaterDirector",
@@ -88755,7 +89147,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 875,
+              "line": 854,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -88781,7 +89173,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3087,
+              "line": 3135,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -88847,7 +89239,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 762,
+              "line": 741,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -88929,7 +89321,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3032,
+              "line": 3080,
               "class": "LLFloaterDirector",
               "function": "bindAnimatePage",
               "wired_class": "LLFloaterDirector",
@@ -92818,7 +93210,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2392,
+              "line": 2410,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -92829,7 +93221,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2403,
+              "line": 2421,
               "class": "ALPanelLensGaze",
               "function": "asInteger",
               "wired_class": "ALPanelLensGaze",
@@ -92897,7 +93289,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2394,
+              "line": 2412,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -92973,7 +93365,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2394,
+              "line": 2412,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93043,7 +93435,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2395,
+              "line": 2413,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93113,7 +93505,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2400,
+              "line": 2418,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93124,7 +93516,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2415,
+              "line": 2433,
               "class": "ALPanelLensGaze",
               "function": "asInteger",
               "wired_class": "ALPanelLensGaze",
@@ -93192,7 +93584,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2399,
+              "line": 2417,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93263,7 +93655,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2401,
+              "line": 2419,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93333,7 +93725,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2402,
+              "line": 2420,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93403,7 +93795,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2402,
+              "line": 2420,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93473,7 +93865,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2402,
+              "line": 2420,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93543,7 +93935,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2410,
+              "line": 2428,
               "class": "ALPanelLensGaze",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -93611,7 +94003,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2420,
+              "line": 2438,
               "class": "ALPanelLensGaze",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -93679,7 +94071,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2396,
+              "line": 2414,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93749,7 +94141,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2398,
+              "line": 2416,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93819,7 +94211,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2398,
+              "line": 2416,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93889,7 +94281,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2399,
+              "line": 2417,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93959,7 +94351,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2395,
+              "line": 2413,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94029,7 +94421,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2397,
+              "line": 2415,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94099,7 +94491,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2397,
+              "line": 2415,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94172,7 +94564,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2396,
+              "line": 2414,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94242,7 +94634,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2430,
+              "line": 2448,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94253,7 +94645,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2434,
+              "line": 2452,
               "class": "LLActorMover",
               "function": "hotGazeInput",
               "wired_class": "ALPanelLensGaze",
@@ -94321,7 +94713,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2426,
+              "line": 2444,
               "class": "LLDirectorCast",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -96480,7 +96872,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 918,
+              "line": 897,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -96506,7 +96898,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3180,
+              "line": 3228,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -103336,7 +103728,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 922,
+              "line": 901,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -103362,7 +103754,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3197,
+              "line": 3245,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -105133,7 +105525,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7775,
+              "line": 7931,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -107951,7 +108343,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1177,
+              "line": 1156,
               "widget": "zolly_duration",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -108337,7 +108729,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1180,
+              "line": 1159,
               "widget": "zolly_direction",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -109855,7 +110247,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7776,
+              "line": 7932,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -111427,7 +111819,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1194,
+              "line": 1173,
               "widget": "hero_arc_duration",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -111810,7 +112202,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1190,
+              "line": 1169,
               "widget": "hero_arc_angle",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -111916,7 +112308,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1198,
+              "line": 1177,
               "widget": "hero_arc_height_drift",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/floater_director.xml",
@@ -112880,7 +113272,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7777,
+              "line": 7933,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -128819,7 +129211,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4409,
+              "line": 4457,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -128923,7 +129315,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4410,
+              "line": 4458,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129027,7 +129419,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4411,
+              "line": 4459,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129131,7 +129523,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4412,
+              "line": 4460,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129235,7 +129627,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4413,
+              "line": 4461,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129339,7 +129731,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4414,
+              "line": 4462,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129443,7 +129835,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4415,
+              "line": 4463,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129547,7 +129939,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4416,
+              "line": 4464,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129651,7 +130043,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4417,
+              "line": 4465,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -131036,7 +131428,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3231,
+              "line": 3279,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131126,7 +131518,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3235,
+              "line": 3283,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131431,7 +131823,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 964,
+              "line": 943,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -131468,7 +131860,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3167,
+              "line": 3215,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131521,7 +131913,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 973,
+              "line": 952,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -131558,7 +131950,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3171,
+              "line": 3219,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131611,7 +132003,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 994,
+              "line": 973,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -131648,7 +132040,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3168,
+              "line": 3216,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131701,7 +132093,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1003,
+              "line": 982,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -131738,7 +132130,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3172,
+              "line": 3220,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131791,7 +132183,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1024,
+              "line": 1003,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -131828,7 +132220,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3169,
+              "line": 3217,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131881,7 +132273,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1033,
+              "line": 1012,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -131918,7 +132310,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3173,
+              "line": 3221,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -131971,7 +132363,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1054,
+              "line": 1033,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -132008,7 +132400,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3170,
+              "line": 3218,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -132061,7 +132453,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1063,
+              "line": 1042,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -132098,7 +132490,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3174,
+              "line": 3222,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -136232,7 +136624,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7779,
+              "line": 7935,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -136285,7 +136677,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1153,
+              "line": 1132,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -136322,7 +136714,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3214,
+              "line": 3262,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -136384,7 +136776,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1158,
+              "line": 1137,
               "tag": "spinner",
               "control_name": "PrismOtsShoulderOffset",
               "callbacks": [],
@@ -136462,7 +136854,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1162,
+              "line": 1141,
               "tag": "spinner",
               "control_name": "PrismOtsCameraDistance",
               "callbacks": [],
@@ -136540,7 +136932,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1166,
+              "line": 1145,
               "tag": "spinner",
               "control_name": "PrismOtsVerticalFovDeg",
               "callbacks": [],
@@ -136618,7 +137010,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1170,
+              "line": 1149,
               "tag": "spinner",
               "control_name": "PrismOtsHeightBias",
               "callbacks": [],
@@ -136688,7 +137080,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7778,
+              "line": 7934,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -136741,7 +137133,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1172,
+              "line": 1151,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -136778,7 +137170,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3219,
+              "line": 3267,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -136840,7 +137232,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1177,
+              "line": 1156,
               "tag": "spinner",
               "control_name": "CinematicCamVertigoDuration",
               "callbacks": [],
@@ -136949,7 +137341,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1180,
+              "line": 1159,
               "tag": "combo_box",
               "control_name": "CinematicCamVertigoDirection",
               "callbacks": [],
@@ -137034,7 +137426,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1185,
+              "line": 1164,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -137071,7 +137463,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3224,
+              "line": 3272,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -137133,7 +137525,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1190,
+              "line": 1169,
               "tag": "spinner",
               "control_name": "CinematicCamArcGeneratorAngle",
               "callbacks": [],
@@ -137227,7 +137619,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1194,
+              "line": 1173,
               "tag": "spinner",
               "control_name": "CinematicCamArcDuration",
               "callbacks": [],
@@ -137333,7 +137725,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1198,
+              "line": 1177,
               "tag": "spinner",
               "control_name": "CinematicCamArcHeightDrift",
               "callbacks": [],
@@ -137427,7 +137819,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1201,
+              "line": 1180,
               "tag": "check_box",
               "control_name": "CinematicCamSpeedRampEnabled",
               "callbacks": [],
@@ -137505,7 +137897,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1206,
+              "line": 1185,
               "tag": "spinner",
               "control_name": "CinematicCamSpeedRampStrength",
               "callbacks": [],
@@ -137686,7 +138078,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3267,
+              "line": 3315,
               "class": "LLFloaterDirector",
               "function": "bindOperatorPage",
               "wired_class": "LLFloaterDirector",
@@ -139453,7 +139845,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4432,
+              "line": 4480,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -144088,7 +144480,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3294,
+              "line": 3342,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -145100,7 +145492,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3287,
+              "line": 3335,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -145273,7 +145665,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3350,
+              "line": 3398,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -145646,7 +146038,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3358,
+              "line": 3406,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -145750,7 +146142,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3359,
+              "line": 3407,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -145854,7 +146246,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3360,
+              "line": 3408,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -145958,7 +146350,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3361,
+              "line": 3409,
               "class": "LLFloaterDirector",
               "function": "bindFrameOrbitPage",
               "wired_class": "LLFloaterDirector",
@@ -146256,7 +146648,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4420,
+              "line": 4468,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -146347,7 +146739,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4425,
+              "line": 4473,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -146438,7 +146830,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4422,
+              "line": 4470,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -146529,7 +146921,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4426,
+              "line": 4474,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -146620,7 +147012,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4423,
+              "line": 4471,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -146711,7 +147103,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4421,
+              "line": 4469,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -146802,7 +147194,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4424,
+              "line": 4472,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147192,7 +147584,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2129,
+              "line": 2134,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -147548,7 +147940,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2134,
+              "line": 2139,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -149326,7 +149718,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1349,
+              "line": 1328,
               "tag": "check_box",
               "control_name": "PrismLensEnabled",
               "callbacks": [],
@@ -149379,7 +149771,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1350,
+              "line": 1329,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -149418,7 +149810,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3205,
+              "line": 3253,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -149469,7 +149861,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1351,
+              "line": 1330,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -149506,7 +149898,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3209,
+              "line": 3257,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -149901,7 +150293,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2423,
+              "line": 2428,
               "class": "LLFloaterDirector",
               "function": "bindLensFocusPage",
               "wired_class": "LLFloaterDirector",
@@ -153369,7 +153761,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2374,
+              "line": 2379,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -153632,7 +154024,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2390,
+              "line": 2395,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -153721,7 +154113,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2382,
+              "line": 2387,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -153947,7 +154339,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2359,
+              "line": 2364,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -154004,7 +154396,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2357,
+              "line": 2362,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "LLFloaterDirector",
@@ -154017,7 +154409,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2361,
+              "line": 2366,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -154030,7 +154422,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2372,
+              "line": 2377,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -154809,7 +155201,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2370,
+              "line": 2375,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -154892,7 +155284,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2371,
+              "line": 2376,
               "class": "LLFloaterDirector",
               "function": "bindLensFiltersPage",
               "wired_class": "LLFloaterDirector",
@@ -176155,7 +176547,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2039,
+              "line": 2043,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176596,7 +176988,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2061,
+              "line": 2065,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176651,7 +177043,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2064,
+              "line": 2068,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176718,7 +177110,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2066,
+              "line": 2070,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176785,7 +177177,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2081,
+              "line": 2085,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176852,7 +177244,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2084,
+              "line": 2088,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176971,7 +177363,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2057,
+              "line": 2061,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -176984,7 +177376,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3666,
+              "line": 3714,
               "class": "LLFloaterDirector",
               "function": "refreshLauncherCards",
               "wired_class": "LLFloaterDirector",
@@ -177039,7 +177431,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2059,
+              "line": 2063,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -181372,7 +181764,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1401,
+              "line": 1380,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -181411,7 +181803,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3201,
+              "line": 3249,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -183722,7 +184114,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8371,
+              "line": 8527,
               "class": "LLFloaterDirector",
               "function": "showProjectorTrack",
               "wired_class": "LLFloaterDirector",
@@ -189839,7 +190231,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2033,
+              "line": 2037,
               "class": "LLFloaterDirector",
               "function": "bindPage",
               "wired_class": "LLFloaterDirector",
@@ -190186,7 +190578,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2267,
+              "line": 2272,
               "class": "LLFloaterDirector",
               "function": "bindLightActorsPage",
               "wired_class": "LLFloaterDirector",
@@ -190253,7 +190645,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2273,
+              "line": 2278,
               "class": "LLFloaterDirector",
               "function": "bindLightActorsPage",
               "wired_class": "LLFloaterDirector",
@@ -190740,7 +191132,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1420,
+              "line": 1399,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -190766,7 +191158,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2261,
+              "line": 2266,
               "class": "LLFloaterDirector",
               "function": "bindLightActorsPage",
               "wired_class": "LLFloaterDirector",
@@ -192312,7 +192704,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3235,
+              "line": 3283,
               "class": "LLFloaterDirector",
               "function": "bindCameraPage",
               "wired_class": "LLFloaterDirector",
@@ -194191,7 +194583,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2329,
+              "line": 2334,
               "class": "LLFloaterDirector",
               "function": "bindImagePage",
               "wired_class": "LLFloaterDirector",
@@ -194559,7 +194951,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2315,
+              "line": 2320,
               "class": "LLFloaterDirector",
               "function": "bindImagePage",
               "wired_class": "LLFloaterDirector",
@@ -194572,7 +194964,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3432,
+              "line": 3480,
               "class": "LLFloaterDirector",
               "function": "onOpen",
               "wired_class": "LLFloaterDirector",
@@ -200905,7 +201297,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2192,
+              "line": 2197,
               "class": "LLFloaterDirector",
               "function": "bindRotoInkPage",
               "wired_class": "LLFloaterDirector",
@@ -208341,7 +208733,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2230,
+              "line": 2235,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -208425,7 +208817,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2242,
+              "line": 2247,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -208509,7 +208901,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2202,
+              "line": 2207,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -211851,7 +212243,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2209,
+              "line": 2214,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -211947,7 +212339,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2220,
+              "line": 2225,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -217638,7 +218030,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2225,
+              "line": 2230,
               "class": "LLFloaterDirector",
               "function": "bindTronPage",
               "wired_class": "LLFloaterDirector",
@@ -222761,7 +223153,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1647,
+              "line": 1627,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -222787,7 +223179,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2958,
+              "line": 3006,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -222851,7 +223243,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1646,
+              "line": 1626,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -222888,7 +223280,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2957,
+              "line": 3005,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -222899,7 +223291,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 3008,
+              "line": 3056,
               "class": "LLFloaterDirector",
               "function": "onActorStyleReset",
               "wired_class": "LLFloaterDirector",
@@ -222989,7 +223381,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1516,
+              "line": 1496,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -223096,7 +223488,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1568,
+              "line": 1548,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -223122,7 +223514,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2944,
+              "line": 2992,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223189,7 +223581,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1553,
+              "line": 1533,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -223215,7 +223607,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2943,
+              "line": 2991,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223279,7 +223671,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1623,
+              "line": 1603,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223305,7 +223697,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2947,
+              "line": 2995,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223369,7 +223761,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1624,
+              "line": 1604,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223395,7 +223787,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2948,
+              "line": 2996,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223523,7 +223915,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1618,
+              "line": 1598,
               "tag": "check_box",
               "control_name": null,
               "callbacks": [],
@@ -223549,7 +223941,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2945,
+              "line": 2993,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223613,7 +224005,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1622,
+              "line": 1602,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223639,7 +224031,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2946,
+              "line": 2994,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223703,7 +224095,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1644,
+              "line": 1624,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223729,7 +224121,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2955,
+              "line": 3003,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223793,7 +224185,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1627,
+              "line": 1607,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223819,7 +224211,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2951,
+              "line": 2999,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223883,7 +224275,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1626,
+              "line": 1606,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223909,7 +224301,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2950,
+              "line": 2998,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -223973,7 +224365,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1628,
+              "line": 1608,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -223999,7 +224391,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2952,
+              "line": 3000,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -224063,7 +224455,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1645,
+              "line": 1625,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -224089,7 +224481,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2956,
+              "line": 3004,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -224163,7 +224555,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1632,
+              "line": 1612,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -224189,7 +224581,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2953,
+              "line": 3001,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -224253,7 +224645,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1643,
+              "line": 1623,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -224279,7 +224671,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2954,
+              "line": 3002,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -224343,7 +224735,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1625,
+              "line": 1605,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -224369,7 +224761,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2949,
+              "line": 2997,
               "class": "LLFloaterDirector",
               "function": "bindActorStylePage",
               "wired_class": "LLFloaterDirector",
@@ -224496,7 +224888,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2705,
+              "line": 2710,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -224575,7 +224967,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2599,
+              "line": 2604,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -224705,7 +225097,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2466,
+              "line": 2471,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225360,7 +225752,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2531,
+              "line": 2536,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225557,7 +225949,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2552,
+              "line": 2557,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225622,7 +226014,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2575,
+              "line": 2580,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225687,7 +226079,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2591,
+              "line": 2596,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -225752,7 +226144,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2701,
+              "line": 2706,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -228688,7 +229080,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2499,
+              "line": 2504,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -228699,7 +229091,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2595,
+              "line": 2600,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -229125,7 +229517,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2488,
+              "line": 2493,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -229226,7 +229618,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2489,
+              "line": 2494,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230107,7 +230499,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2606,
+              "line": 2611,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230183,7 +230575,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2606,
+              "line": 2611,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230259,7 +230651,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2607,
+              "line": 2612,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230335,7 +230727,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2607,
+              "line": 2612,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230411,7 +230803,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2608,
+              "line": 2613,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230487,7 +230879,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2608,
+              "line": 2613,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230563,7 +230955,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2609,
+              "line": 2614,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230639,7 +231031,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2609,
+              "line": 2614,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230719,7 +231111,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2610,
+              "line": 2615,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230795,7 +231187,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2610,
+              "line": 2615,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230862,7 +231254,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2583,
+              "line": 2588,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230873,7 +231265,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2611,
+              "line": 2616,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230938,7 +231330,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2587,
+              "line": 2592,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -230949,7 +231341,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2611,
+              "line": 2616,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231014,7 +231406,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2697,
+              "line": 2702,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -231077,7 +231469,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2472,
+              "line": 2477,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231088,7 +231480,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2638,
+              "line": 2643,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231168,7 +231560,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2481,
+              "line": 2486,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231179,7 +231571,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2638,
+              "line": 2643,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231255,7 +231647,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2639,
+              "line": 2644,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231331,7 +231723,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2639,
+              "line": 2644,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231407,7 +231799,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2640,
+              "line": 2645,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231483,7 +231875,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2640,
+              "line": 2645,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231559,7 +231951,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2641,
+              "line": 2646,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231635,7 +232027,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2641,
+              "line": 2646,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231711,7 +232103,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2642,
+              "line": 2647,
               "class": "LLFloaterDirector",
               "function": "bindWeatherPage",
               "wired_class": "LLFloaterDirector",
@@ -231778,7 +232170,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2473,
+              "line": 2478,
               "class": "LLFloaterDirector",
               "function": "setU32",
               "wired_class": "LLFloaterDirector",
@@ -231789,7 +232181,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2685,
+              "line": 2690,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -232505,7 +232897,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2692,
+              "line": 2697,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -233649,7 +234041,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2671,
+              "line": 2676,
               "class": "LLFloaterDirector",
               "function": "bindAtmospherePage",
               "wired_class": "LLFloaterDirector",
@@ -233897,7 +234289,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2675,
+              "line": 2680,
               "class": "LLFloaterDirector",
               "function": "bindAtmospherePage",
               "wired_class": "LLFloaterDirector",
@@ -234366,7 +234758,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2713,
+              "line": 2718,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -234838,7 +235230,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2718,
+              "line": 2723,
               "class": "LLFloaterDirector",
               "function": "refreshWorldLensReadouts",
               "wired_class": "LLFloaterDirector",
@@ -241818,7 +242210,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1760,
+              "line": 1741,
               "tag": "check_box",
               "control_name": "DirectorHotkeysEnabled",
               "callbacks": [],
@@ -241951,7 +242343,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1761,
+              "line": 1742,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -242007,7 +242399,7 @@
           "xui": [
             {
               "file": "indra/newview/skins/default/xui/en/floater_director.xml",
-              "line": 1763,
+              "line": 1744,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -243886,7 +244278,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2147,
+              "line": 2152,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -243940,7 +244332,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2148,
+              "line": 2153,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -243994,7 +244386,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2153,
+              "line": 2158,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -244114,7 +244506,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2172,
+              "line": 2177,
               "class": "LLNotifications",
               "function": "setIgnored",
               "wired_class": "LLFloaterDirector",
@@ -244175,7 +244567,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2160,
+              "line": 2165,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",
@@ -244423,7 +244815,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 2144,
+              "line": 2149,
               "class": "LLFloaterDirector",
               "function": "bindDirectorSettingsPage",
               "wired_class": "LLFloaterDirector",

@@ -16,6 +16,7 @@ ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f52124006
 def actor_key_baseline(source, name):
     """Peel only exact key deltas; full-file equality rejects unrelated edits."""
     from clone_rest_frame_pins import reverse_rest_frame_mover
+    source = reverse_director_groups_cast(source, name)
     source = reverse_rig_no_group_cast(source, name)
     source = reverse_rest_frame_mover(source, name)
     source = reverse_feature_allowance(source, name, "clone_fx_mover_hunks.json",
@@ -91,6 +92,12 @@ def reverse_feature_allowance(source, name, filename, digest, label):
         source = source.replace(hunk["after"], hunk["before"], 1)
     assert source == original, (label, "reversal must reproduce its exact baseline", name)
     return source
+
+
+def reverse_director_groups_cast(source, name):
+    # Groups integrate on top of rig-no-group; peel them before that older layer.
+    return reverse_feature_allowance(source, name, "director_groups_cast_hunks.json",
+        "320a044ff24581975b613b3d6defa3ffffe1cfe285dba574f61ad7a66c29f144", "reviewed Director groups cast")
 
 
 def reverse_rig_no_group_cast(source, name):
@@ -293,6 +300,8 @@ def main():
     assert 'f.isSelected = selected.isNull() ? f.isSelf : actor_id == selected' in runtime
     assert 'return runtimeActorId(mActiveActorId)' in (nv / "lldirectorcast.h").read_text()
     group = method(nv / "llfloaterdirector.cpp", "void LLFloaterDirector::onGroupsListSelect(")
+    assert "selectGroupMembers(name);" in group
+    group = method(nv / "llfloaterdirector.cpp", "void LLFloaterDirector::selectGroupMembers(")
     assert group.index('selectMultiple(cast.membersInGroup(name))') < group.index('cast.setActiveActorId(firstSelectedCastId())')
     assert 'mShell->setCastSelection(selectedCastIds())' in group
     chooser = (nv / "alavatarsubjectpicker.cpp").read_text()

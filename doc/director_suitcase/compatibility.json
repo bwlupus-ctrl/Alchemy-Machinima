@@ -8139,15 +8139,6 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llcinematiccamera.cpp",
-    "dependency": "indra/newview/alcineflycamhandover.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llcinematiccamera.cpp",
     "dependency": "indra/newview/alcameracurve.h",
     "excluded": false,
     "origin": "fork-added",
@@ -8545,6 +8536,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/lldirectorcast.h",
     "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.h",
+    "dependency": "indra/newview/aldirectorgroups.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9361,6 +9361,15 @@
   },
   {
     "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.h",
+    "dependency": "indra/newview/aldirectorgroups.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
     "class": "TOOLING",
     "consumer": "indra/newview/llfloaterenvironmentadjust.cpp",
     "dependency": "indra/newview/aluiperfselftest.h",
@@ -9688,15 +9697,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/llflycamrecorder.cpp",
     "dependency": "indra/newview/llcameraoperator.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llflycamrecorder.cpp",
-    "dependency": "indra/newview/llcinematiccamera.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -11452,15 +11452,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/llviewerjoystick.cpp",
     "dependency": "indra/newview/llcinematiccamera.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llviewerjoystick.cpp",
-    "dependency": "indra/newview/alcineflycamhandover.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

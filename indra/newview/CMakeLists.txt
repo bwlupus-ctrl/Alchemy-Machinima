@@ -1387,6 +1387,7 @@ set(viewer_HEADER_FILES
     llcinematiccamera.h
     lldirectorcast.h
     aldirectoractorchoice.h
+    aldirectorgroups.h
     aldirectorcastui.h
     llfloateractormover.h
     llfloaterdirector.h
@@ -2963,6 +2964,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alflycamweighted "alflycamweighted.cpp;alflycamclassic.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alsteppedanim "alsteppedanim.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(lldirectorcast_choice "aldirectoractorchoice.cpp" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(aldirectorgroups "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectorsubjectmapping "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alxinputmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitmath "" "${test_libs}" "${test_project}")

@@ -88,6 +88,21 @@
      function="Director.LightResponse" />
   </menu_item_call>
   <menu_item_separator layout="topleft" />
+  <menu_item_call label="Make group" layout="topleft" name="make_group">
+    <menu_item_call.on_click function="Director.MakeGroup" />
+  </menu_item_call>
+  <context_menu label="Add to group" layout="topleft" name="add_to_group">
+    <menu_item_call label="New group..." layout="topleft" name="new_group">
+      <menu_item_call.on_click function="Director.MakeGroup" />
+    </menu_item_call>
+  </context_menu>
+  <menu_item_call label="Remove from group" layout="topleft" name="remove_group">
+    <menu_item_call.on_click function="Director.RemoveGroup" />
+  </menu_item_call>
+  <menu_item_call label="Select group members" layout="topleft" name="select_group">
+    <menu_item_call.on_click function="Director.SelectGroup" />
+  </menu_item_call>
+  <menu_item_separator layout="topleft" />
   <menu_item_call
    label="Remove from Cast"
    layout="topleft"

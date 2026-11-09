@@ -182,6 +182,7 @@ private:
     LLButton*                                            mActorSelected = nullptr;
     LLButton*                                            mActorYou = nullptr;
     LLButton*                                            mActorClear = nullptr;
+    LLButton*                                            mActorGroups = nullptr;
     LLHandle<LLContextMenu>                               mActorMenu;
     LLUUID                                              mActorShownId;
     LLFrameTimer                                        mActorLifecycleClock;

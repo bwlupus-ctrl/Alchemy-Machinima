@@ -363,9 +363,9 @@ def validate_data(data: dict) -> None:
     # ALL OFF adds two gear rows: the mode preference and Restore last reset.
     # Includes the DirectorThemeInvert row in Director settings.
     # Group chat Snooze: two settings rows, 2499 -> 2501.
-    # Independent rigs: remove Create/Leave rig group, 2501 -> 2499.
-    if len(pages) != 39 or row_count != 2499:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 39/2499")
+    # Independent rigs (-2 rows) + Director Groups phase 1 (+1 page, +7 rows): 39/2501 -> 40/2506.
+    if len(pages) != 40 or row_count != 2506:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2506")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -1794,6 +1794,11 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
               "Choose the shared actor for all single-actor Director pages.", "", "", "", "", "", "director"]
     assert len(fields) == INDEX_FIELDS
     lines.append("\t".join(esc(value) for value in fields))
+    fields = ["cast_group", "groups_tab", "Groups", "Cast", "", "", "Actor", "",
+              "kit_actor_groups", "Groups", "button", "", "0", "c", "cast groups members manage team crowd",
+              "Manage cast groups in Cast > Groups.", "", "", "", "", "", "director"]
+    assert len(fields) == INDEX_FIELDS
+    lines.append("\t".join(esc(value) for value in fields))
     payload = "\n".join(lines) + "\n"
     return (f'<?xml version="1.0" encoding="utf-8"?>\n<!-- {note} -->\n'
             f'<director_kit_index version="3" fields="{INDEX_FIELDS}"><![CDATA[\n{payload}]]>'
@@ -1834,10 +1839,11 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         "use_ellipses": "true", "tool_tip": "Shared edit actor for Director actor pages. Roto Ink, Tron and Shadows keep independent subject choices. Clear preserves each page's default."})
     name.text = "Clear"
     for widget, label in (("choose", "Choose..."), ("selected", "Use selected"),
-                          ("you", "You"), ("clear", "Clear")):
+                          ("you", "You"), ("clear", "Clear"), ("groups", "Groups")):
         ET.SubElement(actor, "button", {"name": "kit_actor_" + widget, "label": label,
             "tool_tip": {"choose": "Choose a cast actor, nearby avatar, clone, or click in world.",
                 "selected": "Use the selected avatar, attachment wearer or animesh.",
+                "groups": "Manage cast groups in Cast > Groups.",
                 "you": "Act on your avatar.", "clear": "Clear the shared actor; page defaults apply."}[widget]})
     status = ET.SubElement(actor, "text", {"name": "kit_actor_status", "font": "SansSerifSmall", "text_color": "KitMuted", "use_ellipses": "true"})
     status.text = "Choose here for single-actor editors."
@@ -1845,7 +1851,7 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     header = ET.SubElement(roster, "text", {"name": "cast_roster_header", "font": "SansSerifSmall",
                                             "text_color": "KitMuted"})
     header.text = "CAST"
-    for name in ("cast_list", "cast_hint", "group_assign_combo", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
+    for name in ("cast_list", "cast_hint", "btn_add_you", "btn_add_animesh", "btn_focus", "btn_remove"):
         node = copy_chrome(name, v1)
         if name == "cast_list":
             # Intentional: agent cargo exposes ordered multi-row DAD_PERSON drops,
@@ -1961,6 +1967,9 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
     legend = ET.SubElement(shell, "kit_popover", {"name": "legend_panel", "anchor": "btn_help", "side": "above", "visible": "false"})
     legend_body = copy_chrome("legend_body", v1)
     if legend_body.text:
+        legend_body.text = legend_body.text.replace(
+            "(set in the Group box under the list); the Move tab's Start/Stop group",
+            "(edit with right-click or Cast > Groups); Group walk in Cast > Groups")
         legend_body.text = legend_body.text.replace("see Capture > Scene options", "use F1 or ?, or choose Hotkeys below")
         # [Connectedness B7] The per-actor Look-at-camera flag and its master toggle live on
         # Performance > Gaze, not Camera > Shot (the A/B subjects are the Camera > Shot part).
@@ -2074,6 +2083,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
                 "performance_group/switchboard_tab": "kit (P0)",
                 "performance_group/polish_tab": "kit (P0)",
                 "cast_group/move_tab": "kit (P0)",
+                "cast_group/groups_tab": "kit (P0)",
                 "cast_group/props_tab": "kit (P0)",
                 "cast_group/dance_tab": "kit (P0)",
                 "cast_group/ghosts_tab": "kit (P0)"}
@@ -2090,7 +2100,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
     # 10/15 batch 3, cast_group/dance_tab: legacy 2 -> 1.
     # 10/15 batch 3, cast_group/ghosts_tab: legacy 1 -> 0 (no legacy page remains).
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 38, "pure kit (new)": 1}):
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 39, "pure kit (new)": 1}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -2471,7 +2481,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("label") == "Keep breathing while paused" and
                        all(word in next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("keywords", "")
                            for word in ("breathing", "breathe", "idle", "life", "pause", "freeze", "wind down", "slow motion"))))
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 38, "pure kit (new)": 1})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 39, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -2672,7 +2682,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            row.find("kit_switch").get("control_name") == row.get("setting") and
                            row.get("setting").encode() in outputs[out_dir / "director_kit_index.xml"]
                            for row in purge_rows + pin_rows)))
-        checks.append(("40 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 40))
+        checks.append(("41 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 41))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",

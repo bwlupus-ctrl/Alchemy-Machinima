@@ -376,6 +376,9 @@ bool ALKitShell::postBuild()
     mActorSelected = getChild<LLButton>("kit_actor_selected");
     mActorYou = getChild<LLButton>("kit_actor_you");
     mActorClear = getChild<LLButton>("kit_actor_clear");
+    mActorGroups = getChild<LLButton>("kit_actor_groups");
+    mActorGroups->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        { navigateTo("cast_group/groups_tab"); });
     mActorChoose->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         ALAvatarSubjectPicker::choose(mActorChoose, this, mActorMenu, true,
@@ -762,8 +765,9 @@ void ALKitShell::layoutChrome()
         mActorYou->reshape(44, 26, true);
         mActorSelected->reshape(100, 26, true);
         mActorChoose->reshape(80, 26, true);
+        mActorGroups->reshape(64, 26, true);
         S32 x = width - 8;
-        for (LLButton* button : {mActorClear, mActorYou, mActorSelected, mActorChoose})
+        for (LLButton* button : {mActorGroups, mActorClear, mActorYou, mActorSelected, mActorChoose})
         {
             x -= button->getRect().getWidth();
             button->setOrigin(x, 1);
@@ -1009,7 +1013,6 @@ void ALKitShell::layoutRoster()
     const S32         height = mRoster->getRect().getHeight();
     LLTextBox*        header = mRoster->findChild<LLTextBox>("cast_roster_header", false);
     LLScrollListCtrl* list   = mRoster->findChild<LLScrollListCtrl>("cast_list", false);
-    LLComboBox*       group  = mRoster->findChild<LLComboBox>("group_assign_combo", false);
     LLTextBox*        hint   = mRoster->findChild<LLTextBox>("cast_hint", false);
     if (header)
     {
@@ -1033,26 +1036,8 @@ void ALKitShell::layoutRoster()
         hint->reshape(llmax(1, width - 8), hint_height, true);
         hint->setOrigin(4, 2);
     }
-    // Group tag box sits directly under the cast list (above the hint); the
-    // list's bottom edge is raised by its height. Empty-state help text points
-    // users here ("tag cast members via the Group box under the cast list").
-    // The rail admits the roster at 120 px, so when the list would be left
-    // under ~3 rows (heading + 3 * ~18 px row, approximate) the Group box is
-    // hidden first and the cast list keeps the space.
-    constexpr S32 ROSTER_MIN_LIST_H = 23 + 3 * 18;
-    const S32     list_ceiling      = height - ALKitStyle::ROSTER_HDR_H - 4;
-    S32           list_bottom       = hint ? hint->getRect().mTop + 4 : 34;
-    if (group)
-    {
-        const bool show_group = list_ceiling - (list_bottom + ALKitStyle::ROSTER_TOOL + 4) >= ROSTER_MIN_LIST_H;
-        group->setVisible(show_group);
-        if (show_group)
-        {
-            group->reshape(llmax(1, width - 8), ALKitStyle::ROSTER_TOOL, true);
-            group->setOrigin(4, list_bottom);
-            list_bottom += ALKitStyle::ROSTER_TOOL + 4;
-        }
-    }
+    const S32 list_ceiling = height - ALKitStyle::ROSTER_HDR_H - 4;
+    const S32 list_bottom = hint ? hint->getRect().mTop + 4 : 34;
     if (list)
     {
         const S32 list_top = llmax(list_bottom + 1, list_ceiling);
@@ -1386,6 +1371,14 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
     if (mChangedOnly)
         setChangedOnly(false);
     clearSearch();
+    if (target.widget == "kit_actor_groups")
+    {
+        navigateTo("cast_group/groups_tab");
+        mActorGroups->setFocus(true);
+        mHighlight = mActorGroups->getHandle();
+        mHighlightTimer.reset();
+        return true;
+    }
     if (target.widget == "kit_actor_choose")
     {
         mActorChoose->setFocus(true);
