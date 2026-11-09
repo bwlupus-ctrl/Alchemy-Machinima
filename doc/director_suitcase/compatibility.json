@@ -8543,6 +8543,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.h",
+    "dependency": "indra/newview/aldirectorgroups.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/lldrawable.cpp",
     "dependency": "indra/newview/alprobedirty.h",
     "excluded": false,
@@ -9346,6 +9355,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterdirector.h",
     "dependency": "indra/newview/aluirefresh.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.h",
+    "dependency": "indra/newview/aldirectorgroups.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

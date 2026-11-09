@@ -1841,6 +1841,8 @@ void LLAgentCamera::updateCamera()
             LLVector3 out_pos = cam->getOrigin();
             LLQuaternion out_rot = cam->getQuaternion();
             const F32 dt = llmax(gFrameIntervalSeconds.value(), 0.0005f);
+            const LLVector3 pre_operator_position = out_pos;
+            const LLQuaternion pre_operator_rotation = out_rot;
             const LLCameraOperatorOutput op =
                 LLCameraOperator::instance().updateFromPose(
                     dt, out_pos, out_rot);
@@ -1861,6 +1863,8 @@ void LLAgentCamera::updateCamera()
             cam->mXAxis = LLVector3(out_axes.mMatrix[0]);
             cam->mYAxis = LLVector3(out_axes.mMatrix[1]);
             cam->mZAxis = LLVector3(out_axes.mMatrix[2]);
+            LLCinematicCamera::rememberPreOperatorPresentation(
+                pre_operator_position, pre_operator_rotation, cam->getView());
         }
     }
 }

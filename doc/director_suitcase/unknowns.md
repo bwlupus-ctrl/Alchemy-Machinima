@@ -247,12 +247,12 @@ All 3340 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@526,7`
 - `indra/newview/CMakeLists.txt@820,8`
 - `indra/newview/CMakeLists.txt@1233,20`
-- `indra/newview/CMakeLists.txt@1534,7`
-- `indra/newview/CMakeLists.txt@1821,8`
-- `indra/newview/CMakeLists.txt@2347,7`
-- `indra/newview/CMakeLists.txt@2627,38`
-- `indra/newview/CMakeLists.txt@2722,7`
-- `indra/newview/CMakeLists.txt@2762,7`
+- `indra/newview/CMakeLists.txt@1535,7`
+- `indra/newview/CMakeLists.txt@1822,8`
+- `indra/newview/CMakeLists.txt@2348,7`
+- `indra/newview/CMakeLists.txt@2628,38`
+- `indra/newview/CMakeLists.txt@2723,7`
+- `indra/newview/CMakeLists.txt@2763,7`
 - `indra/newview/app_settings/settings.xml@22535,10`
 - `indra/newview/app_settings/settings.xml@23411,21`
 - `indra/newview/app_settings/settings.xml@23433,32`
@@ -2046,23 +2046,23 @@ All 3340 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@1137,57`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1196,13`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1233,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1290,167`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1534,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1563,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1665,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1676,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1821,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1892,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1908,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2107,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2347,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2627,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2722,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2762,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2851,32`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2889,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2957,186`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3204,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@1290,168`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1535,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1564,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1666,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1677,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1822,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1893,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1909,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2108,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2348,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2628,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2723,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2763,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2852,32`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2890,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2958,187`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3206,40`: unknown/non-function (if (BUILD_TESTING))
 - `indra/newview/app_settings/settings.xml@2,3466`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3469,1044`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@4514,839`: unknown/non-function (declaration, XML, build list or global scope)

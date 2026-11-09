@@ -5,28 +5,38 @@
     "counts": {
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
-      "GENERATED": 734,
+      "GENERATED": 736,
       "HOOK": 535,
-      "OWNED": 909,
-      "TOOLING": 436
+      "OWNED": 910,
+      "TOOLING": 438
     },
     "dirty_product_inputs": [
       "indra/newview/CMakeLists.txt",
-      "indra/newview/alkithistory.cpp",
-      "indra/newview/alkitpage.cpp",
-      "indra/newview/alkitshell.cpp",
-      "indra/newview/alkitshell.h",
-      "indra/newview/alpanellensgaze.cpp",
-      "indra/newview/alpanellensgaze.h",
+      "indra/newview/alcameradispatch.h",
+      "indra/newview/alcineflycamhandover.h",
+      "indra/newview/alcinelightrigmanager.cpp",
+      "indra/newview/alcinelightrigmanager.h",
+      "indra/newview/aldirectoralloff.cpp",
+      "indra/newview/aldirectorswitcher.cpp",
+      "indra/newview/aldirectorswitcher.h",
+      "indra/newview/alkitrow.cpp",
+      "indra/newview/alkitrow.h",
+      "indra/newview/alpanelcinelightrig.cpp",
+      "indra/newview/alpanelcinelightrig.h",
+      "indra/newview/app_settings/settings.xml",
+      "indra/newview/llagentcamera.cpp",
+      "indra/newview/llappviewer.cpp",
+      "indra/newview/llcinematiccamera.cpp",
+      "indra/newview/llcinematiccamera.h",
       "indra/newview/lldirectorcast.cpp",
       "indra/newview/lldirectorcast.h",
       "indra/newview/llfloaterdirector.cpp",
-      "indra/newview/llfloaterdirector.h",
+      "indra/newview/llflycamrecorder.cpp",
+      "indra/newview/llviewerjoystick.cpp",
+      "indra/newview/llviewerjoystick.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/menu_director_cast.xml",
-      "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+      "indra/newview/skins/default/xui/en/panel_cine_light_rig.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
@@ -38,6 +48,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
@@ -67,15 +78,20 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/check_kit_pages.py",
+      "indra/newview/tests/alcineflycamhandover_test.cpp",
+      "indra/newview/tests/alcinelightrigmodel_test.cpp",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_clone_rekey_check.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
       "scripts/code_tools/director_kit/kit_pages.json",
       "scripts/code_tools/director_kit_gen.py",
-      "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/director_wiring_table.py",
-      "scripts/code_tools/ui_draw_lint_baseline.json",
-      "scripts/perf/functional_report.py"
+      "scripts/code_tools/rig_group_history_check.py",
+      "scripts/code_tools/rig_no_group_cast_hunks.json",
+      "scripts/code_tools/rig_session_ui_check.py",
+      "scripts/code_tools/rig_subject_assignment_check.py",
+      "scripts/code_tools/rig_sway_recovery.py",
+      "scripts/code_tools/test_bonelock_flycam_handover.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -89,14 +105,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "2a30fb3dccb04ad6e3c62b4474bb3033066d1c752905037e55e264f1b4463764",
+        "csv_sha256": "065f16cfa763edfcc2624c740e43adb61c25766a7650fd8a4136576c786a1a0d",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4795,
+        "entries": 4793,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -139,7 +155,7 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2577,
+        "generated_kit_rows": 2575,
         "generator": "scripts/code_tools/director_functional_manifest.py",
         "interactive_rows": 2172,
         "pages": 40,
@@ -184,7 +200,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3907,
+        "settings_declared": 3908,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -251,19 +267,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2299,
+        "independent_json_rows": 2297,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2299,
-        "unresolved_rows": 80
+        "rows": 2297,
+        "unresolved_rows": 76
       },
       "wiring_rows": 2299
     },
-    "head_source_tree": "4610e0cce128255ec5cb96bd3e9f0b68f6edb92c",
+    "head_source_tree": "956eecf98f88423747322ac686ecb7e5f274c5b9",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "413033d5b1670563f42c51a236d6b4bea8c9c018a42c69810709cd3d4e30d3bf",
+    "input_sha256": "b718954c856797a016d020151b138c3d46159cb66a823128f329fd7e10767971",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -7995,6 +8011,21 @@
       ],
       "git_status": "A",
       "layer": 2,
+      "path": "doc/director_kit/pages/groups_tab.md",
+      "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
       "path": "doc/director_kit/pages/image_tab.md",
       "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
     },
@@ -13845,6 +13876,24 @@
     },
     {
       "candidate_features_from_subjects": [
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/aldirectorgroups.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "clones",
         "director-shell",
         "vcam"
@@ -15832,7 +15881,6 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "shafts-volumetrics",
         "vcam",
         "weather"
       ],
@@ -17378,8 +17426,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
+        "director-shell",
         "gaze"
       ],
       "class": "OWNED",
@@ -17404,8 +17452,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
+        "director-shell",
         "gaze"
       ],
       "class": "OWNED",
@@ -27277,7 +27325,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
+        "director-shell",
         "gaze"
       ],
       "class": "OWNED",
@@ -27308,7 +27356,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd",
+        "director-shell",
         "gaze"
       ],
       "class": "OWNED",
@@ -28081,7 +28129,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -28096,7 +28143,6 @@
         "camera",
         "clones",
         "common-ui",
-        "crowd",
         "director-shell",
         "gaze",
         "looks",
@@ -35926,6 +35972,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
+        "director-shell",
         "looks"
       ],
       "class": "OWNED",
@@ -36744,8 +36791,27 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-path",
         "crowd",
+        "director-shell",
+        "gaze",
+        "roto-tron",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+      "reason": "generator output; runtime XUI must be regenerated and shipped"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-path",
         "director-shell",
         "roto-tron",
         "vcam"
@@ -38686,6 +38752,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "indra/newview/tests/aldirectoralloff_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/tests/aldirectorgroups_test.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -40966,6 +41047,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_gaze_hot_integration.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_groups_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

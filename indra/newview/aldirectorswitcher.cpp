@@ -345,7 +345,9 @@ void ALDirectorSwitcher::writeCameraEnabled(bool enabled)
     // serialize this temporary override as the operator's CineCam preference.
     if (LLControlVariable* control = c.camera)
     {
+        mWritingCameraEnable = true;
         control->setValue(LLSD(enabled), false);
+        mWritingCameraEnable = false;
     }
     else
     {
@@ -359,6 +361,12 @@ bool ALDirectorSwitcher::shouldYieldToFlycam() const
 {
     static LLCachedControl<bool> overrides_flycam(
         gSavedSettings, "DirectorSwitcherOverridesFlycam", true);
+    static LLCachedControl<bool> handover(
+        gSavedSettings, "CinematicBoneLockFlycamHandover", true);
+    // Bone Lock must keep presenting until the flycam can accept the shot.
+    if (mActiveMode == LLCinematicCamera::MODE_BONE_LOCK && handover &&
+        !LLViewerJoystick::getInstance()->canPresentFlycam())
+        return false;
     return !overrides_flycam &&
            LLViewerJoystick::getInstance()->getOverrideCamera();
 }
@@ -401,6 +409,7 @@ void ALDirectorSwitcher::releaseForManualCamera()
 
 void ALDirectorSwitcher::leaveArmed()
 {
+    LLCinematicCamera::instance().endFlycamHandover();
     restoreEaseWorldTime();
 
     if (mHaveEnableSnapshot && mWroteEnable &&
@@ -724,6 +733,8 @@ bool ALDirectorSwitcher::applySlot(
     }
     mActiveSlot = slot;
     mActiveMode = next_mode;
+    if (next_mode != LLCinematicCamera::MODE_BONE_LOCK)
+        LLCinematicCamera::instance().endFlycamHandover();
     mActiveSlotConfig = next_config;
     mActiveSince =
         std::isfinite(boundary) && boundary <= now ? boundary : now;
@@ -911,6 +922,7 @@ void ALDirectorSwitcher::onDirectorCut()
     {
         return;
     }
+    LLCinematicCamera::instance().endFlycamHandover();
     writeCameraEnabled(false);
     mWasCameraEnabled = false;
     mController.rebase(now);
@@ -929,6 +941,18 @@ bool ALDirectorSwitcher::isDrivingCamera() const
            mActiveMode > LLCinematicCamera::MODE_OFF &&
            (mActiveMode <= LLCinematicCamera::MODE_STATIC_FULL ||
             mActiveMode == LLCinematicCamera::MODE_OBJECT_LOCK);
+}
+
+bool ALDirectorSwitcher::boneLockFlycamSource(S32& slot, S32& subject) const
+{
+    static LLCachedControl<bool> armed(gSavedSettings, "DirectorSwitcherArmed", false);
+    static LLCachedControl<bool> enabled(gSavedSettings, "CinematicCamEnabled", false);
+    if (!mWasArmed || !armed || !enabled ||
+        mActiveMode != LLCinematicCamera::MODE_BONE_LOCK)
+        return false;
+    slot = mActiveSlot;
+    subject = sanitizePrimarySubject(mActiveSlotConfig.mPrimarySubject);
+    return true;
 }
 
 bool ALDirectorSwitcher::activeCustomAngle(Slot& slot) const

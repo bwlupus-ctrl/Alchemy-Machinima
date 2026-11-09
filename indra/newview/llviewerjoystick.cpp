@@ -60,6 +60,7 @@
 #include "llfocusmgr.h"
 #include "llcameraoperator.h"   // [phoenix port] procedural handheld operator
 #include "llcinematiccamera.h"  // [machinima] Flycam Orbit anchor resolution
+#include "alcineflycamhandover.h"
 
 #if LL_WINDOWS && !LL_MESA_HEADLESS
 // Require DirectInput version 8
@@ -829,6 +830,8 @@ void LLViewerJoystick::updateEnabled(bool autoenable)
 
 void LLViewerJoystick::setOverrideCamera(bool val)
 {
+    if (val && !mOverrideCamera)
+        LLCinematicCamera::instance().prepareFlycamHandover(true);
     mXILevelPending = false;
     if (!mJoystickEnabled)
     {
@@ -2256,11 +2259,17 @@ void LLViewerJoystick::moveAvatar(bool reset)
 }
 
 // -----------------------------------------------------------------------------
-void LLViewerJoystick::moveFlycam(bool reset)
+bool LLViewerJoystick::canPresentFlycam() const
+{
+    return !gViewerInput.worldInputSuspended() && gFocusMgr.getAppHasFocus() &&
+        mDriverState == JDS_INITIALIZED && mJoystickEnabled && mFlycamEnabled;
+}
+
+bool LLViewerJoystick::moveFlycam(bool reset)
 {
     // Functional self-test (in-world): joystick / gamepad input is ignored entirely while world
     // input is suspended (it reaches avatar controls, object moves and the flycam).
-    if (gViewerInput.worldInputSuspended()) return;
+    if (gViewerInput.worldInputSuspended()) return false;
     static LLQuaternion         sFlycamRotation;
     static LLVector3            sFlycamPosition;
     static F32                  sFlycamZoom;
@@ -2275,30 +2284,75 @@ void LLViewerJoystick::moveFlycam(bool reset)
     static F32                  sOrbitRadius = 3.f;
     static LLVector3            sOrbitFocus;            // pan offset, anchor-local
     static F32                  sOrbitRoll = 0.f;       // view-axis roll (unleveled mode)
+    static ALBoneLockOrbit      sHandoverOrbit;
+    static bool                 sHandoverWasActive = false;
+    static F32                  sHandoverZoomOffset = 0.f;
+    static bool                 sHandoverExitZoom = false;
+    static LLUUID               sHandoverAnchorId;
+    static LLVector3d           sHandoverOrigin;
     static FlycamDroneRuntime   sDrone;
     static LLCachedControl<F32> build_mode_scale(gSavedSettings, "FlycamBuildModeScale", 1.0);
     static LLCachedControl<bool> blackdragon(gSavedSettings, "BlackDragonControls", false);
+    static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
+    static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
+    static LLCachedControl<bool> bone_level(gSavedSettings, "CinematicCamBoneHorizonLock", false);
+    static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.1f);
+    static LLCachedControl<F32>  orbit_max_r(gSavedSettings, "FlycamOrbitMaxRadius", 30.f);
+    static LLCachedControl<F32>  orbit_smooth(gSavedSettings, "FlycamOrbitSmoothing", 0.15f);
+    static LLCachedControl<F32>  orbit_zoom(gSavedSettings, "FlycamOrbitZoom", 1.f);
+    static LLCachedControl<F32>  orbit_off_up(gSavedSettings, "FlycamOrbitOffsetUp", 0.f);
+    static LLCachedControl<F32>  orbit_off_left(gSavedSettings, "FlycamOrbitOffsetLeft", 0.f);
+    static LLCachedControl<bool> operator_enabled(gSavedSettings, "FlycamOperatorEnabled", false);
+    static LLCachedControl<bool> apply_active(gSavedSettings, "CameraShakeApplyActive", false);
 
     updateXInputTakeover();
     if (!gFocusMgr.getAppHasFocus() || mDriverState != JDS_INITIALIZED
         || !mJoystickEnabled || !mFlycamEnabled)
     {
-        return;
+        return false;
     }
-
     bool in_build_mode = LLToolMgr::getInstance()->inBuildMode();
     if (reset || mResetFlag)
     {
-        sFlycamPosition = LLViewerCamera::getInstance()->getOrigin();
+        const LLVector3 captured_position = LLViewerCamera::getInstance()->getOrigin();
+        sFlycamPosition = captured_position;
         sFlycamRotation = LLViewerCamera::getInstance()->getQuaternion();
-        sFlycamZoom = LLViewerCamera::getInstance()->getView();
+        const F32 captured_fov = LLViewerCamera::getInstance()->getView();
+        sFlycamZoom = captured_fov;
+        F32 pre_operator_fov = captured_fov;
+        F32 plain_seed_fov = 0.f, previous_operator_multiplier = 1.f;
+        bool reversible_fov = false;
+        const bool reset_handover = LLCinematicCamera::instance().flycamHandoverActive();
+        if (reset_handover)
+        {
+            reversible_fov = LLCinematicCamera::preOperatorPresentedPose(
+                sFlycamPosition, sFlycamRotation, pre_operator_fov,
+                &plain_seed_fov, &previous_operator_multiplier);
+            sFlycamZoom = pre_operator_fov;
+        }
 
         resetDeltas(mJoystickAxis);
         updateXInputTakeover(true);
         // [phoenix port] don't carry reactive momentum across flycam toggles/teleports
         LLCameraOperator::instance().reset();
-        // [machinima] re-seed the orbit from the fresh camera pose next frame
+        // Manual Orbit recovers on its next frame; handover seeds the rig now.
         sOrbitWasActive = false;
+        sHandoverWasActive = false;
+        sHandoverZoomOffset = 0.f;
+        sHandoverExitZoom = false;
+        if (reset_handover)
+        {
+            sHandoverOrigin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+            sOrbitWasActive = LLCinematicCamera::instance().resolveAnchor(
+                sOrbitAnchorPos, sOrbitAnchorRot, bone_level, &sHandoverAnchorId);
+            if (sOrbitWasActive)
+                sHandoverOrbit.seed(sFlycamPosition, sFlycamRotation, sOrbitAnchorPos, sOrbitAnchorRot);
+            const F32 multiplier = sOrbitWasActive ? llclamp((F32)orbit_zoom, 0.1f, 4.f) : 1.f;
+            sHandoverZoomOffset = LLCinematicCamera::seedFlycamHandoverZoom(
+                pre_operator_fov, multiplier, LLViewerCamera::getInstance(),
+                reversible_fov ? &plain_seed_fov : nullptr) - sFlycamZoom;
+            sHandoverWasActive = true;
+        }
 
         const bool drone_selected = (S32)flycamFlightModel() == 1 && !m3DCursor;
         if (drone_selected)
@@ -2310,7 +2364,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
             sDrone.lastDronePose = sDrone.drone.renderPose();
             sDrone.haveLastDronePose = true;
         }
-        sDrone.owner = drone_selected ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::CLASSIC;
+        sDrone.owner = sOrbitWasActive ? ALFlycamPoseOwner::ORBIT :
+            drone_selected ? ALFlycamPoseOwner::DRONE : ALFlycamPoseOwner::CLASSIC;
         sDrone.previousPose = FlycamPoseSample();
         sDrone.currentPose = FlycamPoseSample();
         sDrone.resetPending = true;
@@ -2319,7 +2374,26 @@ void LLViewerJoystick::moveFlycam(bool reset)
         mDroneCameraOwner = false;
         mDroneRecentreActive = false;
 
-        return;
+        // Ordinary reset frames retain the original no-write/history behavior.
+        if (!sHandoverWasActive)
+            return false;
+
+        // Handover reset frames present the captured camera, without a second
+        // lens/operator application or consuming this frame's input.
+        // Hold the already presented camera on this no-tail frame. The rig
+        // above is seeded before operator application for subsequent frames.
+        LLCinematicCamera::rememberPreOperatorPresentation(
+            sFlycamPosition, sFlycamRotation, pre_operator_fov,
+            reversible_fov ? &plain_seed_fov : nullptr, previous_operator_multiplier);
+        LLViewerCamera::getInstance()->setOrigin(captured_position);
+        LLViewerCamera::getInstance()->setView(captured_fov);
+        if (gCameraDispatchOwner == ECameraOwner::FLYCAM)
+        {
+            sDrone.lastWrittenSerial = gCameraDispatchSerial;
+            gCameraDispatchFlycamWrote = true;
+            gCameraDispatchForeignSinceFlycamWrite = false;
+        }
+        return true;
     }
 
     F32 trigger_roll = 0.f;
@@ -2348,23 +2422,82 @@ void LLViewerJoystick::moveFlycam(bool reset)
     }
 
     // Resolve Orbit once. The same result selects and drives this frame.
-    static LLCachedControl<bool> orbit_enabled(gSavedSettings, "FlycamOrbitEnabled", false);
-    static LLCachedControl<bool> orbit_level(gSavedSettings, "FlycamOrbitLevel", true);
-    static LLCachedControl<F32>  orbit_min_r(gSavedSettings, "FlycamOrbitMinRadius", 0.1f);
-    static LLCachedControl<F32>  orbit_max_r(gSavedSettings, "FlycamOrbitMaxRadius", 30.f);
-    static LLCachedControl<F32>  orbit_smooth(gSavedSettings, "FlycamOrbitSmoothing", 0.15f);
-    static LLCachedControl<F32>  orbit_zoom(gSavedSettings, "FlycamOrbitZoom", 1.f);
-    static LLCachedControl<F32>  orbit_off_up(gSavedSettings, "FlycamOrbitOffsetUp", 0.f);
-    static LLCachedControl<F32>  orbit_off_left(gSavedSettings, "FlycamOrbitOffsetLeft", 0.f);
     LLVector3 resolved_anchor_pos;
     LLQuaternion resolved_anchor_rot;
-    const bool orbit_resolved = orbit_enabled &&
+    LLUUID resolved_anchor_id;
+    const bool handover = LLCinematicCamera::instance().flycamHandoverActive();
+    const bool handover_exit = sHandoverWasActive && !handover;
+    const bool orbit_level_this_frame = handover ? (bool)bone_level : (bool)orbit_level;
+    const bool anchor_resolved = (orbit_enabled || handover) &&
         LLCinematicCamera::instance().resolveAnchor(
-            resolved_anchor_pos, resolved_anchor_rot, orbit_level);
-    if (orbit_resolved)
+            resolved_anchor_pos, resolved_anchor_rot, orbit_level_this_frame, &resolved_anchor_id);
+    const bool orbit_resolved = alResolveCineFlycamOwner(
+        false, handover, true, handover, orbit_enabled,
+        anchor_resolved).orbit;
+    if (orbit_resolved && !handover)
     {
         resolved_anchor_pos += LLVector3(0.f, (F32)orbit_off_left,
                                         (F32)orbit_off_up) * resolved_anchor_rot;
+    }
+
+    bool handover_origin_rebased = false;
+    if (sHandoverWasActive)
+    {
+        const LLVector3d new_origin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        const LLVector3d wide_delta = sHandoverOrigin - new_origin;
+        const LLVector3 delta((F32)wide_delta.mdV[VX], (F32)wide_delta.mdV[VY],
+                              (F32)wide_delta.mdV[VZ]);
+        sOrbitAnchorPos += delta;
+        sFlycamPosition += delta;
+        handover_origin_rebased = true;
+    }
+    if (handover)
+    {
+        sHandoverOrigin = gAgent.getPosGlobalFromAgent(LLVector3::zero);
+        sHandoverExitZoom = false;
+        if (orbit_resolved && sHandoverWasActive && sOrbitWasActive &&
+            resolved_anchor_id != sHandoverAnchorId)
+        {
+            // A replacement avatar is a fresh rig, seeded from what was
+            // actually presented rather than the previous actor's offsets.
+            F32 pre_operator_fov;
+            LLCinematicCamera::preOperatorPresentedPose(sFlycamPosition, sFlycamRotation, pre_operator_fov);
+            sOrbitWasActive = false;
+            resetDeltas(mJoystickAxis);
+        }
+        sHandoverAnchorId = resolved_anchor_id;
+    }
+
+    if (handover && (!sHandoverWasActive || orbit_resolved != sOrbitWasActive))
+    {
+        F32 pre_operator_fov, plain_seed_fov;
+        const bool reversible_fov = LLCinematicCamera::preOperatorPresentedPose(
+            sFlycamPosition, sFlycamRotation, pre_operator_fov, &plain_seed_fov);
+        const F32 multiplier = orbit_resolved ? llclamp((F32)orbit_zoom, 0.1f, 4.f) : 1.f;
+        sHandoverZoomOffset = LLCinematicCamera::seedFlycamHandoverZoom(
+            pre_operator_fov, multiplier, LLViewerCamera::getInstance(),
+            reversible_fov ? &plain_seed_fov : nullptr) - sFlycamZoom;
+    }
+
+    if (handover_exit)
+    {
+        sHandoverExitZoom = true;
+        // Re-engage the destination from the presented pose. In particular,
+        // handover's Orbit flag must not suppress manual Orbit initialization.
+        F32 pre_operator_fov, plain_seed_fov;
+        const bool reversible_fov = LLCinematicCamera::preOperatorPresentedPose(
+            sFlycamPosition, sFlycamRotation, pre_operator_fov, &plain_seed_fov);
+        sOrbitWasActive = false;
+        sHandoverZoomOffset = 0.f;
+        const F32 multiplier = orbit_resolved ? llclamp((F32)orbit_zoom, 0.1f, 4.f) : 1.f;
+        const bool destination_lens = alFlycamFrameLensApplied(false, orbit_resolved, operator_enabled, apply_active);
+        sFlycamZoom = destination_lens ? LLCinematicCamera::seedFlycamHandoverZoom(
+            pre_operator_fov, multiplier, LLViewerCamera::getInstance(),
+            reversible_fov ? &plain_seed_fov : nullptr) : pre_operator_fov;
+        resetDeltas(mJoystickAxis);
+        LLCameraOperator::instance().reset();
+        // Use the normal fresh-engage frame arbitration for the destination.
+        sDrone.owner = ALFlycamPoseOwner::CLASSIC;
     }
 
     const bool tagged_dispatch = gCameraDispatchOwner == ECameraOwner::FLYCAM;
@@ -2420,7 +2553,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
             const LLVector3 delta((F32)wide_delta.mdV[VX],
                                   (F32)wide_delta.mdV[VY],
                                   (F32)wide_delta.mdV[VZ]);
-            sFlycamPosition += delta;
+            if (!handover_origin_rebased)
+                sFlycamPosition += delta;
             if (sDrone.haveLastDronePose)
                 sDrone.lastDronePose.position += delta;
         }
@@ -2591,6 +2725,8 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
     const LLVector3 shadow_entry_position = sFlycamPosition;
     const LLQuaternion shadow_entry_rotation = sFlycamRotation;
+    const F32 shadow_entry_zoom = sFlycamZoom;
+    const F32 shadow_entry_zoom_axis = sLastDelta[6];
     ALFlycamClassic::State classic_state =
     {
         sLastDelta,
@@ -2610,6 +2746,19 @@ void LLViewerJoystick::moveFlycam(bool reset)
     }
 
     ALFlycamClassic::finishIntegration(classic_input, classic_intermediate, classic_state);
+    // The destination's first frame holds the converted FOV. Keep that seed
+    // on later idle frames too; only zoom input moves it toward the limits.
+    // Absolute controls contribute their change, avoiding a resting snap.
+    if (handover_exit)
+        sFlycamZoom = shadow_entry_zoom;
+    else if (sHandoverExitZoom)
+    {
+        const F32 zoom_delta = classic_input.zoomDirect ?
+            (sLastDelta[6] - shadow_entry_zoom_axis) * classic_input.axisScale[6] : sDelta[6];
+        sFlycamZoom = classic_input.blackDragon && classic_input.zoomDefault ?
+            classic_input.cameraAngle : alHandoverLimitedMove(shadow_entry_zoom, zoom_delta,
+                classic_input.minView, classic_input.maxView);
+    }
 
     // Drone->Orbit engages from Drone's last rendered pose. Keep the Classic
     // deltas for Orbit controls, but discard the shadow pose increment.
@@ -2875,6 +3024,17 @@ void LLViewerJoystick::moveFlycam(bool reset)
             }
         }
 
+        if (handover)
+        {
+            if (!sHandoverWasActive || !sOrbitWasActive)
+                sHandoverOrbit.seed(shadow_entry_position, shadow_entry_rotation,
+                    sOrbitAnchorPos, sOrbitAnchorRot);
+            sHandoverOrbit.move(sDelta[CAM_Z_AXIS], sDelta[CAM_Y_AXIS], sDelta[X_AXIS],
+                sDelta[Y_AXIS], sDelta[Z_AXIS], orbit_level_this_frame ? 0.f : sDelta[CAM_X_AXIS],
+                min_r, max_r, sOrbitAnchorPos, sOrbitAnchorRot, sFlycamPosition, sFlycamRotation);
+        }
+        else
+        {
             if (!sOrbitWasActive)
             {
                 // engage without a position jump: recover the orbit state from
@@ -2953,8 +3113,10 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
             sFlycamPosition = sOrbitAnchorPos + (sOrbitFocus * sOrbitAnchorRot) + off_world;
             sFlycamRotation = orbit_rot;
+        }
     }
     sOrbitWasActive = orbit_active;
+    sHandoverWasActive = handover;
 
     // Record the final pre-operator pose before applying an ownership edge.
     sDrone.previousPose = sDrone.currentPose;
@@ -3018,19 +3180,19 @@ void LLViewerJoystick::moveFlycam(bool reset)
 
     LLMatrix3 mat(sFlycamRotation);
 
-    static LLCachedControl<bool> operator_enabled(
-        gSavedSettings, "FlycamOperatorEnabled", false);
-    static LLCachedControl<bool> apply_active(
-        gSavedSettings, "CameraShakeApplyActive", false);
     LLViewerCamera* cam = LLViewerCamera::getInstance();
-    const F32 plain_fov = sFlycamZoom * orbit_fov_mul;
-    // A resolved Flycam Orbit is the bone-mounted cinematic rider; the
-    // operator flag is the other cinematic flycam driver. A free standalone
-    // flycam has neither, so its FOV write remains exactly the original value.
-    const bool cinematic_driven = orbit_active || operator_enabled;
-    cam->setView(cinematic_driven
-        ? LLCinematicCamera::applyFrameLens(plain_fov, cam)
-        : plain_fov);
+    // Compensation belongs to the final FOV, never to Classic's control state.
+    const F32 plain_fov = (handover ? sFlycamZoom + sHandoverZoomOffset : sFlycamZoom) * orbit_fov_mul;
+    if (handover)
+        cam->setView(LLCinematicCamera::applyFrameLens(plain_fov, cam));
+    else
+    {
+        const bool cinematic_driven = orbit_active || operator_enabled;
+        cam->setView(cinematic_driven
+            ? LLCinematicCamera::applyFrameLens(plain_fov, cam)
+            : plain_fov);
+    }
+    F32 operator_multiplier = 1.f;
 
     // [phoenix port] Procedural handheld camera operator (native port of the
     // VirtualCinema Handheld ReShade design). Fed the flycam's own per-frame
@@ -3080,6 +3242,7 @@ void LLViewerJoystick::moveFlycam(bool reset)
                              + LLVector3(shaken.mMatrix[1]) * op.mPosOffset.mV[VY]
                              + LLVector3(shaken.mMatrix[2]) * op.mPosOffset.mV[VZ];
 
+        operator_multiplier = op.mFovMul;
         cam->setView(LLCinematicCamera::applyFrameLens(
             plain_fov * op.mFovMul, cam));
         LLViewerCamera::getInstance()->setOrigin(shaken_pos);
@@ -3095,6 +3258,12 @@ void LLViewerJoystick::moveFlycam(bool reset)
         LLViewerCamera::getInstance()->mZAxis = LLVector3(mat.mMatrix[2]);
     }
 
+    const bool boundary_lensed = handover || orbit_active || operator_enabled || apply_active;
+    const F32 pre_operator_fov = boundary_lensed
+        ? LLCinematicCamera::applyFrameLens(plain_fov, cam) : plain_fov;
+    LLCinematicCamera::rememberPreOperatorPresentation(sFlycamPosition, sFlycamRotation,
+        pre_operator_fov, boundary_lensed ? &plain_fov : nullptr, operator_multiplier);
+
     if (tagged_dispatch && sDrone.lastWrittenSerial != gCameraDispatchSerial)
     {
         sDrone.lastWrittenSerial = gCameraDispatchSerial;
@@ -3105,11 +3274,14 @@ void LLViewerJoystick::moveFlycam(bool reset)
     if (frame_decision.resetOperator && !orbit_operator_edge &&
         !frame_decision.foreignDroneRegain)
         LLCameraOperator::instance().reset();
+    return true;
 }
 
 // -----------------------------------------------------------------------------
 bool LLViewerJoystick::toggleFlycam()
 {
+    if (!mOverrideCamera)
+        LLCinematicCamera::instance().prepareFlycamHandover(true);
     mXILevelPending = false;
     mXIRecentrePending = false;
     mDroneCameraOwner = false;

@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2697 classified paths.
+`inventory.csv` / `inventory.json` contain 2702 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -66,7 +66,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 86 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 315 | 57 | 202 |
+| [director-shell](features/director-shell.md) | 2 | 316 | 57 | 202 |
 | [actor-bar](features/actor-bar.md) | 3 | 66 | 14 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 104 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 79 | 31 | 492 |
@@ -74,7 +74,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [gaze](features/gaze.md) | 3 | 58 | 23 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 28 | 20 | 53 |
 | [clones](features/clones.md) | 4 | 179 | 83 | 82 |
-| [crowd](features/crowd.md) | 4 | 47 | 10 | 19 |
+| [crowd](features/crowd.md) | 4 | 46 | 10 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 121 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 68 | 60 | 17 |
 | [rig](features/rig.md) | 7 | 172 | 56 | 250 |
@@ -212,7 +212,7 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 ## Verification and evidence limits
 
 Existing evidence: 2299 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2299, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2299, "unresolved_rows": 80}`.
+`{"ambiguous_rows": 0, "independent_json_rows": 2297, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2297, "unresolved_rows": 76}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous

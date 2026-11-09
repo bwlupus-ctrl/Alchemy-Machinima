@@ -16,6 +16,7 @@ ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f52124006
 def actor_key_baseline(source, name):
     """Peel only exact key deltas; full-file equality rejects unrelated edits."""
     from clone_rest_frame_pins import reverse_rest_frame_mover
+    source = reverse_rig_no_group_cast(source, name)
     source = reverse_rest_frame_mover(source, name)
     source = reverse_feature_allowance(source, name, "clone_fx_mover_hunks.json",
         "9ccf4c83774ff89260a93adb6b76706773b88da5bc5389b2fa85d61bc48fa846", "six session-only clone FX")
@@ -90,6 +91,11 @@ def reverse_feature_allowance(source, name, filename, digest, label):
         source = source.replace(hunk["after"], hunk["before"], 1)
     assert source == original, (label, "reversal must reproduce its exact baseline", name)
     return source
+
+
+def reverse_rig_no_group_cast(source, name):
+    return reverse_feature_allowance(source, name, "rig_no_group_cast_hunks.json",
+        "5d967cf95fada38b1bbe10eb5aac5bdae6c996a1643298760138c31301652e14", "reviewed rig-no-group cast")
 
 
 def hot_gaze_baseline(source, name):
@@ -227,7 +233,7 @@ def main():
     }
     # Guard every additional file covered by the new layers, including Studio
     # where retirement and interplay both changed the Hot Gaze implementation.
-    for name in ("alghoststudio.cpp", "llactormover.h"):
+    for name in ("alghoststudio.cpp", "llactormover.h", "lldirectorcast.h"):
         hot_gaze_baseline(actor_key_baseline(reverse_post_chroma_main((nv / name).read_text(encoding="utf-8"), name), name), name)
     guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
     # Reversal order: key WP5/WP4/WP1b/LENS/WP2/WP01, Matrix, retired looks, interplay, Hot Gaze, QoL, phase 2,

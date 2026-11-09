@@ -7,8 +7,19 @@ including the collision branch that intentionally skips migrateActor.
 from pathlib import Path
 import os
 import subprocess
-from relight_area_policy_check import method
+from relight_area_policy_check import method as source_method
 from native_check_tools import check_directory, vcvars64
+
+
+def method(path, signature):
+    # Keep this historical transaction fixture on its exact reviewed baseline.
+    if path.name == "lldirectorcast.cpp" and path.parent.name == "newview":
+        from director_actor_bar_check import reverse_rig_no_group_cast
+        source = reverse_rig_no_group_cast(path.read_text(encoding="utf-8"), path.name)
+        baseline = check_directory("clone_rekey_baseline") / path.name
+        baseline.write_text(source, encoding="utf-8")
+        return source_method(baseline, signature)
+    return source_method(path, signature)
 
 
 def check():

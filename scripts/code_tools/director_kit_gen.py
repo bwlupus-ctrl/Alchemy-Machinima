@@ -363,9 +363,9 @@ def validate_data(data: dict) -> None:
     # ALL OFF adds two gear rows: the mode preference and Restore last reset.
     # Includes the DirectorThemeInvert row in Director settings.
     # Group chat Snooze: two settings rows, 2499 -> 2501.
-    # Director Groups phase 1: 39 -> 40 pages; 2501 -> 2508 rows.
-    if len(pages) != 40 or row_count != 2508:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2508")
+    # Independent rigs (-2 rows) + Director Groups phase 1 (+1 page, +7 rows): 39/2501 -> 40/2506.
+    if len(pages) != 40 or row_count != 2506:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2506")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2529,15 +2529,15 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         checks.append(("all compass dials use kit geometry without duplicate readout",
                        bool(dials) and all(node.get("kit_geometry") == "true" and node.get("show_readout") == "false" for node in dials)))
         rig = ET.fromstring(outputs[out_dir / "panel_dpage_light_cine_light_rig.xml"], parser=parser())
-        session_widgets = {"cine_create_rig_group", "cine_leave_rig_group", "cine_all_rigs_off",
+        session_widgets = {"cine_all_rigs_off",
                            "cine_rig_group_status", "cine_rig_roster_self", "cine_rig_roster_a",
                            "cine_rig_roster_b", "cine_rig_roster_c", "cine_rig_roster_d"}
         session_rows = [node for node in rig.iter("kit_row") if node.get("widget") in session_widgets]
-        checks.append(("all nine rig session controls are in Rig & target and searchable",
-                       len(session_rows) == 9 and
+        checks.append(("all seven rig session controls are in Rig & target and searchable",
+                       len(session_rows) == 7 and
                        {node.get("widget") for node in session_rows} == session_widgets and
                        all(node.get("bind") == "code" and
-                           {"group", "multi", "rig", "subject", "rigs", "all", "off", "solo"} <=
+                           {"multi", "rig", "subject", "rigs", "all", "off"} <=
                            set(node.get("keywords", "").split()) and
                            node.get("widget").encode() in outputs[out_dir / "director_kit_index.xml"]
                            for node in session_rows) and
@@ -2547,13 +2547,13 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            if node.get("widget") == "cine_add_avatar_rig_group"]
         checks.append(("Add avatar is a searchable command in Rig & target",
                        len(add_avatar_rows) == 1 and
-                       add_avatar_rows[0].get("label") == "Add avatar to rig group" and
+                       add_avatar_rows[0].get("label") == "Give an avatar their own rig" and
                        add_avatar_rows[0].get("label_wrap") == "true" and
                        add_avatar_rows[0].get("row_height") == "40" and
                        add_avatar_rows[0].get("bind") == "code" and
                        add_avatar_rows[0].get("kind") == "button" and
                        add_avatar_rows[0].get("widget_history") == "false" and
-                       {"friend", "avatar", "give", "rig", "own", "group", "subject", "nearby", "add"} <=
+                       {"friend", "avatar", "give", "rig", "own", "subject", "nearby", "add"} <=
                        set(add_avatar_rows[0].get("keywords", "").split()) and
                        add_avatar_rows[0] in list(find_named(rig, "kc_rig_status").iter("kit_row")) and
                        b"cine_add_avatar_rig_group" in outputs[out_dir / "director_kit_index.xml"]))
@@ -2582,7 +2582,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        rig_page.get("persistent_status_widget") == "cine_rig_group_status" and
                        rig_page.get("persistent_action_widget") == "cine_all_rigs_off" and
                        rig_page.get("persistent_card") == "rig_status" and
-                       rig_page.get("persistent_label") == "Rig group..." and
+                       rig_page.get("persistent_label") == "Rigs" and
                        all(row.get("hidden") == "true" for row in session_rows
                            if row.get("widget") in {"cine_rig_group_status", "cine_all_rigs_off"})))
         shadow_settings = {f"CineLightRig{role}{flag}" for role in ("Key", "Fill", "Rim", "Bg")

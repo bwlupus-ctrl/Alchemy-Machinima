@@ -34,7 +34,7 @@
          left="8" top="6" value="Cinematic Light Rig" width="200" />
         <check_box control_name="CineLightRigEnabled" follows="left|top" height="18"
          label="Enable" layout="topleft" left="8" name="cine_enabled" top="30" width="82"
-         tool_tip="Solo: controls all rig light output. Group: controls the rig being edited; see Rigs on and All off." />
+         tool_tip="Controls the rig being edited; see Rigs on and All off." />
         <check_box control_name="CineLightRigGizmo" follows="left|top" height="18"
          label="Gizmo" layout="topleft" left="94" name="cine_gizmo" top="30" width="92" />
         <text follows="left|top" height="16" layout="topleft" left="8" top="57"
@@ -67,17 +67,11 @@
         <text follows="left|right|top" halign="right" height="16" layout="topleft"
          left="8" name="cine_object_target_status" top="203"
          value="&#x2014; avatar &#x2014;" width="316" />
-        <button follows="left|top" height="22" label="Create rig group" layout="topleft"
-         left="8" name="cine_create_rig_group" top="79" width="128"
-         tool_tip="Unlock independent Subject A-D rigs for this session." />
-        <button follows="left|top" height="22" label="Leave group" layout="topleft"
-         left="140" name="cine_leave_rig_group" top="79" width="96"
-         tool_tip="Turn Subject rigs off, keep their settings, and edit You in solo mode." />
         <button follows="left|top" height="22" label="All off" layout="topleft"
          left="240" name="cine_all_rigs_off" top="79" width="74"
          tool_tip="Turn every rig off and shut down all rig emitters." />
         <text follows="left|right|top" height="18" layout="topleft" left="8"
-         name="cine_rig_group_status" top="105" value="Solo: 0 rigs on" width="324" />
+         name="cine_rig_group_status" top="105" value="0 rigs on" width="324" />
         <text follows="left|right|top" height="18" layout="topleft" left="8"
          name="cine_rig_roster_self" top="227" width="324" />
         <text follows="left|right|top" height="18" layout="topleft" left="8"

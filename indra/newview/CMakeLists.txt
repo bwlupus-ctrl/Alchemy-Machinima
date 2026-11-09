@@ -1203,6 +1203,7 @@ set(viewer_HEADER_FILES
     alsteppedanimruntime.h
     alpanelsteppedanim.h
     alcameradispatch.h
+    alcineflycamhandover.h
     allegacynotificationwellwindow.h
     alobjectproperties.h
     alpanelaomini.h
@@ -3091,6 +3092,12 @@ if (BUILD_TESTING)
 
   LL_ADD_INTEGRATION_TEST(alcinecamobjectlock
     "alcinecammodes.cpp"
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  LL_ADD_INTEGRATION_TEST(alcineflycamhandover
+    ""
     "${test_libs}"
     "${test_project}"
   )
