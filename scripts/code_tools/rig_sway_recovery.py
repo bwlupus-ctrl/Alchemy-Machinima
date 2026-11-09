@@ -7,6 +7,7 @@ from pathlib import Path
 
 from rig_shadow_presets_check import function
 from rig_session_ui_check import fixture as ui_fixture
+from rig_subject_assignment_check import assignment_fixture
 
 
 SUPPORT = r'''
@@ -47,7 +48,7 @@ struct ALCineLightRigParamBlob;
 class ALCineLightRig {
 public:
     static inline U32 sActorOnlyRequestedSlots = 0;
-    static constexpr U32 GROUP_SLOT_MASK = 31;
+    static constexpr U32 GROUP_SLOT_MASK = 31, GROUP_SLOT_A = 2, GROUP_SLOT_C = 8;
     bool mShaftEnabled[4] = {}, mHeroEnabled[4] = {};
     F64 mPendingFXPhase = -1, mLastPresentationTime = 1001, mFXStart = 0;
     S32 mPendingFXId = -1, mActiveFX = -1;
@@ -103,6 +104,10 @@ public:
     using ParamBlob = ALCineLightRigParamBlob;
     static constexpr S32 SLOT_COUNT = 5;
     static constexpr Slot SLOT_SELF = Slot::SELF;
+    static constexpr Slot SLOT_A = Slot::A, SLOT_B = Slot::B, SLOT_C = Slot::C, SLOT_D = Slot::D;
+    static inline ALCineLightRigManager* testInstance=nullptr;
+    static bool instanceExists() { return testInstance!=nullptr; }
+    static ALCineLightRigManager& instance() { assert(testInstance); return *testInstance; }
     ParamBlob mBlobs[SLOT_COUNT];
     ALCineLightRig mInstances[SLOT_COUNT];
     Slot mSelected = SLOT_SELF;
@@ -127,6 +132,7 @@ public:
     U32 mActorOnlyObjectSlots = 0;
     S32 mLiveProbeRetryTicks = 0;
     void tick(F64);
+    void tickSoloMask(F64);
     void shutdown();
     void migrateLegacyScene(const LLSD&);
     void updateAutoShadowSlots() {}
@@ -144,9 +150,10 @@ public:
     void setSelectedSlot(Slot);
     void onEnabledChanged(bool);
     void shutdownSlot(S32);
-    void createRigGroup();
-    void leaveRigGroup();
+    void subjectRigOff(Slot);
+    void subjectRigsOff();
     void allOff();
+    void restoreEnabledMask(U32, Slot, bool);
     void persist() const;
 };
 void ALCineLightRigParamBlob::toSettings() const { toSettingsStore(gSavedSettings); }
@@ -215,15 +222,12 @@ void checkCallerRecovery(LLSD setup, const LLSD& malformed) {
     assert(ALCineLightRigManager::validateInstanceStore(store));
     ALCineLightRigManager manager; assert(manager.restore(store, true));
     assert(manager.mSelected == Slot::B);
-    assert(manager.isRigGroup());
+    assert(!manager.isRigGroup()); // old scenes need no group field
     for (S32 slot = 0; slot < 5; ++slot) {
         assert(manager.mBlobs[slot].mMasterEV == slot + .25f);
         assert(manager.mBlobs[slot].mLights[1].mEV == -3.25f);
         checkRecovered(manager.mInstances[slot].mCueList.mCues[0].mSetup);
     }
-    // Exercise the actual manager restore/control bodies, with emitter and
-    // settings services doubled. Internal buffer swaps must not act as power
-    // switches; every external setting setter shares the same callback.
     gSavedSettings.enabledChanged = [&manager](bool enabled) {
         if (!manager.mWritingSelectedSettings) manager.onEnabledChanged(enabled);
     };
@@ -231,79 +235,54 @@ void checkCallerRecovery(LLSD setup, const LLSD& malformed) {
     assert(!manager.isRigGroup() && manager.mSelected == Slot::SELF);
     assert(manager.enabledMask() == 0);
     for (S32 slot = 0; slot < 5; ++slot) {
+        manager.setSelectedSlot(static_cast<Slot>(slot));
+        assert(manager.mSelected == static_cast<Slot>(slot));
         assert(!manager.mBlobs[slot].mEnabled);
         assert(manager.mBlobs[slot].mMasterEV == slot + .25f);
-        manager.setSelectedSlot(static_cast<Slot>(slot));
-        assert(manager.mSelected == Slot::SELF);
     }
-    gSavedSettings.setBOOL("CineLightRigEnabled", true);
-    assert(manager.enabledMask() == 1);
-    manager.mMirrors[1] = std::make_unique<ALCineLightRig>();
-    manager.mMirrors[1]->mEmitters = 0xffu;
-    for (S32 slot = 0; slot < 5; ++slot) {
-        manager.mBlobs[slot].mEnabled = true; // adversarial stale hidden state
-        manager.mInstances[slot].mEmitters = 0xffu;
-    }
-    gSavedSettings.setBOOL("CineLightRigEnabled", false);
-    assert(manager.enabledMask() == 0 && manager.mMirrors[1]->mEmitters == 0);
-    for (const auto& rig_slot : manager.mInstances) assert(rig_slot.mEmitters == 0);
-    manager.createRigGroup();
-    assert(manager.isRigGroup() && manager.enabledMask() == 0);
     manager.setSelectedSlot(Slot::B);
     gSavedSettings.setBOOL("CineLightRigEnabled", true);
-    manager.mInstances[2].mEmitters = 0xffu;
-    manager.setSelectedSlot(Slot::A); // writes false to the editing buffer
-    assert(manager.enabledMask() == 4 && manager.mInstances[2].mEmitters == 0xffu);
+    manager.tick(1002.0);
+    assert(manager.mInstances[2].mSelectedTicks == 1 && manager.mInstances[2].mEmitters == 0xffu);
+    manager.setSelectedSlot(Slot::A);
+    manager.tick(1002.5);
+    assert(manager.enabledMask() == 4 && manager.mInstances[2].mBlobTicks == 1);
     gSavedSettings.setBOOL("CineLightRigEnabled", true);
     gSavedSettings.setBOOL("CineLightRigEnabled", false);
     assert(manager.enabledMask() == 4 && manager.mInstances[2].mEmitters == 0xffu);
-    // Leave while still editing a Subject, after a fresh edit in the buffer.
     gSavedSettings.setF32("CineLightRigMasterEV", 7.75f);
-    manager.leaveRigGroup();
-    assert(manager.mSelected == Slot::SELF && !manager.isRigGroup());
-    assert(manager.mBlobs[1].mMasterEV == 7.75f);
-    assert(gSavedSettings.getF32("CineLightRigMasterEV") == .25f);
-    manager.createRigGroup();
-    manager.setSelectedSlot(Slot::SELF);
+    manager.subjectRigsOff(); // no legacy group flag needed
+    assert(manager.mSelected == Slot::SELF && manager.enabledMask() == 0);
+    assert(manager.mBlobs[1].mMasterEV == 7.75f && manager.mBlobs[2].mMasterEV == 2.25f);
     gSavedSettings.setBOOL("CineLightRigEnabled", true);
-    manager.leaveRigGroup();
-    assert(!manager.isRigGroup() && manager.mSelected == Slot::SELF);
-    assert(manager.enabledMask() == 1 && manager.mInstances[2].mEmitters == 0);
-    assert(manager.mBlobs[2].mMasterEV == 2.25f);
-    manager.createRigGroup();
+    manager.setSelectedSlot(Slot::B);
+    gSavedSettings.setBOOL("CineLightRigEnabled", true);
+    manager.subjectRigsOff();
+    assert(manager.mSelected == Slot::SELF && manager.enabledMask() == 1);
+    manager.mMirrors[1] = std::make_unique<ALCineLightRig>();
+    manager.mMirrors[1]->mEmitters = 0xffu;
+    for (auto& blob : manager.mBlobs) blob.mEnabled = true;
+    for (auto& instance : manager.mInstances) instance.mEmitters = 0xffu;
     manager.allOff();
-    assert(manager.isRigGroup() && manager.enabledMask() == 0);
-    assert(manager.restore(store, true)); // no mode field: infer old saved group
-    assert(manager.isRigGroup() && manager.enabledMask() == 31);
-    store["rig_group"] = true;
-    assert(manager.restore(store)); // login ignores even an explicit saved mode
-    assert(!manager.isRigGroup() && manager.enabledMask() == 0);
-    assert(manager.mSelected == Slot::SELF);
-    LLSD bad_mode = store;
-    bad_mode["rig_group"] = "invalid";
-    assert(!ALCineLightRigManager::validateInstanceStore(bad_mode));
+    assert(manager.enabledMask() == 0 && manager.mMirrors[1]->mEmitters == 0);
+    for (const auto& instance : manager.mInstances) assert(instance.mEmitters == 0);
+    // ALL OFF restore must retain a Subject selection/mask with the legacy flag false.
+    manager.restoreEnabledMask(14, Slot::B, false);
+    assert(manager.enabledMask() == 14 && manager.mSelected == Slot::B && !manager.isRigGroup());
+    manager.allOff();
+    manager.restoreEnabledMask(1, Slot::A, false);
+    assert(manager.enabledMask() == 1 && manager.mSelected == Slot::A);
+    for (bool group : {false, true}) {
+        store["rig_group"] = group;
+        assert(manager.restore(store, true));
+        assert(manager.enabledMask() == 31 && manager.mSelected == Slot::B);
+        assert(manager.restore(store));
+        assert(manager.enabledMask() == 0 && manager.mSelected == Slot::SELF);
+    }
+    LLSD bad_mode = store; bad_mode["rig_group"] = "invalid";
     assert(!manager.restore(bad_mode, true));
-    assert(!manager.isRigGroup() && manager.enabledMask() == 0);
-    // The actual dispatcher must shut stale Subject flags/emitters down even
-    // while the selected master is already false (there is no setting signal).
-    for (S32 i = 1; i < 5; ++i) {
-        manager.mBlobs[i].mEnabled = true;
-        manager.mInstances[i].mEmitters = 0xffu;
-    }
-    manager.tick(1002.0);
-    for (S32 i = 1; i < 5; ++i) {
-        assert(manager.mInstances[i].mEmitters == 0);
-        assert(manager.mInstances[i].mBlobTicks == 0);
-    }
-    // Even an adversarial stale selection cannot take the selected fast path
-    // around the mask in solo. Ordinary selection APIs already reject this.
-    manager.mSelected = Slot::A;
-    manager.tick(1002.5);
-    assert(manager.mInstances[1].mSelectedTicks == 0);
-    assert(manager.mInstances[1].mEmitters == 0);
-    manager.mSelected = Slot::SELF;
-    manager.mBlobs[1].mEnabled = true;
-    manager.createRigGroup();
+    // Stale enabled Subjects dispatch independently even with the selected rig off.
+    for (S32 i = 1; i < 5; ++i) manager.mBlobs[i].mEnabled = true;
     manager.tick(1003.0);
     for (S32 i = 1; i < 5; ++i) assert(manager.mInstances[i].mEmitters == 0xffu);
     manager.setSelectedSlot(Slot::C);
@@ -317,13 +296,12 @@ void checkCallerRecovery(LLSD setup, const LLSD& malformed) {
         assert(!saved_slot["CineLightRigEnabled"].asBoolean());
     assert(manager.mBlobs[3].mMasterEV == 6.5f);
     for (const auto& slot : manager.mInstances) assert(slot.mEmitters == 0);
-    manager.shutdown(); // idempotent; must not capture the wrong buffer again
+    manager.shutdown();
     assert(manager.mBlobs[3].mMasterEV == 6.5f);
-    manager.tick(1004.0); // actual session-restore latch, then normal dispatch
+    manager.tick(1004.0);
     assert(!manager.mNeedsSessionRestore && manager.enabledMask() == 0);
     assert(gSavedSettings.getF32("CineLightRigMasterEV") == .25f);
     assert(manager.restore(saved_off) && manager.enabledMask() == 0);
-    // A cast-Subject legacy anchor is still a single solo rig, on or off.
     for (bool enabled : {false, true}) {
         gSavedSettings.setBOOL("CineLightRigEnabled", enabled);
         gSavedSettings.setF32("CineLightRigRadius", 8.25f);
@@ -334,7 +312,6 @@ void checkCallerRecovery(LLSD setup, const LLSD& malformed) {
         assert(manager.mBlobs[0].mAnchor.asString() == "subject-A");
         assert(manager.mBlobs[0].mEnabled == enabled);
         assert(gSavedSettings.getF32("CineLightRigRadius") == 8.25f);
-        assert(gSavedSettings.getF32("CineLightRigMasterEV") == -4.5f);
         for (S32 i = 1; i < 5; ++i) assert(!manager.mBlobs[i].mEnabled);
     }
     gSavedSettings.enabledChanged = {};
@@ -388,10 +365,25 @@ void testRecovery(const LLSD& authored) {
         assert(std::memcmp(x,y,sizeof(x)) == 0);
     }
     std::cout << "PASS: 600 production blend/LLSD round trips; recovery through scene, cue list, blob and five-slot restore\n";
-    std::cout << "PASS: production manager login/scene restore, solo selection and power, group create/leave/all-off, buffer-swap guards and mirror emitter shutdown\n";
-    std::cout << "PASS: actual manager tick/shutdown/restore masks stale solo Subjects, persists all off, restores SELF and retains edits; legacy Subject scene remains solo/reachable\n";
+    std::cout << "PASS: production manager independent selection/power, Subject rigs off/all-off/restore, buffer-swap guards and mirrors\n";
+    std::cout << "PASS: actual manager ticks Subjects without a group; startup off, scene enables retained and shutdown retains edits\n";
     RigSessionUI::test();
     RigTargetUI::test();
+    RigLightingUI::test();
+    testSubjectAssignment();
+    RigPolicyUI::test();
+    testSession128(); testSession129(); testSession130();
+    testSession131(); testSession132(); testSession133();
+    std::cout << "PASS: production TUT model tests 128-133 executed\n";
+    for (bool negative : {false, true}) {
+        ALCineLightRigManager probe;
+        gSavedSettings.setBOOL("CineLightRigEnabled", false);
+        probe.mBlobs[1].mEnabled = true;
+        if (negative) probe.tickSoloMask(2000.0); else probe.tick(2000.0);
+        const bool subject_tickable = probe.mInstances[1].mBlobTicks == 1 && probe.mInstances[1].mEmitters != 0;
+        assert(subject_tickable == !negative);
+    }
+    std::cout << "PASS: dispatcher oracle rejects planted solo mask on enabled Subject rigs\n";
 }
 '''
 
@@ -408,12 +400,15 @@ struct LLUUID {
     bool isNull() const { return value.empty(); }
     bool notNull() const { return !value.empty(); }
     bool operator==(const LLUUID& other) const { return value == other.value; }
+    bool operator<(const LLUUID& other) const { return value < other.value; }
 };
 const LLUUID LLUUID::null{};
 struct LLSD {''')
     shim = shim.replace('INTEGER, BOOL }', 'INTEGER, BOOL, UUID }')
     shim = shim.replace('LLSD()=default;', '''LLSD()=default;
     LLSD(const LLUUID& v):type(UUID),text(v.value){}
+    bool operator==(const LLSD& b) const { return type==b.type && number==b.number && text==b.text && fields==b.fields && values==b.values; }
+    LLSD& with(const char* k, const LLSD& v) { (*this)[k]=v; return *this; }
     LLSD(const std::string& v):type(STRING),text(v){}
     bool isUUID()const{return type==UUID;}
     bool isBoolean()const{return type==BOOL;}
@@ -471,9 +466,10 @@ def caller_fixtures(root: Path, controller: str):
                       'void ALCineLightRigManager::setSelectedSlot(',
                       'void ALCineLightRigManager::shutdownSlot(',
                       'void ALCineLightRigManager::onEnabledChanged(',
-                      'void ALCineLightRigManager::createRigGroup()',
-                      'void ALCineLightRigManager::leaveRigGroup()',
+                      'void ALCineLightRigManager::subjectRigOff(',
+                      'void ALCineLightRigManager::subjectRigsOff()',
                       'void ALCineLightRigManager::allOff()',
+                      'void ALCineLightRigManager::restoreEnabledMask(',
                       'void ALCineLightRigManager::persist() const',
                       'void ALCineLightRigManager::tick(',
                       'void ALCineLightRigManager::shutdown()',
@@ -481,6 +477,16 @@ def caller_fixtures(root: Path, controller: str):
                       'bool ALCineLightRigManager::validateInstanceStore(',
                       'bool ALCineLightRigManager::restore('):
         lines.append(function(manager, signature))
+    tick = function(manager, 'void ALCineLightRigManager::tick(')
+    assert 'const U32 enabled_mask = enabledMask();' in tick
+    lines.append(tick.replace('ALCineLightRigManager::tick(', 'ALCineLightRigManager::tickSoloMask(', 1).replace(
+        'const U32 enabled_mask = enabledMask();', 'const U32 enabled_mask = enabledMask() & 1u;'))
     lines.append(ui_fixture(root))
+    lines.append(assignment_fixture(root))
+    model_tests = (root / 'indra/newview/tests/alcinelightrigmodel_test.cpp').read_text(encoding='utf8')
+    lines.append(function(model_tests, 'ALCineLightRigParamBlob distinctiveBlob()'))
+    for number in range(128, 134):
+        signature = f'void cine_light_rig_model_object::test<{number}>()'
+        lines.append(function(model_tests, signature).replace(signature, f'void testSession{number}()'))
     lines.append(TESTS)
     return lines

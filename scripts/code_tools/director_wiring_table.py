@@ -747,7 +747,7 @@ def write_csv(path, results):
     cols += ['v2_suspect', 'v2_index_setting', 'v2_index_match', 'v2_kit_cpp_refs', 'v1_regression',
              'v2_relocated_to', 'v2_loss', 'v2_loss_detail', 'v2_setting_mismatch']
     with open(path, 'w', encoding='utf-8', newline='') as f:
-        wr = csv.writer(f)
+        wr = csv.writer(f, lineterminator="\n")
         wr.writerow(cols)
         for r, eo, e1, e2, idx in results:
             row = [r['page'], PAGE_LABELS.get(r['page'], ''), r['group'], r['card'], r['card_title'],

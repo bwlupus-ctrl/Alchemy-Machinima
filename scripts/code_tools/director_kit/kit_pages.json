@@ -148,7 +148,7 @@
     "status_widget": "cine_rig_group_status",
     "action_widget": "cine_all_rigs_off",
     "card": "rig_status",
-    "label": "Rig group..."
+    "label": "Rigs"
    },
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_cine_light_rig", "root_name": "cine_light_rig_tab_logic",
@@ -621,7 +621,7 @@
   "lens_group/focus_tab": {"scope": "global"},
   "lens_group/filters_tab": {"scope": "global", "no_history_rows": ["pov_blink_held"]},
   "settings_group/director_settings_tab": {"scope": "global"},
-  "light_group/cine_light_rig_tab": {"history": "page"},
+  "light_group/cine_light_rig_tab": {"history": "page", "no_history_rows": ["cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"]},
   "light_group/light_cues_tab": {"no_history_rows": ["cue_rows"]},
   "light_group/practicals_tab": {"history": "none"},
   "look_group/actor_style_tab": {"history": "none"},

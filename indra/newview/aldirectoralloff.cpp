@@ -143,8 +143,7 @@ bool readBackup(LLSD& root, std::string& reason)
     }
     const S32 selected = root["rig_selected"].asInteger();
     const S32 mask = root["rig_mask"].asInteger();
-    if ((!root["rig_group"].asBoolean() && (selected != 0 || (mask & ~1))) ||
-        root["settings"]["CineLightRigEnabled"].asBoolean() != ((mask & (1 << selected)) != 0))
+    if (root["settings"]["CineLightRigEnabled"].asBoolean() != ((mask & (1 << selected)) != 0))
     {
         reason = "The last ALL OFF rig backup is inconsistent; nothing restored";
         return false;

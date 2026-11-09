@@ -56,6 +56,7 @@ public:
     void        layoutRow(S32);
     void        layoutDialCell(S32);
     void        fitLabel(S32 box_width);
+    void        setDisplayLabel(const std::string& label);
     bool        isEffectivelyVisible() const;
     bool        setControlVisible(bool visible);
     static bool setControlVisible(LLView*, bool);

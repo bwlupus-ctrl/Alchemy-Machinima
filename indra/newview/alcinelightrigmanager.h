@@ -696,19 +696,16 @@ inline ALCineLightRigParamBlob ALCineLightRigParamBlob::fromLLSD(
 
 namespace ALCineLightRigManagerModel
 {
-// Session-only permission to run independent Subject rigs. Control/load
-// boundaries clear their enables; the tick dispatcher also masks solo output.
+// Independent rig power and restore policy. The legacy group flag is retained
+// for scene compatibility only; it never grants permission to select or run rigs.
 struct RigSession
 {
     bool mGroup = false;
 
     bool canSelect(ALCineLightRigSlot slot) const
     {
-        return slot >= ALCineLightRigSlot::SELF && slot < ALCineLightRigSlot::COUNT &&
-            (mGroup || slot == ALCineLightRigSlot::SELF);
+        return slot >= ALCineLightRigSlot::SELF && slot < ALCineLightRigSlot::COUNT;
     }
-
-    void createGroup() { mGroup = true; }
 
     template <typename Shutdown>
     void allOff(ALCineLightRigParamBlob* blobs, Shutdown shutdown) const
@@ -721,7 +718,7 @@ struct RigSession
     }
 
     template <typename Shutdown>
-    void leaveGroup(ALCineLightRigParamBlob* blobs, Shutdown shutdown)
+    void subjectRigsOff(ALCineLightRigParamBlob* blobs, Shutdown shutdown)
     {
         mGroup = false;
         for (S32 i = 1; i < static_cast<S32>(ALCineLightRigSlot::COUNT); ++i)
@@ -736,11 +733,6 @@ struct RigSession
                     bool enabled, Shutdown shutdown) const
     {
         if (!canSelect(slot)) return;
-        if (!mGroup && !enabled)
-        {
-            allOff(blobs, shutdown);
-            return;
-        }
         const S32 index = static_cast<S32>(slot);
         blobs[index].mEnabled = enabled;
         if (!enabled) shutdown(index);
@@ -753,9 +745,8 @@ struct RigSession
         for (S32 i = 0; i < static_cast<S32>(ALCineLightRigSlot::COUNT); ++i)
         {
             if (!scene_load) blobs[i].mEnabled = false;
-            else if (i != 0 && blobs[i].mEnabled) mGroup = true;
         }
-        if (!canSelect(selected)) selected = ALCineLightRigSlot::SELF;
+        if (!scene_load || !canSelect(selected)) selected = ALCineLightRigSlot::SELF;
     }
 };
 
@@ -1415,8 +1406,9 @@ public:
     void setSelectedSlot(Slot slot);
     void resetAllToSelf();
     bool isRigGroup() const { return mRigSession.mGroup; }
-    void createRigGroup();
-    void leaveRigGroup();
+    // Manual Subject replacement retires its power, retaining authored settings.
+    void subjectRigOff(Slot slot);
+    void subjectRigsOff();
     void allOff();
     // Restore only the all-slot power state; retain fixtures, cues and edit values.
     void restoreEnabledMask(U32 mask, Slot selected, bool group);
