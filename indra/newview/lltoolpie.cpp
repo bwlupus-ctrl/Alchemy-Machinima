@@ -65,6 +65,7 @@
 #include "llviewerparcelmgr.h"
 #include "llviewerregion.h"
 #include "llviewerwindow.h"
+#include "alghostclonemenu.h"    // [CloneMenu] clone right-click menu + overlay submenu
 #include "llviewerinput.h"
 #include "llviewermedia.h"
 #include "llvoavatarself.h"
@@ -201,6 +202,12 @@ bool LLToolPie::handleRightMouseDown(S32 x, S32 y, MASK mask)
     // claim not handled so UI focus stays same
     if(gAgentCamera.getCameraMode() != CAMERA_MODE_MOUSELOOK)
     {
+        // [CloneMenu] A right-click on an entity clone opens the clone menu on
+        // release (a drag stays camera control); the world menu is skipped.
+        if (ALGhostCloneMenu::pressRight(x, y, mPick))
+        {
+            return false;
+        }
         handleRightClickPick();
     }
     return false;
@@ -2133,6 +2140,7 @@ bool LLToolPie::handleRightClickPick()
             return true ;
         }
 
+        ALGhostCloneMenu::prepareAvatarMenu(gMenuAvatarSelf, isAgentAvatarValid() ? gAgentAvatarp.get() : nullptr);
         gMenuAvatarSelf->show(x, y);
     }
     else if (object)
@@ -2176,11 +2184,13 @@ bool LLToolPie::handleRightClickPick()
                 if (is_other_attachment)
                 {
                     gMenuAttachmentOther->getChild<LLUICtrl>("Avatar Mute")->setValue(mute_msg);
+                    ALGhostCloneMenu::prepareAvatarMenu(gMenuAttachmentOther, avatar);
                     gMenuAttachmentOther->show(x, y);
                 }
                 else
                 {
                     gMenuAvatarOther->getChild<LLUICtrl>("Avatar Mute")->setValue(mute_msg);
+                    ALGhostCloneMenu::prepareAvatarMenu(gMenuAvatarOther, avatar);
                     gMenuAvatarOther->show(x, y);
                 }
 // [RLVa:KB] - Checked: 2010-04-11 (RLVa-1.2.0e) | Modified: RLVa-1.1.0l
@@ -2193,6 +2203,8 @@ bool LLToolPie::handleRightClickPick()
         }
         else if (object->isAttachment())
         {
+            ALGhostCloneMenu::prepareAvatarMenu(gMenuAttachmentSelf, isAgentAvatarValid() ? gAgentAvatarp.get() : nullptr,
+                                                object->isHUDAttachment());
             gMenuAttachmentSelf->show(x, y);
         }
         else

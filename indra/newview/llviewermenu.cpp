@@ -46,6 +46,7 @@
 #include "alavataractions.h"
 #include "alfloaterblocked.h"
 #include "alviewermenu.h"
+#include "alghostclonemenu.h"   // [CloneMenu]
 #include "llagent.h"
 #include "llagentaccess.h"
 #include "llagentbenefits.h"
@@ -550,6 +551,8 @@ void init_menus()
 
     gMenuMuteParticle = LLUICtrlFactory::createFromFile<LLContextMenu>(
         "menu_mute_particle.xml", gMenuHolder, registry);
+
+    ALGhostCloneMenu::createMenu(); // [CloneMenu] entity clone right-click menu
 
     ///
     /// set up the colors
@@ -3050,6 +3053,8 @@ void cleanup_menus()
 
     delete gMenuMuteParticle;
     gMenuMuteParticle = NULL;
+
+    ALGhostCloneMenu::destroyMenu();
 
     delete gMenuBarView;
     gMenuBarView = NULL;

@@ -7,10 +7,34 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
       "HOOK": 542,
-      "OWNED": 920,
-      "TOOLING": 457
+      "OWNED": 928,
+      "TOOLING": 455
     },
     "dirty_product_inputs": [
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/alcinelightrig.cpp",
+      "indra/newview/aldirectortagtargets.cpp",
+      "indra/newview/aldirectortagtargets.h",
+      "indra/newview/alghostnameplates.cpp",
+      "indra/newview/alghostnameplates.h",
+      "indra/newview/alghoststudio.cpp",
+      "indra/newview/alpanelactormover.cpp",
+      "indra/newview/alpanelactormover.h",
+      "indra/newview/alpanelavatarlightresponse.h",
+      "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/alpanelghoststudio.h",
+      "indra/newview/alpanellensgaze.h",
+      "indra/newview/altron.cpp",
+      "indra/newview/altron.h",
+      "indra/newview/app_settings/settings.xml",
+      "indra/newview/llfloaterdirector.cpp",
+      "indra/newview/llfloaterdirector.h",
+      "indra/newview/llhudnametag.cpp",
+      "indra/newview/llhudnametag.h",
+      "indra/newview/llvoavatar.cpp",
+      "indra/newview/llvoavatar.h",
+      "indra/newview/pipeline.cpp",
+      "indra/newview/pipeline.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -54,7 +78,13 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_tag_highlight_check.py",
+      "scripts/code_tools/tag_highlight_pipeline_hunks.json",
+      "scripts/code_tools/tag_highlight_studio_hunks.json"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -68,7 +98,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "05f3afeb7f402dc6443eb6448d220aabe8049226495ca7e5addea8f01e8a8642",
+        "csv_sha256": "f8a8bc97bd6ea7c422e17b8f35da5b0376d8be9ad4240777a6327df92f4cb35e",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -239,10 +269,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "80a532e35dbb6a21a305bd2448a36b6aba538fc1",
+    "head_source_tree": "c90da9ea3be63b15c2f5af9902e34d13ec05667f",
     "hook_files": 542,
-    "hunks": 3387,
-    "input_sha256": "d785ebc89785a4ae78192d3f0f043b2fb572a1360a89c43f03a551317b2bb69f",
+    "hunks": 3389,
+    "input_sha256": "72f20e049a38b7ad29d782c4adb3910631c06bcd0002ff16692c6987d6794834",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -250,7 +280,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2065
+    "settings": 2064
   },
   "paths": [
     {
@@ -14058,6 +14088,48 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/aldirectorselect.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/aldirectorselect.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "camera",
         "gaze",
         "vcam"
@@ -14178,51 +14250,6 @@
       "git_status": "A",
       "layer": 2,
       "path": "indra/newview/aldirectortabmigration.h",
-      "reason": "absent at local base; drop-in source unit, dependencies still required"
-    },
-    {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
-      "class": "OWNED",
-      "deleted": false,
-      "feature_evidence": [
-        "path/prefix",
-        "owned source / hook delta identifiers and comments"
-      ],
-      "features": [
-        "actor-bar",
-        "clones",
-        "director-shell",
-        "roto-tron"
-      ],
-      "git_status": "A",
-      "layer": 2,
-      "path": "indra/newview/aldirectortagtargets.cpp",
-      "reason": "absent at local base; drop-in source unit, dependencies still required"
-    },
-    {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
-      "class": "OWNED",
-      "deleted": false,
-      "feature_evidence": [
-        "path/prefix",
-        "owned source / hook delta identifiers and comments"
-      ],
-      "features": [
-        "actor-bar",
-        "clones",
-        "director-shell",
-        "gaze",
-        "looks",
-        "rig",
-        "roto-tron"
-      ],
-      "git_status": "A",
-      "layer": 2,
-      "path": "indra/newview/aldirectortagtargets.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -15450,6 +15477,109 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "crowd"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alghostcloneactions.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "crowd",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alghostcloneactions.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "crowd",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alghostclonemenu.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alghostclonemenu.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alghostclonemenulogic.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "clones"
       ],
       "class": "OWNED",
@@ -15637,11 +15767,10 @@
       ],
       "features": [
         "clones",
-        "crowd",
-        "director-shell"
+        "crowd"
       ],
       "git_status": "A",
-      "layer": 2,
+      "layer": 4,
       "path": "indra/newview/alghostnameplates.cpp",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -15659,11 +15788,10 @@
       ],
       "features": [
         "clones",
-        "crowd",
-        "director-shell"
+        "crowd"
       ],
       "git_status": "A",
-      "layer": 2,
+      "layer": 4,
       "path": "indra/newview/alghostnameplates.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -15829,7 +15957,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
         "gaze"
       ],
       "class": "OWNED",
@@ -16457,6 +16584,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze",
         "roto-tron"
@@ -17662,6 +17790,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -19080,6 +19209,51 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "crowd",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/altooldirectorpick.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "composition",
+        "crowd",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/altooldirectorpick.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [],
       "class": "OWNED",
       "deleted": false,
@@ -19740,6 +19914,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "HOOK",
@@ -27200,6 +27375,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
+        "clones",
         "composition",
         "director-shell"
       ],
@@ -27210,6 +27386,7 @@
       ],
       "features": [
         "camera",
+        "clones",
         "composition"
       ],
       "git_status": "M",
@@ -29292,8 +29469,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29301,29 +29477,11 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "clones",
-        "director-shell"
+        "clones"
       ],
       "git_status": "M",
-      "layer": 2,
+      "layer": 4,
       "path": "indra/newview/llhudnametag.cpp",
-      "reason": "present at local base; adapt individual hunks, never copy wholesale"
-    },
-    {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
-      "class": "HOOK",
-      "deleted": false,
-      "feature_evidence": [
-        "owned source / hook delta identifiers and comments"
-      ],
-      "features": [
-        "director-shell"
-      ],
-      "git_status": "M",
-      "layer": 2,
-      "path": "indra/newview/llhudnametag.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -30814,6 +30972,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
+        "director-shell",
         "vcam"
       ],
       "class": "HOOK",
@@ -30823,10 +30982,11 @@
       ],
       "features": [
         "clones",
+        "director-shell",
         "vcam"
       ],
       "git_status": "M",
-      "layer": 4,
+      "layer": 2,
       "path": "indra/newview/lltooldraganddrop.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -30878,29 +31038,39 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-path",
         "camera",
-        "capture-sidecar",
-        "clones",
-        "composition",
-        "director-shell",
-        "looks",
-        "rig",
-        "roto-tron",
-        "sensor",
-        "shafts-volumetrics",
-        "vcam",
-        "weather"
+        "clones"
       ],
       "git_status": "M",
-      "layer": 2,
+      "layer": 3,
+      "path": "indra/newview/lltoolmgr.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "M",
+      "layer": 4,
       "path": "indra/newview/lltoolpie.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -31284,6 +31454,8 @@
     {
       "candidate_features_from_subjects": [
         "camera",
+        "clones",
+        "director-shell",
         "vcam"
       ],
       "class": "HOOK",
@@ -31293,6 +31465,7 @@
       ],
       "features": [
         "camera",
+        "clones",
         "composition",
         "director-shell",
         "tracking",
@@ -31678,7 +31851,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "composition"
+        "composition",
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31717,7 +31891,6 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
         "gaze"
       ],
       "class": "HOOK",
@@ -31745,8 +31918,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31961,7 +32133,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell"
+        "capture-sidecar"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31992,7 +32164,9 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell"
+        "actor-bar",
+        "gaze",
+        "roto-tron"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -36122,6 +36296,8 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell",
         "looks",
         "sensor"
       ],
@@ -36133,8 +36309,12 @@
       "features": [
         "actor-path",
         "camera",
+        "clones",
         "director-shell",
-        "looks"
+        "gaze",
+        "looks",
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 2,
@@ -36155,8 +36335,12 @@
       "features": [
         "actor-path",
         "camera",
+        "clones",
         "director-shell",
-        "looks"
+        "gaze",
+        "looks",
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 2,
@@ -36166,7 +36350,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "composition",
+        "director-shell",
         "sensor"
       ],
       "class": "HOOK",
@@ -36177,8 +36361,12 @@
       "features": [
         "actor-path",
         "camera",
+        "clones",
         "director-shell",
-        "looks"
+        "gaze",
+        "looks",
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 2,
@@ -36188,6 +36376,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
+        "director-shell",
         "looks"
       ],
       "class": "HOOK",
@@ -36198,8 +36387,12 @@
       "features": [
         "actor-path",
         "camera",
+        "clones",
         "director-shell",
-        "looks"
+        "gaze",
+        "looks",
+        "vcam",
+        "weather"
       ],
       "git_status": "M",
       "layer": 2,
@@ -36333,6 +36526,27 @@
       "layer": 99,
       "path": "indra/newview/skins/default/xui/en/menu_fs_radar_options.xml",
       "reason": "unrelated inventory/radar/local-asset feature"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "crowd",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/skins/default/xui/en/menu_ghost_clone.xml",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
       "candidate_features_from_subjects": [
@@ -37587,7 +37801,6 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "clones",
         "director-shell",
         "looks",
         "roto-tron",
@@ -38191,6 +38404,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "HOOK",
@@ -38199,6 +38413,8 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "clones",
+        "crowd",
         "director-shell",
         "environment"
       ],
@@ -41331,6 +41547,22 @@
       ],
       "git_status": "A",
       "layer": 2,
+      "path": "scripts/code_tools/director_clone_menu_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
       "path": "scripts/code_tools/director_clone_qol_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -42540,21 +42772,6 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_suitcase.py",
-      "reason": "generator/check/fixture/build tooling; carry validation separately"
-    },
-    {
-      "candidate_features_from_subjects": [],
-      "class": "TOOLING",
-      "deleted": false,
-      "feature_evidence": [
-        "path/prefix"
-      ],
-      "features": [
-        "director-shell"
-      ],
-      "git_status": "A",
-      "layer": 2,
-      "path": "scripts/code_tools/director_tag_highlight_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -44425,32 +44642,6 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/slog_gamut_ocio_check.py",
-      "reason": "generator/check/fixture/build tooling; carry validation separately"
-    },
-    {
-      "candidate_features_from_subjects": [],
-      "class": "TOOLING",
-      "deleted": false,
-      "feature_evidence": [],
-      "features": [
-        "unknown"
-      ],
-      "git_status": "A",
-      "layer": 99,
-      "path": "scripts/code_tools/tag_highlight_pipeline_hunks.json",
-      "reason": "generator/check/fixture/build tooling; carry validation separately"
-    },
-    {
-      "candidate_features_from_subjects": [],
-      "class": "TOOLING",
-      "deleted": false,
-      "feature_evidence": [],
-      "features": [
-        "unknown"
-      ],
-      "git_status": "A",
-      "layer": 99,
-      "path": "scripts/code_tools/tag_highlight_studio_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

@@ -41,6 +41,7 @@
 #include "llactormover.h"       // [ActorMover] ghost locomotion subject
 #include "alobjectpathmover.h"  // [ObjectPath] prop-on-a-spline roster
 #include "lldirectorcast.h"     // [Director] cast membership
+#include "alghostclonemenu.h"     // [CloneMenu]
 //#include "alcinematicmode.h"
 #include "alderenderlist.h"
 #include "alfloaterblocked.h"
@@ -1561,4 +1562,7 @@ void ALViewerMenu::initialize_menus()
 
     view_listener_t::addMenu(new ALToggleLocationBar(), "ToggleLocationBar");
     view_listener_t::addMenu(new ALCheckLocationBar(), "CheckLocationBar");
+
+    // [CloneMenu] clone right-click menu, Clone overlay submenu, Select in Director
+    ALGhostCloneMenu::registerCallbacks();
 }

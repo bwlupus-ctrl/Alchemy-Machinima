@@ -4568,4 +4568,21 @@ and report the problem.
     <string name="PS_Arms_upward_Legs_together">Arms upward, Legs together</string>
     <string name="FSInventoryCustomTabDefaultName">Custom</string>
     <string name="FSInventoryCustomTabShowHidden">Show hidden tabs</string>
+    <string name="GhostCloneMenuNotReady">clone not ready</string>
+    <string name="GhostCloneMenuPosed">posed: release the pose first</string>
+    <string name="GhostCloneMenuEditBusy">finish Place or crowd placement first</string>
+    <string name="GhostCloneMenuMirrorEntityOnly">entity clones only</string>
+    <string name="GhostCloneMenuFreezeFail">Nothing to grab yet -- clone must be rendering</string>
+    <string name="GhostCloneMenuResizeFail">The clone size could not be changed</string>
+    <string name="GhostCloneMenuGroupDelete">Expanded group members cannot be deleted one by one; delete the group row</string>
+    <string name="GhostCloneMenuOverlayN">Overlay [N]</string>
+    <string name="GhostCloneMenuOverlayInGroup">this overlay is in a group: use the group row in the Clones list</string>
+    <string name="DirectorSelectHud">not for a HUD attachment</string>
+    <string name="GhostCloneMenuNoCrowd">needs one crowd</string>
+    <string name="GhostCloneMenuPausedMirror">paused: press Play first</string>
+    <string name="DirectorSelectPickBusy">Finish the current tool first (Edit clones, Place, crowd placement or another pick), then use Select</string>
+    <string name="DirectorSelectNoAvatar">not an avatar the Director can use</string>
+    <string name="DirectorSelectNoClone">that clone is gone</string>
+    <string name="DirectorSelectCloneNotReady">clone not ready</string>
+    <string name="DirectorSelectCastRefused">The Cast refused this avatar</string>
 </strings>

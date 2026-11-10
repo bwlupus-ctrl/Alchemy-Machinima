@@ -52,6 +52,7 @@ public:
     bool                        postBuild() override;
     void                        reshape(S32, S32, bool = true) override;
     void                        draw() override;
+    void                        onVisibilityChange(bool new_visibility) override;
     void                        closeActorChooser();
     bool                        handleMouseDown(S32, S32, MASK) override;
     bool                        handleScrollWheel(S32, S32, LLScrollDelta) override;
@@ -183,6 +184,7 @@ private:
     LLButton*                                            mActorYou = nullptr;
     LLButton*                                            mActorClear = nullptr;
     LLButton*                                            mActorGroups = nullptr;
+    LLButton*                                            mActorPick = nullptr;   // click-to-pick "Select" toggle
     LLHandle<LLContextMenu>                               mActorMenu;
     LLUUID                                              mActorShownId;
     LLFrameTimer                                        mActorLifecycleClock;

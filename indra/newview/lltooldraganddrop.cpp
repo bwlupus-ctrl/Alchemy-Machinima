@@ -30,6 +30,7 @@
 #include "alghostanimdrop.h"        // [CloneAnimDrop] drop verdict + UI strings
 #include "alghostanimassetindex.h"  // [CloneAnimDrop] restriction ledger
 #include "alghoststudio.h"          // [CloneAnimDrop] clone pick + play
+#include "alghostcloneactions.h"    // [CloneAnimDrop] group unit planner
 #include "alpanelghoststudio.h"     // [CloneAnimDrop] recorded (undoable) play
 #include "llviewercamera.h"         // [CloneAnimDrop] clone-vs-pick depth
 
@@ -2500,7 +2501,20 @@ EAcceptance LLToolDragAndDrop::dad3dPlayOnGhostClone(
         return dad3dGhostCloneRefuse(nullptr, -1, MASK_NONE, drop);
     }
     ALGhostStudio& studio = ALGhostStudio::instance();
-    const std::string clone_name = studio.cloneDisplayName(mGhostCloneTarget);
+    // A clone in a COLLAPSED group stands for the whole group (the page's unit
+    // planner); an expanded group's member or an ungrouped clone is itself.
+    ALGhostCloneActions::AnimationDropPlan drop_plan = ALGhostCloneActions::planAnimationDrop(mGhostCloneTarget);
+    if (drop_plan.mTargets.empty())
+    {
+        // Nothing that can play (no live clone body): refuse, never fall back to the hit clone.
+        mCustomMsg = "The clone is not ready to play an animation yet.";
+        return ACCEPT_NO_CUSTOM;
+    }
+    const std::string clone_name = drop_plan.mCollapsedGroup
+        ? (drop_plan.mGroupName.empty() ? std::string("the group") : drop_plan.mGroupName) +
+              " (" + std::to_string(drop_plan.mTargets.size()) +
+              (drop_plan.mTargets.size() == 1 ? " clone)" : " clones)")
+        : studio.cloneDisplayName(mGhostCloneTarget);
     if (!drop)
     {
         mToolTipMsg = ALGhostAnimDrop::hoverText(real->getName(), clone_name);
@@ -2509,11 +2523,14 @@ EAcceptance LLToolDragAndDrop::dad3dPlayOnGhostClone(
     // The internal asset id only ever reaches the player; the toast carries
     // names (TPV policy 2.a.i: a non-full-perm asset id is never shown). One
     // undo step (on the active Ghost Studio host) restores drive mode + anim.
-    if (ALPanelGhostStudio::playAnimationOnClonesRecorded({ mGhostCloneTarget },
-                                                          real->getAssetUUID(), real->getName()) > 0)
+    const S32 played = ALPanelGhostStudio::playAnimationOnClonesRecorded(
+        drop_plan.mTargets, real->getAssetUUID(), real->getName(), /*director_fallback=*/true);
+    if (played > 0)
     {
         LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE",
-            ALGhostAnimDrop::playingToast(real->getName(), clone_name)));
+            played == 1 && drop_plan.mTargets.size() == 1
+                ? ALGhostAnimDrop::playingToast(real->getName(), studio.cloneDisplayName(drop_plan.mTargets.front()))
+                : ALGhostAnimDrop::playingToast(real->getName(), (size_t)played)));
     }
     return ACCEPT_YES_SINGLE;
 }

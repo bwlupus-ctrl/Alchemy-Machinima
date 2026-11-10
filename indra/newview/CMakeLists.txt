@@ -401,9 +401,13 @@ set(viewer_SOURCE_FILES
     alavatarsubjectpicker.cpp
     alprojectortracker.cpp
     alobjectpathmover.cpp
+    alghostcloneactions.cpp # [CloneMenu] Clones page row actions shared with the menus
+    alghostclonemenu.cpp # [CloneMenu] clone right-click menu
+    aldirectorselect.cpp # [CloneMenu] Select in Director helper
     alpanelghoststudio.cpp
     alpanelpropmover.cpp
     altoolcrowdplace.cpp
+    altooldirectorpick.cpp # [CloneMenu] Actor bar Select pick mode
     altoolfocuspick.cpp
     altoolghostedit.cpp
     altoolghostplace.cpp
@@ -1383,11 +1387,16 @@ set(viewer_HEADER_FILES
     alprojectortracker.h
     alprojectortrackmath.h
     alobjectpathmover.h
+    alghostcloneactions.h
+    alghostclonemenu.h
+    alghostclonemenulogic.h
+    aldirectorselect.h
     alpanelghoststudio.h
     aluiperfselftest.h
     aluirefresh.h # [GhostPanelPerf]
     alpanelpropmover.h
     altoolcrowdplace.h
+    altooldirectorpick.h
     altoolfocuspick.h
     altoolghostedit.h
     altoolghostplace.h

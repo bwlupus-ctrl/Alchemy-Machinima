@@ -18,6 +18,7 @@
 #include "alkitpopover.h"
 #include "alkitrow.h"
 #include "alkitstyle.h"
+#include "altooldirectorpick.h"   // Actor bar "Select" pick mode
 #include "llbutton.h"
 #include "llcallbacklist.h"
 #include "llaccordionctrltab.h"
@@ -346,6 +347,8 @@ ALKitShell::ALKitShell(const Params& p) : LLPanel(p), mIndexFile(p.index_file)
 
 ALKitShell::~ALKitShell()
 {
+    if (getName() == "director_shell")
+        ALToolDirectorPick::stopIfActive();
     ALAvatarSubjectPicker::cancelFor(this);
     if (auto* menu = mActorMenu.get()) delete menu;
     if (auto timer = mSearchDebounce.lock())
@@ -377,12 +380,19 @@ bool ALKitShell::postBuild()
     mActorYou = getChild<LLButton>("kit_actor_you");
     mActorClear = getChild<LLButton>("kit_actor_clear");
     mActorGroups = getChild<LLButton>("kit_actor_groups");
+    mActorPick = getChild<LLButton>("kit_actor_pick");
     mActorGroups->setCommitCallback([this](LLUICtrl*, const LLSD&)
         { navigateTo("cast_group/groups_tab"); });
     mActorChoose->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         ALAvatarSubjectPicker::choose(mActorChoose, this, mActorMenu, true,
             [](const LLUUID& id) { LLDirectorCast::instance().setActiveActorId(id); }, true);
+    });
+    mActorPick->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        closeActorChooser();
+        ALToolDirectorPick::getInstance()->toggle();
+        setValueIfChanged(mActorPick, LLSD(ALToolDirectorPick::isActive()), true);
     });
     mActorSelected->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
@@ -766,8 +776,9 @@ void ALKitShell::layoutChrome()
         mActorSelected->reshape(100, 26, true);
         mActorChoose->reshape(80, 26, true);
         mActorGroups->reshape(64, 26, true);
+        mActorPick->reshape(60, 26, true);
         S32 x = width - 8;
-        for (LLButton* button : {mActorGroups, mActorClear, mActorYou, mActorSelected, mActorChoose})
+        for (LLButton* button : {mActorGroups, mActorClear, mActorYou, mActorSelected, mActorChoose, mActorPick})
         {
             x -= button->getRect().getWidth();
             button->setOrigin(x, 1);
@@ -940,6 +951,13 @@ void ALKitShell::layoutChrome()
     }
 }
 
+void ALKitShell::onVisibilityChange(bool new_visibility)
+{
+    if (!new_visibility && getName() == "director_shell")
+        ALToolDirectorPick::stopIfActive();
+    LLPanel::onVisibilityChange(new_visibility);
+}
+
 void ALKitShell::closeActorChooser()
 {
     ALAvatarSubjectPicker::cancelFor(this);
@@ -1099,6 +1117,8 @@ void ALKitShell::draw()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALKitShell draw");
     ALUIPerfSelfTest::recordKitWidgetTree(this);
+    if (mActorPick)
+        setValueIfChanged(mActorPick, LLSD(ALToolDirectorPick::isActive()), true);
     if (mActorLifecycleClock.getElapsedTimeF32() > 0.5f)
     {
         mActorLifecycleClock.reset();
@@ -1376,6 +1396,13 @@ bool ALKitShell::navigateTo(const ALKitTarget& target)
         navigateTo("cast_group/groups_tab");
         mActorGroups->setFocus(true);
         mHighlight = mActorGroups->getHandle();
+        mHighlightTimer.reset();
+        return true;
+    }
+    if (target.widget == "kit_actor_pick")
+    {
+        mActorPick->setFocus(true);
+        mHighlight = mActorBar->getHandle();
         mHighlightTimer.reset();
         return true;
     }
