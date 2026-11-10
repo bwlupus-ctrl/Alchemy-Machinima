@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3403 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3404 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (181)
 
@@ -188,7 +188,7 @@ All 3403 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1811)
+## Unknown hunk features (1812)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -1499,11 +1499,12 @@ All 3403 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistctrl.cpp@2359,15`
 - `indra/llui/llscrolllistctrl.cpp@2396,7`
 - `indra/llui/llscrolllistctrl.cpp@3125,16`
-- `indra/llui/llscrolllistctrl.h@297,9`
-- `indra/llui/llscrolllistctrl.h@313,16`
-- `indra/llui/llscrolllistctrl.h@416,9`
-- `indra/llui/llscrolllistctrl.h@492,13`
-- `indra/llui/llscrolllistctrl.h@563,8`
+- `indra/llui/llscrolllistctrl.h@232,7`
+- `indra/llui/llscrolllistctrl.h@298,9`
+- `indra/llui/llscrolllistctrl.h@314,16`
+- `indra/llui/llscrolllistctrl.h@417,9`
+- `indra/llui/llscrolllistctrl.h@493,13`
+- `indra/llui/llscrolllistctrl.h@564,8`
 - `indra/llui/llscrolllistitem.cpp@145,7`
 - `indra/llui/llscrolllistitem.cpp@161,8`
 - `indra/llui/llscrolllistitem.h@129,8`
@@ -2510,7 +2511,7 @@ All 3403 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/strings.xml@4234,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
 - `indra/newview/skins/default/xui/en/strings.xml@4284,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
 - `indra/newview/skins/default/xui/en/strings.xml@4325,9`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
-- `indra/newview/skins/default/xui/en/strings.xml@4544,45`: unknown/non-function (and report the problem.)
+- `indra/newview/skins/default/xui/en/strings.xml@4544,56`: unknown/non-function (and report the problem.)
 - `indra/newview/viewer_manifest.py@76,12`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@91,6`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@108,12`: unknown/non-function (class ViewerManifest(LLManifest):)
@@ -2982,7 +2983,7 @@ All 3403 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistcell.h@67,8`: unknown/non-function (public:)
 - `indra/llui/llscrolllistcell.h@92,7`: unknown/non-function (public:)
 - `indra/llui/llscrolllistctrl.cpp@28,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/llui/llscrolllistctrl.h@563,8`: unknown/non-function (private:)
+- `indra/llui/llscrolllistctrl.h@564,8`: unknown/non-function (private:)
 - `indra/llui/llscrolllistitem.cpp@145,7`: unknown/non-function (std::string LLScrollListItem::getContentsCSV() const)
 - `indra/llui/llscrolllistitem.h@129,8`: unknown/non-function (public:)
 - `indra/llui/lltabcontainer.cpp@1215,7`: unknown/non-function (void LLTabContainer::addPlaceholder(LLPanel* child, const std::string& label))

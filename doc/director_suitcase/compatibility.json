@@ -2262,6 +2262,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghostcloneactions.cpp",
+    "dependency": "indra/newview/alghostanimdrop.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostcloneactions.cpp",
     "dependency": "indra/newview/alghostclonemenulogic.h",
     "excluded": false,
     "origin": "fork-added",
@@ -2298,7 +2307,34 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/alavatarsubjectpicker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
     "dependency": "indra/newview/aldirectorselect.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/alghostanimassetindex.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/alghostanimdrop.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -2353,6 +2389,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghostclonemenu.cpp",
     "dependency": "indra/newview/alkitshell.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/lldirectorcast.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -5296,6 +5341,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelghoststudio.cpp",
     "dependency": "indra/newview/alghostcloneactions.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelghoststudio.cpp",
+    "dependency": "indra/newview/alghostclonemenu.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2750 classified paths.
+`inventory.csv` / `inventory.json` contain 2751 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -67,7 +67,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 86 | 23 | 5 |
 | [director-shell](features/director-shell.md) | 2 | 331 | 60 | 204 |
-| [actor-bar](features/actor-bar.md) | 3 | 73 | 14 | 0 |
+| [actor-bar](features/actor-bar.md) | 3 | 75 | 14 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 105 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 80 | 31 | 493 |
 | [composition](features/composition.md) | 3 | 42 | 23 | 12 |
@@ -238,7 +238,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 543 shared files / 3403 canonical
+The generated hook map covers 543 shared files / 3404 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and
