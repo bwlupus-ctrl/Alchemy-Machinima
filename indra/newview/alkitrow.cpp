@@ -207,6 +207,7 @@ ALKitRow::Params::Params() :
     label_wrap("label_wrap", false),
     row_height("row_height", 28),
     decimals("decimals", 3),
+    compare_decimals("compare_decimals", -1),
     min_val("min_val", 0.f),
     max_val("max_val", 0.f),
     increment("increment", 0.f)
@@ -248,6 +249,7 @@ ALKitRow::ALKitRow(const Params& p) :
     mMeta.default_value  = p.default_value;
     mMeta.advanced       = p.advanced;
     mMeta.decimals       = p.decimals.isProvided() ? p.decimals : (mMeta.kind == "dial" || mMeta.kind == "arc" ? 0 : 3);
+    mMeta.compare_decimals = p.compare_decimals;
     mMeta.min_val        = p.min_val;
     mMeta.max_val        = p.max_val;
     mMeta.increment      = p.increment;
@@ -1100,7 +1102,7 @@ void ALKitRow::reset()
 }
 
 bool ALKitRow::amber() const
-{ return mBinding && !mBinding->isDefault(mMeta.decimals); }
+{ return mBinding && !mBinding->isDefault(mMeta.compare_decimals >= 0 ? mMeta.compare_decimals : mMeta.decimals); }
 
 LLSD ALKitRow::boundValue() const
 { return mBinding ? mBinding->get() : (mControl ? mControl->getValue() : LLSD()); }
@@ -1333,6 +1335,7 @@ ALKitRow* ALKitRow::createProxy(ALKitRow* source, const std::string& name)
     params.help = source->mMeta.help;
     params.link_to = source->mMeta.page_key + "/" + source->mMeta.widget;
     params.decimals = source->mMeta.decimals;
+    params.compare_decimals = source->mMeta.compare_decimals;
     params.min_val = source->mMeta.has_min ? source->mMeta.min_val : -1000000.f;
     params.max_val = source->mMeta.has_max ? source->mMeta.max_val : 1000000.f;
     // A non-resettable source stays non-resettable: a Quick reset must never reach its setting.

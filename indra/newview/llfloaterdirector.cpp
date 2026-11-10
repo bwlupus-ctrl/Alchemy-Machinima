@@ -92,6 +92,7 @@
 #include "llnotifications.h"
 #include "llnotificationsutil.h"    // scene delete confirm
 #include "llpresentationtime.h"
+#include "llrender2dutils.h"
 #include "llprismlens.h"
 #include "llviewerjoystick.h"       // drone preset apply/markCustom for the kit Takes page
 #include "llscrolllistctrl.h"
@@ -2147,6 +2148,22 @@ void LLFloaterDirector::bindPage(const std::string& page, LLView* root)
 
 void LLFloaterDirector::bindDirectorSettingsPage(LLView* root)
 {
+    // Display whole percentages while storing the backing alpha in 0..1.
+    LLSliderCtrl* opacity = root->getChild<LLSliderCtrl>("settings_background_opacity");
+    opacity->setCommitCallback([](LLUICtrl* control, const LLSD&)
+    {
+        gSavedSettings.setF32("DirectorBackgroundOpacity",
+            llclamp(static_cast<F32>(control->getValue().asReal()) / 100.f, 0.f, 1.f));
+    });
+    const LLHandle<LLView> opacity_handle = opacity->getHandle();
+    const auto refresh_opacity = [opacity_handle]
+    {
+        if (LLSliderCtrl* slider = dynamic_cast<LLSliderCtrl*>(opacity_handle.get()))
+            slider->setValue(100.f * llclamp(gSavedSettings.getF32("DirectorBackgroundOpacity"), 0.f, 1.f));
+    };
+    refresh_opacity();
+    mWorldLensConnections.emplace_back(ALKitSettingWatch::instance().watch(
+        "DirectorBackgroundOpacity", [refresh_opacity](const LLSD&, const LLSD&) { refresh_opacity(); }));
     mAllOffRestore = root->getChild<LLButton>("settings_restore_last_reset");
     mAllOffRestore->setCommitCallback([this](LLUICtrl*, const LLSD&) { performAllOff(true); });
     refreshAllOffRestore();
@@ -3776,7 +3793,7 @@ void LLFloaterDirector::refreshLauncherCards()
 
 void LLFloaterDirector::draw()
 {
-    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LLFloaterDirector draw");
+    LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     refreshCastList();
     refreshGroupControls();
     refreshTransport();
@@ -3793,6 +3810,15 @@ void LLFloaterDirector::draw()
     refreshPrismDependents();
     refreshLauncherCards();
     refreshStatusStrip();
+    if (mIsV2 && isBackgroundVisible())
+    {
+        static LLCachedControl<F32> background_opacity(gSavedSettings, "DirectorBackgroundOpacity", 1.f);
+        // Keep this independent of floater/child transparency. The live theme reference
+        // follows Theme and Invert; the local rect follows docking and resizing.
+        LLColor4 backing = ALKitStyle::color(ALKitStyle::WINDOW_BG).get();
+        backing.mV[VALPHA] = llclamp(background_opacity(), 0.f, 1.f);
+        gl_rect_2d(getLocalRect(), backing, true);
+    }
     LLFloater::draw();
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
 }
