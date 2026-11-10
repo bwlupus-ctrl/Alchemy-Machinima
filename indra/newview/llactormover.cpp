@@ -100,6 +100,14 @@ constexpr S32 MAX_ARC_SAMPLES_PER_SEGMENT = 4096;
 constexpr S32 MAX_ARC_SAMPLES_PER_PATH = 65536;
 constexpr F32 SYNC_SEEK_SNAP_M = 1.0f;
 
+// [ClearAnim] A cleared entity clone rests in the neutral pose: no gaze layer (ordinary,
+// Director look-at or Hot Gaze) may paint its head, eye or torso joints.
+bool gaze_suppressed_by_clear(LLVOAvatar* av)
+{
+    return av && av->isGhostAvatar() &&
+        !ALGhostClearAnim::mayPaintGaze(static_cast<LLGhostAvatar*>(av)->isEntityAnimationsCleared());
+}
+
 // [Director] roster storage moved into LLDirectorCast (the roster IS the
 // cast); this stays the single resolution path for mover call sites.
 // null id = my avatar; a stale roster id (actor left the region) resolves to
@@ -5528,6 +5536,7 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
         if (hot != mHotGazes.end())
         { restoreDirectorLookAtPose(body, hot->second.mPaint); mHotGazes.erase(hot); }
     }
+    mParkedHotGazes.drop(actor_id); // [ClearAnim]
     auto it = mMoves.find(actor_id);
     if (it != mMoves.end())
     {
@@ -6328,6 +6337,20 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // this avatar has no gaze entry -> byte-identical
     }
     Gaze& g = git->second;
+    // [ClearAnim] A cleared clone releases at once: no envelope tail, no eye motion, no paint.
+    if (gaze_suppressed_by_clear(av))
+    {
+        g.mEnv = 0.f;
+        g.mDirValid = false;
+        g.mBodyAimValid = false;
+        g.mAppliedValid = false;
+        g.mAppliedSlewing = false;
+        g.mChainYawValid = false;
+        g.mBehindShoulderSign = 0.f;
+        g.mBehindSweeping = false;
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
+        return;
+    }
     ensureGazeOwner(av, g);
 
     // [TrueMirror] The clone's head/eye/torso aim and blink come from the
@@ -6993,6 +7016,11 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     {
         const auto director = mDirectorGazes.find(av->getID());
         if (director != mDirectorGazes.end()) director->second.mGaze.mWrittenGaze = {};
+    }
+    // [ClearAnim] The camera look-at layer never paints a cleared clone.
+    if (gaze_suppressed_by_clear(av))
+    {
+        return false;
     }
     static LLCachedControl<bool> enabled(
         gSavedSettings, "DirectorLookAtCameraEnabled", false);
@@ -20236,6 +20264,9 @@ void LLActorMover::releaseHotGazeSlot(S32 slot)
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
     for (auto& entry : mHotGazes)
         if (entry.second.mState.mSlot == slot) entry.second.mState.release(now);
+    // [ClearAnim] a parked state honours the same slot release as a live one
+    mParkedHotGazes.forEach([&](HotGaze& parked)
+    { if (parked.mState.mSlot == slot) parked.mState.release(now); });
 }
 
 bool LLActorMover::hasHotGazePose(const LLVOAvatar* avatar) const
@@ -20310,6 +20341,7 @@ void LLActorMover::fireHotGaze(const LLUUID& actor, S32 slot, const GazeTarget& 
     LLVOAvatar* body = LLDirectorCast::instance().resolve(actor);
     LLVector3d point;
     if (!body || !resolveHotGazeTarget(body, target, point)) return;
+    if (gaze_suppressed_by_clear(body)) return; // [ClearAnim] a cleared clone takes no Hot Gaze
     HotGaze& hot = mHotGazes[body->getID()];
     ensureDirectorOwner(body, hot.mPaint);
     if (hot.mState.finished(now)) hot.mPaint.mGaze.mGazeMotor = {};
@@ -20335,6 +20367,9 @@ void LLActorMover::hotGazeInput(S32 slot, bool down)
     for (auto& entry : mHotGazes)
         if (entry.second.mState.mSlot == slot && entry.second.mState.mHold)
             entry.second.mState.release(now);
+    // [ClearAnim] key-up releases a parked hold exactly as it releases a live one
+    mParkedHotGazes.forEach([&](HotGaze& parked)
+    { if (parked.mState.mSlot == slot && parked.mState.mHold) parked.mState.release(now); });
 }
 
 void LLActorMover::restoreHotGazePose(LLVOAvatar* av)
@@ -20355,6 +20390,8 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
     if (it == mHotGazes.end()) return;
     auto& hot = it->second;
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    if (gaze_suppressed_by_clear(av)) // [ClearAnim] cleared after the layer was running
+    { restoreDirectorLookAtPose(av, hot.mPaint); mHotGazes.erase(it); return; }
     if (hot.mState.finished(now) || av->isDead())
     { restoreDirectorLookAtPose(av, hot.mPaint); mHotGazes.erase(it); return; }
     if (!av->getRootJoint() || !gazeCameraSafe(av, false)) return;
@@ -20398,16 +20435,59 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
     av->syncStepAnimAttachmentMatrices();
 }
 
+// [ClearAnim]
+U32 LLActorMover::parkHotGaze(const LLUUID& actor)
+{
+    const auto it = mHotGazes.find(actor);
+    if (it == mHotGazes.end()) return 0;
+    LLVOAvatar* body = LLDirectorCast::instance().resolve(actor);
+    restoreDirectorLookAtPose(body, it->second.mPaint);
+    if (body) body->invalidateSkinPalettesAfterOverlay();
+    HotGaze saved = it->second;
+    const auto motor = saved.mPaint.mGaze.mGazeMotor;
+    const U32 generation = saved.mPaint.mGaze.mHotGeneration;
+    saved.mPaint = {}; // joint pointers and captures belong to the running layer
+    saved.mPaint.mRekeyMotorPending = true;
+    saved.mPaint.mGaze.mHotGeneration = generation;
+    saved.mPaint.mGaze.mGazeMotor = motor;
+    const U32 token = mParkedHotGazes.park(actor, std::move(saved)); // owned by one Clear snapshot
+    mHotGazes.erase(it);
+    return token;
+}
+
+// [ClearAnim]
+void LLActorMover::unparkHotGaze(U32 token, const LLUUID& actor)
+{
+    HotGaze back;
+    if (!mParkedHotGazes.take(token, actor, back)) return;
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    if (!back.mState.finished(now)) mHotGazes[actor] = std::move(back);
+}
+
+// [ClearAnim] A discarded Clear snapshot removes its own parked state.
+void LLActorMover::discardParkedHotGaze(U32 token)
+{
+    if (token) mParkedHotGazes.discard(token);
+}
+
 void LLActorMover::clearHotGazes()
 {
     restoreHotGazes();
     for (auto& entry : mHotGazes)
         restoreDirectorLookAtPose(LLDirectorCast::instance().resolve(entry.first), entry.second.mPaint);
     mHotGazes.clear();
+    mParkedHotGazes.clear();
 }
 
 void LLActorMover::rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id)
 {
+    // [ClearAnim] A parked state migrates with the respawned clone, or goes with a deleted one.
+    mParkedHotGazes.migrate(old_id, new_id);
+    mParkedHotGazes.forEach([&](HotGaze& parked)
+    {
+        if (rewriteGazeTarget(parked.mTarget, old_id, new_id) && new_id.isNull())
+            parked.mState.release(LLPresentationTime::currentFrame().presentation_time);
+    });
     const auto actor = mHotGazes.find(old_id);
     if (actor != mHotGazes.end())
     {

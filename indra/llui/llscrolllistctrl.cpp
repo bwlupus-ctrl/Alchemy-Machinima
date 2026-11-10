@@ -28,6 +28,7 @@
 #include "linden_common.h"
 
 #include "llscrolllistctrl.h"
+#include "llscrolllistgutter.h"
 
 #include <algorithm>
 
@@ -709,11 +710,11 @@ bool LLScrollListCtrl::updateColumnWidths()
         S32 new_width = 0;
         if (column->mRelWidth >= 0)
         {
-            new_width = (S32)ll_round(column->mRelWidth*mItemListRect.getWidth());
+            new_width = (S32)ll_round(column->mRelWidth*getColumnAreaWidth());
         }
         else if (column->mDynamicWidth)
         {
-            new_width = (mItemListRect.getWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns;
+            new_width = (getColumnAreaWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns;
         }
         else
         {
@@ -768,7 +769,7 @@ void LLScrollListCtrl::updateColumns(bool force_update)
 
     // update column headers
     std::vector<LLScrollListColumn*>::iterator column_ordered_it;
-    S32 left = mItemListRect.mLeft;
+    S32 left = mItemListRect.mLeft + getSelectedBarGutter();
     LLScrollColumnHeader* last_header = NULL;
     for (column_ordered_it = mColumnsIndexed.begin(); column_ordered_it != mColumnsIndexed.end(); ++column_ordered_it)
     {
@@ -1758,7 +1759,7 @@ void LLScrollListCtrl::drawItems()
                 fg_color = (item->getEnabled() ? mFgUnselectedColor.get() : mFgDisabledColor.get());
                 if( item->getSelected() && mCanSelect)
                 {
-                    if(item->getHighlighted())  // if it's highlighted, average the colors
+                    if (item->getHighlighted() && mSelectedBarWidth <= 0)  // if it's highlighted, average the colors
                     {
                         select_color = lerp(mBgSelectedColor.get(), mHighlightedColor.get(), 0.5f);
                     }
@@ -1797,7 +1798,14 @@ void LLScrollListCtrl::drawItems()
                     hover_color = mBgReadOnlyColor.get();
                 }
 
-                item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding);
+                item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding, getSelectedBarGutter());
+
+                if (mSelectedBarWidth > 0 && mCanSelect && item->getSelected())
+                {
+                    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+                    gl_rect_2d(item_rect.mLeft, item_rect.mTop, item_rect.mLeft + mSelectedBarWidth,
+                               item_rect.mBottom, mSelectedBarColor % alpha);
+                }
 
                 cur_y -= mLineHeight;
             }
@@ -2351,8 +2359,15 @@ LLScrollListItem* LLScrollListCtrl::hitItem( S32 x, S32 y )
     return hit_item;
 }
 
+S32 LLScrollListCtrl::getColumnAreaWidth() const
+{
+    return LLScrollListGutter::availableWidth(mItemListRect.getWidth(), getSelectedBarGutter());
+}
+
 S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)
 {
+    // Cells are drawn the gutter in from the row edge; hit testing moves with them.
+    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft);
     // which column did we hit?
     S32 left = 0;
     S32 right = 0;
@@ -2381,7 +2396,7 @@ S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)
 
 S32 LLScrollListCtrl::getColumnOffsetFromIndex(S32 index)
 {
-    S32 column_offset = 0;
+    S32 column_offset = LLScrollListGutter::columnOffset(0, getSelectedBarGutter());
     ordered_columns_t::const_iterator iter = mColumnsIndexed.begin();
     ordered_columns_t::const_iterator end = mColumnsIndexed.end();
     for ( ; iter != end; ++iter)
@@ -3110,16 +3125,16 @@ void LLScrollListCtrl::addColumn(const LLScrollListColumn::Params& column_params
             }
             if (new_column->mRelWidth >= 0)
             {
-                new_column->setWidth((S32)ll_round(new_column->mRelWidth*mItemListRect.getWidth()));
+                new_column->setWidth((S32)ll_round(new_column->mRelWidth*getColumnAreaWidth()));
             }
             else if(new_column->mDynamicWidth)
             {
                 mNumDynamicWidthColumns++;
-                new_column->setWidth((mItemListRect.getWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns);
+                new_column->setWidth((getColumnAreaWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns);
             }
             S32 top = mItemListRect.mTop;
 
-            S32 left = mItemListRect.mLeft;
+            S32 left = mItemListRect.mLeft + getSelectedBarGutter();
             for (column_map_t::iterator itor = mColumns.begin();
                 itor != mColumns.end();
                 ++itor)

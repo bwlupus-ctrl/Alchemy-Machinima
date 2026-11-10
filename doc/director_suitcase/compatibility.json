@@ -182,6 +182,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/llui/llscrolllistctrl.cpp",
+    "dependency": "indra/llui/llscrolllistgutter.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/llui/llslider.cpp",
     "dependency": "indra/llui/llsliderwheel.h",
     "excluded": false,
@@ -1260,6 +1269,15 @@
     "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectoranimswitcher.cpp",
+    "dependency": "indra/newview/alghostclearanim.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "HOOK",
     "consumer": "indra/newview/aldirectoranimswitcher.cpp",
@@ -2298,6 +2316,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.cpp",
+    "dependency": "indra/newview/alghostclearanim.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.cpp",
     "dependency": "indra/newview/alghostnameplates.h",
     "excluded": false,
     "origin": "fork-added",
@@ -2461,6 +2488,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.h",
     "dependency": "indra/newview/alghostautoanimmodel.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.h",
+    "dependency": "indra/newview/alghostclearanim.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -3559,6 +3595,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alkitstyle.cpp",
     "dependency": "indra/newview/alkitstyle.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alkitstyle.cpp",
+    "dependency": "indra/newview/aldirectortheme.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -4909,6 +4954,24 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelghoststudio.cpp",
     "dependency": "indra/newview/alpanelghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelghoststudio.cpp",
+    "dependency": "indra/newview/alkitlistselection.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelghoststudio.cpp",
+    "dependency": "indra/newview/alghostclearanim.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -7698,6 +7761,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.h",
+    "dependency": "indra/newview/alghostclearanim.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.h",
     "dependency": "indra/newview/llghostcoverage.h",
     "excluded": false,
     "origin": "fork-added",
@@ -9831,6 +9903,24 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llghostavatar.cpp",
+    "dependency": "indra/newview/alghostclearanim.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "base-owned",
+    "consumer": "indra/newview/llghostavatar.cpp",
+    "dependency": "indra/newview/fsposingmotion.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at base"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llghostavatar.cpp",
     "dependency": "indra/newview/alreflectmath.h",
     "excluded": false,
     "origin": "fork-added",
@@ -9913,6 +10003,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llghostavatar.h",
     "dependency": "indra/newview/alghostanimmirrormath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llghostavatar.h",
+    "dependency": "indra/newview/alghostclearanim.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -6,56 +6,11 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
-      "HOOK": 536,
-      "OWNED": 915,
-      "TOOLING": 449
+      "HOOK": 541,
+      "OWNED": 918,
+      "TOOLING": 454
     },
-    "dirty_product_inputs": [
-      "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
-    ],
+    "dirty_product_inputs": [],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -68,7 +23,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "da64e11ed8e5d0ca9ac9db5c77493c2c46a7d74df328349e01390b3490eee91c",
+        "csv_sha256": "e3e53bee60b3f845e218ff5ce35fccda22b5cbf7a31ebafed6cf2ff1e4fe119a",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -163,7 +118,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3909,
+        "settings_declared": 3908,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -173,7 +128,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 847
+        "xui_files": 846
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -239,10 +194,10 @@
       },
       "wiring_rows": 2299
     },
-    "head_source_tree": "bbe78eb04f4fd4871ec9dbacf3ae9230a4c3bbe1",
-    "hook_files": 536,
-    "hunks": 3354,
-    "input_sha256": "ca3778984a6654e33c2e58ce67aac782d21fafffdbf634be96f62ee4cf57b158",
+    "head_source_tree": "a653c0abd66e86519f131bc9b4506ef2a199516f",
+    "hook_files": 541,
+    "hunks": 3373,
+    "input_sha256": "2508d1491b5ea91be45417ef94e1edb13a23c408029cac05b34e40d54a25b040",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -250,7 +205,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2064
+    "settings": 2063
   },
   "paths": [
     {
@@ -10249,6 +10204,36 @@
       ],
       "git_status": "M",
       "layer": 99,
+      "path": "indra/llappearance/llpolyskeletaldistortion.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llappearance/llpolyskeletaldistortion.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
       "path": "indra/llaudio/llaudiodecodemgr.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -11342,6 +11327,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
+        "clones",
         "common-ui",
         "director-shell"
       ],
@@ -11826,6 +11812,25 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "gaze"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llui/llscrolllistcolumn.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell",
+        "gaze",
         "vcam"
       ],
       "class": "HOOK",
@@ -11844,6 +11849,8 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell",
         "vcam"
       ],
       "class": "HOOK",
@@ -11857,6 +11864,54 @@
       "git_status": "M",
       "layer": 9,
       "path": "indra/llui/llscrolllistctrl.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/llui/llscrolllistgutter.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "M",
+      "layer": 9,
+      "path": "indra/llui/llscrolllistitem.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llui/llscrolllistitem.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -15285,6 +15340,27 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "director-shell",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alghostclearanim.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "clones"
       ],
       "class": "OWNED",
@@ -15661,7 +15737,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15689,7 +15766,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15972,6 +16050,25 @@
       "git_status": "A",
       "layer": 2,
       "path": "indra/newview/alkitlazypage.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alkitlistselection.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -16318,6 +16415,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "vcam"
       ],
@@ -16338,6 +16436,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -17387,7 +17486,9 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -17419,7 +17520,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -20403,8 +20504,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
-        "director-shell"
+        "camera"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -26478,8 +26578,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "gaze",
-        "vcam"
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -26921,7 +27020,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -26954,7 +27054,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -39212,6 +39313,21 @@
         "path/prefix"
       ],
       "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/tests/alghostclearanim_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
         "clones",
         "crowd"
       ],
@@ -39276,6 +39392,21 @@
       "git_status": "A",
       "layer": 99,
       "path": "indra/newview/tests/alhidecursor_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/tests/alkitlistselection_test.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -40644,6 +40775,19 @@
       "candidate_features_from_subjects": [],
       "class": "TOOLING",
       "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/clear_anim_studio_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
       "feature_evidence": [
         "path/prefix"
       ],
@@ -41044,6 +41188,22 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_all_off_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_clone_clear_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -42193,6 +42353,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_light_actors_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_list_select_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

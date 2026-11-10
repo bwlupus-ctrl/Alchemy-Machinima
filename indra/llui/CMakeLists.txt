@@ -190,6 +190,7 @@ target_sources(llui
     llscrolllistcell.h
     llscrolllistcolumn.h
     llscrolllistctrl.h
+    llscrolllistgutter.h
     llscrolllistitem.h
     llsliderctrl.h
     llslider.h

@@ -49,6 +49,7 @@
 #include <set>
 #include "lluuid.h"
 #include "alghostautoanimmodel.h" // [AutoAnimate] llcommon-only API, no avatar include.
+#include "alghostclearanim.h"     // [ClearAnim] HeldPose
 #include "v3math.h"
 #include "v3dmath.h"
 #include "m4math.h"         // frozen attachment matrices
@@ -449,6 +450,7 @@ public:
         U32 mAutoAnimSeedSalt = 0;
         std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoAnimPool;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
+        bool        mAnimCleared = false; // [ClearAnim] Directed, no animation, neutral pose; session only
         bool        mDirectedMirror = false; // own Directed/paused pose; session-only
         EDriveMode  mDirectedMirrorFreezeDrive = DRIVE_MIRROR; // eligibility only, never playback Resume
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
@@ -820,6 +822,31 @@ public:
     bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
                                    const LLUUID& directed_anim = LLUUID::null);
     void      setInstanceDirectedMirror(const LLUUID& id, bool enabled);
+    // [ClearAnim] Stop every animation on an entity clone and rest it in the neutral
+    // pose (Directed drive, no animation; AutoAnimate, authored gaze and an active
+    // walk are switched off). `before` receives what one undo step puts back.
+    struct ClearAnimBefore
+    {
+        LLUUID     mId;
+        EDriveMode mMode = DRIVE_MIRROR;
+        LLUUID     mAnim;
+        bool       mAutoAnimate = false;
+        bool       mAutoManual = false;                              // AutoAnimate manual (autonomous) mode
+        std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoPool;      // exported learning progress
+        bool       mGazeEnabled = false;
+        bool       mWasCleared = false;
+        std::shared_ptr<unsigned> mHotGazeToken;                     // parked Hot Gaze, RAII-owned (shared) by this snapshot
+        EDriveMode mFreezeDrive = DRIVE_MIRROR;                      // mDirectedMirrorFreezeDrive
+        ALGhostClearAnim::HeldPose mHeldPose;                        // Frozen only, keyed by joint name
+    };
+    // Refused (false) while the Poser or a Switchboard pose holds the clone posed.
+    bool      clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* before = nullptr);
+    bool      restoreInstanceAnimations(const ClearAnimBefore& before);
+    bool      isInstancePosed(const LLUUID& id) const;
+    // The Switchboard drives the clone body directly; it reports each explicit drive
+    // change here so Studio's drive / animation / cleared state is the body's real state.
+    // The Poser's temporary drive ownership is deliberately NOT reported.
+    void      adoptBodyDrive(LLGhostAvatar* ghost);
     void      refreshLifecycleStates();
     void      removeInstance(const LLUUID& id);
     S32       lockGroup(const std::vector<LLUUID>& ids,

@@ -12,6 +12,7 @@
 #include "aldirectoranimswitcher.h"
 
 #include "alghoststudio.h"      // ALGhostStudio::DRIVE_DIRECTED / LOOP_*
+#include "alghostclearanim.h"   // [ClearAnim] mayAutomate
 #include "fsposeranimator.h"
 #include "llagent.h"
 #include "llcontrolavatar.h"
@@ -51,6 +52,14 @@ F64 presentation_now()
 F32 finite_clamp(F32 value, F32 fallback, F32 minimum, F32 maximum)
 {
     return std::isfinite(value) ? llclamp(value, minimum, maximum) : fallback;
+}
+
+// [ClearAnim] Every Switchboard drive change on a clone body goes through here so Studio
+// adopts the body real drive / animation / cleared state (the Poser temporary drive does not).
+void drive_ghost(LLGhostAvatar* ghost, S32 mode, const LLUUID& anim)
+{
+    ghost->setEntityDriveMode(mode, anim);
+    ALGhostStudio::instance().adoptBodyDrive(ghost);
 }
 } // anonymous namespace
 
@@ -285,9 +294,11 @@ void ALDirectorAnimSwitcher::releasePoseFromAvatar(LLVOAvatar* av)
     }
     if (!av->isDead())
     {
-        if (LLGhostAvatar* ghost = dynamic_cast<LLGhostAvatar*>(av))
+        // [ClearAnim] Automatic cleanup leaves a cleared clone in its neutral pose.
+        if (LLGhostAvatar* ghost = dynamic_cast<LLGhostAvatar*>(av);
+            ghost && ALGhostClearAnim::mayAutomate(ghost->isEntityAnimationsCleared(), false))
         {
-            ghost->setEntityDriveMode(
+            drive_ghost(ghost,
                 ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
         }
     }
@@ -307,11 +318,20 @@ void ALDirectorAnimSwitcher::rewriteActorReferences(const LLUUID& old_id, const 
 }
 
 void ALDirectorAnimSwitcher::applySlotToAvatar(
-    LLVOAvatar* av, const Slot& slot, const Slot& prev)
+    LLVOAvatar* av, const Slot& slot, const Slot& prev, bool manual)
 {
     if (!av || av->isDead())
     {
         return;
+    }
+    // [ClearAnim] An armed schedule or auto cut never restarts a cleared clone. Only an
+    // explicit manual punch, the user picking an animation, ends the cleared state.
+    if (const LLGhostAvatar* cleared = dynamic_cast<LLGhostAvatar*>(av))
+    {
+        if (!ALGhostClearAnim::mayAutomate(cleared->isEntityAnimationsCleared(), manual))
+        {
+            return;
+        }
     }
 
     if (slot.mKind == KIND_POSE)
@@ -330,14 +350,14 @@ void ALDirectorAnimSwitcher::applySlotToAvatar(
             // FROZEN suppresses mirror/directed re-driving. It pauses the
             // controller, so a forced update below applies the loaded poser
             // targets once before the frozen controller holds that result.
-            ghost->setEntityDriveMode(
+            drive_ghost(ghost,
                 ALGhostStudio::DRIVE_FROZEN, LLUUID::null);
         }
         if (!was_posing && !mPoseAnimator.tryPosingAvatar(av))
         {
             if (ghost)
             {
-                ghost->setEntityDriveMode(
+                drive_ghost(ghost,
                     ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
             }
             LL_WARNS("DirectorAnimSwitcher")
@@ -359,7 +379,7 @@ void ALDirectorAnimSwitcher::applySlotToAvatar(
                 }
                 if (ghost)
                 {
-                    ghost->setEntityDriveMode(
+                    drive_ghost(ghost,
                         ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
                 }
             }
@@ -386,12 +406,12 @@ void ALDirectorAnimSwitcher::applySlotToAvatar(
                                                 : ALGhostStudio::LOOP_PLAY_ONCE);
             ghost->setEntityAnimTimeFactor(
                 llclamp(slot.mSpeed, SPEED_MIN, SPEED_MAX));
-            ghost->setEntityDriveMode(
+            drive_ghost(ghost,
                 ALGhostStudio::DRIVE_DIRECTED, slot.mAnimID);
         }
         else
         {
-            ghost->setEntityDriveMode(ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+            drive_ghost(ghost, ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
         }
         return;
     }
@@ -439,7 +459,9 @@ bool ALDirectorAnimSwitcher::applySlot(
     {
         for (LLVOAvatar* av : next_targets)
         {
-            if (av && !av->isDead() && canPoseAvatar(av))
+            const LLGhostAvatar* cleared = dynamic_cast<LLGhostAvatar*>(av);
+            if (av && !av->isDead() && canPoseAvatar(av) &&
+                !(cleared && !ALGhostClearAnim::mayAutomate(cleared->isEntityAnimationsCleared(), manual)))
             {
                 next_pose_targets.insert(av->getID());
             }
@@ -462,7 +484,7 @@ bool ALDirectorAnimSwitcher::applySlot(
 
     for (LLVOAvatar* av : next_targets)
     {
-        applySlotToAvatar(av, next, prev);
+        applySlotToAvatar(av, next, prev, manual);
     }
     mActiveSlot = slot;
     mActiveSlotConfig = next;
@@ -562,7 +584,11 @@ void ALDirectorAnimSwitcher::stopAll()
         }
         if (LLGhostAvatar* ghost = dynamic_cast<LLGhostAvatar*>(av))
         {
-            ghost->setEntityDriveMode(ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+            // [ClearAnim] Disarm cleanup does not restart a cleared clone.
+            if (ALGhostClearAnim::mayAutomate(ghost->isEntityAnimationsCleared(), false))
+            {
+                drive_ghost(ghost, ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+            }
         }
         else if (av && !av->isDead() &&
                  mActiveSlotConfig.mAnimID.notNull() &&

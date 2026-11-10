@@ -161,6 +161,18 @@ LLView* LLScrollColumnHeader::findSnapEdge(S32& new_edge_val, const LLCoordGL& m
     return this;
 }
 
+// Denominator of a column's proportional width. A list without the selected bar keeps the
+// original item-list width untouched; only an opted-in list (gutter > 0) uses the guarded
+// column-area width, which cannot reach zero during a narrow reshape.
+static F32 columnRelDenominator(LLScrollListCtrl* list)
+{
+    if (list->getSelectedBarGutter() > 0)
+    {
+        return (F32)llmax(1, list->getColumnAreaWidth());
+    }
+    return (F32)list->getItemListRect().getWidth();
+}
+
 void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)
 {
     S32 new_width = new_rect.getWidth();
@@ -189,7 +201,7 @@ void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)
                         columnp->setWidth(columnp->getWidth() + remaining_width);
                         if (columnp->mRelWidth > 0.f)
                         {
-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();
+                            columnp->mRelWidth = (F32)columnp->getWidth() / columnRelDenominator(mColumn->mParentCtrl);
                         }
                         // all padding went to this widget, we're done
                         break;
@@ -205,7 +217,7 @@ void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)
                         columnp->setWidth(columnp->getWidth() - llmin(columnp->getWidth() - MIN_COLUMN_WIDTH, delta_width));
                         if (columnp->mRelWidth > 0.f)
                         {
-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();
+                            columnp->mRelWidth = (F32)columnp->getWidth() / columnRelDenominator(mColumn->mParentCtrl);
                         }
                     }
 
@@ -233,7 +245,7 @@ void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)
         // update proportional spacing
         if (mColumn->mRelWidth > 0.f)
         {
-            mColumn->mRelWidth = (F32)new_width / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();
+            mColumn->mRelWidth = (F32)new_width / columnRelDenominator(mColumn->mParentCtrl);
         }
 
         // tell scroll list to layout columns again

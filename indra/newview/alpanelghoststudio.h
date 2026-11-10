@@ -82,6 +82,10 @@ public:
     static S32 playAnimationOnClonesRecorded(const std::vector<LLUUID>& ids,
                                              const LLUUID& asset_id,
                                              const std::string& anim_name);
+    // [ClearAnim] Clear animations on these clones (entity clones only) and record
+    // ONE undo step that restores each clone's drive mode, animation, AutoAnimate
+    // and gaze. Returns how many clones were cleared.
+    static S32 clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids);
 
 private:
     friend struct ALCloneRotationProbe;
@@ -139,7 +143,8 @@ private:
         S32 mNumSelected = -1;
         S32 mFirstIndex = -2;
         U64 mStamp = 0;                 // changes every time the cache is rebuilt
-        LLUUID mRow;                    // raw first-selected row value (group id for headers)
+        LLUUID mRow;                    // primary row value (group id for headers)
+        std::vector<LLUUID> mRows;      // every selected row value, in list order
         LLUUID mInstance;               // selectedInstance()
         std::vector<LLUUID> mInstances; // selectedInstances()
         bool mAnyGroup = false;
@@ -170,7 +175,10 @@ private:
     static ALPanelGhostStudio* sActiveHost;
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
-    LLUUID selectedListValue() const;   // raw row value (group id for headers)
+    // Primary row value (group id for headers): the last clicked row while it is still
+    // selected, otherwise the first selected row. The list may hold more selected rows.
+    LLUUID selectedListValue() const;
+    std::vector<LLUUID> selectedRowValues() const; // every selected row value, in list order
     LLUUID selectedUnitId() const;      // group header id, otherwise instance id
     std::vector<LLUUID> selectedInstances() const;
     std::vector<LLUUID> selectedUnitIds() const;
@@ -354,6 +362,7 @@ private:
     S32  mShownLookTarget = -1;         // look-target model values last formatted into mLookTargetCombo
     LLUUID mShownLookTargetId;
     U64  mStatusInstanceRev = 0;
+    U64  mStatusSelStamp = 0;           // selection().mStamp the Count readout last reflected
     // Legacy signatures, touched ONLY while GhostStudioRefreshAlways is on.
     std::string mListSig;
     std::string mSourceSig{"<unbuilt>"};
@@ -373,6 +382,7 @@ private:
     bool mRigDiagRefreshRequested = false;   // Refresh button: build once WITH live state
     LLUUID      mShownFor;          // instance the detail widgets were last loaded for
     U64         mObservedSelectionRevision = 0;
+    LLUUID      mPrimaryRow;        // [ListMultiSelect] last clicked row; see selectedListValue()
     bool        mEditMode = false;  // [R2-3] our transient edit tool is armed
     bool        mHintEdit = false;  // which hint string the header line shows
 
@@ -386,6 +396,8 @@ private:
     LLComboBox*       mCloneTypeCombo = nullptr;
     LLButton*         mAddBtn = nullptr;
     LLButton*         mDupBtn = nullptr;
+    LLButton*         mClearAnimBtn = nullptr;  // [ClearAnim] kit page only
+    void onClickClearAnimations();
     LLButton*         mDelBtn = nullptr;
     LLButton*         mRefreshBtn = nullptr;
     LLTextBox*        mTypeText = nullptr;

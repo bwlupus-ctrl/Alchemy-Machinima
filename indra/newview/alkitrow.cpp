@@ -617,6 +617,40 @@ void ALKitRow::layoutRow(S32 w)
     // The favorite star sits between the value column and the reset glyph, so it takes
     // track width and never narrows the label track.
     constexpr S32 kFavoriteW = 18;
+    if (mFillWidth && mMeta.kind == "list" && mControl)
+    {
+        // fill_width list: the list spans the whole card instead of the value track. Its label
+        // is a caption line above it; the star and reset glyph share that line on the right.
+        constexpr S32 kListCaptionH = 20, kListCaptionGap = 2;
+        const S32 height = heightForWidth(w);
+        reshape(w, height, true);
+        const S32 inner = llmax(1, w - 2 * ALKitStyle::ROW_INSET);
+        const S32 caption = mMeta.label.empty() ? 0 : kListCaptionH + kListCaptionGap;
+        const S32 right = w - ALKitStyle::ROW_INSET;
+        if (mLabel)
+        {
+            const S32 caption_width =
+                llmax(1, inner - ALKitStyle::RESET_W - kFavoriteW - 2 * ALKitStyle::COL_GAP);
+            mLabel->reshape(caption_width, kListCaptionH, true);
+            mLabel->setOrigin(ALKitStyle::ROW_INSET, height - kListCaptionH);
+            mLabel->setVisible(caption > 0);
+            fitLabel(caption_width);
+        }
+        if (mReset)
+        {
+            mReset->reshape(ALKitStyle::RESET_W, 20, true);
+            mReset->setOrigin(right - ALKitStyle::RESET_W, height - kListCaptionH);
+        }
+        if (mFavorite)
+        {
+            mFavorite->reshape(kFavoriteW, 18, true);
+            mFavorite->setOrigin(right - ALKitStyle::RESET_W - ALKitStyle::COL_GAP - kFavoriteW,
+                                 height - kListCaptionH + 1);
+        }
+        mControl->reshape(inner, llmax(1, height - caption), true);
+        mControl->setOrigin(ALKitStyle::ROW_INSET, 0);
+        return;
+    }
     const S32 h = heightForWidth(w);
     const S32 code_offset = mCodeReadout ? 12 : 0;
     const S32 value_width = mFillWidth && mMeta.kind == "toggle" ? 24 : ALKitStyle::VALUE_W;

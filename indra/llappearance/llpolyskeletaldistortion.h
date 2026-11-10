@@ -99,6 +99,8 @@ public:
     // LLVisualParam Virtual functions
     ///*virtual*/ bool              parseData(LLXmlTreeNode* node);
     /*virtual*/ void                apply( ESex sex );
+    // [ClearAnim] Adds the joint position offsets apply() has applied so far to `offsets`.
+    void                            addAppliedPositionOffsets(std::map<LLJoint*, LLVector3>& offsets) const;
 
     // LLViewerVisualParam Virtual functions
     /*virtual*/ F32                 getTotalDistortion() { return 0.1f; }

@@ -426,7 +426,10 @@ void FSFloaterPoser::releaseClonePoseDrive(const LLUUID& avatarId)
         return;
     auto* ghost = dynamic_cast<LLGhostAvatar*>(getAvatarByUuid(avatarId));
     // A Switchboard punch or Studio action may have taken over meanwhile.
+    // [ClearAnim] So may Clear animations: a cleared clone keeps its neutral
+    // pose, so releasing must not bring the earlier drive (and its stand) back.
     if (ghost && !ghost->isDead() &&
+        !ghost->isEntityAnimationsCleared() &&
         ghost->getEntityDriveMode() == ALGhostStudio::DRIVE_DIRECTED &&
         ghost->getEntityDirectedAnim().isNull())
     {

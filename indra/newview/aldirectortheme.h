@@ -281,6 +281,65 @@ namespace ALDirectorTheme
         return true;
     }
 
+    // Kit scroll lists: the selected row. The background is the accent blended into
+    // the row background, at the first strength that separates it from both the plain
+    // and the striped rows; an accent too close to the rows falls back to blending
+    // toward the text colour. The text is the theme's strong text when it reads on
+    // that background, otherwise black or white. director_theme_check.py carries the
+    // same rules and gates every theme, plain and inverted.
+    inline constexpr F32 kListSelectionMinBg = 1.8f;
+    inline constexpr F32 kListSelectionMinText = 4.5f;
+    inline constexpr F32 kListSelectionStrengths[] = { 0.45f, 0.6f, 0.75f, 0.9f, 1.f };
+
+    struct ListSelection
+    {
+        LLColor4 bg;
+        LLColor4 fg;
+        bool     ok = false; // false: no candidate met both minimums (bg/fg are the last tried)
+    };
+
+    inline LLColor4 mixOpaque(const LLColor4& from, const LLColor4& to, F32 amount)
+    {
+        LLColor4 out;
+        for (S32 i = 0; i < 3; ++i)
+        {
+            out.mV[i] = from.mV[i] + (to.mV[i] - from.mV[i]) * amount;
+        }
+        out.mV[3] = 1.f;
+        return out;
+    }
+
+    inline bool listSelectionPasses(const LLColor4& bg, const LLColor4& fg,
+                                    const LLColor4& row_bg, const LLColor4& stripe_bg)
+    {
+        return contrastRatio(bg, row_bg) >= kListSelectionMinBg &&
+               contrastRatio(bg, stripe_bg) >= kListSelectionMinBg &&
+               contrastRatio(fg, bg) >= kListSelectionMinText;
+    }
+
+    inline ListSelection listSelectionColors(const LLColor4& accent, const LLColor4& row_bg,
+                                             const LLColor4& stripe_bg, const LLColor4& text)
+    {
+        ListSelection out;
+        const LLColor4 black(0.f, 0.f, 0.f, 1.f), white(1.f, 1.f, 1.f, 1.f);
+        const LLColor4 strong(text.mV[0], text.mV[1], text.mV[2], 1.f);
+        for (const LLColor4* toward : { &accent, &strong })
+        {
+            for (const F32 strength : kListSelectionStrengths)
+            {
+                out.bg = mixOpaque(row_bg, *toward, strength);
+                out.fg = contrastRatio(strong, out.bg) >= kListSelectionMinText ? strong
+                       : contrastRatio(black, out.bg) >= contrastRatio(white, out.bg) ? black : white;
+                if (listSelectionPasses(out.bg, out.fg, row_bg, stripe_bg))
+                {
+                    out.ok = true;
+                    return out;
+                }
+            }
+        }
+        return out;
+    }
+
     // Byte-size cap, checked before the file is parsed. Returns "" when within the cap.
     inline std::string checkFileSize(std::size_t bytes)
     {

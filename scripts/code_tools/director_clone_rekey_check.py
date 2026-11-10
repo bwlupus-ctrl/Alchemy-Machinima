@@ -123,6 +123,7 @@ struct LLActorMover {
  static bool rewriteGazeTarget(GazeTarget&,const LLUUID&,const LLUUID&);
  struct HotGaze{struct State{double mRelease=-1;void release(double t){mRelease=t;}}mState;DirectorGaze mPaint;GazeTarget mTarget;};
  std::map<LLUUID,HotGaze> mHotGazes;
+ struct{void migrate(const LLUUID&,const LLUUID&){} template<class F>void forEach(F&&){}} mParkedHotGazes; // [ClearAnim] store stand-in; its rules are covered by alghostclearanim_test
  void restoreDirectorLookAtPose(LLVOAvatar*,DirectorGaze&){}
  void rewriteHotGazeReferences(const LLUUID&,const LLUUID&);
  bool rewriteActorReferences(const LLUUID&,const LLUUID&);

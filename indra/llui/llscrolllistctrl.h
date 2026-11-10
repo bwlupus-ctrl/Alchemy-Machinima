@@ -313,6 +313,16 @@ public:
     void setBgWriteableColor(const LLColor4 &c) { mBgWriteableColor = c; }
     void setReadOnlyBgColor(const LLColor4 &c)  { mBgReadOnlyColor = c; }
     void setBgSelectedColor(const LLColor4 &c)  { mBgSelectedColor = c; }
+    // Optional bar on the left edge of selected rows. Width 0 (the default) draws none
+    // and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px
+    // so the bar never paints over the first cell, and (b) keeps the plain selected fill
+    // on a selected row that is also highlighted, so the selected text colour chosen for
+    // that fill stays readable (the default blends the fill with the highlight colour).
+    // The gutter also moves hit testing / hover / tooltips, cell rects, header positions and the
+    // width the columns share (llscrolllistgutter.h); a list without the bar is unchanged.
+    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; mColumnsDirty = true; }
+    S32  getSelectedBarGutter() const { return mSelectedBarWidth > 0 ? mSelectedBarWidth + 1 : 0; }
+    S32  getColumnAreaWidth() const;   // item list width minus the gutter
     void setBgStripeColor(const LLColor4& c)    { mBgStripeColor = c; }
     void setFgSelectedColor(const LLColor4 &c)  { mFgSelectedColor = c; }
     void setFgUnselectedColor(const LLColor4 &c){ mFgUnselectedColor = c; }
@@ -553,6 +563,8 @@ private:
     LLUIColor       mBgWriteableColor;
     LLUIColor       mBgReadOnlyColor;
     LLUIColor       mBgSelectedColor;
+    LLColor4        mSelectedBarColor;
+    S32             mSelectedBarWidth = 0;
     LLUIColor       mBgStripeColor;
     LLUIColor       mFgSelectedColor;
     LLUIColor       mFgUnselectedColor;

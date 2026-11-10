@@ -145,7 +145,7 @@ std::string LLScrollListItem::getContentsCSV() const
 }
 
 
-void LLScrollListItem::draw(const LLRect& rect, const LLColor4& fg_color, const LLColor4& hover_color, const LLColor4& select_color, const LLColor4& highlight_color, S32 column_padding)
+void LLScrollListItem::draw(const LLRect& rect, const LLColor4& fg_color, const LLColor4& hover_color, const LLColor4& select_color, const LLColor4& highlight_color, S32 column_padding, S32 left_gutter)
 {
     // draw background rect
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
@@ -161,7 +161,8 @@ void LLScrollListItem::draw(const LLRect& rect, const LLColor4& fg_color, const 
         gl_rect_2d(bg_rect, hover_color);
     }
 
-    S32 cur_x = rect.mLeft;
+    // The row fill covers the whole rect; cells start after the caller's gutter.
+    S32 cur_x = rect.mLeft + left_gutter;
     S32 num_cols = getNumColumns();
     S32 cur_col = 0;
 
