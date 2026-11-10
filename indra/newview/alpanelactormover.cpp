@@ -202,6 +202,21 @@ uuid_vec_t ALPanelActorMover::selectedTargets() const
     return mSelected;
 }
 
+uuid_vec_t ALPanelActorMover::effectiveTargets() const
+{
+    static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);
+    if (sync && !(mKitPage && mKitPage->whoPinned()))
+    {
+        uuid_vec_t everyone = LLActorMover::getRoster();
+        if (everyone.empty())
+        {
+            everyone.push_back(gAgentID);   // startAll() drives You when nobody is listed
+        }
+        return everyone;
+    }
+    return selectedTargets();
+}
+
 void ALPanelActorMover::onClickWalk()
 {
     static LLCachedControl<bool> sync(gSavedSettings, "ActorMoverSync", true);

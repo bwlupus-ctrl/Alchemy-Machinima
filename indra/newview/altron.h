@@ -39,6 +39,7 @@
 #include <string>
 #include <vector>
 
+#include "lluuid.h"
 #include "stdtypes.h"
 #include "v3color.h"
 #include "v3dmath.h"
@@ -46,6 +47,10 @@
 
 namespace ALTron
 {
+    // Director tag highlight: the actors the trail sampler really selected, as recorded at its
+    // last sample (frame = LLFrameTimer frame count). False until it has ever sampled.
+    bool recordedTrailActors(const std::vector<LLUUID>*& ids, U32& frame);
+
     // [TronT1] Raw TronEnabled read, no other gating. Used where a consumer
     // specifically wants "the Tron master switch is on" regardless of
     // whether grade/grid are individually enabled -- e.g. the Rig Rim Tron

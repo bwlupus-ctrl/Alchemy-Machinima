@@ -11,10 +11,12 @@
 
 #include "alghostnameplates.h"
 
+#include "aldirectortagtargets.h"
 #include "llagent.h"
 #include "llfontgl.h"
 #include "llhudnametag.h"
 #include "llhudobject.h"
+#include "llstring.h"
 #include "llviewercamera.h"
 
 #include <set>
@@ -49,7 +51,6 @@ ALGhostNameplates::Entry* ALGhostNameplates::getOrCreate(const LLUUID& key)
     tag->setTextAlignment(LLHUDNameTag::ALIGN_TEXT_CENTER);
     tag->setVertAlignment(LLHUDNameTag::ALIGN_VERT_TOP);
     tag->setVisibleOffScreen(false);
-    tag->setMaxLines(1);
     // Source-less HUD tags skip LLHUDNameTag's ordinary distance update, so
     // fading is applied explicitly in update() below.
     tag->setDoFade(false);
@@ -68,6 +69,9 @@ void ALGhostNameplates::update(
     std::set<LLUUID> wanted;
     const LLVector3 camera = LLViewerCamera::getInstance()->getOrigin();
     const LLVector3 forward = LLViewerCamera::getInstance()->getAtAxis();
+    ALDirectorTagTargets& targets = ALDirectorTagTargets::instance();
+    const bool highlight_enabled = targets.highlightEnabled();
+    static const std::string no_group;
 
     if (visible)
     {
@@ -101,21 +105,54 @@ void ALGhostNameplates::update(
                 : llclamp(1.f -
                     (distance - GHOST_NAMEPLATE_DISTANCE) /
                     GHOST_NAMEPLATE_FADE_RANGE, 0.f, 1.f);
-            LLColor4 color = label.mSelected
+            // The yellow selected text gives way ONLY on a plate that really gets the
+            // background highlight; every other selected plate keeps it exactly as before.
+            const bool highlighted = highlight_enabled && label.mHighlighted;
+            LLColor4 color = label.mSelected && !highlighted
                 ? LLColor4(1.f, 0.82f, 0.2f, 1.f) : label.mColor;
             color.mV[VALPHA] *= fade;
             tag->setPositionAgent(label.mPositionAgent);
             // [GhostPanelPerf] setString() snapshots the current color into its text
             // segments AND re-tokenises/re-measures the text, so apply both only
             // when the text or colour changed (rename / selection / fade).
+            const std::string& group_line = label.mGroupLine ? *label.mGroupLine : no_group;
             if (!entry->mApplied || entry->mText != label.mText ||
-                entry->mColor != color)
+                entry->mGroupLine != group_line || entry->mColor != color)
             {
                 tag->setColor(color);
-                tag->setString(label.mText);
+                // Names and Director labels are user text: no control character or newline
+                // may split a plate line. Every line uses the tag's own font, one line each
+                // (ellipsis, never wrapped), and the tag's default line limit stays untouched.
+                std::string name = label.mText;
+                LLStringFn::replace_ascii_controlchars(name, LL_UNKNOWN_CHAR);
+                tag->clearString();
+                if (!group_line.empty())
+                {
+                    std::string group = group_line;
+                    LLStringFn::replace_ascii_controlchars(group, LL_UNKNOWN_CHAR);
+                    tag->addLine(group, color, LLFontGL::NORMAL, nullptr, true);
+                }
+                tag->addLine(name, color, LLFontGL::NORMAL, nullptr, true);
                 entry->mText = label.mText;
+                entry->mGroupLine = group_line;
                 entry->mColor = color;
                 entry->mApplied = true;
+            }
+            // Colour-only: a highlight change never rebuilds the text.
+            switch (ALTagHighlight::overrideAction(
+                        highlighted,
+                        tag->hasBackgroundOverride(), tag->backgroundOverrideStamp(),
+                        targets.styleStamp()))
+            {
+            case ALTagHighlight::OverrideAction::APPLY:
+                tag->setBackgroundOverride(targets.style().background,
+                                           targets.style().text, targets.styleStamp());
+                break;
+            case ALTagHighlight::OverrideAction::CLEAR:
+                tag->clearBackgroundOverride();
+                break;
+            case ALTagHighlight::OverrideAction::KEEP:
+                break;
             }
             tag->setHidden(false);
         }

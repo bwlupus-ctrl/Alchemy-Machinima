@@ -8198,6 +8198,17 @@
       <key>Value</key>
       <real>1.0</real>
     </map>
+    <key>DirectorTagHighlight</key>
+    <map>
+      <key>Comment</key>
+      <string>Highlight the name tags of whoever the open Director page acts on: tag background in the Director theme accent. Also replaces the yellow selected-clone tag text. Local only; not saved in scenes.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
     <key>DirectorTheme</key>
     <map>
       <key>Comment</key>

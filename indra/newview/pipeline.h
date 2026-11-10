@@ -2104,6 +2104,15 @@ public:
         U64       mLastCutSerial = 0;            // ALDirectorSwitcher::cutSerial() at last resolve
     };
     RotoInkSubjectState         mRotoInkSubject;
+    // Director tag highlight: who the renderer actually affected, recorded at render time.
+    struct DirectorTagRecord
+    {
+        std::vector<LLUUID> mIds;       // capacity is reused; no per-frame allocation once warm
+        U32  mFrame = 0;               // LLFrameTimer frame of the last record
+        bool mRecorded = false;
+    };
+    DirectorTagRecord           mRotoInkTagRecord;      // Roto Ink subject isolation (modes 1/2/5/6 subject, 3 target set)
+    DirectorTagRecord           mTronSubjectTagRecord;  // Tron subject mask target set
 
     // [RotoInk Speed] Accumulated Rotoscope Ink animation clock (seconds),
     // driving ROTO_MOTION2.y instead of the raw presentation-time clock so
@@ -2191,10 +2200,22 @@ public:
     // instead of this function reading CineOutlineSubjectTarget internally,
     // so a Tron call no longer silently follows Roto's single-subject
     // selection.
+    // out_selected_ids (optional): receives the id of every target actually written to
+    // out_targets / out_targets2, i.e. after collect, cull, sort, cap, smoothing and the final
+    // projection (a target the projection rejects is not reported). Rendering behaviour is
+    // identical either way; the Director tag highlight uses it.
     S32 gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
                               F32 depth_range, S32 subject_target_setting,
                               const F32* mv, const F32* proj,
-                              LLVector4* out_targets, LLVector4* out_targets2);
+                              LLVector4* out_targets, LLVector4* out_targets2,
+                              std::vector<LLUUID>* out_selected_ids = nullptr);
+    // Director tag highlight: only the main view pass may write the records. True when the render
+    // target is the main one and none of these is active: gSnapshot, gCubeSnapshot (360 faces,
+    // reflection/cube passes), gSnapshotNoPost, sRenderingHUDs, sImpostorRender, sPrismLensRender,
+    // sPrismPreviewRender. The physical-sensor Roto overlay call is a main-view pass and records.
+    bool isTagRecordView() const;
+    const DirectorTagRecord& getRotoInkTagRecord() const { return mRotoInkTagRecord; }
+    const DirectorTagRecord& getTronSubjectTagRecord() const { return mTronSubjectTagRecord; }
 
     // Night Mask: per-frame resolved state, shared verbatim between
     // generateLuminance() (B1 bloom-metering fix) and applyOnLensFilters()

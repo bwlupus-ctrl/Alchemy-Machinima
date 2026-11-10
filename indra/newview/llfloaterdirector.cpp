@@ -14,7 +14,9 @@
 
 #include "aldirectortabmigration.h"
 #include "aldirectorqol.h"
+#include "aldirectortagtargets.h"
 #include "aldirectortheme.h"
+#include "alpanelghoststudio.h"
 #include "aldirectoralloff.h"
 #include "alsettingsundohistory.h"
 #include "alcameracurve.h"
@@ -45,6 +47,7 @@
 #include "alpanelanimpreview.h"     // embedded shared preview pane + own-avatar controls
 #include "alpanelcinecamparams.h"   // embedded shared panel (scene preset hooks)
 #include "alpanellensgaze.h"
+#include "alpanelavatarlightresponse.h"
 #include "alpanelpatheditor.h"      // embedded shared Actor Pathing editor
 #include "alpanelsteppedanim.h"
 #include "alsteppedanim.h"
@@ -1280,6 +1283,8 @@ LLFloaterDirector::LLFloaterDirector(const LLSD& key)
 LLFloaterDirector::~LLFloaterDirector()
 {
     ALAvatarSubjectPicker::cancelFor(this);
+    // Destroyed without onClose (LLFloaterReg::destroyInstance): never leave a highlight behind.
+    ALDirectorTagTargets::instance().withdraw(this);
     if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->die();
     if (LLContextMenu* menu = mGroupPickerMenu.get()) menu->die();
     if (sRecoveryDirectorHandle.get() == this)
@@ -1304,6 +1309,7 @@ LLFloaterDirector::~LLFloaterDirector()
 void LLFloaterDirector::onClose(bool app_quitting)
 {
     ALAvatarSubjectPicker::cancelFor(this);
+    ALDirectorTagTargets::instance().withdraw(this);
     if (mShell) mShell->closeActorChooser();
     if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->hide();
     if (LLContextMenu* menu = mGroupPickerMenu.get()) menu->hide();
@@ -1327,10 +1333,19 @@ void LLFloaterDirector::onFocusLost()
     LLFloater::onFocusLost();
 }
 
+void LLFloaterDirector::setVisible(bool visible)
+{
+    if (!visible)
+        ALDirectorTagTargets::instance().withdraw(this);    // hidden without close or draw: no lingering highlight
+    LLFloater::setVisible(visible);
+}
+
 void LLFloaterDirector::setMinimized(bool minimized)
 {
     if (minimized && mShell)
         mShell->setSearchPopupArmed(nullptr, false);
+    if (minimized)
+        ALDirectorTagTargets::instance().withdraw(this);
     LLFloater::setMinimized(minimized);
 }
 
@@ -3791,6 +3806,128 @@ void LLFloaterDirector::refreshLauncherCards()
     }
 }
 
+namespace
+{
+// The panel class that hosts a kit page: the page itself or the nearest ancestor of that type.
+template <class Panel>
+Panel* hostPanelOf(LLView* page)
+{
+    for (LLView* view = page; view; view = view->getParent())
+        if (Panel* panel = dynamic_cast<Panel*>(view)) return panel;
+    return nullptr;
+}
+}
+
+// Who the visible page would act on, for the name-tag highlight. Publishes at 10 Hz, only
+// while this v2 Director is visible and not minimized and the setting is on; every other state
+// withdraws (only the publishing instance can), and the resolver's heartbeat withdraws by
+// itself if this ever stops running. A v1 or shell-less instance never touches the highlight.
+void LLFloaterDirector::refreshTagHighlight()
+{
+    if (!mIsV2 || !mShell)
+    {
+        return;
+    }
+    ALDirectorTagTargets& targets = ALDirectorTagTargets::instance();
+    if (isMinimized() || !getVisible() || !targets.highlightEnabled())
+    {
+        targets.withdraw(this);
+        return;
+    }
+    // The heartbeat follows every draw; the ids and colours are republished at 10 Hz.
+    targets.touch(this);
+    if (!mTagHighlightClock.due())
+    {
+        return;
+    }
+    ALKitPage* page = mShell->currentKitPage();
+    const ALTagHighlight::PageTarget kind = page
+        ? ALTagHighlight::pageTarget(page->pageKey()) : ALTagHighlight::PageTarget::NONE;
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    uuid_vec_t& ids = mTagTargetScratch;
+    ids.clear();
+    // An actor is known by its Cast id, and a clone also by its runtime and Studio ids (a
+    // clone's tag is keyed by the Studio id): every identity goes in. Self is normalised in
+    // ONE place (ALDirectorTagTargets::canonicalId): null and the agent id are both You.
+    const auto add_actor = [&ids, &studio](const LLUUID& id)
+    {
+        const LLUUID actor = ALDirectorTagTargets::canonicalId(id);
+        ids.push_back(actor);
+        const ALGhostStudio::Instance* clone = studio.getInstance(actor);
+        if (!clone) clone = studio.findInstanceByRuntime(actor);
+        if (clone)
+        {
+            ids.push_back(clone->mId);
+            ids.push_back(clone->mEntityId);
+        }
+    };
+    switch (kind)
+    {
+    case ALTagHighlight::PageTarget::ACTOR_BAR:
+        // Clear means "page defaults apply", and these pages default to You.
+        add_actor(cast.getActiveActorId());
+        break;
+    case ALTagHighlight::PageTarget::GAZE:
+        // The actors the Gaze rows really write to: the actor, a chosen Director group or All.
+        if (mGazePanel)
+            for (const LLUUID& id : mGazePanel->editActors()) add_actor(id);
+        break;
+    case ALTagHighlight::PageTarget::MOVE:
+        // Walk / Stop: Everyone, the pinned Who, or the roster selection.
+        if (mMoverPanel)
+            for (const LLUUID& id : mMoverPanel->effectiveTargets()) add_actor(id);
+        break;
+    case ALTagHighlight::PageTarget::MANAGED_GROUP:
+    {
+        // No group selected means nobody (an empty name must never select the ungrouped).
+        const std::string group = selectedManagedGroup();
+        if (!group.empty())
+            for (const LLUUID& id : cast.membersInGroup(group)) add_actor(id);
+        break;
+    }
+    case ALTagHighlight::PageTarget::CLONES:
+        // This Director's own Clones panel, not whichever host was used last.
+        if (ALPanelGhostStudio* host = hostPanelOf<ALPanelGhostStudio>(page))
+        {
+            mTagSelectionScratch.clear();
+            host->appendSelectedInstances(mTagSelectionScratch);
+            for (const LLUUID& id : mTagSelectionScratch) add_actor(id);
+        }
+        break;
+    case ALTagHighlight::PageTarget::LIGHT_RIG:
+        // The rig being edited, after resolution: the people it really lights.
+        if (ALCineLightRigManager::instanceExists())
+        {
+            // The manager owns a fixed rig array and selected() clamps to a valid rig, so
+            // there is no zero-rig state; bind the reference before iterating its members.
+            ALCineLightRigManager& rigs = ALCineLightRigManager::instance();
+            const ALCineLightRig& rig = rigs.selected();
+            // An off rig, or one that is not lighting anyone, publishes nobody (its snapshot may be stale).
+            if (rigs.isSlotLit(rigs.selectedSlot()))
+                for (const LLUUID& id : rig.lastResolvedMembers()) add_actor(id);
+        }
+        break;
+    case ALTagHighlight::PageTarget::LIGHT_ACTORS:
+        if (ALPanelAvatarLightResponse* panel = hostPanelOf<ALPanelAvatarLightResponse>(page))
+            for (const LLUUID& id : panel->selectedKeys()) add_actor(id);
+        break;
+    case ALTagHighlight::PageTarget::ROTO:
+    case ALTagHighlight::PageTarget::TRON:
+    case ALTagHighlight::PageTarget::SHADOWS:
+        // Their own subject selectors / target sets, resolved the way the renderer does
+        // (cull, sort, cap), then through add_actor like every other target.
+        mTagSelectionScratch.clear();
+        ALDirectorTagTargets::appendSubjectTargets(kind, mTagSelectionScratch);
+        for (const LLUUID& id : mTagSelectionScratch) add_actor(id);
+        break;
+    case ALTagHighlight::PageTarget::NONE:
+        break;
+    }
+    // The live theme accent: follows Theme and Invert (the colour table node is shared).
+    targets.publish(this, ids, ALKitStyle::color(ALKitStyle::ACCENT).get());
+}
+
 void LLFloaterDirector::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
@@ -3810,6 +3947,7 @@ void LLFloaterDirector::draw()
     refreshPrismDependents();
     refreshLauncherCards();
     refreshStatusStrip();
+    refreshTagHighlight();
     if (mIsV2 && isBackgroundVisible())
     {
         static LLCachedControl<F32> background_opacity(gSavedSettings, "DirectorBackgroundOpacity", 1.f);

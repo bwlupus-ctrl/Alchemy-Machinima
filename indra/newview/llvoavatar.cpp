@@ -30,6 +30,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alavataranimspeed.h"
+#include "aldirectortagtargets.h"   // Director tag highlight + group label
 
 #include <functional>
 #include "alsteppedanimruntime.h"
@@ -3683,6 +3684,35 @@ void LLVOAvatar::idleUpdateNameTag(const LLVector3& root_pos_last)
 
     idleUpdateNameTagText(new_name);
     idleUpdateNameTagAlpha(new_name, alpha);
+    idleUpdateNameTagHighlight();
+}
+
+// Director page-aware highlight. The tag itself remembers whether it carries an override, so a
+// recreated tag starts clean and a tag that is no longer wanted is always cleared.
+void LLVOAvatar::idleUpdateNameTagHighlight()
+{
+    if (!mNameText)
+    {
+        return;
+    }
+    ALDirectorTagTargets& targets = ALDirectorTagTargets::instance();
+    // A chat bubble is not a name tag: leave its colours alone while it shows.
+    // Same rule as the Director group line: never light a name RLV hides (non-self).
+    const bool wanted = !mVisibleChat && targets.isHighlighted(getID()) &&
+        (isSelf() || RlvActions::canShowName(RlvActions::SNC_DEFAULT, getID()));
+    switch (ALTagHighlight::overrideAction(wanted, mNameText->hasBackgroundOverride(),
+                                           mNameText->backgroundOverrideStamp(), targets.styleStamp()))
+    {
+    case ALTagHighlight::OverrideAction::APPLY:
+        mNameText->setBackgroundOverride(targets.style().background, targets.style().text,
+                                         targets.styleStamp());
+        break;
+    case ALTagHighlight::OverrideAction::CLEAR:
+        mNameText->clearBackgroundOverride();
+        break;
+    case ALTagHighlight::OverrideAction::KEEP:
+        break;
+    }
 }
 
 void LLVOAvatar::idleUpdateNameTagText(bool new_name)
@@ -3701,6 +3731,12 @@ void LLVOAvatar::idleUpdateNameTagText(bool new_name)
 // [RLVa:KB] - Checked: RLVa-2.0.1
     bool fRlvShowAvName = RlvActions::canShowName(RlvActions::SNC_DEFAULT, getID());
 // [/RLVa:KB]
+    // A Director group replaces the SL group title in this tag, locally only. Revision-cached
+    // in the resolver: a lookup, never string building. Independent of RenderGroupTitles, but
+    // never shown on a name RLV hides (a revealing label above an anonymised avatar).
+    static const std::string no_director_group;
+    const std::string& director_group = (fRlvShowAvName || isSelf())
+        ? ALDirectorTagTargets::instance().groupLabel(getID()) : no_director_group;
     bool is_away = mSignaledAnimations.find(ANIM_AGENT_AWAY)  != mSignaledAnimations.end();
     bool is_do_not_disturb = mSignaledAnimations.find(ANIM_AGENT_DO_NOT_DISTURB) != mSignaledAnimations.end();
     bool is_appearance = mSignaledAnimations.find(ANIM_AGENT_CUSTOMIZE) != mSignaledAnimations.end();
@@ -3784,6 +3820,7 @@ void LLVOAvatar::idleUpdateNameTagText(bool new_name)
         || new_name
         || (!title && !mTitle.empty())
         || (title && mTitle != title->getString())
+        || director_group != mNameDirectorGroup
         || is_away != mNameAway
         || is_do_not_disturb != mNameDoNotDisturb
         || is_muted != mNameMute
@@ -3844,9 +3881,18 @@ void LLVOAvatar::idleUpdateNameTagText(bool new_name)
         bool render_title = (sRenderGroupTitles == RENDER_GROUP_TITLE_ALWAYS) ||
                             (isSelf() && (sRenderGroupTitles == RENDER_GROUP_TITLE_SELF));
 
+        if (!director_group.empty())
+        {
+            // The Director's own label: shown whenever the avatar is in a Director group, even
+            // with SL group titles hidden. The SL title returns when the group does.
+            std::string group_str = director_group;
+            LLStringFn::replace_ascii_controlchars(group_str, LL_UNKNOWN_CHAR);
+            addNameTagLine(group_str, name_tag_color, LLFontGL::NORMAL,
+                LLFontGL::getFontSansSerifSmall(), true);
+        }
 //      if (render_title && title && title->getString() && title->getString()[0] != '\0')
 // [RLVa:KB] - Checked: RLVa-1.2.2
-        if (render_title && fRlvShowAvName
+        else if (render_title && fRlvShowAvName
             && title && title->getString() && title->getString()[0] != '\0')
 // [/RLVa:KB]
         {
@@ -3929,6 +3975,7 @@ void LLVOAvatar::idleUpdateNameTagText(bool new_name)
         mTypingLast = is_typing;
         mDistanceString = distance_string;
         mTitle = title ? title->getString() : "";
+        mNameDirectorGroup = director_group;
         mNameTagColor = name_tag_color;
         LLStringFn::replace_ascii_controlchars(mTitle,LL_UNKNOWN_CHAR);
         new_name = true;

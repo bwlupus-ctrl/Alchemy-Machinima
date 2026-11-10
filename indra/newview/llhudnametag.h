@@ -112,6 +112,13 @@ public:
     void setFont(const LLFontGL* font);
     void setColor(const LLColor4 &color);
     void setAlpha(F32 alpha);
+    // Per-tag background override (Director tag highlight). Only a tag given an override
+    // draws it; every other tag draws exactly as before. The text colour replaces each
+    // line's RGB at draw time (alpha is kept), so no text rebuild is needed.
+    void setBackgroundOverride(const LLColor4& background, const LLColor4& text, U64 stamp);
+    void clearBackgroundOverride();
+    bool hasBackgroundOverride() const { return mHasBackgroundOverride; }
+    U64  backgroundOverrideStamp() const { return mBackgroundOverrideStamp; }
     void setZCompare(const bool zcompare);
     void setDoFade(const bool do_fade);
     void setVisibleOffScreen(bool visible) { mVisibleOffScreen = visible; }
@@ -182,6 +189,10 @@ private:
     EVertAlignment  mVertAlignment;
     S32             mLOD;
     bool            mHidden;
+    bool            mHasBackgroundOverride;
+    U64             mBackgroundOverrideStamp;
+    LLColor4        mBackgroundOverride;
+    LLColor4        mBackgroundOverrideText;
     LLPointer<LLUIImage> mRoundedRectImgp;
     LLPointer<LLUIImage> mRoundedRectTopImgp;
 

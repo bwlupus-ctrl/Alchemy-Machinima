@@ -18686,10 +18686,17 @@ void LLPipeline::collectRotoInkCandidates(S32 target_set, S32 subject_target_set
     }
 }
 
+bool LLPipeline::isTagRecordView() const
+{
+    return mRT == &mMainRT && !gSnapshot && !gCubeSnapshot && !gSnapshotNoPost &&
+        !sRenderingHUDs && !sImpostorRender && !sPrismLensRender && !sPrismPreviewRender;
+}
+
 S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellipse_scale,
                                       F32 depth_range, S32 subject_target_setting,
                                       const F32* mv, const F32* proj,
-                                      LLVector4* out_targets, LLVector4* out_targets2)
+                                      LLVector4* out_targets, LLVector4* out_targets2,
+                                      std::vector<LLUUID>* out_selected_ids)
 {
     // [TronT0] Pure-move refactor: candidate collection now lives in
     // collectRotoInkCandidates() (above).
@@ -19096,6 +19103,10 @@ S32 LLPipeline::gatherRotoInkTargets(S32 target_set, S32 max_targets, F32 ellips
 
         out_targets[count]  = LLVector4(cx, cy, rx, ry);
         out_targets2[count] = LLVector4(z, slab_half, (F32)(c.mPaletteIdx % 8), 1.f);
+        if (out_selected_ids)
+        {
+            out_selected_ids->push_back(c.mId);     // Director tag highlight: exactly the targets output
+        }
         ++count;
         if (count >= 16)
         {
@@ -19271,6 +19282,11 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     // buffer, so it should be exposed like any other surface rather than
     // inverse-compensated against the tonemapper's exposure.
     const bool is_scene_layer = (camera_modelview != nullptr);
+    // Director tag highlight: only the main view pass records (see isTagRecordView()). With the
+    // physical sensor chain on and the Overlay layer, the sensor_overlay call is that main-view
+    // Roto output (sensor_context already requires the main view); exactly one Roto pass runs
+    // per frame, so it records from whichever call site resolveRotoInkLayer() picked.
+    const bool tag_view = isTagRecordView();
     const F32* subject_modelview_src  = camera_modelview  ? camera_modelview  : gGLLastModelView;
     const F32* subject_projection_src = camera_projection ? camera_projection : gGLLastProjection;
 
@@ -19510,6 +19526,13 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
     F32  focusZ = subject_manual_depth;
     F32  cx = 0.5f, cy = 0.5f, rx = 0.2f, ry = 0.35f;
     bool ellipse_valid = false;
+    // Director tag highlight: record who this render really isolates (empty = nobody).
+    if (tag_view)
+    {
+        mRotoInkTagRecord.mIds.clear();
+        mRotoInkTagRecord.mFrame = LLFrameTimer::getFrameCount();
+        mRotoInkTagRecord.mRecorded = true;
+    }
     {
         LLDirectorCast& cast = LLDirectorCast::instance();
         LLVOAvatar* avatar = nullptr;
@@ -19534,6 +19557,10 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
 
             if (raw_center.isFinite() && raw_half.isFinite())
             {
+                if (tag_view && (subject_mode == 1 || subject_mode == 2 || subject_mode == 5 || subject_mode == 6))
+                {
+                    mRotoInkTagRecord.mIds.push_back(avatar->getID());    // Director tag highlight
+                }
                 LLViewerRegion* region = gAgent.getRegion();
                 const U64 region_handle = region ? region->getHandle() : 0;
                 const F64 now = LLPresentationTime::currentFrame().presentation_time;
@@ -19706,7 +19733,8 @@ void LLPipeline::renderCineOutline(LLRenderTarget* dst, const F32* camera_modelv
                                              subject_ellipse_scale, subject_depth_range,
                                              subject_target_setting(),
                                              subject_modelview_src, subject_projection_src,
-                                             roto_target_cells, roto_target_cells2);
+                                             roto_target_cells, roto_target_cells2,
+                                             tag_view ? &mRotoInkTagRecord.mIds : nullptr);
     }
 
     // [RotoInk Anim] Mode-dependent ROTO_SUBJECT.y/z + ROTO_SUBJECT2/3
@@ -20239,10 +20267,28 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
         // gatherRotoInkTargets() read CineOutlineSubjectTarget internally --
         // otherwise Tron's target_set==0 mask would silently follow Roto
         // Ink's subject choice.
+        // Director tag highlight: record what Tron really consumed, main view only. The mask
+        // targets count where the mask is consumed (exclude / keep / rim); the anchors where the
+        // radius path consumes them.
+        const bool tag_view = isTagRecordView();
+        // The shader reads the subject mask in: the dark grade's keep-subject term (strength > 0),
+        // the grid / trace surface fade (grid on with intensity > 0, or trace on) through the
+        // exclude slider, and the rim. The radius anchors only feed that same surface fade.
+        const bool surface_consumer = (grid_on && grid_intensity > 0.f) || trace_on;
+        const bool mask_consumed = (grade_strength > 0.f && grade_keep_subject > 0.f) ||
+            (surface_consumer && grid_subject_exclude > 0.f) || rim_on;
+        const bool anchors_consumed = surface_consumer && grid_subject_radius > 0.f;
+        if (tag_view)
+        {
+            mTronSubjectTagRecord.mIds.clear();
+            mTronSubjectTagRecord.mFrame = LLFrameTimer::getFrameCount();
+            mTronSubjectTagRecord.mRecorded = true;
+        }
         target_count = gatherRotoInkTargets(subject_target_set, subject_max_targets,
                                              subject_ellipse_scale, subject_depth_range,
                                              subject_target,
-                                             mv, proj, target_cells, target_cells2);
+                                             mv, proj, target_cells, target_cells2,
+                                             tag_view && mask_consumed ? &mTronSubjectTagRecord.mIds : nullptr);
 
         std::vector<RotoInkCandidate> candidates;
         collectRotoInkCandidates(subject_target_set, subject_target, candidates);
@@ -20252,6 +20298,13 @@ void LLPipeline::renderTronWorld(LLRenderTarget* dst, ETronDraw mode, bool is_sc
                 return (a.mCenter - cam_agent).lengthSquared() < (b.mCenter - cam_agent).lengthSquared();
             });
         anchor_count = llmin((S32)candidates.size(), 16);
+        if (tag_view && anchors_consumed)
+        {
+            for (S32 i = 0; i < anchor_count; ++i)
+            {
+                mTronSubjectTagRecord.mIds.push_back(candidates[i].mId);
+            }
+        }
         for (S32 i = 0; i < anchor_count; ++i)
         {
             // [TronT1] anchor_pw = candidate_agent_center - cam_agent +
