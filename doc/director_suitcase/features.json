@@ -181,6 +181,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 201,
+        "source": "indra/newview/aldirectortagtargets.cpp",
+        "text": "aldirectortagtargets.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 227,
         "source": "indra/newview/alfloaterblocked.cpp",
         "text": "alfloaterblocked.cpp"
@@ -572,12 +584,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -648,15 +660,15 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4673,28",
-          "indra/newview/llvoavatar.cpp@12836,163"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@4720,28",
+          "indra/newview/llvoavatar.cpp@12883,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@551,45"
+          "indra/newview/llvoavatar.h@552,45"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -670,8 +682,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31842,430"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31895,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -706,6 +718,8 @@
       "indra/newview/aldirectorselect.cpp",
       "indra/newview/aldirectorselect.h",
       "indra/newview/aldirectorswitcher.cpp",
+      "indra/newview/aldirectortagtargets.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/alfloatergazecues.cpp",
       "indra/newview/alfloatergazecues.h",
       "indra/newview/alghostclonemenulogic.h",
@@ -1904,6 +1918,64 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.cpp": {
+        "includes": [
+          "indra/llcommon/llapp.h",
+          "indra/llcommon/llframetimer.h",
+          "indra/newview/aldirectortagtargets.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/altron.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::groupLabel",
+          "ALDirectorTagTargets::highlightEnabled",
+          "ALDirectorTagTargets::instance",
+          "ALDirectorTagTargets::isHighlighted",
+          "ALDirectorTagTargets::overrideActive",
+          "ALDirectorTagTargets::publish",
+          "ALDirectorTagTargets::refreshGroups",
+          "ALDirectorTagTargets::sessionAllowsHighlight",
+          "ALDirectorTagTargets::touch",
+          "ALDirectorTagTargets::withdraw",
+          "ALGhostStudio::instance",
+          "ALTagHighlight::heartbeatFresh",
+          "ALTagHighlight::recordFresh",
+          "ALTagHighlight::tagStyleFor",
+          "ALTron::recordedTrailActors",
+          "LLApp::isExiting",
+          "LLDirectorCast::canonicalActorId",
+          "LLDirectorCast::instance",
+          "LLDirectorCast::instanceExists",
+          "LLDirectorCast::isSelf",
+          "LLFrameTimer::getElapsedSeconds",
+          "LLFrameTimer::getFrameCount",
+          "LLStartUp::getStartupState"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alfloaterblocked.cpp": {
         "includes": [
           "indra/llcommon/llcallbacklist.h",
@@ -2125,6 +2197,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -2166,6 +2239,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -2853,6 +2927,7 @@
         ],
         "qualified_call_candidates": [
           "ALPanelActorMover::draw",
+          "ALPanelActorMover::effectiveTargets",
           "ALPanelActorMover::myHeadingDisabledReason",
           "ALPanelActorMover::onClickStop",
           "ALPanelActorMover::onClickWalk",
@@ -2863,6 +2938,7 @@
           "ALPanelActorMover::refreshMyHeading",
           "ALPanelActorMover::selectedTargets",
           "ALPanelActorMover::setToolTipIfChanged",
+          "LLActorMover::getRoster",
           "LLActorMover::instance",
           "LLPanel::draw"
         ],
@@ -3616,6 +3692,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -6610,6 +6687,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -6628,8 +6706,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -6727,6 +6807,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -6796,6 +6879,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -6832,6 +6916,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -6973,6 +7058,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -6997,6 +7083,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -8566,6 +8653,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -8662,6 +8750,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -8682,6 +8771,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -8903,6 +8993,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -10033,6 +10124,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -11289,24 +11381,24 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@170,13",
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1128,13",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1129,13",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@23020,412",
-          "indra/newview/app_settings/settings.xml@23568,362",
-          "indra/newview/app_settings/settings.xml@29259,100",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@23031,412",
+          "indra/newview/app_settings/settings.xml@23579,362",
+          "indra/newview/app_settings/settings.xml@29270,100",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -11408,37 +11500,36 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@862,7",
-          "indra/newview/llvoavatar.cpp@899,37",
-          "indra/newview/llvoavatar.cpp@2440,14",
-          "indra/newview/llvoavatar.cpp@2889,19",
-          "indra/newview/llvoavatar.cpp@4207,14",
-          "indra/newview/llvoavatar.cpp@4834,20",
-          "indra/newview/llvoavatar.cpp@5153,25",
-          "indra/newview/llvoavatar.cpp@5227,596",
-          "indra/newview/llvoavatar.cpp@5923,45",
-          "indra/newview/llvoavatar.cpp@8745,106",
-          "indra/newview/llvoavatar.cpp@12836,163"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@863,7",
+          "indra/newview/llvoavatar.cpp@900,37",
+          "indra/newview/llvoavatar.cpp@2441,14",
+          "indra/newview/llvoavatar.cpp@2890,19",
+          "indra/newview/llvoavatar.cpp@4254,14",
+          "indra/newview/llvoavatar.cpp@4881,20",
+          "indra/newview/llvoavatar.cpp@5200,25",
+          "indra/newview/llvoavatar.cpp@5274,596",
+          "indra/newview/llvoavatar.cpp@5970,45",
+          "indra/newview/llvoavatar.cpp@8792,106",
+          "indra/newview/llvoavatar.cpp@12883,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@56,8",
-          "indra/newview/llvoavatar.h@551,45",
-          "indra/newview/llvoavatar.h@1190,10",
-          "indra/newview/llvoavatar.h@1208,11",
-          "indra/newview/llvoavatar.h@1260,17"
+          "indra/newview/llvoavatar.h@552,45",
+          "indra/newview/llvoavatar.h@1191,10",
+          "indra/newview/llvoavatar.h@1209,11",
+          "indra/newview/llvoavatar.h@1261,17"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
       {
         "hunks": [
           "indra/newview/pipeline.cpp@161,12",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@32652,721"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@32705,721"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -12929,6 +13020,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -12970,6 +13062,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -13471,6 +13564,7 @@
         ],
         "qualified_call_candidates": [
           "ALPanelActorMover::draw",
+          "ALPanelActorMover::effectiveTargets",
           "ALPanelActorMover::myHeadingDisabledReason",
           "ALPanelActorMover::onClickStop",
           "ALPanelActorMover::onClickWalk",
@@ -13481,6 +13575,7 @@
           "ALPanelActorMover::refreshMyHeading",
           "ALPanelActorMover::selectedTargets",
           "ALPanelActorMover::setToolTipIfChanged",
+          "LLActorMover::getRoster",
           "LLActorMover::instance",
           "LLPanel::draw"
         ],
@@ -13961,6 +14056,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -17385,6 +17481,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -17403,8 +17500,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -17502,6 +17601,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -17571,6 +17673,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -17607,6 +17710,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -17748,6 +17852,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -17772,6 +17877,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -20944,6 +21050,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -21040,6 +21147,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -21060,6 +21168,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -21281,6 +21390,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -22117,6 +22227,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -23645,16 +23756,16 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@242,11",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1203,14",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2906,20",
-          "indra/newview/CMakeLists.txt@2974,197",
-          "indra/newview/CMakeLists.txt@3232,40"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@243,11",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1205,14",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2908,20",
+          "indra/newview/CMakeLists.txt@2976,197",
+          "indra/newview/CMakeLists.txt@3234,40"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -23673,11 +23784,11 @@
           "indra/newview/app_settings/settings.xml@5904,21",
           "indra/newview/app_settings/settings.xml@5926,527",
           "indra/newview/app_settings/settings.xml@6454,120",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@27451,98",
-          "indra/newview/app_settings/settings.xml@27984,229",
-          "indra/newview/app_settings/settings.xml@29404,2466",
-          "indra/newview/app_settings/settings.xml@32081,364"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@27462,98",
+          "indra/newview/app_settings/settings.xml@27995,229",
+          "indra/newview/app_settings/settings.xml@29415,2466",
+          "indra/newview/app_settings/settings.xml@32092,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -23825,13 +23936,13 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@10815,20896"
+          "indra/newview/pipeline.cpp@1701,30063"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
-          "indra/newview/pipeline.h@1992,270"
+          "indra/newview/pipeline.h@1992,291"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -25049,6 +25160,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -25090,6 +25202,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -26316,6 +26429,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -26323,6 +26437,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -28495,6 +28610,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -28513,8 +28629,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -28612,6 +28730,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -28681,6 +28802,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -28717,6 +28839,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -28858,6 +28981,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -28882,6 +29006,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -33755,6 +33880,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -35216,17 +35342,17 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@916,7",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@1925,8"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@917,7",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@1927,8"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -35300,10 +35426,10 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@899,37",
-          "indra/newview/llvoavatar.cpp@1632,21",
-          "indra/newview/llvoavatar.cpp@6333,49",
-          "indra/newview/llvoavatar.cpp@6554,9"
+          "indra/newview/llvoavatar.cpp@900,37",
+          "indra/newview/llvoavatar.cpp@1633,21",
+          "indra/newview/llvoavatar.cpp@6380,49",
+          "indra/newview/llvoavatar.cpp@6601,9"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -35333,10 +35459,9 @@
           "indra/newview/pipeline.cpp@1371,61",
           "indra/newview/pipeline.cpp@1436,15",
           "indra/newview/pipeline.cpp@1564,106",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31842,430",
-          "indra/newview/pipeline.cpp@32652,721"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31895,430",
+          "indra/newview/pipeline.cpp@32705,721"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -35347,8 +35472,8 @@
           "indra/newview/pipeline.h@802,100",
           "indra/newview/pipeline.h@1419,31",
           "indra/newview/pipeline.h@1557,409",
-          "indra/newview/pipeline.h@1992,270",
-          "indra/newview/pipeline.h@2681,194"
+          "indra/newview/pipeline.h@1992,291",
+          "indra/newview/pipeline.h@2702,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -43600,6 +43725,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -43696,6 +43822,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -43716,6 +43843,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -43937,6 +44065,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -45137,6 +45266,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -46313,6 +46443,18 @@
         "line": 2882,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 201,
+        "source": "indra/newview/aldirectortagtargets.cpp",
+        "text": "aldirectortagtargets.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -47682,26 +47824,27 @@
       "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml"
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml"
     ],
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@670,7",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@1693,7",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@671,7",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@1695,7",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@31871,209",
-          "indra/newview/app_settings/settings.xml@32081,364"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@31882,209",
+          "indra/newview/app_settings/settings.xml@32092,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -47814,6 +47957,15 @@
       },
       {
         "hunks": [
+          "indra/newview/llhudnametag.cpp@26,9",
+          "indra/newview/llhudnametag.cpp@122,7",
+          "indra/newview/llhudnametag.cpp@232,14",
+          "indra/newview/llhudnametag.cpp@611,7"
+        ],
+        "path": "indra/newview/llhudnametag.cpp"
+      },
+      {
+        "hunks": [
           "indra/newview/llreflectionmapmanager.cpp@30,24",
           "indra/newview/llreflectionmapmanager.cpp@593,2064"
         ],
@@ -47887,66 +48039,66 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@744,7",
-          "indra/newview/llvoavatar.cpp@1040,7",
-          "indra/newview/llvoavatar.cpp@1062,7",
-          "indra/newview/llvoavatar.cpp@1125,7",
-          "indra/newview/llvoavatar.cpp@2017,8",
-          "indra/newview/llvoavatar.cpp@2125,8",
-          "indra/newview/llvoavatar.cpp@2178,29",
-          "indra/newview/llvoavatar.cpp@2440,14",
-          "indra/newview/llvoavatar.cpp@2808,8",
-          "indra/newview/llvoavatar.cpp@2829,9",
-          "indra/newview/llvoavatar.cpp@2948,33",
-          "indra/newview/llvoavatar.cpp@3016,8",
-          "indra/newview/llvoavatar.cpp@3547,12",
-          "indra/newview/llvoavatar.cpp@4066,15",
-          "indra/newview/llvoavatar.cpp@4222,8",
-          "indra/newview/llvoavatar.cpp@4618,7",
-          "indra/newview/llvoavatar.cpp@4673,28",
-          "indra/newview/llvoavatar.cpp@4758,10",
-          "indra/newview/llvoavatar.cpp@4874,8",
-          "indra/newview/llvoavatar.cpp@4953,7",
-          "indra/newview/llvoavatar.cpp@5011,19",
-          "indra/newview/llvoavatar.cpp@5037,18",
-          "indra/newview/llvoavatar.cpp@5070,21",
-          "indra/newview/llvoavatar.cpp@5153,25",
-          "indra/newview/llvoavatar.cpp@5227,596",
-          "indra/newview/llvoavatar.cpp@6333,49",
-          "indra/newview/llvoavatar.cpp@6618,7",
-          "indra/newview/llvoavatar.cpp@7338,7",
-          "indra/newview/llvoavatar.cpp@8745,106",
-          "indra/newview/llvoavatar.cpp@9714,14",
-          "indra/newview/llvoavatar.cpp@9880,7",
-          "indra/newview/llvoavatar.cpp@9972,8",
-          "indra/newview/llvoavatar.cpp@10087,12",
-          "indra/newview/llvoavatar.cpp@10102,7",
-          "indra/newview/llvoavatar.cpp@10149,12",
-          "indra/newview/llvoavatar.cpp@10180,11",
-          "indra/newview/llvoavatar.cpp@11320,101",
-          "indra/newview/llvoavatar.cpp@11522,10",
-          "indra/newview/llvoavatar.cpp@12512,7",
-          "indra/newview/llvoavatar.cpp@12535,8",
-          "indra/newview/llvoavatar.cpp@12549,10",
-          "indra/newview/llvoavatar.cpp@12836,163",
-          "indra/newview/llvoavatar.cpp@13095,7",
-          "indra/newview/llvoavatar.cpp@13134,7",
-          "indra/newview/llvoavatar.cpp@13687,7",
-          "indra/newview/llvoavatar.cpp@13946,7",
-          "indra/newview/llvoavatar.cpp@13961,7",
-          "indra/newview/llvoavatar.cpp@13979,9"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@745,7",
+          "indra/newview/llvoavatar.cpp@1041,7",
+          "indra/newview/llvoavatar.cpp@1063,7",
+          "indra/newview/llvoavatar.cpp@1126,7",
+          "indra/newview/llvoavatar.cpp@2018,8",
+          "indra/newview/llvoavatar.cpp@2126,8",
+          "indra/newview/llvoavatar.cpp@2179,29",
+          "indra/newview/llvoavatar.cpp@2441,14",
+          "indra/newview/llvoavatar.cpp@2809,8",
+          "indra/newview/llvoavatar.cpp@2830,9",
+          "indra/newview/llvoavatar.cpp@2949,33",
+          "indra/newview/llvoavatar.cpp@3017,8",
+          "indra/newview/llvoavatar.cpp@3548,12",
+          "indra/newview/llvoavatar.cpp@4113,15",
+          "indra/newview/llvoavatar.cpp@4269,8",
+          "indra/newview/llvoavatar.cpp@4665,7",
+          "indra/newview/llvoavatar.cpp@4720,28",
+          "indra/newview/llvoavatar.cpp@4805,10",
+          "indra/newview/llvoavatar.cpp@4921,8",
+          "indra/newview/llvoavatar.cpp@5000,7",
+          "indra/newview/llvoavatar.cpp@5058,19",
+          "indra/newview/llvoavatar.cpp@5084,18",
+          "indra/newview/llvoavatar.cpp@5117,21",
+          "indra/newview/llvoavatar.cpp@5200,25",
+          "indra/newview/llvoavatar.cpp@5274,596",
+          "indra/newview/llvoavatar.cpp@6380,49",
+          "indra/newview/llvoavatar.cpp@6665,7",
+          "indra/newview/llvoavatar.cpp@7385,7",
+          "indra/newview/llvoavatar.cpp@8792,106",
+          "indra/newview/llvoavatar.cpp@9761,14",
+          "indra/newview/llvoavatar.cpp@9927,7",
+          "indra/newview/llvoavatar.cpp@10019,8",
+          "indra/newview/llvoavatar.cpp@10134,12",
+          "indra/newview/llvoavatar.cpp@10149,7",
+          "indra/newview/llvoavatar.cpp@10196,12",
+          "indra/newview/llvoavatar.cpp@10227,11",
+          "indra/newview/llvoavatar.cpp@11367,101",
+          "indra/newview/llvoavatar.cpp@11569,10",
+          "indra/newview/llvoavatar.cpp@12559,7",
+          "indra/newview/llvoavatar.cpp@12582,8",
+          "indra/newview/llvoavatar.cpp@12596,10",
+          "indra/newview/llvoavatar.cpp@12883,163",
+          "indra/newview/llvoavatar.cpp@13142,7",
+          "indra/newview/llvoavatar.cpp@13181,7",
+          "indra/newview/llvoavatar.cpp@13734,7",
+          "indra/newview/llvoavatar.cpp@13993,7",
+          "indra/newview/llvoavatar.cpp@14008,7",
+          "indra/newview/llvoavatar.cpp@14026,9"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@287,25",
-          "indra/newview/llvoavatar.h@551,45",
-          "indra/newview/llvoavatar.h@615,11",
-          "indra/newview/llvoavatar.h@648,13",
-          "indra/newview/llvoavatar.h@714,7",
-          "indra/newview/llvoavatar.h@1025,12"
+          "indra/newview/llvoavatar.h@552,45",
+          "indra/newview/llvoavatar.h@616,11",
+          "indra/newview/llvoavatar.h@649,13",
+          "indra/newview/llvoavatar.h@715,7",
+          "indra/newview/llvoavatar.h@1026,12"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -47968,13 +48120,12 @@
           "indra/newview/pipeline.cpp@125,11",
           "indra/newview/pipeline.cpp@141,14",
           "indra/newview/pipeline.cpp@161,12",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@33508,222",
-          "indra/newview/pipeline.cpp@34313,979",
-          "indra/newview/pipeline.cpp@35568,344",
-          "indra/newview/pipeline.cpp@39606,153"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@33561,222",
+          "indra/newview/pipeline.cpp@34366,979",
+          "indra/newview/pipeline.cpp@35621,344",
+          "indra/newview/pipeline.cpp@39659,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -48366,15 +48517,6 @@
       },
       {
         "hunks": [
-          "indra/newview/llhudnametag.cpp@26,8",
-          "indra/newview/llhudnametag.cpp@117,7",
-          "indra/newview/llhudnametag.cpp@227,14",
-          "indra/newview/llhudnametag.cpp@560,7"
-        ],
-        "path": "indra/newview/llhudnametag.cpp"
-      },
-      {
-        "hunks": [
           "indra/newview/llhudtext.cpp@27,8",
           "indra/newview/llhudtext.cpp@115,7",
           "indra/newview/llhudtext.cpp@355,7"
@@ -48579,6 +48721,8 @@
       "indra/newview/aldirectorswitcher.cpp",
       "indra/newview/aldirectorswitcher.h",
       "indra/newview/aldirectortabmigration.cpp",
+      "indra/newview/aldirectortagtargets.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/alfloatercinelightcues.cpp",
       "indra/newview/alfloatergazecues.cpp",
       "indra/newview/alfloaterultimatediopter.cpp",
@@ -48754,6 +48898,7 @@
       "DirectorAnimSwitcherBank",
       "DirectorArmMoves",
       "DirectorHotkeysEnabled",
+      "DirectorTagHighlight",
       "GhostAutoAnimateCostLog",
       "GhostAutoAnimateLossGrace",
       "GhostAutoAnimateMaxAnims",
@@ -52144,6 +52289,64 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.cpp": {
+        "includes": [
+          "indra/llcommon/llapp.h",
+          "indra/llcommon/llframetimer.h",
+          "indra/newview/aldirectortagtargets.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/altron.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::groupLabel",
+          "ALDirectorTagTargets::highlightEnabled",
+          "ALDirectorTagTargets::instance",
+          "ALDirectorTagTargets::isHighlighted",
+          "ALDirectorTagTargets::overrideActive",
+          "ALDirectorTagTargets::publish",
+          "ALDirectorTagTargets::refreshGroups",
+          "ALDirectorTagTargets::sessionAllowsHighlight",
+          "ALDirectorTagTargets::touch",
+          "ALDirectorTagTargets::withdraw",
+          "ALGhostStudio::instance",
+          "ALTagHighlight::heartbeatFresh",
+          "ALTagHighlight::recordFresh",
+          "ALTagHighlight::tagStyleFor",
+          "ALTron::recordedTrailActors",
+          "LLApp::isExiting",
+          "LLDirectorCast::canonicalActorId",
+          "LLDirectorCast::instance",
+          "LLDirectorCast::instanceExists",
+          "LLDirectorCast::isSelf",
+          "LLFrameTimer::getElapsedSeconds",
+          "LLFrameTimer::getFrameCount",
+          "LLStartUp::getStartupState"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alfloaterblocked.cpp": {
         "includes": [
           "indra/llcommon/llcallbacklist.h",
@@ -53045,7 +53248,9 @@
       },
       "indra/newview/alghostnameplates.cpp": {
         "includes": [
+          "indra/llcommon/llstring.h",
           "indra/llrender/llfontgl.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostnameplates.h",
           "indra/newview/llagent.h",
           "indra/newview/llhudnametag.h",
@@ -53054,13 +53259,16 @@
           "indra/newview/llviewerprecompiledheaders.h"
         ],
         "qualified_call_candidates": [
+          "ALDirectorTagTargets::instance",
           "ALGhostNameplates::applyOffsets",
           "ALGhostNameplates::clear",
           "ALGhostNameplates::getOrCreate",
           "ALGhostNameplates::restoreOffsets",
           "ALGhostNameplates::update",
+          "ALTagHighlight::overrideAction",
           "LLFontGL::getFontSansSerif",
           "LLHUDObject::addHUDObject",
+          "LLStringFn::replace_ascii_controlchars",
           "LLViewerCamera::getInstance"
         ],
         "unresolved_includes": []
@@ -53179,6 +53387,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -53220,6 +53429,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -53816,6 +54026,7 @@
         ],
         "qualified_call_candidates": [
           "ALPanelActorMover::draw",
+          "ALPanelActorMover::effectiveTargets",
           "ALPanelActorMover::myHeadingDisabledReason",
           "ALPanelActorMover::onClickStop",
           "ALPanelActorMover::onClickWalk",
@@ -53826,6 +54037,7 @@
           "ALPanelActorMover::refreshMyHeading",
           "ALPanelActorMover::selectedTargets",
           "ALPanelActorMover::setToolTipIfChanged",
+          "LLActorMover::getRoster",
           "LLActorMover::instance",
           "LLPanel::draw"
         ],
@@ -54435,6 +54647,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -55680,6 +55893,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -55687,6 +55901,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -55696,6 +55911,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -59748,6 +59964,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -59766,8 +59983,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -59865,6 +60084,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -59934,6 +60156,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -59970,6 +60193,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -60111,6 +60335,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -60135,6 +60360,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -61550,6 +61776,7 @@
           "indra/llui/llmenugl.h",
           "indra/llui/llui.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/llagent.h",
           "indra/newview/lldrawable.h",
           "indra/newview/llghostavatar.h",
@@ -61567,6 +61794,8 @@
         ],
         "qualified_call_candidates": [
           "ALDerenderList::isHiddenObject",
+          "ALDirectorTagTargets::instance",
+          "ALTagHighlight::highlightedBackgroundAlpha",
           "LLFontGL::getFontSansSerifBold",
           "LLFontGL::getFontSansSerifSmall",
           "LLGhostAvatar::isRenderHidden",
@@ -61574,6 +61803,7 @@
           "LLHUDNameTag::addLabel",
           "LLHUDNameTag::addLine",
           "LLHUDNameTag::addPickable",
+          "LLHUDNameTag::clearBackgroundOverride",
           "LLHUDNameTag::clearString",
           "LLHUDNameTag::getMaxLines",
           "LLHUDNameTag::getWorldHeight",
@@ -61583,6 +61813,7 @@
           "LLHUDNameTag::renderText",
           "LLHUDNameTag::reshape",
           "LLHUDNameTag::setAlpha",
+          "LLHUDNameTag::setBackgroundOverride",
           "LLHUDNameTag::setColor",
           "LLHUDNameTag::setDoFade",
           "LLHUDNameTag::setFont",
@@ -67624,6 +67855,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -67720,6 +67952,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -67740,6 +67973,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -67961,6 +68195,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -69459,6 +69694,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -70212,6 +70448,11 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml": {
+        "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml": {
         "includes": [],
         "qualified_call_candidates": [],
@@ -70304,6 +70545,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
       "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
       "indra/newview/skins/default/xui/en/panel_lens_gaze.xml",
       "indra/newview/skins/default/xui/en/panel_path_editor.xml",
@@ -71149,18 +71391,18 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@25723,1573"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@25734,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -73433,6 +73675,7 @@
         ],
         "qualified_call_candidates": [
           "ALPanelActorMover::draw",
+          "ALPanelActorMover::effectiveTargets",
           "ALPanelActorMover::myHeadingDisabledReason",
           "ALPanelActorMover::onClickStop",
           "ALPanelActorMover::onClickWalk",
@@ -73443,6 +73686,7 @@
           "ALPanelActorMover::refreshMyHeading",
           "ALPanelActorMover::selectedTargets",
           "ALPanelActorMover::setToolTipIfChanged",
+          "LLActorMover::getRoster",
           "LLActorMover::instance",
           "LLPanel::draw"
         ],
@@ -74439,6 +74683,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -76765,6 +77010,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -76783,8 +77029,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -76882,6 +77130,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -76951,6 +77202,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -76987,6 +77239,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -77128,6 +77381,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -77152,6 +77406,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -79183,9 +79438,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -79193,7 +79448,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5541,32",
           "indra/newview/app_settings/settings.xml@5574,21",
-          "indra/newview/app_settings/settings.xml@6575,14788"
+          "indra/newview/app_settings/settings.xml@6575,14799"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -79268,32 +79523,31 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@2948,33",
-          "indra/newview/llvoavatar.cpp@5070,21",
-          "indra/newview/llvoavatar.cpp@5153,25",
-          "indra/newview/llvoavatar.cpp@5831,13",
-          "indra/newview/llvoavatar.cpp@5923,45",
-          "indra/newview/llvoavatar.cpp@9423,10",
-          "indra/newview/llvoavatar.cpp@9467,15",
-          "indra/newview/llvoavatar.cpp@9488,12",
-          "indra/newview/llvoavatar.cpp@12836,163"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@2949,33",
+          "indra/newview/llvoavatar.cpp@5117,21",
+          "indra/newview/llvoavatar.cpp@5200,25",
+          "indra/newview/llvoavatar.cpp@5878,13",
+          "indra/newview/llvoavatar.cpp@5970,45",
+          "indra/newview/llvoavatar.cpp@9470,10",
+          "indra/newview/llvoavatar.cpp@9514,15",
+          "indra/newview/llvoavatar.cpp@9535,12",
+          "indra/newview/llvoavatar.cpp@12883,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@56,8",
-          "indra/newview/llvoavatar.h@551,45",
-          "indra/newview/llvoavatar.h@1260,17"
+          "indra/newview/llvoavatar.h@552,45",
+          "indra/newview/llvoavatar.h@1261,17"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
       {
         "hunks": [
           "indra/newview/pipeline.cpp@89,17",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896"
+          "indra/newview/pipeline.cpp@1701,30063"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -80001,6 +80255,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -80042,6 +80297,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -80432,6 +80688,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -85308,6 +85565,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -85404,6 +85662,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -85424,6 +85683,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -85645,6 +85905,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -86481,6 +86742,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -87463,20 +87725,20 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@23020,412",
-          "indra/newview/app_settings/settings.xml@23568,362",
-          "indra/newview/app_settings/settings.xml@29259,100",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@23031,412",
+          "indra/newview/app_settings/settings.xml@23579,362",
+          "indra/newview/app_settings/settings.xml@29270,100",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -88219,7 +88481,9 @@
       },
       "indra/newview/alghostnameplates.cpp": {
         "includes": [
+          "indra/llcommon/llstring.h",
           "indra/llrender/llfontgl.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostnameplates.h",
           "indra/newview/llagent.h",
           "indra/newview/llhudnametag.h",
@@ -88228,13 +88492,16 @@
           "indra/newview/llviewerprecompiledheaders.h"
         ],
         "qualified_call_candidates": [
+          "ALDirectorTagTargets::instance",
           "ALGhostNameplates::applyOffsets",
           "ALGhostNameplates::clear",
           "ALGhostNameplates::getOrCreate",
           "ALGhostNameplates::restoreOffsets",
           "ALGhostNameplates::update",
+          "ALTagHighlight::overrideAction",
           "LLFontGL::getFontSansSerif",
           "LLHUDObject::addHUDObject",
+          "LLStringFn::replace_ascii_controlchars",
           "LLViewerCamera::getInstance"
         ],
         "unresolved_includes": []
@@ -88335,6 +88602,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -88376,6 +88644,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -88875,6 +89144,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -91553,6 +91823,7 @@
       "scripts/code_tools/director_light_actors_check.py",
       "scripts/code_tools/director_list_select_check.py",
       "scripts/code_tools/director_parity.py",
+      "scripts/code_tools/director_tag_highlight_check.py",
       "scripts/code_tools/director_theme_check.py",
       "scripts/code_tools/sensor_director_check.py",
       "scripts/code_tools/sensor_director_restore_check.py"
@@ -91836,6 +92107,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 201,
+        "source": "indra/newview/aldirectortagtargets.cpp",
+        "text": "aldirectortagtargets.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 202,
         "source": "indra/newview/aldirectortheme.cpp",
         "text": "aldirectortheme.cpp"
@@ -91965,6 +92248,18 @@
         "line": 1392,
         "source": "indra/newview/alghostclonemenulogic.h",
         "text": "alghostclonemenulogic.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 392,
+        "source": "indra/newview/alghostnameplates.cpp",
+        "text": "alghostnameplates.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1360,
+        "source": "indra/newview/alghostnameplates.h",
+        "text": "alghostnameplates.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -92898,6 +93193,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 697,
+        "source": "indra/newview/llhudnametag.cpp",
+        "text": "llhudnametag.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1720,
+        "source": "indra/newview/llhudnametag.h",
+        "text": "llhudnametag.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 727,
         "source": "indra/newview/llkeyconflict.cpp",
         "text": "llkeyconflict.cpp"
@@ -93269,12 +93576,12 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -93282,12 +93589,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
           "indra/newview/app_settings/settings.xml@5299,241",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@21365,1113",
-          "indra/newview/app_settings/settings.xml@28610,648",
-          "indra/newview/app_settings/settings.xml@29404,2466",
-          "indra/newview/app_settings/settings.xml@31871,209",
-          "indra/newview/app_settings/settings.xml@32081,364"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@21376,1113",
+          "indra/newview/app_settings/settings.xml@28621,648",
+          "indra/newview/app_settings/settings.xml@29415,2466",
+          "indra/newview/app_settings/settings.xml@31882,209",
+          "indra/newview/app_settings/settings.xml@32092,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -93444,6 +93751,19 @@
       },
       {
         "hunks": [
+          "indra/newview/llhudnametag.cpp@26,9",
+          "indra/newview/llhudnametag.cpp@276,17"
+        ],
+        "path": "indra/newview/llhudnametag.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/llhudnametag.h@112,13"
+        ],
+        "path": "indra/newview/llhudnametag.h"
+      },
+      {
+        "hunks": [
           "indra/newview/llpopupview.cpp@26,7",
           "indra/newview/llpopupview.cpp@119,8"
         ],
@@ -93545,17 +93865,24 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@5227,596",
-          "indra/newview/llvoavatar.cpp@5848,10",
-          "indra/newview/llvoavatar.cpp@5923,45",
-          "indra/newview/llvoavatar.cpp@12836,163"
+          "indra/newview/llvoavatar.cpp@24,24",
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@3684,35",
+          "indra/newview/llvoavatar.cpp@3731,12",
+          "indra/newview/llvoavatar.cpp@3820,7",
+          "indra/newview/llvoavatar.cpp@3881,18",
+          "indra/newview/llvoavatar.cpp@3975,7",
+          "indra/newview/llvoavatar.cpp@5274,596",
+          "indra/newview/llvoavatar.cpp@5895,10",
+          "indra/newview/llvoavatar.cpp@5970,45",
+          "indra/newview/llvoavatar.cpp@12883,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@551,45"
+          "indra/newview/llvoavatar.h@552,45",
+          "indra/newview/llvoavatar.h@1301,7"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -93569,9 +93896,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@107,8",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31842,430"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31895,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -93579,7 +93905,7 @@
         "hunks": [
           "indra/newview/pipeline.h@226,345",
           "indra/newview/pipeline.h@1557,409",
-          "indra/newview/pipeline.h@1992,270"
+          "indra/newview/pipeline.h@1992,291"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -93778,6 +94104,8 @@
       "indra/newview/aldirectorswitchermodel.h",
       "indra/newview/aldirectortabmigration.cpp",
       "indra/newview/aldirectortabmigration.h",
+      "indra/newview/aldirectortagtargets.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/aldirectortheme.cpp",
       "indra/newview/aldirectortheme.h",
       "indra/newview/alenvonlydiagnostics.cpp",
@@ -93799,6 +94127,8 @@
       "indra/newview/alghostclonemenu.cpp",
       "indra/newview/alghostclonemenu.h",
       "indra/newview/alghostclonemenulogic.h",
+      "indra/newview/alghostnameplates.cpp",
+      "indra/newview/alghostnameplates.h",
       "indra/newview/alghostspawnengine.cpp",
       "indra/newview/alghostspawnengine.h",
       "indra/newview/alghoststudio.cpp",
@@ -94213,6 +94543,7 @@
       "DirectorSwitcherOverridesFlycam",
       "DirectorSwitcherSeed",
       "DirectorSwitcherSequence",
+      "DirectorTagHighlight",
       "DirectorTheme",
       "DirectorThemeInvert",
       "DirectorUIV2",
@@ -95777,6 +96108,64 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.cpp": {
+        "includes": [
+          "indra/llcommon/llapp.h",
+          "indra/llcommon/llframetimer.h",
+          "indra/newview/aldirectortagtargets.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/altron.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::groupLabel",
+          "ALDirectorTagTargets::highlightEnabled",
+          "ALDirectorTagTargets::instance",
+          "ALDirectorTagTargets::isHighlighted",
+          "ALDirectorTagTargets::overrideActive",
+          "ALDirectorTagTargets::publish",
+          "ALDirectorTagTargets::refreshGroups",
+          "ALDirectorTagTargets::sessionAllowsHighlight",
+          "ALDirectorTagTargets::touch",
+          "ALDirectorTagTargets::withdraw",
+          "ALGhostStudio::instance",
+          "ALTagHighlight::heartbeatFresh",
+          "ALTagHighlight::recordFresh",
+          "ALTagHighlight::tagStyleFor",
+          "ALTron::recordedTrailActors",
+          "LLApp::isExiting",
+          "LLDirectorCast::canonicalActorId",
+          "LLDirectorCast::instance",
+          "LLDirectorCast::instanceExists",
+          "LLDirectorCast::isSelf",
+          "LLFrameTimer::getElapsedSeconds",
+          "LLFrameTimer::getFrameCount",
+          "LLStartUp::getStartupState"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/aldirectortheme.cpp": {
         "includes": [
           "indra/llcommon/llfile.h",
@@ -96361,6 +96750,46 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/alghostnameplates.cpp": {
+        "includes": [
+          "indra/llcommon/llstring.h",
+          "indra/llrender/llfontgl.h",
+          "indra/newview/aldirectortagtargets.h",
+          "indra/newview/alghostnameplates.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llhudnametag.h",
+          "indra/newview/llhudobject.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewerprecompiledheaders.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTagTargets::instance",
+          "ALGhostNameplates::applyOffsets",
+          "ALGhostNameplates::clear",
+          "ALGhostNameplates::getOrCreate",
+          "ALGhostNameplates::restoreOffsets",
+          "ALGhostNameplates::update",
+          "ALTagHighlight::overrideAction",
+          "LLFontGL::getFontSansSerif",
+          "LLHUDObject::addHUDObject",
+          "LLStringFn::replace_ascii_controlchars",
+          "LLViewerCamera::getInstance"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alghostnameplates.h": {
+        "includes": [
+          "indra/llcommon/llpointer.h",
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v3math.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/llhudnametag.h"
+        ],
+        "qualified_call_candidates": [
+          "LLHUDNameTag::setString"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alghostspawnengine.cpp": {
         "includes": [
           "indra/newview/alghostmaterialresolver.h",
@@ -96409,6 +96838,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -96450,6 +96880,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -97996,6 +98427,7 @@
         ],
         "qualified_call_candidates": [
           "ALPanelActorMover::draw",
+          "ALPanelActorMover::effectiveTargets",
           "ALPanelActorMover::myHeadingDisabledReason",
           "ALPanelActorMover::onClickStop",
           "ALPanelActorMover::onClickWalk",
@@ -98006,6 +98438,7 @@
           "ALPanelActorMover::refreshMyHeading",
           "ALPanelActorMover::selectedTargets",
           "ALPanelActorMover::setToolTipIfChanged",
+          "LLActorMover::getRoster",
           "LLActorMover::instance",
           "LLPanel::draw"
         ],
@@ -99192,6 +99625,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -100549,6 +100983,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -100556,6 +100991,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -100565,6 +101001,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -103203,6 +103640,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -103221,8 +103659,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -103320,6 +103760,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -103389,6 +103832,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -103425,6 +103869,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -103566,6 +104011,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -103590,6 +104036,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -104589,6 +105036,91 @@
           "LLHUDEffectSpiral::unpackData",
           "LLViewerPartSim::getInstance"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llhudnametag.cpp": {
+        "includes": [
+          "indra/llcommon/llcriticaldamp.h",
+          "indra/llcommon/lltracerecording.h",
+          "indra/llrender/llfontgl.h",
+          "indra/llrender/llglheaders.h",
+          "indra/llrender/llrender.h",
+          "indra/llui/llmenugl.h",
+          "indra/llui/llui.h",
+          "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
+          "indra/newview/llagent.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llghostavatar.h",
+          "indra/newview/llhudnametag.h",
+          "indra/newview/llhudrender.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvovolume.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDerenderList::isHiddenObject",
+          "ALDirectorTagTargets::instance",
+          "ALTagHighlight::highlightedBackgroundAlpha",
+          "LLFontGL::getFontSansSerifBold",
+          "LLFontGL::getFontSansSerifSmall",
+          "LLGhostAvatar::isRenderHidden",
+          "LLHUDNameTag::LLHUDNameTag",
+          "LLHUDNameTag::addLabel",
+          "LLHUDNameTag::addLine",
+          "LLHUDNameTag::addPickable",
+          "LLHUDNameTag::clearBackgroundOverride",
+          "LLHUDNameTag::clearString",
+          "LLHUDNameTag::getMaxLines",
+          "LLHUDNameTag::getWorldHeight",
+          "LLHUDNameTag::lineSegmentIntersect",
+          "LLHUDNameTag::markDead",
+          "LLHUDNameTag::render",
+          "LLHUDNameTag::renderText",
+          "LLHUDNameTag::reshape",
+          "LLHUDNameTag::setAlpha",
+          "LLHUDNameTag::setBackgroundOverride",
+          "LLHUDNameTag::setColor",
+          "LLHUDNameTag::setDoFade",
+          "LLHUDNameTag::setFont",
+          "LLHUDNameTag::setLOD",
+          "LLHUDNameTag::setLabel",
+          "LLHUDNameTag::setString",
+          "LLHUDNameTag::setZCompare",
+          "LLHUDNameTag::shift",
+          "LLHUDNameTag::shiftAll",
+          "LLHUDNameTag::updateAll",
+          "LLHUDNameTag::updateScreenPos",
+          "LLHUDNameTag::updateSize",
+          "LLHUDNameTag::updateVisibility",
+          "LLHUDObject::markDead",
+          "LLHUDTextSegment::getWidth",
+          "LLSmoothInterpolation::getInterpolant",
+          "LLTrace::get_frame_recording",
+          "LLUI::getUIImage",
+          "LLUIColorTable::instance",
+          "LLViewerCamera::getInstance",
+          "LLViewerCamera::getVelocityStat"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llhudnametag.h": {
+        "includes": [
+          "indra/llcommon/llpointer.h",
+          "indra/llmath/llrect.h",
+          "indra/llmath/v2math.h",
+          "indra/llmath/v4color.h",
+          "indra/llrender/llfontgl.h",
+          "indra/llrender/llfontvertexbuffer.h",
+          "indra/newview/llhudobject.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/llkeyconflict.cpp": {
@@ -108637,6 +109169,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -108733,6 +109266,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -108753,6 +109287,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -108974,6 +109509,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -110189,6 +110725,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -111996,21 +112533,21 @@
       {
         "hunks": [
           "indra/newview/CMakeLists.txt@170,13",
-          "indra/newview/CMakeLists.txt@561,7",
-          "indra/newview/CMakeLists.txt@659,7",
-          "indra/newview/CMakeLists.txt@1128,13",
-          "indra/newview/CMakeLists.txt@1580,7",
-          "indra/newview/CMakeLists.txt@1682,7"
+          "indra/newview/CMakeLists.txt@562,7",
+          "indra/newview/CMakeLists.txt@660,7",
+          "indra/newview/CMakeLists.txt@1129,13",
+          "indra/newview/CMakeLists.txt@1582,7",
+          "indra/newview/CMakeLists.txt@1684,7"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@25723,1573",
-          "indra/newview/app_settings/settings.xml@27874,109",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@25734,1573",
+          "indra/newview/app_settings/settings.xml@27885,109",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -112058,8 +112595,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896"
+          "indra/newview/pipeline.cpp@1701,30063"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -115218,6 +115754,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -115772,6 +116309,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 419,
         "source": "indra/newview/alfloateractorgaze.cpp",
         "text": "alfloateractorgaze.cpp"
@@ -116163,17 +116706,17 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -116244,8 +116787,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@5227,596",
-          "indra/newview/llvoavatar.cpp@5923,45"
+          "indra/newview/llvoavatar.cpp@5274,596",
+          "indra/newview/llvoavatar.cpp@5970,45"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -116377,6 +116920,7 @@
     "owned": [
       "indra/llcharacter/alavataranimationtime.h",
       "indra/newview/aldirectoralloff.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/alfloateractorgaze.cpp",
       "indra/newview/alfloateractorgaze.h",
       "indra/newview/alfloatergazecues.cpp",
@@ -116877,6 +117421,17 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alfloateractorgaze.cpp": {
         "includes": [
           "indra/llui/llfloaterreg.h",
@@ -117118,6 +117673,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -117159,6 +117715,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -118049,6 +118606,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -120165,6 +120723,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -120183,8 +120742,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -120282,6 +120843,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -120351,6 +120915,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -120387,6 +120952,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -120528,6 +121094,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -120552,6 +121119,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -122283,6 +122851,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -122379,6 +122948,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -122399,6 +122969,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -122620,6 +123191,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -123229,6 +123801,12 @@
         "line": 2882,
         "source": "indra/newview/aldirectortabmigration.cpp",
         "text": "aldirectortabmigration.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -124024,26 +124602,26 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1109,7",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2124,7",
-          "indra/newview/CMakeLists.txt@2868,32"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1110,7",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2126,7",
+          "indra/newview/CMakeLists.txt@2870,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@21365,1113",
-          "indra/newview/app_settings/settings.xml@22480,76",
-          "indra/newview/app_settings/settings.xml@22612,407",
-          "indra/newview/app_settings/settings.xml@23020,412",
-          "indra/newview/app_settings/settings.xml@23513,54",
-          "indra/newview/app_settings/settings.xml@24041,164",
-          "indra/newview/app_settings/settings.xml@29404,2466",
-          "indra/newview/app_settings/settings.xml@32081,364"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@21376,1113",
+          "indra/newview/app_settings/settings.xml@22491,76",
+          "indra/newview/app_settings/settings.xml@22623,407",
+          "indra/newview/app_settings/settings.xml@23031,412",
+          "indra/newview/app_settings/settings.xml@23524,54",
+          "indra/newview/app_settings/settings.xml@24052,164",
+          "indra/newview/app_settings/settings.xml@29415,2466",
+          "indra/newview/app_settings/settings.xml@32092,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -124199,21 +124777,21 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4242,13",
-          "indra/newview/llvoavatar.cpp@4673,28",
-          "indra/newview/llvoavatar.cpp@6594,8",
-          "indra/newview/llvoavatar.cpp@8745,106",
-          "indra/newview/llvoavatar.cpp@12836,163",
-          "indra/newview/llvoavatar.cpp@13534,18",
-          "indra/newview/llvoavatar.cpp@13697,17"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@4289,13",
+          "indra/newview/llvoavatar.cpp@4720,28",
+          "indra/newview/llvoavatar.cpp@6641,8",
+          "indra/newview/llvoavatar.cpp@8792,106",
+          "indra/newview/llvoavatar.cpp@12883,163",
+          "indra/newview/llvoavatar.cpp@13581,18",
+          "indra/newview/llvoavatar.cpp@13744,17"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@551,45",
-          "indra/newview/llvoavatar.h@648,13"
+          "indra/newview/llvoavatar.h@552,45",
+          "indra/newview/llvoavatar.h@649,13"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -124233,21 +124811,20 @@
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@184,7",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@32351,53",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@35568,344",
-          "indra/newview/pipeline.cpp@37677,1060",
-          "indra/newview/pipeline.cpp@39606,153"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@32404,53",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@35621,344",
+          "indra/newview/pipeline.cpp@37730,1060",
+          "indra/newview/pipeline.cpp@39659,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
           "indra/newview/pipeline.h@226,345",
-          "indra/newview/pipeline.h@1992,270",
-          "indra/newview/pipeline.h@2282,34"
+          "indra/newview/pipeline.h@1992,291",
+          "indra/newview/pipeline.h@2303,34"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -125108,6 +125685,7 @@
       "indra/newview/aldirectoralloff.cpp",
       "indra/newview/aldirectoralloff.h",
       "indra/newview/aldirectortabmigration.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/alenvintensity.cpp",
       "indra/newview/alenvintensity.h",
       "indra/newview/alfloateravatarlightresponse.cpp",
@@ -126740,6 +127318,17 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alenvintensity.cpp": {
         "includes": [
           "indra/llmath/llmath.h",
@@ -128138,6 +128727,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -128967,6 +129557,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -128974,6 +129565,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -128983,6 +129575,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -132162,6 +132755,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -132180,8 +132774,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -132279,6 +132875,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -132348,6 +132947,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -132384,6 +132984,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -132525,6 +133126,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -132549,6 +133151,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -136873,6 +137476,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -136969,6 +137573,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -136989,6 +137594,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -137210,6 +137816,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -138410,6 +139017,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -139481,6 +140089,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 355,
         "source": "indra/newview/alenvintensity.cpp",
         "text": "alenvintensity.cpp"
@@ -140291,22 +140905,22 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@21365,1113",
-          "indra/newview/app_settings/settings.xml@22568,43",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@21376,1113",
+          "indra/newview/app_settings/settings.xml@22579,43",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -140425,8 +141039,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4673,28"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@4720,28"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -140456,23 +141070,22 @@
           "indra/newview/pipeline.cpp@1230,11",
           "indra/newview/pipeline.cpp@1348,21",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31842,430",
-          "indra/newview/pipeline.cpp@32286,38",
-          "indra/newview/pipeline.cpp@32351,53",
-          "indra/newview/pipeline.cpp@32435,37",
-          "indra/newview/pipeline.cpp@32473,17",
-          "indra/newview/pipeline.cpp@32491,20",
-          "indra/newview/pipeline.cpp@32536,18",
-          "indra/newview/pipeline.cpp@32571,27",
-          "indra/newview/pipeline.cpp@32600,30",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@33816,53",
-          "indra/newview/pipeline.cpp@33875,242",
-          "indra/newview/pipeline.cpp@34119,11",
-          "indra/newview/pipeline.cpp@37314,362",
-          "indra/newview/pipeline.cpp@37677,1060"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31895,430",
+          "indra/newview/pipeline.cpp@32339,38",
+          "indra/newview/pipeline.cpp@32404,53",
+          "indra/newview/pipeline.cpp@32488,37",
+          "indra/newview/pipeline.cpp@32526,17",
+          "indra/newview/pipeline.cpp@32544,20",
+          "indra/newview/pipeline.cpp@32589,18",
+          "indra/newview/pipeline.cpp@32624,27",
+          "indra/newview/pipeline.cpp@32653,30",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@33869,53",
+          "indra/newview/pipeline.cpp@33928,242",
+          "indra/newview/pipeline.cpp@34172,11",
+          "indra/newview/pipeline.cpp@37367,362",
+          "indra/newview/pipeline.cpp@37730,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -140488,9 +141101,9 @@
           "indra/newview/pipeline.h@1472,20",
           "indra/newview/pipeline.h@1494,62",
           "indra/newview/pipeline.h@1557,409",
-          "indra/newview/pipeline.h@1992,270",
-          "indra/newview/pipeline.h@2282,34",
-          "indra/newview/pipeline.h@2681,194"
+          "indra/newview/pipeline.h@1992,291",
+          "indra/newview/pipeline.h@2303,34",
+          "indra/newview/pipeline.h@2702,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -140838,6 +141451,7 @@
       "indra/newview/aldirectoralloff.cpp",
       "indra/newview/aldirectoralloff.h",
       "indra/newview/aldirectortabmigration.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/alenvintensity.cpp",
       "indra/newview/alenvintensity.h",
       "indra/newview/alenvintensitypresets.cpp",
@@ -143335,6 +143949,17 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/alenvintensity.cpp": {
         "includes": [
           "indra/llmath/llmath.h",
@@ -143507,6 +144132,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -143548,6 +144174,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -144776,6 +145403,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -145245,6 +145873,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -145252,6 +145881,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -145261,6 +145891,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -147454,6 +148085,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -147472,8 +148104,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -147571,6 +148205,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -147640,6 +148277,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -147676,6 +148314,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -147817,6 +148456,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -147841,6 +148481,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -153056,6 +153697,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -153152,6 +153794,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -153172,6 +153815,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -153393,6 +154037,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -154696,6 +155341,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -155941,6 +156587,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 201,
+        "source": "indra/newview/aldirectortagtargets.cpp",
+        "text": "aldirectortagtargets.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1160,
+        "source": "indra/newview/aldirectortagtargets.h",
+        "text": "aldirectortagtargets.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1161,
         "source": "indra/newview/aldirectortheme.h",
         "text": "aldirectortheme.h"
@@ -156623,8 +157281,8 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1298,176"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1300,176"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -156633,11 +157291,11 @@
           "indra/newview/app_settings/settings.xml@2,3455",
           "indra/newview/app_settings/settings.xml@5299,241",
           "indra/newview/app_settings/settings.xml@5926,527",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@21365,1113",
-          "indra/newview/app_settings/settings.xml@25723,1573",
-          "indra/newview/app_settings/settings.xml@27297,153",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@21376,1113",
+          "indra/newview/app_settings/settings.xml@25734,1573",
+          "indra/newview/app_settings/settings.xml@27308,153",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -156706,14 +157364,14 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@49,24",
-          "indra/newview/llvoavatar.cpp@4673,28"
+          "indra/newview/llvoavatar.cpp@50,24",
+          "indra/newview/llvoavatar.cpp@4720,28"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.h@551,45"
+          "indra/newview/llvoavatar.h@552,45"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -156731,19 +157389,18 @@
           "indra/newview/pipeline.cpp@1065,7",
           "indra/newview/pipeline.cpp@1348,21",
           "indra/newview/pipeline.cpp@1371,61",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31842,430",
-          "indra/newview/pipeline.cpp@32286,38",
-          "indra/newview/pipeline.cpp@32351,53",
-          "indra/newview/pipeline.cpp@32435,37",
-          "indra/newview/pipeline.cpp@32491,20",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@33816,53",
-          "indra/newview/pipeline.cpp@33875,242",
-          "indra/newview/pipeline.cpp@37314,362",
-          "indra/newview/pipeline.cpp@37677,1060",
-          "indra/newview/pipeline.cpp@39606,153"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31895,430",
+          "indra/newview/pipeline.cpp@32339,38",
+          "indra/newview/pipeline.cpp@32404,53",
+          "indra/newview/pipeline.cpp@32488,37",
+          "indra/newview/pipeline.cpp@32544,20",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@33869,53",
+          "indra/newview/pipeline.cpp@33928,242",
+          "indra/newview/pipeline.cpp@37367,362",
+          "indra/newview/pipeline.cpp@37730,1060",
+          "indra/newview/pipeline.cpp@39659,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -156754,8 +157411,8 @@
           "indra/newview/pipeline.h@802,100",
           "indra/newview/pipeline.h@1015,42",
           "indra/newview/pipeline.h@1472,20",
-          "indra/newview/pipeline.h@1992,270",
-          "indra/newview/pipeline.h@2365,58"
+          "indra/newview/pipeline.h@1992,291",
+          "indra/newview/pipeline.h@2386,58"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -157063,6 +157720,8 @@
       "indra/newview/aldirectoralloff.h",
       "indra/newview/aldirectorqol.cpp",
       "indra/newview/aldirectorqol.h",
+      "indra/newview/aldirectortagtargets.cpp",
+      "indra/newview/aldirectortagtargets.h",
       "indra/newview/aldirectortheme.h",
       "indra/newview/alenvonlydiagnostics.cpp",
       "indra/newview/algazemath.h",
@@ -159603,6 +160262,64 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/aldirectortagtargets.cpp": {
+        "includes": [
+          "indra/llcommon/llapp.h",
+          "indra/llcommon/llframetimer.h",
+          "indra/newview/aldirectortagtargets.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/altron.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llstartup.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/pipeline.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::groupLabel",
+          "ALDirectorTagTargets::highlightEnabled",
+          "ALDirectorTagTargets::instance",
+          "ALDirectorTagTargets::isHighlighted",
+          "ALDirectorTagTargets::overrideActive",
+          "ALDirectorTagTargets::publish",
+          "ALDirectorTagTargets::refreshGroups",
+          "ALDirectorTagTargets::sessionAllowsHighlight",
+          "ALDirectorTagTargets::touch",
+          "ALDirectorTagTargets::withdraw",
+          "ALGhostStudio::instance",
+          "ALTagHighlight::heartbeatFresh",
+          "ALTagHighlight::recordFresh",
+          "ALTagHighlight::tagStyleFor",
+          "ALTron::recordedTrailActors",
+          "LLApp::isExiting",
+          "LLDirectorCast::canonicalActorId",
+          "LLDirectorCast::instance",
+          "LLDirectorCast::instanceExists",
+          "LLDirectorCast::isSelf",
+          "LLFrameTimer::getElapsedSeconds",
+          "LLFrameTimer::getFrameCount",
+          "LLStartUp::getStartupState"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/aldirectortagtargets.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v4color.h",
+          "indra/newview/aldirectortheme.h"
+        ],
+        "qualified_call_candidates": [
+          "ALDirectorTheme::contrastRatio"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/aldirectortheme.h": {
         "includes": [
           "indra/llcommon/llsd.h",
@@ -159855,6 +160572,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -159896,6 +160614,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -161336,6 +162055,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -161993,6 +162713,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -162000,6 +162721,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -162009,6 +162731,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -164333,6 +165056,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -164351,8 +165075,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -164450,6 +165176,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -164519,6 +165248,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -164555,6 +165285,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -164696,6 +165427,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -164720,6 +165452,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -167199,6 +167932,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -167295,6 +168029,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -167315,6 +168050,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -167536,6 +168272,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -168723,6 +169460,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -170334,11 +171072,11 @@
       },
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -170346,12 +171084,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
           "indra/newview/app_settings/settings.xml@3469,1055",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@21365,1113",
-          "indra/newview/app_settings/settings.xml@22612,407",
-          "indra/newview/app_settings/settings.xml@23020,412",
-          "indra/newview/app_settings/settings.xml@25723,1573",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@21376,1113",
+          "indra/newview/app_settings/settings.xml@22623,407",
+          "indra/newview/app_settings/settings.xml@23031,412",
+          "indra/newview/app_settings/settings.xml@25734,1573",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -170466,15 +171204,14 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@222,16",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31842,430",
-          "indra/newview/pipeline.cpp@32406,13",
-          "indra/newview/pipeline.cpp@32435,37",
-          "indra/newview/pipeline.cpp@32491,20",
-          "indra/newview/pipeline.cpp@32536,18",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@37677,1060"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31895,430",
+          "indra/newview/pipeline.cpp@32459,13",
+          "indra/newview/pipeline.cpp@32488,37",
+          "indra/newview/pipeline.cpp@32544,20",
+          "indra/newview/pipeline.cpp@32589,18",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@37730,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -170482,8 +171219,8 @@
         "hunks": [
           "indra/newview/pipeline.h@226,345",
           "indra/newview/pipeline.h@1015,42",
-          "indra/newview/pipeline.h@1992,270",
-          "indra/newview/pipeline.h@2282,34"
+          "indra/newview/pipeline.h@1992,291",
+          "indra/newview/pipeline.h@2303,34"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -172991,6 +173728,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -173314,6 +174052,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -173321,6 +174060,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -173330,6 +174070,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -174889,6 +175630,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -174907,8 +175649,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -175006,6 +175750,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -175075,6 +175822,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -175111,6 +175859,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -175252,6 +176001,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -175276,6 +176026,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -179458,6 +180209,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -180606,18 +181358,18 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14788"
+          "indra/newview/app_settings/settings.xml@6575,14799"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -180670,10 +181422,9 @@
           "indra/newview/pipeline.cpp@332,106",
           "indra/newview/pipeline.cpp@719,16",
           "indra/newview/pipeline.cpp@958,88",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@33875,242"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@33928,242"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -180684,8 +181435,8 @@
           "indra/newview/pipeline.h@709,90",
           "indra/newview/pipeline.h@802,100",
           "indra/newview/pipeline.h@1557,409",
-          "indra/newview/pipeline.h@2523,14",
-          "indra/newview/pipeline.h@2681,194"
+          "indra/newview/pipeline.h@2544,14",
+          "indra/newview/pipeline.h@2702,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -183400,6 +184151,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -183418,8 +184170,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -183517,6 +184271,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -183586,6 +184343,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -183622,6 +184380,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -183763,6 +184522,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -183787,6 +184547,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -185858,6 +186619,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -186891,18 +187653,18 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@242,11",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1203,14",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@243,11",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1205,14",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788"
+          "indra/newview/app_settings/settings.xml@6575,14799"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -186933,22 +187695,22 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@24,23",
-          "indra/newview/llvoavatar.cpp@1349,7",
-          "indra/newview/llvoavatar.cpp@3380,12",
-          "indra/newview/llvoavatar.cpp@5227,596",
-          "indra/newview/llvoavatar.cpp@7372,14",
-          "indra/newview/llvoavatar.cpp@7400,9",
-          "indra/newview/llvoavatar.cpp@9022,7",
-          "indra/newview/llvoavatar.cpp@11608,27",
-          "indra/newview/llvoavatar.cpp@11667,282"
+          "indra/newview/llvoavatar.cpp@24,24",
+          "indra/newview/llvoavatar.cpp@1350,7",
+          "indra/newview/llvoavatar.cpp@3381,12",
+          "indra/newview/llvoavatar.cpp@5274,596",
+          "indra/newview/llvoavatar.cpp@7419,14",
+          "indra/newview/llvoavatar.cpp@7447,9",
+          "indra/newview/llvoavatar.cpp@9069,7",
+          "indra/newview/llvoavatar.cpp@11655,27",
+          "indra/newview/llvoavatar.cpp@11714,282"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@213,33",
-          "indra/newview/llvoavatar.h@978,21"
+          "indra/newview/llvoavatar.h@979,21"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -187969,6 +188731,7 @@
           "indra/llcommon/lltimer.h",
           "indra/llui/llfloaterreg.h",
           "indra/newview/alcinelightrigmanager.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghostanimassetindex.h",
           "indra/newview/alghostclearanim.h",
           "indra/newview/alghostmotionmath.h",
@@ -188010,6 +188773,7 @@
           "ALCloneQol::normalise",
           "ALCloneQol::randomUnit",
           "ALCloneQol::ripple",
+          "ALDirectorTagTargets::instance",
           "ALGhostAnimAssetIndex::instance",
           "ALGhostAnimDrop::cloneLabel",
           "ALGhostAnimMirrorMath::eligible",
@@ -190680,6 +191444,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -190698,8 +191463,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -190797,6 +191564,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -190866,6 +191636,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -190902,6 +191673,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -191043,6 +191815,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -191067,6 +191840,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -192574,6 +193348,7 @@
           "indra/newview/alcinelightrigmanager.h",
           "indra/newview/alclientheight.h",
           "indra/newview/alderenderlist.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/alghoststudio.h",
           "indra/newview/alobjectpathmover.h",
           "indra/newview/alreflectanim.h",
@@ -192670,6 +193445,7 @@
           "ALContactStab::resetFoot",
           "ALContactStab::updateFoot",
           "ALDerenderList::keepsAvatarLive",
+          "ALDirectorTagTargets::instance",
           "ALGhostStudio::instance",
           "ALObjectPathMover::instance",
           "ALPoseContinuity::InertiaJoint",
@@ -192690,6 +193466,7 @@
           "ALSteppedAnim::paletteNeedsOverlayRebuild",
           "ALSteppedAnim::preservePreviousOverlayPalette",
           "ALSteppedAnimRuntime::instance",
+          "ALTagHighlight::overrideAction",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
           "LLAgentBenefitsMgr::current",
@@ -192911,6 +193688,7 @@
           "LLVOAvatar::idleUpdateMisc",
           "LLVOAvatar::idleUpdateNameTag",
           "LLVOAvatar::idleUpdateNameTagAlpha",
+          "LLVOAvatar::idleUpdateNameTagHighlight",
           "LLVOAvatar::idleUpdateNameTagText",
           "LLVOAvatar::idleUpdateRenderComplexity",
           "LLVOAvatar::idleUpdateVoiceVisualizer",
@@ -193769,9 +194547,9 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
@@ -195878,6 +196656,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -195896,8 +196675,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -195995,6 +196776,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -196064,6 +196848,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -196100,6 +196885,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -196241,6 +197027,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -196265,6 +197052,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -199264,23 +200052,23 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@186,54",
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@902,11",
-          "indra/newview/CMakeLists.txt@1143,58",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@1909,13",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2906,20",
-          "indra/newview/CMakeLists.txt@2974,197"
+          "indra/newview/CMakeLists.txt@186,55",
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@903,11",
+          "indra/newview/CMakeLists.txt@1144,59",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@1911,13",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2908,20",
+          "indra/newview/CMakeLists.txt@2976,197"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@21365,1113",
-          "indra/newview/app_settings/settings.xml@29404,2466"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@21376,1113",
+          "indra/newview/app_settings/settings.xml@29415,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -199380,28 +200168,27 @@
           "indra/newview/pipeline.cpp@299,32",
           "indra/newview/pipeline.cpp@574,71",
           "indra/newview/pipeline.cpp@925,32",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@31751,30",
-          "indra/newview/pipeline.cpp@31802,16",
-          "indra/newview/pipeline.cpp@31842,430",
-          "indra/newview/pipeline.cpp@32286,38",
-          "indra/newview/pipeline.cpp@32435,37",
-          "indra/newview/pipeline.cpp@32473,17",
-          "indra/newview/pipeline.cpp@32652,721",
-          "indra/newview/pipeline.cpp@33385,15",
-          "indra/newview/pipeline.cpp@33446,15",
-          "indra/newview/pipeline.cpp@33508,222",
-          "indra/newview/pipeline.cpp@33816,53",
-          "indra/newview/pipeline.cpp@33875,242",
-          "indra/newview/pipeline.cpp@34186,36",
-          "indra/newview/pipeline.cpp@34230,7",
-          "indra/newview/pipeline.cpp@34241,41",
-          "indra/newview/pipeline.cpp@36105,47",
-          "indra/newview/pipeline.cpp@36551,78",
-          "indra/newview/pipeline.cpp@37314,362",
-          "indra/newview/pipeline.cpp@37677,1060",
-          "indra/newview/pipeline.cpp@39606,153"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@31804,30",
+          "indra/newview/pipeline.cpp@31855,16",
+          "indra/newview/pipeline.cpp@31895,430",
+          "indra/newview/pipeline.cpp@32339,38",
+          "indra/newview/pipeline.cpp@32488,37",
+          "indra/newview/pipeline.cpp@32526,17",
+          "indra/newview/pipeline.cpp@32705,721",
+          "indra/newview/pipeline.cpp@33438,15",
+          "indra/newview/pipeline.cpp@33499,15",
+          "indra/newview/pipeline.cpp@33561,222",
+          "indra/newview/pipeline.cpp@33869,53",
+          "indra/newview/pipeline.cpp@33928,242",
+          "indra/newview/pipeline.cpp@34239,36",
+          "indra/newview/pipeline.cpp@34283,7",
+          "indra/newview/pipeline.cpp@34294,41",
+          "indra/newview/pipeline.cpp@36158,47",
+          "indra/newview/pipeline.cpp@36604,78",
+          "indra/newview/pipeline.cpp@37367,362",
+          "indra/newview/pipeline.cpp@37730,1060",
+          "indra/newview/pipeline.cpp@39659,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -199416,8 +200203,9 @@
           "indra/newview/pipeline.h@1015,42",
           "indra/newview/pipeline.h@1419,31",
           "indra/newview/pipeline.h@1557,409",
-          "indra/newview/pipeline.h@2365,58",
-          "indra/newview/pipeline.h@2648,32"
+          "indra/newview/pipeline.h@1992,291",
+          "indra/newview/pipeline.h@2386,58",
+          "indra/newview/pipeline.h@2669,32"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -202824,6 +203612,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -203317,6 +204106,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -203324,6 +204114,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -203333,6 +204124,7 @@
       },
       "indra/newview/altron.h": {
         "includes": [
+          "indra/llcommon/lluuid.h",
           "indra/llcommon/stdtypes.h",
           "indra/llmath/v3color.h",
           "indra/llmath/v3dmath.h",
@@ -205852,6 +206644,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -205870,8 +206663,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -205969,6 +206764,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -206038,6 +206836,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -206074,6 +206873,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -206215,6 +207015,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -206239,6 +207040,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -211225,6 +212027,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",
@@ -212889,20 +213692,20 @@
     "hooks": [
       {
         "hunks": [
-          "indra/newview/CMakeLists.txt@334,123",
-          "indra/newview/CMakeLists.txt@1298,176",
-          "indra/newview/CMakeLists.txt@2868,32",
-          "indra/newview/CMakeLists.txt@2906,20"
+          "indra/newview/CMakeLists.txt@335,123",
+          "indra/newview/CMakeLists.txt@1300,176",
+          "indra/newview/CMakeLists.txt@2870,32",
+          "indra/newview/CMakeLists.txt@2908,20"
         ],
         "path": "indra/newview/CMakeLists.txt"
       },
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14788",
-          "indra/newview/app_settings/settings.xml@29404,2466",
-          "indra/newview/app_settings/settings.xml@31871,209",
-          "indra/newview/app_settings/settings.xml@32081,364"
+          "indra/newview/app_settings/settings.xml@6575,14799",
+          "indra/newview/app_settings/settings.xml@29415,2466",
+          "indra/newview/app_settings/settings.xml@31882,209",
+          "indra/newview/app_settings/settings.xml@32092,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -212963,9 +213766,8 @@
           "indra/newview/pipeline.cpp@28,45",
           "indra/newview/pipeline.cpp@222,16",
           "indra/newview/pipeline.cpp@1211,16",
-          "indra/newview/pipeline.cpp@1701,9113",
-          "indra/newview/pipeline.cpp@10815,20896",
-          "indra/newview/pipeline.cpp@34313,979"
+          "indra/newview/pipeline.cpp@1701,30063",
+          "indra/newview/pipeline.cpp@34366,979"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -216009,6 +216811,7 @@
           "ALPanelGhostStudio::ALPanelGhostStudio",
           "ALPanelGhostStudio::activeHost",
           "ALPanelGhostStudio::anyEntityCloneSelected",
+          "ALPanelGhostStudio::appendSelectedInstances",
           "ALPanelGhostStudio::applyDirectedAnimToSelection",
           "ALPanelGhostStudio::applyInventoryAnimation",
           "ALPanelGhostStudio::applyInventoryAnimationTo",
@@ -216435,6 +217238,7 @@
           "ALTron::palette",
           "ALTron::pulse01",
           "ALTron::pulseMul",
+          "ALTron::recordedTrailActors",
           "ALTron::renderTrails",
           "ALTron::resetToDefaults",
           "ALTron::resolveFrame",
@@ -216442,6 +217246,7 @@
           "ALTron::trailsWanted",
           "ALTron::updateTrails",
           "ALTron::worldHasWork",
+          "LLFrameTimer::getFrameCount",
           "LLGLSLShader::unbind",
           "LLPresentationTime::currentFrame",
           "LLViewerCamera::getInstance",
@@ -218803,6 +219608,7 @@
           "indra/newview/aldirectorqol.h",
           "indra/newview/aldirectorswitcher.h",
           "indra/newview/aldirectortabmigration.h",
+          "indra/newview/aldirectortagtargets.h",
           "indra/newview/aldirectortheme.h",
           "indra/newview/alfloateractorgaze.h",
           "indra/newview/alfloaterlightbox.h",
@@ -218821,8 +219627,10 @@
           "indra/newview/allenslooks.h",
           "indra/newview/alpanelactormover.h",
           "indra/newview/alpanelanimpreview.h",
+          "indra/newview/alpanelavatarlightresponse.h",
           "indra/newview/alpanelcinecamparams.h",
           "indra/newview/alpanelcinelightrig.h",
+          "indra/newview/alpanelghoststudio.h",
           "indra/newview/alpanellensgaze.h",
           "indra/newview/alpanelpatheditor.h",
           "indra/newview/alpanelsteppedanim.h",
@@ -218920,6 +219728,9 @@
           "ALDirectorSwitcher::instance",
           "ALDirectorTabMigration::migrateTabName",
           "ALDirectorTabMigration::restoreTabName",
+          "ALDirectorTagTargets::appendSubjectTargets",
+          "ALDirectorTagTargets::canonicalId",
+          "ALDirectorTagTargets::instance",
           "ALDirectorTheme::listThemes",
           "ALFloaterActorGaze::showForSelection",
           "ALFloaterActorGaze::updateSelection",
@@ -218989,6 +219800,7 @@
           "ALSteppedAnim::builtInPresets",
           "ALSteppedAnim::partSetting",
           "ALSteppedAnim::presetSettings",
+          "ALTagHighlight::pageTarget",
           "ALTron::applyPreset",
           "ALTron::clearTrails",
           "ALTron::initializeSettingSync",
@@ -219025,6 +219837,7 @@
           "LLFloater::onFocusLost",
           "LLFloater::onOpen",
           "LLFloater::setMinimized",
+          "LLFloater::setVisible",
           "LLFloaterDirector::LLFloaterDirector",
           "LLFloaterDirector::actorStyleTargetId",
           "LLFloaterDirector::actorTargetsForPage",
@@ -219166,6 +219979,7 @@
           "LLFloaterDirector::refreshSceneList",
           "LLFloaterDirector::refreshStatusStrip",
           "LLFloaterDirector::refreshSubjects",
+          "LLFloaterDirector::refreshTagHighlight",
           "LLFloaterDirector::refreshTransport",
           "LLFloaterDirector::refreshWorldLensReadouts",
           "LLFloaterDirector::removeRecoveryFile",
@@ -219190,6 +220004,7 @@
           "LLFloaterDirector::selectedManagedGroup",
           "LLFloaterDirector::setMinimized",
           "LLFloaterDirector::setToolTipIfChanged",
+          "LLFloaterDirector::setVisible",
           "LLFloaterDirector::showAnimSpeed",
           "LLFloaterDirector::showCameraSubjectMenu",
           "LLFloaterDirector::showProjectorTrack",
@@ -222287,6 +223102,7 @@
           "LLPipeline::isLiveMainAreaShadowPass",
           "LLPipeline::isProjectorNoShadow",
           "LLPipeline::isProjectorShadowSuppressed",
+          "LLPipeline::isTagRecordView",
           "LLPipeline::isVCamVolumetricAutoEnabled",
           "LLPipeline::isVCamVolumetricDeclined",
           "LLPipeline::isVolumetricShaftEnabled",

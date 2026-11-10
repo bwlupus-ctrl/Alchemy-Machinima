@@ -62,7 +62,7 @@ Interactive controls: 2169 (of 2301 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1937 mockup rows + 364 page_sources-only (page, widget) rows = 2301 controls. page_sources.json lists 2300 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Catalog = 1937 mockup rows + 364 page_sources-only (page, widget) rows = 2301 controls. page_sources.json lists 2301 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
 Of the page_sources-only rows, 360 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2

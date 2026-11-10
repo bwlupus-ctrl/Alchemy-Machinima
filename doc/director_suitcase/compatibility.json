@@ -1586,6 +1586,51 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/aldirectortagtargets.cpp",
+    "dependency": "indra/newview/aldirectortagtargets.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectortagtargets.cpp",
+    "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectortagtargets.cpp",
+    "dependency": "indra/newview/altron.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectortagtargets.cpp",
+    "dependency": "indra/newview/lldirectorcast.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectortagtargets.h",
+    "dependency": "indra/newview/aldirectortheme.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/aldirectortheme.cpp",
     "dependency": "indra/newview/aldirectortheme.h",
     "excluded": false,
@@ -2432,6 +2477,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alghostnameplates.cpp",
+    "dependency": "indra/newview/aldirectortagtargets.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alghostplacementadapter.cpp",
     "dependency": "indra/newview/alghostplacementadapter.h",
     "excluded": false,
@@ -2524,6 +2578,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.cpp",
     "dependency": "indra/newview/alcinelightrigmanager.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.cpp",
+    "dependency": "indra/newview/aldirectortagtargets.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9381,7 +9444,25 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterdirector.cpp",
+    "dependency": "indra/newview/aldirectortagtargets.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.cpp",
     "dependency": "indra/newview/aldirectortheme.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.cpp",
+    "dependency": "indra/newview/alpanelghoststudio.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9616,6 +9697,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterdirector.cpp",
     "dependency": "indra/newview/alpanellensgaze.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.cpp",
+    "dependency": "indra/newview/alpanelavatarlightresponse.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -10402,6 +10492,15 @@
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llhudnametag.cpp",
+    "dependency": "indra/newview/aldirectortagtargets.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
     "action": "carry/adapt fork source",
@@ -12640,6 +12739,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llvoavatar.cpp",
     "dependency": "indra/newview/alavataranimspeed.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llvoavatar.cpp",
+    "dependency": "indra/newview/aldirectortagtargets.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
