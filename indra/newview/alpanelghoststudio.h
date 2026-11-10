@@ -62,6 +62,27 @@ public:
     void onVisibilityChange(bool new_visibility) override;
     static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
+    // [CloneAnimDrop] an inventory animation dropped on the Animation asset
+    // card plays on the selected clones through the Inventory combo path.
+    bool handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
+                           EDragAndDropType cargo_type, void* cargo_data,
+                           EAcceptance* accept, std::string& tooltip_msg) override;
+    // Inventory context menu: play `item_id` (links resolved; owned
+    // animations only) on the selected clones. False when nothing playable.
+    static bool playInventoryAnimationOnSelectedClones(const LLUUID& item_id);
+    // Enables that menu item: an entity clone is selected in the active host,
+    // else in the shared Studio selection.
+    static bool anyEntityCloneSelected();
+    // The host the user last worked in (shown, list selection, drop), while it
+    // is still visible; the inventory menu applies to ITS selection.
+    static ALPanelGhostStudio* activeHost();
+    // Play on clones with ONE undo step on the active host's shell that
+    // restores every clone's previous drive mode AND animation. Returns how
+    // many clones now play it. Label carries the animation name only.
+    static S32 playAnimationOnClonesRecorded(const std::vector<LLUUID>& ids,
+                                             const LLUUID& asset_id,
+                                             const std::string& anim_name);
+
 private:
     friend struct ALCloneRotationProbe;
     ALScrollFit::Controller mScrollFit;
@@ -128,6 +149,25 @@ private:
     void noteListSelectionChanged() { ++mSelectionEpoch; mRotationSelectionDirty = true; }
     SelectionCache mSel;
     U64 mSelectionEpoch = 1;
+
+    // [CloneAnimDrop] shared apply for the Inventory combo, the card drop and
+    // the inventory menu: Directed clones in the selection, else every selected
+    // entity clone switched to Directed; toasts, never the asset id.
+    static void applyInventoryAnimationTo(const std::vector<ALGhostAnimDrop::SelectedClone>& selected,
+                                          const LLUUID& asset_id, const std::string& anim_name);
+    void applyInventoryAnimation(const LLUUID& asset_id, const std::string& anim_name);
+    void applyDirectedAnimToSelection(const LLUUID& anim);   // Directed members only
+    std::vector<ALGhostAnimDrop::SelectedClone> selectedEntityClonesForApply() const;
+    bool pointOverAnimAssetCard(S32 x, S32 y) const;
+    // Never-expose rule: the "Anim UUID" editor text for a Directed asset.
+    std::string directedAnimEditorText(const LLUUID& asset_id);
+    void showDirectedAnim(const LLUUID& asset_id, bool force = false);
+    ALKitCard* mAnimAssetCard = nullptr;
+    U64 mDirectedAnimShownLibraryRev = ~0ULL;   // library / session-name / restriction
+    U64 mDirectedAnimShownNameRev = ~0ULL;      // revisions the shown editor text was
+    U64 mDirectedAnimShownRestrictionRev = ~0ULL; // formatted with
+    void noteActiveHost();
+    static ALPanelGhostStudio* sActiveHost;
 
     LLUUID selectedInstance() const;    // list selection -> instance id (null = none)
     LLUUID selectedListValue() const;   // raw row value (group id for headers)

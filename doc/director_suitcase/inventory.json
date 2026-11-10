@@ -8,22 +8,31 @@
       "GENERATED": 736,
       "HOOK": 535,
       "OWNED": 911,
-      "TOOLING": 446
+      "TOOLING": 447
     },
     "dirty_product_inputs": [
-      "indra/newview/alcinelightrigmanager.h",
-      "indra/newview/aldirectorgroups.h",
-      "indra/newview/alkithistory.h",
-      "indra/newview/alkitpage.cpp",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
-      "indra/newview/llfloaterdirector.cpp",
-      "indra/newview/llfloaterdirector.h",
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/alghostanimassetindex.cpp",
+      "indra/newview/alghostanimassetindex.h",
+      "indra/newview/alghostanimdrop.cpp",
+      "indra/newview/alghostanimdrop.h",
+      "indra/newview/alghoststudio.cpp",
+      "indra/newview/alghoststudio.h",
+      "indra/newview/alkitrow.cpp",
+      "indra/newview/alkitrow.h",
+      "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/alpanelghoststudio.h",
+      "indra/newview/altoolghostedit.cpp",
+      "indra/newview/alwornanimnames.cpp",
+      "indra/newview/alwornanimnames.h",
+      "indra/newview/llinventorybridge.cpp",
+      "indra/newview/lltooldraganddrop.cpp",
+      "indra/newview/lltooldraganddrop.h",
+      "indra/newview/llviewerobject.cpp",
+      "indra/newview/llvoavatarself.cpp",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
+      "indra/newview/skins/default/xui/en/menu_inventory.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
@@ -65,16 +74,11 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/tests/aldirectorgroups_test.cpp",
+      "indra/newview/tests/alghostanimdrop_test.cpp",
+      "scripts/code_tools/clone_anim_drop_hunks.json",
       "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_groups_check.py",
-      "scripts/code_tools/director_groups_fable_hunks.json",
-      "scripts/code_tools/director_kit/check_kit_pages.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit_gen.py",
-      "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/ui_draw_lint_baseline.json"
+      "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -88,7 +92,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "6104fbacaafef3ec0fa8b6097fba76b0ad6c92a740ebfe6da88cff05e4989d93",
+        "csv_sha256": "c43e6e746aec8c4a3f237c143b42c08b16b4ff55907b9dca2c1bf8cfbf699dce",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -259,10 +263,10 @@
       },
       "wiring_rows": 2298
     },
-    "head_source_tree": "59621f6970dc79f8d455da828d38eabf9cf92e3d",
+    "head_source_tree": "bacfc7626c241fb763bdf5b8743041cea1181792",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "b035cd89ea554f9457a12befc77af4bf6080ce52437f7959c790c79f809e4c4b",
+    "input_sha256": "f23ef03c4e2ab552c3656b270f61ce6111200fcbcaa117d7a4dadd6d239662b8",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13879,6 +13883,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -15905,7 +15910,6 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "shafts-volumetrics",
         "vcam"
       ],
       "class": "OWNED",
@@ -16018,6 +16022,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -27326,8 +27331,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
-        "gaze"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27357,8 +27361,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
-        "gaze"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -28130,6 +28133,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -35298,9 +35302,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "common-ui",
-        "director-shell",
-        "vcam"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -36503,6 +36505,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -41090,6 +41093,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_groups_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_groups_fable_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

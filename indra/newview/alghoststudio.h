@@ -38,6 +38,7 @@
 #include "alghostgroupmodel.h"
 #include "alavataranimationtime.h"
 #include "alghostanimnames.h"
+#include "alghostanimdrop.h"        // [CloneAnimDrop] selection plan types
 #include "alghostanimmirrormath.h"
 #include "alghostrotation.h"
 #include "alghostplacementresolver.h"
@@ -781,6 +782,31 @@ public:
     bool      setInstanceChaos(const LLUUID& id, F32 amount);
     bool      setInstanceLook(const LLUUID& id, EGhostLook look);
     LLGhostAvatar* resolveEntityClone(const LLUUID& id) const;
+
+    // ---- [CloneAnimDrop] inventory animation on clones ----
+    // Screen-space clone pick shared by the edit tool and 3D drag-and-drop:
+    // the nearest visible instance whose foot / mid-body projects within
+    // radius_px of (x, y); null while the master show is off. entity_only
+    // skips overlays (only entity clones can play a Directed animation).
+    static constexpr F32 SCREEN_PICK_PX = 18.f;
+    // out_probe_agent receives the winning probe point (agent coordinates) so
+    // a caller can compare its depth against a real pick.
+    LLUUID pickInstanceAtScreen(S32 x, S32 y, F32 radius_px,
+                                bool entity_only = false,
+                                LLVector3* out_probe_agent = nullptr) const;
+    // The visible entity clone a picked world object belongs to -- the
+    // clone's own body or one of its attachments -- else null.
+    LLUUID entityCloneForObject(LLViewerObject* object) const;
+    // The shared selection expanded by group: entity clones with their
+    // "already Directed" flag, for ALGhostAnimDrop::planApply().
+    std::vector<ALGhostAnimDrop::SelectedClone> selectedEntityClones() const;
+    // Play `asset_id` on each listed entity clone, switching it to Directed
+    // when needed (the same path as the Clones page Inventory combo). Returns
+    // how many clones now play it. The id is used to play, never logged.
+    S32 playAnimationOnClones(const std::vector<LLUUID>& ids, const LLUUID& asset_id);
+    // Session display name for toasts; "the clone" when unnamed.
+    std::string cloneDisplayName(const LLUUID& id) const;
+
     // [AutoAnimate]
     bool setInstanceAutoAnimate(const LLUUID& id, bool enabled);
     bool setInstanceAutoAnimWindow(const LLUUID& id, F32 seconds);

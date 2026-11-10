@@ -394,6 +394,8 @@ set(viewer_SOURCE_FILES
     alavataranimspeed.cpp
     alghoststudio.cpp
     alghostanimassetindex.cpp
+    alghostanimdrop.cpp # [CloneAnimDrop] pure drop/never-expose rules
+    alwornanimnames.cpp # [CloneAnimDrop] own-attachment animation names
     alworldoverlayviz.cpp
     alavatarsubjectpicker.cpp
     alprojectortracker.cpp
@@ -1368,6 +1370,8 @@ set(viewer_HEADER_FILES
     alavataranimspeed.h
     alghoststudio.h
     alghostanimassetindex.h
+    alghostanimdrop.h # [CloneAnimDrop]
+    alwornanimnames.h # [CloneAnimDrop]
     alworldoverlayviz.h
     alscrollfocus.h
     alscrollfit.h # [ScrollFit]
@@ -2984,6 +2988,8 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alvramrecovery "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alavataranimationtime "" "${test_libs};llcharacter" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alghostanimnames "" "${test_libs};llcharacter" "${test_project}")
+  # [CloneAnimDrop] pure drop-target / never-expose rules (TPV policy 2.a.i)
+  LL_ADD_INTEGRATION_TEST(alghostanimdrop "alghostanimdrop.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alprobereach "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alshadowslotmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alhidecursor "" "${test_libs}" "${test_project}")

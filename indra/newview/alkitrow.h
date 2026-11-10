@@ -6,6 +6,7 @@
 #include "alkitqol.h"
 #include <boost/signals2.hpp>
 #include <array>
+#include <functional>
 #include <memory>
 #include <vector>
 class LLUICtrl;
@@ -99,6 +100,15 @@ public:
     LLSD boundDefault() const;
     bool setBoundValue(const LLSD&);
     bool canPasteValue(const LLSD&) const;
+    // [CloneAnimDrop] A row whose bound value can be a protected identifier
+    // installs a guard: "Copy value" is disabled and copies nothing (row
+    // clipboard or text clipboard) when it returns false. Quick proxies consult
+    // their source row's guard at copy time.
+    using copy_guard_t = std::function<bool(const LLSD&)>;
+    void setCopyGuard(copy_guard_t guard) { mCopyGuard = std::move(guard); }
+    bool copyAllowed() const;
+    // The row whose control is `c`, else nullptr.
+    static ALKitRow* rowFor(LLView* c);
     bool enabledForEdit() const;
     ALKitQol::Favorite favoriteKey() const;
     ALKitRow* sourceRow() const { return mSourceRow.get(); }
@@ -145,6 +155,7 @@ private:
         mMirrorCommitConnection, mHistoryConnection, mValueConnection, mActionConnection;
     LLHandle<LLContextMenu> mContextMenu;
     LLHandle<ALKitRow> mSourceRow;
+    copy_guard_t mCopyGuard;
     LLHandle<ALKitSwitch> mHeaderSource;
     bool mHeaderProxy = false;
     amber_signal_t mAmberSignal;

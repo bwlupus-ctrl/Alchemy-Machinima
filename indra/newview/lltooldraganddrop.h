@@ -108,7 +108,8 @@ protected:
         DT_AVATAR = 2,
         DT_OBJECT = 3,
         DT_LAND = 4,
-        DT_COUNT = 5
+        DT_GHOST_CLONE = 5,   // [CloneAnimDrop] Ghost Studio entity clone
+        DT_COUNT = 6
     };
 
 protected:
@@ -151,6 +152,7 @@ protected:
     S32             mCurItemIndex;
     std::string     mToolTipMsg;
     std::string     mCustomMsg;
+    LLUUID          mGhostCloneTarget;  // [CloneAnimDrop] instance under the cursor
 
     enddrag_signal_t    mEndDragSignal;
 
@@ -178,6 +180,10 @@ protected:
     EAcceptance dad3dVCamNoTarget(LLViewerObject*, S32, MASK, bool);
     EAcceptance dad3dVCamAvatar(LLViewerObject*, S32, MASK, bool);
     EAcceptance dad3dVCamLand(LLViewerObject*, S32, MASK, bool);
+    // [CloneAnimDrop] an agent-inventory animation over an entity clone plays
+    // there (mGhostCloneTarget); any other cargo over a clone is refused.
+    EAcceptance dad3dPlayOnGhostClone(LLViewerObject*, S32, MASK, bool drop);
+    EAcceptance dad3dGhostCloneRefuse(LLViewerObject*, S32, MASK, bool);
 //  EAcceptance dad3dTextureSelf(LLViewerObject* obj, S32 face,
 //                               MASK mask, bool drop);
     EAcceptance dad3dWearItem(LLViewerObject* obj, S32 face,
@@ -311,7 +317,8 @@ private:
                          dragOrDrop3dImpl f_self,
                          dragOrDrop3dImpl f_avatar,
                          dragOrDrop3dImpl f_object,
-                         dragOrDrop3dImpl f_land);
+                         dragOrDrop3dImpl f_land,
+                         dragOrDrop3dImpl f_ghost_clone = &LLToolDragAndDrop::dad3dGhostCloneRefuse);
         dragOrDrop3dImpl mFunctions[DT_COUNT];
     };
     class LLDragAndDropDictionary : public LLSingleton<LLDragAndDropDictionary>,

@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alavataranimspeed.h"
 #include "alsteppedanimruntime.h"
+#include "alwornanimnames.h"        // [CloneAnimDrop] own-attachment inventory lifecycle
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llviewerobject.h"
@@ -461,6 +462,10 @@ void LLViewerObject::markDead()
     {
         LL_PROFILE_ZONE_SCOPED;
         //LL_INFOS() << "Marking self " << mLocalID << " as dead." << LL_ENDL;
+        if (ALWornAnimNames::instanceExists())
+        {
+            ALWornAnimNames::instance().onObjectGone(this); // [CloneAnimDrop] no-op unless tracked
+        }
 
         // Root object of this hierarchy unlinks itself.
         if (getParent())
@@ -1016,6 +1021,10 @@ void LLViewerObject::addChild(LLViewerObject *childp)
         mChildList.push_back(childp);
         invalidateWorldShadowBounds();
         childp->afterReparent();
+        if (ALWornAnimNames::instanceExists())
+        {
+            ALWornAnimNames::instance().onChildAdded(this, childp); // [CloneAnimDrop] HUD prims linked later
+        }
 
         if (childp->isAvatar())
         {
@@ -1045,6 +1054,10 @@ void LLViewerObject::removeChild(LLViewerObject *childp)
 
             mChildList.erase(i);
             invalidateWorldShadowBounds();
+            if (ALWornAnimNames::instanceExists())
+            {
+                ALWornAnimNames::instance().onChildRemoved(this, childp); // [CloneAnimDrop] unlinked HUD prim
+            }
 
             if(childp->getParent() == this)
             {
@@ -2996,6 +3009,10 @@ void LLViewerObject::dirtyInventory()
         mInventory = NULL;
     }
     mInventoryDirty = true;
+    if (ALWornAnimNames::instanceExists())
+    {
+        ALWornAnimNames::instance().onInventoryDirty(this); // [CloneAnimDrop] throttled refetch
+    }
 }
 
 void LLViewerObject::registerInventoryListener(LLVOInventoryListener* listener, void* user_data)
