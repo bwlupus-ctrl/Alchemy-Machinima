@@ -363,9 +363,9 @@ def validate_data(data: dict) -> None:
     # ALL OFF adds two gear rows: the mode preference and Restore last reset.
     # Includes the DirectorThemeInvert row in Director settings.
     # Group chat Snooze: two settings rows, 2499 -> 2501.
-    # Independent rigs (-2 rows) + Director Groups phase 1 (+1 page, +7 rows): 39/2501 -> 40/2506.
-    if len(pages) != 40 or row_count != 2506:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2506")
+    # Independent rigs + Director Groups 1a/1b: 40/2506; Lights combo + readouts in 1c: 40/2507.
+    if len(pages) != 40 or row_count != 2507:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2507")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2041,6 +2041,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     if errors:
         raise GenError("Director ALL OFF contract: " + "; ".join(errors))
     data = json.loads(data_path.read_text(encoding="utf-8"))
+    validate_lit_group_card(data)
     if VCAM_DATA.exists():
         vcam = json.loads(VCAM_DATA.read_text(encoding="utf-8"))
         validate_vcam_page(vcam)
@@ -2178,8 +2179,9 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # Variable ND (11/03) adds one real card header (47 -> 48).
     card_headers = sum(bool(entry[0]) for entries in generated_headers.values() for entry in entries)
     page_masters = sum(not entry[0] for entries in generated_headers.values() for entry in entries)
-    if (card_headers, page_masters) != (48, 14):
-        raise GenError(f"header switch coverage drift: {card_headers} cards / {page_masters} masters; expected 48/14")
+    # Lit groups replace Who's lit header switch with the Lights combo (48 -> 47).
+    if (card_headers, page_masters) != (47, 14):
+        raise GenError(f"header switch coverage drift: {card_headers} cards / {page_masters} masters; expected 47/14")
     quick = quick_page()
     apply_kit_xui_style(quick)
     page_files["quick_group/quick_tab"] = "panel_dpage_quick.xml"
@@ -2298,8 +2300,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
         for path, payload in outputs.items():
             if path.name.startswith("panel_dpage_"):
                 actual_headers.extend(header_destinations(ET.fromstring(payload)))
-        checks.append(("all 48 card/option headers and 14 page masters have unique search destinations",
-                       len(header_hits) == len(actual_headers) == 62 and
+        checks.append(("all 47 card/option headers and 14 page masters have unique search destinations",
+                       len(header_hits) == len(actual_headers) == 61 and
                        {(h[8], h[11], h[7]) for h in header_hits} ==
                        {(h[3], h[5], h[2]) for h in actual_headers}))
         rejects = []
@@ -2699,6 +2701,16 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
     except (GenError, OSError, ValueError, KeyError) as exc:
         print(f"selftest error: {exc}", file=sys.stderr)
         return 1
+
+
+def validate_lit_group_card(data):
+    page = next(p for g in data["groups"] for p in g["pages"] if p["name"] == "cine_light_rig_tab")
+    card = next(c for c in page["cards"] if c["id"] == "light_group")
+    widgets = {r.get("w") for r in card["rows"]}
+    if card.get("ew") or any(w and w.startswith("cine_group_") for w in widgets):
+        raise GenError("Who's lit must use the Lights combo, not legacy ticks")
+    if not {"cine_lit_target", "cine_lit_members"} <= widgets:
+        raise GenError("Who's lit is missing its Lights combo or Lit now readout")
 
 
 def main(argv: list[str] | None = None) -> int:

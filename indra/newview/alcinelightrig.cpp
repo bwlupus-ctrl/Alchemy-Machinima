@@ -49,6 +49,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstring>
+#include <set>
 
 namespace
 {
@@ -179,15 +180,15 @@ S32 gatherGroupMembers(U32 slots,
     LLDirectorCast& cast = LLDirectorCast::instance();
     LLVOAvatar* candidates[GROUP_MAX_MEMBERS] = {
         (slots & ALCineLightRig::GROUP_SLOT_SELF)
-            ? cast.resolve(LLUUID::null) : nullptr,
+            ? cast.resolve(LLUUID::null, false) : nullptr,
         (slots & ALCineLightRig::GROUP_SLOT_A)
-            ? cast.resolveSubjectA() : nullptr,
+            ? (cast.getSubjectA().notNull() ? cast.resolve(cast.getSubjectA(), false) : nullptr) : nullptr,
         (slots & ALCineLightRig::GROUP_SLOT_B)
-            ? cast.resolveSubjectB() : nullptr,
+            ? (cast.getSubjectB().notNull() ? cast.resolve(cast.getSubjectB(), false) : nullptr) : nullptr,
         (slots & ALCineLightRig::GROUP_SLOT_C)
-            ? cast.resolveSubjectC() : nullptr,
+            ? (cast.getSubjectC().notNull() ? cast.resolve(cast.getSubjectC(), false) : nullptr) : nullptr,
         (slots & ALCineLightRig::GROUP_SLOT_D)
-            ? cast.resolveSubjectD() : nullptr,
+            ? (cast.getSubjectD().notNull() ? cast.resolve(cast.getSubjectD(), false) : nullptr) : nullptr,
     };
     const U32 slot_bits[GROUP_MAX_MEMBERS] = {
         ALCineLightRig::GROUP_SLOT_SELF,
@@ -220,6 +221,37 @@ S32 gatherGroupMembers(U32 slots,
             out_members[count++] = candidate;
             out_slots |= slot_bits[slot];
         }
+    }
+    return count;
+}
+
+S32 gatherMembers(const uuid_vec_t& stored, uuid_vec_t& runtime, bool retry,
+                  LLVOAvatar* out_members[LIT_GROUP_MAX], uuid_vec_t& resolved,
+                  uuid_vec_t& resolved_stored, S32& present)
+{
+    resolved.clear();
+    resolved_stored.clear();
+    present = 0;
+    S32 count = 0;
+    std::set<LLUUID> seen;
+    for (size_t index = 0; index < runtime.size(); ++index)
+    {
+        // Stored -> runtime mapping is revision-cached. No name refresh here.
+        auto* object = gObjectList.findObject(runtime[index]);
+        LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
+        if ((!avatar || avatar->isDead()) && retry)
+        {
+            // Animesh control avatars can be recreated without a cast revision.
+            avatar = LLDirectorCast::instance().resolve(stored[index], false);
+            if (avatar && !avatar->isDead()) runtime[index] = avatar->getID();
+        }
+        if (!avatar || avatar->isDead()) continue;
+        if (!seen.insert(avatar->getID()).second) continue;
+        ++present;
+        if (count == LIT_GROUP_MAX) continue;
+        out_members[count++] = avatar;
+        resolved.push_back(avatar->getID());
+        resolved_stored.push_back(stored[index]);
     }
     return count;
 }
@@ -1201,6 +1233,24 @@ void ALCineLightRig::setObjectTarget(const LLUUID& id)
     mSmoothedScale = 1.f;
 }
 
+void ALCineLightRig::setLitGroup(const std::string& name)
+{
+    mLitGroup = name;
+    mLitMembersDirty = true;
+    mLastResolvedMembers.clear();
+    mLastResolvedStoredMembers.clear();
+    mGroupRepresentative.setNull();
+    mHaveSmoothedCentre = false;
+    mSmoothedScale = 1.f;
+}
+
+void ALCineLightRig::renameLitGroup(const std::string& old_name, const std::string& new_name)
+{
+    ALCineLightRigModel::renameLitGroup(mLitGroup, old_name, new_name);
+    // Invalidate the id cache without snapping the live rig.
+    mLitMembersDirty = true;
+}
+
 void ALCineLightRig::setGroupEnabled(bool enabled)
 {
     mGroupEnabled = enabled;
@@ -1220,15 +1270,15 @@ LLVOAvatar* ALCineLightRig::resolveSlotAvatar() const
     LLDirectorCast& cast = LLDirectorCast::instance();
     switch (mSlot)
     {
-        case ALCineLightRigSlot::A: return cast.resolveSubjectA();
-        case ALCineLightRigSlot::B: return cast.resolveSubjectB();
-        case ALCineLightRigSlot::C: return cast.resolveSubjectC();
-        case ALCineLightRigSlot::D: return cast.resolveSubjectD();
+        case ALCineLightRigSlot::A: return (cast.getSubjectA().notNull() ? cast.resolve(cast.getSubjectA(), false) : nullptr);
+        case ALCineLightRigSlot::B: return (cast.getSubjectB().notNull() ? cast.resolve(cast.getSubjectB(), false) : nullptr);
+        case ALCineLightRigSlot::C: return (cast.getSubjectC().notNull() ? cast.resolve(cast.getSubjectC(), false) : nullptr);
+        case ALCineLightRigSlot::D: return (cast.getSubjectD().notNull() ? cast.resolve(cast.getSubjectD(), false) : nullptr);
         case ALCineLightRigSlot::SELF:
         default:
             // Legacy single-rig scenes retain their avatar anchor on SELF.
             // Normal SELF operation is resolve(null).
-            return cast.resolve(mAnchor.notNull() ? mAnchor : LLUUID::null);
+            return cast.resolve(mAnchor.notNull() ? mAnchor : LLUUID::null, false);
     }
 }
 
@@ -2749,24 +2799,60 @@ void ALCineLightRig::tickShared(
         object_subject_scale = objectRadiusToSubjectScale(object_radius);
     }
 
-    LLVOAvatar* group_members[GROUP_MAX_MEMBERS] = {};
+    LLVOAvatar* group_members[LIT_GROUP_MAX] = {};
     U32 resolved_group_slots = 0;
     S32 group_count = 0;
-    if (!object_targeted && mGroupEnabled)
+    auto& cast = LLDirectorCast::instance();
+    if (mLitMembersDirty || mLitCastRevision != cast.getCastRevision() ||
+        mLitGroupRevision != cast.getGroupRevision())
     {
-        group_count = gatherGroupMembers(
-            mGroupSlots, group_members, resolved_group_slots);
-        mLastResolvedGroupSlots = resolved_group_slots;
+        mLitGroupMembers = litGroupMembers(mLitGroup.empty() ? uuid_vec_t() : cast.membersInGroup(mLitGroup),
+            [](const LLUUID& id) { return LLDirectorCast::isSelf(id)
+                ? gAgentID : LLDirectorCast::canonicalActorId(id); });
+        mLitRuntimeMembers.clear();
+        uuid_vec_t stored;
+        for (const auto& id : mLitGroupMembers)
+        {
+            auto* member = cast.resolve(id, false);
+            const LLUUID runtime = member ? member->getID() : id;
+            if (std::find(mLitRuntimeMembers.begin(), mLitRuntimeMembers.end(), runtime) != mLitRuntimeMembers.end()) continue;
+            stored.push_back(id);
+            mLitRuntimeMembers.push_back(runtime);
+        }
+        mLitGroupMembers.swap(stored);
+        mLitMembersDirty = false;
+        mLitGroupSize = static_cast<S32>(mLitGroupMembers.size());
+        // gatherMembers caps resolved identities in cast order, skipping away members.
+        mLitCastRevision = cast.getCastRevision();
+        mLitGroupRevision = cast.getGroupRevision();
+        mLitMemberRetryAt = LLTimer::getTotalSeconds() + .25;
     }
-    else
-    {
-        mLastResolvedGroupSlots = 0;
-    }
-
+    const F64 member_now = LLTimer::getTotalSeconds();
+    const bool retry_members = member_now >= mLitMemberRetryAt;
+    if (retry_members) mLitMemberRetryAt = member_now + .25;
+    mLastResolvedMembers.clear();
+    mLastResolvedStoredMembers.clear();
+    mLitGroupPresent = 0;
+    if (!object_targeted && !mLitGroup.empty())
+        group_count = gatherMembers(mLitGroupMembers, mLitRuntimeMembers, retry_members, group_members,
+            mLastResolvedMembers, mLastResolvedStoredMembers, mLitGroupPresent);
+    const LitTarget target = resolveLitTarget(object_targeted, !mLitGroup.empty(),
+        group_count, mGroupEnabled);
+    mLitGroupFallback = !object_targeted && !mLitGroup.empty() && target == LitTarget::SUBJECT;
+    mLitGroupWide = false;
+    if (target == LitTarget::LEGACY)
+        group_count = gatherGroupMembers(mGroupSlots, group_members, resolved_group_slots);
+    mLastResolvedGroupSlots = resolved_group_slots;
+    const bool group_target = target == LitTarget::GROUP || target == LitTarget::LEGACY;
     LLVOAvatar* avatar = object_targeted ? nullptr
-        : (mGroupEnabled
-            ? (group_count > 0 ? group_members[0] : nullptr)
-            : resolveSlotAvatar());
+        : (group_target ? (group_count > 0 ? group_members[0] : nullptr) : resolveSlotAvatar());
+    if (target == LitTarget::SUBJECT && avatar)
+    {
+        mLastResolvedMembers.push_back(avatar->getID());
+        const LLUUID subjects[] = { mAnchor.isNull() ? gAgentID : mAnchor,
+            cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+        mLastResolvedStoredMembers.push_back(subjects[static_cast<S32>(mSlot)]);
+    }
     if (!object_targeted && !avatar)
     {
         destroyEmitters();
@@ -2783,23 +2869,20 @@ void ALCineLightRig::tickShared(
     bool aggregate_group = false;
     LLVector3 aggregate_centre_agent;
     F32 aggregate_subject_scale = 1.f;
-    if (!object_targeted && mGroupEnabled && group_count > 1)
+    if (!object_targeted && group_target && group_count > 1)
     {
         const S32 group_track_mode = track_mode_setting == 1 ? 1 : 0;
-        F32 points[GROUP_MAX_MEMBERS][3];
-        F32 member_scales[GROUP_MAX_MEMBERS];
+        F32 points[LIT_GROUP_MAX][3];
+        F32 member_scales[LIT_GROUP_MAX];
         S32 valid_count = 0;
         U32 valid_slots = 0;
         S32 member_index = 0;
-        for (S32 slot = 0; slot < GROUP_MAX_MEMBERS; ++slot)
+        for (S32 slot = 0; slot < (target == LitTarget::LEGACY ? GROUP_MAX_MEMBERS : group_count); ++slot)
         {
             const U32 slot_bit = 1u << slot;
-            if (!(resolved_group_slots & slot_bit))
-            {
-                continue;
-            }
-
-            LLVOAvatar* member = group_members[member_index++];
+            if (target == LitTarget::LEGACY && !(resolved_group_slots & slot_bit)) continue;
+            const S32 index = member_index++;
+            LLVOAvatar* member = group_members[index];
             const F32 member_scale = sanitizeSubjectScale(
                 scale_aware_setting ? member->getUniformScale() : 1.f);
             LLVector3 point;
@@ -2809,6 +2892,11 @@ void ALCineLightRig::tickShared(
                 continue;
             }
             group_members[valid_count] = member;
+            if (target == LitTarget::GROUP)
+            {
+                mLastResolvedMembers[valid_count] = mLastResolvedMembers[index];
+                mLastResolvedStoredMembers[valid_count] = mLastResolvedStoredMembers[index];
+            }
             member_scales[valid_count] = member_scale;
             points[valid_count][0] = point.mV[VX];
             points[valid_count][1] = point.mV[VY];
@@ -2816,9 +2904,14 @@ void ALCineLightRig::tickShared(
             valid_slots |= slot_bit;
             ++valid_count;
         }
+        if (target == LitTarget::GROUP)
+        {
+            mLastResolvedMembers.resize(valid_count);
+            mLastResolvedStoredMembers.resize(valid_count);
+        }
         group_count = valid_count;
         resolved_group_slots = valid_slots;
-        mLastResolvedGroupSlots = valid_slots;
+        mLastResolvedGroupSlots = target == LitTarget::LEGACY ? valid_slots : 0;
         if (group_count == 0)
         {
             destroyEmitters();
@@ -2839,9 +2932,19 @@ void ALCineLightRig::tickShared(
             aggregate_centre_agent.set(centre[0], centre[1], centre[2]);
             aggregate_subject_scale = groupSubjectScale(
                 points, member_scales, group_count, centre, setup.mRadius);
+            mLitGroupWide = aggregate_subject_scale >= SUBJECT_SCALE_MAX ||
+                setup.mRadius * aggregate_subject_scale >= SCALED_RADIUS_CEIL;
             aggregate_group = true;
         }
     }
+
+    if (group_target && group_count > 0)
+    {
+        for (S32 i = 0; i < group_count; ++i)
+            if (group_members[i]->getID() == mGroupRepresentative) { avatar = group_members[i]; break; }
+        mGroupRepresentative = avatar->getID();
+    }
+    else mGroupRepresentative.setNull();
 
     if (!object_targeted)
     {
@@ -3046,8 +3149,10 @@ void ALCineLightRig::tickShared(
     else if (!memberTrackPoint(
                  avatar, track_mode, subject_scale, centre_agent))
     {
-        if (mGroupEnabled)
+        if (group_target)
         {
+            mLastResolvedMembers.clear();
+            mLastResolvedStoredMembers.clear();
             mLastResolvedGroupSlots = 0;
             destroyEmitters();
             std::memset(&mLastFrame, 0, sizeof(mLastFrame));
@@ -3485,6 +3590,12 @@ const ALCineLightRigModel::RigFrame& ALCineLightRig::mapTargetFrame() const
 void ALCineLightRig::shutdown()
 {
     mLastResolvedGroupSlots = 0;
+    mLastResolvedMembers.clear();
+    mLastResolvedStoredMembers.clear();
+    mLitGroupFallback = false;
+    mLitGroupWide = false;
+    mLitGroupPresent = 0;
+    mGroupRepresentative.setNull();
     mLiveProbeBounceScale = 1.f;
     destroyEmitters();
     mHaveSmoothedCentre = false;
@@ -4504,7 +4615,8 @@ LLSD ALCineLightRig::sceneData() const
     LLSD data = LLSD::emptyMap();
     data["version"] = 1;
     data["anchor"] = mAnchor;
-    data["anchor_group"] = mGroupEnabled;
+    data["lit_group"] = mLitGroup;
+    data["anchor_group"] = mLitGroup.empty() && mGroupEnabled;
     data["anchor_group_slots"] = static_cast<S32>(mGroupSlots);
     data["mirror"] = transforms.mMirror;
     data["orbit_yaw"] = transforms.mYawDeg;
@@ -4557,6 +4669,7 @@ void ALCineLightRig::applySceneData(const LLSD& data)
     // live state untouched rather than half-applying data we cannot understand.
     if (!data.isMap() || !data.has("version"))
     {
+        setLitGroup(std::string());
         for (S32 i = 0; i < LIGHT_COUNT; ++i)
         {
             mShaftEnabled[i] = false;
@@ -4606,6 +4719,7 @@ void ALCineLightRig::applySceneData(const LLSD& data)
     {
         setAnchor(data["anchor"].asUUID());
     }
+    setLitGroup(data["lit_group"].asString());
     setGroupEnabled(data["anchor_group"].asBoolean());
     setGroupSlots(static_cast<U32>(
         data["anchor_group_slots"].asInteger()) & GROUP_SLOT_MASK);

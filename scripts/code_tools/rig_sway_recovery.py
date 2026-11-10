@@ -63,6 +63,9 @@ public:
     U32 mEmitters = 0;
     std::string mLoadedSetupName;
     LLUUID mAnchor, mObjectTarget;
+    std::string mLitGroup;
+    const std::string& getLitGroup() const { return mLitGroup; }
+    void setLitGroup(const std::string& name) { mLitGroup = name; }
     bool mGroupEnabled = false;
     U32 mGroupSlots = 0;
     S32 mSelectedTicks = 0, mBlobTicks = 0;
@@ -131,6 +134,9 @@ public:
     std::vector<S32> mActorOnlyRecipients;
     U32 mActorOnlyObjectSlots = 0;
     S32 mLiveProbeRetryTicks = 0;
+    void setLitGroup(Slot, const std::string&);
+    void applySceneData(const LLSD&);
+    void applySceneDataStale(const LLSD&);
     void tick(F64);
     void tickSoloMask(F64);
     void shutdown();
@@ -221,6 +227,15 @@ void checkCallerRecovery(LLSD setup, const LLSD& malformed) {
     }
     assert(ALCineLightRigManager::validateInstanceStore(store));
     ALCineLightRigManager manager; assert(manager.restore(store, true));
+    for(S32 i=0;i<5;++i)manager.setLitGroup(static_cast<Slot>(i),"guards");
+    auto clear=[](const ALCineLightRigManager& m){for(S32 i=0;i<5;++i)if(!m.mInstances[i].mLitGroup.empty() || !m.mBlobs[i].mLitGroup.empty())return false;return true;};
+    LLSD unsupported;unsupported["version"]=99;manager.applySceneData(unsupported);assert(!clear(manager));
+    for(S32 i=0;i<5;++i)assert(manager.mInstances[i].mLitGroup=="guards" && manager.mBlobs[i].mLitGroup=="guards");
+    unsupported["version"]="future";manager.applySceneData(unsupported);
+    for(S32 i=0;i<5;++i)assert(manager.mInstances[i].mLitGroup=="guards" && manager.mBlobs[i].mLitGroup=="guards");
+    manager.applySceneDataStale(LLSD());assert(!clear(manager));
+    manager.applySceneData(LLSD());assert(clear(manager));
+    assert(manager.restore(store,true));
     assert(manager.mSelected == Slot::B);
     assert(!manager.isRigGroup()); // old scenes need no group field
     for (S32 slot = 0; slot < 5; ++slot) {
@@ -367,6 +382,21 @@ void testRecovery(const LLSD& authored) {
     std::cout << "PASS: 600 production blend/LLSD round trips; recovery through scene, cue list, blob and five-slot restore\n";
     std::cout << "PASS: production manager independent selection/power, Subject rigs off/all-off/restore, buffer-swap guards and mirrors\n";
     std::cout << "PASS: actual manager ticks Subjects without a group; startup off, scene enables retained and shutdown retains edits\n";
+    {
+        const auto setup_only=setupToLLSD(Setup(),Globals());
+        assert(!setup_only.has("lit_group") && !setup_only.has("anchor_group"));
+        ParamBlob blob; blob.mLitGroup="guards";blob.mGroupEnabled=true;
+        auto entry=blob.toLLSD(); assert(!entry.has("lit_group") && !entry["group"].asBoolean());
+        entry["lit_group"]="guards";
+        LLSD scene; scene["version"]=1;scene["selected_slot"]=0;scene["instances"]=LLSD::emptyArray();
+        for(S32 i=0;i<5;++i){entry["slot"]=i;scene["instances"].append(entry);}
+        ALCineLightRigManager group_manager;
+        assert(group_manager.restore(scene,true));
+        for(const auto& rig:group_manager.mInstances)assert(rig.getLitGroup()=="guards");
+        assert(group_manager.restore(scene,false));
+        for(const auto& rig:group_manager.mInstances)assert(rig.getLitGroup().empty());
+    }
+    RigLitGroupModel::test();
     RigSessionUI::test();
     RigTargetUI::test();
     RigLightingUI::test();
@@ -403,6 +433,7 @@ struct LLUUID {
     bool operator<(const LLUUID& other) const { return value < other.value; }
 };
 const LLUUID LLUUID::null{};
+using uuid_vec_t = std::vector<LLUUID>;
 struct LLSD {''')
     shim = shim.replace('INTEGER, BOOL }', 'INTEGER, BOOL, UUID }')
     shim = shim.replace('LLSD()=default;', '''LLSD()=default;
@@ -451,6 +482,12 @@ def caller_fixtures(root: Path, controller: str):
                  function(header, 'enum class TickPath') + ';\n' +
                  function(header, 'inline void clearActorOnlyForLegacyMigration(') + '\n}')
     lines.append(MANAGER)
+    lines.append(r'''
+namespace ALCineLightRigManagerModel {struct LiveProbeConfig {};bool liveProbeConfigFromLLSD(const LLSD&,LiveProbeConfig&){return true;}}
+void liveProbeConfigToSettings(const ALCineLightRigManagerModel::LiveProbeConfig&){}
+struct ALGhostStudio {struct Instance{bool mMirrorLightRig=false;};std::vector<Instance> instances;
+static ALGhostStudio& instance(){static ALGhostStudio s;return s;}std::vector<Instance>& getInstances(){return instances;}};
+''')
     for signature in ('inline U32 slotToGroupBit(', 'inline S32 enabledCount(',
                       'inline ALCineLightRigSlot lowestEnabled(',
                       'inline ALCineLightRigSlot normalizeSelected(', 'inline TickPath pathFor('):
@@ -475,12 +512,19 @@ def caller_fixtures(root: Path, controller: str):
                       'void ALCineLightRigManager::shutdown()',
                       'void ALCineLightRigManager::migrateLegacyScene(',
                       'bool ALCineLightRigManager::validateInstanceStore(',
-                      'bool ALCineLightRigManager::restore('):
+                      'bool ALCineLightRigManager::restore(',
+                      'void ALCineLightRigManager::setLitGroup(',
+                      'void ALCineLightRigManager::applySceneData('):
         lines.append(function(manager, signature))
+    scene = function(manager, 'void ALCineLightRigManager::applySceneData(')
+    assert 'setLitGroup(static_cast<Slot>(i), std::string());' in scene
+    lines.append(scene.replace('::applySceneData(', '::applySceneDataStale(', 1).replace('setLitGroup(static_cast<Slot>(i), std::string());', '(void)i;'))
     tick = function(manager, 'void ALCineLightRigManager::tick(')
     assert 'const U32 enabled_mask = enabledMask();' in tick
     lines.append(tick.replace('ALCineLightRigManager::tick(', 'ALCineLightRigManager::tickSoloMask(', 1).replace(
         'const U32 enabled_mask = enabledMask();', 'const U32 enabled_mask = enabledMask() & 1u;'))
+    from rig_lit_group_check import fixture as lit_fixture
+    lines.append(lit_fixture(root))
     lines.append(ui_fixture(root))
     lines.append(assignment_fixture(root))
     model_tests = (root / 'indra/newview/tests/alcinelightrigmodel_test.cpp').read_text(encoding='utf8')

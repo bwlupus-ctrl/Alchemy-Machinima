@@ -59,7 +59,34 @@ enum FlickerProgram : S32
 };
 constexpr F32 FLICKER_INTENSITY_MUL_MAX = 1.5f;
 constexpr F32 FLICKER_COLOR_MUL_MAX = 1.25f;
-constexpr S32 GROUP_MAX_MEMBERS = 5;
+constexpr S32 GROUP_MAX_MEMBERS = 5; // Legacy You + Subjects A-D masks.
+constexpr S32 LIT_GROUP_MAX = 16;
+enum class LitTarget { OBJECT, GROUP, LEGACY, SUBJECT };
+inline LitTarget resolveLitTarget(bool object, bool named_group, S32 here, bool legacy)
+{
+    if (object) return LitTarget::OBJECT;
+    if (named_group) return here > 0 ? LitTarget::GROUP : LitTarget::SUBJECT;
+    return legacy ? LitTarget::LEGACY : LitTarget::SUBJECT;
+}
+inline void renameLitGroup(std::string& group, const std::string& old_name,
+                           const std::string& new_name)
+{
+    if (group == old_name) group = new_name;
+}
+// Preserve cast order. Canonicalization folds You and stored/runtime aliases.
+template<class Id, class Canonical>
+std::vector<Id> litGroupMembers(const std::vector<Id>& ids, Canonical canonical)
+{
+    std::vector<Id> result;
+    for (const auto& id : ids)
+    {
+        const Id identity = canonical(id);
+        bool duplicate = false;
+        for (const auto& previous : result) duplicate |= previous == identity;
+        if (!duplicate) result.push_back(identity);
+    }
+    return result;
+}
 constexpr F32 PITCH_LIMIT_DEG = 85.f;
 constexpr F32 MIN_RADIUS = 0.5f;
 constexpr U64 DEFAULT_SEED = 0x13579bdfULL;

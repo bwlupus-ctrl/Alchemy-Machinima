@@ -397,7 +397,7 @@ public:
     // nullptr rather than silently falling back to self, so multi-actor
     // starts never double up on the agent avatar. Refreshes the member's
     // cached mLastName whenever a name is available.
-    LLVOAvatar* resolve(const LLUUID& id);
+    LLVOAvatar* resolve(const LLUUID& id, bool refresh_name = true);
 
     // ---- Subjects A / B / C / D (ids into the cast; saved with scenes) ----
     // A doubles as the CineCam/orbit anchor; B is the second body for

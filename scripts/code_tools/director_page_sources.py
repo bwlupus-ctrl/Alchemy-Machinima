@@ -300,6 +300,10 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         }
     if page != "cine_light_rig_tab":
         return None
+    if widget == "cine_lit_target":
+        return binding("indra/newview/alpanelcinelightrig.cpp", 0, "ALPanelCineLightRig", "onLitTargetCommit")
+    if widget in {"cine_lit_members", "cine_lit_fallback", "cine_lit_cap", "cine_lit_actor_only", "cine_lit_wide"}:
+        return binding("indra/newview/alpanelcinelightrig.cpp", 0, "ALPanelCineLightRig", "syncGroupControls")
     if widget in {"cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"}:
         return binding("indra/newview/alpanelcinelightrig.cpp", 1601, "ALPanelCineLightRig", "onGroupSlotsCommit")
     if re.fullmatch(r"cine_fixture_gel_[0-2]", widget):

@@ -33,7 +33,13 @@ def fixture():
 struct LLView;
 ''' + header + r'''
 struct ALCineLightRigManager {
- enum Slot { A=1, B, C, D };
+ enum Slot { SELF=0, A=1, B, C, D };static constexpr S32 SLOT_COUNT=5;
+ struct Rig {std::string name;S32 snaps=0;const std::string& getLitGroup()const{return name;}void setLitGroup(const std::string& n){name=n;++snaps;}};
+ struct Blob {std::string mLitGroup;};Rig mInstances[5];Blob mBlobs[5];
+ static bool validSlot(Slot s){return int(s)>=0 && int(s)<5;}
+ LLSD captureLitGroups()const;void restoreLitGroups(const LLSD&);void restoreLitGroupDelta(const LLSD&,const LLSD&,const LLSD&);void setLitGroup(Slot,const std::string&);
+ boost::signals2::connection mLitGroupConnection;
+ boost::signals2::shared_connection_block blockLitGroupFollower(){return boost::signals2::shared_connection_block(mLitGroupConnection);}
  static bool instanceExists(){return true;}
  static ALCineLightRigManager& instance(){static ALCineLightRigManager value;return value;}
  void subjectRigOff(Slot slot){retired.push_back(slot);}
@@ -182,7 +188,7 @@ struct LLDirectorCast {
  LLSD sceneData()const;
 };
 LLDirectorCast* LLDirectorCast::active=nullptr;
-''' + history_ui_adapters() + r'''
+''' + '\nS32 slotIndex(ALCineLightRigManager::Slot s){return int(s); }\n' + '\n'.join(method(NV / 'alcinelightrigmanager.cpp', signature) for signature in ('LLSD ALCineLightRigManager::captureLitGroups()', 'void ALCineLightRigManager::restoreLitGroups(', 'void ALCineLightRigManager::restoreLitGroupDelta(', 'void ALCineLightRigManager::setLitGroup(')) + history_ui_adapters() + r'''
 '''
     signatures = [
         "bool LLDirectorCast::contains(", "LLUUID LLDirectorCast::savedSceneActorId(",
@@ -442,14 +448,14 @@ struct LLFloaterDirector : LLFloater {
  LLScrollListCtrl* mGroupMembersList=nullptr;LLButton *mGroupNewBtn=nullptr,*mGroupAddSelectedBtn=nullptr,*mGroupAddBtn=nullptr,*mGroupRemoveBtn=nullptr,*mGroupDissolveBtn=nullptr,*mGroupStartBtn=nullptr,*mGroupStopBtn=nullptr;
  LLTextBox* mGroupUsedBy=nullptr;std::vector<std::string>mLastGroupNames;
  bool mGroupsTabDirty=true;U64 mGroupListRevision=0,mGroupCastRevision=0;ALLiveReadoutClock mGroupPresenceClock;
- struct GroupEdit {ALDirectorGroups::GroupSnapshot before,after;std::string gazeBefore,gazeAfter,renamedFrom,renamedTo;};
+ struct GroupEdit {ALDirectorGroups::GroupSnapshot before,after;std::string gazeBefore,gazeAfter,renamedFrom,renamedTo;LLSD rigsBefore,rigsAfter;};
  std::shared_ptr<GroupEdit>mLastGroupDelayEdit;std::string mLastGroupDelayName;U64 mGroupDelayHistoryRevision=0,mGroupDelayHistorySequence=0;
  U64 mGroupMergeRevision=0;std::vector<std::string>mGroupsListSnapshot;
  uuid_vec_t selectedCastIds()const{return selection;}std::string selectedManagedGroup()const{return mGroupsList->selected;}
  void selectGroupMembers(const std::string&){selection.clear();} void refreshGroupControls();std::string toast;void recoveryToast(const std::string& s){toast=s;}
  bool selectLeafTab(const std::string&){return true;}
  bool isTextEntryFocus(){return false;}
- void recordGroupEdit(const ALDirectorGroups::GroupSnapshot&,const std::string&,
+ void recordGroupEdit(const ALDirectorGroups::GroupSnapshot&,const LLSD&,const std::string&,
                       const std::string& = {},const std::string& = {},const std::string& = {});
  void editGroupMembers(const uuid_vec_t&,const std::string&,bool=false);
  std::function<void(const LLUUID&)>pickGroupMember(const std::string& group);
@@ -507,7 +513,7 @@ def history_ui_tests():
  gaze.mApplyTo=&apply_to;gaze.mApplyGroup=&apply_group;director.mGazePanel=&gaze;
  gaze.restoreApplyGroup("Guards");
  auto before_edit=edit_cast.captureGroups();edit_cast.addToGroup({a},"Extras");
- director.recordGroupEdit(before_edit,"Add to group");
+ director.recordGroupEdit(before_edit,ALCineLightRigManager::instance().captureLitGroups(),"Add to group");
  assert(history.canUndo("chrome") && !history.canUndo(page.mPage) && page.canUndoOnPage(false));
  // Real departure and unrelated annotation edits must survive keyboard replay.
  edit_cast.remove(c);edit_cast.setGroupRate("Extras",3);edit_cast.setGroupDelay("Extras",4);
@@ -524,13 +530,101 @@ def history_ui_tests():
  page.undoOnPage(true);assert(page_value==1);
  history.barrier("next scenario");
 
+ // Rename and merge recover five independent instance/blob names on MEMBERS or RENAMED replay.
+ auto& rigs=ALCineLightRigManager::instance();
+ rigs.setLitGroup(ALCineLightRigManager::A,"unchanged");const S32 snaps=rigs.mInstances[1].snaps;
+ rigs.mBlobs[1].mLitGroup="different";rigs.setLitGroup(ALCineLightRigManager::A,"unchanged");
+ assert(rigs.mBlobs[1].mLitGroup=="unchanged" && rigs.mInstances[1].snaps==snaps);
+ int rig_follow_events=0;
+ rigs.mLitGroupConnection=edit_cast.groupEvent.connect([&](const LLDirectorCast::GroupEvent& e){
+  ++rig_follow_events;
+  if(e.type==LLDirectorCast::GroupEvent::RENAMED)for(S32 i=0;i<5;++i){
+   if(rigs.mInstances[i].name==e.oldName)rigs.mInstances[i].name=e.newName;
+   if(rigs.mBlobs[i].mLitGroup==e.oldName)rigs.mBlobs[i].mLitGroup=e.newName;}
+ });
+ std::string replay_from,replay_to;
+ auto alternate_events=edit_cast.groupEvent.connect([&](const LLDirectorCast::GroupEvent& e){
+  if(e.type==LLDirectorCast::GroupEvent::MEMBERS && !replay_from.empty())
+   edit_cast.groupEvent({LLDirectorCast::GroupEvent::RENAMED,replay_from,replay_to});
+ });
+ for(bool renamed_replay:{false,true})for(bool merge:{false,true}){
+  history.barrier("rig rename");edit_cast.addToGroup({a},"Guards");edit_cast.addToGroup({b},"Extras");
+  for(S32 i=0;i<5;++i){rigs.mInstances[i].name=i%2?"Extras":"Guards";rigs.mBlobs[i].mLitGroup=i%2?"Guards":"Extras";}
+  const auto bindings=rigs.captureLitGroups();const auto groups=edit_cast.captureGroups();
+  const std::string destination=merge?"Extras":"Crew";
+  edit_cast.renameGroup("Guards",destination);auto renamed=rigs.captureLitGroups();
+  director.recordGroupEdit(groups,bindings,"Rename group","Guards",destination);
+  const int follows_before_replay=rig_follow_events;
+  if(renamed_replay){replay_from=destination;replay_to="Guards";}
+  page.undoOnPage(false);assert(rigs.captureLitGroups()==bindings && edit_cast.getGroup(a)=="Guards");
+  if(renamed_replay){replay_from="Guards";replay_to=destination;}
+  page.undoOnPage(true);assert(rigs.captureLitGroups()==renamed && edit_cast.getGroup(a)==destination);
+  if(renamed_replay){replay_from=destination;replay_to="Guards";}
+  page.undoOnPage(false);
+  assert(rig_follow_events==follows_before_replay);
+  replay_from.clear();replay_to.clear();
+ }
+ history.barrier("membership scenarios");
+ for(S32 action=0;action<4;++action){
+  edit_cast.addToGroup({a},"Guards");edit_cast.addToGroup({b},"Extras");
+  const auto groups=edit_cast.captureGroups();const auto bindings=rigs.captureLitGroups();
+  if(action==0)edit_cast.makeGroup({a,b});
+  if(action==1)edit_cast.addToGroup({a},"Extras");
+  if(action==2)edit_cast.removeFromGroup({a});
+  if(action==3)edit_cast.dissolveGroup("Guards");
+  const auto after=edit_cast.captureGroups();
+  director.recordGroupEdit(groups,bindings,"Membership edit");
+  page.undoOnPage(false);assert(edit_cast.captureGroups()==groups && rigs.captureLitGroups()==bindings);
+  page.undoOnPage(true);assert(edit_cast.captureGroups()==after && rigs.captureLitGroups()==bindings);
+  page.undoOnPage(false);history.barrier("next membership scenario");
+ }
+ // No-binding group edits never revert later Lights choices, in either direction.
+ for(S32 action=0;action<5;++action){
+  history.barrier("independent Lights");edit_cast.addToGroup({a},"Guards");edit_cast.addToGroup({b},"Extras");
+  const auto groups=edit_cast.captureGroups();const auto bindings=rigs.captureLitGroups();
+  if(action==0)edit_cast.setGroupDelay("Guards",.75f);
+  if(action==1)edit_cast.makeGroup({a,b});
+  if(action==2)edit_cast.addToGroup({a},"Extras");
+  if(action==3)edit_cast.removeFromGroup({a});
+  if(action==4)edit_cast.dissolveGroup("Guards");
+  director.recordGroupEdit(groups,bindings,"Independent edit");
+  rigs.setLitGroup(ALCineLightRigManager::A,"Later Lights");auto later=rigs.captureLitGroups();
+  page.undoOnPage(false);assert(rigs.captureLitGroups()==later && edit_cast.captureGroups()==groups);
+  rigs.setLitGroup(ALCineLightRigManager::B,"Even later");later=rigs.captureLitGroups();
+  page.undoOnPage(true);assert(rigs.captureLitGroups()==later);
+ }
+ // A changed binding is restored only while it still matches the edit's value.
+ // Check fields independently, including divergent instance/blob pairs and rename signals.
+ for(bool signal:{false,true}){
+  history.barrier("Lights delta conflicts");edit_cast.addToGroup({a},"Guards");edit_cast.addToGroup({b},"Extras");
+  for(S32 i=0;i<5;++i){rigs.mInstances[i].name="Guards";rigs.mBlobs[i].mLitGroup="Guards";}
+  rigs.setLitGroup(ALCineLightRigManager::D,"Extras");
+  auto before=edit_cast.captureGroups();auto bindings=rigs.captureLitGroups();
+  edit_cast.renameGroup("Guards","Crew");director.recordGroupEdit(before,bindings,"Rename","Guards","Crew");
+  rigs.setLitGroup(ALCineLightRigManager::A,"User choice");
+  rigs.mBlobs[2].mLitGroup="Blob choice";
+  if(signal){replay_from="Crew";replay_to="Guards";}
+  page.undoOnPage(false);
+  assert(rigs.mInstances[0].name=="Guards" && rigs.mInstances[1].name=="User choice");
+  assert(rigs.mInstances[2].name=="Guards" && rigs.mBlobs[2].mLitGroup=="Blob choice");
+  assert(rigs.mInstances[4].name=="Extras");
+  rigs.mInstances[3].name="Redo choice";
+  if(signal){replay_from="Guards";replay_to="Crew";}
+  page.undoOnPage(true);
+  assert(rigs.mInstances[0].name=="Crew" && rigs.mInstances[1].name=="User choice");
+  assert(rigs.mInstances[2].name=="Crew" && rigs.mBlobs[2].mLitGroup=="Blob choice");
+  assert(rigs.mInstances[3].name=="Redo choice" && rigs.mBlobs[3].mLitGroup=="Crew");
+  assert(rigs.mInstances[4].name=="Extras");
+  replay_from.clear();replay_to.clear();
+ }
+ history.barrier("after delta scenarios");
  // Merge, dissolve and last-member removal recover Hot bindings and Gaze selection.
  edit_cast.addToGroup({a},"Guards");edit_cast.mHotGazeSlots[0].mGroup="Guards";gaze.restoreApplyGroup("Guards");
  edit_cast.mHotGazeSlots[1].mGroup="Extras";edit_cast.mHotGazeSlots[1].mWho=b;
  std::vector<LLDirectorCast::GroupEvent> merge_events;
  auto merge_connection=edit_cast.groupEvent.connect([&](const auto& e){merge_events.push_back(e);});
  auto merge_before=edit_cast.captureGroups();edit_cast.renameGroup("Guards","Extras");
- director.recordGroupEdit(merge_before,"Merge group","Guards","Extras");
+ director.recordGroupEdit(merge_before,ALCineLightRigManager::instance().captureLitGroups(),"Merge group","Guards","Extras");
  assert(gaze.selectedApplyGroup()=="Extras" && edit_cast.mHotGazeSlots[0].mGroup=="Extras");
  page.undoOnPage(false);assert(edit_cast.getGroup(a)=="Guards" && edit_cast.mHotGazeSlots[0].mGroup=="Guards");
  assert(gaze.selectedApplyGroup()=="Guards");
@@ -541,11 +635,11 @@ def history_ui_tests():
  assert(edit_cast.mHotGazeSlots[1].mGroup=="Extras");
  page.undoOnPage(false);history.barrier("dissolve");
  auto dissolve_before=edit_cast.captureGroups();edit_cast.dissolveGroup("Guards");
- director.recordGroupEdit(dissolve_before,"Dissolve group");
+ director.recordGroupEdit(dissolve_before,ALCineLightRigManager::instance().captureLitGroups(),"Dissolve group");
  assert(edit_cast.mHotGazeSlots[0].mGroup.empty() && gaze.selectedApplyGroup().empty());
  page.undoOnPage(false);assert(edit_cast.mHotGazeSlots[0].mGroup=="Guards" && gaze.selectedApplyGroup()=="Guards");
  history.barrier("remove");auto remove_before=edit_cast.captureGroups();edit_cast.removeFromGroup({a});
- director.recordGroupEdit(remove_before,"Remove from group");page.undoOnPage(false);
+ director.recordGroupEdit(remove_before,ALCineLightRigManager::instance().captureLitGroups(),"Remove from group");page.undoOnPage(false);
  assert(edit_cast.mHotGazeSlots[0].mGroup=="Guards" && gaze.selectedApplyGroup()=="Guards");
  // Rekey visits the real queue. Missing participants and changed touched values reject replay.
  ALKitHistory::rewriteActorReferences(a,c);edit_cast.mCast[0].mId=c;edit_cast.mIds[0]=c;
@@ -553,7 +647,7 @@ def history_ui_tests():
  edit_cast.setGroup(c,"Changed elsewhere");page.undoOnPage(false);assert(edit_cast.getGroup(c)=="Changed elsewhere");
  assert(!history.canUndo("chrome"));
  auto missing_before=edit_cast.captureGroups();edit_cast.addToGroup({c},"Extras");
- director.recordGroupEdit(missing_before,"Add");edit_cast.remove(c);page.undoOnPage(false);
+ director.recordGroupEdit(missing_before,ALCineLightRigManager::instance().captureLitGroups(),"Add");edit_cast.remove(c);page.undoOnPage(false);
  assert(!history.canUndo("chrome"));
 
  // Run the actual submenu population against a parent containing only a branch.
@@ -594,7 +688,7 @@ def history_ui_tests():
  for(bool redo:{false,true})for(bool actor:{false,true}){
   edit_cast.setGroup(b,"Guards");auto& slot=edit_cast.mHotGazeSlots[0];slot.mGroup="Guards";slot.mWho=a;
   gaze.restoreApplyGroup("Guards");auto before=edit_cast.captureGroups();edit_cast.dissolveGroup("Guards");
-  director.recordGroupEdit(before,"Dissolve group");
+  director.recordGroupEdit(before,ALCineLightRigManager::instance().captureLitGroups(),"Dissolve group");
   if(redo)page.undoOnPage(false);
   if(actor)slot.mWho=b;else slot.mGroup="Extras";
   const auto rebound=edit_cast.captureGroups();LLNotificationsUtil::message.clear();
@@ -609,7 +703,7 @@ def history_ui_tests():
  // Target and timing edits are independent of the binding pair and survive both directions.
  edit_cast.setGroup(b,"Guards");auto& independent=edit_cast.mHotGazeSlots[0];
  independent.mGroup="Guards";independent.mWho=a;auto independent_before=edit_cast.captureGroups();
- edit_cast.dissolveGroup("Guards");director.recordGroupEdit(independent_before,"Dissolve");
+ edit_cast.dissolveGroup("Guards");director.recordGroupEdit(independent_before,ALCineLightRigManager::instance().captureLitGroups(),"Dissolve");
  independent.mTarget.mObjectRef=c;independent.mDwell=7.f;independent.mReturn=3.f;
  page.undoOnPage(false);assert(independent.mGroup=="Guards" && independent.mWho==a);
  page.undoOnPage(true);assert(independent.mGroup.empty() && independent.mWho.isNull());
@@ -676,9 +770,15 @@ def history_ui_tests():
  ui.selection={a};ui.editGroupMembers({a},"Rider again");assert(ui.toast=="Already in 'Rider again'");
  // Consecutive delay commits share a step; any intervening history edit ends it.
  history.barrier("delay coalescing");group_rows.selected="Rider again";
- delay.setValue(1.f);ui.onCommitGroupDelay();delay.setValue(2.f);ui.onCommitGroupDelay();delay.setValue(3.f);ui.onCommitGroupDelay();
+ delay.setValue(1.f);ui.onCommitGroupDelay();
+ auto& delay_rigs=ALCineLightRigManager::instance();
+ delay_rigs.setLitGroup(ALCineLightRigManager::A,"Independent Lights during delays");
+ const auto delay_bindings=delay_rigs.captureLitGroups();
+ delay.setValue(2.f);ui.onCommitGroupDelay();delay.setValue(3.f);ui.onCommitGroupDelay();
  assert(group_rows.hasFocus());page.undoOnPage(false);assert(ui_cast.getGroupDelay("Rider again")==0 && !history.canUndo("chrome"));
+ assert(delay_rigs.captureLitGroups()==delay_bindings);
  page.undoOnPage(true);assert(ui_cast.getGroupDelay("Rider again")==3);
+ assert(delay_rigs.captureLitGroups()==delay_bindings);
  // Real Path Add -> historyEdited(true) -> owned sequence, with no kit entry.
  history.barrier("Path interleave");ui_cast.setGroupDelay("Rider again",0);
  auto& mover=LLActorMover::instance();mover.paths.clear();mover.mHistory.clear();
@@ -717,7 +817,7 @@ def history_ui_tests():
  page.undoOnPage(true);assert(rename_events.back().oldName=="Rider again" && rename_events.back().newName=="Renamed");
  // Changing Gaze apply selection skips only that ancillary part and keeps the step replayable.
  history.barrier("later Gaze apply");ui.mGazePanel=&gaze;gaze.restoreApplyGroup("Renamed");
- auto dissolve_ui=ui_cast.captureGroups();ui_cast.dissolveGroup("Renamed");ui.recordGroupEdit(dissolve_ui,"Dissolve group");
+ auto dissolve_ui=ui_cast.captureGroups();ui_cast.dissolveGroup("Renamed");ui.recordGroupEdit(dissolve_ui,ALCineLightRigManager::instance().captureLitGroups(),"Dissolve group");
  gaze.restoreApplyGroup("Other");page.undoOnPage(false);
  assert(ui_cast.getGroup(a)=="Renamed" && gaze.selectedApplyGroup()=="Other" && history.canRedo("chrome"));
  assert(ui.toast.find("later Gaze bindings were kept")!=std::string::npos);
@@ -757,6 +857,10 @@ int main() {
         raise RuntimeError(result.stdout + result.stderr)
     print(result.stdout.strip(), flush=True)
     negatives = {
+        "lost_rig_bindings": ('restoreLitGroups(result);', '/* planted lost rig binding replay */'),
+        "rig_full_snapshot": ('restoreLitGroups(result);', 'restoreLitGroups(desired);'),
+        "rig_no_conflict_check": (' && current[i][field] == expected[i][field]', ''),
+        "rig_double_rename": ('auto block_rig_follower = rigs.blockLitGroupFollower();', '/* planted follower left active */'),
         "delay_ignores_owned_notification": ('shell->history().noteOwnedEdit();', '/* planted: ignore owned activity */'),
         "delay_ignores_owned_sequence": ('mGroupDelayHistorySequence == alUndoSequenceClock() &&', ''),
         "picker_transient_uuid": ('const LLUUID actor = cast.containsStored(picked) ? picked :\n                    LLDirectorCast::canonicalActorId(picked);', 'const LLUUID actor = picked;'),

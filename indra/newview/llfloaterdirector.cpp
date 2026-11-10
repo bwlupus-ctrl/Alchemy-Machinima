@@ -4617,7 +4617,7 @@ const std::vector<std::string>& LLFloaterDirector::sceneSettingsList()
         "CineRigRimWrapStrength", "CineRigRimWrapWidth", "CineRigRimWrapBlur",
         "CineRigRimWrapSaturation", "CineRigRimWrapClamp",
         // [RigRim] P2-4: CineRigRimDebugRimOnly is deliberately NOT part of
-        // scene state (Persist 0 in settings.xml) — a debug view should
+        // scene state (Persist 0 in settings.xml) â€” a debug view should
         // never be saved into, or restored from, a Director scene.
         "CineRigRimKeyGain",
         "CineRigRimKeySharpness",
@@ -6635,7 +6635,7 @@ void LLFloaterDirector::onCastRemove()
 // Cast group commands, custom history and Groups page transport
 // ---------------------------------------------------------------------------
 void LLFloaterDirector::recordGroupEdit(const ALDirectorGroups::GroupSnapshot& before,
-                                         const std::string& label,
+                                         const LLSD& rigs_before, const std::string& label,
                                          const std::string& renamed_from,
                                          const std::string& renamed_to,
                                          const std::string& delay_group)
@@ -6657,7 +6657,7 @@ void LLFloaterDirector::recordGroupEdit(const ALDirectorGroups::GroupSnapshot& b
     std::string gaze_after = gaze_before;
     if (!renamed_from.empty() && gaze_before == renamed_from) gaze_after = renamed_to;
     else if (LLDirectorCast::instance().membersInGroup(gaze_before).empty()) gaze_after.clear();
-    auto edit = std::make_shared<GroupEdit>(GroupEdit{ before, after, gaze_before, gaze_after, renamed_from, renamed_to });
+    auto edit = std::make_shared<GroupEdit>(GroupEdit{ before, after, gaze_before, gaze_after, renamed_from, renamed_to, rigs_before, ALCineLightRigManager::instance().captureLitGroups() });
     if (mGazePanel && gaze_before != gaze_after) mGazePanel->restoreApplyGroup(gaze_after);
     auto validate = [edit](bool redo, std::string& reason)
     {
@@ -6681,8 +6681,15 @@ void LLFloaterDirector::recordGroupEdit(const ALDirectorGroups::GroupSnapshot& b
             const bool split = !redo && !edit->renamedFrom.empty() &&
                 std::any_of(edit->before.tags.begin(), edit->before.tags.end(),
                     [edit](const auto& tag) { return tag.second == edit->renamedTo; });
+            auto& rigs = ALCineLightRigManager::instance();
+            const LLSD bindings = rigs.captureLitGroups();
+            // History owns rig deltas. Keep RENAMED for other consumers, while
+            // blocking only the live rig follower to avoid applying it twice.
+            auto block_rig_follower = rigs.blockLitGroupFollower();
             cast.restoreGroups(current, split ? std::string() : redo ? edit->renamedFrom : edit->renamedTo,
                                split ? std::string() : redo ? edit->renamedTo : edit->renamedFrom);
+            rigs.restoreLitGroupDelta(redo ? edit->rigsBefore : edit->rigsAfter,
+                redo ? edit->rigsAfter : edit->rigsBefore, bindings);
             bool skipped_gaze = false;
             if (mGazePanel && edit->gazeBefore != edit->gazeAfter)
             {
@@ -6713,6 +6720,7 @@ void LLFloaterDirector::editGroupMembers(const uuid_vec_t& ids, const std::strin
     auto& cast = LLDirectorCast::instance();
     if (ids.empty() || (!make && !name.empty() && cast.membersInGroup(name).empty())) return;
     const auto before = cast.captureGroups();
+    const auto rigs_before = ALCineLightRigManager::instance().captureLitGroups();
     const std::string used = make ? cast.makeGroup(ids) : name;
     if (!make)
     {
@@ -6724,7 +6732,7 @@ void LLFloaterDirector::editGroupMembers(const uuid_vec_t& ids, const std::strin
         if (!used.empty()) recoveryToast("Already in '" + used + "'");
         return;
     }
-    recordGroupEdit(before, make ? "Make group" : used.empty() ? "Remove from group" : "Add to group");
+    recordGroupEdit(before, rigs_before, make ? "Make group" : used.empty() ? "Remove from group" : "Add to group");
     std::string moved;
     for (const auto& id : ids)
     {
@@ -6856,10 +6864,11 @@ void LLFloaterDirector::onCommitGroupDelay()
     {
         auto& cast = LLDirectorCast::instance();
         const auto before = cast.captureGroups();
+        const auto rigs_before = ALCineLightRigManager::instance().captureLitGroups();
         cast.setGroupDelay(name, (F32)mGroupDelaySpinner->getValue().asReal());
         if (before != cast.captureGroups())
         {
-            recordGroupEdit(before, "Group start delay", {}, {}, name);
+            recordGroupEdit(before, rigs_before, "Group start delay", {}, {}, name);
             if (mGroupsList) mGroupsList->setFocus(true);
         }
     }
@@ -6900,9 +6909,10 @@ void LLFloaterDirector::onClickGroupRename()
         }
     }
     const auto before = cast.captureGroups();
+    const auto rigs_before = ALCineLightRigManager::instance().captureLitGroups();
     if (cast.renameGroup(old_name, new_name))
     {
-        recordGroupEdit(before, "Rename group", old_name, new_name);
+        recordGroupEdit(before, rigs_before, "Rename group", old_name, new_name);
         recoveryToast("Renamed '" + old_name + "' to '" + new_name + "'");
         clearGroupMergeConfirmation();
         mGroupDelayShownFor.clear();
@@ -6919,8 +6929,9 @@ void LLFloaterDirector::onClickGroupDissolve()
     if (name.empty()) return;
     auto& cast = LLDirectorCast::instance();
     const auto before = cast.captureGroups();
+    const auto rigs_before = ALCineLightRigManager::instance().captureLitGroups();
     cast.dissolveGroup(name);
-    recordGroupEdit(before, "Dissolve group");
+    recordGroupEdit(before, rigs_before, "Dissolve group");
     recoveryToast("Dissolved '" + name + "'; members stay in Cast");
     mGroupDelayShownFor.clear();
     clearGroupMergeConfirmation();

@@ -145,6 +145,11 @@ def check_sources(files: dict[str, str]) -> list[str]:
     for name in ("requestAllOff", "performAllOff"):
         if not body(floater, "LLFloaterDirector::" + name):
             errors.append(f"missing confirmation route {name}")
+    for token in ('root["rig_lit_groups"] = LLSD::emptyArray();', '.getLitGroup()',
+                  'rigs.setLitGroup(static_cast<ALCineLightRigManager::Slot>(i), root["rig_lit_groups"][i].asString());',
+                  'groups.size() != ALCineLightRigManager::SLOT_COUNT', '!group.isString()'):
+        if token not in service:
+            errors.append("missing ALL OFF lit-group contract: " + token)
     return errors
 
 
@@ -160,6 +165,9 @@ def selftest(quiet: bool = False) -> int:
         print("selftest clean fixture failed: " + "; ".join(errors))
         return 1
     fixtures = [
+        ("lit-group capture", SERVICE, 'root["rig_lit_groups"] = LLSD::emptyArray();', '/* planted missing capture */'),
+        ("lit-group restore", SERVICE, 'rigs.setLitGroup(static_cast<ALCineLightRigManager::Slot>(i), root["rig_lit_groups"][i].asString());', '/* planted missing restore */'),
+        ("lit-group validation", SERVICE, '!group.isString()', 'false'),
         ("unknown setting", HEADER, '"AlchemyEnvSunEV"', '"PlantedMissingSetting"'),
         ("tonemapper", HEADER, '"AlchemyEnvSunEV"', '"AlchemyToneMapType"'),
         ("S-Log", HEADER, '"AlchemyEnvSunEV"', '"AlchemyToneMapSLogEV"'),

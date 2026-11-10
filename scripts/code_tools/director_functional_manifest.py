@@ -701,7 +701,9 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 elif widget.startswith("reset_switcher_custom_"):
                     callbacks = "ALPanelDirectorSwitcher::onCustomReset"
             if page == "cine_light_rig_tab" and binding != "setting":
-                if widget in {"cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"}:
+                if widget == "cine_lit_target":
+                    callbacks = "ALPanelCineLightRig::onLitTargetCommit"
+                elif widget in {"cine_group_self", "cine_group_a", "cine_group_b", "cine_group_c", "cine_group_d"}:
                     callbacks = "ALPanelCineLightRig::onGroupSlotsCommit"
                 elif widget.startswith("cine_fixture_gel_"):
                     callbacks = "ALPanelCineLightRig::onFixtureValuesCommit"

@@ -13,6 +13,7 @@
 #include "alcinelightrig.h"
 
 #include <boost/signals2/connection.hpp>
+#include <boost/signals2/shared_connection_block.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -194,6 +195,7 @@ struct ALCineLightRigParamBlob
     // Per-instance session state. Runtime-derived emitter/smoothing/transition
     // state deliberately remains on ALCineLightRig.
     LLUUID mAnchor;
+    std::string mLitGroup; // Session/scene only; absent from startup records.
     bool mGroupEnabled = false;
     U32 mGroupSlots = 0;
     bool mShaftEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
@@ -494,7 +496,7 @@ inline LLSD ALCineLightRigParamBlob::toLLSD() const
         data["lights"].append(light);
     }
     data["anchor"] = mAnchor;
-    data["group"] = mGroupEnabled;
+    data["group"] = mLitGroup.empty() && mGroupEnabled;
     data["group_slots"] = static_cast<S32>(mGroupSlots);
     data["shafts"] = LLSD::emptyArray();
     data["heroes"] = LLSD::emptyArray();
@@ -1382,6 +1384,19 @@ public:
         ALCineLightRigManagerModel::ACTOR_ONLY_ORPHAN_BIT;
     const std::vector<U8>& actorOnlyDrawBytes() const
         { return mActorOnlyRegistry.actorOnlyDrawBytes(); }
+    bool actorOnlyOverflow() const { return mActorOnlyRegistry.mOverflow; }
+    S32 actorOnlyUnlit(const uuid_vec_t& members) const
+    {
+        S32 count = 0;
+        for (const auto& id : members)
+        {
+            bool found = false;
+            for (const auto& recipient : mActorOnlyRegistry.mRecipients)
+                found |= recipient.mAvatarId == id;
+            if (!found) ++count;
+        }
+        return count;
+    }
     U8 liveRecipientBits() const { return mActorOnlyRegistry.liveRecipientBits(); }
     size_t actorOnlyLightCount() const { return mActorOnlyRegistry.actorOnlyLightCount(); }
     U8 actorOnlyBits(const LLUUID& light_id) const;
@@ -1393,6 +1408,13 @@ public:
     void removeMirror(const LLUUID& clone_id);
     void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
+    // Group history restores exact binding deltas instead of following names.
+    boost::signals2::shared_connection_block blockLitGroupFollower()
+    { return boost::signals2::shared_connection_block(mLitGroupConnection); }
+    LLSD captureLitGroups() const;
+    void restoreLitGroups(const LLSD& bindings);
+    void restoreLitGroupDelta(const LLSD& expected, const LLSD& desired, const LLSD& current);
+    void setLitGroup(Slot slot, const std::string& name);
     void tick(F64 presentation_time);
     void shutdown();
     void renderGizmo() const;
@@ -1447,6 +1469,8 @@ private:
     // Session-only derived copies of Self. Keys are clone runtime avatar IDs.
     std::map<LLUUID, std::unique_ptr<ALCineLightRig>> mMirrors;
     static bool sAnyActorOnly;
+    void connectGroupEvents();
+    boost::signals2::scoped_connection mLitGroupConnection;
     ALCineLightRigManagerModel::ActorOnlyRegistry mActorOnlyRegistry;
     std::vector<ActorOnlyRecipient> mActorOnlyRecipients;
     U32 mActorOnlyObjectSlots = 0;

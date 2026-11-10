@@ -193,6 +193,7 @@ bool blobMapWellFormed(const LLSD& data)
          !data["CineLightRigCatchlightActorOnly"].isBoolean()) ||
         (data.has("CineLightRigActorOnlyAll") &&
          !data["CineLightRigActorOnlyAll"].isBoolean()) ||
+        (data.has("lit_group") && !data["lit_group"].isString()) ||
         (data.has("cue_list") &&
          (!data["cue_list"].isMap() ||
           !ALCineLightRig::validateCueListData(data["cue_list"]))))
@@ -334,6 +335,7 @@ void ALCineLightRigParamBlob::captureRigState(const ALCineLightRig& rig)
     mObjectTarget = rig.mObjectTarget;
     mGroupEnabled = rig.mGroupEnabled;
     mGroupSlots = rig.mGroupSlots;
+    mLitGroup = rig.mLitGroup;
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
         mShaftEnabled[i] = rig.mShaftEnabled[i];
@@ -362,6 +364,7 @@ void ALCineLightRigParamBlob::applyRigState(ALCineLightRig& rig) const
     rig.setObjectTarget(mObjectTarget);
     rig.setGroupEnabled(mGroupEnabled);
     rig.setGroupSlots(mGroupSlots);
+    if (rig.getLitGroup() != mLitGroup) rig.setLitGroup(mLitGroup);
     for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i)
     {
         rig.mShaftEnabled[i] = mShaftEnabled[i];
@@ -424,7 +427,61 @@ ALCineLightRigManager& ALCineLightRigManager::instance()
 {
     static ALCineLightRigManager manager;
     sCineLightRigManagerInstance = &manager;
+    manager.connectGroupEvents();
     return manager;
+}
+
+void ALCineLightRigManager::connectGroupEvents()
+{
+    if (mLitGroupConnection.connected()) return;
+    mLitGroupConnection = LLDirectorCast::instance().groupEvent.connect(
+        [this](const LLDirectorCast::GroupEvent& event)
+        {
+            if (event.type != LLDirectorCast::GroupEvent::RENAMED) return;
+            for (S32 i = 0; i < SLOT_COUNT; ++i)
+            {
+                mInstances[i].renameLitGroup(event.oldName, event.newName);
+                ALCineLightRigModel::renameLitGroup(mBlobs[i].mLitGroup, event.oldName, event.newName);
+            }
+        });
+}
+
+LLSD ALCineLightRigManager::captureLitGroups() const
+{
+    LLSD result = LLSD::emptyArray();
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+        result.append(LLSD().with("instance", mInstances[i].getLitGroup()).with("blob", mBlobs[i].mLitGroup));
+    return result;
+}
+
+void ALCineLightRigManager::setLitGroup(Slot slot, const std::string& name)
+{
+    if (!validSlot(slot)) return;
+    auto& rig = mInstances[slotIndex(slot)];
+    if (rig.getLitGroup() != name) rig.setLitGroup(name);
+    mBlobs[slotIndex(slot)].mLitGroup = name;
+}
+
+void ALCineLightRigManager::restoreLitGroups(const LLSD& bindings)
+{
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const auto& entry = bindings[i];
+        setLitGroup(static_cast<Slot>(i), entry["instance"].asString());
+        mBlobs[i].mLitGroup = entry["blob"].asString();
+    }
+}
+
+// Replay only fields authored by the edit that still hold its expected value.
+// current is captured before cast replay, whose rename signal may touch bindings.
+void ALCineLightRigManager::restoreLitGroupDelta(const LLSD& expected, const LLSD& desired, const LLSD& current)
+{
+    LLSD result = current;
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+        for (const char* field : { "instance", "blob" })
+            if (expected[i][field] != desired[i][field] && current[i][field] == expected[i][field])
+                result[i][field] = desired[i][field];
+    restoreLitGroups(result);
 }
 
 //static
@@ -919,6 +976,7 @@ bool ALCineLightRigManager::isSlotLit(Slot slot) const
             gObjectList.findObject(rig.getObjectTarget());
         return object && !object->isDead();
     }
+    if (!rig.getLitGroup().empty()) return !rig.lastResolvedMembers().empty();
     return rig.isGroupEnabled() ? rig.lastResolvedGroupSlots() != 0
                                 : rig.resolveSlotAvatar() != nullptr;
 }
@@ -1286,15 +1344,23 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
                 input.mRecipients.push_back(identity);
                 avatars.push_back(avatar);
             };
-            if (rig.isGroupEnabled())
+            if (!rig.getLitGroup().empty())
+            {
+                for (const auto& id : rig.lastResolvedMembers())
+                {
+                    auto* object = gObjectList.findObject(id);
+                    add(object ? object->asAvatar() : nullptr);
+                }
+            }
+            else if (rig.isGroupEnabled())
             {
                 LLDirectorCast& cast = LLDirectorCast::instance();
                 const U32 slots = rig.lastResolvedGroupSlots();
-                if (slots & ALCineLightRig::GROUP_SLOT_SELF) add(cast.resolve(LLUUID::null));
-                if (slots & ALCineLightRig::GROUP_SLOT_A) add(cast.resolveSubjectA());
-                if (slots & ALCineLightRig::GROUP_SLOT_B) add(cast.resolveSubjectB());
-                if (slots & ALCineLightRig::GROUP_SLOT_C) add(cast.resolveSubjectC());
-                if (slots & ALCineLightRig::GROUP_SLOT_D) add(cast.resolveSubjectD());
+                if (slots & ALCineLightRig::GROUP_SLOT_SELF) add(cast.resolve(LLUUID::null, false));
+                if (slots & ALCineLightRig::GROUP_SLOT_A) add((cast.getSubjectA().notNull() ? cast.resolve(cast.getSubjectA(), false) : nullptr));
+                if (slots & ALCineLightRig::GROUP_SLOT_B) add((cast.getSubjectB().notNull() ? cast.resolve(cast.getSubjectB(), false) : nullptr));
+                if (slots & ALCineLightRig::GROUP_SLOT_C) add((cast.getSubjectC().notNull() ? cast.resolve(cast.getSubjectC(), false) : nullptr));
+                if (slots & ALCineLightRig::GROUP_SLOT_D) add((cast.getSubjectD().notNull() ? cast.resolve(cast.getSubjectD(), false) : nullptr));
             }
             else
             {
@@ -1913,6 +1979,7 @@ bool ALCineLightRigManager::restore(const LLSD& data, bool scene_load)
          it != data["instances"].endArray(); ++it)
     {
         mBlobs[(*it)["slot"].asInteger()] = ParamBlob::fromLLSD(*it);
+        if (scene_load) mBlobs[(*it)["slot"].asInteger()].mLitGroup = (*it)["lit_group"].asString();
     }
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
@@ -1962,6 +2029,8 @@ LLSD ALCineLightRigManager::sceneData() const
     {
         LLSD entry = mBlobs[i].toLLSD();
         entry["slot"] = i;
+        entry["lit_group"] = mInstances[i].getLitGroup();
+        if (!mInstances[i].getLitGroup().empty()) entry["group"] = false;
         data["instances"].append(entry);
     }
     data["live_probe"] = ALCineLightRigManagerModel::liveProbeConfigToLLSD(
@@ -1989,6 +2058,8 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
     }
     if (!data.isMap() || !data.has("version"))
     {
+        for (S32 i = 0; i < SLOT_COUNT; ++i)
+            setLitGroup(static_cast<Slot>(i), std::string());
         // [ActorMask] An unversioned scene carries no Actor only data: do not
         // inherit the previous scene's flags (live settings or selected blob).
         ParamBlob& selected_blob = mBlobs[slotIndex(mSelected)];

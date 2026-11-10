@@ -307,6 +307,8 @@ struct Rig {
     bool group = false;
     const LLUUID& getAnchor() const { return anchor; }
     const LLUUID& getObjectTarget() const { return object; }
+    std::string lit_group;
+    const std::string& getLitGroup() const { return lit_group; }
     bool isGroupEnabled() const { return group; }
     U32 getGroupSlots() const { return 1u; }
     U32 lastResolvedGroupSlots() const { return 1u; }
@@ -345,12 +347,15 @@ void test() {
     rig.anchor={"legacy-other-avatar"};
     assert(ALPanelCineLightRig::rigTargetDescription(0)=="legacy-other-avatar");
     rig.anchor={"self"}; assert(ALPanelCineLightRig::rigTargetDescription(0)=="You");
+    rig.lit_group="guards"; assert(ALPanelCineLightRig::rigTargetDescription(0)=="group guards");
+    rig.lit_group.clear();
     rig.anchor={"legacy-other-avatar"}; rig.group=true;
     assert(ALPanelCineLightRig::rigTargetDescription(0)=="group: You");
     std::cout << "PASS: production target description resolves legacy SELF anchors by cast name/UUID and preserves Who's lit semantics\n";
 }
 } // namespace RigTargetUI
 ''')
+    lines.append(combo_poll_fixture(root))
     lines.append(lighting_fixture(panel_source, root))
     lines.append(policy_fixture(root))
     check_ui_contract(root, panel_source, page)
@@ -373,15 +378,25 @@ def check_ui_contract(root: Path, source: str, page) -> None:
     assert cards[cards.index('easy') + 1] == 'light_group'
     section = next(s for s in page.findall('kit_page.section') if s.get('id') == 'easy')
     assert section.get('cards').split(',')[:2] == ['easy', 'light_group']
-    group_rows = [row for row in page.iter('kit_row') if row.get('widget') in
-                  {'cine_group_self', 'cine_group_a', 'cine_group_b', 'cine_group_c', 'cine_group_d'}]
-    def snapshot_owned(rows):
-        return len(rows) == 5 and all(row.get('widget_history') == 'false' for row in rows)
-    assert snapshot_owned(group_rows), 'checkbox history must not replay auto-on policy'
+    rows = list(page.iter('kit_row'))
+    old = {'cine_group_enable', 'cine_group_self', 'cine_group_a', 'cine_group_b', 'cine_group_c', 'cine_group_d'}
+    def valid_rows(rows):
+        return not any(row.get('widget') in old for row in rows)
+    assert valid_rows(rows), "Who's lit ticks reappeared"
+    assert not valid_rows(rows + [ET.Element('kit_row', widget='cine_group_a')]), 'planted tick escaped'
+    target = next(row for row in rows if row.get('widget') == 'cine_lit_target')
+    assert target.get('widget_history') != 'false', 'Lights must use normal widget history'
+    import director_kit_gen as gen
     import copy
-    bad_rows = copy.deepcopy(group_rows)
-    bad_rows[0].set('widget_history', 'true')
-    assert not snapshot_owned(bad_rows), 'planted checkbox-only history escaped'
+    data = json.loads((root / 'scripts/code_tools/director_kit/director_mockup_data.json').read_text(encoding='utf8'))
+    gen.validate_lit_group_card(data)
+    bad = copy.deepcopy(data)
+    pg = next(p for g in bad['groups'] for p in g['pages'] if p['name']=='cine_light_rig_tab')
+    next(c for c in pg['cards'] if c['id']=='light_group')['rows'].append({'w':'cine_group_a','k':'toggle'})
+    try: gen.validate_lit_group_card(bad)
+    except gen.GenError: pass
+    else: raise AssertionError('generator accepted planted old tick')
+
 
 
 
@@ -390,10 +405,22 @@ def lighting_fixture(source: str, root: Path) -> str:
 namespace RigLightingUI {
 using RigSessionUI::llformat;
 HISTORY_SUPPORT
-struct Check {
-    LLSD value; bool enabled=true, visible=true; std::string name, label, tip, text;
+struct Check : LLUICtrl {
+    bool enabled=true, visible=true; std::string label, tip, text;
     const LLSD& getValue() const { return value; }
     const std::string& getName() const { return name; }
+    bool focus=false;
+    std::vector<std::pair<std::string,std::string>> items;
+    bool hasFocus() const { return focus; }
+    bool open=false;
+    bool isListVisible() const { return open; }
+    void removeall() { items.clear(); }
+    void add(const std::string& label, const std::string& value) { items.push_back({label,value}); }
+    void setValue(const LLSD& v) override {
+        if(name=="cine_lit_target" && v.asString().compare(0,6,"group:")==0 &&
+            std::none_of(items.begin(),items.end(),[&](const auto& item){return item.second==v.asString();})) return;
+        value=v;
+    }
     void setColor(int) {}
 };
 inline void setValueIfChanged(Check* c, const LLSD& v, bool) { c->value=v; }
@@ -401,12 +428,31 @@ inline void setEnabledIfChanged(Check* c, bool v) { c->enabled=v; }
 inline void setLabelIfChanged(Check* c, const std::string& v) { c->label=v; }
 inline void setToolTipIfChanged(Check* c, const std::string& v) { c->tip=v; }
 inline void setTextIfChanged(Check* c, const std::string& v) { c->text=v; }
+using LLTextBox = Check;
 struct KitPage {
     std::map<std::string,ALKitRow> rows;
     ALKitRow* findRow(const std::string& key) { return &rows[key]; }
 };
 struct LLDirectorCast {
-    struct Member { std::string mLastName; };
+    struct Member { std::string mLastName, mGroup; };
+    ALDirectorGroups::GroupSnapshot captureGroups() const {
+        ALDirectorGroups::GroupSnapshot result;
+        for(const auto& m:members)result.tags[LLUUID{m.first}]=m.second.mGroup;
+        return result;
+    }
+    void restoreGroups(const ALDirectorGroups::GroupSnapshot& s) {
+        groups.clear();
+        for(const auto& tag:s.tags){members[tag.first.value].mGroup=tag.second;if(!tag.second.empty())groups[tag.second].push_back(tag.first);}
+    }
+
+    U64 getActorChoiceRevision() const { return 1; }
+    U64 getGroupRevision() const { return 1; }
+    std::map<std::string,uuid_vec_t> groups;
+    mutable S32 group_scans=0;
+    std::vector<std::string> getGroupNames() const { ++group_scans;std::vector<std::string> names; for(const auto& g:groups) names.push_back(g.first); return names; }
+    uuid_vec_t membersInGroup(const std::string& n) const { auto it=groups.find(n); return it==groups.end()?uuid_vec_t():it->second; }
+    void add(const LLUUID&) {}
+    std::string makeGroup(const uuid_vec_t& ids) { std::string name="Group 1";for(int i=2;groups.count(name);++i)name="Group "+std::to_string(i);for(const auto& id:ids)members[id.value].mGroup=name;groups[name]=ids;return name; }
     LLUUID subjects[4]={{"alice"},{"bob"},{},{}};
     std::map<std::string,Member> members;
     static LLDirectorCast& instance() { static LLDirectorCast cast; return cast; }
@@ -421,7 +467,21 @@ struct LLDirectorCast {
     }
 };
 struct ALCineLightRig {
-    bool enabled=false; U32 slots=0; LLUUID object;
+    bool enabled=false; U32 slots=0; LLUUID object, anchor;
+    std::string group; uuid_vec_t resolved, stored; S32 total=0; bool fallback=false, wide=false;
+    const std::string& getLitGroup() const { return group; }
+    void setLitGroup(const std::string& v) { group=v; }
+    const LLUUID& getAnchor() const { return anchor; }
+    const uuid_vec_t& lastResolvedMembers() const { return resolved; }
+    const uuid_vec_t& lastResolvedStoredMembers() const { return stored.empty()?resolved:stored; }
+    S32 present=0;
+    S32 litGroupPresent() const { return present; }
+    S32 litGroupSize() const { return total; }
+    bool litGroupFallback() const { return fallback; }
+    bool litGroupWide() const { return wide; }
+    bool actorOnlyAll() const { return true; }
+    bool catchlightActorOnlyEffective() const { return false; }
+    bool lightActorOnly(S32) const { return false; }
     bool isGroupEnabled() const { return enabled; }
     U32 getGroupSlots() const { return slots; }
     U32 lastResolvedGroupSlots() const { return slots; }
@@ -430,8 +490,16 @@ struct ALCineLightRig {
     void setGroupEnabled(bool v) { enabled=v; }
 };
 struct ALCineLightRigManager {
+    using Slot=S32;
+    bool power=true;
+    bool isSlotEnabled(Slot) const { return power; }
+    void setLitGroup(Slot slot,const std::string& name){at(slot).setLitGroup(name);}
+    LLSD captureLitGroups()const {LLSD s=LLSD::emptyArray();s.append(rig.group);s.append(other.group);return s;}
+    void restoreLitGroups(const LLSD& s){rig.group=s[0].asString();other.group=s[1].asString();}
     ALCineLightRig rig, other;
-    S32 editing=0;
+    S32 editing=0; bool overflow=false;
+    bool actorOnlyOverflow() const { return overflow; }
+    S32 actorOnlyUnlit(const uuid_vec_t& ids) const { return ids.size()>6 ? static_cast<S32>(ids.size()-6) : 0; }
     S32 selectedSlot() const { return editing; }
     ALCineLightRig& at(S32 slot) { return slot == 0 ? rig : other; }
     static ALCineLightRigManager& instance() { static ALCineLightRigManager m; return m; }
@@ -440,6 +508,19 @@ struct ALCineLightRigManager {
 inline const LLUUID gAgentID{"self"};
 struct ALPanelCineLightRig : LLView {
     template<class T> LLHandle<T> getDerivedHandle() { return {static_cast<T*>(this)}; }
+    Check target, members, fallback, cap, actor_only, wide;
+    Check *mLitTarget=&target, *mLitMembers=&members, *mLitFallback=&fallback,
+        *mLitCap=&cap, *mLitActorOnly=&actor_only, *mLitWide=&wide;
+    std::vector<std::string> mLitTargetLabels, mLitTargetValues;
+    U64 mLitComboCastRevision=0,mLitComboGroupRevision=0;
+    S32 mLitComboSlot=-1; std::string mLitComboGroup;
+    U32 mLitComboSlots=~0u; bool mLitComboLegacy=false,mLitTargetForceRefresh=true;
+    bool mCastListInitialized=false;
+    void updateAnchorList() {}
+    static std::string rigTargetDescription(S32) { return "You"; }
+    void onLitTargetCommit();
+    void installHistoryValidator();
+    static bool validateLitTarget(const LLSD&, std::string&);
     Check controls[5], enable, status;
     Check* mGroupSlotChecks[5]={&controls[0],&controls[1],&controls[2],&controls[3],&controls[4]};
     Check* mGroupEnable=&enable; Check* mGroupStatus=&status;
@@ -454,142 +535,144 @@ struct ALPanelCineLightRig : LLView {
     void onGroupSlotsCommitBad(); void syncGroupControlsStale();
 };
 """]
-    for signature in ('void ALPanelCineLightRig::onGroupEnabledCommit()',
-                      'void ALPanelCineLightRig::onGroupSlotsCommit()',
-                      'void ALPanelCineLightRig::syncGroupControls()',
-                      'void ALPanelCineLightRig::commitGroupState('):
+    for signature in ('bool ALPanelCineLightRig::validateLitTarget(',
+                      'void ALPanelCineLightRig::onLitTargetCommit()',
+                      'void ALPanelCineLightRig::syncGroupControls()'):
         lines.append(function(source, signature))
-    lines[0] = lines[0].replace('HISTORY_SUPPORT', history_fixture(root))
-    slots = function(source, 'void ALPanelCineLightRig::onGroupSlotsCommit()')
-    assert 'commitGroupState(slots, people.size() >= 2);' in slots
-    # Keep people in use so the planted original manual-switch behavior compiles /WX.
-    lines.append(slots.replace('onGroupSlotsCommit()', 'onGroupSlotsCommitManual()', 1).replace(
-        'commitGroupState(slots, people.size() >= 2);', 'commitGroupState(slots, false);'))
-    commit = function(source, 'void ALPanelCineLightRig::commitGroupState(')
-    replay_enable = 'rig.setGroupEnabled(redo ? enabled : old_enabled);'
-    assert replay_enable in commit
-    lines.append(commit.replace('::commitGroupState(', '::commitGroupStateBad(', 1).replace(
-        replay_enable, 'rig.setGroupEnabled(rig.getGroupSlots() == 6u);'))
-    lines.append(slots.replace('::onGroupSlotsCommit()', '::onGroupSlotsCommitBad()', 1).replace(
-        'commitGroupState(', 'commitGroupStateBad('))
-    sync = function(source, 'void ALPanelCineLightRig::syncGroupControls()')
-    switch_sync = 'setValueIfChanged(mGroupEnable, LLSD(enabled), true);'
-    assert sync.count(switch_sync) == 1
-    lines.append(sync.replace('::syncGroupControls()', '::syncGroupControlsStale()', 1).replace(
-        switch_sync, '').replace('setEnabledIfChanged(mGroupEnable,',
-                                switch_sync + '\n    setEnabledIfChanged(mGroupEnable,'))
-    before = 'setEnabledIfChanged(mGroupSlotChecks[i], object_target.isNull());'
-    assert before in sync
-    lines.append(sync.replace('syncGroupControls()', 'syncGroupControlsGated()', 1).replace(
-        before, 'setEnabledIfChanged(mGroupSlotChecks[i], enabled && object_target.isNull());'))
+    start = source.index('[handle](const std::string& widget, const LLSD& value, std::string& reason)')
+    brace = source.index('{', start)
+    depth, end = 1, brace + 1
+    while depth:
+        depth += (source[end] == '{') - (source[end] == '}')
+        end += 1
+    lines.append('void ALPanelCineLightRig::installHistoryValidator(){'
+                 'auto handle=getDerivedHandle<ALPanelCineLightRig>();'
+                 'ALKitShell::find(this)->history().registerWidgetValidator("light_group/cine_light_rig_tab",'
+                 + source[start:end] + ');}')
+    groups = (root / 'indra/newview/aldirectorgroups.h').read_text(encoding='utf8')
+    # GroupSnapshot and patchDelta are independent of renderer/UI services.
+    start = groups.index('struct GroupSnapshot')
+    # Full namespace uses only standard containers and UUID/LLSD services.
+    lines[0] = lines[0].replace('HISTORY_SUPPORT', history_fixture(root) + '\nnamespace ALDirectorGroups {\n' + groups[start:groups.index('} // namespace ALDirectorGroups')] + '\n}\n')
     lines.append(r"""
-bool autoLighting(bool manual) {
-    auto& rig=ALCineLightRigManager::instance().rig; rig={};
-    ALPanelCineLightRig panel;
-    panel.controls[1].value=true; // first tick while the group switch is OFF
-    if(manual) panel.onGroupSlotsCommitManual(); else panel.onGroupSlotsCommit();
-    if(rig.enabled || rig.slots!=2u) return false;
-    panel.controls[2].value=true;
-    if(manual) panel.onGroupSlotsCommitManual(); else panel.onGroupSlotsCommit();
-    if(!rig.enabled || rig.slots!=6u || !panel.enable.value.asBoolean()) return false;
-    panel.controls[1].value=false;
-    if(manual) panel.onGroupSlotsCommitManual(); else panel.onGroupSlotsCommit();
-    return !rig.enabled && rig.slots==4u && !panel.enable.value.asBoolean();
-}
 void test() {
+    auto& manager=ALCineLightRigManager::instance();
+    auto& rig=manager.rig;
     auto& cast=LLDirectorCast::instance();
-    cast.members["alice"].mLastName="Audrina";
-    cast.members["bob"].mLastName="Bobby";
-    assert(autoLighting(false)); assert(!autoLighting(true));
-    auto& rig=ALCineLightRigManager::instance().rig; rig={};
+    KitComboPoll::test();
     ALPanelCineLightRig panel;
-    for(int i=0;i<5;++i){panel.controls[i].name=std::to_string(i); panel.controls[i].label=i==0?"You":std::string(1, char('A'+i-1));}
+    cast.members["ana"].mLastName="Ana"; cast.members["ben"].mLastName="Ben";
+    cast.groups["guards"]={{"ana"},{"ben"},{"away"}};
+    rig.group="guards"; rig.resolved={{"ana"},{"ben"}}; rig.total=3;
     panel.syncGroupControls();
-    assert(panel.controls[1].enabled && panel.controls[2].enabled);
-    assert(panel.controls[1].visible && !panel.controls[3].visible && !panel.controls[4].visible);
-    for(int i=1;i<5;++i) assert(panel.controls[i].label==std::string(1,char('A'+i-1)));
-    assert(panel.page.rows["1"].label=="Subject A - Audrina");
-    panel.mDisplayedGroupSlots=~0u; panel.syncGroupControlsGated();
-    assert(!panel.controls[1].enabled); // same oracle rejects original click gate
-    rig.object={"object"}; panel.syncGroupControls();
-    for(const auto& check:panel.controls) assert(!check.enabled);
-    rig={}; panel.mDisplayedGroupSlots=~0u;
-    panel.controls[1].value=true;panel.controls[2].value=true;panel.onGroupSlotsCommit();
-    panel.enable.value=false;panel.onGroupEnabledCommit();
-    assert(!rig.enabled && rig.slots==6u); // manual off retains tick-set storage
-    cast.subjects[0]={"self"}; panel.controls[0].value=true;panel.controls[2].value=false;
-    panel.onGroupSlotsCommit();
-    assert(!rig.enabled && rig.slots==3u); // duplicate self counts once
-    assert(!panel.controls[1].visible && panel.controls[0].label=="You");
-    assert(panel.page.rows["0"].label=="You (Subject A)");
-    cast.subjects[0]={"alice"};
-    // Duplicate non-self Subject assignments represent one person.
-    cast.subjects[1]={"alice"}; rig={}; panel.mDisplayedGroupSlots=~0u;
-    panel.controls[0].value=false;
-    panel.controls[1].value=true; panel.controls[2].value=true;
-    panel.onGroupSlotsCommit(); assert(!rig.enabled && rig.slots==6u);
-    cast.subjects[1]={"bob"};
-    for(bool stale : {false, true}) for(int count : {0, 1}) {
-        rig={}; panel.mDisplayedGroupSlots=~0u;
-        rig.slots=count==0 ? 0u : 2u; panel.syncGroupControls();
-        panel.enable.value=true;
-        if(stale) panel.syncGroupControlsStale(); else panel.onGroupEnabledCommit();
-        assert(panel.enable.value.asBoolean()==stale);
-        assert(!rig.enabled);
+    assert(panel.members.text=="Lit now: Ana, Ben (2 of 3 here)");
+    assert(panel.target.value.asString()=="group:guards" && !panel.fallback.visible);
+    rig.resolved={{"self"}}; rig.fallback=true; panel.syncGroupControls();
+    assert(panel.fallback.visible && panel.fallback.text.find("lighting this rig's subject")!=std::string::npos);
+    rig.total=20; rig.present=20; rig.wide=true; manager.overflow=true; rig.resolved.resize(9);
+    panel.syncGroupControls();
+    assert(panel.cap.visible && panel.cap.text=="Lighting the first 16 of 20");
+    assert(panel.actor_only.visible && panel.actor_only.text.find("3 members aren't lit")!=std::string::npos);
+    assert(panel.wide.visible);
+    rig.object={"object"};panel.syncGroupControls();
+    assert(!panel.fallback.visible && !panel.cap.visible && !panel.actor_only.visible && !panel.wide.visible);
+    rig.object={};
+    panel.mLitTarget=nullptr; rig.group.clear(); rig.enabled=true;rig.slots=6u;
+    cast.subjects[2]={};cast.subjects[3]={};panel.syncGroupControls();
+    assert(!panel.controls[3].visible && !panel.controls[4].visible);
+    panel.syncGroupControls();assert(!panel.controls[3].visible && !panel.controls[4].visible);
+    panel.mLitTarget=&panel.target;
+    panel.target.value="subject"; panel.onLitTargetCommit(); assert(rig.group.empty() && !rig.enabled);
+    panel.target.focus=true;
+    panel.target.value="make"; panel.onLitTargetCommit(); assert(rig.group=="Group 1" && !rig.enabled);
+    assert(panel.target.value.asString()=="group:Group 1");
+    assert(std::find(panel.target.items.begin(),panel.target.items.end(),
+        std::make_pair(std::string("Group: Group 1 (3)"),std::string("group:Group 1")))!=panel.target.items.end());
+    panel.target.focus=false;
+    assert(cast.groups["Group 1"].size()==3);
+    // Normal widget recording, preflight and replay, including a dissolved group.
+    auto& history=ALKitShell::find(&panel)->history();
+    panel.target.name="cine_lit_target";
+    panel.target.commit=[&](){panel.onLitTargetCommit();};
+    const std::string page="light_group/cine_light_rig_tab";
+    panel.installHistoryValidator();
+    panel.target.value="subject"; panel.onLitTargetCommit();
+    panel.target.value="group:guards"; panel.onLitTargetCommit();
+    history.recordWidget(&panel.target,LLSD("subject"),LLSD("group:guards"),"Lights");
+    history.finishGesture();
+    history.undo(page); assert(rig.group.empty());
+    history.redo(page); assert(rig.group=="guards");
+    history.undo(page); cast.groups.erase("guards");
+    panel.target.items.erase(std::remove_if(panel.target.items.begin(),panel.target.items.end(),
+        [](const auto& item){return item.second=="group:guards";}),panel.target.items.end());
+    panel.mLitTargetValues.erase(std::remove(panel.mLitTargetValues.begin(),panel.mLitTargetValues.end(),"group:guards"),panel.mLitTargetValues.end());
+    std::string reason; assert(history.prepareReplay(page,true,reason));
+    history.redo(page); assert(rig.group=="guards");
+    history.undo(page); assert(rig.group.empty());
+    // Real row observer precedes the panel observer: transient make is normalized.
+    history.mUndo.clear(); history.mRedo.clear();
+    ALKitRow row; row.bound=&panel.target; panel.target.parent=&row;
+    row.mLastValue="subject";
+    row.connectHistory(&panel.target); // actual ALKitRow observer, installed in child construction
+    panel.target.setCommitCallback([&](LLUICtrl*,const LLSD&){panel.onLitTargetCommit();}); // panel postBuild
+    cast.members["self"].mGroup="old";
+    cast.members["alice"].mGroup="old";
+    cast.members["bob"].mGroup="old";
+    cast.groups.erase("Group 1"); // first Make above used a direct callback
+    // Real row -> recordWidget -> addEntry coalescing: select A, then Make twice
+    // without a timeout/mouse-up/finishGesture between any of the commits.
+    cast.groups["A"]={};panel.mLitTargetForceRefresh=true;panel.syncGroupControls();
+    panel.target.value="group:A";panel.target.onCommit();
+    assert(history.mOpen && history.mOpen->entries[0].oldv.asString()=="subject");
+    panel.target.value="make";panel.target.onCommit();
+    assert(!history.mOpen && history.mUndo.size()==2);
+    assert(history.mUndo.back().entries.size()==1 && history.mUndo.back().custom.size()==1);
+    assert(history.mUndo.back().entries[0].oldv.asString()=="group:A");
+    assert(history.mUndo.back().entries[0].newv.asString()=="group:Group 1");
+    assert(row.mLastValue.asString()=="group:Group 1");
+    panel.target.value="make";panel.target.onCommit();
+    assert(!history.mOpen && history.mUndo.size()==3 && rig.group=="Group 2");
+    history.undo(page);assert(rig.group=="Group 1" && panel.target.value.asString()=="group:Group 1" && cast.members["alice"].mGroup=="Group 1");
+    history.undo(page);assert(rig.group=="A" && panel.target.value.asString()=="group:A" && cast.members["alice"].mGroup=="old");
+    history.undo(page);assert(rig.group.empty() && panel.target.value.asString()=="subject");
+    history.redo(page);assert(rig.group=="A");
+    history.redo(page);assert(rig.group=="Group 1" && panel.target.value.asString()=="group:Group 1" && cast.members["alice"].mGroup=="Group 1");
+    history.redo(page);assert(rig.group=="Group 2" && panel.target.value.asString()=="group:Group 2" && cast.members["alice"].mGroup=="Group 2");
+    manager.power=false;panel.syncGroupControls();
+    assert(panel.members.text=="Lit now: Off" && !panel.fallback.visible && !panel.cap.visible && !panel.wide.visible);
+    manager.power=true;rig.group.clear();manager.editing=1;
+    manager.other.group="guards";manager.other.fallback=true;manager.other.resolved={{"alice"}};
+    panel.syncGroupControls();assert(panel.fallback.text.find("lighting this rig's subject")!=std::string::npos);
+    cast.subjects[0].setNull();manager.other.resolved.clear();panel.syncGroupControls();
+    assert(panel.members.text=="Lit now: No subject assigned");
+    manager.editing=0;panel.syncGroupControls();
+    assert(panel.target.items[0].first=="This rig's subject: You");
+    S32 scans=cast.group_scans;for(S32 i=0;i<10;++i)panel.syncGroupControls();assert(cast.group_scans==scans);
+    // An open list defers construction and publication of new options.
+    auto old_items=panel.target.items;panel.target.open=true;panel.mLitTargetForceRefresh=true;
+    panel.target.value="group:A"; // keyboard highlight, deliberately not committed
+    cast.groups["new"]={};
+    for(int tick=0;tick<10;++tick){panel.syncGroupControls();assert(panel.target.value.asString()=="group:A");}
+    assert(panel.target.items==old_items && cast.group_scans==scans);
+    panel.target.open=false;panel.syncGroupControls();assert(panel.target.items!=old_items && panel.target.value.asString()=="subject");
+    rig.group="guards";rig.total=20;rig.present=10;panel.syncGroupControls();assert(!panel.cap.visible);
+    cast.members["stored-clone"].mLastName="Clone Ana";rig.resolved={{"runtime-clone"}};rig.stored={{"stored-clone"}};
+    panel.syncGroupControls();assert(panel.members.text.find("Clone Ana")!=std::string::npos);
+    // Two missing-name steps must both replay, leaving earlier undo reachable.
+    history.mUndo.clear();history.mRedo.clear();panel.target.value="subject";panel.onLitTargetCommit();row.mLastValue="subject";
+    for(const char* name:{"earlier","later"}){
+        cast.groups[name]={};panel.mLitTargetForceRefresh=true;panel.syncGroupControls();
+        panel.target.value=std::string("group:")+name;panel.target.onCommit();history.finishGesture();
     }
-    for(bool bad : {false,true}) {
-        auto& history=ALKitShell::find(&panel)->history();
-        history.mOpen.reset(); history.mUndo.clear(); history.mRedo.clear();
-        rig={}; panel.mDisplayedGroupSlots=~0u;
-        panel.controls[0].value=false; panel.controls[1].value=true; panel.controls[2].value=true;
-        panel.onGroupSlotsCommit(); // one snapshot, not one checkbox entry
-        assert(history.mUndo.size()==1 && history.mUndo.back().custom.size()==1 && history.mUndo.back().entries.empty());
-        panel.enable.value=false; panel.onGroupEnabledCommit();
-        assert(!rig.enabled && rig.slots==6u);
-        panel.controls[2].value=false;
-        if(bad) panel.onGroupSlotsCommitBad(); else panel.onGroupSlotsCommit();
-        assert(!rig.enabled && rig.slots==2u);
-        const std::string page="light_group/cine_light_rig_tab";
-        history.undo(page); // actual production prepareReplay + replay + undo
-        assert(rig.slots==6u && rig.enabled==bad);
-        if(bad) continue; // the planted auto-on replay fails the disabled oracle
-        assert(!panel.enable.value.asBoolean() && panel.controls[2].value.asBoolean());
-        history.redo(page); assert(rig.slots==2u && !rig.enabled);
-        history.undo(page); assert(rig.slots==6u && !rig.enabled);
-        history.undo(page); assert(rig.slots==6u && rig.enabled); // undo switch Off
-        history.redo(page); assert(rig.slots==6u && !rig.enabled);
-        history.undo(page); history.undo(page); assert(rig.slots==0u && !rig.enabled);
-        history.redo(page); assert(rig.slots==6u && rig.enabled);
-        assert(!ALCineLightRigManager::instance().other.enabled); // correct slot only
-        panel.enable.value=false; panel.onGroupEnabledCommit();
-        panel.enable.value=true; panel.onGroupEnabledCommit();
-        assert(rig.enabled);
-        history.undo(page); assert(!rig.enabled && rig.slots==6u); // undo explicit On
-        history.redo(page); assert(rig.enabled && rig.slots==6u);
-    }
-    {
-        auto& manager=ALCineLightRigManager::instance();
-        auto& history=ALKitShell::find(&panel)->history();
-        history.mOpen.reset(); history.mUndo.clear(); history.mRedo.clear();
-        manager.rig.enabled=true; manager.rig.slots=17u;
-        manager.other={}; manager.editing=1;
-        panel.controls[0].value=false; panel.controls[1].value=true; panel.controls[2].value=true;
-        panel.onGroupSlotsCommit();
-        const std::string page="light_group/cine_light_rig_tab";
-        history.undo(page); assert(manager.other.slots==0u && !manager.other.enabled);
-        history.redo(page); assert(manager.other.slots==6u && manager.other.enabled);
-        assert(manager.rig.slots==17u && manager.rig.enabled);
-        manager.editing=0;
-        history.undo(page); // real replay validation refuses the wrong selected slot
-        assert(manager.other.slots==6u && manager.other.enabled);
-    }
-    std::cout<<"PASS: real ALKitHistory undo/redo restores mask + enable; auto-on replay and stale-switch negatives rejected\n";
-    std::cout<<"PASS: production Who's lit auto-on at 2/auto-off at 1; manual-switch and disabled-ticks negatives rejected; names/hidden/unassigned/self/object/manual-off checked\n";
+    cast.groups.erase("earlier");cast.groups.erase("later");
+    panel.target.items.clear();panel.mLitTargetValues.clear();
+    history.undo(page);assert(rig.group=="earlier");
+    history.undo(page);assert(rig.group.empty() && history.mUndo.empty());
+    std::cout<<"PASS: production Lights combo/readouts/chips, Make a group, normal widget undo/redo and missing-group fallback replay\n";
 }
 } // namespace RigLightingUI
 """)
     return '\n'.join(lines)
-
 
 
 def policy_fixture(root: Path) -> str:
@@ -638,3 +721,84 @@ void test() {
 } // namespace RigPolicyUI
 """)
     return '\n'.join(lines)
+
+
+
+def combo_poll_fixture(root: Path) -> str:
+    """Run the shared row poll and observer between highlight and Enter commit."""
+    row = (root / 'indra/newview/alkitrow.cpp').read_text(encoding='utf8')
+    history = history_fixture(root)
+    history = history.replace('LLView* getParent() const { return parent; }',
+        'LLView* getParent() const { return parent; }\n'
+        'bool hasAncestor(const LLView* p) const { return parent==p; }')
+    history = history.replace('struct LLControlVariable {', r"""
+struct LLComboBox : LLUICtrl {
+    bool open=false;
+    bool isListVisible() const { return open; }
+};
+struct LLLineEditor : LLUICtrl {};
+struct LLTextEditor : LLUICtrl {};
+struct LLTextBox : LLUICtrl { bool getWordWrap() const { return false; } };
+struct Focus {
+    LLView* keyboard=nullptr; bool captured=false;
+    bool childHasMouseCapture(const LLView*) const { return captured; }
+    LLView* getKeyboardFocus() const { return keyboard; }
+} gFocusMgr;
+struct ALKitCard { void requestLayout() {} };
+struct PollBinding { LLSD get() const { return {}; } };
+inline bool alSameValue(const LLSD& a,const LLSD& b) { return a==b; }
+struct LLControlVariable {
+""")
+    history = history.replace('struct LLTimer { static F64 getTotalSeconds() { return 1.; } };',
+        'struct LLTimer { static inline F64 now=1.; static F64 getTotalSeconds() { return now; } };')
+    history = history.replace('std::string setting, label;', 'std::string setting, label, kind;')
+    history = history.replace('    LLSD mLastValue;', r"""
+    LLSD mLastValue, mShownValue;
+    LLUICtrl* mControl=nullptr;
+    bool mHeaderProxy=false; PollBinding* mBinding=nullptr;
+    bool enabledForEdit() const { return true; }
+    struct Rect { int getWidth() const { return 1; } int getHeight() const { return 1; } };
+    Rect getRect() const { return {}; }
+    int heightForWidth(int) const { return 1; }
+    void layoutRow(int) {}
+    ALKitCard* card() { return nullptr; }
+    void refreshValue() { mShownValue=mControl->getValue(); }
+    void pollLiveValue();
+""")
+    history = history.replace('    LLSD value;',
+        '    bool enabled=true; bool getEnabled() const { return enabled; }\n'
+        '    void setEnabled(bool v) { enabled=v; }\n    LLSD value;', 1)
+    return '\n'.join(['namespace KitComboPoll {', history,
+        function(row, 'bool baselineEditActive('),
+        function(row, 'void ALKitRow::pollLiveValue()'), r"""
+void test() {
+    // Arbitrary kit combos: no Lights name, binding or panel-specific guard.
+    for(const char* name:{"kit_combo_one","kit_combo_two"}) {
+        auto& history=ALKitShell::find(nullptr)->history();
+        history.finishGesture(); history.mUndo.clear(); history.mRedo.clear();
+        LLComboBox combo; combo.name=name; combo.value="old";
+        ALKitRow row; row.mControl=row.bound=&combo; combo.parent=&row;
+        row.mLastValue=row.mShownValue="old"; row.connectHistory(&combo);
+        combo.open=true; gFocusMgr.keyboard=&combo; combo.value="highlighted";
+        for(int tick=0;tick<3;++tick) { LLTimer::now+=.15; row.pollLiveValue(); }
+        assert(row.mLastValue.asString()=="old" && !history.mOpen && history.mUndo.empty());
+        // Enter closes the list and commits through the real row observer.
+        combo.open=false; combo.onCommit(); history.finishGesture();
+        assert(history.mUndo.size()==1 && history.mUndo.back().entries.size()==1);
+        const auto& entry=history.mUndo.back().entries[0];
+        assert(entry.oldv.asString()=="old" && entry.newv.asString()=="highlighted");
+        const std::string page="light_group/cine_light_rig_tab";
+        history.undo(page); assert(combo.value.asString()=="old");
+        history.redo(page); assert(combo.value.asString()=="highlighted");
+        // Cancel restores the committed value without adding a step.
+        combo.open=true; combo.value="cancelled"; row.pollLiveValue();
+        combo.value="highlighted"; combo.open=false; row.pollLiveValue();
+        assert(row.mLastValue.asString()=="highlighted" && history.mUndo.size()==1);
+        combo.value="external"; row.pollLiveValue();
+        assert(row.mLastValue.asString()=="external");
+        gFocusMgr.keyboard=nullptr;
+    }
+    std::cout<<"PASS: shared kit combo keyboard highlight, >100 ms live poll, Enter old/new history and cancel\n";
+}
+} // namespace KitComboPoll
+"""])

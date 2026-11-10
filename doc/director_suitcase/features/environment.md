@@ -107,7 +107,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@557,7", "indra/newview/CMakeLists.txt@655,7", "indra/newview/CMakeLists.txt@1124,13", "indra/newview/CMakeLists.txt@1569,7", "indra/newview/CMakeLists.txt@1671,7"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@555,7", "indra/newview/CMakeLists.txt@653,7", "indra/newview/CMakeLists.txt@1122,13", "indra/newview/CMakeLists.txt@1565,7", "indra/newview/CMakeLists.txt@1667,7"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@25712,1573", "indra/newview/app_settings/settings.xml@27863,109", "indra/newview/app_settings/settings.xml@29393,2466"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@27,39", "indra/newview/llfloaterenvironmentadjust.cpp@88,26", "indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@666,14", "indra/newview/llfloaterenvironmentadjust.cpp@767,14", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@103,99"]}
@@ -200,6 +200,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 658, "text": "llfloaterwateradjust.cpp", "source": "indra/newview/llfloaterwateradjust.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1674, "text": "llfloaterwateradjust.h", "source": "indra/newview/llfloaterwateradjust.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 911, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 708, "text": "llinventorybridge.cpp", "source": "indra/newview/llinventorybridge.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 711, "text": "llinventorygallery.cpp", "source": "indra/newview/llinventorygallery.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 934, "text": "llsettingsvo.cpp", "source": "indra/newview/llsettingsvo.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1940, "text": "llsettingsvo.h", "source": "indra/newview/llsettingsvo.h"}

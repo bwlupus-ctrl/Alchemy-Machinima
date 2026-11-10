@@ -67,6 +67,9 @@ template<class Cast> bool assignmentOracle() {
     };
     const auto setters = { &Cast::setSubjectA, &Cast::setSubjectB,
                            &Cast::setSubjectC, &Cast::setSubjectD };
+    manager.mInstances[1].setLitGroup("guards");
+    cast.setSubjectA({"first"});cast.setSubjectA({"second"});
+    assert(manager.mInstances[1].getLitGroup()=="guards");
     int slot=0;
     bool ok=true;
     for(auto setter : setters) {

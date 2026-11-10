@@ -2045,24 +2045,6 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
-    "consumer": "indra/newview/alghostanimassetindex.h",
-    "dependency": "indra/newview/alghostanimdrop.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alghostanimdrop.cpp",
-    "dependency": "indra/newview/alghostanimdrop.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
     "consumer": "indra/newview/alghostanimmirrormath.h",
     "dependency": "indra/newview/alreflectmath.h",
     "excluded": false,
@@ -2398,15 +2380,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.h",
     "dependency": "indra/newview/alghostanimnames.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alghoststudio.h",
-    "dependency": "indra/newview/alghostanimdrop.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -4971,24 +4944,6 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alpanelghoststudio.cpp",
-    "dependency": "indra/newview/alkitshell.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alpanelghoststudio.cpp",
-    "dependency": "indra/newview/alkithistory.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alpanelghoststudio.cpp",
     "dependency": "indra/llui/alcompassdial.h",
     "excluded": false,
     "origin": "fork-added",
@@ -7141,33 +7096,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/alworldwinddown.h",
     "dependency": "indra/newview/alcameracurve.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alwornanimnames.cpp",
-    "dependency": "indra/newview/alwornanimnames.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alwornanimnames.cpp",
-    "dependency": "indra/newview/alghostanimassetindex.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/alwornanimnames.h",
-    "dependency": "indra/newview/alghostanimdrop.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9999,15 +9927,6 @@
     "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llinventorybridge.cpp",
-    "dependency": "indra/newview/alpanelghoststudio.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
     "class": "base-owned",
     "consumer": "indra/newview/lllocalmesh.cpp",
@@ -10825,42 +10744,6 @@
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at local base; adapt individual hunks, never copy wholesale"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/lltooldraganddrop.cpp",
-    "dependency": "indra/newview/alghostanimdrop.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/lltooldraganddrop.cpp",
-    "dependency": "indra/newview/alghostanimassetindex.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/lltooldraganddrop.cpp",
-    "dependency": "indra/newview/alghoststudio.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/lltooldraganddrop.cpp",
-    "dependency": "indra/newview/alpanelghoststudio.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
   },
   {
     "action": "carry/adapt fork source",
@@ -11802,15 +11685,6 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llviewerobject.cpp",
-    "dependency": "indra/newview/alwornanimnames.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llviewerobject.cpp",
     "dependency": "indra/newview/llpresentationtime.h",
     "excluded": false,
     "origin": "fork-added",
@@ -12298,15 +12172,6 @@
     "class": "OWNED",
     "consumer": "indra/newview/llvoavatar.h",
     "dependency": "indra/newview/alclientheightmodel.h",
-    "excluded": false,
-    "origin": "fork-added",
-    "reason": "absent at local base; drop-in source unit, dependencies still required"
-  },
-  {
-    "action": "carry/adapt fork source",
-    "class": "OWNED",
-    "consumer": "indra/newview/llvoavatarself.cpp",
-    "dependency": "indra/newview/alwornanimnames.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

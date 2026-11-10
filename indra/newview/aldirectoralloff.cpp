@@ -15,6 +15,7 @@
 #include "llflycamrecorder.h"
 #include "llghostavatar.h"
 #include "llsdserialize.h"
+#include "llsdutil.h"
 #include "llviewercontrol.h"
 #include "llvoavatar.h"
 
@@ -141,6 +142,20 @@ bool readBackup(LLSD& root, std::string& reason)
         reason = "The last ALL OFF backup is invalid; nothing restored";
         return false;
     }
+    if (root.has("rig_lit_groups"))
+    {
+        const LLSD& groups = root["rig_lit_groups"];
+        if (!groups.isArray() || groups.size() != ALCineLightRigManager::SLOT_COUNT)
+        {
+            reason = "The last ALL OFF group backup is invalid; nothing restored";
+            return false;
+        }
+        for (const LLSD& group : llsd::inArray(groups)) if (!group.isString())
+        {
+            reason = "The last ALL OFF group name is invalid; nothing restored";
+            return false;
+        }
+    }
     const S32 selected = root["rig_selected"].asInteger();
     const S32 mask = root["rig_mask"].asInteger();
     if (root["settings"]["CineLightRigEnabled"].asBoolean() != ((mask & (1 << selected)) != 0))
@@ -182,6 +197,11 @@ void apply(const LLSD& root, bool restoring)
             if (restoring) rigs.restoreEnabledMask(root["rig_mask"].asInteger(),
                 static_cast<ALCineLightRigManager::Slot>(root["rig_selected"].asInteger()), root["rig_group"].asBoolean());
             else rigs.allOff();
+            for (S32 i = 0; i < ALCineLightRigManager::SLOT_COUNT; ++i)
+            {
+                if (restoring && root["rig_lit_groups"].isArray())
+                    rigs.setLitGroup(static_cast<ALCineLightRigManager::Slot>(i), root["rig_lit_groups"][i].asString());
+            }
         }
         else
         {
@@ -250,6 +270,10 @@ bool reset(std::string& message)
     root["rig_mask"] = static_cast<S32>(ALCineLightRigManager::instance().enabledMask());
     root["rig_selected"] = static_cast<S32>(ALCineLightRigManager::instance().selectedSlot());
     root["rig_group"] = ALCineLightRigManager::instance().isRigGroup();
+    root["rig_lit_groups"] = LLSD::emptyArray();
+    for (S32 i = 0; i < ALCineLightRigManager::SLOT_COUNT; ++i)
+        root["rig_lit_groups"].append(ALCineLightRigManager::instance().at(
+            static_cast<ALCineLightRigManager::Slot>(i)).getLitGroup());
     if (!ALAvatarLightResponse::instance().directorSnapshot(root["light_response"], message)) return false;
     std::ostringstream xml;
     LLSDSerialize::toPrettyXML(root, xml);

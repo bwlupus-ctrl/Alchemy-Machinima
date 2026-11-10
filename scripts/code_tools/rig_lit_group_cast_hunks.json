@@ -1,0 +1,21 @@
+{
+  "base": "845dfff22e923b9186aaa490daa8c6e418f2a061",
+  "files": {
+    "lldirectorcast.cpp": [
+      {
+        "before": "// ---------------------------------------------------------------------------\n// resolution\n// ---------------------------------------------------------------------------\nLLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)\n{\n    if (isSelf(id))\n    {\n",
+        "after": "// ---------------------------------------------------------------------------\n// resolution\n// ---------------------------------------------------------------------------\nLLVOAvatar* LLDirectorCast::resolve(const LLUUID& id, bool refresh_name)\n{\n    if (isSelf(id))\n    {\n"
+      },
+      {
+        "before": "    }\n    // refresh the cached display name whenever one is available, so the\n    // cast list can keep labelling an actor who later leaves the region\n    if (CastMember* m = getMember(actor_id))\n    {\n        std::string name = av->getFullname();\n        if (!name.empty() && name != m->mLastName)\n",
+        "after": "    }\n    // refresh the cached display name whenever one is available, so the\n    // cast list can keep labelling an actor who later leaves the region\n    if (CastMember* m = refresh_name ? getMember(actor_id) : nullptr)\n    {\n        std::string name = av->getFullname();\n        if (!name.empty() && name != m->mLastName)\n"
+      }
+    ],
+    "lldirectorcast.h": [
+      {
+        "before": "    // nullptr rather than silently falling back to self, so multi-actor\n    // starts never double up on the agent avatar. Refreshes the member's\n    // cached mLastName whenever a name is available.\n    LLVOAvatar* resolve(const LLUUID& id);\n\n    // ---- Subjects A / B / C / D (ids into the cast; saved with scenes) ----\n    // A doubles as the CineCam/orbit anchor; B is the second body for\n",
+        "after": "    // nullptr rather than silently falling back to self, so multi-actor\n    // starts never double up on the agent avatar. Refreshes the member's\n    // cached mLastName whenever a name is available.\n    LLVOAvatar* resolve(const LLUUID& id, bool refresh_name = true);\n\n    // ---- Subjects A / B / C / D (ids into the cast; saved with scenes) ----\n    // A doubles as the CineCam/orbit anchor; B is the second body for\n"
+      }
+    ]
+  }
+}
