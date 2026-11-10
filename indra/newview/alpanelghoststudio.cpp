@@ -11,6 +11,7 @@
 
 #include "alpanelghoststudio.h"
 #include "alkitlistselection.h"     // [ListMultiSelect] pure primary/mirror/rebuild rules
+#include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules and texts
 #include "aldirectorcastui.h"
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
@@ -622,6 +623,12 @@ bool ALPanelGhostStudio::postBuild()
     mSourceAnimationsCombo = getChild<LLComboBox>("source_animations_combo");
     mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
     mAnimAssetCard = findChild<ALKitCard>("kc_anim_asset"); // [CloneAnimDrop] kit host only
+    // [ClearAnim] A kit row; the v1 floater layout has no such button.
+    mClearAnimBtn = findChild<LLButton>("btn_clear_animations");
+    if (mClearAnimBtn)
+    {
+        mClearAnimBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearAnimations(); });
+    }
     // [CloneAnimDrop] the typed row clipboard ("Copy value") must never carry
     // a protected asset id: these three rows hold animation ids as values.
     LLUICtrl* protected_id_controls[3] = { mDirectedAnimEdit, mSourceAnimationsCombo, mAnimationLibraryCombo };
@@ -1547,6 +1554,7 @@ std::string ALPanelGhostStudio::listSignature() const
         sig += (inst.mPose == ALGhostStudio::POSE_FROZEN) ? 'F' : 'L';
         sig += llformat("%d", (S32)inst.mDriveMode);
         sig += inst.mDirectedAnim.asString();
+        sig += inst.mAnimCleared ? 'C' : '-'; // [ClearAnim]
         sig += inst.mSourceRemoved ? "Source removed" : sourceName(inst.mSource);
         sig += inst.mGroupId.asString();
         sig += llformat("%d", (S32)inst.mLockMode);
@@ -1764,6 +1772,9 @@ void ALPanelGhostStudio::refreshList(bool force_now)
 
     // [ListMultiSelect] A rebuild keeps EVERY selected row that still exists (it used
     // to restore only the first one, so any model change collapsed a multi-selection).
+    // The list's Shift-click anchor is the row last selected by hand; remember it too.
+    LLScrollListItem* anchor_item = mList->getLastSelectedItem();
+    const LLUUID prev_anchor = anchor_item ? anchor_item->getValue().asUUID() : LLUUID::null;
     const std::vector<LLUUID> prev_rows = selectedRowValues();
     std::vector<LLUUID> rebuilt_rows;
     mList->deleteAllItems();
@@ -1801,7 +1812,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
         row["columns"][6]["column"] = column_name(mList, 6, "pose");
         row["columns"][6]["value"] =
             inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE && inst.mDriveMode == ALGhostStudio::DRIVE_DIRECTED
-                ? (inst.mDirectedAnim.isNull() ? std::string("(none)") :
+                ? (inst.mDirectedAnim.isNull() ? std::string(inst.mAnimCleared ? "cleared" : "(none)") :
                     studio.animLibraryScanned() ? studio.animationName(inst.mDirectedAnim) : "Metadata pending...")
                 : inst.mPose == ALGhostStudio::POSE_FROZEN
                 ? std::string("FROZEN") : std::string("live");
@@ -1874,6 +1885,14 @@ void ALPanelGhostStudio::refreshList(bool force_now)
     if (!kept_rows.empty())
     {
         mList->selectMultiple(kept_rows);
+    }
+    // selectMultiple() leaves the bottom row as the anchor, which would change what a
+    // following Shift-click selects. Put the anchor back on the row it was on.
+    const LLUUID kept_anchor =
+        ALKitListSelection::anchorAfterRebuild(prev_anchor, kept_rows);
+    if (kept_anchor.notNull())
+    {
+        mList->setLastSelectedItem(LLSD(kept_anchor));
     }
     noteListSelectionChanged(); // rows were rebuilt: cached selection is stale
     mListSig = listSignature(); // fallback diff baseline
@@ -2027,6 +2046,10 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mAnimSyncBtn, entity);
     setEnabledIfChanged(mLensGazeCheck, entity && inst->mEntityId.notNull());
     const bool have_selected_entity = selected.mAnyEntity;
+    // [ClearAnim] entity clones only; overlay clones get the reason as the tooltip
+    setEnabledIfChanged(mClearAnimBtn, have_selected_entity);
+    setToolTipIfChanged(mClearAnimBtn, std::string(have_selected_entity
+        ? ALGhostClearAnim::buttonTooltip() : ALGhostClearAnim::overlayTooltip()));
     setEnabledIfChanged(mLensGazeSelectionBtn, have_selected_entity);
     setEnabledIfChanged(mLensGazeTorsoSlider, have_selected_entity);
     setEnabledIfChanged(mLensGazeTargetMode, have_selected_entity);
@@ -3421,6 +3444,67 @@ S32 ALPanelGhostStudio::playAnimationOnClonesRecorded(const std::vector<LLUUID>&
             return any;
         });
     return played;
+}
+
+// [ClearAnim] ------------------------------------------------------------------
+// static
+S32 ALPanelGhostStudio::clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    auto snapshot = std::make_shared<std::vector<ALGhostStudio::ClearAnimBefore>>();
+    for (const LLUUID& id : ids)
+    {
+        ALGhostStudio::ClearAnimBefore before;
+        if (studio.clearInstanceAnimations(id, &before))
+        {
+            snapshot->push_back(before);
+        }
+    }
+    const S32 cleared = (S32)snapshot->size();
+    ALPanelGhostStudio* host = activeHost();
+    ALKitShell* shell = host && cleared > 0 ? ALKitShell::find(host) : nullptr;
+    if (!shell)
+    {
+        return cleared;
+    }
+    // One step for the whole selection. Undo restores each clone's drive mode,
+    // animation, AutoAnimate and gaze; redo clears the same clones again.
+    shell->history().recordCustom(host, "clone_clear_anim", "Clear animations on clones",
+        [snapshot](bool redo, std::string& reason)
+        {
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            bool any = false;
+            for (const ALGhostStudio::ClearAnimBefore& before : *snapshot)
+            {
+                any = (redo ? studio.clearInstanceAnimations(before.mId)
+                            : studio.restoreInstanceAnimations(before)) || any;
+            }
+            if (!any) reason = "Those clones are no longer available";
+            return any;
+        });
+    return cleared;
+}
+
+void ALPanelGhostStudio::onClickClearAnimations()
+{
+    noteActiveHost();
+    std::vector<LLUUID> ids;
+    for (const ALGhostAnimDrop::SelectedClone& clone : selectedEntityClonesForApply())
+    {
+        ids.push_back(clone.first);
+    }
+    if (ids.empty())
+    {
+        LLNotificationsUtil::add("SystemMessageTip",
+            LLSD().with("MESSAGE", ALGhostAnimDrop::selectCloneFirstToast()));
+        return;
+    }
+    const S32 cleared = clearAnimationsOnClonesRecorded(ids);
+    LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", cleared > 0
+        ? ALGhostClearAnim::clearedToast((size_t)cleared)
+        : std::string("The selected clone is not ready yet")));
+    showDirectedAnim(LLUUID::null, true);
+    mDetailDirty = true;
 }
 
 std::vector<ALGhostAnimDrop::SelectedClone> ALPanelGhostStudio::selectedEntityClonesForApply() const

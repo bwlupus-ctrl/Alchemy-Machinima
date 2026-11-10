@@ -10,8 +10,10 @@ intentionally uses only the Python standard library.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import copy
 import hashlib
+import io
 import itertools
 import json
 import re
@@ -23,6 +25,8 @@ from xml.etree import ElementTree as ET
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import director_theme_check as theme_check  # noqa: E402  (same-directory checker: theme validity and labels)
 import director_all_off_check as all_off_check  # noqa: E402
+import director_list_select_check as list_select_check  # noqa: E402  (multi-select lists keep their selection)
+import director_clone_clear_check as clone_clear_check  # noqa: E402  (Clear animations wiring)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -364,8 +368,9 @@ def validate_data(data: dict) -> None:
     # Includes the DirectorThemeInvert row in Director settings.
     # Group chat Snooze: two settings rows, 2499 -> 2501.
     # Independent rigs + Director Groups 1a/1b: 40/2506; Lights combo + readouts in 1c: 40/2507.
-    if len(pages) != 40 or row_count != 2507:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2507")
+    # Clones "Clear animations" button: 40/2508.
+    if len(pages) != 40 or row_count != 2508:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2508")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2773,6 +2778,15 @@ def main(argv: list[str] | None = None) -> int:
         if shader_load_check.selftest(quiet=True):
             return 1
         shader_load_check.native_check(ROOT)
+        # Source gates with no runner of their own: prebuild_guard reaches them through
+        # this --check. Each runs its check and its planted-negative selftest.
+        for gate in (list_select_check, clone_clear_check):
+            with contextlib.redirect_stdout(io.StringIO()) as gate_out:
+                gate_failed = gate.run_check() or gate.selftest()
+            if gate_failed:
+                print(gate_out.getvalue(), file=sys.stderr, end="")
+                print(f"{gate.__name__}: FAILED", file=sys.stderr)
+                return 1
         for path in stale:
             print(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path)
         return 1 if stale else 0

@@ -44,6 +44,14 @@ namespace ALKitListSelection
         return keep;
     }
 
+    // The list's range (Shift-click) anchor after a rebuild: the row that was the anchor
+    // before, while it is still selected. None leaves the list's own choice in place.
+    template <typename Id>
+    inline Id anchorAfterRebuild(const Id& anchor_before, const std::vector<Id>& kept_rows)
+    {
+        return !(anchor_before == Id()) && contains(kept_rows, anchor_before) ? anchor_before : Id();
+    }
+
     // The primary row the rest of the UI reads: the remembered primary while it is
     // still selected, otherwise the first selected row, otherwise none.
     template <typename Id>

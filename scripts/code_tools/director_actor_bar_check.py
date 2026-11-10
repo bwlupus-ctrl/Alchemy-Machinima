@@ -110,6 +110,9 @@ def reverse_rig_no_group_cast(source, name):
 
 
 def reverse_clone_anim_drop(source, name):
+    # Clear animations integrates on top of 23c45e6ee7f; peel it first (newest layer).
+    source = reverse_feature_allowance(source.replace("\r\n", "\n"), name, "clear_anim_studio_hunks.json",
+        "f24d002a11dcde4607140af57ddb8c30a9c50d3e50111ca460db445966921996", "reviewed Clear animations")
     # Clone animation drop integrates on top of main 845dfff22e9; peel it before
     # the post-chroma reversal that pins that main state.
     return reverse_feature_allowance(source, name, "clone_anim_drop_hunks.json",

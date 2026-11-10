@@ -3566,6 +3566,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alkitstyle.cpp",
+    "dependency": "indra/newview/aldirectortheme.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alkitswitch.cpp",
     "dependency": "indra/newview/alkitswitch.h",
     "excluded": false,
@@ -4909,6 +4918,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelghoststudio.cpp",
     "dependency": "indra/newview/alpanelghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelghoststudio.cpp",
+    "dependency": "indra/newview/alkitlistselection.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

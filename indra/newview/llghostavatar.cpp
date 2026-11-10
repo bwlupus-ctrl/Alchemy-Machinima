@@ -28,6 +28,8 @@
 #include "alghostbounds.h"
 #include "llghostavatar.h"
 #include "alghostanimmirrormath.h"
+#include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules
+#include "fsposingmotion.h"         // [ClearAnim] the Poser's motion survives a clear
 #include "alreflectmath.h"
 #include "alghostmotionmath.h"
 
@@ -1414,9 +1416,11 @@ void LLGhostAvatar::setFormationAnimations(const std::vector<LLUUID>& anims)
 {
     // A paused controller (Frozen / True Mirror) never evaluates motions, and
     // its pose belongs to the freeze or the stamp: release the cues instead.
+    // [ClearAnim] A cleared clone releases its cues too and takes no new ones.
     const bool controller_live =
-        mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
-        mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED;
+        (mEntityDriveMode == ALGhostStudio::DRIVE_MIRROR ||
+         mEntityDriveMode == ALGhostStudio::DRIVE_DIRECTED) &&
+        ALGhostClearAnim::mayStart(mEntityAnimCleared, ALGhostClearAnim::OWNER_CUE);
     std::set<LLUUID> desired;
     if (controller_live)
     {
@@ -1611,15 +1615,7 @@ void LLGhostAvatar::setEntityCloneVisible(bool visible)
     mEntityCloneVisible = visible;
     if (visible)
     {
-        if (mEntityPhysicsEnabled &&
-            !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
-        {
-            LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
-        }
-        if (mEntityEyeMotionEnabled && !isMotionActive(ANIM_AGENT_EYE))
-        {
-            LLCharacter::startMotion(ANIM_AGENT_EYE);
-        }
+        startEntityLayerMotions(); // [ClearAnim] gated: a cleared clone starts none
     }
     else
     {
@@ -1634,9 +1630,13 @@ void LLGhostAvatar::setEntityCloneVisible(bool visible)
 
 void LLGhostAvatar::setEntityEyeMotionEnabled(bool enabled)
 {
+    // [ClearAnim] The flag is still recorded, so the motion comes back when the
+    // cleared state ends; it just never starts while the clone is cleared.
+    const bool may_start =
+        ALGhostClearAnim::mayStart(mEntityAnimCleared, ALGhostClearAnim::OWNER_EYE);
     if (enabled == mEntityEyeMotionEnabled)
     {
-        if (enabled && mEntityCloneVisible &&
+        if (enabled && mEntityCloneVisible && may_start &&
             !isMotionActive(ANIM_AGENT_EYE))
         {
             LLCharacter::startMotion(ANIM_AGENT_EYE);
@@ -1647,7 +1647,7 @@ void LLGhostAvatar::setEntityEyeMotionEnabled(bool enabled)
     mEntityEyeMotionEnabled = enabled;
     if (enabled && mEntityCloneVisible)
     {
-        LLCharacter::startMotion(ANIM_AGENT_EYE);
+        if (may_start) LLCharacter::startMotion(ANIM_AGENT_EYE);
     }
     else
     {
@@ -1659,11 +1659,14 @@ void LLGhostAvatar::setEntityEyeMotionEnabled(bool enabled)
 
 void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
 {
+    // [ClearAnim] As for the eye motion: recorded, but not started while cleared.
+    const bool may_start =
+        ALGhostClearAnim::mayStart(mEntityAnimCleared, ALGhostClearAnim::OWNER_PHYSICS);
     if (enabled == mEntityPhysicsEnabled)
     {
         // The member defaults on, but default motions are deliberately
         // disabled. Ensure a fresh clone actually starts its physics motion.
-        if (enabled && mEntityCloneVisible &&
+        if (enabled && mEntityCloneVisible && may_start &&
             !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
         {
             LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
@@ -1676,7 +1679,7 @@ void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
     {
         // Do not call startDefaultMotions(): head/eye/noise/breathe motions
         // would fight the clone-owned mirrored or directed animation.
-        LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
+        if (may_start) LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
     }
     else
     {
@@ -1686,6 +1689,85 @@ void LLGhostAvatar::setEntityPhysicsEnabled(bool enabled)
         {
             neutralizeEntityPhysicsParams();
         }
+    }
+}
+
+// [ClearAnim] The clone's own always-on layers (body physics, authored eye motion).
+void LLGhostAvatar::startEntityLayerMotions()
+{
+    if (!mEntityCloneVisible)
+    {
+        return;
+    }
+    if (mEntityPhysicsEnabled &&
+        ALGhostClearAnim::mayStart(mEntityAnimCleared, ALGhostClearAnim::OWNER_PHYSICS) &&
+        !isMotionActive(ANIM_AGENT_PHYSICS_MOTION))
+    {
+        LLCharacter::startMotion(ANIM_AGENT_PHYSICS_MOTION);
+    }
+    if (mEntityEyeMotionEnabled &&
+        ALGhostClearAnim::mayStart(mEntityAnimCleared, ALGhostClearAnim::OWNER_EYE) &&
+        !isMotionActive(ANIM_AGENT_EYE))
+    {
+        LLCharacter::startMotion(ANIM_AGENT_EYE);
+    }
+}
+
+// [ClearAnim]
+void LLGhostAvatar::setEntityAnimationsCleared(bool cleared)
+{
+    if (cleared == mEntityAnimCleared)
+    {
+        return;
+    }
+    if (!cleared)
+    {
+        mEntityAnimCleared = false;
+        startEntityLayerMotions();
+        return;
+    }
+    if (!ALGhostClearAnim::canHold(mEntityDriveMode, mEntityDirectedAnim.notNull()))
+    {
+        return; // the caller sets Directed with no animation first
+    }
+    mEntityAnimCleared = true;
+    // Cues first: with the flag set this releases every one and takes none.
+    setFormationAnimations(std::vector<LLUUID>());
+    // Then every motion still active on this clone's own controller, whoever
+    // started it (a walk, a cue the drive also owned, physics, eye/blink).
+    // The Poser's posing motion is the one exception.
+    std::vector<LLUUID> running;
+    for (LLMotion* motion : getMotionController().getActiveMotions())
+    {
+        if (motion &&
+            ALGhostClearAnim::stopsOnClear(dynamic_cast<FSPosingMotion*>(motion) != nullptr))
+        {
+            running.push_back(motion->getID());
+        }
+    }
+    for (const LLUUID& id : running)
+    {
+        autoAnimAuditBodyStop(id); // [AutoAnimate]
+        LLCharacter::stopMotion(id, true);
+    }
+    mEntityDirectedStarted = false;
+    mEntityDirectedWasActive = false;
+    neutralizeEntityPhysicsParams();
+    neutralizeEntityEyeParams();
+    // A stopped motion leaves its last pose on the joints. Rest the skeleton:
+    // no joint rotation and the pelvis back on the root. Joint positions other
+    // than the pelvis carry the body shape and are left alone.
+    restoreDirectedMirrorPose();
+    for (LLJoint* joint : mSkeleton)
+    {
+        if (joint)
+        {
+            joint->setRotation(LLQuaternion::DEFAULT);
+        }
+    }
+    if (mPelvisp)
+    {
+        mPelvisp->setPosition(LLVector3::zero);
     }
 }
 
@@ -1926,6 +2008,11 @@ void LLGhostAvatar::setEntityDriveMode(S32 mode, const LLUUID& directed_anim)
         mEntityPauseRequest = requestPause();
         mTrueMirrorSourceValid = false;
         mTrueMirrorLastStampFrame = 0;
+    }
+    // [ClearAnim] The user picked an animation or another drive mode.
+    if (!ALGhostClearAnim::holds(mEntityAnimCleared, mode, directed_anim.notNull()))
+    {
+        setEntityAnimationsCleared(false);
     }
     autoAnimOnDriveModeChanged(old_mode, mode); // [AutoAnimate]
 }

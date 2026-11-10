@@ -16,7 +16,8 @@ Rules (exit 1 on any finding):
 - The Clone list (ALPanelGhostStudio) uses the pure rules of
   indra/newview/alkitlistselection.h at its three selection points:
   * refreshList() restores every selected row after a rebuild
-    (restoreRows + selectMultiple, never selectByID);
+    (restoreRows + selectMultiple, never selectByID) and puts the list's
+    Shift-click anchor back on its row (anchorAfterRebuild + setLastSelectedItem);
   * draw() mirrors the shared primary through mirrorAction(), with the
     mouse-capture guard, so a click in progress is not collapsed;
   * onListSelect() makes the clicked row the primary (primaryAfterCommit) and
@@ -56,6 +57,12 @@ GHOST_PINS = (
     ("const std::vector<LLUUID> kept_rows = ALKitListSelection::restoreRows(prev_rows, rebuilt_rows); "
      "if (!kept_rows.empty()) { mList->selectMultiple(kept_rows); }",
      "refreshList() no longer restores every selected row"),
+    ("LLScrollListItem* anchor_item = mList->getLastSelectedItem(); "
+     "const LLUUID prev_anchor = anchor_item ? anchor_item->getValue().asUUID() : LLUUID::null;",
+     "refreshList() no longer remembers the Shift-click anchor"),
+    ("const LLUUID kept_anchor = ALKitListSelection::anchorAfterRebuild(prev_anchor, kept_rows); "
+     "if (kept_anchor.notNull()) { mList->setLastSelectedItem(LLSD(kept_anchor)); }",
+     "refreshList() no longer restores the Shift-click anchor"),
     ("const bool external_selection = shared_selection_revision != mObservedSelectionRevision;",
      "draw() no longer separates an external change of the shared primary"),
     ("switch (ALKitListSelection::mirrorAction( external_selection, mList->hasMouseCapture(), desired_row, "
@@ -137,7 +144,7 @@ def findings(xui_texts, sources):
         elif "selectByID(" in rebuild or "getFirstSelected(" in rebuild:
             out.append(f"{GHOST_CPP}: refreshList() restores a single row (selectByID/getFirstSelected)")
         header = sources.get("alkitlistselection.h")
-        if header is None or "restoreRows" not in header or "mirrorAction" not in header:
+        if header is None or any(rule not in header for rule in ("restoreRows", "mirrorAction", "anchorAfterRebuild")):
             out.append("alkitlistselection.h: missing the pure selection rules")
     return out
 
@@ -191,6 +198,11 @@ def selftest():
                     "mList->getFirstSelected()->getValue().asUUID() : LLUUID::null };"), xui_texts),
         ("rebuild forgets the rebuilt rows",
          ghost_swap("        rebuilt_rows.push_back(inst.mId);\n", ""), xui_texts),
+        ("rebuild loses the Shift-click anchor",
+         ghost_swap("        mList->setLastSelectedItem(LLSD(kept_anchor));", ""), xui_texts),
+        ("rebuild restores the anchor before the rows exist",
+         ghost_swap("    LLScrollListItem* anchor_item = mList->getLastSelectedItem();",
+                    "    LLScrollListItem* anchor_item = mList->getFirstSelected();"), xui_texts),
         ("mirror ignores a click in progress",
          ghost_swap("external_selection, mList->hasMouseCapture(), desired_row,",
                     "external_selection, false, desired_row,"), xui_texts),

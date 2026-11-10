@@ -449,6 +449,7 @@ public:
         U32 mAutoAnimSeedSalt = 0;
         std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoAnimPool;
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
+        bool        mAnimCleared = false; // [ClearAnim] Directed, no animation, neutral pose; session only
         bool        mDirectedMirror = false; // own Directed/paused pose; session-only
         EDriveMode  mDirectedMirrorFreezeDrive = DRIVE_MIRROR; // eligibility only, never playback Resume
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
@@ -820,6 +821,20 @@ public:
     bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
                                    const LLUUID& directed_anim = LLUUID::null);
     void      setInstanceDirectedMirror(const LLUUID& id, bool enabled);
+    // [ClearAnim] Stop every animation on an entity clone and rest it in the neutral
+    // pose (Directed drive, no animation; AutoAnimate, authored gaze and an active
+    // walk are switched off). `before` receives what one undo step puts back.
+    struct ClearAnimBefore
+    {
+        LLUUID     mId;
+        EDriveMode mMode = DRIVE_MIRROR;
+        LLUUID     mAnim;
+        bool       mAutoAnimate = false;
+        bool       mGazeEnabled = false;
+        bool       mWasCleared = false;
+    };
+    bool      clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* before = nullptr);
+    bool      restoreInstanceAnimations(const ClearAnimBefore& before);
     void      refreshLifecycleStates();
     void      removeInstance(const LLUUID& id);
     S32       lockGroup(const std::vector<LLUUID>& ids,

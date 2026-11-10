@@ -1372,6 +1372,7 @@ set(viewer_HEADER_FILES
     alghoststudio.h
     alghostanimassetindex.h
     alghostanimdrop.h # [CloneAnimDrop]
+    alghostclearanim.h # [ClearAnim]
     alwornanimnames.h # [CloneAnimDrop]
     alworldoverlayviz.h
     alscrollfocus.h
@@ -2978,6 +2979,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectortheme "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitlistselection "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alghostclearanim "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectoralloff "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly

@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3354 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3357 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (176)
 
@@ -183,7 +183,7 @@ All 3354 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1791)
+## Unknown hunk features (1794)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -246,13 +246,13 @@ All 3354 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@274,24`
 - `indra/newview/CMakeLists.txt@528,7`
 - `indra/newview/CMakeLists.txt@822,8`
-- `indra/newview/CMakeLists.txt@1236,20`
-- `indra/newview/CMakeLists.txt@1540,7`
-- `indra/newview/CMakeLists.txt@1827,8`
-- `indra/newview/CMakeLists.txt@2353,7`
-- `indra/newview/CMakeLists.txt@2633,38`
-- `indra/newview/CMakeLists.txt@2728,7`
-- `indra/newview/CMakeLists.txt@2768,7`
+- `indra/newview/CMakeLists.txt@1237,20`
+- `indra/newview/CMakeLists.txt@1541,7`
+- `indra/newview/CMakeLists.txt@1828,8`
+- `indra/newview/CMakeLists.txt@2354,7`
+- `indra/newview/CMakeLists.txt@2634,38`
+- `indra/newview/CMakeLists.txt@2729,7`
+- `indra/newview/CMakeLists.txt@2769,7`
 - `indra/newview/app_settings/settings.xml@22546,10`
 - `indra/newview/app_settings/settings.xml@23422,21`
 - `indra/newview/app_settings/settings.xml@23444,32`
@@ -1475,10 +1475,13 @@ All 3354 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistcell.cpp@795,3`
 - `indra/llui/llscrolllistcell.h@67,8`
 - `indra/llui/llscrolllistcell.h@92,7`
-- `indra/llui/llscrolllistctrl.cpp@2081,11`
+- `indra/llui/llscrolllistctrl.cpp@1799,13`
+- `indra/llui/llscrolllistctrl.cpp@2088,11`
 - `indra/llui/llscrolllistctrl.h@297,9`
-- `indra/llui/llscrolllistctrl.h@406,9`
-- `indra/llui/llscrolllistctrl.h@482,13`
+- `indra/llui/llscrolllistctrl.h@313,8`
+- `indra/llui/llscrolllistctrl.h@408,9`
+- `indra/llui/llscrolllistctrl.h@484,13`
+- `indra/llui/llscrolllistctrl.h@555,8`
 - `indra/llui/lltabcontainer.cpp@1215,7`
 - `indra/llui/lltabcontainer.cpp@1299,8`
 - `indra/llui/lltabcontainer.cpp@1825,84`
@@ -1977,7 +1980,7 @@ All 3354 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14`
 
-## Unknown/non-function contexts (1234)
+## Unknown/non-function contexts (1235)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -2043,26 +2046,26 @@ All 3354 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@912,7`: unknown/non-function (set(viewer_SOURCE_FILES)
 - `indra/newview/CMakeLists.txt@1105,7`: unknown/non-function (set(viewer_SOURCE_FILES)
 - `indra/newview/CMakeLists.txt@1124,13`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1139,57`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1198,14`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1236,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1293,170`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1540,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1569,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1671,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1682,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1827,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1898,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1914,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2113,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2353,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2633,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2728,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2768,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2857,32`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2895,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2963,195`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3219,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@1139,58`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1199,14`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1237,20`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1294,170`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1541,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1570,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1672,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1683,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1828,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1899,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1915,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2114,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2354,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2634,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2729,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2769,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2858,32`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2896,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2964,196`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3221,40`: unknown/non-function (if (BUILD_TESTING))
 - `indra/newview/app_settings/settings.xml@2,3455`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3458,10`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3469,1055`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2948,6 +2951,7 @@ All 3354 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistcell.cpp@795,3`: unknown/non-function (bool LLScrollListLineEditor::handleUnicodeCharHere(llwchar uni_char ))
 - `indra/llui/llscrolllistcell.h@67,8`: unknown/non-function (public:)
 - `indra/llui/llscrolllistcell.h@92,7`: unknown/non-function (public:)
+- `indra/llui/llscrolllistctrl.h@555,8`: unknown/non-function (private:)
 - `indra/llui/lltabcontainer.cpp@1215,7`: unknown/non-function (void LLTabContainer::addPlaceholder(LLPanel* child, const std::string& label))
 - `indra/llui/lltabcontainer.h@179,7`: unknown/non-function (public:)
 - `indra/llui/lltextbase.cpp@252,7`: unknown/non-function (LLTextBase::LLTextBase(const LLTextBase::Params &p))

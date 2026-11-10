@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 40,
-    "rows": 2298,
+    "rows": 2299,
     "owner_roots": 37,
     "unresolved_rows": 76,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2298
+    "independent_json_rows": 2299
   },
   "setting_conflicts": [
     {
@@ -36820,7 +36820,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 1261,
+          "line": 1264,
           "widget": "motion_animations_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -36976,7 +36976,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 725,
+          "line": 728,
           "widget": "crowd_look_spread_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37015,7 +37015,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 717,
+          "line": 720,
           "widget": "crowd_looks_mode_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37054,7 +37054,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 733,
+          "line": 736,
           "widget": "crowd_mix_look_1",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37093,7 +37093,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 803,
+          "line": 806,
           "widget": "crowd_mix_look_2",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37132,7 +37132,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 873,
+          "line": 876,
           "widget": "crowd_mix_look_3",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37171,7 +37171,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 943,
+          "line": 946,
           "widget": "crowd_mix_look_4",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37210,7 +37210,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 1013,
+          "line": 1016,
           "widget": "crowd_mix_look_5",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37249,7 +37249,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 1083,
+          "line": 1086,
           "widget": "crowd_mix_look_6",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37288,7 +37288,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 706,
+          "line": 709,
           "widget": "formation_overlay_palette_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37327,7 +37327,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 656,
+          "line": 659,
           "widget": "crowd_ripple_from_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37366,7 +37366,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 644,
+          "line": 647,
           "widget": "crowd_start_mode_combo",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -37405,7 +37405,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-          "line": 653,
+          "line": 656,
           "widget": "crowd_start_spread_spinner",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -65247,7 +65247,7 @@
       "label": "Clones",
       "group": "cast_group",
       "group_label": "Cast",
-      "row_count": 169,
+      "row_count": 170,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_ghost_studio.xml",
@@ -65261,7 +65261,7 @@
       "owner_classes": [
         {
           "class": "ALPanelGhostStudio",
-          "reference_count": 333
+          "reference_count": 335
         },
         {
           "class": "ALGhostStudio",
@@ -65275,8 +65275,8 @@
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 19,
-        "setting_coverage": 0.112426,
-        "cpp_referenced_rows": 159,
+        "setting_coverage": 0.111765,
+        "cpp_referenced_rows": 160,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
       "unresolved_row_count": 0,
@@ -65314,7 +65314,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 446,
+              "line": 447,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65382,7 +65382,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 444,
+              "line": 445,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65393,7 +65393,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 817,
+              "line": 824,
               "class": "ALPanelGhostStudio",
               "function": "onShowAllToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -65474,7 +65474,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 445,
+              "line": 446,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65485,7 +65485,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 818,
+              "line": 825,
               "class": "ALPanelGhostStudio",
               "function": "onToggleEditMode",
               "wired_class": "ALPanelGhostStudio",
@@ -65571,7 +65571,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 447,
+              "line": 448,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65582,7 +65582,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 819,
+              "line": 826,
               "class": "ALPanelGhostStudio",
               "function": "onListSelect",
               "wired_class": "ALPanelGhostStudio",
@@ -65593,7 +65593,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 821,
+              "line": 828,
               "class": "ALPanelGhostStudio",
               "function": "onListMouseUp",
               "wired_class": "ALPanelGhostStudio",
@@ -65661,7 +65661,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 777,
+              "line": 784,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65729,7 +65729,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 509,
+              "line": 510,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65740,7 +65740,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 826,
+              "line": 833,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicate",
               "wired_class": "ALPanelGhostStudio",
@@ -65808,7 +65808,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 510,
+              "line": 511,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65819,7 +65819,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 827,
+              "line": 834,
               "class": "ALPanelGhostStudio",
               "function": "onClickDelete",
               "wired_class": "ALPanelGhostStudio",
@@ -65887,7 +65887,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 511,
+              "line": 512,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65898,7 +65898,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 828,
+              "line": 835,
               "class": "ALPanelGhostStudio",
               "function": "onClickRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -65966,7 +65966,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 450,
+              "line": 451,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -65977,7 +65977,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 483,
+              "line": 484,
               "class": "ALPanelGhostStudio",
               "function": "getSolo",
               "wired_class": "ALPanelGhostStudio",
@@ -66050,7 +66050,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 448,
+              "line": 449,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66061,7 +66061,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 501,
+              "line": 502,
               "class": "ALPanelGhostStudio",
               "function": "<inline callback>",
               "wired_class": "ALPanelGhostStudio",
@@ -66072,7 +66072,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 2641,
+              "line": 2664,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -66143,7 +66143,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 507,
+              "line": 508,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66154,7 +66154,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 2641,
+              "line": 2664,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -66222,7 +66222,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 508,
+              "line": 509,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66233,7 +66233,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 824,
+              "line": 831,
               "class": "ALPanelGhostStudio",
               "function": "onClickAdd",
               "wired_class": "ALPanelGhostStudio",
@@ -66301,7 +66301,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 655,
+              "line": 662,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66312,7 +66312,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 897,
+              "line": 904,
               "class": "ALPanelGhostStudio",
               "function": "onClickDuplicateInPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -66380,7 +66380,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 656,
+              "line": 663,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66391,7 +66391,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 898,
+              "line": 905,
               "class": "ALPanelGhostStudio",
               "function": "onClickCopyTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -66459,7 +66459,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 657,
+              "line": 664,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66470,7 +66470,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 899,
+              "line": 906,
               "class": "ALPanelGhostStudio",
               "function": "onClickPasteTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -66538,7 +66538,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 449,
+              "line": 450,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66549,7 +66549,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 465,
+              "line": 466,
               "class": "ALPanelGhostStudio",
               "function": "empty",
               "wired_class": "ALPanelGhostStudio",
@@ -66617,7 +66617,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 512,
+              "line": 513,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66685,7 +66685,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 648,
+              "line": 655,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66753,7 +66753,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 513,
+              "line": 514,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66764,7 +66764,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 825,
+              "line": 832,
               "class": "ALPanelGhostStudio",
               "function": "onNameCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66832,7 +66832,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 515,
+              "line": 516,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66843,7 +66843,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 830,
+              "line": 837,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -66924,7 +66924,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 516,
+              "line": 517,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -66935,7 +66935,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 831,
+              "line": 838,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67016,7 +67016,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 517,
+              "line": 518,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67027,7 +67027,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 832,
+              "line": 839,
               "class": "ALPanelGhostStudio",
               "function": "onPosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67108,7 +67108,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 519,
+              "line": 520,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67119,7 +67119,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 837,
+              "line": 844,
               "class": "ALPanelGhostStudio",
               "function": "onYawCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67130,7 +67130,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1045,
+              "line": 1052,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67211,7 +67211,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 518,
+              "line": 519,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67222,7 +67222,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 835,
+              "line": 842,
               "class": "ALPanelGhostStudio",
               "function": "onHeadingDialCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67344,7 +67344,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 520,
+              "line": 521,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67355,7 +67355,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 838,
+              "line": 845,
               "class": "ALPanelGhostStudio",
               "function": "asReal",
               "wired_class": "ALPanelGhostStudio",
@@ -67366,7 +67366,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1046,
+              "line": 1053,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67460,7 +67460,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 521,
+              "line": 522,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67471,7 +67471,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 840,
+              "line": 847,
               "class": "ALPanelGhostStudio",
               "function": "asReal",
               "wired_class": "ALPanelGhostStudio",
@@ -67482,7 +67482,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1047,
+              "line": 1054,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67585,7 +67585,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 522,
+              "line": 523,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67596,7 +67596,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 842,
+              "line": 849,
               "class": "ALPanelGhostStudio",
               "function": "onScaleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -67607,7 +67607,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1048,
+              "line": 1055,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67759,7 +67759,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 658,
+              "line": 665,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67770,7 +67770,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 900,
+              "line": 907,
               "class": "ALPanelGhostStudio",
               "function": "onClickPastePosition",
               "wired_class": "ALPanelGhostStudio",
@@ -67838,7 +67838,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 649,
+              "line": 656,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67849,7 +67849,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 891,
+              "line": 898,
               "class": "ALPanelGhostStudio",
               "function": "onClickPlace",
               "wired_class": "ALPanelGhostStudio",
@@ -67917,7 +67917,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 650,
+              "line": 657,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -67928,7 +67928,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 892,
+              "line": 899,
               "class": "ALPanelGhostStudio",
               "function": "onClickToActor",
               "wired_class": "ALPanelGhostStudio",
@@ -67996,7 +67996,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 651,
+              "line": 658,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68007,7 +68007,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 893,
+              "line": 900,
               "class": "ALPanelGhostStudio",
               "function": "onClickToMe",
               "wired_class": "ALPanelGhostStudio",
@@ -68075,7 +68075,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 652,
+              "line": 659,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68086,7 +68086,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 894,
+              "line": 901,
               "class": "ALPanelGhostStudio",
               "function": "onClickDrop",
               "wired_class": "ALPanelGhostStudio",
@@ -68154,7 +68154,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 653,
+              "line": 660,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68165,7 +68165,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 895,
+              "line": 902,
               "class": "ALPanelGhostStudio",
               "function": "onClickAlignFeet",
               "wired_class": "ALPanelGhostStudio",
@@ -68238,7 +68238,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 659,
+              "line": 666,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68249,7 +68249,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 901,
+              "line": 908,
               "class": "ALPanelGhostStudio",
               "function": "onLookTargetCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68317,7 +68317,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 660,
+              "line": 667,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68328,7 +68328,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 903,
+              "line": 910,
               "class": "ALPanelGhostStudio",
               "function": "onClickFaceNow",
               "wired_class": "ALPanelGhostStudio",
@@ -68396,7 +68396,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 661,
+              "line": 668,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68407,7 +68407,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 905,
+              "line": 912,
               "class": "ALPanelGhostStudio",
               "function": "onKeepFacingCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68475,7 +68475,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 654,
+              "line": 661,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68486,7 +68486,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 896,
+              "line": 903,
               "class": "ALPanelGhostStudio",
               "function": "onClickUpright",
               "wired_class": "ALPanelGhostStudio",
@@ -68618,7 +68618,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 663,
+              "line": 670,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68629,7 +68629,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 908,
+              "line": 915,
               "class": "ALPanelGhostStudio",
               "function": "onStyleCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68707,7 +68707,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 677,
+              "line": 684,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68718,7 +68718,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 922,
+              "line": 929,
               "class": "ALPanelGhostStudio",
               "function": "onDistortCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68786,7 +68786,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 678,
+              "line": 685,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68797,7 +68797,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 923,
+              "line": 930,
               "class": "ALPanelGhostStudio",
               "function": "onDistortAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68808,7 +68808,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1075,
+              "line": 1082,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68876,7 +68876,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 664,
+              "line": 671,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68887,7 +68887,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 909,
+              "line": 916,
               "class": "ALPanelGhostStudio",
               "function": "onActorTintToggle",
               "wired_class": "ALPanelGhostStudio",
@@ -68955,7 +68955,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 665,
+              "line": 672,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -68966,7 +68966,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 910,
+              "line": 917,
               "class": "ALPanelGhostStudio",
               "function": "onHueCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -68977,7 +68977,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1063,
+              "line": 1070,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69045,7 +69045,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 666,
+              "line": 673,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69056,7 +69056,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 911,
+              "line": 918,
               "class": "ALPanelGhostStudio",
               "function": "onAlphaCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69067,7 +69067,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1064,
+              "line": 1071,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69135,7 +69135,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 679,
+              "line": 686,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69146,7 +69146,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 924,
+              "line": 931,
               "class": "ALPanelGhostStudio",
               "function": "onBrightnessCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69157,7 +69157,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1076,
+              "line": 1083,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69225,7 +69225,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 669,
+              "line": 676,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69236,7 +69236,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 914,
+              "line": 921,
               "class": "ALPanelGhostStudio",
               "function": "onPixelCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69247,7 +69247,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1065,
+              "line": 1072,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69315,7 +69315,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 668,
+              "line": 675,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69326,7 +69326,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 913,
+              "line": 920,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerAmountCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69337,7 +69337,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1067,
+              "line": 1074,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69405,7 +69405,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 667,
+              "line": 674,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69416,7 +69416,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 912,
+              "line": 919,
               "class": "ALPanelGhostStudio",
               "function": "onShimmerSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69427,7 +69427,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1066,
+              "line": 1073,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69495,7 +69495,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 670,
+              "line": 677,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69506,7 +69506,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 915,
+              "line": 922,
               "class": "ALPanelGhostStudio",
               "function": "onGlitchCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69517,7 +69517,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1068,
+              "line": 1075,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69585,7 +69585,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 671,
+              "line": 678,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69596,7 +69596,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 916,
+              "line": 923,
               "class": "ALPanelGhostStudio",
               "function": "onSliceCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69607,7 +69607,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1069,
+              "line": 1076,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69688,7 +69688,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 672,
+              "line": 679,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69699,7 +69699,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 917,
+              "line": 924,
               "class": "ALPanelGhostStudio",
               "function": "onDropoutCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69710,7 +69710,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1070,
+              "line": 1077,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69791,7 +69791,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 673,
+              "line": 680,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69802,7 +69802,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 918,
+              "line": 925,
               "class": "ALPanelGhostStudio",
               "function": "onPowerFlickerCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69813,7 +69813,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1071,
+              "line": 1078,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69894,7 +69894,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 674,
+              "line": 681,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69905,7 +69905,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 919,
+              "line": 926,
               "class": "ALPanelGhostStudio",
               "function": "onWipeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -69916,7 +69916,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1072,
+              "line": 1079,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -69997,7 +69997,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 675,
+              "line": 682,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70008,7 +70008,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 920,
+              "line": 927,
               "class": "ALPanelGhostStudio",
               "function": "onInterlaceCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70019,7 +70019,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1073,
+              "line": 1080,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70100,7 +70100,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 676,
+              "line": 683,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70111,7 +70111,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 921,
+              "line": 928,
               "class": "ALPanelGhostStudio",
               "function": "onPositionJitterCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70122,7 +70122,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1074,
+              "line": 1081,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70203,7 +70203,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 680,
+              "line": 687,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70214,7 +70214,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 925,
+              "line": 932,
               "class": "ALPanelGhostStudio",
               "function": "onEffectFpsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70225,7 +70225,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1049,
+              "line": 1056,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70293,7 +70293,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 708,
+              "line": 715,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70304,7 +70304,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 928,
+              "line": 935,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",
@@ -70400,7 +70400,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 713,
+              "line": 720,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70411,7 +70411,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 929,
+              "line": 936,
               "class": "ALPanelGhostStudio",
               "function": "onClickLive",
               "wired_class": "ALPanelGhostStudio",
@@ -70485,7 +70485,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 542,
+              "line": 543,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70496,7 +70496,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 859,
+              "line": 866,
               "class": "ALPanelGhostStudio",
               "function": "onDriveModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -70642,7 +70642,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 714,
+              "line": 721,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70791,7 +70791,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 544,
+              "line": 545,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70802,7 +70802,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 567,
+              "line": 568,
               "class": "ALPanelGhostStudio",
               "function": "applyEntityTransform",
               "wired_class": "ALPanelGhostStudio",
@@ -70873,7 +70873,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 543,
+              "line": 544,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70884,7 +70884,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 580,
+              "line": 581,
               "class": "ALPanelGhostStudio",
               "function": "invalidateReflectPlane",
               "wired_class": "ALPanelGhostStudio",
@@ -70952,7 +70952,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 549,
+              "line": 550,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -70963,7 +70963,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 591,
+              "line": 592,
               "class": "ALPanelGhostStudio",
               "function": "asBoolean",
               "wired_class": "ALPanelGhostStudio",
@@ -71031,7 +71031,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 550,
+              "line": 551,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71042,7 +71042,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 551,
+              "line": 552,
               "class": "ALPanelGhostStudio",
               "function": "removeMirror",
               "wired_class": "ALPanelGhostStudio",
@@ -71110,7 +71110,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 564,
+              "line": 565,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71121,7 +71121,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 602,
+              "line": 603,
               "class": "ALPanelGhostStudio",
               "function": "getSelected",
               "wired_class": "ALPanelGhostStudio",
@@ -71198,7 +71198,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1051,
+              "line": 1058,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71279,7 +71279,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 565,
+              "line": 566,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71290,7 +71290,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 608,
+              "line": 609,
               "class": "ALPanelGhostStudio",
               "function": "getSelected",
               "wired_class": "ALPanelGhostStudio",
@@ -71358,7 +71358,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 566,
+              "line": 567,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71426,7 +71426,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 524,
+              "line": 525,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71437,7 +71437,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 844,
+              "line": 851,
               "class": "ALPanelGhostStudio",
               "function": "onChaosCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71448,7 +71448,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1077,
+              "line": 1084,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71516,7 +71516,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 525,
+              "line": 526,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71527,7 +71527,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 845,
+              "line": 852,
               "class": "ALPanelGhostStudio",
               "function": "onAnimSpeedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71538,7 +71538,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1050,
+              "line": 1057,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71613,7 +71613,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 681,
+              "line": 688,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71624,7 +71624,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 926,
+              "line": 933,
               "class": "ALPanelGhostStudio",
               "function": "onEntityLookCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71692,7 +71692,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 539,
+              "line": 540,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71703,7 +71703,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 856,
+              "line": 863,
               "class": "ALPanelGhostStudio",
               "function": "onPhysicsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71774,7 +71774,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 636,
+              "line": 643,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71785,7 +71785,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 871,
+              "line": 878,
               "class": "ALPanelGhostStudio",
               "function": "onLoopModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -71862,7 +71862,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1098,
+              "line": 1105,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -71952,7 +71952,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1098,
+              "line": 1105,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72033,7 +72033,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 540,
+              "line": 541,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72044,7 +72044,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 857,
+              "line": 864,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimPause",
               "wired_class": "ALPanelGhostStudio",
@@ -72112,7 +72112,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 541,
+              "line": 542,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72123,7 +72123,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 858,
+              "line": 865,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimResume",
               "wired_class": "ALPanelGhostStudio",
@@ -72191,7 +72191,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 637,
+              "line": 644,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72202,7 +72202,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 872,
+              "line": 879,
               "class": "ALPanelGhostStudio",
               "function": "onClickAnimSync",
               "wired_class": "ALPanelGhostStudio",
@@ -72270,7 +72270,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 451,
+              "line": 452,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72281,7 +72281,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 489,
+              "line": 490,
               "class": "ALGhostStudio",
               "function": "setStartOffset",
               "wired_class": "ALPanelGhostStudio",
@@ -72292,7 +72292,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1097,
+              "line": 1104,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72360,7 +72360,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 452,
+              "line": 453,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72428,7 +72428,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 613,
+              "line": 614,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72439,7 +72439,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 860,
+              "line": 867,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedAnimCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -72507,7 +72507,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 621,
+              "line": 622,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72518,7 +72518,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 861,
+              "line": 868,
               "class": "ALPanelGhostStudio",
               "function": "onDirectedMirrorCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -72586,7 +72586,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 622,
+              "line": 623,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72597,7 +72597,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 862,
+              "line": 869,
               "class": "ALPanelGhostStudio",
               "function": "onSourceAnimationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -72670,7 +72670,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 623,
+              "line": 624,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72681,7 +72681,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 863,
+              "line": 870,
               "class": "ALPanelGhostStudio",
               "function": "onAnimationLibraryCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -72749,7 +72749,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 635,
+              "line": 642,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72760,7 +72760,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 864,
+              "line": 871,
               "class": "ALGhostStudio",
               "function": "scanAnimLibrary",
               "wired_class": "ALPanelGhostStudio",
@@ -72801,6 +72801,71 @@
           "option_index": null,
           "option_label": null,
           "index": 5,
+          "label": "Clear",
+          "kind": "button",
+          "widget": "btn_clear_animations",
+          "matched_widget": "btn_clear_animations",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelghoststudio.cpp",
+              "line": 627,
+              "class": "ALPanelGhostStudio",
+              "function": "postBuild",
+              "wired_class": "ALPanelGhostStudio",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mClearAnimBtn = findChild<LLButton>(\"btn_clear_animations\");"
+            },
+            {
+              "file": "indra/newview/alpanelghoststudio.cpp",
+              "line": 630,
+              "class": "ALPanelGhostStudio",
+              "function": "onClickClearAnimations",
+              "wired_class": "ALPanelGhostStudio",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "mClearAnimBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickClearAnimations(); });"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+              "line": 466,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+                "tag": "panel",
+                "name": "ghosts_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "anim_asset",
+          "card_title": "Animation asset",
+          "option_index": null,
+          "option_label": null,
+          "index": 6,
           "label": "Metadata",
           "kind": "readout",
           "widget": "anim_metadata_text",
@@ -72828,7 +72893,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 647,
+              "line": 654,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72848,7 +72913,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 466,
+              "line": 469,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -72896,7 +72961,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 528,
+              "line": 529,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72907,7 +72972,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 848,
+              "line": 855,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimWindow",
               "wired_class": "ALPanelGhostStudio",
@@ -72918,7 +72983,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1052,
+              "line": 1059,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72938,7 +73003,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 471,
+              "line": 474,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -72986,7 +73051,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 531,
+              "line": 532,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -72997,7 +73062,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 852,
+              "line": 859,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -73017,7 +73082,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 474,
+              "line": 477,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73065,7 +73130,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 530,
+              "line": 531,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73076,7 +73141,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 853,
+              "line": 860,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -73096,7 +73161,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 477,
+              "line": 480,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73144,7 +73209,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 537,
+              "line": 538,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73155,7 +73220,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 849,
+              "line": 856,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -73175,7 +73240,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 480,
+              "line": 483,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73223,7 +73288,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 533,
+              "line": 534,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73234,7 +73299,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 850,
+              "line": 857,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -73254,7 +73319,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 483,
+              "line": 486,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73302,7 +73367,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 529,
+              "line": 530,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73322,7 +73387,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 486,
+              "line": 489,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -73370,7 +73435,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 534,
+              "line": 535,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73381,7 +73446,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 851,
+              "line": 858,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimAction",
               "wired_class": "ALPanelGhostStudio",
@@ -73401,7 +73466,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 489,
+              "line": 492,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73449,7 +73514,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 536,
+              "line": 537,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73460,7 +73525,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 854,
+              "line": 861,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -73480,7 +73545,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 492,
+              "line": 495,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73528,7 +73593,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 532,
+              "line": 533,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73539,7 +73604,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 855,
+              "line": 862,
               "class": "ALPanelGhostStudio",
               "function": "onAutoAnimFile",
               "wired_class": "ALPanelGhostStudio",
@@ -73559,7 +73624,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 495,
+              "line": 498,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73607,7 +73672,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 639,
+              "line": 646,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73618,7 +73683,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 875,
+              "line": 882,
               "class": "ALPanelGhostStudio",
               "function": "onClickLensGazeSelection",
               "wired_class": "ALPanelGhostStudio",
@@ -73638,7 +73703,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 500,
+              "line": 503,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -73691,7 +73756,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 641,
+              "line": 648,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73702,7 +73767,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 879,
+              "line": 886,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -73722,7 +73787,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 503,
+              "line": 506,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -73775,7 +73840,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 642,
+              "line": 649,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73786,7 +73851,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 881,
+              "line": 888,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -73806,7 +73871,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 513,
+              "line": 516,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -73854,7 +73919,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 640,
+              "line": 647,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73865,7 +73930,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 877,
+              "line": 884,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeTorsoCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -73876,7 +73941,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1078,
+              "line": 1085,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73896,7 +73961,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 519,
+              "line": 522,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -73944,7 +74009,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 643,
+              "line": 650,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73955,7 +74020,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 883,
+              "line": 890,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -73966,7 +74031,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1079,
+              "line": 1086,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -73986,7 +74051,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 524,
+              "line": 527,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -74034,7 +74099,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 644,
+              "line": 651,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74045,7 +74110,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 885,
+              "line": 892,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74056,7 +74121,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1080,
+              "line": 1087,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74076,7 +74141,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 529,
+              "line": 532,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -74124,7 +74189,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 645,
+              "line": 652,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74135,7 +74200,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 887,
+              "line": 894,
               "class": "ALPanelGhostStudio",
               "function": "onLensGazeSettingsCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74146,7 +74211,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1081,
+              "line": 1088,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74166,7 +74231,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 534,
+              "line": 537,
               "tag": "slider",
               "control_name": null,
               "callbacks": [],
@@ -74214,7 +74279,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 646,
+              "line": 653,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74234,7 +74299,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 539,
+              "line": 542,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -74282,7 +74347,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 725,
+              "line": 732,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74293,7 +74358,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 933,
+              "line": 940,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -74313,7 +74378,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 544,
+              "line": 547,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -74361,7 +74426,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 726,
+              "line": 733,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74372,7 +74437,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 935,
+              "line": 942,
               "class": "ALPanelGhostStudio",
               "function": "onClickArray",
               "wired_class": "ALPanelGhostStudio",
@@ -74392,7 +74457,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 547,
+              "line": 550,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -74466,7 +74531,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 727,
+              "line": 734,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74477,7 +74542,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 937,
+              "line": 944,
               "class": "ALPanelGhostStudio",
               "function": "onFormationCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -74488,7 +74553,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74508,7 +74573,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 550,
+              "line": 553,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -74556,7 +74621,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 718,
+              "line": 725,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74567,7 +74632,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1053,
+              "line": 1060,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74578,7 +74643,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74598,7 +74663,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 581,
+              "line": 584,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -74646,7 +74711,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 719,
+              "line": 726,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74657,7 +74722,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1054,
+              "line": 1061,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -74668,83 +74733,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
-              "class": "ALPanelGhostStudio",
-              "function": "updateOwnedCrowdPlacement",
-              "wired_class": "ALPanelGhostStudio",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "explicit scoped model binding"
-            }
-          ],
-          "callback_handlers": [],
-          "callbacks": [],
-          "kit_action": null,
-          "resolution_notes": [],
-          "ambiguous": [],
-          "rejected_candidates": [
-            {
-              "kind": "xui",
-              "reason": "same widget name outside the page owner roots",
-              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 584,
-              "tag": "spinner",
-              "control_name": null,
-              "callbacks": [],
-              "root": {
-                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-                "tag": "panel",
-                "name": "ghosts_tab_logic",
-                "line": 3
-              }
-            }
-          ],
-          "unresolved": [],
-          "other_writers": []
-        },
-        {
-          "card": "crowd_pattern",
-          "card_title": "Crowd pattern",
-          "option_index": null,
-          "option_label": null,
-          "index": 5,
-          "label": "Width (m)",
-          "kind": "number",
-          "widget": "array_width_spinner",
-          "matched_widget": "array_width_spinner",
-          "declared_setting": null,
-          "resolved_setting": null,
-          "setting_candidates": [],
-          "setting_declarations": [],
-          "items": [],
-          "xui": [],
-          "cpp": [
-            {
-              "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 721,
-              "class": "ALPanelGhostStudio",
-              "function": "postBuild",
-              "wired_class": "ALPanelGhostStudio",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": true,
-              "text": "mArrayWidth = findChild<LLSpinCtrl>(\"array_width_spinner\");"
-            },
-            {
-              "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1055,
-              "class": "ALPanelGhostStudio",
-              "function": "postBuild",
-              "wired_class": "ALPanelGhostStudio",
-              "wired_function": "postBuild",
-              "pattern": null,
-              "wiring_only": false,
-              "text": "{ \"reset_array_width\", \"array_width_spinner\" },"
-            },
-            {
-              "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74784,11 +74773,11 @@
           "card_title": "Crowd pattern",
           "option_index": null,
           "option_label": null,
-          "index": 6,
-          "label": "Depth (m)",
+          "index": 5,
+          "label": "Width (m)",
           "kind": "number",
-          "widget": "array_depth_spinner",
-          "matched_widget": "array_depth_spinner",
+          "widget": "array_width_spinner",
+          "matched_widget": "array_width_spinner",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -74798,29 +74787,29 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 722,
+              "line": 728,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": true,
-              "text": "mArrayDepth = findChild<LLSpinCtrl>(\"array_depth_spinner\");"
+              "text": "mArrayWidth = findChild<LLSpinCtrl>(\"array_width_spinner\");"
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1056,
+              "line": 1062,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "{ \"reset_array_depth\", \"array_depth_spinner\" },"
+              "text": "{ \"reset_array_width\", \"array_width_spinner\" },"
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74860,11 +74849,11 @@
           "card_title": "Crowd pattern",
           "option_index": null,
           "option_label": null,
-          "index": 7,
-          "label": "Columns",
+          "index": 6,
+          "label": "Depth (m)",
           "kind": "number",
-          "widget": "array_columns_spinner",
-          "matched_widget": "array_columns_spinner",
+          "widget": "array_depth_spinner",
+          "matched_widget": "array_depth_spinner",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -74874,29 +74863,29 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 723,
+              "line": 729,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": true,
-              "text": "mArrayColumns = findChild<LLSpinCtrl>(\"array_columns_spinner\");"
+              "text": "mArrayDepth = findChild<LLSpinCtrl>(\"array_depth_spinner\");"
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1057,
+              "line": 1063,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "{ \"reset_array_columns\", \"array_columns_spinner\" },"
+              "text": "{ \"reset_array_depth\", \"array_depth_spinner\" },"
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74936,11 +74925,11 @@
           "card_title": "Crowd pattern",
           "option_index": null,
           "option_label": null,
-          "index": 8,
-          "label": "Rows",
+          "index": 7,
+          "label": "Columns",
           "kind": "number",
-          "widget": "array_rows_spinner",
-          "matched_widget": "array_rows_spinner",
+          "widget": "array_columns_spinner",
+          "matched_widget": "array_columns_spinner",
           "declared_setting": null,
           "resolved_setting": null,
           "setting_candidates": [],
@@ -74950,29 +74939,29 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 724,
+              "line": 730,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": true,
-              "text": "mArrayRows = findChild<LLSpinCtrl>(\"array_rows_spinner\");"
+              "text": "mArrayColumns = findChild<LLSpinCtrl>(\"array_columns_spinner\");"
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1058,
+              "line": 1064,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
               "wired_function": "postBuild",
               "pattern": null,
               "wiring_only": false,
-              "text": "{ \"reset_array_rows\", \"array_rows_spinner\" },"
+              "text": "{ \"reset_array_columns\", \"array_columns_spinner\" },"
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74993,6 +74982,82 @@
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
               "line": 596,
+              "tag": "spinner",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+                "tag": "panel",
+                "name": "ghosts_tab_logic",
+                "line": 3
+              }
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "crowd_pattern",
+          "card_title": "Crowd pattern",
+          "option_index": null,
+          "option_label": null,
+          "index": 8,
+          "label": "Rows",
+          "kind": "number",
+          "widget": "array_rows_spinner",
+          "matched_widget": "array_rows_spinner",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelghoststudio.cpp",
+              "line": 731,
+              "class": "ALPanelGhostStudio",
+              "function": "postBuild",
+              "wired_class": "ALPanelGhostStudio",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mArrayRows = findChild<LLSpinCtrl>(\"array_rows_spinner\");"
+            },
+            {
+              "file": "indra/newview/alpanelghoststudio.cpp",
+              "line": 1065,
+              "class": "ALPanelGhostStudio",
+              "function": "postBuild",
+              "wired_class": "ALPanelGhostStudio",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "{ \"reset_array_rows\", \"array_rows_spinner\" },"
+            },
+            {
+              "file": "indra/newview/alpanelghoststudio.cpp",
+              "line": 4722,
+              "class": "ALPanelGhostStudio",
+              "function": "updateOwnedCrowdPlacement",
+              "wired_class": "ALPanelGhostStudio",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "explicit scoped model binding"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+              "line": 599,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -75040,7 +75105,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 736,
+              "line": 743,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75051,7 +75116,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75071,7 +75136,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 601,
+              "line": 604,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -75119,7 +75184,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 731,
+              "line": 738,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75130,7 +75195,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75150,7 +75215,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 604,
+              "line": 607,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -75198,7 +75263,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 730,
+              "line": 737,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75209,7 +75274,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 978,
+              "line": 985,
               "class": "ALGhostStudio",
               "function": "getInstance",
               "wired_class": "ALPanelGhostStudio",
@@ -75220,7 +75285,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75240,7 +75305,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 607,
+              "line": 610,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -75288,7 +75353,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 744,
+              "line": 751,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75299,7 +75364,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75319,7 +75384,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 610,
+              "line": 613,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -75384,7 +75449,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 743,
+              "line": 750,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75395,7 +75460,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75415,7 +75480,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 613,
+              "line": 616,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -75463,7 +75528,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 745,
+              "line": 752,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75474,7 +75539,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 991,
+              "line": 998,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -75494,7 +75559,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 635,
+              "line": 638,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -75542,7 +75607,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 751,
+              "line": 758,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75553,7 +75618,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1016,
+              "line": 1023,
               "class": "ALPanelGhostStudio",
               "function": "onClickPickFacingTarget",
               "wired_class": "ALPanelGhostStudio",
@@ -75573,7 +75638,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 638,
+              "line": 641,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -75621,7 +75686,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 747,
+              "line": 754,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75632,7 +75697,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75652,7 +75717,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 641,
+              "line": 644,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -75713,7 +75778,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 453,
+              "line": 454,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75733,7 +75798,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 644,
+              "line": 647,
               "tag": "combo_box",
               "control_name": "GhostStudioStartMode",
               "callbacks": [],
@@ -75750,7 +75815,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 644,
+              "line": 647,
               "widget": "crowd_start_mode_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -75803,7 +75868,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 454,
+              "line": 455,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75814,7 +75879,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1097,
+              "line": 1104,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75834,7 +75899,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 653,
+              "line": 656,
               "tag": "spinner",
               "control_name": "GhostStudioStartSpread",
               "callbacks": [],
@@ -75851,7 +75916,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 653,
+              "line": 656,
               "widget": "crowd_start_spread_spinner",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -75908,7 +75973,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 455,
+              "line": 456,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -75928,7 +75993,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 656,
+              "line": 659,
               "tag": "combo_box",
               "control_name": "GhostStudioRippleFrom",
               "callbacks": [],
@@ -75945,7 +76010,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 656,
+              "line": 659,
               "widget": "crowd_ripple_from_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -75993,7 +76058,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 733,
+              "line": 740,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76004,7 +76069,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76024,7 +76089,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 667,
+              "line": 670,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -76072,7 +76137,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 735,
+              "line": 742,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76083,7 +76148,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76103,7 +76168,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 676,
+              "line": 679,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -76155,7 +76220,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 748,
+              "line": 755,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76166,7 +76231,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76186,7 +76251,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 679,
+              "line": 682,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -76238,7 +76303,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 749,
+              "line": 756,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76249,7 +76314,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76269,7 +76334,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 688,
+              "line": 691,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -76321,7 +76386,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 758,
+              "line": 765,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76332,7 +76397,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1036,
+              "line": 1043,
               "class": "ALPanelGhostStudio",
               "function": "onNameplateModeCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -76352,7 +76417,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 697,
+              "line": 700,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -76415,7 +76480,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76435,7 +76500,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 706,
+              "line": 709,
               "tag": "combo_box",
               "control_name": "GhostStudioOverlayPalette",
               "callbacks": [],
@@ -76452,7 +76517,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 706,
+              "line": 709,
               "widget": "formation_overlay_palette_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -76508,7 +76573,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 456,
+              "line": 457,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76528,7 +76593,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 717,
+              "line": 720,
               "tag": "combo_box",
               "control_name": "GhostStudioLooksMode",
               "callbacks": [],
@@ -76545,7 +76610,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 717,
+              "line": 720,
               "widget": "crowd_looks_mode_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -76601,7 +76666,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 457,
+              "line": 458,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -76621,7 +76686,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 725,
+              "line": 728,
               "tag": "combo_box",
               "control_name": "GhostStudioLookSpread",
               "callbacks": [],
@@ -76638,7 +76703,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 725,
+              "line": 728,
               "widget": "crowd_look_spread_combo",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -76764,7 +76829,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 733,
+              "line": 736,
               "tag": "combo_box",
               "control_name": "GhostStudioMixLook1",
               "callbacks": [],
@@ -76781,7 +76846,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 733,
+              "line": 736,
               "widget": "crowd_mix_look_1",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -76907,7 +76972,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 803,
+              "line": 806,
               "tag": "combo_box",
               "control_name": "GhostStudioMixLook2",
               "callbacks": [],
@@ -76924,7 +76989,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 803,
+              "line": 806,
               "widget": "crowd_mix_look_2",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -77050,7 +77115,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 873,
+              "line": 876,
               "tag": "combo_box",
               "control_name": "GhostStudioMixLook3",
               "callbacks": [],
@@ -77067,7 +77132,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 873,
+              "line": 876,
               "widget": "crowd_mix_look_3",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -77193,7 +77258,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 943,
+              "line": 946,
               "tag": "combo_box",
               "control_name": "GhostStudioMixLook4",
               "callbacks": [],
@@ -77210,7 +77275,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 943,
+              "line": 946,
               "widget": "crowd_mix_look_4",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -77336,7 +77401,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1013,
+              "line": 1016,
               "tag": "combo_box",
               "control_name": "GhostStudioMixLook5",
               "callbacks": [],
@@ -77353,7 +77418,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1013,
+              "line": 1016,
               "widget": "crowd_mix_look_5",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -77479,7 +77544,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1083,
+              "line": 1086,
               "tag": "combo_box",
               "control_name": "GhostStudioMixLook6",
               "callbacks": [],
@@ -77496,7 +77561,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1083,
+              "line": 1086,
               "widget": "crowd_mix_look_6",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -77540,7 +77605,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 752,
+              "line": 759,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77551,7 +77616,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1006,
+              "line": 1013,
               "class": "ALPanelGhostStudio",
               "function": "onClickBuildArray",
               "wired_class": "ALPanelGhostStudio",
@@ -77571,7 +77636,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1155,
+              "line": 1158,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -77619,7 +77684,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 753,
+              "line": 760,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77630,7 +77695,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1007,
+              "line": 1014,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdConfirm",
               "wired_class": "ALPanelGhostStudio",
@@ -77650,7 +77715,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1158,
+              "line": 1161,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -77698,7 +77763,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 754,
+              "line": 761,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77709,7 +77774,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1009,
+              "line": 1016,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdUnpin",
               "wired_class": "ALPanelGhostStudio",
@@ -77729,7 +77794,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1161,
+              "line": 1164,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -77777,7 +77842,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 755,
+              "line": 762,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77788,7 +77853,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1011,
+              "line": 1018,
               "class": "ALPanelGhostStudio",
               "function": "onClickCrowdCancel",
               "wired_class": "ALPanelGhostStudio",
@@ -77808,7 +77873,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1164,
+              "line": 1167,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -77856,7 +77921,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 756,
+              "line": 763,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77876,7 +77941,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1167,
+              "line": 1170,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -77924,7 +77989,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 757,
+              "line": 764,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -77944,7 +78009,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1170,
+              "line": 1173,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -77992,7 +78057,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 760,
+              "line": 767,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78003,7 +78068,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1030,
+              "line": 1037,
               "class": "ALPanelGhostStudio",
               "function": "onGroupEditMembersCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -78023,7 +78088,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1175,
+              "line": 1178,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -78075,7 +78140,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 750,
+              "line": 757,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78086,7 +78151,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1020,
+              "line": 1027,
               "class": "ALGhostStudio",
               "function": "getCrowdPlacementDraft",
               "wired_class": "ALPanelGhostStudio",
@@ -78106,7 +78171,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1178,
+              "line": 1181,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -78154,7 +78219,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 762,
+              "line": 769,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78165,7 +78230,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1032,
+              "line": 1039,
               "class": "ALPanelGhostStudio",
               "function": "onGroupMemberPinnedCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -78185,7 +78250,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1187,
+              "line": 1190,
               "tag": "kit_switch",
               "control_name": null,
               "callbacks": [],
@@ -78233,7 +78298,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 763,
+              "line": 770,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78244,7 +78309,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1034,
+              "line": 1041,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroupMemberReset",
               "wired_class": "ALPanelGhostStudio",
@@ -78264,7 +78329,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1190,
+              "line": 1193,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78312,7 +78377,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 737,
+              "line": 744,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78323,7 +78388,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78343,7 +78408,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1195,
+              "line": 1198,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78391,7 +78456,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 738,
+              "line": 745,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78402,7 +78467,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78422,7 +78487,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1198,
+              "line": 1201,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78470,7 +78535,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 740,
+              "line": 747,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78481,7 +78546,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78501,7 +78566,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1201,
+              "line": 1204,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78549,7 +78614,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 742,
+              "line": 749,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78560,7 +78625,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78580,7 +78645,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1204,
+              "line": 1207,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78628,7 +78693,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 728,
+              "line": 735,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78639,7 +78704,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 938,
+              "line": 945,
               "class": "ALPanelGhostStudio",
               "function": "captureFormationParameter",
               "wired_class": "ALPanelGhostStudio",
@@ -78650,7 +78715,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5368,
+              "line": 5452,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelGhostStudio",
@@ -78661,7 +78726,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78681,7 +78746,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1207,
+              "line": 1210,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78729,7 +78794,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 764,
+              "line": 771,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78740,7 +78805,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1059,
+              "line": 1066,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78751,7 +78816,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5046,
+              "line": 5130,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -78771,7 +78836,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1212,
+              "line": 1215,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78819,7 +78884,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 765,
+              "line": 772,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78830,7 +78895,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1060,
+              "line": 1067,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78841,7 +78906,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5046,
+              "line": 5130,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -78861,7 +78926,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1215,
+              "line": 1218,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -78909,7 +78974,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 766,
+              "line": 773,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78920,7 +78985,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1013,
+              "line": 1020,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -78940,7 +79005,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1218,
+              "line": 1221,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -78988,7 +79053,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 767,
+              "line": 774,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -78999,7 +79064,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1014,
+              "line": 1021,
               "class": "ALPanelGhostStudio",
               "function": "onClickCancelStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -79019,7 +79084,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1221,
+              "line": 1224,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79067,7 +79132,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 768,
+              "line": 775,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79087,7 +79152,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1224,
+              "line": 1227,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -79150,7 +79215,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 769,
+              "line": 776,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79161,7 +79226,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5077,
+              "line": 5161,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -79181,7 +79246,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1229,
+              "line": 1232,
               "tag": "combo_box",
               "control_name": null,
               "callbacks": [],
@@ -79229,7 +79294,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 770,
+              "line": 777,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79240,7 +79305,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1061,
+              "line": 1068,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79251,7 +79316,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -79271,7 +79336,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1249,
+              "line": 1252,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -79319,7 +79384,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 771,
+              "line": 778,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79330,7 +79395,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1062,
+              "line": 1069,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79341,7 +79406,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4638,
+              "line": 4722,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -79361,7 +79426,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1252,
+              "line": 1255,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -79409,7 +79474,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 772,
+              "line": 779,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79420,7 +79485,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1015,
+              "line": 1022,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -79440,7 +79505,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1255,
+              "line": 1258,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79488,7 +79553,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 775,
+              "line": 782,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79499,7 +79564,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1038,
+              "line": 1045,
               "class": "ALPanelGhostStudio",
               "function": "onPoseRateCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -79519,7 +79584,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1258,
+              "line": 1261,
               "tag": "spinner",
               "control_name": null,
               "callbacks": [],
@@ -79584,7 +79649,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1261,
+              "line": 1264,
               "tag": "kit_switch",
               "control_name": "GhostMotionAnimations",
               "callbacks": [],
@@ -79601,7 +79666,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1261,
+              "line": 1264,
               "widget": "motion_animations_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
@@ -79645,7 +79710,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 773,
+              "line": 780,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79656,7 +79721,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1018,
+              "line": 1025,
               "class": "ALPanelGhostStudio",
               "function": "onClickGroup",
               "wired_class": "ALPanelGhostStudio",
@@ -79676,7 +79741,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1266,
+              "line": 1269,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79724,7 +79789,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 774,
+              "line": 781,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79735,7 +79800,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 1019,
+              "line": 1026,
               "class": "ALPanelGhostStudio",
               "function": "onClickUngroup",
               "wired_class": "ALPanelGhostStudio",
@@ -79755,7 +79820,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1269,
+              "line": 1272,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79811,7 +79876,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1272,
+              "line": 1275,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -79859,7 +79924,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 716,
+              "line": 723,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79870,7 +79935,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 930,
+              "line": 937,
               "class": "ALPanelGhostStudio",
               "function": "onClickRigDiagRefresh",
               "wired_class": "ALPanelGhostStudio",
@@ -79890,7 +79955,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1277,
+              "line": 1280,
               "tag": "button",
               "control_name": null,
               "callbacks": [],
@@ -79938,7 +80003,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 715,
+              "line": 722,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -79958,7 +80023,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-              "line": 1280,
+              "line": 1283,
               "tag": "text_editor",
               "control_name": null,
               "callbacks": [],
@@ -240386,7 +240451,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 708,
+              "line": 715,
               "class": "ALPanelGhostStudio",
               "function": "postBuild",
               "wired_class": "ALPanelGhostStudio",
@@ -240399,7 +240464,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 928,
+              "line": 935,
               "class": "ALPanelGhostStudio",
               "function": "onClickFreeze",
               "wired_class": "ALPanelGhostStudio",

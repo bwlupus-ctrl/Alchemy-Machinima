@@ -40,6 +40,11 @@ Rules (exit 1 on any finding):
   the selected background must reach LIST_SELECTION_MIN_BG:1 against both the
   plain row (KitInputBg) and the striped row (KitWindowBg), and the selected
   text LIST_SELECTION_MIN_TEXT:1 against the selected background.
+  A selected row that is also highlighted (LLScrollListCtrl::drawItems) is
+  judged as drawn: list_row_fill() mirrors the fill, and kit lists must keep
+  the plain selected fill there (the stock blend with the KitAccent highlight
+  colour drops the text below the minimum in most themes). The 3 px accent
+  bar must have its gutter, so it never paints over the first cell.
 - Runtime Director-capable C++: text setters/draws require Kit colour provenance;
   exact reviewed legacy/state/forwarder exceptions only. Kit member references
   must remain live; LLColor4 destinations and detached aliases fail.
@@ -327,14 +332,56 @@ def list_selection_colors(accent, row_bg, stripe_bg, text, strengths=LIST_SELECT
     return bg, fg, False
 
 
-def list_selection_findings(effective):
+def list_row_fill(selected_bg, highlight, highlighted, keeps_selected_fill):
+    """Fill of a selected row as LLScrollListCtrl::drawItems draws it.
+
+    Stock lists average the selected fill with the highlight colour on a highlighted
+    row; a list that opted in with setSelectedBar() keeps the selected fill.
+    """
+    if highlighted and not keeps_selected_fill:
+        return mix_opaque(selected_bg, highlight, 0.5)
+    return tuple(selected_bg[:3]) + (1.0,)
+
+
+def list_selection_findings(effective, keeps_selected_fill=True):
     if not all(name in effective for name in LIST_SELECTION_NAMES):
         return ["list selection: missing " + ", ".join(n for n in LIST_SELECTION_NAMES if n not in effective)]
     accent, row_bg, stripe_bg, text = (effective[name] for name in LIST_SELECTION_NAMES)
     if row_bg[3] < 1.0 or stripe_bg[3] < 1.0:
         return ["list selection: translucent row background, cannot judge contrast"]
     bg, fg, ok = list_selection_colors(accent, row_bg, stripe_bg, text)
-    return list_selection_judge(bg, fg, row_bg, stripe_bg) if not ok else []
+    findings = list_selection_judge(bg, fg, row_bg, stripe_bg) if not ok else []
+    # Selected and highlighted: the kit highlight colour is KitAccent (applyListColors).
+    drawn = list_row_fill(bg, accent, True, keeps_selected_fill)
+    ratio = contrast(fg, drawn)
+    if ratio < LIST_SELECTION_MIN_TEXT:
+        findings.append(f"list selection text on a highlighted selected row: {ratio:.2f}:1 < {LIST_SELECTION_MIN_TEXT}:1")
+    return findings
+
+
+def list_draw_source_findings(ctrl_cpp, ctrl_h, item_cpp, style):
+    """Pins of the opted-in (kit) row drawing: fill kept when highlighted, gutter for the bar."""
+    ctrl_cpp, ctrl_h, item_cpp, style = (compact_cpp(strip_cpp_comments(text)) for text in (ctrl_cpp, ctrl_h, item_cpp, style))
+    errors = []
+    for text, needle, message in (
+            (ctrl_cpp, "if(item->getHighlighted()&&mSelectedBarWidth<=0){select_color=lerp(mBgSelectedColor.get(),"
+                       "mHighlightedColor.get(),0.5f);}else{select_color=mBgSelectedColor.get();}",
+             "llscrolllistctrl.cpp: an opted-in list no longer keeps the selected fill on a highlighted row"),
+            (ctrl_cpp, "highlight_color%alpha,mColumnPadding,getSelectedBarGutter());",
+             "llscrolllistctrl.cpp: rows are no longer drawn with the selected-bar gutter"),
+            (ctrl_cpp, "gl_rect_2d(item_rect.mLeft,item_rect.mTop,item_rect.mLeft+mSelectedBarWidth,item_rect.mBottom,",
+             "llscrolllistctrl.cpp: the selected bar is no longer drawn inside the gutter"),
+            (ctrl_h, "S32getSelectedBarGutter()const{returnmSelectedBarWidth>0?mSelectedBarWidth+1:0;}",
+             "llscrolllistctrl.h: the gutter is no longer wider than the bar (or exists without one)"),
+            (item_cpp, "S32cur_x=rect.mLeft+left_gutter;",
+             "llscrolllistitem.cpp: cells no longer start after the gutter"),
+            (style, "list->setSelectedBar(LIST_SELECTED_BAR_W,color(ACCENT).get());",
+             "alkitstyle.cpp: kit lists no longer opt in to the selected bar / kept fill"),
+            (style, "list->setHighlightedColor(color(ACCENT).get());",
+             "alkitstyle.cpp: the kit highlight colour is no longer KitAccent (update list_selection_findings)")):
+        if needle not in text:
+            errors.append(message)
+    return errors
 
 
 def list_selection_source_findings(header, style):
@@ -800,6 +847,7 @@ def run_check(themes_dir):
         header = fh.read()
     with open(os.path.join(REPO, 'indra/newview/alkitstyle.cpp'), encoding='utf-8') as fh:
         selection_errors = list_selection_source_findings(header, fh.read())
+    selection_errors += list_draw_source_findings(*_list_draw_sources())
     for error in selection_errors:
         print(f'FAIL  {error}')
     print(f'kit list selection rule: {len(selection_errors)} finding(s)')
@@ -844,6 +892,15 @@ INVERT_VECTOR_OUT = {
     "KitRecord": (0.7700, 0.2800, 0.2800, 1.0000),
     "KitShadowWindow": (0.0000, 0.0000, 0.0000, 0.5000),
 }
+
+
+def _list_draw_sources():
+    texts = []
+    for rel in ('indra/llui/llscrolllistctrl.cpp', 'indra/llui/llscrolllistctrl.h',
+                'indra/llui/llscrolllistitem.cpp', 'indra/newview/alkitstyle.cpp'):
+        with open(os.path.join(REPO, rel), encoding='utf-8', errors='replace') as fh:
+            texts.append(fh.read())
+    return texts
 
 
 # Same input and output as test<11> in indra/newview/tests/aldirectortheme_test.cpp.
@@ -904,8 +961,43 @@ def list_selection_selftest(skin):
             failures.append(f"list selection mutation '{label}' did not apply")
         elif not list_selection_source_findings(bad_header, bad_style):
             failures.append(f"list selection mutation '{label}' passes")
+    # Review fix: selected + highlighted rows. The stock blend must be rejected for the
+    # shipped skin (it was 3.29:1), the kept fill must pass, plain and inverted.
+    if not any("highlighted" in item for item in list_selection_findings(skin, keeps_selected_fill=False)):
+        failures.append("blended highlighted selected row passes the text minimum for the skin")
+    blended_bad = 0
+    for name in sorted(os.listdir(THEMES_DIR)):
+        if not name.endswith(".xml"):
+            continue
+        with open(os.path.join(THEMES_DIR, name), "rb") as fh:
+            _errors, effective = check_theme_text(name[:-4], fh.read().decode("utf-8"), skin)
+        for colors in (effective, inverted_colors(effective)):
+            blended_bad += bool(list_selection_findings(colors, keeps_selected_fill=False))
+            if list_selection_findings(colors):
+                failures.append(f"{name}: highlighted selected row fails with the kept fill")
+    if blended_bad < 2:
+        failures.append("the blended highlighted state fails in fewer than 2 theme states; the negative is weak")
+    ctrl_cpp, ctrl_h, item_cpp, style_cpp = _list_draw_sources()
+    if list_draw_source_findings(ctrl_cpp, ctrl_h, item_cpp, style_cpp):
+        failures.append(f"production list drawing fails: {list_draw_source_findings(ctrl_cpp, ctrl_h, item_cpp, style_cpp)}")
+    for label, args in (
+            ("highlight blends the selected fill again",
+             (ctrl_cpp.replace("item->getHighlighted() && mSelectedBarWidth <= 0", "item->getHighlighted()"), ctrl_h, item_cpp, style_cpp)),
+            ("rows drawn without the gutter",
+             (ctrl_cpp.replace("mColumnPadding, getSelectedBarGutter());", "mColumnPadding);"), ctrl_h, item_cpp, style_cpp)),
+            ("gutter no wider than the bar",
+             (ctrl_cpp, ctrl_h.replace("mSelectedBarWidth + 1 : 0", "mSelectedBarWidth : 0"), item_cpp, style_cpp)),
+            ("cells ignore the gutter",
+             (ctrl_cpp, ctrl_h, item_cpp.replace("rect.mLeft + left_gutter;", "rect.mLeft;"), style_cpp)),
+            ("kit lists not opted in",
+             (ctrl_cpp, ctrl_h, item_cpp, style_cpp.replace("list->setSelectedBar(LIST_SELECTED_BAR_W, color(ACCENT).get());", "")))):
+        if args == (ctrl_cpp, ctrl_h, item_cpp, style_cpp):
+            failures.append(f"list draw mutation '{label}' did not apply")
+        elif not list_draw_source_findings(*args):
+            failures.append(f"list draw mutation '{label}' passes")
     if not failures:
         print("ok    list selection: 3 planted low-contrast negatives, fallback, vector, 6 source mutations")
+        print(f"ok    highlighted selected rows: blended fill rejected in {blended_bad} theme state(s), kept fill passes; 5 draw mutations")
     return failures
 
 

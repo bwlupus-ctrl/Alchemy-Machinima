@@ -162,6 +162,12 @@ public:
     void setEntityDriveMode(S32 mode, const LLUUID& directed_anim);
     S32 getEntityDriveMode() const { return mEntityDriveMode; }
     const LLUUID& getEntityDirectedAnim() const { return mEntityDirectedAnim; }
+    // [ClearAnim] Directed drive with no animation, every own motion stopped and the
+    // skeleton rested in the neutral pose. Only takes effect in that drive state; any
+    // other drive mode or a directed animation ends it (setEntityDriveMode).
+    void setEntityAnimationsCleared(bool cleared);
+    void startEntityLayerMotions();
+    bool isEntityAnimationsCleared() const { return mEntityAnimCleared; }
     void setEntityLoopMode(S32 mode);
     // Retime the clone AND each animesh attachment's control avatar. Each animesh
     // is a separate LLControlAvatar with its own motion controller, so the wearer's
@@ -370,6 +376,7 @@ private:
     S32 mEntityLook = 0;
     F32 mEntityLookAlpha = 1.f;
     LLUUID mEntityDirectedAnim;
+    bool mEntityAnimCleared = false; // [ClearAnim] session only
     bool mEntityDirectedStarted = false;
     bool mEntityDirectedWasActive = false;
     F32 mEntityDirectedStartTime = 0.f;

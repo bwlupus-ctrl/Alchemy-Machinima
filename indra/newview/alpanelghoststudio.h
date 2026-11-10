@@ -82,6 +82,10 @@ public:
     static S32 playAnimationOnClonesRecorded(const std::vector<LLUUID>& ids,
                                              const LLUUID& asset_id,
                                              const std::string& anim_name);
+    // [ClearAnim] Clear animations on these clones (entity clones only) and record
+    // ONE undo step that restores each clone's drive mode, animation, AutoAnimate
+    // and gaze. Returns how many clones were cleared.
+    static S32 clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids);
 
 private:
     friend struct ALCloneRotationProbe;
@@ -391,6 +395,8 @@ private:
     LLComboBox*       mCloneTypeCombo = nullptr;
     LLButton*         mAddBtn = nullptr;
     LLButton*         mDupBtn = nullptr;
+    LLButton*         mClearAnimBtn = nullptr;  // [ClearAnim] kit page only
+    void onClickClearAnimations();
     LLButton*         mDelBtn = nullptr;
     LLButton*         mRefreshBtn = nullptr;
     LLTextBox*        mTypeText = nullptr;

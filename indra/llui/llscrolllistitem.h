@@ -129,7 +129,8 @@ public:
                       const LLColor4& hover_color, // highlight/hover selection of whole item or cell
                       const LLColor4& select_color, // highlight/hover selection of whole item or cell
                       const LLColor4& highlight_color, // highlights contents of cells (ex: text)
-                      S32 column_padding);
+                      S32 column_padding,
+                      S32 left_gutter = 0); // cells start this far in; the row fill does not
 
 protected:
     LLScrollListItem( const Params& );

@@ -1758,7 +1758,7 @@ void LLScrollListCtrl::drawItems()
                 fg_color = (item->getEnabled() ? mFgUnselectedColor.get() : mFgDisabledColor.get());
                 if( item->getSelected() && mCanSelect)
                 {
-                    if(item->getHighlighted())  // if it's highlighted, average the colors
+                    if (item->getHighlighted() && mSelectedBarWidth <= 0)  // if it's highlighted, average the colors
                     {
                         select_color = lerp(mBgSelectedColor.get(), mHighlightedColor.get(), 0.5f);
                     }
@@ -1797,7 +1797,7 @@ void LLScrollListCtrl::drawItems()
                     hover_color = mBgReadOnlyColor.get();
                 }
 
-                item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding);
+                item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding, getSelectedBarGutter());
 
                 if (mSelectedBarWidth > 0 && mCanSelect && item->getSelected())
                 {

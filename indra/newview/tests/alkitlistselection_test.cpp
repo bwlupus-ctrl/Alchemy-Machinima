@@ -45,6 +45,50 @@ namespace
             selected = restoreRows(before, rows_after);
         }
 
+        // The list's own range anchor (LLScrollListCtrl::mLastSelected) and its Shift-click:
+        // every row from the anchor to the clicked row is added to the selection.
+        LLUUID anchor;
+
+        void ctrlSelect(const LLUUID& row)
+        {
+            Rows wanted = selected;
+            wanted.push_back(row);
+            select(wanted);
+            anchor = row;
+        }
+
+        void shiftClick(const LLUUID& row)
+        {
+            Rows wanted = selected;
+            bool selecting = false;
+            for (const LLUUID& listed : rows)
+            {
+                const bool edge = listed == row || listed == anchor;
+                if (edge || selecting) wanted.push_back(listed);
+                if (edge && !(row == anchor)) selecting = !selecting;
+            }
+            select(wanted);
+        }
+
+        // The production rebuild with the anchor put back on its row.
+        void rebuildKeepingAnchor(const Rows& rows_after)
+        {
+            const LLUUID before = anchor;
+            rebuild(rows_after);
+            // selectMultiple() leaves the bottom selected row as the anchor ...
+            anchor = selected.empty() ? LLUUID::null : selected.back();
+            // ... and the fix restores it.
+            const LLUUID kept = anchorAfterRebuild(before, selected);
+            if (kept.notNull()) anchor = kept;
+        }
+
+        // The rebuild without the anchor fix.
+        void rebuildLosingAnchor(const Rows& rows_after)
+        {
+            rebuild(rows_after);
+            anchor = selected.empty() ? LLUUID::null : selected.back();
+        }
+
         // The rebuild this fix replaces: only the first selected row was restored.
         void rebuildFirstOnly(const Rows& rows_after)
         {
@@ -210,5 +254,41 @@ template<> template<> void alkitlistselection_object::test<6>()
     list.mirrorFirstRowOnly();      // a frame draws: first row A != shared C
     ensure_equals("old mirror keeps one row", list.selected.size(), size_t(1));
     ensure("collapsed multi-select is rejected", !survivesRefresh(wanted, list.rows, list.selected));
+}
+
+// Review fix: a refresh keeps the Shift-click anchor. Ctrl-select D then A, refresh,
+// Shift-click B selects A, B and D only, exactly as it does without a refresh.
+template<> template<> void alkitlistselection_object::test<7>()
+{
+    ensure_equals("anchor kept while selected", anchorAfterRebuild(a, Rows{ a, d }), a);
+    ensure_equals("anchor row gone", anchorAfterRebuild(b, Rows{ a, d }), none);
+    ensure_equals("no anchor", anchorAfterRebuild(none, Rows{ a, d }), none);
+
+    FakeList plain{ { a, b, c, d }, {}, none, none };
+    plain.ctrlSelect(d);
+    plain.ctrlSelect(a);
+    plain.shiftClick(b);
+    ensure("without a refresh: A, B, D", plain.selected == (Rows{ a, b, d }));
+
+    FakeList list{ { a, b, c, d }, {}, none, none };
+    list.ctrlSelect(d);
+    list.ctrlSelect(a);
+    list.rebuildKeepingAnchor({ a, b, c, d });
+    ensure_equals("anchor is still A after the refresh", list.anchor, a);
+    list.shiftClick(b);
+    ensure("after a refresh: A, B, D only", list.selected == (Rows{ a, b, d }));
+}
+
+// Planted negative: without the anchor restore the same gesture also selects C.
+template<> template<> void alkitlistselection_object::test<8>()
+{
+    FakeList list{ { a, b, c, d }, {}, none, none };
+    list.ctrlSelect(d);
+    list.ctrlSelect(a);
+    list.rebuildLosingAnchor({ a, b, c, d });
+    ensure_equals("the bottom row became the anchor", list.anchor, d);
+    list.shiftClick(b);
+    ensure("lost anchor selects C as well", contains(list.selected, c));
+    ensure("lost anchor is rejected", !(list.selected == (Rows{ a, b, d })));
 }
 } // namespace tut

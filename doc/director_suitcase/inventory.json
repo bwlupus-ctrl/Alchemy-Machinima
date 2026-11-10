@@ -7,20 +7,23 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
       "HOOK": 536,
-      "OWNED": 915,
-      "TOOLING": 449
+      "OWNED": 916,
+      "TOOLING": 451
     },
     "dirty_product_inputs": [
       "indra/llui/llscrolllistctrl.cpp",
       "indra/llui/llscrolllistctrl.h",
+      "indra/llui/llscrolllistitem.cpp",
+      "indra/llui/llscrolllistitem.h",
       "indra/newview/CMakeLists.txt",
-      "indra/newview/aldirectortheme.h",
-      "indra/newview/alkitrow.cpp",
-      "indra/newview/alkitstyle.cpp",
-      "indra/newview/alkitstyle.h",
-      "indra/newview/alpaneldanceball.cpp",
+      "indra/newview/alghoststudio.cpp",
+      "indra/newview/alghoststudio.h",
+      "indra/newview/alkitlistselection.h",
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/alpanelghoststudio.h",
+      "indra/newview/fsfloaterposer.cpp",
+      "indra/newview/llghostavatar.cpp",
+      "indra/newview/llghostavatar.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -64,11 +67,12 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/tests/aldirectortheme_test.cpp",
+      "indra/newview/tests/alkitlistselection_test.cpp",
+      "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json",
       "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_list_select_check.py",
       "scripts/code_tools/director_theme_check.py"
     ],
     "evidence": {
@@ -83,14 +87,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "2374af9314470828c4ba8f08824ef076e4bdc0c440892486020673ed919ce90d",
+        "csv_sha256": "7b9c01961e6d4b4139a2eef351e527466805bd5a64cbcebffebabf7118df6608",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4786,
+        "entries": 4788,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -133,9 +137,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2574,
+        "generated_kit_rows": 2575,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2166,
+        "interactive_rows": 2167,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -245,19 +249,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2298,
+        "independent_json_rows": 2299,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2298,
+        "rows": 2299,
         "unresolved_rows": 76
       },
-      "wiring_rows": 2298
+      "wiring_rows": 2299
     },
-    "head_source_tree": "7167e395cceef4fa6d62b74346462f61f8482b9f",
+    "head_source_tree": "c4585a6965f5d5f6376ce19f6fe8ce9270177db9",
     "hook_files": 536,
-    "hunks": 3354,
-    "input_sha256": "05180318f0ca3e0b5b57abd83268c734b0f7d6b295c7a5f60d138c9bcd6e1f85",
+    "hunks": 3357,
+    "input_sha256": "3cf02868e65e774c3133d7b6558071adbe92ebc50400b4f1a5c1d9b0e8382bef",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -11841,6 +11845,8 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell",
         "vcam"
       ],
       "class": "HOOK",
@@ -11859,6 +11865,8 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell",
         "vcam"
       ],
       "class": "HOOK",
@@ -15991,6 +15999,25 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
+        "director-shell"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alkitlistselection.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "director-shell"
       ],
       "class": "OWNED",
@@ -16333,6 +16360,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "vcam"
       ],
@@ -16353,6 +16381,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -17402,7 +17431,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -17434,7 +17464,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "crowd"
+        "crowd",
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -39304,6 +39335,21 @@
       ],
       "git_status": "A",
       "layer": 2,
+      "path": "indra/newview/tests/alkitlistselection_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
       "path": "indra/newview/tests/alkitmath_test.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -42207,6 +42253,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_light_actors_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_list_select_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

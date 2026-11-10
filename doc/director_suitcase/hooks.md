@@ -210,26 +210,26 @@ HEAD coordinates; guards/features are candidate evidence
 | 912–918 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1105–1111 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1124–1136 (n=13) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-path, environment | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1139–1195 (n=57) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1198–1211 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1236–1255 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1293–1462 (n=170) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1540–1546 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1569–1575 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1671–1677 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1682–1688 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1827–1834 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1898–1910 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1914–1921 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2113–2119 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2353–2359 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2633–2670 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
-| 2728–2734 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2768–2774 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2857–2888 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2895–2914 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
-| 2963–3157 (n=195) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
-| 3219–3258 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
+| 1139–1196 (n=58) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1199–1212 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1237–1256 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1294–1463 (n=170) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1541–1547 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1570–1576 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1672–1678 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1683–1689 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1828–1835 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1899–1911 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1915–1922 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2114–2120 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2354–2360 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2634–2671 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
+| 2729–2735 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2769–2775 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2858–2889 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2896–2915 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
+| 2964–3159 (n=196) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
+| 3221–3260 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
 
 ## Slice 1: `indra/newview/app_settings/settings.xml`
 
@@ -5300,7 +5300,8 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 2081–2091 (n=11) | LLScrollListCtrl::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1799–1811 (n=13) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits gGL, LLTexUnit |
+| 2088–2098 (n=11) | LLScrollListCtrl::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/llui/llscrolllistctrl.h`
 
@@ -5309,8 +5310,10 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 297–305 (n=9) | setLastSelectedItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge F3] FS radar restores the multi-select anchor after a list rebuild (FSScrollListCtrl parity); mLastSelected is private. |
-| 406–414 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
-| 482–494 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
+| 313–320 (n=8) | setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none. |
+| 408–416 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
+| 484–496 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
+| 555–562 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
 
 ## Slice 99: `indra/llui/lltabcontainer.cpp`
 

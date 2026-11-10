@@ -1,0 +1,24 @@
+{
+ "base": "23c45e6ee7f",
+ "description": "Reviewed Clear animations: ALGhostStudio cleared flag re-applied on respawn, setInstanceDriveMode ends the cleared state, clearInstanceAnimations and restoreInstanceAnimations.",
+ "files": {
+  "alghoststudio.cpp": [
+   {
+    "before": "#include \"alghostanimassetindex.h\" // [GhostPanelPerf] shared animation library\n\n",
+    "after": "#include \"alghostanimassetindex.h\" // [GhostPanelPerf] shared animation library\n#include \"alghostclearanim.h\"      // [ClearAnim] pure cleared-state rules\n\n"
+   },
+   {
+    "before": "    }\n    // [AutoAnimate] The disabled path does not allocate runtime state.\n",
+    "after": "    }\n    // [ClearAnim] A respawned body of a cleared clone starts cleared again.\n    inst.mAnimCleared = ALGhostClearAnim::holds(\n        inst.mAnimCleared, inst.mDriveMode, inst.mDirectedAnim.notNull());\n    ghost->setEntityAnimationsCleared(inst.mAnimCleared);\n    // [AutoAnimate] The disabled path does not allocate runtime state.\n"
+   },
+   {
+    "before": "    }\n    inst->mDriveMode = mode;\n",
+    "after": "    }\n    // [ClearAnim] Picking an animation or another drive mode ends the cleared state.\n    if (inst->mAnimCleared != ALGhostClearAnim::holds(inst->mAnimCleared, mode, next_anim.notNull()))\n    {\n        inst->mAnimCleared = false;\n        ++mInstanceRevision;\n    }\n    inst->mDriveMode = mode;\n"
+   },
+   {
+    "before": "    ghost->setEntityDriveMode(mode, inst->mDirectedAnim);\n    ghost->setEntityLoopMode(inst->mLoopMode);\n    return true;\n}\n",
+    "after": "    ghost->setEntityDriveMode(mode, inst->mDirectedAnim);\n    ghost->setEntityLoopMode(inst->mLoopMode);\n    return true;\n}\n\n// [ClearAnim]\nbool ALGhostStudio::clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* before)\n{\n    static_assert(DRIVE_DIRECTED == (S32)ALGhostClearAnim::kDriveDirected, \"clear drive index\");\n    assert_main_thread();\n    Instance* inst = getInstance(id);\n    LLGhostAvatar* ghost = inst ? resolveEntityClone(id) : nullptr;\n    if (!inst || !ALGhostClearAnim::eligible(inst->mKind == BACKING_ENTITY_CLONE,\n                                             ghost && !ghost->isDead()))\n    {\n        return false;\n    }\n    const LLUUID actor = ghost->getID();\n    LLActorMover& mover = LLActorMover::instance();\n    if (before)\n    {\n        before->mId = id;\n        before->mMode = inst->mDriveMode;\n        before->mAnim = inst->mDirectedAnim;\n        before->mAutoAnimate = inst->mAutoAnimate;\n        before->mGazeEnabled = mover.isGazeEnabled(actor);\n        before->mWasCleared = inst->mAnimCleared;\n    }\n    // Everything that would start a motion again by itself goes first.\n    if (inst->mAutoAnimate)\n    {\n        setInstanceAutoAnimate(id, false);\n    }\n    if (mover.isMoving(actor))\n    {\n        mover.stop(actor); // its walk / turn animation and root override\n    }\n    if (mover.isGazeEnabled(actor))\n    {\n        mover.setGazeEnabled(actor, false); // head / eye look-at layer and its eye motion\n    }\n    inst->mPendingFreezeFrames = 0;\n    if (!setInstanceDriveMode(id, DRIVE_DIRECTED, LLUUID::null))\n    {\n        return false;\n    }\n    ghost->setEntityEyeMotionEnabled(false);\n    ghost->setEntityAnimationsCleared(true);\n    inst->mAnimCleared = ghost->isEntityAnimationsCleared();\n    ++mInstanceRevision;\n    return inst->mAnimCleared;\n}\n\n// [ClearAnim] One undo step: previous drive mode, animation, AutoAnimate and gaze.\nbool ALGhostStudio::restoreInstanceAnimations(const ClearAnimBefore& before)\n{\n    assert_main_thread();\n    Instance* inst = getInstance(before.mId);\n    LLGhostAvatar* ghost = inst ? resolveEntityClone(before.mId) : nullptr;\n    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || !ghost || ghost->isDead())\n    {\n        return false;\n    }\n    ALGhostClearAnim::Before<LLUUID> rule;\n    rule.mDrive = before.mMode;\n    rule.mAnim = before.mAnim;\n    rule.mWasCleared = before.mWasCleared;\n    if (!ALGhostClearAnim::clearedAfterUndo(rule))\n    {\n        // Same drive state as the clear (Directed, no animation) would otherwise\n        // be a no-op and leave the clone cleared.\n        inst->mAnimCleared = false;\n        ghost->setEntityAnimationsCleared(false);\n    }\n    if (!setInstanceDriveMode(before.mId, before.mMode, before.mAnim))\n    {\n        return false;\n    }\n    if (before.mAutoAnimate != inst->mAutoAnimate)\n    {\n        setInstanceAutoAnimate(before.mId, before.mAutoAnimate);\n    }\n    LLActorMover& mover = LLActorMover::instance();\n    if (before.mGazeEnabled != mover.isGazeEnabled(ghost->getID()))\n    {\n        mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled);\n    }\n    ++mInstanceRevision;\n    return true;\n}\n"
+   }
+  ]
+ }
+}

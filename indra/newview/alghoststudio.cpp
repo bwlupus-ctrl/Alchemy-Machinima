@@ -15,6 +15,7 @@
 #include "alreflectmath.h"
 #include "altoolghostedit.h"
 #include "alghostanimassetindex.h" // [GhostPanelPerf] shared animation library
+#include "alghostclearanim.h"      // [ClearAnim] pure cleared-state rules
 
 // [AutoAnimate] Bounded LLSD XML persistence.
 #include "llsdserialize.h"
@@ -410,6 +411,10 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
         ghost->setEntityDriveMode(inst.mDriveMode, inst.mDirectedAnim);
         inst.mPendingFreezeFrames = 0;
     }
+    // [ClearAnim] A respawned body of a cleared clone starts cleared again.
+    inst.mAnimCleared = ALGhostClearAnim::holds(
+        inst.mAnimCleared, inst.mDriveMode, inst.mDirectedAnim.notNull());
+    ghost->setEntityAnimationsCleared(inst.mAnimCleared);
     // [AutoAnimate] The disabled path does not allocate runtime state.
     ghost->setEntityAutoAnimate(autoanim_config(inst));
 }
@@ -3270,10 +3275,102 @@ bool ALGhostStudio::setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
     {
         inst->mDirectedMirrorFreezeDrive = inst->mDriveMode;
     }
+    // [ClearAnim] Picking an animation or another drive mode ends the cleared state.
+    if (inst->mAnimCleared != ALGhostClearAnim::holds(inst->mAnimCleared, mode, next_anim.notNull()))
+    {
+        inst->mAnimCleared = false;
+        ++mInstanceRevision;
+    }
     inst->mDriveMode = mode;
     inst->mDirectedAnim = next_anim;
     ghost->setEntityDriveMode(mode, inst->mDirectedAnim);
     ghost->setEntityLoopMode(inst->mLoopMode);
+    return true;
+}
+
+// [ClearAnim]
+bool ALGhostStudio::clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* before)
+{
+    static_assert(DRIVE_DIRECTED == (S32)ALGhostClearAnim::kDriveDirected, "clear drive index");
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    LLGhostAvatar* ghost = inst ? resolveEntityClone(id) : nullptr;
+    if (!inst || !ALGhostClearAnim::eligible(inst->mKind == BACKING_ENTITY_CLONE,
+                                             ghost && !ghost->isDead()))
+    {
+        return false;
+    }
+    const LLUUID actor = ghost->getID();
+    LLActorMover& mover = LLActorMover::instance();
+    if (before)
+    {
+        before->mId = id;
+        before->mMode = inst->mDriveMode;
+        before->mAnim = inst->mDirectedAnim;
+        before->mAutoAnimate = inst->mAutoAnimate;
+        before->mGazeEnabled = mover.isGazeEnabled(actor);
+        before->mWasCleared = inst->mAnimCleared;
+    }
+    // Everything that would start a motion again by itself goes first.
+    if (inst->mAutoAnimate)
+    {
+        setInstanceAutoAnimate(id, false);
+    }
+    if (mover.isMoving(actor))
+    {
+        mover.stop(actor); // its walk / turn animation and root override
+    }
+    if (mover.isGazeEnabled(actor))
+    {
+        mover.setGazeEnabled(actor, false); // head / eye look-at layer and its eye motion
+    }
+    inst->mPendingFreezeFrames = 0;
+    if (!setInstanceDriveMode(id, DRIVE_DIRECTED, LLUUID::null))
+    {
+        return false;
+    }
+    ghost->setEntityEyeMotionEnabled(false);
+    ghost->setEntityAnimationsCleared(true);
+    inst->mAnimCleared = ghost->isEntityAnimationsCleared();
+    ++mInstanceRevision;
+    return inst->mAnimCleared;
+}
+
+// [ClearAnim] One undo step: previous drive mode, animation, AutoAnimate and gaze.
+bool ALGhostStudio::restoreInstanceAnimations(const ClearAnimBefore& before)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(before.mId);
+    LLGhostAvatar* ghost = inst ? resolveEntityClone(before.mId) : nullptr;
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || !ghost || ghost->isDead())
+    {
+        return false;
+    }
+    ALGhostClearAnim::Before<LLUUID> rule;
+    rule.mDrive = before.mMode;
+    rule.mAnim = before.mAnim;
+    rule.mWasCleared = before.mWasCleared;
+    if (!ALGhostClearAnim::clearedAfterUndo(rule))
+    {
+        // Same drive state as the clear (Directed, no animation) would otherwise
+        // be a no-op and leave the clone cleared.
+        inst->mAnimCleared = false;
+        ghost->setEntityAnimationsCleared(false);
+    }
+    if (!setInstanceDriveMode(before.mId, before.mMode, before.mAnim))
+    {
+        return false;
+    }
+    if (before.mAutoAnimate != inst->mAutoAnimate)
+    {
+        setInstanceAutoAnimate(before.mId, before.mAutoAnimate);
+    }
+    LLActorMover& mover = LLActorMover::instance();
+    if (before.mGazeEnabled != mover.isGazeEnabled(ghost->getID()))
+    {
+        mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled);
+    }
+    ++mInstanceRevision;
     return true;
 }
 
