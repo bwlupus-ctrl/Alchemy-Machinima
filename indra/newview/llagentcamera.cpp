@@ -63,6 +63,7 @@
 #include "llviewerobjectlist.h"
 #include "llviewerregion.h"
 #include "llviewerwindow.h"
+#include "alghostclonemenu.h"   // [CloneMenu]
 #include "llvoavatarself.h"
 #include "llwindow.h"
 #include "llworld.h"
@@ -2674,6 +2675,7 @@ void LLAgentCamera::changeCameraToMouselook(bool animate)
 
         updateLastCamera();
         mCameraMode = CAMERA_MODE_MOUSELOOK;
+        ALGhostCloneMenu::cancelRight(); // [CloneMenu] every camera-mode change ends a pending clone right-click
         AOEngine::getInstance()->inMouselook(true);
         gAgent.setControlFlags(AGENT_CONTROL_MOUSELOOK);
 
@@ -2736,6 +2738,7 @@ void LLAgentCamera::changeCameraToFollow(bool animate)
 
         updateLastCamera();
         mCameraMode = CAMERA_MODE_FOLLOW;
+        ALGhostCloneMenu::cancelRight(); // [CloneMenu] every camera-mode change ends a pending clone right-click
         AOEngine::getInstance()->inMouselook(false);
 
         // bang-in the current focus, position, and up vector of the follow cam
@@ -2818,6 +2821,7 @@ void LLAgentCamera::changeCameraToThirdPerson(bool animate)
         }
         updateLastCamera();
         mCameraMode = CAMERA_MODE_THIRD_PERSON;
+        ALGhostCloneMenu::cancelRight(); // [CloneMenu] every camera-mode change ends a pending clone right-click
         AOEngine::getInstance()->inMouselook(false);
         gAgent.clearControlFlags(AGENT_CONTROL_MOUSELOOK);
     }
@@ -2879,6 +2883,7 @@ void LLAgentCamera::changeCameraToCustomizeAvatar()
     {
         updateLastCamera();
         mCameraMode = CAMERA_MODE_CUSTOMIZE_AVATAR;
+        ALGhostCloneMenu::cancelRight(); // [CloneMenu] every camera-mode change ends a pending clone right-click
         gAgent.clearControlFlags(AGENT_CONTROL_MOUSELOOK);
 
         gFocusMgr.setKeyboardFocus( NULL );

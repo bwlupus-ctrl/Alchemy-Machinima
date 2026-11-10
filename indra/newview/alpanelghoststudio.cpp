@@ -12,6 +12,7 @@
 #include "alpanelghoststudio.h"
 #include "alkitlistselection.h"     // [ListMultiSelect] pure primary/mirror/rebuild rules
 #include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules and texts
+#include "alghostcloneactions.h"    // [CloneMenu] row actions shared with the clone menus
 #include "aldirectorcastui.h"
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
@@ -35,6 +36,7 @@
 #include "llavatarnamecache.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
+#include "llfloaterreg.h"
 #include "llcombobox.h"
 #include "lldir.h"                  // [FileSafety] sibling path splitting
 #include "llfile.h"                 // [FileSafety] LLFile::exists
@@ -483,8 +485,7 @@ bool ALPanelGhostStudio::postBuild()
     });
     mSoloBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
-        ALGhostStudio& studio = ALGhostStudio::instance();
-        studio.setSolo(studio.getSolo() ? std::vector<LLUUID>() : selectedInstances());
+        ALGhostCloneActions::toggleSolo(selectedRowValues());
         mDetailDirty = true;
     });
     mStartOffset->setCommitCallback([this](LLUICtrl*, const LLSD&)
@@ -1290,70 +1291,12 @@ LLUUID ALPanelGhostStudio::selectedUnitId() const
 
 std::vector<LLUUID> ALPanelGhostStudio::selectedInstances() const
 {
-    std::vector<LLUUID> ids;
-    std::set<LLUUID> unique;
-    for (LLScrollListItem* item : mList->getAllSelected())
-    {
-        const LLUUID value = item->getValue().asUUID();
-        const ALGhostGroupModel::Group* group =
-            ALGhostStudio::instance().groupForMember(value);
-        if (group && value == group->mId)
-        {
-            for (const ALGhostGroupModel::Member& member : group->mMembers)
-            {
-                if (unique.insert(member.mInstanceId).second)
-                    ids.push_back(member.mInstanceId);
-            }
-        }
-        else if (unique.insert(value).second)
-        {
-            ids.push_back(value);
-        }
-    }
-    ids.erase(std::remove_if(ids.begin(), ids.end(), [](const LLUUID& id)
-    { return ALGhostStudio::instance().isDeleting(id); }), ids.end());
-    return ids;
+    return ALGhostCloneActions::instances(selectedRowValues());
 }
 
 std::vector<LLUUID> ALPanelGhostStudio::selectedUnitIds() const
 {
-    std::vector<LLUUID> ids;
-    std::set<LLUUID> unique;
-    std::set<LLUUID> selected_group_headers;
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    for (LLScrollListItem* item : mList->getAllSelected())
-    {
-        const LLUUID row_value = item->getValue().asUUID();
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(row_value);
-        if (group && row_value == group->mId)
-        {
-            selected_group_headers.insert(group->mId);
-        }
-    }
-    for (LLScrollListItem* item : mList->getAllSelected())
-    {
-        const LLUUID row_value = item->getValue().asUUID();
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(row_value);
-        if (group && row_value != group->mId &&
-            selected_group_headers.find(group->mId) !=
-                selected_group_headers.end())
-        {
-            // A selected header already owns this authoring unit. Applying the
-            // same command to one of its selected child rows as well would move
-            // the group and then add an unintended member-local edit.
-            continue;
-        }
-        const LLUUID unit_id =
-            group && (row_value == group->mId || !group->mEditMembers)
-                ? group->mId : row_value;
-        if (unit_id.notNull() && unique.insert(unit_id).second)
-        {
-            ids.push_back(unit_id);
-        }
-    }
-    return ids;
+    return ALGhostCloneActions::units(selectedRowValues());
 }
 
 bool ALPanelGhostStudio::selectedUnitTransform(
@@ -1383,16 +1326,7 @@ bool ALPanelGhostStudio::applyUnitTransform(
     const LLUUID& unit_id, const LLVector3d& foot,
     const LLQuaternion& rotation, F32 scale)
 {
-    if (unit_id.isNull())
-    {
-        return false;
-    }
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    const ALGhostGroupModel::Group* group =
-        studio.groupForMember(unit_id);
-    return group && unit_id == group->mId
-        ? studio.transformGroup(unit_id, foot, rotation, scale)
-        : studio.transformUnit(unit_id, foot, rotation, scale);
+    return ALGhostCloneActions::applyUnitTransform(unit_id, foot, rotation, scale);
 }
 
 // ---------------------------------------------------------------------------
@@ -1808,7 +1742,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
                 : std::string(style_name(inst.mStyle));
         if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
             inst.mDriveMode == ALGhostStudio::DRIVE_DIRECTED && inst.mDirectedAnim.notNull() &&
-            !studio.animLibraryScanned()) studio.requestAnimLibraryScan();
+            !studio.animLibraryScanned() && !mSuppressLibraryScan) studio.requestAnimLibraryScan();
         row["columns"][6]["column"] = column_name(mList, 6, "pose");
         row["columns"][6]["value"] =
             inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE && inst.mDriveMode == ALGhostStudio::DRIVE_DIRECTED
@@ -2726,65 +2660,15 @@ void ALPanelGhostStudio::onNameCommit()
 
 void ALPanelGhostStudio::onClickDuplicate()
 {
-    std::vector<LLUUID> duplicate_rows;
-    LLUUID first_selection;
-    std::set<LLUUID> handled;
     ALGhostStudio& studio = ALGhostStudio::instance();
-    std::set<LLUUID> selected_group_headers;
-    for (LLScrollListItem* item : mList->getAllSelected())
+    const ALGhostCloneActions::DuplicateResult copies =
+        ALGhostCloneActions::duplicateRows(selectedRowValues(), false);
+    if (!copies.mRows.empty())
     {
-        const LLUUID value = item->getValue().asUUID();
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(value);
-        if (group && value == group->mId)
-        {
-            selected_group_headers.insert(group->mId);
-        }
-    }
-    for (LLScrollListItem* item : mList->getAllSelected())
-    {
-        const LLUUID value = item->getValue().asUUID();
-        if (!handled.insert(value).second)
-        {
-            continue;
-        }
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(value);
-        if (group && value != group->mId &&
-            selected_group_headers.find(group->mId) !=
-                selected_group_headers.end())
-        {
-            continue;
-        }
-        if (group && value == group->mId)
-        {
-            const std::vector<LLUUID> copies =
-                studio.duplicateGroup(group->mId, false);
-            if (!copies.empty())
-            {
-                const ALGhostStudio::Instance* first =
-                    studio.getInstance(copies.front());
-                if (first)
-                {
-                    duplicate_rows.push_back(first->mGroupId);
-                    if (first_selection.isNull())
-                        first_selection = first->mGroupId;
-                }
-            }
-        }
-        else if (ALGhostStudio::Instance* inst =
-                     studio.duplicateInstance(value))
-        {
-            duplicate_rows.push_back(inst->mId);
-            if (first_selection.isNull()) first_selection = inst->mId;
-        }
-    }
-    if (!duplicate_rows.empty())
-    {
-        studio.setSelected(first_selection);
+        studio.setSelected(copies.mFirst);
         refreshList(true);
         mList->deselectAllItems(true);
-        mList->selectMultiple(duplicate_rows);
+        mList->selectMultiple(copies.mRows);
         noteListSelectionChanged();
         mObservedSelectionRevision =
             studio.getSelectionRevision();
@@ -2793,65 +2677,15 @@ void ALPanelGhostStudio::onClickDuplicate()
 
 void ALPanelGhostStudio::onClickDuplicateInPlace()
 {
-    std::vector<LLUUID> duplicate_rows;
-    LLUUID first_selection;
-    std::set<LLUUID> handled;
     ALGhostStudio& studio = ALGhostStudio::instance();
-    std::set<LLUUID> selected_group_headers;
-    for (LLScrollListItem* item : mList->getAllSelected())
+    const ALGhostCloneActions::DuplicateResult copies =
+        ALGhostCloneActions::duplicateRows(selectedRowValues(), true);
+    if (!copies.mRows.empty())
     {
-        const LLUUID value = item->getValue().asUUID();
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(value);
-        if (group && value == group->mId)
-        {
-            selected_group_headers.insert(group->mId);
-        }
-    }
-    for (LLScrollListItem* item : mList->getAllSelected())
-    {
-        const LLUUID value = item->getValue().asUUID();
-        if (!handled.insert(value).second)
-        {
-            continue;
-        }
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(value);
-        if (group && value != group->mId &&
-            selected_group_headers.find(group->mId) !=
-                selected_group_headers.end())
-        {
-            continue;
-        }
-        if (group && value == group->mId)
-        {
-            const std::vector<LLUUID> copies =
-                studio.duplicateGroup(group->mId, true);
-            if (!copies.empty())
-            {
-                const ALGhostStudio::Instance* first =
-                    studio.getInstance(copies.front());
-                if (first)
-                {
-                    duplicate_rows.push_back(first->mGroupId);
-                    if (first_selection.isNull())
-                        first_selection = first->mGroupId;
-                }
-            }
-        }
-        else if (ALGhostStudio::Instance* inst =
-                     studio.duplicateInstanceInPlace(value))
-        {
-            duplicate_rows.push_back(inst->mId);
-            if (first_selection.isNull()) first_selection = inst->mId;
-        }
-    }
-    if (!duplicate_rows.empty())
-    {
-        studio.setSelected(first_selection);
+        studio.setSelected(copies.mFirst);
         refreshList(true);
         mList->deselectAllItems(true);
-        mList->selectMultiple(duplicate_rows);
+        mList->selectMultiple(copies.mRows);
         noteListSelectionChanged();
         mObservedSelectionRevision =
             studio.getSelectionRevision();
@@ -2861,36 +2695,7 @@ void ALPanelGhostStudio::onClickDuplicateInPlace()
 void ALPanelGhostStudio::onClickDelete()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
-    std::set<LLUUID> removed_units;
-    bool removed_any = false;
-    for (LLScrollListItem* item : mList->getAllSelected())
-    {
-        const LLUUID value = item->getValue().asUUID();
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(value);
-        if (group)
-        {
-            if (value != group->mId)
-            {
-                // Expanded child rows are positioning controls, not implicit
-                // whole-crowd delete buttons.
-                continue;
-            }
-            if (!removed_units.insert(group->mId).second ||
-                group->mMembers.empty())
-            {
-                continue;
-            }
-            studio.requestRemoveInstance(group->mMembers.front().mInstanceId);
-            removed_any = true;
-        }
-        else if (removed_units.insert(value).second)
-        {
-            studio.requestRemoveInstance(value);
-            removed_any = true;
-        }
-    }
-    if (!removed_any)
+    if (!ALGhostCloneActions::deleteRows(selectedRowValues()))
     {
         return;
     }
@@ -3157,20 +2962,12 @@ void ALPanelGhostStudio::onPhysicsCommit()
 
 void ALPanelGhostStudio::onClickAnimPause()
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        studio.setInstancePaused(id, true);
-    }
+    ALGhostCloneActions::setPaused(selectedRowValues(), true);
 }
 
 void ALPanelGhostStudio::onClickAnimResume()
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        studio.setInstancePaused(id, false);
-    }
+    ALGhostCloneActions::setPaused(selectedRowValues(), false);
 }
 
 void ALPanelGhostStudio::onDriveModeCommit()
@@ -3187,15 +2984,7 @@ void ALPanelGhostStudio::onDriveModeCommit()
         (ALGhostStudio::EDriveMode)mDriveModeCombo->getValue().asInteger();
     LLUUID anim;
     LLUUID::parseUUID(mDirectedAnimEdit->getText(), &anim);
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        const ALGhostStudio::Instance* inst = studio.getInstance(id);
-        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
-        {
-            studio.setInstanceDriveMode(id, mode, anim);
-        }
-    }
+    ALGhostCloneActions::setDriveMode(selectedRowValues(), mode, anim);
 }
 
 // [AutoAnimate] All picker replies capture ids only; the panel may have closed.
@@ -3422,7 +3211,8 @@ ALPanelGhostStudio* ALPanelGhostStudio::activeHost()
 // static
 S32 ALPanelGhostStudio::playAnimationOnClonesRecorded(const std::vector<LLUUID>& ids,
                                                       const LLUUID& asset_id,
-                                                      const std::string& anim_name)
+                                                      const std::string& anim_name,
+                                                      bool director_fallback)
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
     struct Before
@@ -3440,8 +3230,16 @@ S32 ALPanelGhostStudio::playAnimationOnClonesRecorded(const std::vector<LLUUID>&
         }
     }
     const S32 played = studio.playAnimationOnClones(ids, asset_id);
-    ALPanelGhostStudio* host = activeHost();
+    LLView* host = activeHost();
     ALKitShell* shell = host && played > 0 ? ALKitShell::find(host) : nullptr;
+    if (!shell && !host && director_fallback && played > 0)
+    {
+        if (LLFloater* director = LLFloaterReg::getInstance("director"))
+        {
+            shell = director->findChild<ALKitShell>("director_shell");
+            host = shell;
+        }
+    }
     if (!shell)
     {
         return played;
@@ -3469,7 +3267,8 @@ S32 ALPanelGhostStudio::playAnimationOnClonesRecorded(const std::vector<LLUUID>&
 
 // [ClearAnim] ------------------------------------------------------------------
 // static
-S32 ALPanelGhostStudio::clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids)
+S32 ALPanelGhostStudio::clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids,
+                                                        bool director_fallback)
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
     auto snapshot = std::make_shared<std::vector<ALGhostStudio::ClearAnimBefore>>();
@@ -3482,8 +3281,19 @@ S32 ALPanelGhostStudio::clearAnimationsOnClonesRecorded(const std::vector<LLUUID
         }
     }
     const S32 cleared = (S32)snapshot->size();
-    ALPanelGhostStudio* host = activeHost();
+    // The undo step belongs to the Director shell, not to a visible Clones
+    // host: the world menu clears clones while another page is current or the
+    // Director is closed, and the step must still be recorded.
+    LLView* host = activeHost();
     ALKitShell* shell = host && cleared > 0 ? ALKitShell::find(host) : nullptr;
+    if (!shell && !host && director_fallback && cleared > 0)
+    {
+        if (LLFloater* director = LLFloaterReg::getInstance("director"))
+        {
+            shell = director->findChild<ALKitShell>("director_shell");
+            host = shell;
+        }
+    }
     if (!shell)
     {
         return cleared;
@@ -3723,10 +3533,7 @@ void ALPanelGhostStudio::onLoopModeCommit()
 
 void ALPanelGhostStudio::onClickAnimSync()
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    const auto ids = selectedInstances();
-    studio.syncOffsets(ids);
-    for (const LLUUID& id : ids) studio.restartInstanceAnimation(id);
+    ALGhostCloneActions::syncRows(selectedRowValues());
     mDetailDirty = true;
 }
 
@@ -4115,15 +3922,7 @@ void ALPanelGhostStudio::onStyleCommit()
 {
     const S32 style = ALGhostStudio::resolveOverlayStyle(mStyleCombo->getValue().asInteger());
     if (!ALGhostStudio::isOverlayStyle(style)) return;
-    for (const LLUUID& id : selectedInstances())
-    {
-        if (ALGhostStudio::Instance* inst =
-                ALGhostStudio::instance().getInstance(id))
-        {
-            inst->mStyle = style;
-            ALGhostStudio::instance().touchInstances(); // [GhostPanelPerf] Style column
-        }
-    }
+    ALGhostCloneActions::setOverlayStyle(selectedRowValues(), style);
 }
 
 void ALPanelGhostStudio::onActorTintToggle()
@@ -4322,10 +4121,7 @@ void ALPanelGhostStudio::onClickFreeze()
     {
         return;
     }
-    bool any_failed = false;
-    for (const LLUUID& id : ids)
-        any_failed = !ALGhostStudio::instance().freezeInstance(id) || any_failed;
-    if (any_failed)
+    if (ALGhostCloneActions::freezeOverlays(selectedRowValues()))
     {
         // most common miss: the pipeline is not rendering the source this
         // frame (instance disabled / master off / skins still loading)

@@ -79,16 +79,24 @@ public:
     // Play on clones with ONE undo step on the active host's shell that
     // restores every clone's previous drive mode AND animation. Returns how
     // many clones now play it. Label carries the animation name only.
+    // director_fallback: the world drop has no visible Clones host to own the undo
+    // step; it asks for the Director shell as owner so the step is always recorded.
     static S32 playAnimationOnClonesRecorded(const std::vector<LLUUID>& ids,
                                              const LLUUID& asset_id,
-                                             const std::string& anim_name);
+                                             const std::string& anim_name,
+                                             bool director_fallback = false);
     // [ClearAnim] Clear animations on these clones (entity clones only) and record
     // ONE undo step that restores each clone's drive mode, animation, AutoAnimate
     // and gaze. Returns how many clones were cleared.
-    static S32 clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids);
+    // director_fallback: the in-world menu has no visible Clones host to own the
+    // undo step; it asks for the Director shell as owner. The page never does.
+    static S32 clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids,
+                                               bool director_fallback = false);
 
 private:
     friend struct ALCloneRotationProbe;
+    friend struct ALGhostCloneMenuAccess;   // world-click clone selection (aldirectorselect.cpp)
+    bool mSuppressLibraryScan = false;      // a hidden-host row refresh must not start the inventory scan
     ALScrollFit::Controller mScrollFit;
 
     // ---- refreshers ----

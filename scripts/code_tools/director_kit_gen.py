@@ -27,6 +27,7 @@ import director_theme_check as theme_check  # noqa: E402  (same-directory checke
 import director_all_off_check as all_off_check  # noqa: E402
 import director_list_select_check as list_select_check  # noqa: E402  (multi-select lists keep their selection)
 import director_clone_clear_check as clone_clear_check  # noqa: E402  (Clear animations wiring)
+import director_clone_menu_check as clone_menu_check  # noqa: E402  (clone right-click menus, Select in Director)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -1830,6 +1831,11 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
               "Manage cast groups in Cast > Groups.", "", "", "", "", "", "director"]
     assert len(fields) == INDEX_FIELDS
     lines.append("\t".join(esc(value) for value in fields))
+    fields = ["quick_group", "quick_tab", "Quick", "Director", "", "", "Actor", "",
+              "kit_actor_pick", "Select", "button", "", "0", "c", "select pick click avatar clone world actor choose multi",
+              "Click an avatar or clone in the world to select it for the Director.", "", "", "", "", "", "director"]
+    assert len(fields) == INDEX_FIELDS
+    lines.append("\t".join(esc(value) for value in fields))
     payload = "\n".join(lines) + "\n"
     return (f'<?xml version="1.0" encoding="utf-8"?>\n<!-- {note} -->\n'
             f'<director_kit_index version="3" fields="{INDEX_FIELDS}"><![CDATA[\n{payload}]]>'
@@ -1870,12 +1876,17 @@ def floater_tree(data: dict, page_files: dict[str, str], v1: ET.Element) -> ET.E
         "use_ellipses": "true", "tool_tip": "Shared edit actor for Director actor pages. Roto Ink, Tron and Shadows keep independent subject choices. Clear preserves each page's default."})
     name.text = "Clear"
     for widget, label in (("choose", "Choose..."), ("selected", "Use selected"),
-                          ("you", "You"), ("clear", "Clear"), ("groups", "Groups")):
-        ET.SubElement(actor, "button", {"name": "kit_actor_" + widget, "label": label,
+                          ("you", "You"), ("clear", "Clear"), ("groups", "Groups"),
+                          ("pick", "Select")):
+        attrs = {"name": "kit_actor_" + widget, "label": label,
             "tool_tip": {"choose": "Choose a cast actor, nearby avatar, clone, or click in world.",
                 "selected": "Use the selected avatar, attachment wearer or animesh.",
                 "groups": "Manage cast groups in Cast > Groups.",
-                "you": "Act on your avatar.", "clear": "Clear the shared actor; page defaults apply."}[widget]})
+                "pick": "Click an avatar or clone in the world to select it. Ctrl-click adds clones to the clone selection. Esc or this button ends it.",
+                "you": "Act on your avatar.", "clear": "Clear the shared actor; page defaults apply."}[widget]}
+        if widget == "pick":
+            attrs["is_toggle"] = "true"     # on while the in-world pick mode is active
+        ET.SubElement(actor, "button", attrs)
     status = ET.SubElement(actor, "text", {"name": "kit_actor_status", "font": "SansSerifSmall", "text_color": "KitMuted", "use_ellipses": "true"})
     status.text = "Choose here for single-actor editors."
     roster = ET.SubElement(shell, "panel", {"name": "kit_cast_roster", "background_visible": "false"})
@@ -2780,7 +2791,7 @@ def main(argv: list[str] | None = None) -> int:
         shader_load_check.native_check(ROOT)
         # Source gates with no runner of their own: prebuild_guard reaches them through
         # this --check. Each runs its check and its planted-negative selftest.
-        for gate in (list_select_check, clone_clear_check):
+        for gate in (list_select_check, clone_clear_check, clone_menu_check):
             with contextlib.redirect_stdout(io.StringIO()) as gate_out:
                 gate_failed = gate.run_check() or gate.selftest()
             if gate_failed:

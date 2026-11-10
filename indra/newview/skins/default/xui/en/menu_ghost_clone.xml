@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<!-- Right-click menu for a Studio ENTITY clone (alghostclonemenu.cpp).
+     Every item calls the same ALGhostStudio action as the Clones page, on the
+     picked clone or on the whole Clones multi-selection when the picked clone
+     belongs to it. Disabled items carry their reason in the label and tooltip.
+     Session-only; nothing here is saved in scenes. -->
+<context_menu
+ layout="topleft"
+ name="Ghost Clone Pie">
+  <menu_item_call
+   label="Select in Director"
+   name="Select in Director"
+   tool_tip="Make this clone the Director's selection.">
+    <menu_item_call.on_click function="GhostClone.SelectInDirector" />
+    <menu_item_call.on_enable function="GhostClone.EnableSelectInDirector" />
+  </menu_item_call>
+  <menu_item_separator />
+  <menu_item_call
+   label="Pause"
+   name="Pause"
+   tool_tip="Freeze the clone on its current animation frame.">
+    <menu_item_call.on_click function="GhostClone.PlayPause" />
+    <menu_item_call.on_enable function="GhostClone.EnablePlayPause" />
+    <menu_item_call.on_visible function="GhostClone.VisiblePause" />
+  </menu_item_call>
+  <menu_item_call
+   label="Play"
+   name="Play"
+   tool_tip="Resume the clone's animation.">
+    <menu_item_call.on_click function="GhostClone.PlayPause" />
+    <menu_item_call.on_enable function="GhostClone.EnablePlayPause" />
+    <menu_item_call.on_visible function="GhostClone.VisiblePlay" />
+  </menu_item_call>
+  <menu_item_check
+   label="Mirror"
+   name="Mirror"
+   tool_tip="Reflect the source's motion across a plane (the Reflect drive).">
+    <menu_item_check.on_click function="GhostClone.Mirror" />
+    <menu_item_check.on_check function="GhostClone.CheckMirror" />
+    <menu_item_check.on_enable function="GhostClone.EnableMirror" />
+  </menu_item_check>
+  <context_menu
+   label="Size"
+   name="Size">
+    <menu_item_call
+     label="Smaller"
+     name="Smaller">
+      <menu_item_call.on_click function="GhostClone.Size" parameter="smaller" />
+      <menu_item_call.on_enable function="GhostClone.EnableTargets" />
+    </menu_item_call>
+    <menu_item_call
+     label="Larger"
+     name="Larger">
+      <menu_item_call.on_click function="GhostClone.Size" parameter="larger" />
+      <menu_item_call.on_enable function="GhostClone.EnableTargets" />
+    </menu_item_call>
+    <menu_item_call
+     label="Reset size"
+     name="Reset size">
+      <menu_item_call.on_click function="GhostClone.Size" parameter="reset" />
+      <menu_item_call.on_enable function="GhostClone.EnableTargets" />
+    </menu_item_call>
+  </context_menu>
+  <context_menu
+   label="Stagger"
+   name="Stagger">
+    <menu_item_check
+     label="In sync"
+     name="In sync"
+     tool_tip="Start every clone of the group together (the Sync path).">
+      <menu_item_check.on_click function="GhostClone.Stagger" parameter="0" />
+      <menu_item_check.on_check function="GhostClone.CheckStagger" parameter="0" />
+      <menu_item_check.on_enable function="GhostClone.EnableStagger" />
+    </menu_item_check>
+    <menu_item_check
+     label="Random"
+     name="Random"
+     tool_tip="Random start offsets over the Crowd tab's Spread.">
+      <menu_item_check.on_click function="GhostClone.Stagger" parameter="1" />
+      <menu_item_check.on_check function="GhostClone.CheckStagger" parameter="1" />
+      <menu_item_check.on_enable function="GhostClone.EnableStagger" />
+    </menu_item_check>
+    <menu_item_check
+     label="Ripple"
+     name="Ripple"
+     tool_tip="A wave of start offsets across the group, in the Crowd tab's Ripple direction.">
+      <menu_item_check.on_click function="GhostClone.Stagger" parameter="2" />
+      <menu_item_check.on_check function="GhostClone.CheckStagger" parameter="2" />
+      <menu_item_check.on_enable function="GhostClone.EnableStagger" />
+    </menu_item_check>
+  </context_menu>
+  <menu_item_check
+   label="Edit"
+   name="Edit"
+   tool_tip="Move, rotate and delete this clone in the world (the Edit clones tool).">
+    <menu_item_check.on_click function="GhostClone.Edit" />
+    <menu_item_check.on_check function="GhostClone.CheckEdit" />
+    <menu_item_check.on_enable function="GhostClone.EnableEdit" />
+  </menu_item_check>
+  <menu_item_separator />
+  <menu_item_call
+   label="Freeze pose"
+   name="Freeze pose"
+   tool_tip="Hold the clone's current pose while the live body keeps animating.">
+    <menu_item_call.on_click function="GhostClone.FreezePose" />
+    <menu_item_call.on_enable function="GhostClone.EnableTargets" />
+  </menu_item_call>
+  <menu_item_call
+   label="Clear animations"
+   name="Clear animations"
+   tool_tip="Stop every animation on the clone and rest it in the neutral pose.">
+    <menu_item_call.on_click function="GhostClone.ClearAnim" />
+    <menu_item_call.on_enable function="GhostClone.EnableClearAnim" />
+  </menu_item_call>
+  <menu_item_check
+   label="Solo"
+   name="Solo"
+   tool_tip="Show only the selected clones.">
+    <menu_item_check.on_click function="GhostClone.Solo" />
+    <menu_item_check.on_check function="GhostClone.CheckSolo" />
+    <menu_item_check.on_enable function="GhostClone.EnableTargets" />
+  </menu_item_check>
+  <menu_item_call
+   label="Duplicate"
+   name="Duplicate">
+    <menu_item_call.on_click function="GhostClone.Duplicate" />
+    <menu_item_call.on_enable function="GhostClone.EnableTargets" />
+  </menu_item_call>
+  <menu_item_call
+   label="Delete"
+   name="Delete">
+    <menu_item_call.on_click function="GhostClone.Delete" />
+    <menu_item_call.on_enable function="GhostClone.EnableTargets" />
+  </menu_item_call>
+  <menu_item_separator />
+  <menu_item_call
+   label="Open in Director"
+   name="Open in Director"
+   tool_tip="Open the Director's Clones page with this clone selected.">
+    <menu_item_call.on_click function="GhostClone.OpenInDirector" />
+    <menu_item_call.on_enable function="GhostClone.EnableSelectInDirector" />
+  </menu_item_call>
+</context_menu>

@@ -34,6 +34,8 @@
 #include "llactormover.h"
 #include "alactorchromakey.h"
 #include "llviewerwindow.h"
+#include "alghostclonemenu.h"    // [CloneMenu]
+#include "altooldirectorpick.h"   // [CloneMenu]
 #include "alkithistory.h"
 #include "alhidecursor.h"
 #include "allenslooks.h"
@@ -1450,6 +1452,7 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
                 r = mouse_captor->handleAnyMouseClick(local_x, local_y, mask, clicktype, down);
             }
             if (r) {
+                if (!down && clicktype == CLICK_RIGHT) ALGhostCloneMenu::cancelRight(); // [CloneMenu] a captor took the release
 
                 LL_DEBUGS() << "LLViewerWindow::handleAnyMouseClick viewer with mousecaptor calling updatemouseeventinfo - local_x|global x  "<< local_x << " " << x  << "local/global y " << local_y << " " << y << LL_ENDL;
 
@@ -1479,6 +1482,7 @@ bool LLViewerWindow::handleAnyMouseClick(LLWindow *window, LLCoordGL pos, MASK m
         }
         if (r)
         {
+            if (!down && clicktype == CLICK_RIGHT) ALGhostCloneMenu::cancelRight(); // [CloneMenu] a UI view handled the release
 
             LL_DEBUGS() << "LLViewerWindow::handleAnyMouseClick calling updatemouseeventinfo - global x  "<< " " << x   << "global y " << y  << "buttonstate: " << buttonstatestr << " buttonname " << buttonname << LL_ENDL;
 
@@ -1585,6 +1589,7 @@ bool LLViewerWindow::handleRightMouseDown(LLWindow *window,  LLCoordGL pos, MASK
 {
     if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool down = true;
+    ALGhostCloneMenu::cancelRight(); // [CloneMenu] a press the world tool never saw must not leave a stale gesture
     return gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);
 }
 
@@ -1592,7 +1597,12 @@ bool LLViewerWindow::handleRightMouseUp(LLWindow *window,  LLCoordGL pos, MASK m
 {
     if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     bool down = false;
-    return gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);
+    const bool handled = gViewerInput.handleMouse(window, pos, mask, CLICK_RIGHT, down);
+    // [CloneMenu] After the release is fully dispatched (so the menu cannot
+    // swallow it), open the clone menu for a right-click that did not drag.
+    ALGhostCloneMenu::releaseRight(ll_round((F32)pos.mX / mDisplayScale.mV[VX]),
+                                   ll_round((F32)pos.mY / mDisplayScale.mV[VY]));
+    return handled;
 }
 
 bool LLViewerWindow::handleMiddleMouseDown(LLWindow *window,  LLCoordGL pos, MASK mask)
@@ -2049,6 +2059,7 @@ void LLViewerWindow::handleMouseMove(LLWindow *window,  LLCoordGL pos, MASK mask
     // Save mouse point for access during idle() and display()
 
     LLCoordGL mouse_point(x, y);
+    ALGhostCloneMenu::noteMouseMove(x, y); // [CloneMenu] a moving right press is a drag, not a click
 
     if (mouse_point != mCurrentMousePoint)
     {
@@ -2188,6 +2199,7 @@ void LLViewerWindow::handleFocusLost(LLWindow *window)
     gFocusMgr.setAppHasFocus(false);
     //LLModalDialog::onAppFocusLost();
     LLToolMgr::getInstance()->onAppFocusLost();
+    ALGhostCloneMenu::cancelRight(); // [CloneMenu] a pending clone right-click never survives focus loss
     gFocusMgr.setMouseCapture( NULL );
 
     if (gMenuBarView)
@@ -3851,6 +3863,14 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
             LLViewerEventRecorder::instance().logKeyEvent(key, mask);
             return true;
         }
+    }
+
+    // [CloneMenu] Esc ends Director pick mode even while a camera re-arm is pending
+    // (the picker is not current then, so its own handleKey cannot see the key).
+    if (key == KEY_ESCAPE && mask == MASK_NONE && ALToolDirectorPick::handlePendingEscape())
+    {
+        LLViewerEventRecorder::instance().logKeyEvent(key, mask);
+        return true;
     }
 
     if( LLToolMgr::getInstance()->getCurrentTool()->handleKey(key, mask) )

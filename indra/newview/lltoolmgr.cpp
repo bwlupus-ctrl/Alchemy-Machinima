@@ -56,6 +56,7 @@
 #include "llviewercontrol.h"
 #include "llviewerjoystick.h"
 #include "llviewermenu.h"
+#include "alghostclonemenu.h"   // [CloneMenu]
 #include "llviewerparcelmgr.h"
 // [RLVa:KB] - Checked: RLVa-2.1.0
 #include "llfloatertools.h"
@@ -227,6 +228,7 @@ LLTool* LLToolMgr::getCurrentTool()
     //update tool selection status
     if (prev_tool != cur_tool)
     {
+        ALGhostCloneMenu::cancelRight(); // [CloneMenu] a tool change ends a pending clone right-click
         if (prev_tool)
         {
             prev_tool->handleDeselect();
