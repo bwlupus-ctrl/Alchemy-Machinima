@@ -15,9 +15,9 @@ HEAD coordinates; guards/features are candidate evidence
 | 71–78 (n=8) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 92–98 (n=7) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 117–123 (n=7) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 193–200 (n=8) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 222–228 (n=7) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 306–312 (n=7) | unknown/non-function (if(BUILD_TESTING)) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 190–201 (n=12) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 223–229 (n=7) | unknown/non-function (target_sources(llui) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 307–313 (n=7) | unknown/non-function (if(BUILD_TESTING)) | common-ui | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 1: `indra/llui/llfloater.cpp`
 
@@ -4780,6 +4780,22 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 169–175 (n=7) | unknown/non-function (protected:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLAvatarSkeletonInfo |
 
+## Slice 99: `indra/llappearance/llpolyskeletaldistortion.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 132–147 (n=16) | LLPolySkeletalDistortion::addAppliedPositionOffsets | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ClearAnim] The joint position offsets this parameter has applied so far: apply() moves a joint by (weight - last weight) * delta, so the applied total is last weight * delta. |
+
+## Slice 99: `indra/llappearance/llpolyskeletaldistortion.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 99–106 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ClearAnim] Adds the joint position offsets apply() has applied so far to 'offsets'. |
+
 ## Slice 99: `indra/llaudio/llaudiodecodemgr.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -5300,9 +5316,15 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 1758–1764 (n=7) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1797–1810 (n=14) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits gGL, LLTexUnit |
-| 2088–2098 (n=11) | LLScrollListCtrl::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 28–34 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 710–720 (n=11) | LLScrollListCtrl::updateColumnWidths | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 769–775 (n=7) | LLScrollListCtrl::updateColumns | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1759–1765 (n=7) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1798–1811 (n=14) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits gGL, LLTexUnit |
+| 2089–2099 (n=11) | LLScrollListCtrl::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2359–2373 (n=15) | LLScrollListCtrl::getColumnAreaWidth, LLScrollListCtrl::getColumnIndexFromOffset | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Cells are drawn the gutter in from the row edge; hit testing moves with them. |
+| 2396–2402 (n=7) | LLScrollListCtrl::getColumnOffsetFromIndex | unknown | unknown-review | unknown; no local conditional evidence | Edits LLScrollListGutter |
+| 3125–3140 (n=16) | LLScrollListCtrl::addColumn | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/llui/llscrolllistctrl.h`
 
@@ -5311,10 +5333,10 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 297–305 (n=9) | setLastSelectedItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge F3] FS radar restores the multi-select anchor after a list rebuild (FSScrollListCtrl parity); mLastSelected is private. |
-| 313–325 (n=13) | getSelectedBarGutter, setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h |
-| 413–421 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
-| 489–501 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
-| 560–567 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
+| 313–328 (n=16) | getSelectedBarGutter, setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h |
+| 416–424 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
+| 492–504 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
+| 563–570 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
 
 ## Slice 99: `indra/llui/llscrolllistitem.cpp`
 

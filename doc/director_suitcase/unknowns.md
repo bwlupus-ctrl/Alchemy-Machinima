@@ -2,11 +2,13 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3361 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3369 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
-## Unknown product-path features (177)
+## Unknown product-path features (180)
 
 - `indra/llappearance/llavatarappearance.h` (HOOK)
+- `indra/llappearance/llpolyskeletaldistortion.cpp` (HOOK)
+- `indra/llappearance/llpolyskeletaldistortion.h` (HOOK)
 - `indra/llaudio/llaudiodecodemgr.cpp` (HOOK)
 - `indra/llaudio/llaudioengine.cpp` (HOOK)
 - `indra/llcharacter/lljoint.cpp` (HOOK)
@@ -34,6 +36,7 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llnotifications.h` (HOOK)
 - `indra/llui/llscrollbar.h` (HOOK)
 - `indra/llui/llscrollcontainer.h` (HOOK)
+- `indra/llui/llscrolllistgutter.h` (OWNED)
 - `indra/llui/llscrolllistitem.h` (HOOK)
 - `indra/llui/lltabcontainer.h` (HOOK)
 - `indra/llui/lltextbase.h` (HOOK)
@@ -184,7 +187,7 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1798)
+## Unknown hunk features (1806)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -1291,6 +1294,8 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/panel_status_bar.xml@65,17`
 - `indra/newview/skins/default/xui/en/panel_status_bar.xml@86,7`
 - `indra/llappearance/llavatarappearance.h@169,7`
+- `indra/llappearance/llpolyskeletaldistortion.cpp@132,16`
+- `indra/llappearance/llpolyskeletaldistortion.h@99,8`
 - `indra/llaudio/llaudiodecodemgr.cpp@659,9`
 - `indra/llaudio/llaudioengine.cpp@123,13`
 - `indra/llaudio/llaudioengine.cpp@1121,7`
@@ -1476,14 +1481,20 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistcell.cpp@795,3`
 - `indra/llui/llscrolllistcell.h@67,8`
 - `indra/llui/llscrolllistcell.h@92,7`
-- `indra/llui/llscrolllistctrl.cpp@1758,7`
-- `indra/llui/llscrolllistctrl.cpp@1797,14`
-- `indra/llui/llscrolllistctrl.cpp@2088,11`
+- `indra/llui/llscrolllistctrl.cpp@28,7`
+- `indra/llui/llscrolllistctrl.cpp@710,11`
+- `indra/llui/llscrolllistctrl.cpp@769,7`
+- `indra/llui/llscrolllistctrl.cpp@1759,7`
+- `indra/llui/llscrolllistctrl.cpp@1798,14`
+- `indra/llui/llscrolllistctrl.cpp@2089,11`
+- `indra/llui/llscrolllistctrl.cpp@2359,15`
+- `indra/llui/llscrolllistctrl.cpp@2396,7`
+- `indra/llui/llscrolllistctrl.cpp@3125,16`
 - `indra/llui/llscrolllistctrl.h@297,9`
-- `indra/llui/llscrolllistctrl.h@313,13`
-- `indra/llui/llscrolllistctrl.h@413,9`
-- `indra/llui/llscrolllistctrl.h@489,13`
-- `indra/llui/llscrolllistctrl.h@560,8`
+- `indra/llui/llscrolllistctrl.h@313,16`
+- `indra/llui/llscrolllistctrl.h@416,9`
+- `indra/llui/llscrolllistctrl.h@492,13`
+- `indra/llui/llscrolllistctrl.h@563,8`
 - `indra/llui/llscrolllistitem.cpp@145,7`
 - `indra/llui/llscrolllistitem.cpp@161,8`
 - `indra/llui/llscrolllistitem.h@129,8`
@@ -1985,15 +1996,15 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14`
 
-## Unknown/non-function contexts (1237)
+## Unknown/non-function contexts (1239)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
 - `indra/llui/CMakeLists.txt@92,7`: unknown/non-function (target_sources(llui)
 - `indra/llui/CMakeLists.txt@117,7`: unknown/non-function (target_sources(llui)
-- `indra/llui/CMakeLists.txt@193,8`: unknown/non-function (target_sources(llui)
-- `indra/llui/CMakeLists.txt@222,7`: unknown/non-function (target_sources(llui)
-- `indra/llui/CMakeLists.txt@306,7`: unknown/non-function (if(BUILD_TESTING))
+- `indra/llui/CMakeLists.txt@190,12`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@223,7`: unknown/non-function (target_sources(llui)
+- `indra/llui/CMakeLists.txt@307,7`: unknown/non-function (if(BUILD_TESTING))
 - `indra/llui/llfloater.cpp@58,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llui/llfloater.cpp@83,7`: unknown/non-function (namespace LLInitParam)
 - `indra/llui/llfloater.cpp@103,7`: unknown/non-function (std::string LLFloater::sButtonToolTipsIndex[BUTTON_COUNT]=)
@@ -2891,6 +2902,7 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/panel_status_bar.xml@86,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/panel_status_bar.xml@181,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/llappearance/llavatarappearance.h@169,7`: unknown/non-function (protected:)
+- `indra/llappearance/llpolyskeletaldistortion.h@99,8`: unknown/non-function (public:)
 - `indra/llcharacter/lljoint.cpp@1026,3`: unknown/non-function (void LLJoint::clampRotation(LLQuaternion old_rot, LLQuaternion new_rot))
 - `indra/llcharacter/lljoint.h@303,3`: unknown/non-function (public:)
 - `indra/llcharacter/llmotion.cpp@51,14`: unknown/non-function (LLMotion::LLMotion( const LLUUID &id ) :)
@@ -2956,7 +2968,8 @@ All 3361 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistcell.cpp@795,3`: unknown/non-function (bool LLScrollListLineEditor::handleUnicodeCharHere(llwchar uni_char ))
 - `indra/llui/llscrolllistcell.h@67,8`: unknown/non-function (public:)
 - `indra/llui/llscrolllistcell.h@92,7`: unknown/non-function (public:)
-- `indra/llui/llscrolllistctrl.h@560,8`: unknown/non-function (private:)
+- `indra/llui/llscrolllistctrl.cpp@28,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/llui/llscrolllistctrl.h@563,8`: unknown/non-function (private:)
 - `indra/llui/llscrolllistitem.cpp@145,7`: unknown/non-function (std::string LLScrollListItem::getContentsCSV() const)
 - `indra/llui/llscrolllistitem.h@129,8`: unknown/non-function (public:)
 - `indra/llui/lltabcontainer.cpp@1215,7`: unknown/non-function (void LLTabContainer::addPlaceholder(LLPanel* child, const std::string& label))

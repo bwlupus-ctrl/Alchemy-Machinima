@@ -56,6 +56,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/algazemotor.h`
 - `indra/newview/algazepolicy.h`
 - `indra/newview/alghostanimmirrormath.h`
+- `indra/newview/alghostclearanim.h`
 - `indra/newview/alghostspawnengine.cpp`
 - `indra/newview/alghostspawnengine.h`
 - `indra/newview/alghoststudio.cpp`
@@ -812,6 +813,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1450, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1447, "text": "algazepolicy.h", "source": "indra/newview/algazepolicy.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1368, "text": "alghostanimmirrormath.h", "source": "indra/newview/alghostanimmirrormath.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1375, "text": "alghostclearanim.h # [ClearAnim]", "source": "indra/newview/alghostclearanim.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 344, "text": "alghostspawnengine.cpp", "source": "indra/newview/alghostspawnengine.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1307, "text": "alghostspawnengine.h", "source": "indra/newview/alghostspawnengine.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 395, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}

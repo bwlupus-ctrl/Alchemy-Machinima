@@ -182,6 +182,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/llui/llscrolllistctrl.cpp",
+    "dependency": "indra/llui/llscrolllistgutter.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/llui/llslider.cpp",
     "dependency": "indra/llui/llsliderwheel.h",
     "excluded": false,
@@ -1255,6 +1264,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/aldirectoranimswitcher.cpp",
     "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectoranimswitcher.cpp",
+    "dependency": "indra/newview/alghostclearanim.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -2470,6 +2488,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.h",
     "dependency": "indra/newview/alghostautoanimmodel.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.h",
+    "dependency": "indra/newview/alghostclearanim.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9967,6 +9994,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llghostavatar.h",
     "dependency": "indra/newview/alghostanimmirrormath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llghostavatar.h",
+    "dependency": "indra/newview/alghostclearanim.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -12,6 +12,7 @@
           "base_start": 4,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -37,6 +38,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
             },
@@ -58,6 +63,7 @@
           "base_start": 70,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -83,6 +89,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
             },
@@ -104,6 +114,7 @@
           "base_start": 89,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -129,6 +140,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
             },
@@ -150,6 +165,7 @@
           "base_start": 113,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -175,6 +191,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
             },
@@ -192,10 +212,11 @@
           "slice": 1
         },
         {
-          "base_count": 6,
-          "base_start": 188,
+          "base_count": 9,
+          "base_start": 185,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -212,14 +233,18 @@
           "git_context": "target_sources(llui",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 8,
-          "head_end": 200,
-          "head_start": 193,
-          "id": "indra/llui/CMakeLists.txt@193,8",
-          "patch": "     llscrolllistitem.h\n     llsliderctrl.h\n     llslider.h\n+    llsliderwheel.h\n+    llsliderwheelcore.h\n     llspellcheck.h\n     llspellcheckengine.h\n     llspellcheckmenuhandler.h\n",
+          "head_count": 12,
+          "head_end": 201,
+          "head_start": 190,
+          "id": "indra/llui/CMakeLists.txt@190,12",
+          "patch": "     llscrolllistcell.h\n     llscrolllistcolumn.h\n     llscrolllistctrl.h\n+    llscrolllistgutter.h\n     llscrolllistitem.h\n     llsliderctrl.h\n     llslider.h\n+    llsliderwheel.h\n+    llsliderwheelcore.h\n     llspellcheck.h\n     llspellcheckengine.h\n     llspellcheckmenuhandler.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
@@ -242,6 +267,7 @@
           "base_start": 215,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -259,13 +285,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 228,
-          "head_start": 222,
-          "id": "indra/llui/CMakeLists.txt@222,7",
+          "head_end": 229,
+          "head_start": 223,
+          "id": "indra/llui/CMakeLists.txt@223,7",
           "patch": "     lluictrl.h\n     lluifwd.h\n     llui.h\n+    lluifitdiag.h\n     lluicolor.h\n     lluistring.h\n     llundo.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
@@ -288,6 +318,7 @@
           "base_start": 298,
           "candidate_features_from_subjects": [
             "camera",
+            "clones",
             "common-ui",
             "director-shell"
           ],
@@ -305,13 +336,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 312,
-          "head_start": 306,
-          "id": "indra/llui/CMakeLists.txt@306,7",
+          "head_end": 313,
+          "head_start": 307,
+          "id": "indra/llui/CMakeLists.txt@307,7",
           "patch": " \n   SET(llui_TEST_SOURCE_FILES\n       llurlmatch.cpp\n+      llsliderwheelcore.cpp # [SliderWheel] pure logic, tests/llsliderwheelcore_test.cpp\n       )\n   set_property( SOURCE ${llui_TEST_SOURCE_FILES} PROPERTY LL_TEST_ADDITIONAL_LIBRARIES ${test_libs})\n   LL_ADD_PROJECT_UNIT_TESTS(llui \"${llui_TEST_SOURCE_FILES}\")\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "8aa3c922f7d",
               "subject": "UI fit+scroll mandate: rebuilt Joystick floater, layout checker build gate, runtime fit diagnostic; Drone look invert"
@@ -155931,6 +155966,94 @@
       ],
       "hunks": [
         {
+          "base_count": 6,
+          "base_start": 132,
+          "candidate_features_from_subjects": [
+            "clones"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLPolySkeletalDistortion::addAppliedPositionOffsets"
+          ],
+          "git_context": "LLPolySkeletalDistortion::~LLPolySkeletalDistortion()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 16,
+          "head_end": 147,
+          "head_start": 132,
+          "id": "indra/llappearance/llpolyskeletaldistortion.cpp@132,16",
+          "patch": " {\n }\n \n+// [ClearAnim] The joint position offsets this parameter has applied so far: apply()\n+// moves a joint by (weight - last weight) * delta, so the applied total is last weight * delta.\n+void LLPolySkeletalDistortion::addAppliedPositionOffsets(std::map<LLJoint*, LLVector3>& offsets) const\n+{\n+    for (const joint_vec_map_t::value_type& offset_pair : mJointOffsets)\n+    {\n+        offsets[offset_pair.first] += mLastWeight * offset_pair.second;\n+    }\n+}\n+\n bool LLPolySkeletalDistortion::setInfo(LLPolySkeletalDistortionInfo *info)\n {\n     if (info->mID < 0)\n",
+          "purpose": "Comment evidence: [ClearAnim] The joint position offsets this parameter has applied so far: apply() moves a joint by (weight - last weight) * delta, so the applied total is last weight * delta.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/llappearance/llpolyskeletaldistortion.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
+        "unknown"
+      ],
+      "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 99,
+          "candidate_features_from_subjects": [
+            "clones"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (public:)"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 8,
+          "head_end": 106,
+          "head_start": 99,
+          "id": "indra/llappearance/llpolyskeletaldistortion.h@99,8",
+          "patch": "     // LLVisualParam Virtual functions\n     ///*virtual*/ bool              parseData(LLXmlTreeNode* node);\n     /*virtual*/ void                apply( ESex sex );\n+    // [ClearAnim] Adds the joint position offsets apply() has applied so far to `offsets`.\n+    void                            addAppliedPositionOffsets(std::map<LLJoint*, LLVector3>& offsets) const;\n \n     // LLViewerVisualParam Virtual functions\n     /*virtual*/ F32                 getTotalDistortion() { return 0.1f; }\n",
+          "purpose": "Comment evidence: [ClearAnim] Adds the joint position offsets apply() has applied so far to `offsets`.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/llappearance/llpolyskeletaldistortion.h",
+      "slice": 99
+    },
+    {
+      "features": [
+        "unknown"
+      ],
+      "hunks": [
+        {
           "base_count": 7,
           "base_start": 659,
           "candidate_features_from_subjects": [
@@ -164499,6 +164622,150 @@
       ],
       "hunks": [
         {
+          "base_count": 6,
+          "base_start": 28,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 34,
+          "head_start": 28,
+          "id": "indra/llui/llscrolllistctrl.cpp@28,7",
+          "patch": " #include \"linden_common.h\"\n \n #include \"llscrolllistctrl.h\"\n+#include \"llscrolllistgutter.h\"\n \n #include <algorithm>\n \n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 11,
+          "base_start": 709,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollListCtrl::updateColumnWidths"
+          ],
+          "git_context": "bool LLScrollListCtrl::updateColumnWidths()",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 11,
+          "head_end": 720,
+          "head_start": 710,
+          "id": "indra/llui/llscrolllistctrl.cpp@710,11",
+          "patch": "         S32 new_width = 0;\n         if (column->mRelWidth >= 0)\n         {\n-            new_width = (S32)ll_round(column->mRelWidth*mItemListRect.getWidth());\n+            new_width = (S32)ll_round(column->mRelWidth*getColumnAreaWidth());\n         }\n         else if (column->mDynamicWidth)\n         {\n-            new_width = (mItemListRect.getWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns;\n+            new_width = (getColumnAreaWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns;\n         }\n         else\n         {\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 768,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollListCtrl::updateColumns"
+          ],
+          "git_context": "void LLScrollListCtrl::updateColumns(bool force_update)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 775,
+          "head_start": 769,
+          "id": "indra/llui/llscrolllistctrl.cpp@769,7",
+          "patch": " \n     // update column headers\n     std::vector<LLScrollListColumn*>::iterator column_ordered_it;\n-    S32 left = mItemListRect.mLeft;\n+    S32 left = mItemListRect.mLeft + getSelectedBarGutter();\n     LLScrollColumnHeader* last_header = NULL;\n     for (column_ordered_it = mColumnsIndexed.begin(); column_ordered_it != mColumnsIndexed.end(); ++column_ordered_it)\n     {\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
           "base_count": 7,
           "base_start": 1758,
           "candidate_features_from_subjects": [
@@ -164521,13 +164788,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 1764,
-          "head_start": 1758,
-          "id": "indra/llui/llscrolllistctrl.cpp@1758,7",
+          "head_end": 1765,
+          "head_start": 1759,
+          "id": "indra/llui/llscrolllistctrl.cpp@1759,7",
           "patch": "                 fg_color = (item->getEnabled() ? mFgUnselectedColor.get() : mFgDisabledColor.get());\n                 if( item->getSelected() && mCanSelect)\n                 {\n-                    if(item->getHighlighted())  // if it's highlighted, average the colors\n+                    if (item->getHighlighted() && mSelectedBarWidth <= 0)  // if it's highlighted, average the colors\n                     {\n                         select_color = lerp(mBgSelectedColor.get(), mHighlightedColor.get(), 0.5f);\n                     }\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
@@ -164567,13 +164838,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 1810,
-          "head_start": 1797,
-          "id": "indra/llui/llscrolllistctrl.cpp@1797,14",
+          "head_end": 1811,
+          "head_start": 1798,
+          "id": "indra/llui/llscrolllistctrl.cpp@1798,14",
           "patch": "                     hover_color = mBgReadOnlyColor.get();\n                 }\n \n-                item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding);\n+                item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding, getSelectedBarGutter());\n+\n+                if (mSelectedBarWidth > 0 && mCanSelect && item->getSelected())\n+                {\n+                    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);\n+                    gl_rect_2d(item_rect.mLeft, item_rect.mTop, item_rect.mLeft + mSelectedBarWidth,\n+                               item_rect.mBottom, mSelectedBarColor % alpha);\n+                }\n \n                 cur_y -= mLineHeight;\n             }\n",
           "purpose": "Edits gGL, LLTexUnit",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
@@ -164611,13 +164886,162 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 11,
-          "head_end": 2098,
-          "head_start": 2088,
-          "id": "indra/llui/llscrolllistctrl.cpp@2088,11",
+          "head_end": 2099,
+          "head_start": 2089,
+          "id": "indra/llui/llscrolllistctrl.cpp@2089,11",
           "patch": "     {\n         mDirty = mDirty || mSelectionChanged;\n         mSelectionChanged = false;\n+        mMouseUpHitItem = hitItem(x, y);\n+        mMouseUpColumn = getColumnIndexFromOffset(x);\n         onCommit();\n+        mMouseUpHitItem = nullptr;\n+        mMouseUpColumn = -1;\n     }\n \n     return LLUICtrl::handleMouseUp(x, y, mask);\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 8,
+          "base_start": 2347,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollListCtrl::getColumnAreaWidth",
+            "LLScrollListCtrl::getColumnIndexFromOffset"
+          ],
+          "git_context": "LLScrollListItem* LLScrollListCtrl::hitItem( S32 x, S32 y )",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 15,
+          "head_end": 2373,
+          "head_start": 2359,
+          "id": "indra/llui/llscrolllistctrl.cpp@2359,15",
+          "patch": "     return hit_item;\n }\n \n+S32 LLScrollListCtrl::getColumnAreaWidth() const\n+{\n+    return LLScrollListGutter::availableWidth(mItemListRect.getWidth(), getSelectedBarGutter());\n+}\n+\n S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)\n {\n+    // Cells are drawn the gutter in from the row edge; hit testing moves with them.\n+    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter());\n     // which column did we hit?\n     S32 left = 0;\n     S32 right = 0;\n",
+          "purpose": "Comment evidence: Cells are drawn the gutter in from the row edge; hit testing moves with them.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 2377,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollListCtrl::getColumnOffsetFromIndex"
+          ],
+          "git_context": "S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 2402,
+          "head_start": 2396,
+          "id": "indra/llui/llscrolllistctrl.cpp@2396,7",
+          "patch": " \n S32 LLScrollListCtrl::getColumnOffsetFromIndex(S32 index)\n {\n-    S32 column_offset = 0;\n+    S32 column_offset = LLScrollListGutter::columnOffset(0, getSelectedBarGutter());\n     ordered_columns_t::const_iterator iter = mColumnsIndexed.begin();\n     ordered_columns_t::const_iterator end = mColumnsIndexed.end();\n     for ( ; iter != end; ++iter)\n",
+          "purpose": "Edits LLScrollListGutter",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 16,
+          "base_start": 3106,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollListCtrl::addColumn"
+          ],
+          "git_context": "void LLScrollListCtrl::addColumn(const LLScrollListColumn::Params& column_params",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 16,
+          "head_end": 3140,
+          "head_start": 3125,
+          "id": "indra/llui/llscrolllistctrl.cpp@3125,16",
+          "patch": "             }\n             if (new_column->mRelWidth >= 0)\n             {\n-                new_column->setWidth((S32)ll_round(new_column->mRelWidth*mItemListRect.getWidth()));\n+                new_column->setWidth((S32)ll_round(new_column->mRelWidth*getColumnAreaWidth()));\n             }\n             else if(new_column->mDynamicWidth)\n             {\n                 mNumDynamicWidthColumns++;\n-                new_column->setWidth((mItemListRect.getWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns);\n+                new_column->setWidth((getColumnAreaWidth() - mTotalStaticColumnWidth - mTotalColumnPadding) / mNumDynamicWidthColumns);\n             }\n             S32 top = mItemListRect.mTop;\n \n-            S32 left = mItemListRect.mLeft;\n+            S32 left = mItemListRect.mLeft + getSelectedBarGutter();\n             for (column_map_t::iterator itor = mColumns.begin();\n                 itor != mColumns.end();\n                 ++itor)\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
@@ -164675,6 +165099,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
             },
@@ -164715,14 +165143,18 @@
           "git_context": "public:",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 13,
-          "head_end": 325,
+          "head_count": 16,
+          "head_end": 328,
           "head_start": 313,
-          "id": "indra/llui/llscrolllistctrl.h@313,13",
-          "patch": "     void setBgWriteableColor(const LLColor4 &c) { mBgWriteableColor = c; }\n     void setReadOnlyBgColor(const LLColor4 &c)  { mBgReadOnlyColor = c; }\n     void setBgSelectedColor(const LLColor4 &c)  { mBgSelectedColor = c; }\n+    // Optional bar on the left edge of selected rows. Width 0 (the default) draws none\n+    // and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px\n+    // so the bar never paints over the first cell, and (b) keeps the plain selected fill\n+    // on a selected row that is also highlighted, so the selected text colour chosen for\n+    // that fill stays readable (the default blends the fill with the highlight colour).\n+    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; }\n+    S32  getSelectedBarGutter() const { return mSelectedBarWidth > 0 ? mSelectedBarWidth + 1 : 0; }\n     void setBgStripeColor(const LLColor4& c)    { mBgStripeColor = c; }\n     void setFgSelectedColor(const LLColor4 &c)  { mFgSelectedColor = c; }\n     void setFgUnselectedColor(const LLColor4 &c){ mFgUnselectedColor = c; }\n",
+          "id": "indra/llui/llscrolllistctrl.h@313,16",
+          "patch": "     void setBgWriteableColor(const LLColor4 &c) { mBgWriteableColor = c; }\n     void setReadOnlyBgColor(const LLColor4 &c)  { mBgReadOnlyColor = c; }\n     void setBgSelectedColor(const LLColor4 &c)  { mBgSelectedColor = c; }\n+    // Optional bar on the left edge of selected rows. Width 0 (the default) draws none\n+    // and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px\n+    // so the bar never paints over the first cell, and (b) keeps the plain selected fill\n+    // on a selected row that is also highlighted, so the selected text colour chosen for\n+    // that fill stays readable (the default blends the fill with the highlight colour).\n+    // The gutter also moves hit testing / hover / tooltips, cell rects, header positions and the\n+    // width the columns share (llscrolllistgutter.h); a list without the bar is unchanged.\n+    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; mColumnsDirty = true; }\n+    S32  getSelectedBarGutter() const { return mSelectedBarWidth > 0 ? mSelectedBarWidth + 1 : 0; }\n+    S32  getColumnAreaWidth() const;   // item list width minus the gutter\n     void setBgStripeColor(const LLColor4& c)    { mBgStripeColor = c; }\n     void setFgSelectedColor(const LLColor4 &c)  { mFgSelectedColor = c; }\n     void setFgUnselectedColor(const LLColor4 &c){ mFgUnselectedColor = c; }\n",
           "purpose": "Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
@@ -164764,13 +165196,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 421,
-          "head_start": 413,
-          "id": "indra/llui/llscrolllistctrl.h@413,9",
+          "head_end": 424,
+          "head_start": 416,
+          "id": "indra/llui/llscrolllistctrl.h@416,9",
           "patch": "     void setPageLines(S32 page_lines );\n \n     LLScrollListItem*   hitItem(S32 x,S32 y);\n+    // Valid only during the mouse-up commit, for actions requiring a row hit.\n+    LLScrollListItem* getMouseUpHitItem(S32 column) const\n+    { return mMouseUpColumn == column ? mMouseUpHitItem : nullptr; }\n     virtual void        scrollToShowSelected();\n \n     // LLEditMenuHandler functions\n",
           "purpose": "Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
@@ -164812,13 +165248,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 501,
-          "head_start": 489,
-          "id": "indra/llui/llscrolllistctrl.h@489,13",
+          "head_end": 504,
+          "head_start": 492,
+          "id": "indra/llui/llscrolllistctrl.h@492,13",
           "patch": "     item_list&      getItemList() { return mItemList; }\n \n     void            updateLineHeight();\n+    // [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl\n+    // parity); mLineHeight is private so expose a narrow setter.\n+    void            setLineHeight(S32 height) { mLineHeight = height; }\n \n private:\n+    LLScrollListItem* mMouseUpHitItem = nullptr;\n+    S32 mMouseUpColumn = -1;\n     void            drawItems();\n \n     void            updateLineHeightInsert(LLScrollListItem* item);\n",
           "purpose": "Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
@@ -164860,13 +165300,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 567,
-          "head_start": 560,
-          "id": "indra/llui/llscrolllistctrl.h@560,8",
+          "head_end": 570,
+          "head_start": 563,
+          "id": "indra/llui/llscrolllistctrl.h@563,8",
           "patch": "     LLUIColor       mBgWriteableColor;\n     LLUIColor       mBgReadOnlyColor;\n     LLUIColor       mBgSelectedColor;\n+    LLColor4        mSelectedBarColor;\n+    S32             mSelectedBarWidth = 0;\n     LLUIColor       mBgStripeColor;\n     LLUIColor       mFgSelectedColor;\n     LLUIColor       mFgUnselectedColor;\n",
           "purpose": "Edits LLColor4",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
             {
               "commit": "6b9997ce718",
               "subject": "Clones: Clear animations for posing; list review fixes"
