@@ -1458,6 +1458,8 @@ set(viewer_HEADER_FILES
     algazepolicy.h
     algazehot.h
     algazehotslots.h
+    algazenearby.h
+    algazenearbyname.h
     algazemotor.h
     alpanellensgaze.h
     alpaneldanceball.h

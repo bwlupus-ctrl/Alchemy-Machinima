@@ -10,6 +10,7 @@
 #ifndef AL_ALFLOATERGAZECUES_H
 #define AL_ALFLOATERGAZECUES_H
 
+#include "aluirefresh.h"
 #include "lldirectorcast.h"
 #include "llfloater.h"
 
@@ -33,6 +34,12 @@ public:
     // build new cues and list rows the same way.
     static LLDirectorCast::GazeCue makeDefaultCue(const LLUUID& actor_id);
     static std::string targetLabel(const LLDirectorCast::GazeCue& cue);
+    // Every cue's rendered target label in one string. The cue lists compare it on a 2 s tick
+    // so a name that RLV now hides (or that finally arrived) is redacted/healed without a cue
+    // revision change.
+    static std::string targetLabelSignature(const LLDirectorCast::GazeCueList& cues);
+    // Rewrite the target column of existing rows in place; false when rows and cues do not match.
+    static bool relabelRows(LLScrollListCtrl* list, const LLDirectorCast::GazeCueList& cues, S32 column);
     static const char* macroLabel(ALGazeMath::EGazeCueMacro macro);
     // Select one cue of this actor's list and load it into the editor (the page opens the floater here).
     void selectCueIndex(S32 index);
@@ -42,7 +49,7 @@ private:
     LLDirectorCast::GazeCue defaultCue() const;
     S32 selectedCueIndex() const;
     void refreshCueList(bool force = false);
-    void refreshCastCombo(bool force = false);
+    void refreshCastCombo(bool force = false, bool relabel = false);
     void refreshEditorVisibility();
     void loadEditor(const LLDirectorCast::GazeCue& cue);
     LLDirectorCast::GazeCue readEditor(
@@ -83,6 +90,14 @@ private:
     U64 mSeenInfluenceRevision = U64(-1);
     std::string mCastSignature;
     LLActorMover::GazeTarget mEditorTarget;
+    // A saved gaze target that is not a cast member (picked from the Gaze page's Nearby list) is
+    // offered as an extra cast-combo row so it survives editing; its label is re-derived on a
+    // 2 s tick (display name, RLV-gated, "(away)" when absent).
+    std::string mExtraLabel;
+    LLUUID mExtraRef;   // the id the extra row (and its label) describes; null when there is no row
+    std::string mCueLabelSignature;
+    ALLiveReadoutClock mNameClock{0.5f}; // Hz: every 2 s
+    std::string extraTargetLabel() const;
 
     LLTextBox* mSubject = nullptr;
     LLScrollListCtrl* mCueList = nullptr;

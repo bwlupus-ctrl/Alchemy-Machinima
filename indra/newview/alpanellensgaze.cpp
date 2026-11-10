@@ -10,6 +10,8 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanellensgaze.h"
+#include "alavatarsubjectpicker.h"
+#include "algazenearbyname.h"
 #include "alghoststudio.h"
 #include "alobjectproperties.h"
 #include "lltool.h"
@@ -37,6 +39,7 @@
 #include "llviewercamera.h"
 #include "llviewercontrol.h"
 #include "llvoavatarself.h"
+#include "rlvactions.h"
 
 #include <algorithm>
 #include <tuple>
@@ -57,16 +60,103 @@ std::string actorName(const LLUUID& id)
     if (const LLDirectorCast::CastMember* member =
             LLDirectorCast::instance().getMember(id))
     {
+        // Cast members keep their existing behaviour exactly: the stored name, else the name
+        // cache's complete name.
         if (!member->mLastName.empty())
         {
             return member->mLastName;
         }
+        if (LLAvatarName name; LLAvatarNameCache::get(id, &name))
+        {
+            return name.getCompleteName();
+        }
+        return "Unknown";
     }
-    if (LLAvatarName name; LLAvatarNameCache::get(id, &name))
+    // Not a cast member (a subject, or a gaze target that is not cast): the shared rule, display
+    // name only, withheld under RLV name hiding and @shownearby, never a UUID.
+    const std::string name = ALGazeNearby::nonCastTargetName(id);
+    return name.empty() ? std::string("Unknown") : name;
+}
+
+// Display name of a person who may not be a cast member: the name cache's DISPLAY name only,
+// never a user or legacy name. Empty while the cache has nothing yet or RLV hides it. Never a UUID.
+std::string personName(const LLUUID& id)
+{
+    return ALGazeNearby::personDisplayName(id); // RLV name hiding applies (shared rule)
+}
+
+// Name for a saved gaze target that is no longer on the list: the name cache's display name.
+// Empty when unknown (awayLabel() then says "Unknown person"; it heals when the name arrives
+// because every refresh re-derives the label).
+std::string knownPersonName(const LLUUID& id)
+{
+    // Under @shownearby the saved target stays but is shown by a neutral label only.
+    return ALGazeNearby::nonCastTargetName(id);
+}
+
+// The agent id a Gaze/Hot combo VALUE stands for. The disabled "Nearby" header's sentinel (and
+// the empty placeholder) is never an id: every conversion of these combos' values goes through
+// here, or compares against HEADER_VALUE first.
+LLUUID comboValueId(const std::string& value)
+{
+    if (value.empty() || value == ALGazeNearby::HEADER_VALUE)
     {
-        return name.getCompleteName();
+        return LLUUID::null;
     }
-    return id.asString().substr(0, 8);
+    return LLUUID(value);
+}
+
+bool listedAmong(const std::vector<ALGazeNearby::Entry>& people, const LLUUID& id)
+{
+    return std::any_of(people.begin(), people.end(),
+                       [&](const ALGazeNearby::Entry& e) { return e.mId == id; });
+}
+
+// True when RLV now hides the name of anyone a picker is still showing, or (independently of
+// names) no longer lets nearby agents be shown at all (@shownearby).
+bool nearbyNamesRevoked(const std::vector<ALGazeNearby::Entry>& shown)
+{
+    if (!shown.empty() && !ALGazeNearby::nearbyAllowed())
+    {
+        return true;
+    }
+    return std::any_of(shown.begin(), shown.end(), [](const ALGazeNearby::Entry& e)
+                       { return !RlvActions::canShowName(RlvActions::SNC_DEFAULT, e.mId); });
+}
+
+// Every real avatar around the user with a known name, sorted by id (so a membership or
+// name change is a plain compare). Same source and filters as the Director subject picker's
+// nearby list: no clones, animesh, dummies, dead or deleting avatars; never the user's own.
+void collectNearbyPeople(std::vector<ALGazeNearby::Entry>& out)
+{
+    out.clear();
+    if (!ALGazeNearby::nearbyAllowed())
+    {
+        return; // RLV @shownearby: nobody around is enumerated (independent of name hiding)
+    }
+    for (LLCharacter* character : LLCharacter::sInstances)
+    {
+        auto* avatar = dynamic_cast<LLVOAvatar*>(character);
+        if (!avatar || avatar->isSelf() || !ALAvatarSubjectPicker::valid(avatar, false, false) ||
+            !RlvActions::canShowName(RlvActions::SNC_DEFAULT, avatar->getID()))
+        {
+            continue; // under RLV name hiding the person is not offered by name
+        }
+        ALGazeNearby::Entry entry;
+        entry.mId = avatar->getID();
+        entry.mName = personName(entry.mId);
+        if (entry.mName.empty())
+        {
+            continue; // no display name cached yet: never offer a nameless row
+        }
+        const LLVector3d pos = avatar->getPositionGlobal();
+        entry.mPos[0] = pos.mdV[VX];
+        entry.mPos[1] = pos.mdV[VY];
+        entry.mPos[2] = pos.mdV[VZ];
+        out.push_back(std::move(entry));
+    }
+    std::sort(out.begin(), out.end(),
+              [](const ALGazeNearby::Entry& a, const ALGazeNearby::Entry& b) { return a.mId < b.mId; });
 }
 
 bool isEditing(LLUICtrl* control)
@@ -405,7 +495,7 @@ void ALPanelLensGaze::rewriteActorReferences(const LLUUID& old_id, const LLUUID&
     for (ALPanelLensGaze* panel : actorGazePanels())
     {
         LLUUID selected_target = panel->mCast
-            ? LLUUID(panel->mCast->getSelectedValue().asString()) : LLUUID::null;
+            ? comboValueId(panel->mCast->getSelectedValue().asString()) : LLUUID::null;
         if (selected_target == old_id) selected_target = new_id;
         for (LLUUID& actor : panel->mSelected)
             if (actor == old_id) actor = new_id;
@@ -1032,6 +1122,16 @@ void ALPanelLensGaze::draw()
     {
         refreshLiveControls();
     }
+    // Nearby people for the Head/Eyes cast picker and the Hot target picker: a 2 s poll while
+    // the panel is on screen. Both refreshes run on EVERY tick and recompute their own
+    // projection, so a rebuild declined because a combo had focus is retried. They honour
+    // focus/capture, except that a name RLV has since hidden is removed even from an open list.
+    if (mNearbyClock.due())
+    {
+        pollNearby();
+        refreshCastCombo(castNamesRevoked());
+        refreshHotControls(nearbyNamesRevoked(mHotNearbyShown));
+    }
     // Random-performance cycling is driven by gazeRandomPerfTick() on the idle
     // callback list (registered in the ctor), NOT here, so it keeps running when
     // the floater is closed.
@@ -1050,6 +1150,7 @@ void ALPanelLensGaze::onVisibilityChange(bool new_visibility)
     {
         mStructureGate.reset();
         mLiveClock.forceDue();
+        mNearbyClock.forceDue();
     }
     LLPanel::onVisibilityChange(new_visibility);
 }
@@ -1221,15 +1322,64 @@ void ALPanelLensGaze::refreshCastCombo(bool force)
         ? cast.getEyeGazeTarget(displayed).mCastRef
         : cast.getGazeTarget(displayed).mCastRef;
     const U64 cast_revision = cast.getCastRevision();
+    // The Nearby projection for THIS actor (range, order, cap, saved target kept) and the
+    // saved-target "(away)" label come from the last poll (cached between polls, so a structure
+    // refresh per frame while a slider drags allocates nothing); any change in who is shown (a
+    // walk across the range, a closer person, a new far clip, a name that finally arrived)
+    // makes the combo stale.
+    const LLUUID target_actor = displayed.notNull() ? displayed
+        : (isAgentAvatarValid() ? gAgentAvatarp->getID() : LLUUID::null);
+    nearbyFor(mCastProjection, target_actor, current);
+    const std::vector<ALGazeNearby::Entry>& nearby = mCastProjection.mList;
+    static const std::string no_label, you_label("You");
+    const std::string* away_ptr = &no_label; // a reference to the cached label: no per-frame string copy
+    bool away_named = false;
+    const uuid_vec_t& cast_ids = cast.getIds();
+    if (current.notNull() && current != target_actor && !listedAmong(nearby, current) &&
+        std::find(cast_ids.begin(), cast_ids.end(), current) == cast_ids.end())
+    {
+        if (LLDirectorCast::isSelf(current))
+        {
+            away_ptr = &you_label;
+        }
+        else
+        {
+            // The name-cache lookup and label are cached per poll and target (a slider drag
+            // refreshes per frame); the 2 s tick re-derives them, so a name that arrives or
+            // that RLV hides is picked up there.
+            if (mAwayPoll != mPollGeneration || mAwayFor != current)
+            {
+                mAwayPoll = mPollGeneration;
+                mAwayFor = current;
+                const std::string known = knownPersonName(current);
+                mAwayNamedCached = !known.empty();
+                mAwayLabelCached = ALGazeNearby::awayLabel(known);
+            }
+            away_named = mAwayNamedCached;
+            away_ptr = &mAwayLabelCached;
+        }
+    }
+    const std::string& away_label = *away_ptr;
     const bool stale = cast_revision != mCastComboRevision ||
-        displayed != mCastComboActor || current != mCastComboSelection;
+        displayed != mCastComboActor || current != mCastComboSelection || mCastRestore ||
+        !ALGazeNearby::sameMembers(nearby, mCastNearbyShown) || away_label != mCastAwayShown;
     if (stale && (force || !isEditing(mCast)))
     {
         mCastComboRevision = cast_revision;
         mCastComboActor = displayed;
         mCastComboSelection = current;
+        mCastNearbyShown = nearby;
+        mCastAwayShown = away_label;
+        mCastAwayId = away_label.empty() ? LLUUID::null : current;
+        mCastAwayNamed = away_named;
+        mCastRestore = false;
+        if (force && mCast->isListVisible())
+        {
+            mCast->hideList(); // an open list must not re-select a stale row index afterwards
+        }
         mCast->removeall();
-        for (const LLUUID& id : cast.getIds())
+        std::string first_value; // default row, chosen by VALUE (never the Nearby header)
+        for (const LLUUID& id : cast_ids)
         {
             const bool is_target_actor = displayed.notNull()
                 ? id == displayed
@@ -1237,7 +1387,26 @@ void ALPanelLensGaze::refreshCastCombo(bool force)
             if (!is_target_actor)
             {
                 mCast->add(actorName(id), LLSD(id.asString()));
+                if (first_value.empty()) first_value = id.asString();
             }
+        }
+        // Nearby section: real avatars around the user who are not cast members. Picking one
+        // stores GAZE_CAST + that agent id, exactly like a cast target.
+        if (!nearby.empty())
+        {
+            mCast->add(ALGazeNearby::HEADER_LABEL, LLSD(std::string(ALGazeNearby::HEADER_VALUE)), ADD_BOTTOM, false);
+            for (const ALGazeNearby::Entry& person : nearby)
+            {
+                mCast->add(person.mName, LLSD(person.mId.asString()));
+                if (first_value.empty()) first_value = person.mId.asString();
+            }
+        }
+        // A saved target who is not here stays visible and selected, so the combo never
+        // silently shows someone else.
+        if (!away_label.empty())
+        {
+            mCast->add(away_label, LLSD(current.asString()));
+            if (first_value.empty()) first_value = current.asString();
         }
         if (mCast->getItemCount() == 0)
         {
@@ -1251,9 +1420,91 @@ void ALPanelLensGaze::refreshCastCombo(bool force)
         }
         if (current.isNull() || mCast->getCurrentIndex() < 0)
         {
-            mCast->selectFirstItem();
+            if (!first_value.empty())
+            {
+                setValueIfChanged(mCast, LLSD(first_value), true);
+            }
+            else
+            {
+                mCast->selectFirstItem();
+            }
         }
     }
+}
+
+void ALPanelLensGaze::pollNearby()
+{
+    LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Gaze pollNearby");
+    std::vector<ALGazeNearby::Entry> fresh;
+    fresh.reserve(mNearbyPeople.size() + 4);
+    collectNearbyPeople(fresh);
+    mNearbyPeople.swap(fresh); // positions included: each picker compares its own projection
+    ++mPollGeneration;
+}
+
+bool ALPanelLensGaze::castNamesRevoked() const
+{
+    return nearbyNamesRevoked(mCastNearbyShown) ||
+        (mCastAwayNamed && !RlvActions::canShowName(RlvActions::SNC_DEFAULT, mCastAwayId)) ||
+        (mCastAwayNamed && !ALGazeNearby::nearbyAllowed());
+}
+
+// The live, still-nameable record of a nearby person, for validating a commit.
+bool ALPanelLensGaze::liveNearbyName(const LLUUID& id, std::string& name) const
+{
+    if (!ALGazeNearby::nearbyAllowed()) return false; // RLV @shownearby: no Nearby pick is live
+    for (const ALGazeNearby::Entry& person : mNearbyPeople)
+    {
+        if (person.mId == id)
+        {
+            if (!RlvActions::canShowName(RlvActions::SNC_DEFAULT, id)) return false;
+            name = person.mName;
+            return !name.empty();
+        }
+    }
+    return false;
+}
+
+// The people to offer after the cast members: the last poll's avatars within draw distance
+// of the user, ordered nearest the actor first, at most 16, cast members left out. `keep` (the
+// saved target) stays listed while present even past the range or cap.
+void ALPanelLensGaze::nearbyFor(NearbyProjection& proj, const LLUUID& actor, const LLUUID& keep) const
+{
+    static LLCachedControl<F32> draw_distance(gSavedSettings, "RenderFarClip", 64.f);
+    const U64 cast_revision = LLDirectorCast::instance().getCastRevision();
+    const F32 far_clip = draw_distance;
+    if (proj.mPoll != mPollGeneration || proj.mCastRevision != cast_revision || proj.mActor != actor ||
+        proj.mKeep != keep || proj.mFar != far_clip)
+    {
+        proj.mPoll = mPollGeneration;
+        proj.mCastRevision = cast_revision;
+        proj.mActor = actor;
+        proj.mKeep = keep;
+        proj.mFar = far_clip;
+        const LLVector3d user = gAgent.getPositionGlobal();
+        F64 range_ref[3] = { user.mdV[VX], user.mdV[VY], user.mdV[VZ] };
+        F64 order_ref[3] = { range_ref[0], range_ref[1], range_ref[2] };
+        if (LLVOAvatar* body = actor.notNull() ? LLDirectorCast::instance().resolve(actor, false) : nullptr)
+        {
+            const LLVector3d at = body->getPositionGlobal();
+            order_ref[0] = at.mdV[VX];
+            order_ref[1] = at.mdV[VY];
+            order_ref[2] = at.mdV[VZ];
+        }
+        proj.mList = mNearbyPeople;
+        // A name RLV hides never enters a projection, so a rebuild inside the poll window
+        // cannot re-list it.
+        proj.mList.erase(std::remove_if(proj.mList.begin(), proj.mList.end(), [](const ALGazeNearby::Entry& e)
+            { return !RlvActions::canShowName(RlvActions::SNC_DEFAULT, e.mId); }), proj.mList.end());
+        if (!ALGazeNearby::nearbyAllowed()) proj.mList.clear(); // @shownearby: nobody is offered
+        ALGazeNearby::select(proj.mList, LLDirectorCast::instance().getIds(), actor, order_ref, range_ref,
+                             static_cast<F64>(far_clip), keep);
+        return;
+    }
+    // Cached: still drop any name RLV has hidden since (in place, no allocation).
+    proj.mList.erase(std::remove_if(proj.mList.begin(), proj.mList.end(), [](const ALGazeNearby::Entry& e)
+        { return !RlvActions::canShowName(RlvActions::SNC_DEFAULT, e.mId); }), proj.mList.end());
+    if (!ALGazeNearby::nearbyAllowed()) proj.mList.clear();
 }
 
 void ALPanelLensGaze::refreshControls()
@@ -1858,7 +2109,27 @@ void ALPanelLensGaze::onTargetDetailScopeCommit()
 void ALPanelLensGaze::onCastCommit()
 {
     const std::string value = mCast->getSelectedValue().asString();
-    const LLUUID cast_target = value.empty() ? LLUUID::null : LLUUID(value);
+    if (value == ALGazeNearby::HEADER_VALUE)
+    {
+        // The disabled "Nearby" header reached by some selection path: never a target and it
+        // must not clear the saved one. Rebuild and put the combo back on the saved target,
+        // even while it has focus (nothing else marks it stale).
+        mCastRestore = true;
+        refreshCastCombo(true);
+        return;
+    }
+    const LLUUID cast_target = comboValueId(value);
+    std::string live_name;
+    if (cast_target.notNull() && listedAmong(mCastNearbyShown, cast_target) &&
+        !liveNearbyName(cast_target, live_name))
+    {
+        // A Nearby pick must be present in the live poll and nameable right now: the open list
+        // can be stale (the person left, or RLV hid the name since it was built). Saved "(away)"
+        // references are not in that list and stay as they are.
+        mCastRestore = true;
+        refreshCastCombo(true);
+        return;
+    }
     editDetailTargetsFor(editActors(), mEditingEyeTarget,
         [cast_target](LLActorMover::GazeTarget& t)
         { t.mCastRef = cast_target; });
@@ -2490,30 +2761,74 @@ bool hotWhoAvailable(const std::string& who)
 }
 }
 
+// Nearby people after the cast and clones in the Hot target actor combo. Only people the combo
+// offers can be committed (hotNearbyOffered); a nearby person who leaves becomes "No target"
+// with the saved reference kept, exactly like any other unavailable target.
+void ALPanelLensGaze::appendHotNearbyChoices(const std::vector<ALGazeNearby::Entry>& nearby)
+{
+    mHotNearbyOffered.clear();
+    mHotNearbyShown = nearby;
+    if (nearby.empty()) return;
+    mHotActor->add(ALGazeNearby::HEADER_LABEL, LLSD(std::string(ALGazeNearby::HEADER_VALUE)), ADD_BOTTOM, false); // ui-draw-lint: allow(raw-write) Rebuilt only with the revision-gated choice lists.
+    for (const ALGazeNearby::Entry& person : nearby)
+    {
+        mHotActor->add(person.mName, person.mId); // ui-draw-lint: allow(raw-write) Rebuilt only with the revision-gated choice lists.
+        mHotNearbyOffered.push_back(person.mId);
+    }
+}
+
+bool ALPanelLensGaze::hotNearbyOffered(const LLUUID& id) const
+{
+    return std::find(mHotNearbyOffered.begin(), mHotNearbyOffered.end(), id) != mHotNearbyOffered.end();
+}
+
 void ALPanelLensGaze::refreshHotControls(bool force_choices)
 {
     if (!mHotSlot) return;
     auto& cast = LLDirectorCast::instance(); const auto& slot = cast.getHotGazeSlots()[mHotSlotIndex];
+    // The Nearby projection for this slot's Who (or the nearest to You for a group) with the
+    // saved target kept (cached between polls, so a per-frame structure refresh allocates
+    // nothing); a walk across the range, a closer person or a new far clip changes the list.
+    nearbyFor(mHotProjection, slot.mGroup.empty() ? slot.mWho : LLUUID::null,
+              slot.mTarget.mMode == LLActorMover::GazeTarget::CAST_MEMBER ? slot.mTarget.mCastRef : LLUUID::null);
+    const std::vector<ALGazeNearby::Entry>& hot_nearby = mHotProjection.mList;
+    const bool nearby_changed = !ALGazeNearby::sameMembers(hot_nearby, mHotNearbyShown);
     // Check focus before consuming revisions: a membership change stays pending
     // until both combos can be rebuilt safely. Timer-only refreshes need no list work.
-    const bool rebuild_choices = (force_choices || (!alIsBeingEdited(mHotWho) && !alIsBeingEdited(mHotActor))) &&
-        mHotChoiceGate.changed({cast.getCastRevision(), ALGhostStudio::instance().getInstanceRevision()}) &&
-        !mHotChoiceGate.lastWasFallback();
+    // The choice context (slot, Who, group) is part of the gate.
+    bool rebuild_choices = false;
+    if (force_choices || (!alIsBeingEdited(mHotWho) && !alIsBeingEdited(mHotActor)))
+    {
+        const bool gate_changed = mHotChoiceGate.changed({cast.getCastRevision(),
+            ALGhostStudio::instance().getInstanceRevision(), static_cast<U64>(mHotSlotIndex),
+            static_cast<U64>(slot.mWho.getCRC32()), static_cast<U64>(std::hash<std::string>()(slot.mGroup))}) &&
+            !mHotChoiceGate.lastWasFallback();
+        // mHotRestore: a refused commit must put the combos back even while focused.
+        rebuild_choices = gate_changed || nearby_changed || mHotRestore;
+    }
     if (rebuild_choices)
     {
+        mHotRestore = false;
+        if (force_choices)
+        {
+            // Open lists must not re-select a stale row index after the rebuild.
+            if (mHotWho->isListVisible()) mHotWho->hideList();
+            if (mHotActor->isListVisible()) mHotActor->hideList();
+        }
         mHotWho->removeall(); mHotActor->removeall(); // ui-draw-lint: allow(raw-write) Actor and clone choice lists rebuild only when their model revisions change.
         mHotWho->add("Choose actor or group", ""); mHotActor->add("Choose target actor", LLUUID::null);
         mHotWho->add("You", gAgentID.asString()); mHotActor->add("You", gAgentID);
         std::set<LLUUID> seen{gAgentID};
         auto add = [&](const LLUUID& id, const std::string& name) {
             if (id.isNull() || !seen.insert(id).second) return;
-            const std::string label = name.empty() ? "Actor " + id.asString().substr(0, 8) : name;
+            const std::string label = name.empty() ? std::string("Unknown actor") : name; // never a UUID
             mHotWho->add(label, id.asString()); mHotActor->add(label, id);
         };
         for (const auto& actor : cast.getCast()) add(actor.mId, actor.mLastName);
         for (const auto& clone : ALGhostStudio::instance().getInstances())
             if (clone.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
                 add(clone.mEntityId.notNull() ? clone.mEntityId : clone.mId, clone.mName);
+        appendHotNearbyChoices(hot_nearby);
         for (const auto& group : cast.getGroupNames()) mHotWho->add("Group: " + group, "group:" + group);
     }
     setValueIfChanged(mHotSlot, mHotSlotIndex);
@@ -2544,6 +2859,15 @@ void ALPanelLensGaze::refreshHotControls(bool force_choices)
 void ALPanelLensGaze::commitHotControls(LLUICtrl* source)
 {
     cancelHotGazePick(this);
+    if (source == mHotActor && mHotActor->getValue().asString() == ALGazeNearby::HEADER_VALUE)
+    {
+        // The disabled "Nearby" header reached by some selection path: never a target, and it
+        // must not clear the saved one. Rebuild and put the combo back on the saved target,
+        // even while it has focus (nothing else marks it stale).
+        mHotRestore = true;
+        refreshHotControls(true);
+        return;
+    }
     auto& cast = LLDirectorCast::instance(); auto slot = cast.getHotGazeSlots()[mHotSlotIndex];
     const std::string who = mHotWho->getValue().asString();
     if (source == mHotWho && mHotWho->getCurrentIndex() >= 0 && hotWhoAvailable(who))
@@ -2558,15 +2882,25 @@ void ALPanelLensGaze::commitHotControls(LLUICtrl* source)
     { slot.mHasTarget = true; slot.mTargetName = "Camera"; }
     else if (mode == LLActorMover::GazeTarget::CAST_MEMBER)
     {
-        const LLUUID actor = mHotActor->getValue().asUUID();
+        const LLUUID actor = comboValueId(mHotActor->getValue().asString()); // never parses the header sentinel
+        // A Nearby pick must be offered AND still present and nameable right now (the offered
+        // list can be stale while the dropdown is open, and RLV may have hidden the name since).
+        std::string nearby_name;
+        const bool nearby_pick = actor.notNull() && hotNearbyOffered(actor) && liveNearbyName(actor, nearby_name);
         // Only this combo's explicit, still-valid selection may author an actor.
         // Other commits preserve saved references, including unavailable ones.
         if (source == mHotActor && mHotActor->getCurrentIndex() >= 0 &&
-            (actor.isNull() || hotActorAvailable(actor)))
+            (actor.isNull() || hotActorAvailable(actor) || nearby_pick))
         {
             slot.mTarget.mCastRef = actor;
             slot.mHasTarget = actor.notNull();
-            slot.mTargetName = actor.notNull() ? mHotActor->getSelectedItemLabel() : "";
+            // The live name, never the row label: a hidden name is never stored.
+            slot.mTargetName = actor.isNull() ? std::string()
+                : (nearby_pick ? nearby_name : mHotActor->getSelectedItemLabel());
+        }
+        else if (source == mHotActor)
+        {
+            mHotRestore = true; // a refused pick (departed, RLV-hidden, not offered): restore the combo
         }
     }
     slot.mTarget.mPickedSpot = mHotSpot->getValue().asInteger() == 1;
@@ -2576,5 +2910,5 @@ void ALPanelLensGaze::commitHotControls(LLUICtrl* source)
     slot.mReturn = static_cast<F32>(mHotReturn->getValue().asReal()); slot.mHead = static_cast<F32>(mHotHead->getValue().asReal());
     slot.mEyes = static_cast<F32>(mHotEyes->getValue().asReal()); slot.mTorso = static_cast<F32>(mHotTorso->getValue().asReal());
     slot.mStay = !mHotAfter->getValue().asBoolean(); slot.mHold = mHotMode->getValue().asInteger() == 1;
-    cast.setHotGazeSlot(mHotSlotIndex, slot); refreshHotControls();
+    cast.setHotGazeSlot(mHotSlotIndex, slot); refreshHotControls(mHotRestore);
 }

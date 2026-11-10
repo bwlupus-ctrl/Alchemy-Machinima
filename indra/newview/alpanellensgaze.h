@@ -12,6 +12,7 @@
 
 #include "llpanel.h"
 #include "aluirefresh.h"
+#include "algazenearby.h"
 #include "lluuid.h"
 
 #include <map>
@@ -62,6 +63,28 @@ private:
     // is a single representative used to read+present current values.
     LLUUID     editDisplayActor() const;
     void refreshCastCombo(bool force = false);
+    // Nearby people offered after the cast members in the Head/Eyes target picker and the Hot
+    // targets actor picker. A target picked here is stored exactly like a cast target.
+    // pollNearby() reads the live avatars from draw() once every 2 s, only while the panel is on
+    // screen. Each picker then recomputes its own projection (range, order, cap for ITS actor)
+    // and rebuilds when the displayed people differ; nothing here runs per frame.
+    void pollNearby();
+    // A picker's cached projection. Recomputed only when the poll, the actor, the saved target,
+    // the cast or the draw distance changed, so a slider drag (a structure refresh per frame)
+    // allocates nothing. Names RLV now hides are dropped on EVERY call, cached or not.
+    struct NearbyProjection
+    {
+        U64 mPoll = U64(-1), mCastRevision = U64(-1);
+        LLUUID mActor, mKeep;
+        F32 mFar = -1.f;
+        std::vector<ALGazeNearby::Entry> mList;
+    };
+    void nearbyFor(NearbyProjection& proj, const LLUUID& actor, const LLUUID& keep) const;
+    // RLV now hides a name the Gaze combo still shows: a Nearby row OR the saved "(away)" row.
+    bool castNamesRevoked() const;
+    void appendHotNearbyChoices(const std::vector<ALGazeNearby::Entry>& nearby);
+    bool hotNearbyOffered(const LLUUID& id) const;
+    bool liveNearbyName(const LLUUID& id, std::string& name) const;
     void refreshApplyGroupCombo();
     void refreshEditActorCombo();
     void refreshControls();
@@ -148,6 +171,24 @@ private:
     U64 mCastComboRevision = 0;
     LLUUID mCastComboActor;
     LLUUID mCastComboSelection;
+    // Live avatars at the last poll (sorted by id) and the people each picker currently shows
+    // (compared with a fresh projection on every refresh), plus the saved-target "(away)" label.
+    std::vector<ALGazeNearby::Entry> mNearbyPeople;
+    std::vector<ALGazeNearby::Entry> mCastNearbyShown;
+    std::string mCastAwayShown;
+    U64 mAwayPoll = U64(-1);       // per-poll, per-target cache of the away label (no per-frame name lookup)
+    LLUUID mAwayFor;
+    std::string mAwayLabelCached;
+    bool mAwayNamedCached = false;
+    LLUUID mCastAwayId;            // the displayed "(away)" row's target (null when none)
+    bool mCastAwayNamed = false;   // ...and whether that row shows a real name (RLV can hide it)
+    bool mCastRestore = false;     // a refused commit: rebuild and re-select the saved target even while focused
+    bool mHotRestore = false;      // same for the Hot actor combo
+    U64 mPollGeneration = 0;
+    NearbyProjection mCastProjection, mHotProjection;
+    std::vector<ALGazeNearby::Entry> mHotNearbyShown;
+    ALLiveReadoutClock mNearbyClock{0.5f}; // Hz: one poll every 2 s
+    uuid_vec_t mHotNearbyOffered;
     U64 mEditActorRevision = 0;
     S32 mEditActorDisplayedSlot = -2;
     U64 mSlotIdentityRevision = 0;

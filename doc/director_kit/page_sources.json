@@ -59722,7 +59722,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1913,
+              "line": 1914,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -59735,7 +59735,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2013,
+              "line": 2014,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -59895,7 +59895,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1914,
+              "line": 1915,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -59908,7 +59908,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2015,
+              "line": 2016,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -60035,7 +60035,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1915,
+              "line": 1916,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -60048,7 +60048,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2017,
+              "line": 2018,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -60175,7 +60175,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1916,
+              "line": 1917,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -60188,7 +60188,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2019,
+              "line": 2020,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -60361,7 +60361,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1920,
+              "line": 1921,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -60374,7 +60374,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2027,
+              "line": 2028,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -60501,7 +60501,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1917,
+              "line": 1918,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -60514,7 +60514,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2021,
+              "line": 2022,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -60641,7 +60641,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1918,
+              "line": 1919,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -60654,7 +60654,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2023,
+              "line": 2024,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -60781,7 +60781,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 1919,
+              "line": 1920,
               "class": "LLActorMover",
               "function": "pathSceneData",
               "wired_class": "LLActorMover",
@@ -60794,7 +60794,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llactormover.cpp",
-              "line": 2025,
+              "line": 2026,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -92639,7 +92639,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 450,
+              "line": 540,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92650,7 +92650,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 452,
+              "line": 542,
               "class": "ALPanelLensGaze",
               "function": "refreshEditActorCombo",
               "wired_class": "ALPanelLensGaze",
@@ -92704,7 +92704,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 451,
+              "line": 541,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92715,7 +92715,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 455,
+              "line": 545,
               "class": "ALPanelLensGaze",
               "function": "<inline callback>",
               "wired_class": "ALPanelLensGaze",
@@ -92783,7 +92783,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 459,
+              "line": 549,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92794,7 +92794,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 545,
+              "line": 635,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92862,7 +92862,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 460,
+              "line": 550,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92873,7 +92873,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 546,
+              "line": 636,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -92941,7 +92941,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 461,
+              "line": 551,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -92952,7 +92952,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 547,
+              "line": 637,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93020,7 +93020,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 462,
+              "line": 552,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93031,7 +93031,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 548,
+              "line": 638,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93099,7 +93099,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 463,
+              "line": 553,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93110,7 +93110,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 549,
+              "line": 639,
               "class": "ALPanelLensGaze",
               "function": "onSlotLookAtCommit",
               "wired_class": "ALPanelLensGaze",
@@ -93178,7 +93178,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 448,
+              "line": 538,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -93307,7 +93307,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2410,
+              "line": 2681,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93318,7 +93318,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2421,
+              "line": 2692,
               "class": "ALPanelLensGaze",
               "function": "asInteger",
               "wired_class": "ALPanelLensGaze",
@@ -93386,7 +93386,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2412,
+              "line": 2683,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93462,7 +93462,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2412,
+              "line": 2683,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93532,7 +93532,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2413,
+              "line": 2684,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93602,7 +93602,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2418,
+              "line": 2689,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93613,7 +93613,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2433,
+              "line": 2704,
               "class": "ALPanelLensGaze",
               "function": "asInteger",
               "wired_class": "ALPanelLensGaze",
@@ -93681,7 +93681,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2417,
+              "line": 2688,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93752,7 +93752,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2419,
+              "line": 2690,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93822,7 +93822,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2420,
+              "line": 2691,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93892,7 +93892,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2420,
+              "line": 2691,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -93962,7 +93962,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2420,
+              "line": 2691,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94032,7 +94032,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2428,
+              "line": 2699,
               "class": "ALPanelLensGaze",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -94100,7 +94100,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2438,
+              "line": 2709,
               "class": "ALPanelLensGaze",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -94168,7 +94168,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2414,
+              "line": 2685,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94238,7 +94238,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2416,
+              "line": 2687,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94308,7 +94308,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2416,
+              "line": 2687,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94378,7 +94378,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2417,
+              "line": 2688,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94448,7 +94448,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2413,
+              "line": 2684,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94518,7 +94518,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2415,
+              "line": 2686,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94588,7 +94588,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2415,
+              "line": 2686,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94661,7 +94661,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2414,
+              "line": 2685,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94731,7 +94731,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2448,
+              "line": 2719,
               "class": "ALPanelLensGaze",
               "function": "buildHotControls",
               "wired_class": "ALPanelLensGaze",
@@ -94742,7 +94742,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2452,
+              "line": 2723,
               "class": "LLActorMover",
               "function": "hotGazeInput",
               "wired_class": "ALPanelLensGaze",
@@ -94810,7 +94810,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 2444,
+              "line": 2715,
               "class": "LLDirectorCast",
               "function": "setHotGazeSlot",
               "wired_class": "ALPanelLensGaze",
@@ -94962,7 +94962,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 466,
+              "line": 556,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -94973,7 +94973,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 552,
+              "line": 642,
               "class": "ALPanelLensGaze",
               "function": "onTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95049,7 +95049,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 467,
+              "line": 557,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95060,7 +95060,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 553,
+              "line": 643,
               "class": "ALPanelLensGaze",
               "function": "onEyeTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95131,7 +95131,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 472,
+              "line": 562,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95142,7 +95142,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 558,
+              "line": 648,
               "class": "ALPanelLensGaze",
               "function": "onTargetDetailScopeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95215,7 +95215,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 473,
+              "line": 563,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95226,7 +95226,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 560,
+              "line": 650,
               "class": "ALPanelLensGaze",
               "function": "onCastCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95320,7 +95320,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 474,
+              "line": 564,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95331,7 +95331,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 561,
+              "line": 651,
               "class": "ALPanelLensGaze",
               "function": "onSetPoint",
               "wired_class": "ALPanelLensGaze",
@@ -95399,7 +95399,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 475,
+              "line": 565,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95410,7 +95410,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 562,
+              "line": 652,
               "class": "ALPanelLensGaze",
               "function": "onPickObject",
               "wired_class": "ALPanelLensGaze",
@@ -95478,7 +95478,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 476,
+              "line": 566,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95489,7 +95489,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 563,
+              "line": 653,
               "class": "ALPanelLensGaze",
               "function": "onClearObject",
               "wired_class": "ALPanelLensGaze",
@@ -95557,7 +95557,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 624,
+              "line": 714,
               "class": "ALPanelLensGaze",
               "function": "onTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95625,7 +95625,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 630,
+              "line": 720,
               "class": "ALPanelLensGaze",
               "function": "onEyeTargetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95693,7 +95693,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 479,
+              "line": 569,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95704,7 +95704,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 566,
+              "line": 656,
               "class": "ALPanelLensGaze",
               "function": "onIntensityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95772,7 +95772,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 477,
+              "line": 567,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95783,7 +95783,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 564,
+              "line": 654,
               "class": "ALPanelLensGaze",
               "function": "onBlendCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95851,7 +95851,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 478,
+              "line": 568,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95862,7 +95862,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 565,
+              "line": 655,
               "class": "ALPanelLensGaze",
               "function": "onTorsoCommit",
               "wired_class": "ALPanelLensGaze",
@@ -95930,7 +95930,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 510,
+              "line": 600,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -95941,7 +95941,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 596,
+              "line": 686,
               "class": "ALPanelLensGaze",
               "function": "onSmoothingCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96009,7 +96009,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 482,
+              "line": 572,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96088,7 +96088,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 483,
+              "line": 573,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96099,7 +96099,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 569,
+              "line": 659,
               "class": "ALPanelLensGaze",
               "function": "onInfluenceSet",
               "wired_class": "ALPanelLensGaze",
@@ -96167,7 +96167,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 484,
+              "line": 574,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96178,7 +96178,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 570,
+              "line": 660,
               "class": "ALPanelLensGaze",
               "function": "onInfluenceDelete",
               "wired_class": "ALPanelLensGaze",
@@ -96246,7 +96246,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 668,
+              "line": 758,
               "class": "ALPanelLensGaze",
               "function": "onIntensityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96314,7 +96314,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 656,
+              "line": 746,
               "class": "ALPanelLensGaze",
               "function": "onBlendCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96382,7 +96382,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 662,
+              "line": 752,
               "class": "ALPanelLensGaze",
               "function": "onTorsoCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96450,7 +96450,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 674,
+              "line": 764,
               "class": "ALPanelLensGaze",
               "function": "onSmoothingCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96520,7 +96520,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 522,
+              "line": 612,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -96531,7 +96531,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 600,
+              "line": 690,
               "class": "ALPanelLensGaze",
               "function": "onPerformanceCommit",
               "wired_class": "ALPanelLensGaze",
@@ -96599,7 +96599,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 636,
+              "line": 726,
               "class": "ALPanelLensGaze",
               "function": "onResetPerformance",
               "wired_class": "ALPanelLensGaze",
@@ -97091,7 +97091,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 618,
+              "line": 708,
               "class": "LLFloaterReg",
               "function": "toggleInstance",
               "wired_class": "ALPanelLensGaze",
@@ -97159,7 +97159,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 529,
+              "line": 619,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97170,7 +97170,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 617,
+              "line": 707,
               "class": "ALPanelLensGaze",
               "function": "onGazeCues",
               "wired_class": "ALPanelLensGaze",
@@ -97241,7 +97241,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 528,
+              "line": 618,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97252,7 +97252,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 616,
+              "line": 706,
               "class": "ALPanelLensGaze",
               "function": "onModeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97788,7 +97788,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 764,
+              "line": 854,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -97856,7 +97856,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 520,
+              "line": 610,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97867,7 +97867,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 598,
+              "line": 688,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -97935,7 +97935,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 521,
+              "line": 611,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -97946,7 +97946,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 599,
+              "line": 689,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98014,7 +98014,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 526,
+              "line": 616,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98025,7 +98025,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 614,
+              "line": 704,
               "class": "ALPanelLensGaze",
               "function": "onCameraRollCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98093,7 +98093,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 518,
+              "line": 608,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98104,7 +98104,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 597,
+              "line": 687,
               "class": "ALPanelLensGaze",
               "function": "onBreakoffCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98181,7 +98181,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 519,
+              "line": 609,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98262,7 +98262,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 680,
+              "line": 770,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98330,7 +98330,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 686,
+              "line": 776,
               "class": "ALPanelLensGaze",
               "function": "onEyelineCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98398,7 +98398,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 752,
+              "line": 842,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98466,7 +98466,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 515,
+              "line": 605,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98477,7 +98477,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 611,
+              "line": 701,
               "class": "ALPanelLensGaze",
               "function": "onEaseAcquireCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98545,7 +98545,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 516,
+              "line": 606,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98556,7 +98556,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 612,
+              "line": 702,
               "class": "ALPanelLensGaze",
               "function": "onEaseReleaseCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98624,7 +98624,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 517,
+              "line": 607,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98635,7 +98635,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 613,
+              "line": 703,
               "class": "ALPanelLensGaze",
               "function": "onDeadZoneCommit",
               "wired_class": "ALPanelLensGaze",
@@ -98703,7 +98703,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 713,
+              "line": 803,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98771,7 +98771,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 719,
+              "line": 809,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98839,7 +98839,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 725,
+              "line": 815,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -98912,7 +98912,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 468,
+              "line": 558,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -98923,7 +98923,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 554,
+              "line": 644,
               "class": "ALPanelLensGaze",
               "function": "onPriorityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99002,7 +99002,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 471,
+              "line": 561,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99013,7 +99013,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 557,
+              "line": 647,
               "class": "ALPanelLensGaze",
               "function": "onIkLeanCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99090,7 +99090,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 469,
+              "line": 559,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99101,7 +99101,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 555,
+              "line": 645,
               "class": "ALPanelLensGaze",
               "function": "onAnimPriorityCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99173,7 +99173,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 480,
+              "line": 570,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99184,7 +99184,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 567,
+              "line": 657,
               "class": "ALPanelLensGaze",
               "function": "onCompositionCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99252,7 +99252,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 485,
+              "line": 575,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99263,7 +99263,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 571,
+              "line": 661,
               "class": "ALPanelLensGaze",
               "function": "onChestShareCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99331,7 +99331,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 481,
+              "line": 571,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99342,7 +99342,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 568,
+              "line": 658,
               "class": "ALPanelLensGaze",
               "function": "onCompositionMixCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99410,7 +99410,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 731,
+              "line": 821,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -99478,7 +99478,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 750,
+              "line": 840,
               "class": "ALPanelLensGaze",
               "function": "LLSD",
               "wired_class": "ALPanelLensGaze",
@@ -99546,7 +99546,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 737,
+              "line": 827,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -99614,7 +99614,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 774,
+              "line": 864,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -99682,7 +99682,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 780,
+              "line": 870,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -99750,7 +99750,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 786,
+              "line": 876,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -99827,7 +99827,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 470,
+              "line": 560,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99838,7 +99838,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 556,
+              "line": 646,
               "class": "ALPanelLensGaze",
               "function": "onRangePresetCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99910,7 +99910,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 486,
+              "line": 576,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -99921,7 +99921,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 572,
+              "line": 662,
               "class": "ALPanelLensGaze",
               "function": "onLimitModeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -99989,7 +99989,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 527,
+              "line": 617,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -100000,7 +100000,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 615,
+              "line": 705,
               "class": "ALPanelLensGaze",
               "function": "onExaggerateCommit",
               "wired_class": "ALPanelLensGaze",
@@ -100068,7 +100068,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 748,
+              "line": 838,
               "class": "ALPanelLensGaze",
               "function": "LLSD",
               "wired_class": "ALPanelLensGaze",
@@ -100136,7 +100136,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 792,
+              "line": 882,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -100204,7 +100204,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 758,
+              "line": 848,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -100275,7 +100275,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 506,
+              "line": 596,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -100286,7 +100286,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 592,
+              "line": 682,
               "class": "ALPanelLensGaze",
               "function": "onLeanCurveCommit",
               "wired_class": "ALPanelLensGaze",
@@ -100354,7 +100354,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 507,
+              "line": 597,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -100365,7 +100365,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 593,
+              "line": 683,
               "class": "ALPanelLensGaze",
               "function": "onLeanThresholdCommit",
               "wired_class": "ALPanelLensGaze",
@@ -100433,7 +100433,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 508,
+              "line": 598,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -100444,7 +100444,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 594,
+              "line": 684,
               "class": "ALPanelLensGaze",
               "function": "onLeanSoftnessCommit",
               "wired_class": "ALPanelLensGaze",
@@ -100512,7 +100512,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 509,
+              "line": 599,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -100523,7 +100523,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 595,
+              "line": 685,
               "class": "ALPanelLensGaze",
               "function": "onLeanMaxCommit",
               "wired_class": "ALPanelLensGaze",
@@ -100669,7 +100669,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 808,
+              "line": 898,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -100737,7 +100737,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 814,
+              "line": 904,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -100805,7 +100805,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 820,
+              "line": 910,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -100873,7 +100873,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 826,
+              "line": 916,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -100941,7 +100941,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 487,
+              "line": 577,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -100952,7 +100952,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 573,
+              "line": 663,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101020,7 +101020,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 490,
+              "line": 580,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101031,7 +101031,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 576,
+              "line": 666,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101099,7 +101099,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 493,
+              "line": 583,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101110,7 +101110,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 579,
+              "line": 669,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101178,7 +101178,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 496,
+              "line": 586,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101189,7 +101189,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 582,
+              "line": 672,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101257,7 +101257,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 499,
+              "line": 589,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101268,7 +101268,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 585,
+              "line": 675,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101336,7 +101336,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 488,
+              "line": 578,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101347,7 +101347,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 574,
+              "line": 664,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101415,7 +101415,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 489,
+              "line": 579,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101426,7 +101426,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 575,
+              "line": 665,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101494,7 +101494,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 491,
+              "line": 581,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101505,7 +101505,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 577,
+              "line": 667,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101573,7 +101573,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 492,
+              "line": 582,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101584,7 +101584,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 578,
+              "line": 668,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101652,7 +101652,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 494,
+              "line": 584,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101663,7 +101663,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 580,
+              "line": 670,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101731,7 +101731,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 495,
+              "line": 585,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101742,7 +101742,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 581,
+              "line": 671,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101810,7 +101810,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 497,
+              "line": 587,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101821,7 +101821,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 583,
+              "line": 673,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101889,7 +101889,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 498,
+              "line": 588,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101900,7 +101900,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 584,
+              "line": 674,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -101968,7 +101968,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 500,
+              "line": 590,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -101979,7 +101979,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 586,
+              "line": 676,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102047,7 +102047,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 501,
+              "line": 591,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102058,7 +102058,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 587,
+              "line": 677,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102126,7 +102126,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 505,
+              "line": 595,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102137,7 +102137,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 591,
+              "line": 681,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102205,7 +102205,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 502,
+              "line": 592,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102216,7 +102216,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 588,
+              "line": 678,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102284,7 +102284,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 503,
+              "line": 593,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102295,7 +102295,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 589,
+              "line": 679,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102363,7 +102363,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 504,
+              "line": 594,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102374,7 +102374,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 590,
+              "line": 680,
               "class": "ALPanelLensGaze",
               "function": "onLimitProfileCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102610,7 +102610,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 798,
+              "line": 888,
               "class": "ALGazeMath",
               "function": "AnatomicalLimitProfile",
               "wired_class": "ALPanelLensGaze",
@@ -102678,7 +102678,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 523,
+              "line": 613,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102689,7 +102689,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 601,
+              "line": 691,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102757,7 +102757,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 524,
+              "line": 614,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102768,7 +102768,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 602,
+              "line": 692,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102836,7 +102836,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 525,
+              "line": 615,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -102847,7 +102847,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 603,
+              "line": 693,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102915,7 +102915,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 638,
+              "line": 728,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -102983,7 +102983,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 644,
+              "line": 734,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -103051,7 +103051,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 650,
+              "line": 740,
               "class": "ALPanelLensGaze",
               "function": "onPersonaCommit",
               "wired_class": "ALPanelLensGaze",
@@ -103119,7 +103119,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 511,
+              "line": 601,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -103130,7 +103130,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 607,
+              "line": 697,
               "class": "ALPanelLensGaze",
               "function": "onMicroLifeCommit",
               "wired_class": "ALPanelLensGaze",
@@ -103198,7 +103198,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 512,
+              "line": 602,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -103209,7 +103209,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 608,
+              "line": 698,
               "class": "ALPanelLensGaze",
               "function": "onBlinksCommit",
               "wired_class": "ALPanelLensGaze",
@@ -103277,7 +103277,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 513,
+              "line": 603,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -103288,7 +103288,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 609,
+              "line": 699,
               "class": "ALPanelLensGaze",
               "function": "onVariationCommit",
               "wired_class": "ALPanelLensGaze",
@@ -103356,7 +103356,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 514,
+              "line": 604,
               "class": "ALPanelLensGaze",
               "function": "postBuild",
               "wired_class": "ALPanelLensGaze",
@@ -103367,7 +103367,7 @@
             },
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 610,
+              "line": 700,
               "class": "ALPanelLensGaze",
               "function": "onBreakFreqCommit",
               "wired_class": "ALPanelLensGaze",
@@ -103591,7 +103591,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 695,
+              "line": 785,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -103659,7 +103659,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 701,
+              "line": 791,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -103727,7 +103727,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanellensgaze.cpp",
-              "line": 707,
+              "line": 797,
               "class": "ALPanelLensGaze",
               "function": "editGazeTargetsFor",
               "wired_class": "ALPanelLensGaze",
@@ -105022,7 +105022,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 143,
+              "line": 164,
               "class": "ALFloaterGazeCues",
               "function": "postBuild",
               "wired_class": "ALFloaterGazeCues",
@@ -105033,7 +105033,7 @@
             },
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 171,
+              "line": 192,
               "class": "ALFloaterGazeCues",
               "function": "onCueSelected",
               "wired_class": "ALFloaterGazeCues",
@@ -105233,7 +105233,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 144,
+              "line": 165,
               "class": "ALFloaterGazeCues",
               "function": "postBuild",
               "wired_class": "ALFloaterGazeCues",
@@ -105244,7 +105244,7 @@
             },
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 173,
+              "line": 194,
               "class": "ALFloaterGazeCues",
               "function": "onAdd",
               "wired_class": "ALFloaterGazeCues",
@@ -105338,7 +105338,7 @@
           "cpp": [
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 146,
+              "line": 167,
               "class": "ALFloaterGazeCues",
               "function": "postBuild",
               "wired_class": "ALFloaterGazeCues",
@@ -105349,7 +105349,7 @@
             },
             {
               "file": "indra/newview/alfloatergazecues.cpp",
-              "line": 175,
+              "line": 196,
               "class": "ALFloaterGazeCues",
               "function": "onDelete",
               "wired_class": "ALFloaterGazeCues",

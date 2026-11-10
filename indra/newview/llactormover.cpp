@@ -47,6 +47,7 @@
 #include "altoolpathedit.h"         // path edit tool owns the edit actor's overlay while active
 #include "llagent.h"                // gAgent global<->agent coord conversion (pathing)
 #include "llagentcamera.h"          // cameraMouselook gaze feedback interlock
+#include "algazenearbyname.h"       // gaze status names a Nearby target by the shared display-name/RLV rule
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
 #include "llsdutil_math.h"          // versioned path vector/quaternion LLSD
@@ -3454,14 +3455,33 @@ bool LLActorMover::getGazeStatus(const LLUUID& actor_id, std::string& out) const
         case GAZE_CAST:
         {
             std::string name;
+            bool cast_member = false;
             if (const LLDirectorCast::CastMember* m =
                     LLDirectorCast::instance().getMember(g.mCastTarget))
             {
                 name = m->mLastName;
+                cast_member = true;
+            }
+            else if (g.mCastTarget.notNull())
+            {
+                // Picked from the Gaze page's Nearby list: any avatar can be a target, cast
+                // member or not. Show the DISPLAY name only, never the id; a Studio clone keeps
+                // the cast-member wording.
+                const auto& studio = ALGhostStudio::instance();
+                if (studio.getInstance(g.mCastTarget) || studio.findInstanceByRuntime(g.mCastTarget))
+                {
+                    cast_member = true;
+                }
+                else
+                {
+                    // The shared rule: display name only, withheld under RLV name hiding and
+                    // under @shownearby; empty means the generic "a person".
+                    name = ALGazeNearby::nonCastTargetName(g.mCastTarget);
+                }
             }
             tgt = g.mCastTarget.isNull()
                       ? std::string("a cast member (none picked)")
-                      : (name.empty() ? std::string("a cast member") : name);
+                      : (name.empty() ? std::string(cast_member ? "a cast member" : "a person") : name);
             break;
         }
         case GAZE_POINT:

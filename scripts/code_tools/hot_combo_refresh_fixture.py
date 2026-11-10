@@ -26,6 +26,7 @@ def fixture():
 #include <algorithm>
 #include <array>
 #include <cstdlib>
+#include <functional>
 #include <initializer_list>
 #include <iostream>
 #include <set>
@@ -35,6 +36,7 @@ using U64=unsigned long long; using S32=int; using F32=float;
 struct LLUUID {
  std::string value; LLUUID()=default; LLUUID(const std::string& s):value(s=="null"?"":s){}
  bool isNull()const{return value.empty();} bool notNull()const{return !isNull();}
+ unsigned getCRC32()const{return unsigned(std::hash<std::string>()(value));}
  std::string asString()const{return isNull()?"null":value;}
  bool operator==(const LLUUID&)const=default; bool operator<(const LLUUID& b)const{return value<b.value;}
  static const LLUUID null;
@@ -44,7 +46,8 @@ struct LLSD {
  LLSD()=default; LLSD(const char* s):text(s){} LLSD(std::string s):text(s){}
  LLSD(LLUUID u):text(u.asString()){} LLSD(int n):text(std::to_string(n)),number(n){}
  LLSD(float n):text(std::to_string(n)),number(n){} LLSD(bool n):LLSD(int(n)){}
- std::string asString()const{return text;} LLUUID asUUID()const{return LLUUID(text);}
+ std::string asString()const{return text;}
+ LLUUID asUUID()const{return text.find('-')!=std::string::npos?LLUUID():LLUUID(text);} // real LLSD: a non-UUID string (the Nearby header value) is the null UUID
  int asInteger()const{return int(number);} double asReal()const{return number;} bool asBoolean()const{return number!=0;}
 };
 struct LLView {bool focus=false,capture=false;};
@@ -55,11 +58,13 @@ struct LLUICtrl:LLView {
  virtual void setValue(const LLSD& v){value=v;} virtual ~LLUICtrl()=default;
 };
 struct LLComboBox:LLUICtrl {
- struct Item{std::string label;LLSD value;};std::vector<Item> items;int selected=-1,removals=0;
+ struct Item{std::string label;LLSD value;bool enabled=true;};std::vector<Item> items;int selected=-1,removals=0;
  int getCurrentIndex()const{return selected;}
  std::string getSelectedItemLabel()const{return selected<0?"":items[selected].label;}
  void removeall(){++removals;items.clear();selected=-1;value={};}
  void add(const std::string& label,const LLSD& v){items.push_back({label,v});if(items.size()==1)setValue(v);}
+ void add(const std::string& label,const LLSD& v,int,bool enabled){items.push_back({label,v,enabled});}
+ bool list_open=false;bool isListVisible()const{return list_open;}void hideList(){list_open=false;++hides;}int hides=0;
  bool valueExists(const std::string& v)const{for(const auto& item:items)if(item.value.asString()==v)return true;return false;}
  LLSD getSelectedValue(){return getValue();}void setSelectedByValue(const LLSD& v,bool){setValue(v);}
  void setValue(const LLSD& v)override{for(int i=0;i<int(items.size());++i)if(items[i].value.asString()==v.asString()){selected=i;value=items[i].value;return;}selected=-1;value={};}
@@ -99,12 +104,23 @@ struct ALGhostStudio {
  U64 getInstanceRevision(){return revision;}const auto& getInstances(){return clones;}
 };
 void cancelHotGazePick(void*){}
+constexpr int ADD_BOTTOM=0;
+namespace ALGazeNearby{struct Entry{LLUUID mId;std::string mName;};
+ constexpr const char* HEADER_LABEL="Nearby";constexpr const char* HEADER_VALUE="nearby-header";
+ inline bool sameMembers(const std::vector<Entry>& a,const std::vector<Entry>& b){if(a.size()!=b.size())return false;for(size_t i=0;i<a.size();++i)if(a[i].mId!=b[i].mId||a[i].mName!=b[i].mName)return false;return true;}}
+std::vector<ALGazeNearby::Entry> nearby_double; // the projection nearbyFor() hands the production hot rebuild
+bool rlv_hides_names=false;                     // RLV adapter for liveNearbyName
 struct ALPanelLensGaze;
 std::set<ALPanelLensGaze*>& actorGazePanels(){static std::set<ALPanelLensGaze*> panels;return panels;}
 struct ALPanelLensGaze {
  LLComboBox* mCast=nullptr;std::vector<LLUUID> mSelected;LLUUID mCastComboActor,mCastComboSelection;
  U64 mSelectionRevision=0,mCastComboRevision=0;void refreshCastCombo(bool){}
  int mHotSlotIndex=0;ALRevisionGate mHotChoiceGate;
+ std::vector<LLUUID> mHotNearbyOffered;std::vector<ALGazeNearby::Entry> mHotNearbyShown; // production members; selection rules live in algazenearby.h
+ struct NearbyProjection{std::vector<ALGazeNearby::Entry> mList;};NearbyProjection mHotProjection;bool mHotRestore=false;
+ void nearbyFor(NearbyProjection& proj,const LLUUID&,const LLUUID&)const{proj.mList=nearby_double;}
+ bool liveNearbyName(const LLUUID& id,std::string& name)const{if(rlv_hides_names)return false;for(const auto& e:nearby_double)if(e.mId==id){name=e.mName;return true;}return false;}
+ void appendHotNearbyChoices(const std::vector<ALGazeNearby::Entry>& nearby);bool hotNearbyOffered(const LLUUID& id)const;
  LLComboBox slot,who,target,actor,spot,mode;
  LLComboBox *mHotSlot=&slot,*mHotWho=&who,*mHotTarget=&target,*mHotActor=&actor,*mHotSpot=&spot,*mHotMode=&mode;
  LLUICtrl after,snap,dwell,ret,head,eyes,torso,name,pick,x,y,z;
@@ -115,9 +131,12 @@ struct ALPanelLensGaze {
  void refreshHotControls(bool force_choices=false);void commitHotControls(LLUICtrl* source);
 };
 '''
+    code += block(ui, 'LLUUID comboValueId(') + '\n'
     code += block(ui, 'bool hotActorAvailable(') + '\n'
     code += block(ui, 'bool hotWhoAvailable(') + '\n'
     code += block(ui, 'void ALPanelLensGaze::rewriteActorReferences(') + '\n'
+    code += block(ui, 'void ALPanelLensGaze::appendHotNearbyChoices(') + '\n'
+    code += block(ui, 'bool ALPanelLensGaze::hotNearbyOffered(') + '\n'
     code += block(ui, 'void ALPanelLensGaze::refreshHotControls(') + '\n'
     code += block(ui, 'void ALPanelLensGaze::commitHotControls(') + '\n'
     code += r'''
@@ -210,6 +229,88 @@ void validation_test(bool who){
   require(s.mGroup.empty()&&s.mWho==LLUUID("actor"),"Explicit removed group escaped model validation");
  }
 }
+void nearby_test(){
+ // A person who is not a cast member is offered after the cast and clones, under a disabled
+ // header, by display name. Picking them commits exactly like a cast target.
+ reset_models();nearby_double={{LLUUID("stranger"),"Display Stranger"}};
+ ALPanelLensGaze p;p.refreshHotControls();
+ const auto& items=p.actor.items;
+ int header=-1;for(int i=0;i<int(items.size());++i)if(items[i].label=="Nearby")header=i;
+ require(header>0&&!items[header].enabled,"Nearby header missing or selectable");
+ require(header+1<int(items.size())&&items[header+1].label=="Display Stranger"&&items[header+1].enabled,"Nearby person not listed after the header");
+ require(items[header-1].label=="Clone","Nearby section did not follow the cast and clones");
+ for(const auto& item:items)require(item.label.find("stranger")==std::string::npos,"A nearby row exposes the id");
+ require(!p.who.valueExists("stranger"),"Nearby person leaked into the Who combo");
+ p.actor.setValue(LLUUID("stranger"));p.commitHotControls(p.mHotActor);
+ const auto& s=LLDirectorCast::instance().slots[0];
+ require(s.mHasTarget&&s.mTarget.mMode==LLActorMover::GazeTarget::CAST_MEMBER&&s.mTarget.mCastRef==LLUUID("stranger"),"Nearby pick did not commit as a cast target");
+ require(s.mTargetName=="Display Stranger","Nearby target name is not the display name");
+ p.refreshHotControls();require(p.actor.getValue().asUUID()==LLUUID("stranger")&&p.name.text=="Display Stranger","Nearby target not shown after commit");
+ // The person leaves: the combo and name show the existing unavailable state, the saved
+ // reference is kept, and an unrelated commit does not rewrite it.
+ nearby_double.clear();p.refreshHotControls();
+ require(!p.actor.valueExists("stranger")&&p.name.text=="No target","Departed nearby target still listed");
+ p.snap.setValue(.5f);p.commitHotControls(p.mHotSnap);
+ require(s.mTarget.mCastRef==LLUUID("stranger")&&s.mHasTarget&&s.mTarget.mMode==LLActorMover::GazeTarget::CAST_MEMBER,"Departed nearby target was reset");
+ // Only people the combo currently offers can be authored from it: a DIFFERENT unoffered id
+ // must leave the whole saved target unchanged (the attempted id differs from the saved one).
+ p.actor.setValue(LLUUID("intruder"));p.actor.selected=0;p.actor.value=LLUUID("intruder");p.commitHotControls(p.mHotActor);
+ require(s.mTarget.mCastRef==LLUUID("stranger")&&s.mHasTarget&&s.mTargetName=="Display Stranger","Unoffered pick changed the saved target");
+ nearby_double.clear();
+}
+void nearby_header_test(){
+ // The disabled header reaching a commit (label-selection path) never clears or changes the target.
+ reset_models();nearby_double={{LLUUID("stranger"),"Display Stranger"}};
+ ALPanelLensGaze p;p.refreshHotControls();const auto& s=LLDirectorCast::instance().slots[0];
+ int header=-1;for(int i=0;i<int(p.actor.items.size());++i)if(p.actor.items[i].label=="Nearby")header=i;
+ require(header>0,"Nearby header missing");require(p.actor.items[header].value.asString()==ALGazeNearby::HEADER_VALUE&&!LLUUID(p.actor.items[header].value.asString()).isNull(),"Header value is empty or the placeholder's");
+ p.actor.selected=header;p.actor.value=p.actor.items[header].value;p.commitHotControls(p.mHotActor);
+ require(s.mHasTarget&&s.mTarget.mCastRef==LLUUID("actor")&&s.mTargetName=="Actor","Header selection changed or cleared the saved target");
+ require(p.actor.getCurrentIndex()!=header,"Header stayed selected after the refused commit");
+ // ...and while the combo has focus (neither the gate nor the projection changed): the refusal
+ // itself must force the rebuild and put the saved target back.
+ p.actor.focus=true;p.actor.selected=header;p.actor.value=p.actor.items[header].value;p.commitHotControls(p.mHotActor);
+ require(p.actor.getValue().asUUID()==LLUUID("actor")&&s.mHasTarget&&s.mTarget.mCastRef==LLUUID("actor"),"A focused combo kept the header after the refused commit");
+ // An unrelated commit while the header is selected never reads it as an id.
+ p.actor.focus=false;p.actor.selected=header;p.actor.value=p.actor.items[header].value;p.snap.setValue(.4f);p.commitHotControls(p.mHotSnap);
+ require(s.mHasTarget&&s.mTarget.mCastRef==LLUUID("actor")&&s.mSnap==.4f,"An unrelated commit with the header selected changed the target");
+}
+void nearby_stale_offer_test(){
+ // The dropdown is open (rebuild declined) while the person leaves or is renamed: the commit
+ // validates against the LIVE record and stores the live name, never the stale row label.
+ reset_models();nearby_double={{LLUUID("stranger"),"Display Stranger"}};
+ ALPanelLensGaze p;p.refreshHotControls();const auto& s=LLDirectorCast::instance().slots[0];
+ p.actor.focus=true;nearby_double={{LLUUID("stranger"),"Renamed Stranger"}};p.refreshHotControls();
+ require(p.actor.items.back().label=="Display Stranger","A focused combo was rebuilt");
+ p.actor.setValue(LLUUID("stranger"));p.commitHotControls(p.mHotActor);
+ require(s.mTarget.mCastRef==LLUUID("stranger")&&s.mTargetName=="Renamed Stranger","Nearby commit stored the stale row label");
+ p.actor.focus=false;reset_models();nearby_double={{LLUUID("stranger"),"Display Stranger"}};
+ ALPanelLensGaze q;q.refreshHotControls();q.actor.focus=true;nearby_double.clear();q.refreshHotControls();
+ q.actor.setValue(LLUUID("stranger"));q.commitHotControls(q.mHotActor);
+ require(s.mTarget.mCastRef==LLUUID("actor"),"A departed person was committed from a stale offer");
+ require(q.actor.getValue().asUUID()==LLUUID("actor"),"A refused pick stayed selected in the focused combo");
+ reset_models();nearby_double={{LLUUID("stranger"),"Display Stranger"}};
+ ALPanelLensGaze r;r.refreshHotControls();r.actor.focus=true;rlv_hides_names=true;
+ r.actor.setValue(LLUUID("stranger"));r.commitHotControls(r.mHotActor);rlv_hides_names=false;
+ require(s.mTarget.mCastRef==LLUUID("actor"),"A person whose name RLV hid was committed");
+ nearby_double.clear();
+}
+void nearby_gate_test(){
+ // A projection change (a person arrives, leaves, or the order/cap/range changes) rebuilds the
+ // combo; a declined rebuild (combo focused) is retried on the next refresh; the choice context
+ // (slot index, Who, group) is part of the gate.
+ reset_models();nearby_double.clear();LLDirectorCast::instance().slots[1]={};LLDirectorCast::instance().slots[1].mWho=LLUUID("actor");
+ ALPanelLensGaze p;p.refreshHotControls();require(!p.actor.valueExists("stranger"),"Nearby person listed before arriving");
+ nearby_double={{LLUUID("stranger"),"Display Stranger"}};
+ p.actor.focus=true;p.refreshHotControls();require(!p.actor.valueExists("stranger"),"A focused combo was rebuilt");
+ p.actor.focus=false;p.refreshHotControls();require(p.actor.valueExists("stranger"),"A declined nearby rebuild was lost");
+ const int before=p.who.removals;p.refreshHotControls();require(p.who.removals==before,"An unchanged projection rebuilt the combo");
+ p.mHotSlotIndex=1;p.refreshHotControls();require(p.who.removals==before+1,"Switching slot did not rebuild the choices");
+ auto& slot=LLDirectorCast::instance().slots[1];slot.mWho=LLUUID("clone");p.refreshHotControls();require(p.who.removals==before+2,"Changing Who did not rebuild the choices");
+ slot.mGroup="Group";p.refreshHotControls();require(p.who.removals==before+3,"Changing the group did not rebuild the choices");
+ slot={};
+ nearby_double.clear();
+}
 void gate_test(int index){
  ALRevisionGate gate;std::array<U64,9> r{1,2,3,4,5,6,7,8,9};
  auto changed=[&](){return gate.changed({r[0],r[1],r[2],r[3],r[4],r[5],r[6],r[7],r[8]});};
@@ -225,6 +326,8 @@ int main(int argc,char** argv){
  if(test=="all"||test=="removal")removal_test();
  if(test=="all"||test=="deferred_who")deferred_commit_test(true);if(test=="all"||test=="deferred_actor")deferred_commit_test(false);
  if(test=="all"||test=="validate_who")validation_test(true);if(test=="all"||test=="validate_actor")validation_test(false);
+ if(test=="all"||test=="nearby")nearby_test();if(test=="all"||test=="nearby_gate")nearby_gate_test();
+ if(test=="all"||test=="nearby_header")nearby_header_test();if(test=="all"||test=="nearby_stale")nearby_stale_offer_test();
  for(int i=6;i<9;++i)if(test=="all"||test==std::to_string(i+1))gate_test(i);
  std::cout<<"PASS: "<<test<<" (timer/deferred refresh, explicit commits, rekey/retire/removal, model validation, revision inputs 7..9)\n";
 }
@@ -253,6 +356,19 @@ def main():
             'missing_who': ('mHotWho->valueExists(who) ? who : ""', 'who', ['removal']),
             'missing_actor': ('actor_available ? slot.mTarget.mCastRef : LLUUID::null', 'slot.mTarget.mCastRef', ['removal']),
             'missing_name': ('target_available ? slot.mTargetName : "No target"', 'slot.mHasTarget ? slot.mTargetName : "No target"', ['removal']),
+            'nearby_commit': (' || nearby_pick', ' || false', ['nearby']),
+            'nearby_stale_offer': (' && liveNearbyName(actor, nearby_name)', '', ['nearby_stale']),
+            'nearby_stale_label': ('(nearby_pick ? nearby_name : mHotActor->getSelectedItemLabel())', 'mHotActor->getSelectedItemLabel()', ['nearby_stale']),
+            'nearby_projection_ignored': ('rebuild_choices = gate_changed || nearby_changed || mHotRestore;', 'rebuild_choices = gate_changed || mHotRestore;',['nearby_gate', 'nearby']),
+            'nearby_slot_context': ('static_cast<U64>(mHotSlotIndex),', '0,', ['nearby_gate']),
+            'nearby_who_context': ('static_cast<U64>(slot.mWho.getCRC32()),', '0,', ['nearby_gate']),
+            'nearby_group_context': ('static_cast<U64>(std::hash<std::string>()(slot.mGroup))', '0', ['nearby_gate']),
+            'nearby_header_restore_missing': ('        mHotRestore = true;\n        refreshHotControls(true);', '        refreshHotControls(true);', ['nearby_header']),
+            'nearby_refusal_restore_missing': ('            mHotRestore = true; // a refused pick', '            (void)0; // a refused pick', ['nearby_stale']),
+            'nearby_header_guard': ('if (source == mHotActor && mHotActor->getValue().asString() == ALGazeNearby::HEADER_VALUE)', 'if (false)', ['nearby_header']),
+            'nearby_header_selectable': ('ALGazeNearby::HEADER_LABEL, LLSD(std::string(ALGazeNearby::HEADER_VALUE)), ADD_BOTTOM, false)', 'ALGazeNearby::HEADER_LABEL, LLSD(std::string(ALGazeNearby::HEADER_VALUE)), ADD_BOTTOM, true)', ['nearby']),
+            'nearby_header_empty_value': ('LLSD(std::string(ALGazeNearby::HEADER_VALUE)), ADD_BOTTOM, false)', 'LLSD(std::string()), ADD_BOTTOM, false)', ['nearby_header']),
+            'nearby_uuid_label': ('mHotActor->add(person.mName, person.mId);', 'mHotActor->add(person.mId.asString(), person.mId);', ['nearby']),
             'gate': ('std::equal(now.begin(), now.end(), mSeen.begin())',
                      'std::equal(now.begin(), now.begin() + std::min(size_t(6), now.size()), mSeen.begin())', ['7', '8', '9']),
         }
