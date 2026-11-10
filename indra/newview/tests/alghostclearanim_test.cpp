@@ -2,7 +2,9 @@
 #include "../test/lltut.h"
 #include "../alghostclearanim.h"
 
+#include <deque>
 #include <iterator>
+#include <memory>
 #include <map>
 #include <utility>
 #include <set>
@@ -563,5 +565,97 @@ template<> template<> void alghostclearanim_object::test<16>()
     neutral[0] = 1.f; neutral[1] = 2.f;
     frame(true, true);
     ensure("the unconditional stamp is rejected", neutral[0] == 2.f);
+}
+
+// Review round 4, finding 2: a discarded snapshot disposes its own parked state.
+template<> template<> void alghostclearanim_object::test<17>()
+{
+    typedef ParkedStore<std::string, std::string> Store;
+    typedef std::vector<std::shared_ptr<unsigned>> Snapshot;
+    const size_t kHistory = 200;
+    // N Clear cycles beyond the history limit, each snapshot RAII-owning its token.
+    auto cycles = [&](bool owned)
+    {
+        Store store;
+        std::deque<std::shared_ptr<Snapshot>> history;
+        for (int i = 0; i < 1000; ++i)
+        {
+            const unsigned token = store.park("clone", "hot");
+            auto snapshot = std::make_shared<Snapshot>();
+            if (owned) snapshot->push_back(ownParkedToken(token, [&store](unsigned t) { store.discard(t); }));
+            history.push_back(snapshot);
+            if (history.size() > kHistory) history.pop_front(); // eviction
+        }
+        const size_t bounded = store.size();
+        history.clear();                                         // barrier / shell destruction
+        return std::make_pair(bounded, store.size());
+    };
+    const auto good = cycles(true);
+    ensure("the store stays within the history limit", good.first == kHistory);
+    ensure("destroying the history empties the store", good.second == 0);
+    // Planted negative: plain integer tokens leak every evicted snapshot.
+    ensure("integer tokens are rejected (store grows unbounded)", cycles(false).first == 1000);
+
+    // The no-shell early return: the snapshot dies at once.
+    Store store;
+    {
+        auto snapshot = std::make_shared<Snapshot>();
+        snapshot->push_back(ownParkedToken(store.park("clone", "hot"), [&store](unsigned t) { store.discard(t); }));
+    }
+    ensure("an abandoned snapshot leaves nothing parked", store.empty());
+
+    // Copies share one owner; only the last copy disposes; token 0 owns nothing.
+    const unsigned token = store.park("clone", "hot");
+    auto first = ownParkedToken(token, [&store](unsigned t) { store.discard(t); });
+    auto copy = first;
+    first.reset();
+    ensure("a surviving copy keeps the state", store.size() == 1 && parkedTokenValue(copy) == token);
+    copy.reset();
+    ensure("the last copy disposes it", store.empty());
+    ensure("token 0 owns nothing", !ownParkedToken(0, [](unsigned) {}) && parkedTokenValue(nullptr) == 0);
+
+    // A consumed token (undo) is spent: disposal is a no-op and never touches another entry.
+    const unsigned spent = store.park("clone", "a");
+    auto owner = ownParkedToken(spent, [&store](unsigned t) { store.discard(t); });
+    std::string out;
+    ensure("undo takes its state", store.take(spent, "clone", out) && out == "a");
+    const unsigned other = store.park("clone", "b");
+    owner.reset();
+    ensure("disposing a spent token leaves other entries", store.size() == 1 && store.take(other, "clone", out) && out == "b");
+}
+
+// Review round 4, finding 1: a parked hold honours the same release as a live one.
+template<> template<> void alghostclearanim_object::test<18>()
+{
+    struct Gaze { int slot = -1; bool hold = false; bool released = false; };
+    typedef ParkedStore<std::string, Gaze> Store;
+    // The production rules, applied to live and parked alike.
+    auto slot_release = [](Store& parked, int slot, bool forward)
+    { if (forward) parked.forEach([&](Gaze& g) { if (g.slot == slot) g.released = true; }); };
+    auto key_up = [](Store& parked, int slot, bool forward)
+    { if (forward) parked.forEach([&](Gaze& g) { if (g.slot == slot && g.hold) g.released = true; }); };
+    auto parked_gaze = [](Store& store, int slot, bool hold)
+    {
+        Gaze g; g.slot = slot; g.hold = hold;
+        std::string owner = "clone";
+        const unsigned token = store.park(owner, g);
+        return token;
+    };
+    auto undo_released = [](Store& store, unsigned token)
+    { Gaze back; return store.take(token, "clone", back) && back.released; };
+
+    { Store s; const unsigned t = parked_gaze(s, 0, true); key_up(s, 0, true);
+      ensure("key-up ends the parked hold", undo_released(s, t)); }
+    { Store s; const unsigned t = parked_gaze(s, 0, true); slot_release(s, 0, true);
+      ensure("replacing the slot ends the parked gaze", undo_released(s, t)); }
+    { Store s; const unsigned t = parked_gaze(s, 1, true); key_up(s, 0, true); slot_release(s, 2, true);
+      ensure("another slot leaves it running", !undo_released(s, t)); }
+    { Store s; const unsigned t = parked_gaze(s, 0, false); key_up(s, 0, true);
+      ensure("key-up leaves a timed (non-hold) gaze alone", !undo_released(s, t)); }
+    // Planted negatives: releases that never reach the parked state resume indefinitely.
+    { Store s; const unsigned t = parked_gaze(s, 0, true); key_up(s, 0, false);
+      ensure("unforwarded key-up is rejected", !undo_released(s, t)); }
+    { Store s; const unsigned t = parked_gaze(s, 0, true); slot_release(s, 0, false);
+      ensure("unforwarded slot release is rejected", !undo_released(s, t)); }
 }
 } // namespace tut

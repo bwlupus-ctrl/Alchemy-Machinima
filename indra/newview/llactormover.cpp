@@ -20264,6 +20264,9 @@ void LLActorMover::releaseHotGazeSlot(S32 slot)
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
     for (auto& entry : mHotGazes)
         if (entry.second.mState.mSlot == slot) entry.second.mState.release(now);
+    // [ClearAnim] a parked state honours the same slot release as a live one
+    mParkedHotGazes.forEach([&](HotGaze& parked)
+    { if (parked.mState.mSlot == slot) parked.mState.release(now); });
 }
 
 bool LLActorMover::hasHotGazePose(const LLVOAvatar* avatar) const
@@ -20364,6 +20367,9 @@ void LLActorMover::hotGazeInput(S32 slot, bool down)
     for (auto& entry : mHotGazes)
         if (entry.second.mState.mSlot == slot && entry.second.mState.mHold)
             entry.second.mState.release(now);
+    // [ClearAnim] key-up releases a parked hold exactly as it releases a live one
+    mParkedHotGazes.forEach([&](HotGaze& parked)
+    { if (parked.mState.mSlot == slot && parked.mState.mHold) parked.mState.release(now); });
 }
 
 void LLActorMover::restoreHotGazePose(LLVOAvatar* av)
@@ -20456,6 +20462,12 @@ void LLActorMover::unparkHotGaze(U32 token, const LLUUID& actor)
     if (!mParkedHotGazes.take(token, actor, back)) return;
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
     if (!back.mState.finished(now)) mHotGazes[actor] = std::move(back);
+}
+
+// [ClearAnim] A discarded Clear snapshot removes its own parked state.
+void LLActorMover::discardParkedHotGaze(U32 token)
+{
+    if (token) mParkedHotGazes.discard(token);
 }
 
 void LLActorMover::clearHotGazes()

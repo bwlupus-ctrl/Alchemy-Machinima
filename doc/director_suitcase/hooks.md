@@ -5310,6 +5310,16 @@ HEAD coordinates; guards/features are candidate evidence
 | 67–74 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 92–98 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/llui/llscrolllistcolumn.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 189–195 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 205–211 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 233–239 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/llui/llscrolllistctrl.cpp`
 
 HEAD coordinates; guards/features are candidate evidence

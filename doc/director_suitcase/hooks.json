@@ -164617,6 +164617,121 @@
     },
     {
       "features": [
+        "unknown"
+      ],
+      "hunks": [
+        {
+          "base_count": 7,
+          "base_start": 189,
+          "candidate_features_from_subjects": [
+            "clones",
+            "gaze"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollColumnHeader::handleReshape"
+          ],
+          "git_context": "void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 195,
+          "head_start": 189,
+          "id": "indra/llui/llscrolllistcolumn.cpp@189,7",
+          "patch": "                         columnp->setWidth(columnp->getWidth() + remaining_width);\n                         if (columnp->mRelWidth > 0.f)\n                         {\n-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());\n                         }\n                         // all padding went to this widget, we're done\n                         break;\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 205,
+          "candidate_features_from_subjects": [
+            "clones",
+            "gaze"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollColumnHeader::handleReshape"
+          ],
+          "git_context": "void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 211,
+          "head_start": 205,
+          "id": "indra/llui/llscrolllistcolumn.cpp@205,7",
+          "patch": "                         columnp->setWidth(columnp->getWidth() - llmin(columnp->getWidth() - MIN_COLUMN_WIDTH, delta_width));\n                         if (columnp->mRelWidth > 0.f)\n                         {\n-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());\n                         }\n                     }\n \n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 7,
+          "base_start": 233,
+          "candidate_features_from_subjects": [
+            "clones",
+            "gaze"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLScrollColumnHeader::handleReshape"
+          ],
+          "git_context": "void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 239,
+          "head_start": 233,
+          "id": "indra/llui/llscrolllistcolumn.cpp@233,7",
+          "patch": "         // update proportional spacing\n         if (mColumn->mRelWidth > 0.f)\n         {\n-            mColumn->mRelWidth = (F32)new_width / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+            mColumn->mRelWidth = (F32)new_width / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());\n         }\n \n         // tell scroll list to layout columns again\n",
+          "purpose": "Edits declarations/data/build wiring; purpose unknown",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/llui/llscrolllistcolumn.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
         "vcam",
         "weather"
       ],
@@ -164627,6 +164742,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164648,6 +164764,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164675,6 +164795,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164696,6 +164817,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164723,6 +164848,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164744,6 +164870,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164771,6 +164901,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164795,6 +164926,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164822,6 +164957,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164845,6 +164981,10 @@
           "purpose": "Edits gGL, LLTexUnit",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164872,6 +165012,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164893,6 +165034,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164920,6 +165065,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164938,10 +165084,14 @@
           "head_end": 2373,
           "head_start": 2359,
           "id": "indra/llui/llscrolllistctrl.cpp@2359,15",
-          "patch": "     return hit_item;\n }\n \n+S32 LLScrollListCtrl::getColumnAreaWidth() const\n+{\n+    return LLScrollListGutter::availableWidth(mItemListRect.getWidth(), getSelectedBarGutter());\n+}\n+\n S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)\n {\n+    // Cells are drawn the gutter in from the row edge; hit testing moves with them.\n+    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter());\n     // which column did we hit?\n     S32 left = 0;\n     S32 right = 0;\n",
+          "patch": "     return hit_item;\n }\n \n+S32 LLScrollListCtrl::getColumnAreaWidth() const\n+{\n+    return LLScrollListGutter::availableWidth(mItemListRect.getWidth(), getSelectedBarGutter());\n+}\n+\n S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)\n {\n+    // Cells are drawn the gutter in from the row edge; hit testing moves with them.\n+    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft);\n     // which column did we hit?\n     S32 left = 0;\n     S32 right = 0;\n",
           "purpose": "Comment evidence: Cells are drawn the gutter in from the row edge; hit testing moves with them.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -164969,6 +165119,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -164990,6 +165141,10 @@
           "purpose": "Edits LLScrollListGutter",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -165017,6 +165172,7 @@
           "candidate_features_from_subjects": [
             "clones",
             "director-shell",
+            "gaze",
             "vcam"
           ],
           "feature_evidence": [],
@@ -165038,6 +165194,10 @@
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"

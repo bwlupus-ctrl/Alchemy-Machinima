@@ -15,6 +15,8 @@
 #define AL_GHOST_CLEAR_ANIM_H
 
 #include <cstddef>
+#include <functional>
+#include <memory>
 #include <map>
 #include <string>
 #include <utility>
@@ -176,6 +178,8 @@ namespace ALGhostClearAnim
             }
         }
         void drop(const Owner& owner) { migrate(owner, Owner()); }
+        // Token-specific disposal: a discarded snapshot removes exactly its own entry.
+        bool discard(unsigned token) { return mEntries.erase(token) > 0; }
         void clear() { mEntries.clear(); }
         bool empty() const { return mEntries.empty(); }
         std::size_t size() const { return mEntries.size(); }
@@ -186,6 +190,23 @@ namespace ALGhostClearAnim
         std::map<unsigned, Entry> mEntries;
         unsigned mNext = 1;
     };
+
+    // Shared RAII ownership of one parked token. Copies of a snapshot share one owner; when the
+    // last copy is destroyed (history eviction, barrier, shell destruction, early return) the
+    // token's parked state is disposed. Token 0 ("nothing parked") yields an empty owner.
+    inline std::shared_ptr<unsigned> ownParkedToken(unsigned token, std::function<void(unsigned)> dispose)
+    {
+        if (!token) return nullptr;
+        return std::shared_ptr<unsigned>(new unsigned(token), [dispose](unsigned* owned)
+        {
+            if (*owned && dispose) dispose(*owned);
+            delete owned;
+        });
+    }
+    inline unsigned parkedTokenValue(const std::shared_ptr<unsigned>& owner)
+    {
+        return owner ? *owner : 0u;
+    }
 
     // Only a Frozen clone has a held pose that Clear would destroy.
     inline bool needsHeldPose(int drive, int frozen_drive)

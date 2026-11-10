@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2731 classified paths.
+`inventory.csv` / `inventory.json` contain 2732 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -214,7 +214,7 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 Existing evidence: 2299 wiring rows; page-source summary
 `{"ambiguous_rows": 0, "independent_json_rows": 2299, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2299, "unresolved_rows": 76}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
-**False**. Existing manifests can still be stale
+**True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
 rows remain unresolved. They do not establish in-world behavior.
 
@@ -238,7 +238,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 540 shared files / 3369 canonical
+The generated hook map covers 541 shared files / 3372 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and

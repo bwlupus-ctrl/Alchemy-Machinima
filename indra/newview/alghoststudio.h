@@ -835,7 +835,7 @@ public:
         std::shared_ptr<const ALGhostAutoAnim::Pool> mAutoPool;      // exported learning progress
         bool       mGazeEnabled = false;
         bool       mWasCleared = false;
-        U32        mHotGazeToken = 0;                                // parked Hot Gaze owned by this snapshot
+        std::shared_ptr<unsigned> mHotGazeToken;                     // parked Hot Gaze, RAII-owned (shared) by this snapshot
         EDriveMode mFreezeDrive = DRIVE_MIRROR;                      // mDirectedMirrorFreezeDrive
         ALGhostClearAnim::HeldPose mHeldPose;                        // Frozen only, keyed by joint name
     };

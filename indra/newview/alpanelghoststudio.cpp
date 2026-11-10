@@ -3508,7 +3508,8 @@ S32 ALPanelGhostStudio::clearAnimationsOnClonesRecorded(const std::vector<LLUUID
                 else
                 {
                     any = studio.restoreInstanceAnimations(before) || any;
-                    before.mHotGazeToken = 0; // consumed
+                    // Consumed on success; on a failed undo path the parked state is disposed too.
+                    before.mHotGazeToken.reset();
                 }
             }
             if (!any) reason = "Those clones are no longer available";

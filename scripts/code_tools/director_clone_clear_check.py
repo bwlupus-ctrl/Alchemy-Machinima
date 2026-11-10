@@ -100,7 +100,7 @@ PINS = {
     ),
     "alghoststudio.cpp": (
         ("if (inst->mAutoAnimate) { setInstanceAutoAnimate(id, false); } mover.stop(actor); const U32 hot_token = mover.parkHotGaze(actor); "
-         "if (before) { before->mHotGazeToken = hot_token; } if (mover.isGazeEnabled(actor)) { mover.setGazeEnabled(actor, false); } inst->mPendingFreezeFrames = 0; "
+         "if (before) { before->mHotGazeToken = ALGhostClearAnim::ownParkedToken(hot_token, [](unsigned token) { if (LLActorMover::instanceExists()) LLActorMover::instance().discardParkedHotGaze(token); }); } else if (hot_token) { mover.discardParkedHotGaze(hot_token); } if (mover.isGazeEnabled(actor)) { mover.setGazeEnabled(actor, false); } inst->mPendingFreezeFrames = 0; "
          "if (!setInstanceDriveMode(id, DRIVE_DIRECTED, LLUUID::null)) { return false; }",
          "Clear no longer stops the walk (unconditionally), parks Hot Gaze and switches AutoAnimate and gaze off before the drive"),
         ("if (!ALGhostClearAnim::canClear(true, ghost->isEntityPosed())) { return false; }",
@@ -125,7 +125,7 @@ PINS = {
          "if (before.mAutoAnimate != inst->mAutoAnimate) { setInstanceAutoAnimate(before.mId, before.mAutoAnimate); }",
          "undo no longer restores drive, animation, the Frozen pose and AutoAnimate exactly"),
         ("if (before.mGazeEnabled != mover.isGazeEnabled(ghost->getID())) { mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled); } "
-         "mover.unparkHotGaze(before.mHotGazeToken, ghost->getID());",
+         "mover.unparkHotGaze(ALGhostClearAnim::parkedTokenValue(before.mHotGazeToken), ghost->getID());",
          "undo no longer restores gaze and Hot Gaze"),
         ("inst.mAnimCleared = ALGhostClearAnim::holds( inst.mAnimCleared, inst.mDriveMode, inst.mDirectedAnim.notNull()); "
          "ghost->setEntityAnimationsCleared(inst.mAnimCleared);",
@@ -146,7 +146,7 @@ PINS = {
          "the button no longer records one undo step"),
         ("if (redo) { ALGhostStudio::ClearAnimBefore again; const bool cleared = studio.clearInstanceAnimations(before.mId, &again); "
          "if (cleared) before.mHotGazeToken = again.mHotGazeToken; any = cleared || any; } "
-         "else { any = studio.restoreInstanceAnimations(before) || any; before.mHotGazeToken = 0; }",
+         "else { any = studio.restoreInstanceAnimations(before) || any; before.mHotGazeToken.reset(); }",
          "the undo step no longer restores / re-clears every clone with its own Hot Gaze token"),
         ("ALGhostClearAnim::clearedToast((size_t)cleared)", "the count toast is gone"),
         ("const bool clear_enabled = ALGhostClearAnim::canClear(have_selected_entity, selected_posed); "
@@ -171,6 +171,9 @@ PINS = {
         ("mParkedHotGazes.migrate(old_id, new_id);", "a parked Hot Gaze no longer follows a respawned / deleted clone"),
         ("mParkedHotGazes.drop(actor_id);", "slot release keeps a parked Hot Gaze"),
         ("mHotGazes.clear(); mParkedHotGazes.clear(); }", "a global Hot Gaze clear keeps parked states"),
+        ("if (parked.mState.mSlot == slot) parked.mState.release(now); });", "slot release no longer reaches a parked Hot Gaze"),
+        ("if (parked.mState.mSlot == slot && parked.mState.mHold) parked.mState.release(now); });", "key-up no longer reaches a parked Hot Gaze hold"),
+        ("void LLActorMover::discardParkedHotGaze(U32 token) { if (token) mParkedHotGazes.discard(token); }", "a discarded snapshot cannot dispose its parked Hot Gaze"),
     ),
     "aldirectoranimswitcher.cpp": (
         ("ghost->setEntityDriveMode(mode, anim); ALGhostStudio::instance().adoptBodyDrive(ghost);",
@@ -191,6 +194,8 @@ PINS = {
         ("return !cleared || owner == OWNER_POSER;", "mayStart no longer blocks a cleared clone"),
         ("inline bool mayPaintGaze(bool cleared) { return !cleared; }", "mayPaintGaze changed"),
         ("inline bool mayStampMirror(bool cleared) { return !cleared; }", "mayStampMirror changed"),
+        ("bool discard(unsigned token) { return mEntries.erase(token) > 0; }", "a discarded snapshot cannot remove its own parked state"),
+        ("if (*owned && dispose) dispose(*owned); delete owned;", "a snapshot's parked token is no longer disposed with its last owner"),
         ("under_rot ? under_rot[i] : displayed_rot[i]", "the held pose ignores the pose under the mirror stamp"),
         ("const bool mine = it->second.mOwner == owner; if (mine) out = std::move(it->second.mState); mEntries.erase(it);",
          "a parked state can be taken by another owner or kept after its token is spent"),
@@ -407,11 +412,24 @@ def selftest():
          swap(G, "joint->hasAttachmentPosOverride(override_pos, override_mesh)", "false")),
         # Review round 3.
         ("snapshot does not own the parked Hot Gaze",
-         swap(S, "        before->mHotGazeToken = hot_token;\n", "")),
+         swap(S, "        before->mHotGazeToken = ALGhostClearAnim::ownParkedToken(hot_token, [](unsigned token)\n", "        (void)hot_token; (void)([](unsigned token)\n")),
         ("undo takes any parked Hot Gaze (no token)",
-         swap(S, "mover.unparkHotGaze(before.mHotGazeToken, ghost->getID());", "mover.unparkHotGaze(0, ghost->getID());")),
+         swap(S, "mover.unparkHotGaze(ALGhostClearAnim::parkedTokenValue(before.mHotGazeToken), ghost->getID());", "mover.unparkHotGaze(0, ghost->getID());")),
         ("redo loses the new Hot Gaze token",
          swap(P, "if (cleared) before.mHotGazeToken = again.mHotGazeToken;", "")),
+        # Review round 4.
+        ("parked Hot Gaze ignores slot release",
+         swap(M, "    { if (parked.mState.mSlot == slot) parked.mState.release(now); });\n", "    { (void)parked; });\n")),
+        ("parked Hot Gaze ignores key-up",
+         swap(M, "    { if (parked.mState.mSlot == slot && parked.mState.mHold) parked.mState.release(now); });\n", "    { (void)parked; });\n")),
+        ("snapshot token has no disposer",
+         swap(H, "if (*owned && dispose) dispose(*owned);", "")),
+        ("no snapshot retained leaks the parked state",
+         swap(S, "        mover.discardParkedHotGaze(hot_token); // no snapshot retains it\n", "")),
+        ("failed undo keeps the parked state",
+         swap(P, "before.mHotGazeToken.reset();", "")),
+        ("discard removes nothing",
+         swap(H, "bool discard(unsigned token) { return mEntries.erase(token) > 0; }", "bool discard(unsigned) { return false; }")),
         ("respawn does not migrate the parked Hot Gaze",
          swap(M, "    mParkedHotGazes.migrate(old_id, new_id);\n", "")),
         ("slot release keeps the parked Hot Gaze",

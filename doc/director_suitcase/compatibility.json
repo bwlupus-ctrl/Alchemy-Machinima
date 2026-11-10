@@ -7761,6 +7761,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.h",
+    "dependency": "indra/newview/alghostclearanim.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.h",
     "dependency": "indra/newview/llghostcoverage.h",
     "excluded": false,
     "origin": "fork-added",

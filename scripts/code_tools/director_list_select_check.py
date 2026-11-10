@@ -110,10 +110,13 @@ GUTTER_PINS = {
          "rows no longer draw their cells after the gutter"),
     ),
     COLUMN_CPP: (
-        ("columnp->mRelWidth = (F32)columnp->getWidth() / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());",
+        ("columnp->mRelWidth = (F32)columnp->getWidth() / columnRelDenominator(mColumn->mParentCtrl);",
          "relative column ratios of the other columns no longer use the column area width"),
-        ("mColumn->mRelWidth = (F32)new_width / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());",
+        ("mColumn->mRelWidth = (F32)new_width / columnRelDenominator(mColumn->mParentCtrl);",
          "the resized column's ratio no longer uses the column area width"),
+        ("static F32 columnRelDenominator(LLScrollListCtrl* list) { if (list->getSelectedBarGutter() > 0) "
+         "{ return (F32)llmax(1, list->getColumnAreaWidth()); } return (F32)list->getItemListRect().getWidth(); }",
+         "a list without the selected bar no longer keeps the original item-list denominator (or an opted-in list loses the guarded column-area one)"),
     ),
     GUTTER_H: (
         ("if (gutter == 0) return x; return std::max(0, x - origin - gutter);",
@@ -307,8 +310,12 @@ def selftest():
          ctrl_swap("columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft)", "columnLocalX(x, getSelectedBarGutter())"), xui_texts),
         ("column ratios use the full item list width",
          dict(sources, **{COLUMN_CPP: sources.get(COLUMN_CPP, "").replace(
-             "(F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth())",
-             "(F32)mColumn->mParentCtrl->getItemListRect().getWidth()")}), xui_texts),
+             "return (F32)llmax(1, list->getColumnAreaWidth());",
+             "return (F32)list->getItemListRect().getWidth();")}), xui_texts),
+        ("zero-gutter list gets the clamped denominator",
+         dict(sources, **{COLUMN_CPP: sources.get(COLUMN_CPP, "").replace(
+             "return (F32)list->getItemListRect().getWidth();",
+             "return (F32)llmax(1, list->getColumnAreaWidth());")}), xui_texts),
         ("cell rectangles ignore the gutter",
          ctrl_swap("LLScrollListGutter::columnOffset(0, getSelectedBarGutter())", "0"), xui_texts),
         ("columns share the width under the gutter",

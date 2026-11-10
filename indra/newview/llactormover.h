@@ -672,6 +672,7 @@ public:
     // Each Clear snapshot owns the token parkHotGaze() returns (0 = nothing was held).
     U32 parkHotGaze(const LLUUID& actor);
     void unparkHotGaze(U32 token, const LLUUID& actor);
+    void discardParkedHotGaze(U32 token); // token-specific disposal of a discarded snapshot
 
 
     // Director Console camera-facing pose for selected REAL cast avatars. Restore the

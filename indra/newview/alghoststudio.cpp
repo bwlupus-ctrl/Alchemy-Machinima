@@ -3337,7 +3337,15 @@ bool ALGhostStudio::clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* b
     const U32 hot_token = mover.parkHotGaze(actor);
     if (before)
     {
-        before->mHotGazeToken = hot_token;
+        // Shared RAII ownership: the parked state dies with the last copy of the snapshot.
+        before->mHotGazeToken = ALGhostClearAnim::ownParkedToken(hot_token, [](unsigned token)
+        {
+            if (LLActorMover::instanceExists()) LLActorMover::instance().discardParkedHotGaze(token);
+        });
+    }
+    else if (hot_token)
+    {
+        mover.discardParkedHotGaze(hot_token); // no snapshot retains it
     }
     if (mover.isGazeEnabled(actor))
     {
@@ -3404,7 +3412,7 @@ bool ALGhostStudio::restoreInstanceAnimations(const ClearAnimBefore& before)
     {
         mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled);
     }
-    mover.unparkHotGaze(before.mHotGazeToken, ghost->getID());
+    mover.unparkHotGaze(ALGhostClearAnim::parkedTokenValue(before.mHotGazeToken), ghost->getID());
     ++mInstanceRevision;
     return true;
 }

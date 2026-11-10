@@ -6,33 +6,26 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
-      "HOOK": 540,
+      "HOOK": 541,
       "OWNED": 918,
       "TOOLING": 454
     },
     "dirty_product_inputs": [
       "indra/llui/llscrolllistcolumn.cpp",
-      "indra/llui/llscrolllistctrl.cpp",
-      "indra/llui/llscrolllistgutter.h",
       "indra/newview/alghostclearanim.h",
       "indra/newview/alghoststudio.cpp",
       "indra/newview/alghoststudio.h",
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/llactormover.cpp",
       "indra/newview/llactormover.h",
-      "indra/newview/llghostavatar.cpp",
       "indra/newview/tests/alghostclearanim_test.cpp",
-      "indra/newview/tests/alkitlistselection_test.cpp",
       "scripts/code_tools/clear_anim_studio_hunks.json",
       "scripts/code_tools/director_actor_bar_check.py",
       "scripts/code_tools/director_clone_clear_check.py",
-      "scripts/code_tools/director_clone_rekey_check.py",
-      "scripts/code_tools/director_gaze_hot_check.py",
-      "scripts/code_tools/director_gaze_hot_integration.py",
       "scripts/code_tools/director_list_select_check.py"
     ],
     "evidence": {
-      "functional_csv_hash_matches": false,
+      "functional_csv_hash_matches": true,
       "functional_meta": {
         "actions": [
           "RUN",
@@ -43,7 +36,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "6fb0f1f9332079390def98be97fbb2d0111d2e298ce7be9d0006e16761eada8d",
+        "csv_sha256": "e3e53bee60b3f845e218ff5ce35fccda22b5cbf7a31ebafed6cf2ff1e4fe119a",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -214,10 +207,10 @@
       },
       "wiring_rows": 2299
     },
-    "head_source_tree": "af2fb489580b30103e31e2e6895235e306bed120",
-    "hook_files": 540,
-    "hunks": 3369,
-    "input_sha256": "8c65d7f6284c7db4c71d8ce5b3e35b760e422550e994ee56890a5ca772a698b7",
+    "head_source_tree": "5c86f94977f6f58448751fa1b066dd844f4b4677",
+    "hook_files": 541,
+    "hunks": 3372,
+    "input_sha256": "2508d1491b5ea91be45417ef94e1edb13a23c408029cac05b34e40d54a25b040",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -11833,7 +11826,24 @@
     {
       "candidate_features_from_subjects": [
         "clones",
+        "gaze"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llui/llscrolllistcolumn.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
+        "gaze",
         "vcam"
       ],
       "class": "HOOK",
@@ -11871,7 +11881,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15342,7 +15353,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15738,7 +15750,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15766,7 +15779,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones"
+        "clones",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -17486,7 +17500,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27018,7 +27033,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -27051,7 +27067,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
