@@ -262,4 +262,56 @@ template<> template<> void aldirectortheme_object::test<10>()
     ensure("safe inversion is applied", ALDirectorTheme::tryInvertColors(simple));
     ensure_equals("safe inverted background", simple.at("KitWindowBg"), LLColor4::white);
 }
+
+// Kit list selection. Same input and output as LIST_SELECTION_VECTOR_* in director_theme_check.py.
+template<> template<> void aldirectortheme_object::test<11>()
+{
+    const LLColor4 accent(1.00f, 0.41f, 0.71f, 1.f), row(0.10f, 0.05f, 0.10f, 1.f);
+    const LLColor4 stripe(0.08f, 0.04f, 0.08f, 1.f), text(0.95f, 0.93f, 0.95f, 1.f);
+    const ALDirectorTheme::ListSelection selected = ALDirectorTheme::listSelectionColors(accent, row, stripe, text);
+    ensure("a pink accent on a dark row is visible", selected.ok);
+    ensure("bg[0]", std::fabs(selected.bg.mV[0] - 0.5050f) < 0.0005f);
+    ensure("bg[1]", std::fabs(selected.bg.mV[1] - 0.2120f) < 0.0005f);
+    ensure("bg[2]", std::fabs(selected.bg.mV[2] - 0.3745f) < 0.0005f);
+    ensure("bg[3]", selected.bg.mV[3] == 1.f);
+    ensure("fg[0]", std::fabs(selected.fg.mV[0] - 0.95f) < 0.0005f);
+    ensure("fg[1]", std::fabs(selected.fg.mV[1] - 0.93f) < 0.0005f);
+    ensure("fg[2]", std::fabs(selected.fg.mV[2] - 0.95f) < 0.0005f);
+    ensure("selected row differs from the plain row",
+           ALDirectorTheme::contrastRatio(selected.bg, row) >= ALDirectorTheme::kListSelectionMinBg);
+    ensure("selected row differs from the striped row",
+           ALDirectorTheme::contrastRatio(selected.bg, stripe) >= ALDirectorTheme::kListSelectionMinBg);
+    ensure("selected text is readable",
+           ALDirectorTheme::contrastRatio(selected.fg, selected.bg) >= ALDirectorTheme::kListSelectionMinText);
+}
+
+// Planted negatives: colours below either minimum are rejected, and a palette that
+// cannot separate falls back or reports failure instead of claiming a visible row.
+template<> template<> void aldirectortheme_object::test<12>()
+{
+    const LLColor4 row(0.071f, 0.078f, 0.094f, 1.f), stripe(0.067f, 0.075f, 0.086f, 1.f);
+    const LLColor4 text(0.945f, 0.949f, 0.957f, 1.f), old_fill(0.149f, 0.165f, 0.192f, 1.f);
+    ensure("the old control-fill selection is rejected",
+           !ALDirectorTheme::listSelectionPasses(old_fill, text, row, stripe));
+    const LLColor4 visible(0.45f, 0.35f, 0.15f, 1.f);
+    ensure("a clearly different fill with readable text passes",
+           ALDirectorTheme::listSelectionPasses(visible, text, row, stripe));
+    ensure("unreadable selected text is rejected",
+           !ALDirectorTheme::listSelectionPasses(visible, visible, row, stripe));
+
+    // Accent equal to the row colour: no accent strength separates, the text blend does.
+    const ALDirectorTheme::ListSelection fallback = ALDirectorTheme::listSelectionColors(row, row, stripe, text);
+    ensure("text fallback is visible", fallback.ok);
+    ensure("text fallback passes", ALDirectorTheme::listSelectionPasses(fallback.bg, fallback.fg, row, stripe));
+
+    // A light accent picks dark text rather than keeping light theme text on it.
+    const LLColor4 light_accent(0.95f, 0.85f, 0.30f, 1.f);
+    const ALDirectorTheme::ListSelection light = ALDirectorTheme::listSelectionColors(light_accent, row, stripe, text);
+    ensure("light accent is visible", light.ok);
+    ensure("light accent text is readable",
+           ALDirectorTheme::contrastRatio(light.fg, light.bg) >= ALDirectorTheme::kListSelectionMinText);
+
+    const ALDirectorTheme::ListSelection hopeless = ALDirectorTheme::listSelectionColors(row, row, stripe, row);
+    ensure("an impossible palette is not reported as visible", !hopeless.ok);
+}
 } // namespace tut

@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelghoststudio.h"
+#include "alkitlistselection.h"     // [ListMultiSelect] pure primary/mirror/rebuild rules
 #include "aldirectorcastui.h"
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
@@ -1185,7 +1186,8 @@ const ALPanelGhostStudio::SelectionCache& ALPanelGhostStudio::selection()
     cache.mNumSelected = num_selected;
     cache.mFirstIndex = first_index;
     ++cache.mStamp;
-    cache.mRow = selectedListValue();
+    cache.mRows = selectedRowValues();
+    cache.mRow = ALKitListSelection::primaryRow(cache.mRows, mPrimaryRow);
     cache.mInstance = selectedInstance();
     cache.mInstances = selectedInstances();
     cache.mAnyGroup = false;
@@ -1247,7 +1249,27 @@ LLUUID ALPanelGhostStudio::selectedInstance() const
 LLUUID ALPanelGhostStudio::selectedListValue() const
 {
     LLScrollListItem* item = mList->getFirstSelected();
-    return item ? item->getValue().asUUID() : LLUUID::null;
+    if (!item)
+    {
+        return LLUUID::null;
+    }
+    const LLUUID first = item->getValue().asUUID();
+    if (mPrimaryRow.isNull() || mPrimaryRow == first || mList->getNumSelected() < 2)
+    {
+        return first;
+    }
+    // [ListMultiSelect] several rows selected and the primary is not the top one
+    return ALKitListSelection::primaryRow(selectedRowValues(), mPrimaryRow);
+}
+
+std::vector<LLUUID> ALPanelGhostStudio::selectedRowValues() const
+{
+    std::vector<LLUUID> rows;
+    for (LLScrollListItem* item : mList->getAllSelected())
+    {
+        rows.push_back(item->getValue().asUUID());
+    }
+    return rows;
 }
 
 LLUUID ALPanelGhostStudio::selectedUnitId() const
@@ -1420,39 +1442,45 @@ void ALPanelGhostStudio::draw()
     {
         desired_row = group->mId;
     }
-    if (shared_selection_revision != mObservedSelectionRevision)
+    // [ListMultiSelect] The list owns the multi-selection; the shared selection is only
+    // its primary row. An external change (the other panel, the in-world picker) replaces
+    // the list selection. Otherwise the mirror never collapses what the user selected:
+    // it waits for a click in progress to commit (the rows change at mouse-down, the
+    // shared primary only at mouse-up) and accepts a primary that is any selected row.
+    // [GhostPanelPerf] compares against the cached rows (no LLSD/UUID temporaries per
+    // frame); the cache is keyed on the list selection.
+    const bool external_selection =
+        shared_selection_revision != mObservedSelectionRevision;
+    const SelectionCache& listed = selection();
+    const LLUUID listed_row = listed.mRow;
+    switch (ALKitListSelection::mirrorAction(
+                external_selection, mList->hasMouseCapture(), desired_row,
+                listed_row, listed.mRows))
     {
-        // The other panel or in-world picker changed the shared primary row.
-        // This list is multi-select, so selectByID() alone would retain stale
-        // local extras and could leave the detail editor on the wrong row.
+    case ALKitListSelection::MIRROR_REPLACE:
+        // Exactly the shared row: no stale local extras, and none when it is null.
         mList->deselectAllItems(true);
         if (desired_row.notNull())
         {
             mList->selectByID(desired_row);
         }
-        mObservedSelectionRevision = shared_selection_revision;
-        noteListSelectionChanged();
-    }
-    else
-    {
-        // [GhostPanelPerf] compare against the cached row value (no LLSD/UUID
-        // temporaries per frame); the cache is keyed on the list selection.
-        const LLUUID listed_row = selection().mRow;
-        if (desired_row != listed_row)
+        mPrimaryRow = desired_row;
+        // Without an external change, only invalidate when the list really changed:
+        // a desired row that is not in the list must not churn the cache (and the
+        // detail gate) per frame.
+        if (external_selection || selectedListValue() != listed_row)
         {
-            mList->deselectAllItems(true);
-            if (desired_row.notNull())
-            {
-                mList->selectByID(desired_row);
-            }
-            // Only invalidate when the list really changed: a desired row that is
-            // not in the list must not churn the cache (and the detail gate) per frame.
-            if (selectedListValue() != listed_row)
-            {
-                noteListSelectionChanged();
-            }
+            noteListSelectionChanged();
         }
+        break;
+    case ALKitListSelection::MIRROR_ADOPT:
+        mPrimaryRow = desired_row;
+        noteListSelectionChanged();
+        break;
+    case ALKitListSelection::MIRROR_KEEP:
+        break;
     }
+    mObservedSelectionRevision = shared_selection_revision;
     syncCrowdFacingPointPrototype();
 
     refreshDetail();
@@ -1734,14 +1762,18 @@ void ALPanelGhostStudio::refreshList(bool force_now)
     mListGate.accept(revisions);
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost rebuild list");
 
-    const LLUUID prev_sel = selectedListValue();
+    // [ListMultiSelect] A rebuild keeps EVERY selected row that still exists (it used
+    // to restore only the first one, so any model change collapsed a multi-selection).
+    const std::vector<LLUUID> prev_rows = selectedRowValues();
+    std::vector<LLUUID> rebuilt_rows;
     mList->deleteAllItems();
     std::set<LLUUID> emitted_groups;
 
     auto add_instance_row =
-        [this, &studio](const ALGhostStudio::Instance& inst, bool indented)
+        [this, &studio, &rebuilt_rows](const ALGhostStudio::Instance& inst, bool indented)
     {
         if (inst.mDeleting) return;
+        rebuilt_rows.push_back(inst.mId);
         LLSD row;
         row["value"] = inst.mId;
         row["columns"][0]["column"] = column_name(mList, 0, "on");
@@ -1799,6 +1831,7 @@ void ALPanelGhostStudio::refreshList(bool force_now)
             all_enabled = all_enabled && child && child->mEnabled;
         }
 
+        rebuilt_rows.push_back(group->mId);
         LLSD header;
         header["value"] = group->mId;
         header["columns"][0]["column"] = column_name(mList, 0, "on");
@@ -1835,9 +1868,12 @@ void ALPanelGhostStudio::refreshList(bool force_now)
             }
         }
     }
-    if (prev_sel.notNull())
+    // selectMultiple() adds rows; selectByID() would clear the others again.
+    const std::vector<LLUUID> kept_rows =
+        ALKitListSelection::restoreRows(prev_rows, rebuilt_rows);
+    if (!kept_rows.empty())
     {
-        mList->selectByID(prev_sel);
+        mList->selectMultiple(kept_rows);
     }
     noteListSelectionChanged(); // rows were rebuilt: cached selection is stale
     mListSig = listSignature(); // fallback diff baseline
@@ -2519,6 +2555,21 @@ void ALPanelGhostStudio::onListSelect()
     noteListSelectionChanged(); // [GhostPanelPerf] user changed the list selection
     noteActiveHost();           // [CloneAnimDrop] this host's multiselection is the menu's
     ALGhostStudio& studio = ALGhostStudio::instance();
+    // [ListMultiSelect] The shared primary follows the row just clicked (Ctrl/Shift
+    // included), not the top selected row; the other selected rows stay selected.
+    {
+        LLScrollListItem* hit = nullptr;
+        for (S32 column = 0; !hit && column < mList->getNumColumns(); ++column)
+        {
+            hit = mList->getMouseUpHitItem(column);
+        }
+        LLScrollListItem* last = mList->getLastSelectedItem();
+        mPrimaryRow = ALKitListSelection::primaryAfterCommit(
+            selectedRowValues(),
+            hit ? hit->getValue().asUUID() : LLUUID::null,
+            last ? last->getValue().asUUID() : LLUUID::null,
+            mPrimaryRow);
+    }
     const LLUUID row_value = selectedListValue();
     const ALGhostGroupModel::Group* group =
         studio.groupForMember(row_value);

@@ -1466,7 +1466,9 @@ void ALPanelDanceBall::rebuildBlockingList(const ALDanceBall& ball)
         mBlockingList->addElement(value);
         mBlockingRows[dancer.mId] = row;
     }
-    for (const LLUUID& id : selected) mBlockingList->selectByID(id);
+    // [ListMultiSelect] selectByID() clears the other rows, so a loop of it kept only the
+    // last dancer; selectMultiple() restores every selected row that still exists.
+    if (!selected.empty()) mBlockingList->selectMultiple(selected);
     mBlockingList->setScrollPos(scroll);
 }
 

@@ -646,6 +646,29 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
         for node in child.iter():
             if node.get("name") in row.get("child_names", {}):
                 node.set("name", str(row["child_names"][node.get("name")]))
+        if row.get("column_widths"):
+            # Hosted lists keep the v1 column set; a row may re-budget the widths for the kit
+            # page (keys are the renamed column names; "dynamic" takes the spare width).
+            widths = dict(row["column_widths"])
+            if tag != "scroll_list":
+                raise GenError(f"column_widths on {widget!r}: hosted control is {tag}, not a scroll_list")
+            for column in child.iter("columns"):
+                width = widths.pop(column.get("name"), None)
+                if width is None:
+                    continue
+                for attr in ("width", "dynamic_width", "relative_width", "relwidth"):
+                    column.attrib.pop(attr, None)
+                if width == "dynamic":
+                    column.set("dynamic_width", "true")
+                elif isinstance(width, int) and not isinstance(width, bool) and width > 0:
+                    column.set("width", str(width))
+                else:
+                    raise GenError(f"column_widths on {widget!r}: {column.get('name')!r} must be "
+                                   "a positive integer or \"dynamic\"")
+            if widths:
+                raise GenError(f"column_widths on {widget!r}: no such column(s) {sorted(widths)}")
+            if sum(1 for column in child.iter("columns") if column.get("dynamic_width") == "true") != 1:
+                raise GenError(f"column_widths on {widget!r}: exactly one column must be dynamic")
         if tag == "check_box":
             child.tag = "kit_switch"
         elif tag in {"slider", "spinner"} and requested in {"dial", "arc"} and widget not in referenced:
@@ -851,6 +874,9 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
     if row.get("actions"):
         attrs["fixed_actions" if row.get("readout") else "action_row"] = "true"
     if row.get("fill_width"):
+        if kind == "list" and "row_height" not in row:
+            # A full-span list has a caption line above it, so its height must be authored.
+            raise GenError(f"fill_width list row {widget!r} needs an explicit row_height")
         attrs["fill_width"] = "true"
     if row.get("label_wrap"):
         attrs["label_wrap"] = "true"

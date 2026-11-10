@@ -1799,6 +1799,13 @@ void LLScrollListCtrl::drawItems()
 
                 item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding);
 
+                if (mSelectedBarWidth > 0 && mCanSelect && item->getSelected())
+                {
+                    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+                    gl_rect_2d(item_rect.mLeft, item_rect.mTop, item_rect.mLeft + mSelectedBarWidth,
+                               item_rect.mBottom, mSelectedBarColor % alpha);
+                }
+
                 cur_y -= mLineHeight;
             }
             line++;

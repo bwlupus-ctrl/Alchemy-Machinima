@@ -11,6 +11,16 @@
       "TOOLING": 449
     },
     "dirty_product_inputs": [
+      "indra/llui/llscrolllistctrl.cpp",
+      "indra/llui/llscrolllistctrl.h",
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/aldirectortheme.h",
+      "indra/newview/alkitrow.cpp",
+      "indra/newview/alkitstyle.cpp",
+      "indra/newview/alkitstyle.h",
+      "indra/newview/alpaneldanceball.cpp",
+      "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/alpanelghoststudio.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -54,9 +64,12 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gate_policy.json",
+      "indra/newview/tests/aldirectortheme_test.cpp",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json"
+      "scripts/code_tools/director_kit/kit_pages.json",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_theme_check.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -70,7 +83,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "c43e6e746aec8c4a3f237c143b42c08b16b4ff55907b9dca2c1bf8cfbf699dce",
+        "csv_sha256": "2374af9314470828c4ba8f08824ef076e4bdc0c440892486020673ed919ce90d",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -175,7 +188,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 847
+        "xui_files": 846
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -241,10 +254,10 @@
       },
       "wiring_rows": 2298
     },
-    "head_source_tree": "615b2b66a78cefec696c1e6880ea754c473df4f7",
+    "head_source_tree": "7167e395cceef4fa6d62b74346462f61f8482b9f",
     "hook_files": 536,
     "hunks": 3354,
-    "input_sha256": "f5ac69d2d409b79c6ced51c142bffc2d6ad71c6f7de5d9e328e3f4feacbc2be3",
+    "input_sha256": "05180318f0ca3e0b5b57abd83268c734b0f7d6b295c7a5f60d138c9bcd6e1f85",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",

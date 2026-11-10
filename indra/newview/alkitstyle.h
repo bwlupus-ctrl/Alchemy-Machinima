@@ -14,6 +14,7 @@ class LLView;
 namespace ALKitStyle
 {
 constexpr S32 ROW_H = 28, LABEL_W = 100, VALUE_W = 52, RESET_W = 20, COL_GAP = 6, ROW_INSET = 4;
+constexpr S32 LIST_SELECTED_BAR_W = 3;
 constexpr S32 DIAL_SIZE = 60, DIAL_ROW_H = 68, DIAL_CELL_H = 94, NUMBER_FIELD_W = 96;
 constexpr S32 SWITCH_W = 34, SWITCH_H = 18, SWITCH_KNOB = 14, SWITCH_INSET = 2;
 constexpr S32 RESET_GLYPH = 11, CARD_RESET_W = 24, CARD_RESET_GLYPH = 13;

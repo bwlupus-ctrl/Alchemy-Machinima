@@ -2,6 +2,7 @@
 
 #include "alkitstyle.h"
 
+#include "aldirectortheme.h"
 #include "llfontgl.h"
 #include "llbutton.h"
 #include "llcheckboxctrl.h"
@@ -200,9 +201,14 @@ namespace
     {
         list->setBgWriteableColor(color(INPUT_BG).get());
         list->setReadOnlyBgColor(color(INPUT_BG).get());
-        list->setBgSelectedColor(color(CONTROL_BG).get());
+        // Selected rows: accent-derived and contrast-checked against the plain and striped rows
+        // (the old KitControlBg fill was nearly the row colour). Kit lists also get an accent bar.
+        const ALDirectorTheme::ListSelection selected = ALDirectorTheme::listSelectionColors(
+            color(ACCENT).get(), color(INPUT_BG).get(), color(WINDOW_BG).get(), color(TEXT_STRONG).get());
+        list->setBgSelectedColor(selected.bg);
         list->setBgStripeColor(color(WINDOW_BG).get());
-        list->setFgSelectedColor(color(TEXT_STRONG).get());
+        list->setFgSelectedColor(selected.fg);
+        list->setSelectedBar(LIST_SELECTED_BAR_W, color(ACCENT).get());
         list->setFgUnselectedColor(color(TEXT).get());
         list->setFgDisableColor(color(FAINT).get());
         list->setHoveredColor(color(RAIL_HOVER).get());

@@ -598,7 +598,7 @@
    "row_overrides": {
     "btn_freeze": {"w": "ghost_btn_freeze", "source_widget": "btn_freeze"},
     "lens_gaze_target_mode": {"no_widget_history": true, "child_names": {"gaze_tangent": "ghost_gaze_tangent", "gaze_camera": "ghost_gaze_camera", "gaze_cast": "ghost_gaze_cast", "gaze_point": "ghost_gaze_point"}},
-    "ghost_list": {"row_height": 130, "no_widget_history": true, "child_names": {"on": "ghost_on", "name": "ghost_name_col", "kind": "ghost_kind", "state": "ghost_state", "source": "ghost_source", "style": "ghost_style", "pose": "ghost_pose"}},
+    "ghost_list": {"no_widget_history": true, "child_names": {"on": "ghost_on", "name": "ghost_name_col", "kind": "ghost_kind", "state": "ghost_state", "source": "ghost_source", "style": "ghost_style", "pose": "ghost_pose"}},
     "ghost_name": {"no_widget_history": true},
     "pos_x_spinner": {"no_widget_history": true},
     "pos_y_spinner": {"no_widget_history": true},

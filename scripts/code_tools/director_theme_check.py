@@ -34,6 +34,12 @@ Rules (exit 1 on any finding):
 - inverted: every theme must also pass the contrast rules after the Invert
   theme switch. inverted_colors() mirrors ALDirectorTheme::invertColors;
   INVERT_VECTOR pins both to the same output (aldirectortheme_test.cpp).
+- list selection: the selected row of a kit scroll list (ALKitStyle
+  applyListColors) uses list_selection_colors(), the mirror of
+  ALDirectorTheme::listSelectionColors. For every theme, plain and inverted,
+  the selected background must reach LIST_SELECTION_MIN_BG:1 against both the
+  plain row (KitInputBg) and the striped row (KitWindowBg), and the selected
+  text LIST_SELECTION_MIN_TEXT:1 against the selected background.
 - Runtime Director-capable C++: text setters/draws require Kit colour provenance;
   exact reviewed legacy/state/forwarder exceptions only. Kit member references
   must remain live; LLColor4 destinations and detached aliases fail.
@@ -282,6 +288,88 @@ KEPT_WHEN_INVERTED = {
 }
 
 
+# Kit scroll lists: selected row. Mirrors ALDirectorTheme::listSelectionColors.
+LIST_SELECTION_MIN_BG = 1.8
+LIST_SELECTION_MIN_TEXT = 4.5
+LIST_SELECTION_STRENGTHS = (0.45, 0.6, 0.75, 0.9, 1.0)
+LIST_SELECTION_NAMES = ("KitAccent", "KitInputBg", "KitWindowBg", "KitTextStrong")
+
+
+def mix_opaque(start, end, amount):
+    return tuple(start[i] + (end[i] - start[i]) * amount for i in range(3)) + (1.0,)
+
+
+def list_selection_judge(bg, fg, row_bg, stripe_bg):
+    """Findings for one selected-row colour pair; empty when it is clearly visible."""
+    findings = []
+    for label, other in (("plain row", row_bg), ("striped row", stripe_bg)):
+        ratio = contrast(bg, other)
+        if ratio < LIST_SELECTION_MIN_BG:
+            findings.append(f"list selection background vs {label}: {ratio:.2f}:1 < {LIST_SELECTION_MIN_BG}:1")
+    ratio = contrast(fg, bg)
+    if ratio < LIST_SELECTION_MIN_TEXT:
+        findings.append(f"list selection text: {ratio:.2f}:1 < {LIST_SELECTION_MIN_TEXT}:1")
+    return findings
+
+
+def list_selection_colors(accent, row_bg, stripe_bg, text, strengths=LIST_SELECTION_STRENGTHS):
+    """(bg, fg, ok): accent blended into the row colour, stronger until it stands out."""
+    black, white = (0.0, 0.0, 0.0, 1.0), (1.0, 1.0, 1.0, 1.0)
+    strong = tuple(text[:3]) + (1.0,)
+    bg = fg = None
+    for toward in (accent, strong):
+        for strength in strengths:
+            bg = mix_opaque(row_bg, toward, strength)
+            fg = (strong if contrast(strong, bg) >= LIST_SELECTION_MIN_TEXT
+                  else black if contrast(black, bg) >= contrast(white, bg) else white)
+            if not list_selection_judge(bg, fg, row_bg, stripe_bg):
+                return bg, fg, True
+    return bg, fg, False
+
+
+def list_selection_findings(effective):
+    if not all(name in effective for name in LIST_SELECTION_NAMES):
+        return ["list selection: missing " + ", ".join(n for n in LIST_SELECTION_NAMES if n not in effective)]
+    accent, row_bg, stripe_bg, text = (effective[name] for name in LIST_SELECTION_NAMES)
+    if row_bg[3] < 1.0 or stripe_bg[3] < 1.0:
+        return ["list selection: translucent row background, cannot judge contrast"]
+    bg, fg, ok = list_selection_colors(accent, row_bg, stripe_bg, text)
+    return list_selection_judge(bg, fg, row_bg, stripe_bg) if not ok else []
+
+
+def list_selection_source_findings(header, style):
+    """The viewer must compute the same colours, from the same inputs, for every kit list."""
+    header, style = compact_cpp(strip_cpp_comments(header)), compact_cpp(strip_cpp_comments(style))
+    errors = []
+    numbers = lambda values: "{" + ",".join(f"{v:g}f".replace("1f", "1.f") for v in values) + "}"
+    for needle, label in (
+            (f"kListSelectionMinBg={LIST_SELECTION_MIN_BG:g}f;", "background minimum"),
+            (f"kListSelectionMinText={LIST_SELECTION_MIN_TEXT:g}f;", "text minimum"),
+            ("kListSelectionStrengths[]=" + numbers(LIST_SELECTION_STRENGTHS) + ";", "blend strengths"),
+            ("for(constLLColor4*toward:{&accent,&strong})", "accent-then-text order"),
+            ("out.bg=mixOpaque(row_bg,*toward,strength);", "blend"),
+            ("out.fg=contrastRatio(strong,out.bg)>=kListSelectionMinText?strong:"
+             "contrastRatio(black,out.bg)>=contrastRatio(white,out.bg)?black:white;", "text choice"),
+            ("returncontrastRatio(bg,row_bg)>=kListSelectionMinBg&&contrastRatio(bg,stripe_bg)>=kListSelectionMinBg&&"
+             "contrastRatio(fg,bg)>=kListSelectionMinText;", "pass rule")):
+        if needle not in header:
+            errors.append(f"aldirectortheme.h: list selection {label} differs from Python")
+    for needle, label in (
+            ("ALDirectorTheme::listSelectionColors(color(ACCENT).get(),color(INPUT_BG).get(),"
+             "color(WINDOW_BG).get(),color(TEXT_STRONG).get());", "inputs"),
+            ("list->setBgSelectedColor(selected.bg);", "selected background"),
+            ("list->setFgSelectedColor(selected.fg);", "selected text"),
+            ("list->setBgWriteableColor(color(INPUT_BG).get());", "row background"),
+            ("list->setBgStripeColor(color(WINDOW_BG).get());", "stripe background"),
+            ("voidrestyleLists(){for(constLLHandle<LLScrollListCtrl>&handle:sStyledLists)"
+             "if(LLScrollListCtrl*list=handle.get())applyListColors(list);}", "theme-change restyle")):
+        if needle not in style:
+            errors.append(f"alkitstyle.cpp: kit list {label} no longer comes from the checked rule")
+    if style.count("setBgSelectedColor(") != 1 or style.count("setFgSelectedColor(") != 1:
+        errors.append("alkitstyle.cpp: a second selected-colour write bypasses the checked rule")
+    return errors
+
+
 def keeps_when_inverted(name):
     return name in KEPT_WHEN_INVERTED or name.startswith("KitShadow")
 
@@ -324,8 +412,9 @@ def check_theme_file(path, skin):
         return [f"file is {len(raw)} bytes (cap {MAX_BYTES})"]
     errors, effective = check_theme_text(stem, raw.decode("utf-8"), skin, byte_len=len(raw))
     if not errors:
-        errors += contrast_findings(effective)
-        errors += ["inverted: " + item for item in contrast_findings(inverted_colors(effective))]
+        errors += contrast_findings(effective) + list_selection_findings(effective)
+        inverted = inverted_colors(effective)
+        errors += ["inverted: " + item for item in contrast_findings(inverted) + list_selection_findings(inverted)]
     return errors
 
 
@@ -364,6 +453,10 @@ def director_text_findings(text, skin):
 # Review exceptions are exact calls/initializers, never whole-file exclusions.
 # A changed argument or a new call must be reviewed again.
 CPP_TEXT_ALLOWLIST = {
+    ('alkitstyle.cpp', 'list->setFgSelectedColor(selected.fg)'):
+        ('Kit list selected text: KitTextStrong, or black/white when the accent fill needs it. '
+         'list_selection_source_findings pins the rule and every theme is gated on its contrast.',
+         'list->setBgStripeColor(color(WINDOW_BG).get());'),
     ('alpanelactorkey.cpp', 'font->renderUTF8(label,0,gViewerWindow->getWorldViewRectScaled().mRight-12,gViewerWindow->getWorldViewRectScaled().mTop-42,LLColor4(1.f,.7f,.15f,1.f),LLFontGL::RIGHT,LLFontGL::TOP,LLFontGL::NORMAL,LLFontGL::DROP_SHADOW)'):
         ('World-view key badge with drop shadow, outside Director surfaces.', ''),
     ('alghostnameplates.cpp', 'tag->setColor(color)'):
@@ -703,7 +796,15 @@ def run_check(themes_dir):
     for error in parity_errors:
         print(f'FAIL  {error}')
     print(f'C++/Python contrast parity: {len(parity_errors)} finding(s)')
-    return 1 if failed or text_errors or stale_errors or cpp_errors or parity_errors else 0
+    with open(os.path.join(REPO, 'indra/newview/aldirectortheme.h'), encoding='utf-8') as fh:
+        header = fh.read()
+    with open(os.path.join(REPO, 'indra/newview/alkitstyle.cpp'), encoding='utf-8') as fh:
+        selection_errors = list_selection_source_findings(header, fh.read())
+    for error in selection_errors:
+        print(f'FAIL  {error}')
+    print(f'kit list selection rule: {len(selection_errors)} finding(s)')
+    return 1 if (failed or text_errors or stale_errors or cpp_errors or parity_errors
+                 or selection_errors) else 0
 
 
 # Planted fixtures. Each must-fail fixture carries exactly the defect its label names.
@@ -743,6 +844,69 @@ INVERT_VECTOR_OUT = {
     "KitRecord": (0.7700, 0.2800, 0.2800, 1.0000),
     "KitShadowWindow": (0.0000, 0.0000, 0.0000, 0.5000),
 }
+
+
+# Same input and output as test<11> in indra/newview/tests/aldirectortheme_test.cpp.
+LIST_SELECTION_VECTOR_IN = ((1.00, 0.41, 0.71, 1.0), (0.10, 0.05, 0.10, 1.0),
+                            (0.08, 0.04, 0.08, 1.0), (0.95, 0.93, 0.95, 1.0))
+LIST_SELECTION_VECTOR_OUT = ((0.5050, 0.2120, 0.3745, 1.0), (0.9500, 0.9300, 0.9500, 1.0))
+
+
+def list_selection_selftest(skin):
+    failures = []
+    row_bg, stripe_bg, text = skin["KitInputBg"], skin["KitWindowBg"], skin["KitTextStrong"]
+    # Planted negative 1: the colours the kit lists used before this rule (selected
+    # row = KitControlBg) must be rejected, or the gate would not have caught the report.
+    if not list_selection_judge(skin["KitControlBg"], text, row_bg, stripe_bg):
+        failures.append("old KitControlBg list selection passes the visibility rule")
+    # Planted negative 2: a blend too weak to stand out is rejected and never returned as ok.
+    weak = list_selection_colors(skin["KitAccent"], row_bg, stripe_bg, text, strengths=(0.04,))
+    if not list_selection_judge(mix_opaque(row_bg, skin["KitAccent"], 0.04), text, row_bg, stripe_bg) or weak[2]:
+        failures.append("a 4% accent blend passes the visibility rule")
+    # Planted negative 3: unreadable selected text is rejected.
+    bg, _fg, ok = list_selection_colors(skin["KitAccent"], row_bg, stripe_bg, text)
+    if not ok or not list_selection_judge(bg, bg, row_bg, stripe_bg):
+        failures.append("selected text equal to its background passes the visibility rule")
+    # An accent equal to the row colour cannot separate at any strength: the text fallback must.
+    bg, fg, ok = list_selection_colors(row_bg, row_bg, stripe_bg, text)
+    if not ok or list_selection_judge(bg, fg, row_bg, stripe_bg):
+        failures.append("accent equal to the row colour has no visible fallback")
+    # A theme whose accent equals its row colour and whose text does too is reported, not passed.
+    if list_selection_colors(row_bg, row_bg, stripe_bg, row_bg)[2]:
+        failures.append("an impossible palette is reported as visible")
+    hopeless = dict(skin, KitAccent=row_bg, KitTextStrong=row_bg)
+    if not list_selection_findings(hopeless):
+        failures.append("an impossible palette produces no finding")
+    bg, fg, ok = list_selection_colors(*LIST_SELECTION_VECTOR_IN)
+    for got, expected, label in ((bg, LIST_SELECTION_VECTOR_OUT[0], "bg"), (fg, LIST_SELECTION_VECTOR_OUT[1], "fg")):
+        if not ok or any(abs(a - b) > 0.0005 for a, b in zip(got, expected)):
+            failures.append(f"list selection vector {label}: {got} != {expected}")
+    for label, colors in (("skin", skin), ("inverted skin", inverted_colors(skin))):
+        if list_selection_findings(colors):
+            failures.append(f"{label} list selection fails: {list_selection_findings(colors)}")
+    with open(os.path.join(REPO, 'indra/newview/aldirectortheme.h'), encoding='utf-8') as fh:
+        header = fh.read()
+    with open(os.path.join(REPO, 'indra/newview/alkitstyle.cpp'), encoding='utf-8') as fh:
+        style = fh.read()
+    if list_selection_source_findings(header, style):
+        failures.append(f"production list selection source fails: {list_selection_source_findings(header, style)}")
+    for label, bad_header, bad_style in (
+            ("weaker background minimum", header.replace("kListSelectionMinBg = 1.8f", "kListSelectionMinBg = 1.1f"), style),
+            ("weaker text minimum", header.replace("kListSelectionMinText = 4.5f", "kListSelectionMinText = 3.f"), style),
+            ("old selected fill", header, style.replace("list->setBgSelectedColor(selected.bg);",
+                                                         "list->setBgSelectedColor(color(CONTROL_BG).get());")),
+            ("unchecked selected text", header, style.replace("list->setFgSelectedColor(selected.fg);",
+                                                               "list->setFgSelectedColor(color(TEXT).get());")),
+            ("second selected fill", header, style.replace("list->setBgSelectedColor(selected.bg);",
+                "list->setBgSelectedColor(selected.bg); list->setBgSelectedColor(color(CONTROL_BG).get());")),
+            ("theme change not restyled", header, style.replace("applyListColors(list);\n}", "{}\n}"))):
+        if (bad_header, bad_style) == (header, style):
+            failures.append(f"list selection mutation '{label}' did not apply")
+        elif not list_selection_source_findings(bad_header, bad_style):
+            failures.append(f"list selection mutation '{label}' passes")
+    if not failures:
+        print("ok    list selection: 3 planted low-contrast negatives, fallback, vector, 6 source mutations")
+    return failures
 
 
 def selftest():
@@ -957,6 +1121,7 @@ def selftest():
         if any(abs(a - b) > 0.0005 for a, b in zip(vector[name], expected)):
             failures.append(f"invert vector {name}: {vector[name]} != {expected}")
     print("ok    invert vector checked")
+    failures += list_selection_selftest(skin)
     _errors, plain = check_theme_text("plain", _theme("plain"), skin)
     if not contrast_findings(inverted_colors(plain, nudge=False)):
         failures.append("raw inverted skin passes, so the readability step is untested")

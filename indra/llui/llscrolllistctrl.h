@@ -313,6 +313,8 @@ public:
     void setBgWriteableColor(const LLColor4 &c) { mBgWriteableColor = c; }
     void setReadOnlyBgColor(const LLColor4 &c)  { mBgReadOnlyColor = c; }
     void setBgSelectedColor(const LLColor4 &c)  { mBgSelectedColor = c; }
+    // Optional bar on the left edge of selected rows. Width 0 (the default) draws none.
+    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; }
     void setBgStripeColor(const LLColor4& c)    { mBgStripeColor = c; }
     void setFgSelectedColor(const LLColor4 &c)  { mFgSelectedColor = c; }
     void setFgUnselectedColor(const LLColor4 &c){ mFgUnselectedColor = c; }
@@ -553,6 +555,8 @@ private:
     LLUIColor       mBgWriteableColor;
     LLUIColor       mBgReadOnlyColor;
     LLUIColor       mBgSelectedColor;
+    LLColor4        mSelectedBarColor;
+    S32             mSelectedBarWidth = 0;
     LLUIColor       mBgStripeColor;
     LLUIColor       mFgSelectedColor;
     LLUIColor       mFgUnselectedColor;

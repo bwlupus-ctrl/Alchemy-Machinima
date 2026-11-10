@@ -1164,6 +1164,7 @@ set(viewer_HEADER_FILES
     alkithistory.h
     alundosequence.h
     alkitlazypage.h
+    alkitlistselection.h
     alkitmath.h
     alkitpage.h
     alkitpopover.h
@@ -2976,6 +2977,7 @@ if (BUILD_TESTING)
   LL_ADD_INTEGRATION_TEST(alviewfinder "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alkitqol "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectortheme "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alkitlistselection "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(aldirectoralloff "" "${test_libs}" "${test_project}")
 
   # ALGazeMath is deliberately header-only, so register its TUT directly
