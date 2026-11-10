@@ -6364,6 +6364,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -11091,11 +11092,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@23009,412",
-          "indra/newview/app_settings/settings.xml@23557,362",
-          "indra/newview/app_settings/settings.xml@29248,100",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@23020,412",
+          "indra/newview/app_settings/settings.xml@23568,362",
+          "indra/newview/app_settings/settings.xml@29259,100",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -17091,6 +17092,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -23522,11 +23524,11 @@
           "indra/newview/app_settings/settings.xml@5904,21",
           "indra/newview/app_settings/settings.xml@5926,527",
           "indra/newview/app_settings/settings.xml@6454,120",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@27440,98",
-          "indra/newview/app_settings/settings.xml@27973,229",
-          "indra/newview/app_settings/settings.xml@29393,2466",
-          "indra/newview/app_settings/settings.xml@32070,364"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@27451,98",
+          "indra/newview/app_settings/settings.xml@27984,229",
+          "indra/newview/app_settings/settings.xml@29404,2466",
+          "indra/newview/app_settings/settings.xml@32081,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -28288,6 +28290,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -35096,8 +35099,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -47605,9 +47608,9 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@31860,209",
-          "indra/newview/app_settings/settings.xml@32070,364"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@31871,209",
+          "indra/newview/app_settings/settings.xml@32081,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -59115,6 +59118,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -70079,8 +70083,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@25712,1573"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@25723,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -75615,6 +75619,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -78072,7 +78077,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5541,32",
           "indra/newview/app_settings/settings.xml@5574,21",
-          "indra/newview/app_settings/settings.xml@6575,14777"
+          "indra/newview/app_settings/settings.xml@6575,14788"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -86370,11 +86375,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@23009,412",
-          "indra/newview/app_settings/settings.xml@23557,362",
-          "indra/newview/app_settings/settings.xml@29248,100",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@23020,412",
+          "indra/newview/app_settings/settings.xml@23568,362",
+          "indra/newview/app_settings/settings.xml@29259,100",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -91868,12 +91873,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
           "indra/newview/app_settings/settings.xml@5299,241",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@21354,1113",
-          "indra/newview/app_settings/settings.xml@28599,648",
-          "indra/newview/app_settings/settings.xml@29393,2466",
-          "indra/newview/app_settings/settings.xml@31860,209",
-          "indra/newview/app_settings/settings.xml@32070,364"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@21365,1113",
+          "indra/newview/app_settings/settings.xml@28610,648",
+          "indra/newview/app_settings/settings.xml@29404,2466",
+          "indra/newview/app_settings/settings.xml@31871,209",
+          "indra/newview/app_settings/settings.xml@32081,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -92671,6 +92676,7 @@
       "DirectorArmRecorderCapture",
       "DirectorArmRecorderPlay",
       "DirectorAutosaveMinutes",
+      "DirectorBackgroundOpacity",
       "DirectorExposureEasyMode",
       "DirectorFavorites",
       "DirectorGazeAnimationPriority",
@@ -101463,6 +101469,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -110247,10 +110254,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@25712,1573",
-          "indra/newview/app_settings/settings.xml@27863,109",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@25723,1573",
+          "indra/newview/app_settings/settings.xml@27874,109",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -114406,8 +114413,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -118283,6 +118290,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -122146,15 +122154,15 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@21354,1113",
-          "indra/newview/app_settings/settings.xml@22469,76",
-          "indra/newview/app_settings/settings.xml@22601,407",
-          "indra/newview/app_settings/settings.xml@23009,412",
-          "indra/newview/app_settings/settings.xml@23502,54",
-          "indra/newview/app_settings/settings.xml@24030,164",
-          "indra/newview/app_settings/settings.xml@29393,2466",
-          "indra/newview/app_settings/settings.xml@32070,364"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@21365,1113",
+          "indra/newview/app_settings/settings.xml@22480,76",
+          "indra/newview/app_settings/settings.xml@22612,407",
+          "indra/newview/app_settings/settings.xml@23020,412",
+          "indra/newview/app_settings/settings.xml@23513,54",
+          "indra/newview/app_settings/settings.xml@24041,164",
+          "indra/newview/app_settings/settings.xml@29404,2466",
+          "indra/newview/app_settings/settings.xml@32081,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -130206,6 +130214,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -138496,10 +138505,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@21354,1113",
-          "indra/newview/app_settings/settings.xml@22557,43",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@21365,1113",
+          "indra/newview/app_settings/settings.xml@22568,43",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -145573,6 +145582,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -154908,11 +154918,11 @@
           "indra/newview/app_settings/settings.xml@2,3455",
           "indra/newview/app_settings/settings.xml@5299,241",
           "indra/newview/app_settings/settings.xml@5926,527",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@21354,1113",
-          "indra/newview/app_settings/settings.xml@25712,1573",
-          "indra/newview/app_settings/settings.xml@27286,153",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@21365,1113",
+          "indra/newview/app_settings/settings.xml@25723,1573",
+          "indra/newview/app_settings/settings.xml@27297,153",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -162522,6 +162532,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -168691,12 +168702,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
           "indra/newview/app_settings/settings.xml@3469,1055",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@21354,1113",
-          "indra/newview/app_settings/settings.xml@22601,407",
-          "indra/newview/app_settings/settings.xml@23009,412",
-          "indra/newview/app_settings/settings.xml@25712,1573",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@21365,1113",
+          "indra/newview/app_settings/settings.xml@22612,407",
+          "indra/newview/app_settings/settings.xml@23020,412",
+          "indra/newview/app_settings/settings.xml@25723,1573",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -173169,6 +173180,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -179070,7 +179082,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14777"
+          "indra/newview/app_settings/settings.xml@6575,14788"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -181821,6 +181833,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -185490,7 +185503,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777"
+          "indra/newview/app_settings/settings.xml@6575,14788"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -189218,6 +189231,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -194395,6 +194409,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -197821,9 +197836,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@21354,1113",
-          "indra/newview/app_settings/settings.xml@29393,2466"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@21365,1113",
+          "indra/newview/app_settings/settings.xml@29404,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -204268,6 +204283,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",
@@ -211459,10 +211475,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14777",
-          "indra/newview/app_settings/settings.xml@29393,2466",
-          "indra/newview/app_settings/settings.xml@31860,209",
-          "indra/newview/app_settings/settings.xml@32070,364"
+          "indra/newview/app_settings/settings.xml@6575,14788",
+          "indra/newview/app_settings/settings.xml@29404,2466",
+          "indra/newview/app_settings/settings.xml@31871,209",
+          "indra/newview/app_settings/settings.xml@32081,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -217271,6 +217287,7 @@
           "indra/llfilesystem/lldir.h",
           "indra/llfilesystem/lldiriterator.h",
           "indra/llmessage/llavatarnamecache.h",
+          "indra/llrender/llrender2dutils.h",
           "indra/llui/llbutton.h",
           "indra/llui/llcheckboxctrl.h",
           "indra/llui/llclipboard.h",

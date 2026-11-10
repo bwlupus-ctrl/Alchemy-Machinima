@@ -54,9 +54,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gate_policy.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json"
+      "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -70,14 +68,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "c43e6e746aec8c4a3f237c143b42c08b16b4ff55907b9dca2c1bf8cfbf699dce",
+        "csv_sha256": "da64e11ed8e5d0ca9ac9db5c77493c2c46a7d74df328349e01390b3490eee91c",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4786,
+        "entries": 4788,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -120,9 +118,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2574,
+        "generated_kit_rows": 2575,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2166,
+        "interactive_rows": 2167,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -165,7 +163,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3908,
+        "settings_declared": 3909,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -232,19 +230,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2298,
+        "independent_json_rows": 2299,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2298,
+        "rows": 2299,
         "unresolved_rows": 76
       },
-      "wiring_rows": 2298
+      "wiring_rows": 2299
     },
-    "head_source_tree": "615b2b66a78cefec696c1e6880ea754c473df4f7",
+    "head_source_tree": "bbe78eb04f4fd4871ec9dbacf3ae9230a4c3bbe1",
     "hook_files": 536,
     "hunks": 3354,
-    "input_sha256": "f5ac69d2d409b79c6ced51c142bffc2d6ad71c6f7de5d9e328e3f4feacbc2be3",
+    "input_sha256": "ca3778984a6654e33c2e58ce67aac782d21fafffdbf634be96f62ee4cf57b158",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -252,7 +250,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2063
+    "settings": 2064
   },
   "paths": [
     {
@@ -20405,7 +20403,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera"
+        "camera",
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,

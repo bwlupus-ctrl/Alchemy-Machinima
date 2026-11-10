@@ -66,7 +66,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 86 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 316 | 57 | 202 |
+| [director-shell](features/director-shell.md) | 2 | 316 | 57 | 203 |
 | [actor-bar](features/actor-bar.md) | 3 | 66 | 14 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 105 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 80 | 31 | 493 |
@@ -211,8 +211,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2298 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2298, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2298, "unresolved_rows": 76}`.
+Existing evidence: 2299 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2299, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2299, "unresolved_rows": 76}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
