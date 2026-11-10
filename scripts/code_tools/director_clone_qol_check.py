@@ -58,13 +58,14 @@ template<class T>struct LLCachedControl{Settings& s;LLCachedControl(Settings& se
 struct LLDirectorCast{int touches=0;std::map<LLUUID,float> alpha;
  LLUUID active;LLUUID getActiveActorId(){return active;}void setActiveActorId(LLUUID id){active=id;}
  static LLDirectorCast& instance(){static LLDirectorCast s;return s;}
- void setCloneFadeAlpha(LLUUID id,float a){alpha[id]=a;}void touchCast(){++touches;}};
+ void setCloneFadeAlpha(LLUUID id,float a){alpha[id]=a;}void forgetCloneFade(LLUUID){}   // the mock has no non-member map: only a member carries alpha here
+ void touchCast(){++touches;}};
 struct LLGhostAvatar{bool visible=true;};
 void set_entity_clone_visible(LLGhostAvatar* ghost,bool visible,bool=false){ghost->visible=visible;}
 struct ALGhostStudio{
  enum{BACKING_OVERLAY,BACKING_ENTITY_CLONE,STATE_READY,STATE_TEARING_DOWN};
  struct Instance{LLUUID mId,mEntityId,mGroupId;int mKind=BACKING_ENTITY_CLONE,mState=STATE_READY;
-  bool mDeleting=false,mEnabled=true,mSoloVisible=true;float mFadeAlpha=1.f;};
+  bool mDeleting=false,mEnabled=true,mSoloVisible=true,mUserHidden=false;float mFadeAlpha=1.f;};
  struct Runtime{ALCloneQol::Fade mFade;};std::map<LLUUID,Runtime>mFades;
  std::vector<Instance>mInstances;std::map<LLUUID,LLGhostAvatar>ghosts;
  LLUUID mSelected,mFadeRegion{50};bool mSolo=false,mShowAll=true;U64 mInstanceRevision=0;int finalDeletes=0;

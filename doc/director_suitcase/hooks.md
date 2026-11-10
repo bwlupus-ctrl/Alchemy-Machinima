@@ -1815,7 +1815,7 @@ HEAD coordinates; guards/features are candidate evidence
 | 4234–4243 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
 | 4284–4293 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
 | 4325–4333 (n=9) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 4544–4588 (n=45) | unknown/non-function (and report the problem.) | clones, crowd, director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names |
+| 4544–4599 (n=56) | unknown/non-function (and report the problem.) | clones, crowd, director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names |
 
 ## Slice 2: `indra/newview/viewer_manifest.py`
 
@@ -5397,11 +5397,12 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 297–305 (n=9) | setLastSelectedItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge F3] FS radar restores the multi-select anchor after a list rebuild (FSScrollListCtrl parity); mLastSelected is private. |
-| 313–328 (n=16) | getSelectedBarGutter, setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h |
-| 416–424 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
-| 492–504 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
-| 563–570 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
+| 232–238 (n=7) | getItemAtPoint | unknown | unknown-review | unknown; no local conditional evidence | Edits LLScrollListItem |
+| 298–306 (n=9) | setLastSelectedItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge F3] FS radar restores the multi-select anchor after a list rebuild (FSScrollListCtrl parity); mLastSelected is private. |
+| 314–329 (n=16) | getSelectedBarGutter, setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h |
+| 417–425 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
+| 493–505 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
+| 564–571 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
 
 ## Slice 99: `indra/llui/llscrolllistitem.cpp`
 

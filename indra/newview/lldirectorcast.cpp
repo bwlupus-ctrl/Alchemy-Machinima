@@ -1440,6 +1440,16 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
         const auto& member = mCast[primary_it->second];
         return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
     }
+    if (!mCloneFadeOrphans.empty())
+    {
+        const auto orphan = mCloneFadeOrphans.find(primary);
+        if (orphan != mCloneFadeOrphans.end())
+        {
+            // A clone that is not a Cast member: Studio's own fade reaches the renderer without membership.
+            resolved_id = primary;
+            return orphan->second;
+        }
+    }
 
     // Preserve the established animesh/control-avatar fallback semantics even
     // when the fallback itself is not currently in the cast: its id remains the
@@ -1456,6 +1466,14 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
         {
             const auto& member = mCast[fallback_it->second];
             return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
+        }
+        if (!mCloneFadeOrphans.empty())
+        {
+            const auto orphan = mCloneFadeOrphans.find(fallback);
+            if (orphan != mCloneFadeOrphans.end())
+            {
+                return orphan->second;      // the wearer is a non-member clone: its worn animesh fades with it
+            }
         }
         return default_style;
     }
@@ -1522,6 +1540,14 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::getRenderActorStyle(const LLUU
     {
         const auto& member = mCast[it->second];
         return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;
+    }
+    if (!mCloneFadeOrphans.empty())
+    {
+        const auto orphan = mCloneFadeOrphans.find(id);
+        if (orphan != mCloneFadeOrphans.end())
+        {
+            return orphan->second;      // a clone that is not a Cast member: Studio's own fade
+        }
     }
     return default_style;
 }
@@ -3304,7 +3330,22 @@ void LLDirectorCast::cut()
 void LLDirectorCast::setCloneFadeAlpha(const LLUUID& id, F32 alpha)
 {
     CastMember* member = getMember(id);
-    if (!member) return;
+    if (!member)
+    {
+        // A clone that is not (or no longer) a Cast member keeps its fade here, so the renderer needs no
+        // membership (removal, re-enrolment and runtime replacement all keep the ramp). Session only; the entry
+        // is retired when its body is (forgetCloneFade), never by a scan in this setter.
+        if (alpha >= 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }
+        ActorStyle& orphan = mCloneFadeOrphans[id];
+        orphan = ActorStyle();
+        orphan.mEnabled = true;
+        orphan.mMode = ACTOR_STYLE_REPLACE;
+        orphan.mStyle = 10; // the same native noise-threshold dissolve as a member's
+        orphan.mAlpha = 1.f;
+        orphan.mDissolveProgress = 1.f-alpha;
+        return;
+    }
+    mCloneFadeOrphans.erase(id);        // a (re-)enrolled clone: the member carries its fade
     if (alpha >= 1.f) { member->mCloneFading = false; return; }
     if (!LLGhostAvatar::isGhostId(id)) return;
     member->mCloneFading = alpha < 1.f;
@@ -3316,6 +3357,11 @@ void LLDirectorCast::setCloneFadeAlpha(const LLUUID& id, F32 alpha)
     style.mStyle = 10; // the existing native noise-threshold dissolve, including shadows
     style.mAlpha = 1.f;
     style.mDissolveProgress = 1.f-alpha;
+}
+
+void LLDirectorCast::forgetCloneFade(const LLUUID& runtime_id)
+{
+    mCloneFadeOrphans.erase(runtime_id);
 }
 
 void LLDirectorCast::setHotGazeTargetName(S32 index, const std::string& name)

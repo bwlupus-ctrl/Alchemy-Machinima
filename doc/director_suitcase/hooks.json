@@ -82209,6 +82209,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -82223,10 +82227,6 @@
             {
               "commit": "1f92ed02c8e",
               "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
-            },
-            {
-              "commit": "6b0e9f70ecf",
-              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
             }
           ],
           "scope": "unknown-review",
@@ -82260,6 +82260,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -82274,10 +82278,6 @@
             {
               "commit": "1f92ed02c8e",
               "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
-            },
-            {
-              "commit": "6b0e9f70ecf",
-              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
             }
           ],
           "scope": "unknown-review",
@@ -82315,6 +82315,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -82329,10 +82333,6 @@
             {
               "commit": "1f92ed02c8e",
               "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
-            },
-            {
-              "commit": "6b0e9f70ecf",
-              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
             }
           ],
           "scope": "creative-candidate",
@@ -82372,6 +82372,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -82386,10 +82390,6 @@
             {
               "commit": "1f92ed02c8e",
               "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
-            },
-            {
-              "commit": "6b0e9f70ecf",
-              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
             }
           ],
           "scope": "creative-candidate",
@@ -82429,6 +82429,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -82443,10 +82447,6 @@
             {
               "commit": "1f92ed02c8e",
               "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
-            },
-            {
-              "commit": "6b0e9f70ecf",
-              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
             }
           ],
           "scope": "creative-candidate",
@@ -82478,14 +82478,18 @@
           "git_context": "and report the problem.",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 45,
-          "head_end": 4588,
+          "head_count": 56,
+          "head_end": 4599,
           "head_start": 4544,
-          "id": "indra/newview/skins/default/xui/en/strings.xml@4544,45",
-          "patch": "     <string name=\"TooltipDistance\">\n         Distance: [OBJECT_DISTANCE]\n     </string>\n+\n+    <!-- [F4] Phototools environment quick-switcher combo placeholder entries\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F4, alfloaterphototools.cpp) -->\n+    <string name=\"QP_WL_Region_Default\">Shared Environment</string>\n+    <string name=\"QP_WL_Day_Cycle_Based\">Day cycle based</string>\n+    <string name=\"QP_WL_None\">None</string>\n+\n+    <!-- [BDMerge F6] Pose Stand animation display names\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F6, fsfloaterposestand.cpp / app_settings/posestand.xml) -->\n+    <string name=\"PS_T_Pose\">T-Pose</string>\n+    <string name=\"PS_Arms_Down_Legs_together\">Arms down, Legs together</string>\n+    <string name=\"PS_Arms_down_sitting\">Arms down, sitting</string>\n+    <string name=\"PS_Arms_downward_Legs_together\">Arms downward, Legs together</string>\n+    <string name=\"PS_Arms_downward_Legs_apart\">Arms downward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_apart\">Arms forward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_together\">Arms forward, Legs together</string>\n+    <string name=\"PS_Arms_straight_Legs_apart\">Arms straight, Legs apart</string>\n+    <string name=\"PS_Arms_straight_sitting\">Arms straight, sitting</string>\n+    <string name=\"PS_Arms_upward_Legs_apart\">Arms upward, Legs apart</string>\n+    <string name=\"PS_Arms_upward_Legs_together\">Arms upward, Legs together</string>\n+    <string name=\"FSInventoryCustomTabDefaultName\">Custom</string>\n+    <string name=\"FSInventoryCustomTabShowHidden\">Show hidden tabs</string>\n+    <string name=\"GhostCloneMenuNotReady\">clone not ready</string>\n+    <string name=\"GhostCloneMenuPosed\">posed: release the pose first</string>\n+    <string name=\"GhostCloneMenuEditBusy\">finish Place or crowd placement first</string>\n+    <string name=\"GhostCloneMenuMirrorEntityOnly\">entity clones only</string>\n+    <string name=\"GhostCloneMenuFreezeFail\">Nothing to grab yet -- clone must be rendering</string>\n+    <string name=\"GhostCloneMenuResizeFail\">The clone size could not be changed</string>\n+    <string name=\"GhostCloneMenuGroupDelete\">Expanded group members cannot be deleted one by one; delete the group row</string>\n+    <string name=\"GhostCloneMenuOverlayN\">Overlay [N]</string>\n+    <string name=\"GhostCloneMenuOverlayInGroup\">this overlay is in a group: use the group row in the Clones list</string>\n+    <string name=\"DirectorSelectHud\">not for a HUD attachment</string>\n+    <string name=\"GhostCloneMenuNoCrowd\">needs one crowd</string>\n+    <string name=\"GhostCloneMenuPausedMirror\">paused: press Play first</string>\n+    <string name=\"DirectorSelectPickBusy\">Finish the current tool first (Edit clones, Place, crowd placement or another pick), then use Select</string>\n+    <string name=\"DirectorSelectNoAvatar\">not an avatar the Director can use</string>\n+    <string name=\"DirectorSelectNoClone\">that clone is gone</string>\n+    <string name=\"DirectorSelectCloneNotReady\">clone not ready</string>\n+    <string name=\"DirectorSelectCastRefused\">The Cast refused this avatar</string>\n </strings>\n",
+          "id": "indra/newview/skins/default/xui/en/strings.xml@4544,56",
+          "patch": "     <string name=\"TooltipDistance\">\n         Distance: [OBJECT_DISTANCE]\n     </string>\n+\n+    <!-- [F4] Phototools environment quick-switcher combo placeholder entries\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F4, alfloaterphototools.cpp) -->\n+    <string name=\"QP_WL_Region_Default\">Shared Environment</string>\n+    <string name=\"QP_WL_Day_Cycle_Based\">Day cycle based</string>\n+    <string name=\"QP_WL_None\">None</string>\n+\n+    <!-- [BDMerge F6] Pose Stand animation display names\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F6, fsfloaterposestand.cpp / app_settings/posestand.xml) -->\n+    <string name=\"PS_T_Pose\">T-Pose</string>\n+    <string name=\"PS_Arms_Down_Legs_together\">Arms down, Legs together</string>\n+    <string name=\"PS_Arms_down_sitting\">Arms down, sitting</string>\n+    <string name=\"PS_Arms_downward_Legs_together\">Arms downward, Legs together</string>\n+    <string name=\"PS_Arms_downward_Legs_apart\">Arms downward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_apart\">Arms forward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_together\">Arms forward, Legs together</string>\n+    <string name=\"PS_Arms_straight_Legs_apart\">Arms straight, Legs apart</string>\n+    <string name=\"PS_Arms_straight_sitting\">Arms straight, sitting</string>\n+    <string name=\"PS_Arms_upward_Legs_apart\">Arms upward, Legs apart</string>\n+    <string name=\"PS_Arms_upward_Legs_together\">Arms upward, Legs together</string>\n+    <string name=\"FSInventoryCustomTabDefaultName\">Custom</string>\n+    <string name=\"FSInventoryCustomTabShowHidden\">Show hidden tabs</string>\n+    <string name=\"GhostCloneMenuNotReady\">clone not ready</string>\n+    <string name=\"GhostCloneMenuPosed\">posed: release the pose first</string>\n+    <string name=\"GhostCloneMenuEditBusy\">finish Place or crowd placement first</string>\n+    <string name=\"GhostCloneMenuMirrorEntityOnly\">entity clones only</string>\n+    <string name=\"GhostCloneMenuFreezeFail\">Nothing to grab yet -- clone must be rendering</string>\n+    <string name=\"GhostCloneMenuResizeFail\">The clone size could not be changed</string>\n+    <string name=\"GhostCloneMenuGroupDelete\">Expanded group members cannot be deleted one by one; delete the group row</string>\n+    <string name=\"GhostCloneMenuOverlayN\">Overlay [N]</string>\n+    <string name=\"GhostCloneMenuOverlayInGroup\">this overlay is in a group: use the group row in the Clones list</string>\n+    <string name=\"DirectorSelectHud\">not for a HUD attachment</string>\n+    <string name=\"GhostCloneMenuNoCrowd\">needs one crowd</string>\n+    <string name=\"GhostCloneMenuPausedMirror\">paused: press Play first</string>\n+    <string name=\"DirectorSelectPickBusy\">Finish the current tool first (Edit clones, Place, crowd placement or another pick), then use Select</string>\n+    <string name=\"DirectorSelectNoAvatar\">not an avatar the Director can use</string>\n+    <string name=\"DirectorSelectNoClone\">that clone is gone</string>\n+    <string name=\"DirectorSelectCloneNotReady\">clone not ready</string>\n+    <string name=\"DirectorSelectCastRefused\">The Cast refused this avatar</string>\n+    <string name=\"GhostCloneMenuCastSuffix\">cast</string>\n+    <string name=\"GhostCloneMenuNobodyNearby\">No one nearby</string>\n+    <string name=\"GhostCloneMenuPersonGone\">That person is no longer nearby</string>\n+    <string name=\"GhostCloneMenuAnimUnnamed\">Animation</string>\n+    <string name=\"GhostCloneMenuSwapYou\">You</string>\n+    <string name=\"GhostCloneMenuNoCast\">No cast members</string>\n+    <string name=\"GhostCloneMenuAlreadyFaded\">already faded out</string>\n+    <string name=\"GhostCloneMenuNotFaded\">not faded out</string>\n+    <string name=\"GhostCloneMenuAnimGone\">[NAME] is no longer in your inventory</string>\n+    <string name=\"GhostCloneMenuInventoryLoading\">Your inventory is still loading</string>\n+    <string name=\"GhostCloneMenuWholeGroup\">applies to the whole group - use the group row</string>\n </strings>\n",
           "purpose": "Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -82501,10 +82505,6 @@
             {
               "commit": "1f92ed02c8e",
               "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
-            },
-            {
-              "commit": "6b0e9f70ecf",
-              "subject": "Director Console: usability batch (toolbar button, tab memory, tab icons, legend, REC color, dbl-click subject A, focus button)"
             }
           ],
           "scope": "creative-candidate",
@@ -82517,17 +82517,28 @@
             "DirectorSelectPickBusy",
             "FSInventoryCustomTabDefaultName",
             "FSInventoryCustomTabShowHidden",
+            "GhostCloneMenuAlreadyFaded",
+            "GhostCloneMenuAnimGone",
+            "GhostCloneMenuAnimUnnamed",
+            "GhostCloneMenuCastSuffix",
             "GhostCloneMenuEditBusy",
             "GhostCloneMenuFreezeFail",
             "GhostCloneMenuGroupDelete",
+            "GhostCloneMenuInventoryLoading",
             "GhostCloneMenuMirrorEntityOnly",
+            "GhostCloneMenuNoCast",
             "GhostCloneMenuNoCrowd",
+            "GhostCloneMenuNobodyNearby",
+            "GhostCloneMenuNotFaded",
             "GhostCloneMenuNotReady",
             "GhostCloneMenuOverlayInGroup",
             "GhostCloneMenuOverlayN",
             "GhostCloneMenuPausedMirror",
+            "GhostCloneMenuPersonGone",
             "GhostCloneMenuPosed",
             "GhostCloneMenuResizeFail",
+            "GhostCloneMenuSwapYou",
+            "GhostCloneMenuWholeGroup",
             "PS_Arms_Down_Legs_together",
             "PS_Arms_down_sitting",
             "PS_Arms_downward_Legs_apart",
@@ -167802,6 +167813,58 @@
       "hunks": [
         {
           "base_count": 6,
+          "base_start": 232,
+          "candidate_features_from_subjects": [
+            "clones",
+            "director-shell",
+            "vcam"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "getItemAtPoint"
+          ],
+          "git_context": "public:",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 7,
+          "head_end": 238,
+          "head_start": 232,
+          "id": "indra/llui/llscrolllistctrl.h@232,7",
+          "patch": "     bool            selectNthItem( S32 index );\n     bool            selectItemRange( S32 first, S32 last );\n     bool            selectItemAt(S32 x, S32 y, MASK mask);\n+    LLScrollListItem* getItemAtPoint(S32 x, S32 y) { return hitItem(x, y); }   // the row under a local point, no selection change\n \n     void            deleteSingleItem( S32 index );\n // [SL:KB] - Patch: Control-ScrollList | Checked: Catznip-3.5\n",
+          "purpose": "Edits LLScrollListItem",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
+            {
+              "commit": "04ac794ce16",
+              "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
+            },
+            {
+              "commit": "6b9997ce718",
+              "subject": "Clones: Clear animations for posing; list review fixes"
+            },
+            {
+              "commit": "23c45e6ee7f",
+              "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
+            },
+            {
+              "commit": "f21d43cdf32",
+              "subject": "VCam Gate: make it reachable and usable from the UI"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
+          "base_count": 6,
           "base_start": 297,
           "candidate_features_from_subjects": [
             "clones",
@@ -167822,13 +167885,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 9,
-          "head_end": 305,
-          "head_start": 297,
-          "id": "indra/llui/llscrolllistctrl.h@297,9",
+          "head_end": 306,
+          "head_start": 298,
+          "id": "indra/llui/llscrolllistctrl.h@298,9",
           "patch": "     std::vector<LLScrollListItem*> getAllSelected() const;\n     S32                 getNumSelected() const;\n     LLScrollListItem*   getLastSelectedItem() const { return mLastSelected; }\n+    // [BDMerge F3] FS radar restores the multi-select anchor after a list\n+    // rebuild (FSScrollListCtrl parity); mLastSelected is private.\n+    void                setLastSelectedItem(const LLSD& id) { if (LLScrollListItem* item = getItem(id)) mLastSelected = item; }\n \n     // iterate over all items\n     LLScrollListItem*   getFirstData() const;\n",
           "purpose": "Comment evidence: [BDMerge F3] FS radar restores the multi-select anchor after a list rebuild (FSScrollListCtrl parity); mLastSelected is private.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -167844,10 +167911,6 @@
             {
               "commit": "f21d43cdf32",
               "subject": "VCam Gate: make it reachable and usable from the UI"
-            },
-            {
-              "commit": "fa315ad1137",
-              "subject": "[BDMerge F3 fix] Resolve Alchemy API mismatches from the radar port"
             }
           ],
           "scope": "unknown-review",
@@ -167875,13 +167938,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 16,
-          "head_end": 328,
-          "head_start": 313,
-          "id": "indra/llui/llscrolllistctrl.h@313,16",
+          "head_end": 329,
+          "head_start": 314,
+          "id": "indra/llui/llscrolllistctrl.h@314,16",
           "patch": "     void setBgWriteableColor(const LLColor4 &c) { mBgWriteableColor = c; }\n     void setReadOnlyBgColor(const LLColor4 &c)  { mBgReadOnlyColor = c; }\n     void setBgSelectedColor(const LLColor4 &c)  { mBgSelectedColor = c; }\n+    // Optional bar on the left edge of selected rows. Width 0 (the default) draws none\n+    // and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px\n+    // so the bar never paints over the first cell, and (b) keeps the plain selected fill\n+    // on a selected row that is also highlighted, so the selected text colour chosen for\n+    // that fill stays readable (the default blends the fill with the highlight colour).\n+    // The gutter also moves hit testing / hover / tooltips, cell rects, header positions and the\n+    // width the columns share (llscrolllistgutter.h); a list without the bar is unchanged.\n+    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; mColumnsDirty = true; }\n+    S32  getSelectedBarGutter() const { return mSelectedBarWidth > 0 ? mSelectedBarWidth + 1 : 0; }\n+    S32  getColumnAreaWidth() const;   // item list width minus the gutter\n     void setBgStripeColor(const LLColor4& c)    { mBgStripeColor = c; }\n     void setFgSelectedColor(const LLColor4 &c)  { mFgSelectedColor = c; }\n     void setFgUnselectedColor(const LLColor4 &c){ mFgUnselectedColor = c; }\n",
           "purpose": "Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -167897,10 +167964,6 @@
             {
               "commit": "f21d43cdf32",
               "subject": "VCam Gate: make it reachable and usable from the UI"
-            },
-            {
-              "commit": "fa315ad1137",
-              "subject": "[BDMerge F3 fix] Resolve Alchemy API mismatches from the radar port"
             }
           ],
           "scope": "unknown-review",
@@ -167927,13 +167990,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 9,
-          "head_end": 424,
-          "head_start": 416,
-          "id": "indra/llui/llscrolllistctrl.h@416,9",
+          "head_end": 425,
+          "head_start": 417,
+          "id": "indra/llui/llscrolllistctrl.h@417,9",
           "patch": "     void setPageLines(S32 page_lines );\n \n     LLScrollListItem*   hitItem(S32 x,S32 y);\n+    // Valid only during the mouse-up commit, for actions requiring a row hit.\n+    LLScrollListItem* getMouseUpHitItem(S32 column) const\n+    { return mMouseUpColumn == column ? mMouseUpHitItem : nullptr; }\n     virtual void        scrollToShowSelected();\n \n     // LLEditMenuHandler functions\n",
           "purpose": "Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -167949,10 +168016,6 @@
             {
               "commit": "f21d43cdf32",
               "subject": "VCam Gate: make it reachable and usable from the UI"
-            },
-            {
-              "commit": "fa315ad1137",
-              "subject": "[BDMerge F3 fix] Resolve Alchemy API mismatches from the radar port"
             }
           ],
           "scope": "unknown-review",
@@ -167979,13 +168042,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 504,
-          "head_start": 492,
-          "id": "indra/llui/llscrolllistctrl.h@492,13",
+          "head_end": 505,
+          "head_start": 493,
+          "id": "indra/llui/llscrolllistctrl.h@493,13",
           "patch": "     item_list&      getItemList() { return mItemList; }\n \n     void            updateLineHeight();\n+    // [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl\n+    // parity); mLineHeight is private so expose a narrow setter.\n+    void            setLineHeight(S32 height) { mLineHeight = height; }\n \n private:\n+    LLScrollListItem* mMouseUpHitItem = nullptr;\n+    S32 mMouseUpColumn = -1;\n     void            drawItems();\n \n     void            updateLineHeightInsert(LLScrollListItem* item);\n",
           "purpose": "Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -168001,10 +168068,6 @@
             {
               "commit": "f21d43cdf32",
               "subject": "VCam Gate: make it reachable and usable from the UI"
-            },
-            {
-              "commit": "fa315ad1137",
-              "subject": "[BDMerge F3 fix] Resolve Alchemy API mismatches from the radar port"
             }
           ],
           "scope": "unknown-review",
@@ -168031,13 +168094,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 570,
-          "head_start": 563,
-          "id": "indra/llui/llscrolllistctrl.h@563,8",
+          "head_end": 571,
+          "head_start": 564,
+          "id": "indra/llui/llscrolllistctrl.h@564,8",
           "patch": "     LLUIColor       mBgWriteableColor;\n     LLUIColor       mBgReadOnlyColor;\n     LLUIColor       mBgSelectedColor;\n+    LLColor4        mSelectedBarColor;\n+    S32             mSelectedBarWidth = 0;\n     LLUIColor       mBgStripeColor;\n     LLUIColor       mFgSelectedColor;\n     LLUIColor       mFgUnselectedColor;\n",
           "purpose": "Edits LLColor4",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "7e48494a8c2",
+              "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
+            },
             {
               "commit": "04ac794ce16",
               "subject": "Clones: Clear animations review fixes; list gutter hit testing; selected count"
@@ -168053,10 +168120,6 @@
             {
               "commit": "f21d43cdf32",
               "subject": "VCam Gate: make it reachable and usable from the UI"
-            },
-            {
-              "commit": "fa315ad1137",
-              "subject": "[BDMerge F3 fix] Resolve Alchemy API mismatches from the radar port"
             }
           ],
           "scope": "unknown-review",

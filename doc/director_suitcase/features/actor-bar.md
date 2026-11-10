@@ -37,6 +37,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/aldirectortagtargets.h`
 - `indra/newview/alfloatergazecues.cpp`
 - `indra/newview/alfloatergazecues.h`
+- `indra/newview/alghostcloneactions.h`
+- `indra/newview/alghostclonemenu.cpp`
 - `indra/newview/alghostclonemenulogic.h`
 - `indra/newview/alghostspawnengine.cpp`
 - `indra/newview/alghoststudio.cpp`
@@ -156,6 +158,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 227, "text": "alfloaterblocked.cpp", "source": "indra/newview/alfloaterblocked.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 420, "text": "alfloatergazecues.cpp", "source": "indra/newview/alfloatergazecues.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1412, "text": "alfloatergazecues.h", "source": "indra/newview/alfloatergazecues.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1390, "text": "alghostcloneactions.h", "source": "indra/newview/alghostcloneactions.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu", "source": "indra/newview/alghostclonemenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1392, "text": "alghostclonemenulogic.h", "source": "indra/newview/alghostclonemenulogic.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 345, "text": "alghostspawnengine.cpp", "source": "indra/newview/alghostspawnengine.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}

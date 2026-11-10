@@ -64,6 +64,7 @@ public:
 
     // [CloneAnimDrop] an inventory animation dropped on the Animation asset
     // card plays on the selected clones through the Inventory combo path.
+    bool handleRightMouseDown(S32 x, S32 y, MASK mask) override;   // [CloneMenu] list row -> clone menu
     bool handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
                            EDragAndDropType cargo_type, void* cargo_data,
                            EAcceptance* accept, std::string& tooltip_msg) override;
@@ -97,6 +98,16 @@ public:
     // undo step; it asks for the Director shell as owner. The page never does.
     static S32 clearAnimationsOnClonesRecorded(const std::vector<LLUUID>& ids,
                                                bool director_fallback = false);
+    // [CloneAnimDrop] shared apply for the Inventory combo, the card drop, the
+    // inventory menu and the clone menu's Animation > Recent: Directed clones in
+    // the selection, else every selected entity clone switched to Directed; toasts,
+    // never the asset id. director_fallback: see playAnimationOnClonesRecorded.
+    static void applyInventoryAnimationTo(const std::vector<ALGhostAnimDrop::SelectedClone>& selected,
+                                          const LLUUID& asset_id, const std::string& anim_name,
+                                          bool director_fallback = false);
+    // Cached display name for a source id ("You" for null/self): the Source column label, shared with the
+    // clone menu's Swap source.
+    static std::string sourceName(const LLUUID& id);
 
 private:
     friend struct ALCloneRotationProbe;
@@ -168,11 +179,6 @@ private:
     SelectionCache mSel;
     U64 mSelectionEpoch = 1;
 
-    // [CloneAnimDrop] shared apply for the Inventory combo, the card drop and
-    // the inventory menu: Directed clones in the selection, else every selected
-    // entity clone switched to Directed; toasts, never the asset id.
-    static void applyInventoryAnimationTo(const std::vector<ALGhostAnimDrop::SelectedClone>& selected,
-                                          const LLUUID& asset_id, const std::string& anim_name);
     void applyInventoryAnimation(const LLUUID& asset_id, const std::string& anim_name);
     void applyDirectedAnimToSelection(const LLUUID& anim);   // Directed members only
     std::vector<ALGhostAnimDrop::SelectedClone> selectedEntityClonesForApply() const;
@@ -271,7 +277,7 @@ private:
     void onClickCopyTransform();
     void onClickPasteTransform();
     void onClickPastePosition();
-    void onLookTargetCommit();
+    void onLookTargetCommit(bool from_combo = true);
     void onClickFaceNow();
     void onKeepFacingCommit();
     void exitPlaceMode();           // drop the transient tool if it is ours
@@ -344,9 +350,6 @@ private:
     // Formation "Parameter" reset (the floater's icon button and the kit row's reset glyph).
     void onFormationParamReset();
     void registerKitParameterReset();
-
-    // cached display name for a source id ("You" for null/self)
-    static std::string sourceName(const LLUUID& id);
 
     // ---- change-diffing state ([GhostPanelPerf]: revision gates, no per-frame strings) ----
     // A gate is "unprimed" until its first changed(), so the first draw always builds

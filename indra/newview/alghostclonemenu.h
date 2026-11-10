@@ -22,6 +22,7 @@
 #ifndef AL_ALGHOSTCLONEMENU_H
 #define AL_ALGHOSTCLONEMENU_H
 
+#include "lluuid.h"
 #include "stdtypes.h"
 
 class LLContextMenu;
@@ -43,6 +44,13 @@ void destroyMenu();
 // on release unless the pointer dragged.
 bool pressRight(S32 x, S32 y, const LLPickInfo& pick);
 void cancelRight();
+// A right-click on a Clones list row (the panel hands over its row value and the click's screen
+// point): the same menu, with the same targets (that row, or the whole list selection when the row is
+// in it). This is how a hidden clone, which has no body to click, is reached. False when the row is not
+// a live clone.
+bool openForListRow(const LLUUID& row, S32 screen_x, S32 screen_y);
+// Whether that row can open the menu at all; the panel asks BEFORE it changes the selection or the active host.
+bool canOpenForListRow(const LLUUID& row);
 void noteMouseMove(S32 x, S32 y);
 void releaseRight(S32 x, S32 y);
 

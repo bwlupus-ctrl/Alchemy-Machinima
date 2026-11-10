@@ -135,7 +135,22 @@ def reverse_feature_allowance(source, name, filename, digest, label):
     return source
 
 
+def reverse_clone_menu_fade(source, name):
+    """Peel the clone menu's reviewed fade layer (the newest layer on alghoststudio.cpp, lldirectorcast.cpp and
+    lldirectorcast.h). Idempotent: skipped when its hunks are already gone; the pinned digest is checked every time."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "clone_menu_fade_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == CLONE_MENU_FADE_DIGEST, ("reviewed clone menu fade", "allowance pin")
+    allowed = json.loads(raw)
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "clone_menu_fade_hunks.json", CLONE_MENU_FADE_DIGEST, "reviewed clone menu fade")
+
+
 def reverse_director_groups_cast(source, name):
+    source = reverse_clone_menu_fade(source, name)
     source = reverse_feature_allowance(source, name, "director_groups_fable_hunks.json",
         "6c3d5788ca2d7b1557cd9f48822a70ee3f442366e0b3ff1c05e966ebabd9d4d1", "reviewed Director groups fixes")
     source = reverse_feature_allowance(source, name, "rig_lit_group_cast_hunks.json",
@@ -150,13 +165,16 @@ def reverse_rig_no_group_cast(source, name):
         "5d967cf95fada38b1bbe10eb5aac5bdae6c996a1643298760138c31301652e14", "reviewed rig-no-group cast")
 
 
+CLONE_MENU_FADE_DIGEST = "a234366fff8b306290e1c9bbd2ef082a37c256cf24a6bd72c85ace5217a47003"
 TAG_HIGHLIGHT_DIGEST = "ab65349f18b818569a996d2c1acc5d2c9eef1461db95f348f111d9658dbe0461"
 TAG_HIGHLIGHT_PIPELINE_DIGEST = "b7907a9921708e57910c4b9b778caf08e683674a7a32a7d62d465560054f1ba5"
 
 
 def reverse_clone_anim_drop(source, name):
-    # The Director tag highlight sits on top of main fc5f3e5a78f; peel it first (newest layer).
-    source = reverse_feature_allowance(source.replace("\r\n", "\n"), name, "tag_highlight_studio_hunks.json",
+    # The clone menu's hidden-only fade sits on top of main 831f6cd3ebb; peel it first (newest layer).
+    source = reverse_clone_menu_fade(source, name)
+    # The Director tag highlight sits on top of main fc5f3e5a78f; peel it next.
+    source = reverse_feature_allowance(source, name, "tag_highlight_studio_hunks.json",
         TAG_HIGHLIGHT_DIGEST, "reviewed Director tag highlight")
     # Clear animations integrates on top of 23c45e6ee7f; peel it next.
     source = reverse_feature_allowance(source, name, "clear_anim_studio_hunks.json",
@@ -189,7 +207,9 @@ def method(path, signature):
     # code. New Hot Gaze behavior is exercised by its own native contract and
     # the extended clone transaction fixture, without broadening old stubs.
     if path.name in ("llactormover.cpp", "lldirectorcast.cpp") and path.parent.name == "newview":
-        source = hot_gaze_baseline(actor_key_baseline(path.read_text(encoding="utf-8"), path.name), path.name)
+        # The clone menu's fade layer (incl. the coverage of a clone that is not a Cast member) is the newest layer.
+        text = reverse_clone_menu_fade(path.read_text(encoding="utf-8"), path.name)
+        source = hot_gaze_baseline(actor_key_baseline(text, path.name), path.name)
         baseline = check_directory("actorbar_baseline") / path.name
         baseline.parent.mkdir(parents=True, exist_ok=True)
         baseline.write_text(source, encoding="utf-8")
