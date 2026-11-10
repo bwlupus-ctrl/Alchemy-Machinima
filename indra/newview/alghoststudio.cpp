@@ -3300,6 +3300,11 @@ bool ALGhostStudio::clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* b
     {
         return false;
     }
+    // The posing motion's own targets would overwrite the neutral pose at once.
+    if (!ALGhostClearAnim::canClear(true, ghost->isEntityPosed()))
+    {
+        return false;
+    }
     const LLUUID actor = ghost->getID();
     LLActorMover& mover = LLActorMover::instance();
     if (before)
@@ -3307,19 +3312,28 @@ bool ALGhostStudio::clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* b
         before->mId = id;
         before->mMode = inst->mDriveMode;
         before->mAnim = inst->mDirectedAnim;
+        before->mFreezeDrive = inst->mDirectedMirrorFreezeDrive;
         before->mAutoAnimate = inst->mAutoAnimate;
+        before->mAutoManual = inst->mAutoAnimManual;
+        if (inst->mAutoAnimate)
+        {
+            auto progress = ghost->exportAutoAnimProgress(); // unpublished learning progress
+            before->mAutoPool = progress ? progress : inst->mAutoAnimPool;
+        }
         before->mGazeEnabled = mover.isGazeEnabled(actor);
         before->mWasCleared = inst->mAnimCleared;
+        if (ALGhostClearAnim::needsHeldPose(inst->mDriveMode, DRIVE_FROZEN))
+        {
+            before->mHeldPose = ghost->captureHeldPose();
+        }
     }
     // Everything that would start a motion again by itself goes first.
     if (inst->mAutoAnimate)
     {
         setInstanceAutoAnimate(id, false);
     }
-    if (mover.isMoving(actor))
-    {
-        mover.stop(actor); // its walk / turn animation and root override
-    }
+    mover.stop(actor); // its walk / turn animation and root override, and a queued staggered start
+    mover.parkHotGaze(actor); // a held Hot Gaze would keep painting the neutral pose
     if (mover.isGazeEnabled(actor))
     {
         mover.setGazeEnabled(actor, false); // head / eye look-at layer and its eye motion
@@ -3357,9 +3371,24 @@ bool ALGhostStudio::restoreInstanceAnimations(const ClearAnimBefore& before)
         inst->mAnimCleared = false;
         ghost->setEntityAnimationsCleared(false);
     }
+    // A Frozen clone held its pose before the clear: put it back first, then freeze on it.
+    if (before.mMode == DRIVE_FROZEN && !before.mHeldPose.empty())
+    {
+        ghost->applyHeldPose(before.mHeldPose);
+    }
     if (!setInstanceDriveMode(before.mId, before.mMode, before.mAnim))
     {
         return false;
+    }
+    inst->mDirectedMirrorFreezeDrive = before.mFreezeDrive;
+    if (before.mAutoAnimate)
+    {
+        // Exactly as before: learning progress and manual (autonomous) mode.
+        if (before.mAutoPool)
+        {
+            inst->mAutoAnimPool = before.mAutoPool;
+        }
+        inst->mAutoAnimManual = before.mAutoManual;
     }
     if (before.mAutoAnimate != inst->mAutoAnimate)
     {
@@ -3370,8 +3399,52 @@ bool ALGhostStudio::restoreInstanceAnimations(const ClearAnimBefore& before)
     {
         mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled);
     }
+    mover.unparkHotGaze(ghost->getID());
     ++mInstanceRevision;
     return true;
+}
+
+// [ClearAnim]
+bool ALGhostStudio::isInstancePosed(const LLUUID& id) const
+{
+    LLGhostAvatar* ghost = resolveEntityClone(id);
+    return ghost && !ghost->isDead() && ghost->isEntityPosed();
+}
+
+// [ClearAnim]
+void ALGhostStudio::adoptBodyDrive(LLGhostAvatar* ghost)
+{
+    assert_main_thread();
+    if (!ghost || ghost->isDead())
+    {
+        return;
+    }
+    for (Instance& inst : mInstances)
+    {
+        if (inst.mKind != BACKING_ENTITY_CLONE || inst.mEntityId != ghost->getID())
+        {
+            continue;
+        }
+        const EDriveMode mode = (EDriveMode)ghost->getEntityDriveMode();
+        const LLUUID anim = ghost->getEntityDirectedAnim();
+        const bool cleared = ghost->isEntityAnimationsCleared();
+        if (inst.mDriveMode != mode || inst.mDirectedAnim != anim || inst.mAnimCleared != cleared)
+        {
+            if (mode == DRIVE_FROZEN && inst.mDriveMode != DRIVE_FROZEN)
+            {
+                inst.mDirectedMirrorFreezeDrive = inst.mDriveMode;
+            }
+            if (mode != DRIVE_REFLECT && mode != DRIVE_FROZEN)
+            {
+                inst.mReflectPlaneValid = false;
+            }
+            inst.mDriveMode = mode;
+            inst.mDirectedAnim = anim;
+            inst.mAnimCleared = cleared;
+            ++mInstanceRevision;
+        }
+        return;
+    }
 }
 
 void ALGhostStudio::setInstanceDirectedMirror(const LLUUID& id, bool enabled)

@@ -148,7 +148,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/llui/llslider.h", "hunks": ["indra/llui/llslider.h@119,45"]}
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@1105,7", "indra/newview/CMakeLists.txt@1294,170", "indra/newview/CMakeLists.txt@2114,7", "indra/newview/CMakeLists.txt@2858,32"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@1105,7", "indra/newview/CMakeLists.txt@1294,171", "indra/newview/CMakeLists.txt@2115,7", "indra/newview/CMakeLists.txt@2859,32"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@21354,1113", "indra/newview/app_settings/settings.xml@22469,76", "indra/newview/app_settings/settings.xml@22601,407", "indra/newview/app_settings/settings.xml@23009,412", "indra/newview/app_settings/settings.xml@23502,54", "indra/newview/app_settings/settings.xml@24030,164", "indra/newview/app_settings/settings.xml@29393,2466", "indra/newview/app_settings/settings.xml@32070,364"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@915,26", "indra/newview/llappviewer.cpp@1954,24", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5940,44", "indra/newview/llappviewer.cpp@6454,16"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@428,231", "indra/newview/llfloaterenvironmentadjust.cpp@1123,296"]}
@@ -586,7 +586,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/llrender/CMakeLists.txt", "line": 23, "text": "llshadermgr.cpp", "source": "indra/llrender/llshadermgr.cpp"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 56, "text": "llshadermgr.h", "source": "indra/llrender/llshadermgr.h"}
 - {"file": "indra/llrender/CMakeLists.txt", "line": 27, "text": "llvertexbuffer.cpp", "source": "indra/llrender/llvertexbuffer.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 195, "text": "llslider.h", "source": "indra/llui/llslider.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 196, "text": "llslider.h", "source": "indra/llui/llslider.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 339, "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1", "source": "indra/newview/alactorchromakey.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 366, "text": "alavatarkey.cpp # [ClientHeight]", "source": "indra/newview/alavatarkey.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1319, "text": "alavatarkey.h # [ClientHeight]", "source": "indra/newview/alavatarkey.h"}

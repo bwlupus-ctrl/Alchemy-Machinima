@@ -32,6 +32,7 @@
 #include "alghostautoanimmodel.h" // [AutoAnimate]
 #include "alreflectmath.h"
 #include "alghostanimmirrormath.h"
+#include "alghostclearanim.h"   // [ClearAnim] HeldPose
 #include <memory> // [AutoAnimate]
 
 #include <set>
@@ -168,6 +169,12 @@ public:
     void setEntityAnimationsCleared(bool cleared);
     void startEntityLayerMotions();
     bool isEntityAnimationsCleared() const { return mEntityAnimCleared; }
+    // [ClearAnim] Is the Poser's (or a Switchboard pose's) posing motion active on this clone?
+    bool isEntityPosed();
+    // [ClearAnim] The held joint pose of a Frozen clone keyed by joint NAME (safe across
+    // skeleton rebuilds and body replacement), and its restore. Restore skips unknown names.
+    ALGhostClearAnim::HeldPose captureHeldPose();
+    void applyHeldPose(const ALGhostClearAnim::HeldPose& pose);
     void setEntityLoopMode(S32 mode);
     // Retime the clone AND each animesh attachment's control avatar. Each animesh
     // is a separate LLControlAvatar with its own motion controller, so the wearer's
@@ -377,6 +384,7 @@ private:
     F32 mEntityLookAlpha = 1.f;
     LLUUID mEntityDirectedAnim;
     bool mEntityAnimCleared = false; // [ClearAnim] session only
+    void restEntityJointPositions(); // [ClearAnim] shape-aware neutral joint positions
     bool mEntityDirectedStarted = false;
     bool mEntityDirectedWasActive = false;
     F32 mEntityDirectedStartTime = 0.f;

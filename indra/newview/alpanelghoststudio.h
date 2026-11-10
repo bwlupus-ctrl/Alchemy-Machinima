@@ -362,6 +362,7 @@ private:
     S32  mShownLookTarget = -1;         // look-target model values last formatted into mLookTargetCombo
     LLUUID mShownLookTargetId;
     U64  mStatusInstanceRev = 0;
+    U64  mStatusSelStamp = 0;           // selection().mStamp the Count readout last reflected
     // Legacy signatures, touched ONLY while GhostStudioRefreshAlways is on.
     std::string mListSig;
     std::string mSourceSig{"<unbuilt>"};

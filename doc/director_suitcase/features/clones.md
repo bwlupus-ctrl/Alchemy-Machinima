@@ -62,6 +62,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alghostautoanimmodel.cpp`
 - `indra/newview/alghostautoanimmodel.h`
 - `indra/newview/alghostbounds.h`
+- `indra/newview/alghostclearanim.h`
 - `indra/newview/alghostgroupmodel.cpp`
 - `indra/newview/alghostgroupmodel.h`
 - `indra/newview/alghostinteractionstate.cpp`
@@ -193,7 +194,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@666,7", "indra/newview/CMakeLists.txt@1294,170", "indra/newview/CMakeLists.txt@1683,7", "indra/newview/CMakeLists.txt@2858,32", "indra/newview/CMakeLists.txt@2964,196"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@666,7", "indra/newview/CMakeLists.txt@1294,171", "indra/newview/CMakeLists.txt@1684,7", "indra/newview/CMakeLists.txt@2859,32", "indra/newview/CMakeLists.txt@2965,197"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@31860,209", "indra/newview/app_settings/settings.xml@32070,364"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5349,24", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5809,129", "indra/newview/llappviewer.cpp@5993,30", "indra/newview/llappviewer.cpp@6454,16", "indra/newview/llappviewer.cpp@6493,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@788,19", "indra/newview/llfloaterenvironmentadjust.cpp@810,33", "indra/newview/llfloaterenvironmentadjust.cpp@1426,173"]}
@@ -202,7 +203,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@30,11", "indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,36", "indra/newview/alviewermenu.cpp@604,830", "indra/newview/alviewermenu.cpp@1471,83"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@2792,235", "indra/newview/app_settings/settings_alchemy.xml@3152,175", "indra/newview/app_settings/settings_alchemy.xml@3328,135"]}
-- {"path": "indra/newview/fsfloaterposer.cpp", "hunks": ["indra/newview/fsfloaterposer.cpp@25,31", "indra/newview/fsfloaterposer.cpp@361,80", "indra/newview/fsfloaterposer.cpp@1435,57", "indra/newview/fsfloaterposer.cpp@1494,31", "indra/newview/fsfloaterposer.cpp@2518,320", "indra/newview/fsfloaterposer.cpp@2843,17", "indra/newview/fsfloaterposer.cpp@2868,22", "indra/newview/fsfloaterposer.cpp@2920,79", "indra/newview/fsfloaterposer.cpp@3022,27"]}
+- {"path": "indra/newview/fsfloaterposer.cpp", "hunks": ["indra/newview/fsfloaterposer.cpp@25,31", "indra/newview/fsfloaterposer.cpp@361,83", "indra/newview/fsfloaterposer.cpp@1438,57", "indra/newview/fsfloaterposer.cpp@1497,31", "indra/newview/fsfloaterposer.cpp@2521,320", "indra/newview/fsfloaterposer.cpp@2846,17", "indra/newview/fsfloaterposer.cpp@2871,22", "indra/newview/fsfloaterposer.cpp@2923,79", "indra/newview/fsfloaterposer.cpp@3025,27"]}
 - {"path": "indra/newview/fsfloaterposer.h", "hunks": ["indra/newview/fsfloaterposer.h@86,12", "indra/newview/fsfloaterposer.h@515,24"]}
 - {"path": "indra/newview/llcontrolavatar.cpp", "hunks": ["indra/newview/llcontrolavatar.cpp@25,12", "indra/newview/llcontrolavatar.cpp@248,21"]}
 - {"path": "indra/newview/lldrawpool.cpp", "hunks": ["indra/newview/lldrawpool.cpp@25,26", "indra/newview/lldrawpool.cpp@499,1399"]}
@@ -544,6 +545,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 2865, "text": "alghostautoanimmodel.cpp # [AutoAnimate]", "source": "indra/newview/alghostautoanimmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1355, "text": "alghostautoanimmodel.h # [AutoAnimate]", "source": "indra/newview/alghostautoanimmodel.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1351, "text": "alghostbounds.h", "source": "indra/newview/alghostbounds.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1375, "text": "alghostclearanim.h # [ClearAnim]", "source": "indra/newview/alghostclearanim.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 385, "text": "alghostgroupmodel.cpp", "source": "indra/newview/alghostgroupmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2882, "text": "alghostgroupmodel.cpp", "source": "indra/newview/alghostgroupmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1345, "text": "alghostgroupmodel.h", "source": "indra/newview/alghostgroupmodel.h"}
@@ -764,6 +766,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `scripts/code_tools/clone_looks_scan_build_check.py`
 - `scripts/code_tools/clone_rest_frame_check.py`
 - `scripts/code_tools/clone_rest_frame_native_check.py`
+- `scripts/code_tools/director_clone_clear_check.py`
 - `scripts/code_tools/director_clone_qol_check.py`
 - `scripts/code_tools/director_clone_rekey_check.py`
 - `scripts/code_tools/test_clone_pitch_roll.py`

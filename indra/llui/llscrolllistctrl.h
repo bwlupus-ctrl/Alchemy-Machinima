@@ -318,8 +318,11 @@ public:
     // so the bar never paints over the first cell, and (b) keeps the plain selected fill
     // on a selected row that is also highlighted, so the selected text colour chosen for
     // that fill stays readable (the default blends the fill with the highlight colour).
-    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; }
+    // The gutter also moves hit testing / hover / tooltips, cell rects, header positions and the
+    // width the columns share (llscrolllistgutter.h); a list without the bar is unchanged.
+    void setSelectedBar(S32 width, const LLColor4& c) { mSelectedBarWidth = llmax(0, width); mSelectedBarColor = c; mColumnsDirty = true; }
     S32  getSelectedBarGutter() const { return mSelectedBarWidth > 0 ? mSelectedBarWidth + 1 : 0; }
+    S32  getColumnAreaWidth() const;   // item list width minus the gutter
     void setBgStripeColor(const LLColor4& c)    { mBgStripeColor = c; }
     void setFgSelectedColor(const LLColor4 &c)  { mFgSelectedColor = c; }
     void setFgUnselectedColor(const LLColor4 &c){ mFgUnselectedColor = c; }

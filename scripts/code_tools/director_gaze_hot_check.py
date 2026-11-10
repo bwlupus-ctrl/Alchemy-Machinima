@@ -92,6 +92,7 @@ struct FrameInterval{float value(){return 1.f/60;}}gFrameIntervalSeconds;
 struct LLPrismLens{static bool gateOnAirCameraEye(LLVector3&,void* =nullptr,LLQuaternion* =nullptr){return false;}};
 int currentGazePriority(){return 0;}
 bool gazeCameraSafe(LLVOAvatar*,bool){return true;}
+bool gaze_suppressed_by_clear(LLVOAvatar*){return false;} // [ClearAnim] fixture clones are never cleared
 struct LLActorMover {
 '''
     source += method(NV/'llactormover.h', '    struct GazeTarget\n') + ';\n'

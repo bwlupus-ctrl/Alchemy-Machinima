@@ -2047,9 +2047,18 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mLensGazeCheck, entity && inst->mEntityId.notNull());
     const bool have_selected_entity = selected.mAnyEntity;
     // [ClearAnim] entity clones only; overlay clones get the reason as the tooltip
-    setEnabledIfChanged(mClearAnimBtn, have_selected_entity);
-    setToolTipIfChanged(mClearAnimBtn, std::string(have_selected_entity
-        ? ALGhostClearAnim::buttonTooltip() : ALGhostClearAnim::overlayTooltip()));
+    // A clone the Poser or a Switchboard pose holds cannot be rested: its posing targets
+    // would overwrite the neutral pose, so Clear stays off until it is released.
+    bool selected_posed = false;
+    for (const LLUUID& selected_id : selected.mInstances)
+    {
+        selected_posed = selected_posed || studio.isInstancePosed(selected_id);
+    }
+    const bool clear_enabled = ALGhostClearAnim::canClear(have_selected_entity, selected_posed);
+    setEnabledIfChanged(mClearAnimBtn, clear_enabled);
+    setToolTipIfChanged(mClearAnimBtn, std::string(!have_selected_entity
+        ? ALGhostClearAnim::overlayTooltip()
+        : selected_posed ? ALGhostClearAnim::posedTooltip() : ALGhostClearAnim::buttonTooltip()));
     setEnabledIfChanged(mLensGazeSelectionBtn, have_selected_entity);
     setEnabledIfChanged(mLensGazeTorsoSlider, have_selected_entity);
     setEnabledIfChanged(mLensGazeTargetMode, have_selected_entity);
@@ -2444,12 +2453,17 @@ void ALPanelGhostStudio::refreshStatus()
     ALGhostStudio& studio = ALGhostStudio::instance();
     // [GhostPanelPerf] status strings: 4 Hz, or immediately when the instance model moves
     const U64 instance_rev = studio.getInstanceRevision();
+    // Selected count comes from the cached selection snapshot (group headers already
+    // expanded to members, deduped, deleting ones dropped: same targets as Duplicate/Delete
+    // act on); its stamp bumps only when the selection actually changes.
+    const SelectionCache& selected = selection();
     if (!mStatusTick && instance_rev == mStatusInstanceRev &&
-        !ghost_refresh_always())
+        selected.mStamp == mStatusSelStamp && !ghost_refresh_always())
     {
         return;
     }
     mStatusInstanceRev = instance_rev;
+    mStatusSelStamp = selected.mStamp;
     S32 shown = 0;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
@@ -2458,9 +2472,16 @@ void ALPanelGhostStudio::refreshStatus()
             ++shown;
         }
     }
-    std::string txt = llformat("%d clone(s), %d shown%s",
-                               (S32)studio.getInstances().size(), shown,
-                               studio.getShowAll() ? "" : " (all hidden)");
+    std::string txt = llformat("%d clone(s), %d shown",
+                               (S32)studio.getInstances().size(), shown);
+    if (!selected.mInstances.empty())
+    {
+        txt += llformat(", %d selected", (S32)selected.mInstances.size());
+    }
+    if (!studio.getShowAll())
+    {
+        txt += " (all hidden)";
+    }
     setTextIfChanged(mStatusText, txt);
     std::string strip = studio.freezeStripStatus();
     const ALGhostStudio::EFormation formation =
@@ -3499,10 +3520,16 @@ void ALPanelGhostStudio::onClickClearAnimations()
             LLSD().with("MESSAGE", ALGhostAnimDrop::selectCloneFirstToast()));
         return;
     }
+    bool any_posed = false;
+    for (const LLUUID& id : ids)
+    {
+        any_posed = any_posed || ALGhostStudio::instance().isInstancePosed(id);
+    }
     const S32 cleared = clearAnimationsOnClonesRecorded(ids);
     LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", cleared > 0
         ? ALGhostClearAnim::clearedToast((size_t)cleared)
-        : std::string("The selected clone is not ready yet")));
+        : std::string(any_posed ? ALGhostClearAnim::posedTooltip()
+                                : "The selected clone is not ready yet")));
     showDirectedAnim(LLUUID::null, true);
     mDetailDirty = true;
 }

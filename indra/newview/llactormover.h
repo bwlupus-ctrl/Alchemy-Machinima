@@ -666,6 +666,10 @@ public:
     static LLVector3 hotGazeJointPosition(LLVOAvatar* avatar, LLJoint* joint);
     bool hasHotGazes() const { return !mHotGazes.empty(); }
     void rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id);
+    // [ClearAnim] Clear animations parks the clone's Hot Gaze (pose restored, no more painting);
+    // undo brings it back unless it finished meanwhile.
+    void parkHotGaze(const LLUUID& actor);
+    void unparkHotGaze(const LLUUID& actor);
 
 
     // Director Console camera-facing pose for selected REAL cast avatars. Restore the
@@ -1840,6 +1844,7 @@ private:
         F32 mFromHead = 1.f, mFromEyes = 1.f, mFromTorso = .2f;
     };
     std::map<LLUUID, HotGaze> mHotGazes;
+    std::map<LLUUID, HotGaze> mParkedHotGazes; // [ClearAnim] session only; undo of Clear animations
     std::map<LLUUID, DirectorGaze> mHotGazeCopies; // inherited Studio overlays; frame-local captures
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     U64 mGazeRevision = 1;

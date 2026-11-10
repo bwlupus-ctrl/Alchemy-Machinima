@@ -103,7 +103,7 @@ private:
     std::vector<LLVOAvatar*> getTargetAvatars(S32 target) const; // per ETarget
     bool canPoseAvatar(LLVOAvatar* av) const;
     void releasePoseFromAvatar(LLVOAvatar* av);
-    void applySlotToAvatar(LLVOAvatar* av, const Slot& slot, const Slot& prev);
+    void applySlotToAvatar(LLVOAvatar* av, const Slot& slot, const Slot& prev, bool manual);
     bool applySlot(S32 slot, F64 now, const std::vector<Slot>& bank, bool manual);
 
     ALDirectorSwitcherModel::Controller mController;

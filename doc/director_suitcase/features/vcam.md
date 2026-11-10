@@ -100,7 +100,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@898,11", "indra/newview/CMakeLists.txt@1139,58", "indra/newview/CMakeLists.txt@1294,170", "indra/newview/CMakeLists.txt@1899,13", "indra/newview/CMakeLists.txt@2858,32", "indra/newview/CMakeLists.txt@2896,20", "indra/newview/CMakeLists.txt@2964,196"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@898,11", "indra/newview/CMakeLists.txt@1139,58", "indra/newview/CMakeLists.txt@1294,171", "indra/newview/CMakeLists.txt@1900,13", "indra/newview/CMakeLists.txt@2859,32", "indra/newview/CMakeLists.txt@2897,20", "indra/newview/CMakeLists.txt@2965,197"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@21354,1113", "indra/newview/app_settings/settings.xml@29393,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@275,8", "indra/newview/llappviewer.cpp@1954,24", "indra/newview/llappviewer.cpp@4841,12", "indra/newview/llappviewer.cpp@4970,12", "indra/newview/llappviewer.cpp@5809,129", "indra/newview/llappviewer.cpp@5940,44", "indra/newview/llappviewer.cpp@6454,16", "indra/newview/llappviewer.cpp@6493,45"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
@@ -325,11 +325,12 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/llui/CMakeLists.txt", "line": 190, "text": "llscrolllistcell.h", "source": "indra/llui/llscrolllistcell.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 69, "text": "llscrolllistctrl.cpp", "source": "indra/llui/llscrolllistctrl.cpp"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 192, "text": "llscrolllistctrl.h", "source": "indra/llui/llscrolllistctrl.h"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 224, "text": "llui.h", "source": "indra/llui/llui.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 70, "text": "llscrolllistitem.cpp", "source": "indra/llui/llscrolllistitem.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 225, "text": "llui.h", "source": "indra/llui/llui.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 109, "text": "llview.cpp", "source": "indra/llui/llview.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 236, "text": "llview.h", "source": "indra/llui/llview.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 237, "text": "llview.h", "source": "indra/llui/llview.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 111, "text": "llviewereventrecorder.cpp", "source": "indra/llui/llviewereventrecorder.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 238, "text": "llviewquery.h", "source": "indra/llui/llviewquery.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 239, "text": "llviewquery.h", "source": "indra/llui/llviewquery.h"}
 - {"file": "indra/media_plugins/libvlc/CMakeLists.txt", "line": 11, "text": "media_plugin_libvlc.cpp", "source": "indra/media_plugins/libvlc/media_plugin_libvlc.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 339, "text": "alactorchromakey.cpp # [ActorKey] WP0/WP1", "source": "indra/newview/alactorchromakey.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1356, "text": "alareashadowmath.h", "source": "indra/newview/alareashadowmath.h"}

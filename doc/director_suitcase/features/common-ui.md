@@ -106,7 +106,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/llui/llsliderctrl.h", "hunks": ["indra/llui/llsliderctrl.h@51,19", "indra/llui/llsliderctrl.h@155,17"]}
 - {"path": "indra/llui/llspinctrl.cpp", "hunks": ["indra/llui/llspinctrl.cpp@185,29", "indra/llui/llspinctrl.cpp@250,7", "indra/llui/llspinctrl.cpp@294,7", "indra/llui/llspinctrl.cpp@455,20", "indra/llui/llspinctrl.cpp@485,7"]}
 - {"path": "indra/llui/llspinctrl.h", "hunks": ["indra/llui/llspinctrl.h@78,20"]}
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@1139,58", "indra/newview/CMakeLists.txt@1294,170", "indra/newview/CMakeLists.txt@2858,32"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@1139,58", "indra/newview/CMakeLists.txt@1294,171", "indra/newview/CMakeLists.txt@2859,32"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@25712,1573"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@4659,10", "indra/newview/llappviewer.cpp@6046,8"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@27,39", "indra/newview/llfloaterenvironmentadjust.cpp@299,100", "indra/newview/llfloaterenvironmentadjust.cpp@1123,296"]}
@@ -153,19 +153,19 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/llui/CMakeLists.txt", "line": 64, "text": "llscrollbar.cpp", "source": "indra/llui/llscrollbar.cpp"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 65, "text": "llscrollcontainer.cpp", "source": "indra/llui/llscrollcontainer.cpp"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 72, "text": "llslider.cpp", "source": "indra/llui/llslider.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 195, "text": "llslider.h", "source": "indra/llui/llslider.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 196, "text": "llslider.h", "source": "indra/llui/llslider.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 73, "text": "llsliderctrl.cpp", "source": "indra/llui/llsliderctrl.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 194, "text": "llsliderctrl.h", "source": "indra/llui/llsliderctrl.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 195, "text": "llsliderctrl.h", "source": "indra/llui/llsliderctrl.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 74, "text": "llsliderwheel.cpp", "source": "indra/llui/llsliderwheel.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 196, "text": "llsliderwheel.h", "source": "indra/llui/llsliderwheel.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 197, "text": "llsliderwheel.h", "source": "indra/llui/llsliderwheel.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 75, "text": "llsliderwheelcore.cpp", "source": "indra/llui/llsliderwheelcore.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 309, "text": "llsliderwheelcore.cpp # [SliderWheel] pure logic, tests/llsliderwheelcore_test.cpp", "source": "indra/llui/llsliderwheelcore.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 197, "text": "llsliderwheelcore.h", "source": "indra/llui/llsliderwheelcore.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 310, "text": "llsliderwheelcore.cpp # [SliderWheel] pure logic, tests/llsliderwheelcore_test.cpp", "source": "indra/llui/llsliderwheelcore.cpp"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 198, "text": "llsliderwheelcore.h", "source": "indra/llui/llsliderwheelcore.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 76, "text": "llspinctrl.cpp", "source": "indra/llui/llspinctrl.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 201, "text": "llspinctrl.h", "source": "indra/llui/llspinctrl.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 202, "text": "llspinctrl.h", "source": "indra/llui/llspinctrl.h"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 81, "text": "lltabcontainer.cpp", "source": "indra/llui/lltabcontainer.cpp"}
 - {"file": "indra/llui/CMakeLists.txt", "line": 95, "text": "lluifitdiag.cpp", "source": "indra/llui/lluifitdiag.cpp"}
-- {"file": "indra/llui/CMakeLists.txt", "line": 225, "text": "lluifitdiag.h", "source": "indra/llui/lluifitdiag.h"}
+- {"file": "indra/llui/CMakeLists.txt", "line": 226, "text": "lluifitdiag.h", "source": "indra/llui/lluifitdiag.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1328, "text": "alcinecamobjectlockui.h", "source": "indra/newview/alcinecamobjectlockui.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 202, "text": "aldirectoralloff.cpp", "source": "indra/newview/aldirectoralloff.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 356, "text": "alenvintensitypresets.cpp", "source": "indra/newview/alenvintensitypresets.cpp"}

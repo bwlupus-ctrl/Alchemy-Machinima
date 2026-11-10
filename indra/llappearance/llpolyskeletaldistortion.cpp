@@ -132,6 +132,16 @@ LLPolySkeletalDistortion::~LLPolySkeletalDistortion()
 {
 }
 
+// [ClearAnim] The joint position offsets this parameter has applied so far: apply()
+// moves a joint by (weight - last weight) * delta, so the applied total is last weight * delta.
+void LLPolySkeletalDistortion::addAppliedPositionOffsets(std::map<LLJoint*, LLVector3>& offsets) const
+{
+    for (const joint_vec_map_t::value_type& offset_pair : mJointOffsets)
+    {
+        offsets[offset_pair.first] += mLastWeight * offset_pair.second;
+    }
+}
+
 bool LLPolySkeletalDistortion::setInfo(LLPolySkeletalDistortionInfo *info)
 {
     if (info->mID < 0)

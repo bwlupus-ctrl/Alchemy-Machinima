@@ -213,23 +213,23 @@ HEAD coordinates; guards/features are candidate evidence
 | 1139–1196 (n=58) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1199–1212 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1237–1256 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1294–1463 (n=170) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1541–1547 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1570–1576 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1672–1678 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1683–1689 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1828–1835 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1899–1911 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1915–1922 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2114–2120 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2354–2360 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2634–2671 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
-| 2729–2735 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2769–2775 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2858–2889 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2896–2915 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
-| 2964–3159 (n=196) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
-| 3221–3260 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
+| 1294–1464 (n=171) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1542–1548 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1571–1577 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1673–1679 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1684–1690 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1829–1836 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1900–1912 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1916–1923 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2115–2121 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2355–2361 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2635–2672 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
+| 2730–2736 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2770–2776 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2859–2890 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2897–2916 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
+| 2965–3161 (n=197) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
+| 3223–3262 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
 
 ## Slice 1: `indra/newview/app_settings/settings.xml`
 
@@ -659,31 +659,31 @@ HEAD coordinates; guards/features are candidate evidence
 | 234–251 (n=18) | FSFloaterPoser::postBuild, setCommitCallback | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge] Local animation playback tab |
 | 326–341 (n=16) | FSFloaterPoser::onOpen, FSFloaterPoser::postBuild | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: XML describes the complete expanded layout for static fit validation. Start with the optional pose browser collapsed, as before. |
 | 343–351 (n=9) | FSFloaterPoser::onOpen | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 361–440 (n=80) | FSFloaterPoser::acquireClonePoseDrive, FSFloaterPoser::draw, FSFloaterPoser::onTargetIdle, FSFloaterPoser::releaseClonePoseDrive, FSFloaterPoser::setVisible, FSFloaterPoser::updateTargetIdleRegistration | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Visible UI discovery retains its 1 Hz cadence. Hidden floaters do no work unless they own a retained pose or a local animation preview. A live controller with no directed clip lets the private poser overlay evaluate normally, without Frozen pauses or Mirror/Reflect stamps. A Swit |
-| 526–534 (n=9) | FSFloaterPoser::setVisualManipulators | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 544–558 (n=15) | FSFloaterPoser::onClose | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Keep-pose also retains previews. The reusable hidden floater continues validating both activity sets until they are stopped or expire. The floater may be reopened. Cancel pending reloads without destroying the timer that the next open will reuse. |
-| 623–629 (n=7) | FSFloaterPoser::onPoseFileSelect | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 678–684 (n=7) | FSFloaterPoser::onClickPoseSave | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 987–992 (n=6) | FSFloaterPoser::updatePosedBones | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1213–1221 (n=9) | FSFloaterPoser::onPoseMenuAction | unknown | unknown-review | unknown; conditional evidence present | Edits LLSD |
-| 1229–1235 (n=7) | FSFloaterPoser::timedReload | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1326–1332 (n=7) | FSFloaterPoser::onClickLoadHandPose | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1421–1427 (n=7) | FSFloaterPoser::loadPoseFromXml | unknown | unknown-review | unknown; conditional evidence present | Edits gDirUtilp, LL_PATH_USER_SETTINGS, LLSD, LLVector3, LLQuaternion, LLSDSerialize, LLSDParser, LL_WARNS, LL_ENDL |
-| 1435–1491 (n=57) | FSFloaterPoser::startPosingSelf, FSFloaterPoser::stopLocallyPlayedAnimations, FSFloaterPoser::stopPosingAllAvatars | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Do not stop a shared instance if the simulator began signaling it after our local preview started. |
-| 1494–1524 (n=31) | FSFloaterPoser::couldAnimateAvatar, FSFloaterPoser::onPoseStartStop | clones | creative-candidate | unknown; conditional evidence present | Edits LLUUID, gAgent, LLVOAvatar, LLControlAvatar, LLVOVolume, LLViewerObject |
-| 1658–1675 (n=18) | FSFloaterPoser::onToggleLoadSavePanel | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: change the width of the Poser panel for the (dis)appearance of the load/save panel Canonical widths keep repeated commits and restored old floater sizes from accumulating a browser-width delta. |
-| 1995–2001 (n=7) | FSFloaterPoser::updateManipWithFirstSelectedJoint | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2518–2837 (n=320) | FSFloaterPoser::onAnimPlay, FSFloaterPoser::onAnimSendToSwitchboard, FSFloaterPoser::onAnimStop, FSFloaterPoser::onAnimStopAll, FSFloaterPoser::onAvatarSelect, FSFloaterPoser::onPoseSendToSwitchboard, FSFloaterPoser::refreshAnimationList, FSFloaterPoser::refreshSwitchboardSlotCombo | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Gather assets only from eligible local targets. Control avatars fold their object animation signals into mSignaledAnimations; a global object-map scan would also include muted, distant and other-region targets. animation asset id -> number of nearby characters signaling it Reconc |
-| 2843–2859 (n=17) | FSFloaterPoser::onAvatarSelect | actor-path, clones, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: Observing an active overlay does not transfer Director/other ownership. |
-| 2868–2889 (n=22) | FSFloaterPoser::getNearbyAvatarsAndAnimeshes | clones | creative-candidate | unknown; conditional evidence present | Edits LLMuteList, ALGhostStudio, LLCharacter, gAgentAvatarp, LLVector3 |
-| 2920–2998 (n=79) | FSFloaterPoser::onAvatarsRefresh, FSFloaterPoser::revalidateActiveTargets | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Keep cleanup independent of visible rows: an active target may disappear from the list because it moved away, was muted, or the option was disabled. A later Switchboard punch takes over the shared overlay. Relinquish our bookkeeping without stopping it or restoring its clone driv |
-| 3001–3007 (n=7) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 3022–3048 (n=27) | FSFloaterPoser::onAvatarsRefresh | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Synthetic UUIDs have no name-service identity. |
-| 3061–3066 (n=6) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLAvatarName |
-| 3078–3104 (n=27) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Model state can change externally. Update enablement only; never rebind manipulators, write the save-name editor or reload joint UI. |
-| 3123–3129 (n=7) | FSFloaterPoser::getControlAvatarName | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 3132–3139 (n=8) | FSFloaterPoser::getControlAvatarName | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Non-owned animesh also needs a stable label when local posing is enabled. |
-| 3146–3169 (n=24) | FSFloaterPoser::refreshTextHighlightingOnAvatarScrollList | unknown | unknown-review | unknown; conditional evidence present | Edits LLFontGL |
+| 361–443 (n=83) | FSFloaterPoser::acquireClonePoseDrive, FSFloaterPoser::draw, FSFloaterPoser::onTargetIdle, FSFloaterPoser::releaseClonePoseDrive, FSFloaterPoser::setVisible, FSFloaterPoser::updateTargetIdleRegistration | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Visible UI discovery retains its 1 Hz cadence. Hidden floaters do no work unless they own a retained pose or a local animation preview. A live controller with no directed clip lets the private poser overlay evaluate normally, without Frozen pauses or Mirror/Reflect stamps. A Swit |
+| 529–537 (n=9) | FSFloaterPoser::setVisualManipulators | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 547–561 (n=15) | FSFloaterPoser::onClose | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Keep-pose also retains previews. The reusable hidden floater continues validating both activity sets until they are stopped or expire. The floater may be reopened. Cancel pending reloads without destroying the timer that the next open will reuse. |
+| 626–632 (n=7) | FSFloaterPoser::onPoseFileSelect | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 681–687 (n=7) | FSFloaterPoser::onClickPoseSave | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 990–995 (n=6) | FSFloaterPoser::updatePosedBones | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1216–1224 (n=9) | FSFloaterPoser::onPoseMenuAction | unknown | unknown-review | unknown; conditional evidence present | Edits LLSD |
+| 1232–1238 (n=7) | FSFloaterPoser::timedReload | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1329–1335 (n=7) | FSFloaterPoser::onClickLoadHandPose | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1424–1430 (n=7) | FSFloaterPoser::loadPoseFromXml | unknown | unknown-review | unknown; conditional evidence present | Edits gDirUtilp, LL_PATH_USER_SETTINGS, LLSD, LLVector3, LLQuaternion, LLSDSerialize, LLSDParser, LL_WARNS, LL_ENDL |
+| 1438–1494 (n=57) | FSFloaterPoser::startPosingSelf, FSFloaterPoser::stopLocallyPlayedAnimations, FSFloaterPoser::stopPosingAllAvatars | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Do not stop a shared instance if the simulator began signaling it after our local preview started. |
+| 1497–1527 (n=31) | FSFloaterPoser::couldAnimateAvatar, FSFloaterPoser::onPoseStartStop | clones | creative-candidate | unknown; conditional evidence present | Edits LLUUID, gAgent, LLVOAvatar, LLControlAvatar, LLVOVolume, LLViewerObject |
+| 1661–1678 (n=18) | FSFloaterPoser::onToggleLoadSavePanel | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: change the width of the Poser panel for the (dis)appearance of the load/save panel Canonical widths keep repeated commits and restored old floater sizes from accumulating a browser-width delta. |
+| 1998–2004 (n=7) | FSFloaterPoser::updateManipWithFirstSelectedJoint | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2521–2840 (n=320) | FSFloaterPoser::onAnimPlay, FSFloaterPoser::onAnimSendToSwitchboard, FSFloaterPoser::onAnimStop, FSFloaterPoser::onAnimStopAll, FSFloaterPoser::onAvatarSelect, FSFloaterPoser::onPoseSendToSwitchboard, FSFloaterPoser::refreshAnimationList, FSFloaterPoser::refreshSwitchboardSlotCombo | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Gather assets only from eligible local targets. Control avatars fold their object animation signals into mSignaledAnimations; a global object-map scan would also include muted, distant and other-region targets. animation asset id -> number of nearby characters signaling it Reconc |
+| 2846–2862 (n=17) | FSFloaterPoser::onAvatarSelect | actor-path, clones, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: Observing an active overlay does not transfer Director/other ownership. |
+| 2871–2892 (n=22) | FSFloaterPoser::getNearbyAvatarsAndAnimeshes | clones | creative-candidate | unknown; conditional evidence present | Edits LLMuteList, ALGhostStudio, LLCharacter, gAgentAvatarp, LLVector3 |
+| 2923–3001 (n=79) | FSFloaterPoser::onAvatarsRefresh, FSFloaterPoser::revalidateActiveTargets | actor-path, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Keep cleanup independent of visible rows: an active target may disappear from the list because it moved away, was muted, or the option was disabled. A later Switchboard punch takes over the shared overlay. Relinquish our bookkeeping without stopping it or restoring its clone driv |
+| 3004–3010 (n=7) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3025–3051 (n=27) | FSFloaterPoser::onAvatarsRefresh | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Synthetic UUIDs have no name-service identity. |
+| 3064–3069 (n=6) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLAvatarName |
+| 3081–3107 (n=27) | FSFloaterPoser::onAvatarsRefresh | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Model state can change externally. Update enablement only; never rebind manipulators, write the save-name editor or reload joint UI. |
+| 3126–3132 (n=7) | FSFloaterPoser::getControlAvatarName | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 3135–3142 (n=8) | FSFloaterPoser::getControlAvatarName | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Non-owned animesh also needs a stable label when local posing is enabled. |
+| 3149–3172 (n=24) | FSFloaterPoser::refreshTextHighlightingOnAvatarScrollList | unknown | unknown-review | unknown; conditional evidence present | Edits LLFontGL |
 
 ## Slice 2: `indra/newview/fsfloaterposer.h`
 
@@ -5300,7 +5300,8 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 1799–1811 (n=13) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits gGL, LLTexUnit |
+| 1758–1764 (n=7) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1797–1810 (n=14) | LLScrollListCtrl::drawItems | unknown | unknown-review | unknown; conditional evidence present | Edits gGL, LLTexUnit |
 | 2088–2098 (n=11) | LLScrollListCtrl::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/llui/llscrolllistctrl.h`
@@ -5310,10 +5311,27 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 297–305 (n=9) | setLastSelectedItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge F3] FS radar restores the multi-select anchor after a list rebuild (FSScrollListCtrl parity); mLastSelected is private. |
-| 313–320 (n=8) | setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none. |
-| 408–416 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
-| 484–496 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
-| 555–562 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
+| 313–325 (n=13) | getSelectedBarGutter, setSelectedBar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Optional bar on the left edge of selected rows. Width 0 (the default) draws none and changes nothing. A list that opts in also (a) reserves a gutter of width + 1 px so the bar never paints over the first cell, and (b) keeps the plain selected fill on a selected row that is also h |
+| 413–421 (n=9) | getMouseUpHitItem | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Valid only during the mouse-up commit, for actions requiring a row hit. |
+| 489–501 (n=13) | setLineHeight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge F3] FS radar list wants a fixed row height (FSScrollListCtrl parity); mLineHeight is private so expose a narrow setter. |
+| 560–567 (n=8) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLColor4 |
+
+## Slice 99: `indra/llui/llscrolllistitem.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 145–151 (n=7) | unknown/non-function (std::string LLScrollListItem::getContentsCSV() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLScrollListItem, LLRect, LLColor4 |
+| 161–168 (n=8) | LLScrollListItem::draw | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The row fill covers the whole rect; cells start after the caller's gutter. |
+
+## Slice 99: `indra/llui/llscrolllistitem.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 129–136 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/llui/lltabcontainer.cpp`
 

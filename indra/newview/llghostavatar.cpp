@@ -30,6 +30,7 @@
 #include "alghostanimmirrormath.h"
 #include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules
 #include "fsposingmotion.h"         // [ClearAnim] the Poser's motion survives a clear
+#include "llpolyskeletaldistortion.h" // [ClearAnim] applied shape offsets for the neutral rest
 #include "alreflectmath.h"
 #include "alghostmotionmath.h"
 
@@ -1755,8 +1756,8 @@ void LLGhostAvatar::setEntityAnimationsCleared(bool cleared)
     neutralizeEntityPhysicsParams();
     neutralizeEntityEyeParams();
     // A stopped motion leaves its last pose on the joints. Rest the skeleton:
-    // no joint rotation and the pelvis back on the root. Joint positions other
-    // than the pelvis carry the body shape and are left alone.
+    // no joint rotation and every joint position back on its shape-aware rest
+    // position, so a position-keyed (bento / deformer) animation leaves nothing.
     restoreDirectedMirrorPose();
     for (LLJoint* joint : mSkeleton)
     {
@@ -1765,10 +1766,101 @@ void LLGhostAvatar::setEntityAnimationsCleared(bool cleared)
             joint->setRotation(LLQuaternion::DEFAULT);
         }
     }
-    if (mPelvisp)
+    restEntityJointPositions();
+}
+
+// [ClearAnim] Default skeleton position + applied body-shape offsets, or the active
+// attachment joint-offset override (the winner LLJoint::updatePos picks). The pelvis
+// rests on the root unless an attachment overrides it.
+void LLGhostAvatar::restEntityJointPositions()
+{
+    std::map<LLJoint*, LLVector3> shape;
+    for (LLVisualParam* param = getFirstVisualParam(); param; param = getNextVisualParam())
     {
-        mPelvisp->setPosition(LLVector3::zero);
+        if (LLPolySkeletalDistortion* distortion = dynamic_cast<LLPolySkeletalDistortion*>(param))
+        {
+            distortion->addAppliedPositionOffsets(shape);
+        }
     }
+    auto to_vec = [](const LLVector3& v) { return ALGhostClearAnim::Vec3{v.mV[VX], v.mV[VY], v.mV[VZ]}; };
+    for (LLJoint* joint : mSkeleton)
+    {
+        if (!joint)
+        {
+            continue;
+        }
+        const auto offset = shape.find(joint);
+        LLVector3 override_pos;
+        LLUUID override_mesh;
+        const bool has_override = joint->hasAttachmentPosOverride(override_pos, override_mesh);
+        ALGhostClearAnim::Vec3 rest = ALGhostClearAnim::restPosition(
+            to_vec(joint->getDefaultPosition()),
+            offset != shape.end() ? to_vec(offset->second) : ALGhostClearAnim::Vec3(),
+            has_override, to_vec(override_pos));
+        if (joint == mPelvisp && !has_override)
+        {
+            rest = ALGhostClearAnim::Vec3();
+        }
+        joint->setPosition(LLVector3(rest.x, rest.y, rest.z));
+    }
+}
+
+// [ClearAnim]
+bool LLGhostAvatar::isEntityPosed()
+{
+    for (LLMotion* motion : getMotionController().getActiveMotions())
+    {
+        if (dynamic_cast<FSPosingMotion*>(motion) != nullptr)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+// [ClearAnim]
+ALGhostClearAnim::HeldPose LLGhostAvatar::captureHeldPose()
+{
+    ALGhostClearAnim::HeldPose pose;
+    for (LLJoint* joint : mSkeleton)
+    {
+        if (!joint)
+        {
+            continue;
+        }
+        ALGhostClearAnim::HeldJoint held;
+        held.mName = joint->getName();
+        const LLQuaternion& rot = joint->getRotation();
+        for (S32 i = 0; i < 4; ++i)
+        {
+            held.mRot[i] = rot.mQ[i];
+        }
+        const LLVector3& pos = joint->getPosition();
+        for (S32 i = 0; i < 3; ++i)
+        {
+            held.mPos[i] = pos.mV[i];
+        }
+        pose.push_back(held);
+    }
+    return pose;
+}
+
+// [ClearAnim]
+void LLGhostAvatar::applyHeldPose(const ALGhostClearAnim::HeldPose& pose)
+{
+    for (const ALGhostClearAnim::HeldJoint& held : pose)
+    {
+        if (LLJoint* joint = getJoint(held.mName))
+        {
+            joint->setRotation(LLQuaternion(held.mRot[0], held.mRot[1], held.mRot[2], held.mRot[3]));
+            joint->setPosition(LLVector3(held.mPos[0], held.mPos[1], held.mPos[2]));
+        }
+    }
+    if (mRoot)
+    {
+        mRoot->updateWorldMatrixChildren();
+    }
+    dirtyMesh();
 }
 
 void LLGhostAvatar::setEntityLook(S32 look, F32 alpha)

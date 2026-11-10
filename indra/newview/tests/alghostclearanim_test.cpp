@@ -271,4 +271,191 @@ template<> template<> void alghostclearanim_object::test<6>()
     bad.setDrive(saved_drive, std::string());
     ensure("unguarded release is rejected", !restsAfter(bad, 2));
 }
+
+// Review round 2, finding 2: queued / staggered walks. Clear must cancel a pending start
+// even though the clone has no Move yet; a conditional stop leaves the queue entry armed.
+template<> template<> void alghostclearanim_object::test<7>()
+{
+    struct Walker
+    {
+        bool moving = false;
+        bool pending_start = true;   // staggered start queued, no Move yet
+        bool walk_playing = false;
+        void service() { if (pending_start) { pending_start = false; moving = true; walk_playing = true; } }
+        // LLActorMover::stop always disarms the queue; the bug guarded it behind isMoving().
+        void stop(bool unconditional)
+        {
+            if (!unconditional && !moving) return;
+            pending_start = false;
+            moving = walk_playing = false;
+        }
+    };
+    Walker good;
+    good.stop(true);
+    good.service();
+    ensure("an unconditional stop cancels the queued walk", !good.walk_playing && !good.moving);
+    Walker bad;
+    bad.stop(false);
+    bad.service();
+    ensure("planted negative: stop only when moving lets the queued walk start", bad.walk_playing);
+}
+
+// Findings 3 and 4: gaze painters and Switchboard automation leave a cleared clone alone;
+// an explicit manual punch does not.
+template<> template<> void alghostclearanim_object::test<8>()
+{
+    ensure("cleared clone: no gaze paint", !mayPaintGaze(true));
+    ensure("ordinary clone: gaze paints", mayPaintGaze(false));
+    ensure("auto cut skips a cleared clone", !mayAutomate(true, false));
+    ensure("manual punch reaches a cleared clone", mayAutomate(true, true));
+    ensure("auto cut reaches an ordinary clone", mayAutomate(false, false));
+
+    // Model: an armed board cutting to an animation every tick, a held Hot Gaze, a released
+    // ordinary gaze envelope. Each paints / starts only through the rules above.
+    struct Board
+    {
+        bool cleared = true;
+        bool gated = true;
+        int cuts_applied = 0;
+        int gaze_paints = 0;
+        void autoCut() { if (!gated || mayAutomate(cleared, false)) { ++cuts_applied; cleared = false; } }
+        void gazeFrame() { if (!gated || mayPaintGaze(cleared)) ++gaze_paints; }
+    };
+    Board board;
+    for (int i = 0; i < 100; ++i) { board.autoCut(); board.gazeFrame(); }
+    ensure("100 frames: no cut, no gaze paint", board.cuts_applied == 0 && board.gaze_paints == 0 && board.cleared);
+    Board manual;
+    manual.cleared = true;
+    if (mayAutomate(manual.cleared, true)) { ++manual.cuts_applied; manual.cleared = false; }
+    ensure("a manual punch applies and ends the cleared state", manual.cuts_applied == 1 && !manual.cleared);
+    Board bad;
+    bad.gated = false;
+    for (int i = 0; i < 3; ++i) { bad.autoCut(); bad.gazeFrame(); }
+    ensure("planted negative: ungated board restarts a cleared clone", bad.cuts_applied > 0 && bad.gaze_paints > 0);
+}
+
+// Finding 5: undo restores AutoAnimate exactly (manual mode and learning progress), because
+// switching it off destroys the runtime.
+template<> template<> void alghostclearanim_object::test<9>()
+{
+    struct Auto
+    {
+        bool on = true;
+        bool manual = true;
+        int progress = 240;          // observed learning seconds
+        void off() { on = false; manual = false; progress = 0; }   // runtime destroyed
+    };
+    Auto clone;
+    const Auto before = clone;       // the snapshot
+    clone.off();
+    Auto undone = clone;             // full restore
+    undone.on = before.on; undone.manual = before.manual; undone.progress = before.progress;
+    ensure("manual mode and progress come back", undone.on && undone.manual && undone.progress == 240);
+    Auto flag_only = clone;          // planted negative: only the enabled flag
+    flag_only.on = before.on;
+    ensure("flag-only undo is rejected", flag_only.manual != before.manual && flag_only.progress != before.progress);
+}
+
+// Finding 6: undo of a Frozen clone restores its held pose, keyed by joint name.
+template<> template<> void alghostclearanim_object::test<10>()
+{
+    ensure("only Frozen needs a held pose", needsHeldPose(kFrozen, kFrozen) && !needsHeldPose(kMirror, kFrozen));
+    auto joint = [](const char* name, float angle, float height)
+    {
+        HeldJoint held;
+        held.mName = name;
+        held.mRot[2] = angle;
+        held.mPos[2] = height;
+        return held;
+    };
+    const HeldPose held = { joint("mPelvis", 0.3f, 1.0f), joint("mTorso", 0.5f, 0.1f), joint("mHead", 0.7f, 0.2f) };
+    // Skeleton rebuilt after the snapshot: different order, one joint missing, neutral values.
+    std::vector<HeldJoint> skeleton = { joint("mHead", 0.f, 0.f), joint("mPelvis", 0.f, 0.f), joint("mChest", 0.f, 0.f) };
+    for (const HeldJoint& saved : held)
+        for (HeldJoint& live : skeleton)
+            if (live.mName == saved.mName) live = saved;
+    ensure("head restored by name", skeleton[0].mRot[2] == 0.7f);
+    ensure("pelvis restored by name", skeleton[1].mRot[2] == 0.3f && skeleton[1].mPos[2] == 1.0f);
+    ensure("unknown joint untouched", skeleton[2].mRot[2] == 0.f);
+    // Planted negative: restoring by index writes the pelvis pose onto the head.
+    std::vector<HeldJoint> by_index = { joint("mHead", 0.f, 0.f), joint("mPelvis", 0.f, 0.f), joint("mChest", 0.f, 0.f) };
+    for (size_t i = 0; i < held.size() && i < by_index.size(); ++i)
+    {
+        by_index[i].mRot[2] = held[i].mRot[2];
+    }
+    ensure("index-keyed restore is rejected", by_index[0].mRot[2] != 0.7f);
+}
+
+// Finding 7: the neutral pose is shape-aware for positions too.
+template<> template<> void alghostclearanim_object::test<11>()
+{
+    const Vec3 def{0.f, 0.f, 0.1f}, shape{0.f, 0.02f, 0.f}, bento{0.f, 0.f, 0.4f}, override_pos{0.f, 0.f, 0.05f};
+    const Vec3 plain = restPosition(def, Vec3(), false, Vec3());
+    ensure("default skeleton position", plain == def);
+    const Vec3 shaped = restPosition(def, shape, false, Vec3());
+    ensure("default + applied shape", shaped == (Vec3{0.f, 0.02f, 0.1f}));
+    ensure("attachment override wins", restPosition(def, shape, true, override_pos) == override_pos);
+    // A position-keyed animation moved the joint to `bento`; Clear must not keep it.
+    ensure("rest differs from the animated position", !(shaped == bento));
+    // Planted negative: the rotation-only reset leaves the animated position behind.
+    Vec3 rotation_only_reset = bento;
+    ensure("rotation-only reset is rejected", !(rotation_only_reset == shaped));
+}
+
+// Finding 8: Clear -> manual punch -> Clear -> Undo restores the punched animation, and a
+// respawn does not re-clear a clone the user re-animated.
+template<> template<> void alghostclearanim_object::test<12>()
+{
+    struct Body { int drive = kMirror; std::string anim; bool cleared = false; };
+    struct Studio
+    {
+        int drive = kMirror; std::string anim; bool cleared = false;
+        Body body;
+        Before<std::string> clear()
+        {
+            Before<std::string> before; before.mDrive = drive; before.mAnim = anim; before.mWasCleared = cleared;
+            drive = kDriveDirected; anim.clear(); cleared = true;
+            body.drive = drive; body.anim = anim; body.cleared = true;
+            return before;
+        }
+        // The Switchboard drives the body only; adopt() is the report.
+        void punch(const std::string& next, bool adopt)
+        {
+            body.drive = kDriveDirected; body.anim = next; body.cleared = holds(body.cleared, body.drive, true);
+            if (adopt) { drive = body.drive; anim = body.anim; cleared = body.cleared; }
+        }
+        void respawn() { cleared = holds(cleared, drive, !anim.empty()); body = Body{drive, anim, cleared}; }
+    };
+    Studio good;
+    good.clear();
+    good.punch("dance", true);
+    const Before<std::string> second = good.clear();
+    ensure("snapshot holds the punched animation", second.mAnim == "dance" && !second.mWasCleared);
+    good.cleared = false;            // undo ends the cleared state first
+    good.drive = second.mDrive; good.anim = second.mAnim;
+    ensure("undo restores the punched animation", good.anim == "dance" && good.drive == kDriveDirected);
+
+    Studio reanimated;
+    reanimated.clear();
+    reanimated.punch("dance", true);
+    reanimated.respawn();
+    ensure("respawn keeps the re-animated clone animated", !reanimated.body.cleared && reanimated.body.anim == "dance");
+
+    // Planted negative: a punch Studio never hears about.
+    Studio stale;
+    stale.clear();
+    stale.punch("dance", false);
+    const Before<std::string> stale_before = stale.clear();
+    ensure("unreported punch snapshots the wrong state", stale_before.mAnim.empty() && stale_before.mWasCleared);
+    stale.respawn();
+    ensure("unreported punch is re-cleared on respawn", stale.body.cleared && stale.body.anim.empty());
+}
+
+// Should-fix B: Clear is refused while the Poser holds the clone posed.
+template<> template<> void alghostclearanim_object::test<13>()
+{
+    ensure("posed clone is refused", !canClear(true, true));
+    ensure("free entity clone can clear", canClear(true, false));
+    ensure("overlay clone is refused", !canClear(false, false));
+}
 } // namespace tut

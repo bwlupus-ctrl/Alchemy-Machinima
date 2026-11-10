@@ -1,6 +1,7 @@
 #include "linden_common.h"
 #include "../test/lltut.h"
 #include "../alkitlistselection.h"
+#include "../../llui/llscrolllistgutter.h"
 
 #include "lluuid.h"
 
@@ -290,5 +291,51 @@ template<> template<> void alkitlistselection_object::test<8>()
     list.shiftClick(b);
     ensure("lost anchor selects C as well", contains(list.selected, c));
     ensure("lost anchor is rejected", !(list.selected == (Rows{ a, b, d })));
+}
+
+// Review round 2: the opted-in list gutter moves hit testing with the drawn cells.
+template<> template<> void alkitlistselection_object::test<9>()
+{
+    // The column walk of LLScrollListCtrl::getColumnIndexFromOffset / getColumnOffsetFromIndex.
+    const int widths[3] = { 40, 60, 80 };
+    const int padding = 2;
+    auto index_at = [&](int x, int gutter)
+    {
+        x = LLScrollListGutter::columnLocalX(x, gutter);
+        int left = 0, right = 0, index = 0;
+        for (int w : widths)
+        {
+            right += w + padding;
+            if (left <= x && x < right) break;
+            left = right;
+            ++index;
+        }
+        return index < 0 ? 0 : (index > 2 ? 2 : index);
+    };
+    auto offset_of = [&](int index, int gutter)
+    {
+        int offset = LLScrollListGutter::columnOffset(0, gutter);
+        for (int i = 0; i < index; ++i) offset += widths[i] + padding;
+        return offset;
+    };
+    const int gutter = 4;
+    // Cell 1 is DRAWN from offset_of(1) = 4 + 42 = 46: a click at 44 is still cell 0.
+    ensure_equals("cell 1 starts after the gutter", offset_of(1, gutter), 46);
+    ensure_equals("click inside the gutter is cell 0", index_at(2, gutter), 0);
+    ensure_equals("click just left of the drawn cell 1 is cell 0", index_at(45, gutter), 0);
+    ensure_equals("click on the first pixel of drawn cell 1", index_at(46, gutter), 1);
+    ensure_equals("click on the last pixel of drawn cell 0", index_at(45, gutter), 0);
+    ensure_equals("far right is the last cell", index_at(500, gutter), 2);
+    // A list without the bar is unchanged.
+    ensure_equals("no gutter: boundary at 42", index_at(41, 0), 0);
+    ensure_equals("no gutter: boundary at 42", index_at(42, 0), 1);
+    ensure_equals("no gutter: offsets unchanged", offset_of(2, 0), 104);
+    ensure_equals("no gutter: width unchanged", LLScrollListGutter::availableWidth(300, 0), 300);
+    ensure_equals("gutter takes its pixels from the column area", LLScrollListGutter::availableWidth(300, gutter), 296);
+    // Planted negative: hit testing that ignores the gutter picks cell 1 at x = 45, which is
+    // still drawn as cell 0.
+    ensure("gutter-blind hit testing is rejected", index_at(45, 0) == 1 && index_at(45, gutter) == 0);
+    // Planted negative: without the clamp a click in the gutter falls off the column walk.
+    ensure("unclamped gutter click is rejected", (2 - gutter) < 0 && LLScrollListGutter::columnLocalX(2, gutter) == 0);
 }
 } // namespace tut
