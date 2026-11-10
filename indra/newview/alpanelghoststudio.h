@@ -73,6 +73,11 @@ public:
     // Enables that menu item: an entity clone is selected in the active host,
     // else in the shared Studio selection.
     static bool anyEntityCloneSelected();
+    // Appends the Studio instance ids THIS panel's controls would act on: its own list
+    // selection (selection().mInstances is already expanded: selectedInstances() replaces each
+    // group row by its members), else the shared Studio selection when its list is empty. Director tag highlight reads this from the Director's own
+    // Clones panel (never the global active host, which may be the standalone window).
+    void appendSelectedInstances(std::vector<LLUUID>& out);
     // The host the user last worked in (shown, list selection, drop), while it
     // is still visible; the inventory menu applies to ITS selection.
     static ALPanelGhostStudio* activeHost();

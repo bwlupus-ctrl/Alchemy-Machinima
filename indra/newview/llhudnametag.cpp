@@ -27,6 +27,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "alderenderlist.h"
+#include "aldirectortagtargets.h"
 #include "llghostavatar.h"
 
 #include "llhudnametag.h"
@@ -101,7 +102,11 @@ LLHUDNameTag::LLHUDNameTag(const U8 type)
     mTextAlignment(ALIGN_TEXT_CENTER),
     mVertAlignment(ALIGN_VERT_CENTER),
     mLOD(0),
-    mHidden(false)
+    mHidden(false),
+    mHasBackgroundOverride(false),
+    mBackgroundOverrideStamp(0),
+    mBackgroundOverride(0.f, 0.f, 0.f, 1.f),
+    mBackgroundOverrideText(1.f, 1.f, 1.f, 1.f)
 {
     LLPointer<LLHUDNameTag> ptr(this);
     sTextObjects.insert(ptr);
@@ -271,6 +276,17 @@ void LLHUDNameTag::renderText()
     static LLUIColor nametag_bg_color = LLUIColorTable::instance().getColor("NameTagBackground");
     LLColor4 bg_color = nametag_bg_color;
     bg_color.setAlpha(bubble_opacity * alpha_factor);
+    // An override draws only while the Director's published set is active and this override's style
+    // is current (one cheap check, and only for a tag that has an override).
+    const bool use_override = mHasBackgroundOverride &&
+        ALDirectorTagTargets::instance().overrideActive(mBackgroundOverrideStamp);
+    if (use_override)
+    {
+        // Director highlight: the override colour, fully opaque (the text contrast guarantee
+        // is measured against it), fading only with this tag.
+        bg_color = mBackgroundOverride;
+        bg_color.setAlpha(ALTagHighlight::highlightedBackgroundAlpha(alpha_factor * mColor.mV[VALPHA]));
+    }
 
     // scale screen size of borders down
     //RN: for now, text on hud objects is never occluded
@@ -305,6 +321,13 @@ void LLHUDNameTag::renderText()
         label_top_rect.mBottom = label_top_rect.mTop - label_height;
         LLColor4 label_top_color = text_color;
         label_top_color.mV[VALPHA] = bubble_opacity() * alpha_factor;
+        if (use_override)
+        {
+            // The label strip sits on the highlighted tag: fill it with the highlight too, so
+            // the recoloured label text keeps its contrast.
+            label_top_color = mBackgroundOverride;
+            label_top_color.mV[VALPHA] = ALTagHighlight::highlightedBackgroundAlpha(alpha_factor * mColor.mV[VALPHA]);
+        }
 
         mRoundedRectTopImgp->draw3D(render_position, x_pixel_vec, y_pixel_vec, label_top_rect, label_top_color);
     }
@@ -331,6 +354,13 @@ void LLHUDNameTag::renderText()
             }
 
             LLColor4 label_color(0.f, 0.f, 0.f, alpha_factor);
+            if (use_override)
+            {
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    label_color.mV[channel] = mBackgroundOverrideText.mV[channel];
+                }
+            }
             hud_render_text(segment_iter->getText(), render_position, *fontp, segment_iter->mStyle, LLFontGL::NO_SHADOW, x_offset, y_offset, label_color, false);
         }
     }
@@ -375,6 +405,13 @@ void LLHUDNameTag::renderText()
 
             text_color = segment_iter->mColor;
             text_color.mV[VALPHA] *= alpha_factor;
+            if (use_override)
+            {
+                for (S32 channel = 0; channel < 3; ++channel)
+                {
+                    text_color.mV[channel] = mBackgroundOverrideText.mV[channel];
+                }
+            }
 
             hud_render_text(segment_iter->getText(), render_position, *fontp, style, shadow, x_offset, y_offset, text_color, false);
         }
@@ -524,6 +561,20 @@ void LLHUDNameTag::setColor(const LLColor4 &color)
     {
         segment_iter->mColor = color;
     }
+}
+
+void LLHUDNameTag::setBackgroundOverride(const LLColor4& background, const LLColor4& text, U64 stamp)
+{
+    mBackgroundOverride = background;
+    mBackgroundOverrideText = text;
+    mBackgroundOverrideStamp = stamp;
+    mHasBackgroundOverride = true;
+}
+
+void LLHUDNameTag::clearBackgroundOverride()
+{
+    mHasBackgroundOverride = false;
+    mBackgroundOverrideStamp = 0;
 }
 
 void LLHUDNameTag::setAlpha(F32 alpha)

@@ -31,6 +31,12 @@ public:
         LLVector3   mPositionAgent;
         LLColor4    mColor = LLColor4::white;
         bool        mSelected = false;
+        // Director tag highlight: this tag's actor is one the open Director page acts on.
+        bool        mHighlighted = false;
+        // Director group the actor belongs to, shown as a line above the name. Not owned: it
+        // points into the resolver's label cache and is only valid during update(); the plate
+        // entry keeps its own copy, refreshed only when the label changes.
+        const std::string* mGroupLine = nullptr;
     };
 
     ALGhostNameplates() = default;
@@ -49,6 +55,7 @@ private:
     {
         LLPointer<LLHUDNameTag> mTag;
         std::string mText;
+        std::string mGroupLine;
         LLColor4    mColor;
         bool        mApplied = false;   // mText/mColor reflect a setString() call
     };

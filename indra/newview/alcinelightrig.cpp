@@ -2752,6 +2752,10 @@ void ALCineLightRig::tickShared(
     if (object_targeted)
     {
         mLastResolvedGroupSlots = 0;
+        // An object target lights no avatar: a failed resolution must not keep an earlier snapshot.
+        mLastResolvedMembers.clear();
+        mLastResolvedStoredMembers.clear();
+        mLitGroupPresent = 0;
         LLViewerObject* object = gObjectList.findObject(mObjectTarget);
         if (!object || object->isDead())
         {
@@ -2936,6 +2940,17 @@ void ALCineLightRig::tickShared(
                 setup.mRadius * aggregate_subject_scale >= SCALED_RADIUS_CEIL;
             aggregate_group = true;
         }
+    }
+
+    if (target == LitTarget::LEGACY)
+    {
+        // Legacy slot groups never filled the identity snapshot; publish who this rig really lights.
+        // The named-group fields stay consistent: no stored identities, none counted as present.
+        mLastResolvedMembers.clear();
+        mLastResolvedStoredMembers.clear();
+        mLitGroupPresent = 0;
+        for (S32 i = 0; i < group_count; ++i)
+            if (group_members[i]) mLastResolvedMembers.push_back(group_members[i]->getID());
     }
 
     if (group_target && group_count > 0)

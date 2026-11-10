@@ -335,6 +335,7 @@ public:
     void            idleUpdateNameTag(const LLVector3& root_pos_last);
     void            idleUpdateNameTagText(bool new_name);
     void            idleUpdateNameTagAlpha(bool new_name, F32 alpha);
+    void            idleUpdateNameTagHighlight();
     LLColor4        getNameTagColor(bool is_friend);
     void            clearNameTag();
     static void     invalidateNameTag(const LLUUID& agent_id);
@@ -1300,6 +1301,7 @@ private:
     S32             mRenderGroupTitles;
     LLColor4        mNameTagColor;
     std::string     mDistanceString;
+    std::string     mNameDirectorGroup;   // Director group label last built into the tag
 
     //--------------------------------------------------------------------
     // Display the name (then optionally fade it out)

@@ -45,6 +45,8 @@ public:
     // Makes exactly these keys the selection, in one multi-select pass (no key deselects another).
     // Keys not in the list are ignored. The read-first row is the first selected one in list order.
     void selectKeys(const std::vector<LLUUID>& keys);
+    // Read-only: the avatar list's selected keys (the avatars the page edits).
+    std::vector<LLUUID> selectedKeys() const;
     void onVisibilityChange(bool new_visibility) override;
     void draw() override;
 
@@ -75,7 +77,6 @@ private:
     static void onIdle(void* user_data);
     void idleUpdate();
 
-    std::vector<LLUUID> selectedKeys() const;
     ALLightResponse::Params currentParams(const LLUUID& key) const;
     void applyParams(const LLUUID& key, const ALLightResponse::Params& params, bool save_now);
     // Debounced save request. With the idle callback retired (page hidden) it flushes at once.

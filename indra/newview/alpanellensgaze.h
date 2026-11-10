@@ -47,6 +47,9 @@ public:
     std::string appliedGroup() const;
     std::string selectedApplyGroup() const;
     void restoreApplyGroup(const std::string& name);
+    // Read-only: the actors the Gaze edit rows write to (the edited actor, a Director group,
+    // or every populated actor). Used by the name-tag highlight.
+    uuid_vec_t editActors() const;
     static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
 private:
@@ -57,7 +60,6 @@ private:
     // The set of cast actors the edit rows write to: the single edited actor
     // (specific slot) or every populated actor (All scope). The display actor
     // is a single representative used to read+present current values.
-    uuid_vec_t editActors() const;
     LLUUID     editDisplayActor() const;
     void refreshCastCombo(bool force = false);
     void refreshApplyGroupCombo();

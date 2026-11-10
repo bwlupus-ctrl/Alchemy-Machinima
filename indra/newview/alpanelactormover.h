@@ -56,6 +56,9 @@ public:
     // Fed each draw before LLFloater::draw() paints the panel, so the enable
     // state and the button actions always see the current selection.
     void setSelectedActors(const uuid_vec_t& ids) { mSelected = ids; }
+    // Read-only: who Walk / Stop would drive right now (Everyone = the whole roster, or You
+    // when it is empty; a pinned Who; otherwise the host selection). Used by the name-tag highlight.
+    uuid_vec_t effectiveTargets() const;
 
 private:
     void onScopeCommit();
