@@ -14,7 +14,10 @@ Two layers, both exit 1 on any finding:
    (right-drag opens the menu, an item acting on a clone outside the picked/selected
    set, the overlay submenu on an avatar with no overlay, pick mode left on after the
    Director closes, Ctrl-click adding an avatar to a set, a non-cast avatar leaving
-   the Actor bar unchanged).
+   the Actor bar unchanged, a Nearby people list that shows a UUID or is not nearest
+   first / capped, a Recent animations list that exposes an asset id or is not newest
+   first / capped, a Look / turn item that touches a clone outside the targets, a Fade that
+   deletes a clone or is saved in a scene, a Look at that leaves an armed Turn).
 2. STATIC: the production sites are pinned to those rules (call sites in
    lltoolpie.cpp / llviewerwindow.cpp, the four avatar menus carrying one identical
    overlay fragment whose Style items equal the Clones page style combo, menu item
@@ -289,6 +292,206 @@ bool editSelectionOk(EditKeepFn keeps)
     return keeps(true, true) && !keeps(true, false) && !keeps(false, true) && !keeps(false, false);
 }
 
+// ---- Look / turn, Animation and Appearance lists ---------------------------------
+static const char* const UUID_A = "01234567-89ab-cdef-0123-456789abcdef";
+
+// Nearby people: nearest first, capped. Entry needs mDistance.
+struct Near { double mDistance; std::string mName; };
+typedef std::vector<Near> NearVec;
+typedef NearVec (*NearFn)(NearVec);
+NearVec nearReal(NearVec v) { return nearbySelect(v); }
+NearVec nearUnsorted(NearVec v) { if (v.size() > NEARBY_MAX) v.resize(NEARBY_MAX); return v; }               // list order, not distance
+NearVec nearUncapped(NearVec v)
+{ std::stable_sort(v.begin(), v.end(), [](const Near& a, const Near& b) { return a.mDistance < b.mDistance; }); return v; }
+NearVec nearFarthestFirst(NearVec v)
+{ std::stable_sort(v.begin(), v.end(), [](const Near& a, const Near& b) { return a.mDistance > b.mDistance; }); if (v.size() > NEARBY_MAX) v.resize(NEARBY_MAX); return v; }
+bool nearbyOk(NearFn fn)
+{
+    NearVec v;
+    for (int i = 0; i < 20; ++i) v.push_back({ double((i * 7) % 20), "p" + std::to_string(i) });        // a permutation of 0..19
+    const NearVec r = fn(v);
+    if (r.size() != NEARBY_MAX) return false;                                                           // capped at 16
+    for (size_t i = 0; i < r.size(); ++i) if (r[i].mDistance != double(i)) return false;                // the 16 nearest, nearest first
+    const NearVec few = fn(NearVec{ { 5, "b" }, { 1, "a" } });
+    return few.size() == 2 && few[0].mName == "a";
+}
+
+// A nearby person's label: a name, never an id.
+typedef std::string (*NearLabelFn)(const std::string& name, bool cast, const std::string& suffix, const std::string& id);
+std::string labelReal(const std::string& n, bool c, const std::string& s, const std::string&) { return nearbyLabel(n, c, s); }
+std::string labelFallsBackToId(const std::string& n, bool c, const std::string& s, const std::string& id)
+{ return n.empty() ? id : nearbyLabel(n, c, s); }                                                       // lists a nameless person by UUID
+std::string labelNoUuidGuard(const std::string& n, bool c, const std::string& s, const std::string&)
+{ return n.empty() ? std::string() : (c && !s.empty() ? n + " (" + s + ")" : n); }                      // a UUID "name" passes through
+bool nearbyLabelOk(NearLabelFn f)
+{
+    if (f("Alice", false, "cast", UUID_A) != "Alice") return false;
+    if (f("Alice", true, "cast", UUID_A) != "Alice (cast)") return false;                              // cast members are marked
+    for (const char* name : { "", UUID_A, "0123456789abcdef0123456789abcdef" })
+    {
+        const std::string r = f(name, false, "cast", UUID_A);
+        if (!r.empty() || containsUuidText(r)) return false;                                            // left out, never listed by id
+    }
+    return true;
+}
+
+// Recent animations: newest first, one per animation, capped.
+struct Recent { int mAsset = 0; std::string mName; };
+typedef std::vector<Recent> RecentVec;
+typedef void (*RecentPushFn)(RecentVec&, int, const std::string&);
+void recentReal(RecentVec& l, int a, const std::string& n) { recentPush(l, a, n); }
+void recentNoDedupe(RecentVec& l, int a, const std::string& n)
+{ Recent e; e.mAsset = a; e.mName = n; l.insert(l.begin(), e); if (l.size() > RECENT_ANIM_MAX) l.resize(RECENT_ANIM_MAX); }
+void recentOldestFirst(RecentVec& l, int a, const std::string& n)
+{ Recent e; e.mAsset = a; e.mName = n; l.push_back(e); if (l.size() > RECENT_ANIM_MAX) l.erase(l.begin()); }
+void recentUncapped(RecentVec& l, int a, const std::string& n)
+{ for (size_t i = 0; i < l.size();) { if (l[i].mAsset == a) l.erase(l.begin() + i); else ++i; } Recent e; e.mAsset = a; e.mName = n; l.insert(l.begin(), e); }
+bool recentOk(RecentPushFn push)
+{
+    RecentVec l;
+    for (int i = 1; i <= 10; ++i) push(l, i, "anim" + std::to_string(i));
+    if (l.size() != RECENT_ANIM_MAX || l.front().mAsset != 10 || l.back().mAsset != 3) return false;   // newest first, the last 8
+    push(l, 5, "anim5");                                                                                // replaying moves it to the front
+    if (l.size() != RECENT_ANIM_MAX || l.front().mAsset != 5) return false;
+    int fives = 0;
+    for (const Recent& e : l) fives += e.mAsset == 5 ? 1 : 0;
+    return fives == 1;
+}
+
+// A recent animation's label: its name only, never the asset id.
+typedef std::string (*RecentLabelFn)(const std::string& name, const std::string& fallback, const std::string& asset);
+std::string recentLabelReal(const std::string& n, const std::string& f, const std::string&) { return recentLabel(n, f); }
+std::string recentLabelShowsAsset(const std::string& n, const std::string&, const std::string& a) { return n.empty() ? a : n; }
+std::string recentLabelNoGuard(const std::string& n, const std::string& f, const std::string&) { return n.empty() ? f : n; }
+bool recentLabelOk(RecentLabelFn fn)
+{
+    if (fn("Wave", "Animation", UUID_A) != "Wave") return false;
+    for (const char* name : { "", UUID_A })
+    {
+        const std::string r = fn(name, "Animation", UUID_A);
+        if (r != "Animation" || containsUuidText(r)) return false;
+    }
+    return true;
+}
+bool recentVisibleOk(bool (*visible)(size_t)) { return !visible(0) && visible(1) && visible(8); }
+bool badRecentAlwaysVisible(size_t) { return true; }
+
+// Look / turn / animation actions touch EXACTLY the picked-or-selected set.
+typedef Ids (*LookScopeFn)(int picked, const Ids& selection, const Ids& all);
+Ids lookReal(int picked, const Ids& sel, const Ids&) { return planTargets(picked, sel).mTargets; }
+Ids lookEveryClone(int, const Ids&, const Ids& all) { return all; }                                      // a look target set outside the picked clones
+Ids lookPickedOnly(int picked, const Ids&, const Ids&) { return Ids{ picked }; }                         // ignores the multi-selection
+Ids lookSelectionOnly(int picked, const Ids& sel, const Ids&) { return sel.empty() ? Ids{ picked } : sel; } // acts on a selection the picked clone is not in
+Ids lookOneExtra(int picked, const Ids& sel, const Ids& all)
+{ Ids r = planTargets(picked, sel).mTargets; r.push_back(all.back()); return r; }
+bool lookScopeOk(LookScopeFn fn)
+{
+    const Ids all{ 1, 2, 3, 4, 5 };
+    return targetsExact(2, Ids{}, fn(2, Ids{}, all)) &&
+           targetsExact(2, Ids{ 1, 2, 3 }, fn(2, Ids{ 1, 2, 3 }, all)) &&
+           targetsExact(2, Ids{ 1, 3 }, fn(2, Ids{ 1, 3 }, all));
+}
+
+// ---- Fade out / Fade in, Look at clears Turn -------------------------------------------
+typedef bool (*FadeEligibleFn)(bool fade_out, bool hidden);
+bool eligibleReal(bool o, bool h) { return fadeEligible(o, h); }
+bool eligibleAlways(bool, bool) { return true; }                                     // Fade out on an already faded-out clone
+bool eligibleSwapped(bool o, bool h) { return fadeEligible(!o, h); }
+bool fadeEligibleOk(FadeEligibleFn f)
+{
+    return f(true, false) && !f(true, true) &&                                       // Fade out: not an already faded-out clone
+           f(false, true) && !f(false, false);                                       // Fade in: only a clone the user hid
+}
+// Fade acts on ENTITY clones only: an overlay hidden from the menu would have no way back.
+typedef bool (*FadeAppliesFn)(bool entity, bool fade_out, bool hidden);
+bool appliesReal(bool e, bool o, bool h) { return fadeApplies(e, o, h); }
+bool appliesOverlaysToo(bool, bool o, bool h) { return fadeEligible(o, h); }          // an overlay faded out and stranded
+bool fadeAppliesOk(FadeAppliesFn f)
+{
+    return f(true, true, false) && f(true, false, true) && !f(false, true, false) && !f(false, false, true);
+}
+// A hidden clone is a resting state, never an inferred mid-ramp coverage: undo restores the state the clone
+// was heading to, and a swap / respawn keeps it hidden.
+struct FadeClone { bool hidden = false; double alpha = 1.0; };                       // alpha is the instantaneous coverage
+typedef bool (*FadeSaveFn)(const FadeClone&);
+bool saveRestingReal(const FadeClone& c) { return c.hidden; }
+bool saveMidRamp(const FadeClone& c) { return c.alpha < 0.5; }                       // infers "hidden" from the instant coverage
+bool fadeUndoOk(FadeSaveFn save)
+{
+    FadeClone fadingIn; fadingIn.hidden = false; fadingIn.alpha = 0.2;               // a crowd fade-in at 20 percent, then Fade out
+    FadeClone ramping; ramping.hidden = true; ramping.alpha = 0.8;                   // a Fade out at 80 percent, then Fade in
+    return !save(fadingIn) && save(ramping);
+}
+typedef double (*ReplaceFn)(const FadeClone&);                                       // coverage on the replaced body
+double replaceKeepsHidden(const FadeClone& c) { return c.hidden ? 0.0 : 1.0; }
+double replaceRevealsHidden(const FadeClone&) { return 1.0; }
+bool replaceKeepsHiddenOk(ReplaceFn f)
+{
+    FadeClone hidden; hidden.hidden = true; hidden.alpha = 0.0;
+    FadeClone shown;
+    return f(hidden) == 0.0 && f(shown) == 1.0;
+}
+// A hidden clone intercepts no click and shows no nameplate.
+typedef bool (*PickableFn)(bool visible, bool deleting, bool hidden);
+bool pickableReal(bool v, bool d, bool h) { return v && !d && !h; }
+bool pickableIgnoresHidden(bool v, bool d, bool) { return v && !d; }
+bool pickableOk(PickableFn f) { return f(true, false, false) && !f(true, false, true) && !f(false, false, false) && !f(true, true, false); }
+// A finished fade removes its clone only when the clone was marked deleting.
+typedef bool (*FadeRemovesFn)(bool removing, bool deleting);
+bool removesReal(bool r, bool d) { return fadeRemovesClone(r, d); }
+bool removesWheneverFadingOut(bool r, bool) { return r; }                            // a hidden-only fade deleting its clone
+bool fadeNeverDeletesOk(FadeRemovesFn f)
+{
+    return f(true, true) &&                                                          // a delete fade still deletes
+           !f(true, false) &&                                                        // Fade out only hides
+           !f(false, false) && !f(false, true);                                      // Fade in never removes
+}
+// Scene data: a fade is session-only, so no scene key mentions it.
+typedef std::vector<std::string> (*SceneKeysFn)();
+std::vector<std::string> sceneKeysReal() { return { "actors", "groups", "subjects" }; }
+std::vector<std::string> sceneKeysWithFade() { return { "actors", "groups", "fadeAlpha" }; }
+bool sceneHasNoFadeOk(SceneKeysFn f)
+{
+    for (const std::string& key : f()) if (key.find("ade") != std::string::npos) return false;
+    return true;
+}
+// Look at disarms an armed Turn, then looks; Turn to face leaves the look alone.
+struct FaceInst { bool turnArmed = true; bool lookSet = false; };
+typedef void (*LookAtFn)(FaceInst&);
+void lookAtReal(FaceInst& i) { i.turnArmed = false; i.lookSet = true; }              // stopTurning, then setLookTarget
+void lookAtKeepsTurn(FaceInst& i) { i.lookSet = true; }                              // look stored, turn still owns the body
+bool lookAtOk(LookAtFn f)
+{
+    FaceInst i; f(i);
+    return i.lookSet && !i.turnArmed;
+}
+
+// An array / crowd copy of a HIDDEN prototype inherits the hidden flag and fades in like any new clone; a copy of a visible
+// prototype keeps the creation fade-in it already started (a jump would cancel it).
+struct CopyState { bool hidden = false; bool ramping = false; };
+typedef void (*FormationCopyFn)(CopyState&, bool proto_hidden);
+void copyReal(CopyState& c, bool proto_hidden)
+{
+    c.hidden = proto_hidden; c.ramping = !proto_hidden;               // beginAppearance: hidden stays at 0, a visible copy starts its creation ramp
+    if (proto_hidden) { c.hidden = false; c.ramping = true; }          // fadeInstance(copy, false, true)
+}
+void copyAlwaysJumps(CopyState& c, bool proto_hidden)
+{
+    c.hidden = proto_hidden; c.ramping = !proto_hidden;
+    c.hidden = false; c.ramping = false;                                // fadeInstance(copy, false, false) on EVERY copy: cancels the creation ramp
+}
+void copyHiddenPops(CopyState& c, bool proto_hidden)
+{
+    c.hidden = proto_hidden; c.ramping = !proto_hidden;
+    if (proto_hidden) { c.hidden = false; c.ramping = false; }          // the copy of a hidden prototype pops in instead of fading in
+}
+bool formationCopyOk(FormationCopyFn f)
+{
+    CopyState visible; f(visible, false);
+    CopyState hidden; f(hidden, true);
+    return !visible.hidden && visible.ramping && !hidden.hidden && hidden.ramping;
+}
+
 int main()
 {
     expect(editSelectionOk(editKeeps), "Edit keeps a multi-selection only for the entity menu");
@@ -383,8 +586,58 @@ int main()
     expect(!avatarSelectOk(badPlanSilentRefuse), "REJECT: picking a non-cast avatar leaves the Actor bar unchanged");
     expect(!avatarSelectOk(badPlanCtrlAvatar), "REJECT: Ctrl-click on an avatar behaving differently");
 
+    // Look / turn, Animation, Appearance
+    expect(containsUuidText(UUID_A) && containsUuidText(std::string("x ") + UUID_A + " y") &&
+           containsUuidText("0123456789abcdef0123456789abcdef") && !containsUuidText("Alice Resident") &&
+           !containsUuidText("0123456789abcdef0123456789abcde") && !containsUuidText("deadbeef-dead-beef") &&
+           !containsUuidText("01234567-89ab-cdef-0123-456789abcde"), "UUID text detector: dashed and 32-digit forms only");
+    expect(NEARBY_MAX == 16 && RECENT_ANIM_MAX == 8, "caps: 16 people, 8 recent animations");
+    expect(nearbyOk(nearReal), "Nearby people: the 16 nearest, nearest first");
+    expect(!nearbyOk(nearUnsorted), "REJECT: Nearby people in list order instead of nearest first");
+    expect(!nearbyOk(nearUncapped), "REJECT: Nearby people without a cap");
+    expect(!nearbyOk(nearFarthestFirst), "REJECT: Nearby people farthest first");
+    expect(nearbyLabelOk(labelReal), "Nearby label: display name, cast suffix, nameless or UUID names left out");
+    expect(!nearbyLabelOk(labelFallsBackToId), "REJECT: Nearby list showing a UUID for a nameless person");
+    expect(!nearbyLabelOk(labelNoUuidGuard), "REJECT: Nearby list showing a name that is a UUID");
+    expect(recentOk(recentReal), "Recent animations: newest first, one per animation, the last 8");
+    expect(!recentOk(recentNoDedupe), "REJECT: Recent animations listing a replayed animation twice");
+    expect(!recentOk(recentOldestFirst), "REJECT: Recent animations oldest first");
+    expect(!recentOk(recentUncapped), "REJECT: Recent animations without a cap");
+    expect(recentLabelOk(recentLabelReal), "Recent label: the name only");
+    expect(!recentLabelOk(recentLabelShowsAsset), "REJECT: Recent list exposing an asset id");
+    expect(!recentLabelOk(recentLabelNoGuard), "REJECT: Recent list showing a name that is the asset id");
+    expect(recentVisibleOk(recentSubmenuVisible), "Recent submenu is hidden when empty");
+    expect(!recentVisibleOk(badRecentAlwaysVisible), "REJECT: Recent submenu visible when empty");
+    expect(lookScopeOk(lookReal), "look / turn / animation actions touch exactly the picked-or-selected clones");
+    expect(!lookScopeOk(lookEveryClone), "REJECT: look target set on every clone");
+    expect(!lookScopeOk(lookPickedOnly), "REJECT: look ignoring the multi-selection the picked clone belongs to");
+    expect(!lookScopeOk(lookSelectionOnly), "REJECT: look acting on a selection the picked clone is not in");
+    expect(!lookScopeOk(lookOneExtra), "REJECT: look touching a clone outside the targets");
+
+    expect(fadeEligibleOk(eligibleReal), "Fade out takes clones that are not user-hidden, Fade in clones that are");
+    expect(!fadeEligibleOk(eligibleAlways), "REJECT: Fade out enabled on a clone that is already faded out");
+    expect(!fadeEligibleOk(eligibleSwapped), "REJECT: Fade in enabled on a clone that is shown");
+    expect(fadeAppliesOk(appliesReal), "Fade acts on entity clones only");
+    expect(!fadeAppliesOk(appliesOverlaysToo), "REJECT: Fade out on an overlay clone (stranded with no way back)");
+    expect(fadeUndoOk(saveRestingReal), "Fade undo restores the resting state the clone was heading to");
+    expect(!fadeUndoOk(saveMidRamp), "REJECT: Fade undo inferring the state from a mid-ramp coverage");
+    expect(replaceKeepsHiddenOk(replaceKeepsHidden), "a swap / respawn keeps a user-hidden clone hidden");
+    expect(!replaceKeepsHiddenOk(replaceRevealsHidden), "REJECT: a swap or respawn revealing a hidden clone");
+    expect(pickableOk(pickableReal), "a hidden clone is not picked and shows no nameplate");
+    expect(!pickableOk(pickableIgnoresHidden), "REJECT: a hidden clone intercepting clicks");
+    expect(fadeNeverDeletesOk(removesReal), "a hidden-only fade ends at alpha 0; only a clone marked deleting is removed");
+    expect(!fadeNeverDeletesOk(removesWheneverFadingOut), "REJECT: Fade out deleting a clone");
+    expect(sceneHasNoFadeOk(sceneKeysReal), "no scene key carries a fade");
+    expect(!sceneHasNoFadeOk(sceneKeysWithFade), "REJECT: fade state saved in a scene");
+    expect(lookAtOk(lookAtReal), "Look at clears an armed Turn and then looks");
+    expect(!lookAtOk(lookAtKeepsTurn), "REJECT: Look at leaving an armed Turn");
+
+    expect(formationCopyOk(copyReal), "an array / crowd copy of a hidden prototype fades in; a visible prototype's copy keeps its creation ramp");
+    expect(!formationCopyOk(copyAlwaysJumps), "REJECT: array / crowd copies losing their creation fade-in (visible-prototype copy jumps)");
+    expect(!formationCopyOk(copyHiddenPops), "REJECT: a copy of a hidden prototype popping in instead of fading in");
+
     if (failures) return 1;
-    std::printf("PASS: clone menu logic, 28 planted negatives rejected\n");
+    std::printf("PASS: clone menu logic, 53 planted negatives rejected\n");
     return 0;
 }
 '''
@@ -400,7 +653,8 @@ def load_sources() -> dict[str, str]:
              "llviewerwindow.cpp", "alviewermenu.cpp", "llviewermenu.cpp", "alkitshell.cpp", "alkitshell.h",
              "altoolghostedit.cpp", "alghoststudio.h", "alpanelghoststudio.h", "CMakeLists.txt",
              "alghostcloneactions.cpp", "alghostcloneactions.h", "alpanelghoststudio.cpp",
-             "lltoolmgr.cpp", "llagentcamera.cpp", "lltooldraganddrop.cpp", "alghoststudio.cpp"]
+             "lltoolmgr.cpp", "llagentcamera.cpp", "lltooldraganddrop.cpp", "alghoststudio.cpp",
+             "lldirectorcast.cpp", "lldirectorcast.h"]
     sources = {name: read(NV / name) for name in names}
     for name in AVATAR_MENUS + ("menu_ghost_clone.xml", "panel_ghost_studio.xml", "strings.xml",
                                 "floater_director_v2.xml", "director_kit_index.xml"):
@@ -567,10 +821,337 @@ def parity_findings(src: dict[str, str]) -> list[str]:
             _PARITY_CACHE[key] = ["Stagger parity fixture did not compile: " + str(exc).strip().splitlines()[-1][:200]]
     return _PARITY_CACHE[key]
 
+RECORD_FIXTURE = r"""
+#include "alghostclonemenulogic.h"
+#include <algorithm>
+#include <cstdio>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+struct LLUUID
+{
+    int v = 0;
+    static const LLUUID null;
+    bool isNull() const { return v == 0; }
+    bool notNull() const { return v != 0; }
+    void setNull() { v = 0; }
+    bool operator==(const LLUUID& o) const { return v == o.v; }
+    bool operator!=(const LLUUID& o) const { return v != o.v; }
+    bool operator<(const LLUUID& o) const { return v < o.v; }
+};
+const LLUUID LLUUID::null;
+struct LLVector3d {};
+namespace ALGhostGroupModel
+{
+struct Member { LLUUID mInstanceId; };
+struct Group { LLUUID mId; std::vector<Member> mMembers; bool mEditMembers = false; };
+}
+struct GroupsMock
+{
+    std::vector<ALGhostGroupModel::Group> mList;
+    std::vector<LLUUID> authoringUnitMembers(const LLUUID& id) const
+    {
+        for (const auto& g : mList) if (g.mId == id) { std::vector<LLUUID> r; for (const auto& m : g.mMembers) r.push_back(m.mInstanceId); return r; }
+        return std::vector<LLUUID>(1, id);
+    }
+};
+// Every assignment to a look field is recorded against its owner, even when it writes the value already there.
+static std::set<int>* gWrites = nullptr;
+template <class T> struct Rec
+{
+    T v{};
+    const int* owner = nullptr;
+    Rec& operator=(const T& x) { v = x; if (gWrites && owner) gWrites->insert(*owner); return *this; }
+    operator T() const { return v; }
+};
+struct ALGhostStudio
+{
+    enum ELookTarget { LOOK_TARGET_CAMERA, LOOK_TARGET_ME, LOOK_TARGET_ACTOR };
+    enum ETurnMode { TURN_MODE_OFF, TURN_MODE_ONCE, TURN_MODE_TRACK };
+    enum { BACKING_OVERLAY, BACKING_ENTITY_CLONE };
+    struct Instance
+    {
+        LLUUID mId; bool mDeleting = false; int mKind = BACKING_ENTITY_CLONE;
+        Rec<ELookTarget> mLookTarget; Rec<LLUUID> mLookTargetId; Rec<bool> mKeepFacing;
+        ETurnMode mTurnMode = TURN_MODE_OFF; bool mUserHidden = false;
+        void bind() { mLookTarget.owner = &mId.v; mLookTargetId.owner = &mId.v; mKeepFacing.owner = &mId.v; }
+    };
+    std::vector<Instance> mInstances;
+    GroupsMock mGroups;
+    std::set<int> mCalled;                                   // ids a call was made for (face / restart / fade / turn)
+    static ALGhostStudio& instance() { static ALGhostStudio s; return s; }
+    const std::vector<Instance>& getInstances() const { return mInstances; }
+    Instance* getInstance(const LLUUID& id) { for (auto& i : mInstances) if (i.mId == id) return &i; return nullptr; }
+    const Instance* getInstance(const LLUUID& id) const { for (auto& i : mInstances) if (i.mId == id) return &i; return nullptr; }
+    bool isDeleting(const LLUUID& id) const { const Instance* i = getInstance(id); return i && i->mDeleting; }
+    const ALGhostGroupModel::Group* groupForMember(const LLUUID& id) const
+    {
+        for (const auto& g : mGroups.mList)
+        {
+            if (g.mId == id) return &g;
+            for (const auto& m : g.mMembers) if (m.mInstanceId == id) return &g;
+        }
+        return nullptr;
+    }
+    std::vector<LLUUID> groupMembers(const LLUUID& id) const;
+    void setLookTarget(const LLUUID& id, ELookTarget target, const LLUUID& target_id, bool keep_facing);
+    bool faceInstance(const LLUUID& id) { mCalled.insert(id.v); return true; }
+    void setTurnTarget(const LLUUID& id, ETurnMode mode, ELookTarget target, const LLUUID& target_id, const LLVector3d&)
+    { mCalled.insert(id.v); if (Instance* i = getInstance(id)) { i->mTurnMode = mode; (void)target; (void)target_id; } }
+    bool restartInstanceAnimation(const LLUUID& id) { const Instance* i = getInstance(id); if (!i || i->mKind != BACKING_ENTITY_CLONE) return false; mCalled.insert(id.v); return true; }
+    bool fadeInstance(const LLUUID& id, bool hidden, bool) { Instance* i = getInstance(id); if (!i || i->mDeleting || i->mKind != BACKING_ENTITY_CLONE) return false; i->mUserHidden = hidden; mCalled.insert(id.v); return true; }
+};
+@STUDIO@
+namespace ALGhostCloneActions
+{
+void stopTurning(const std::vector<LLUUID>& rows);
+@ACTIONS@
+}
+typedef std::set<int> Set;
+static int failures = 0;
+static void expect(bool ok, const char* what) { if (!ok) { std::printf("FAIL %s\n", what); ++failures; } }
+static LLUUID id(int v) { LLUUID u; u.v = v; return u; }
+static std::vector<LLUUID> rows(std::initializer_list<int> v) { std::vector<LLUUID> r; for (int i : v) r.push_back(id(i)); return r; }
+struct Snap { int t; int tid; bool keep; ALGhostStudio::ETurnMode turn; bool hidden; };
+static std::map<int, Snap> snap(ALGhostStudio& s)
+{
+    std::map<int, Snap> m;
+    for (auto& i : s.mInstances) m[i.mId.v] = { (int)(ALGhostStudio::ELookTarget)i.mLookTarget, ((LLUUID)i.mLookTargetId).v, (bool)i.mKeepFacing, i.mTurnMode, i.mUserHidden };
+    return m;
+}
+// Every instance whose state changed, every look field written (even with the same value) and every id a studio call was made for.
+static Set touched(ALGhostStudio& s, const std::map<int, Snap>& before, const Set& writes)
+{
+    Set out = s.mCalled;
+    out.insert(writes.begin(), writes.end());
+    for (auto& i : s.mInstances)
+    {
+        const Snap& b = before.at(i.mId.v);
+        if (b.t != (int)(ALGhostStudio::ELookTarget)i.mLookTarget || b.tid != ((LLUUID)i.mLookTargetId).v || b.keep != (bool)i.mKeepFacing || b.turn != i.mTurnMode || b.hidden != i.mUserHidden) out.insert(i.mId.v);
+    }
+    return out;
+}
+static void world(ALGhostStudio& s)
+{
+    s = ALGhostStudio();
+    for (int v : { 1, 2, 3 }) { ALGhostStudio::Instance i; i.mId = id(v); s.mInstances.push_back(i); }          // ungrouped A B C
+    for (int v : { 11, 12, 13 }) { ALGhostStudio::Instance i; i.mId = id(v); i.mTurnMode = ALGhostStudio::TURN_MODE_ONCE; s.mInstances.push_back(i); }   // collapsed group members
+    for (int v : { 21, 22, 23 }) { ALGhostStudio::Instance i; i.mId = id(v); i.mTurnMode = ALGhostStudio::TURN_MODE_ONCE; s.mInstances.push_back(i); }   // expanded group members
+    { ALGhostStudio::Instance i; i.mId = id(31); i.mKind = ALGhostStudio::BACKING_OVERLAY; s.mInstances.push_back(i); }  // an overlay
+    for (auto& i : s.mInstances) i.bind();                                                                      // the vector no longer grows
+    ALGhostGroupModel::Group collapsed; collapsed.mId = id(100); collapsed.mEditMembers = false;
+    for (int v : { 11, 12, 13 }) { ALGhostGroupModel::Member m; m.mInstanceId = id(v); collapsed.mMembers.push_back(m); }
+    ALGhostGroupModel::Group expanded; expanded.mId = id(200); expanded.mEditMembers = true;
+    for (int v : { 21, 22, 23 }) { ALGhostGroupModel::Member m; m.mInstanceId = id(v); expanded.mMembers.push_back(m); }
+    s.mGroups.mList = { collapsed, expanded };
+}
+// The complete touched set of one action on one selection must be EXACTLY the targets (empty when the selection is refused).
+static void scenario(const char* name, const std::vector<LLUUID>& sel, const Set& want_look, const Set& want_turn, const Set& want_restart)
+{
+    ALGhostStudio& s = ALGhostStudio::instance();
+    Set writes;
+    gWrites = &writes;
+    { world(s); writes.clear(); auto b = snap(s); ALGhostCloneActions::lookAt(sel, ALGhostStudio::LOOK_TARGET_ACTOR, id(77)); Set t = touched(s, b, writes);
+      expect(t == want_look, (std::string(name) + ": Look at touches exactly the targets").c_str()); }
+    { world(s); for (auto& i : s.mInstances) i.mKeepFacing = true; writes.clear(); auto b = snap(s); ALGhostCloneActions::stopLooking(sel); Set t = touched(s, b, writes);
+      expect(t == want_look, (std::string(name) + ": Stop looking touches exactly the targets").c_str()); }
+    { world(s); writes.clear(); auto b = snap(s); ALGhostCloneActions::turnTo(sel, ALGhostStudio::LOOK_TARGET_ME, LLUUID::null); Set t = touched(s, b, writes);
+      expect(t == want_turn, (std::string(name) + ": Turn to face touches exactly the targets").c_str()); }
+    { world(s); for (auto& i : s.mInstances) i.mTurnMode = ALGhostStudio::TURN_MODE_ONCE; writes.clear(); auto b = snap(s); ALGhostCloneActions::stopTurning(sel); Set t = touched(s, b, writes);
+      expect(t == want_turn, (std::string(name) + ": Stop turning touches exactly the targets").c_str()); }
+    { world(s); writes.clear(); auto b = snap(s); ALGhostCloneActions::restartRows(sel); Set t = touched(s, b, writes);
+      expect(t == want_restart, (std::string(name) + ": Restart animation touches exactly the entity targets").c_str()); }
+    gWrites = nullptr;
+}
+int main()
+{
+    scenario("ungrouped B", rows({ 2 }), Set{ 2 }, Set{ 2 }, Set{ 2 });
+    scenario("selection A+C", rows({ 1, 3 }), Set{ 1, 3 }, Set{ 1, 3 }, Set{ 1, 3 });
+    scenario("collapsed group header", rows({ 100 }), Set{ 11, 12, 13 }, Set{ 11, 12, 13 }, Set{ 11, 12, 13 });
+    scenario("collapsed group member row", rows({ 12 }), Set{ 11, 12, 13 }, Set{ 12 }, Set{ 12 });     // a collapsed group looks as a unit; turn is per instance
+    scenario("expanded member alone", rows({ 22 }), Set{}, Set{}, Set{ 22 });                            // refused: nothing is written
+    scenario("expanded group header", rows({ 200 }), Set{ 21, 22, 23 }, Set{ 21, 22, 23 }, Set{ 21, 22, 23 });   // the group row works as before
+    scenario("expanded member + loose", rows({ 22, 1 }), Set{}, Set{}, Set{ 22, 1 });                   // one expanded member refuses the whole set
+    scenario("expanded header + its members", rows({ 200, 21, 22, 23 }), Set{ 21, 22, 23 }, Set{ 21, 22, 23 }, Set{ 21, 22, 23 });   // the selected group row owns its members
+    scenario("overlay", rows({ 31 }), Set{ 31 }, Set{ 31 }, Set{});
+    {
+        // Look at on ONE member row of a collapsed group writes the whole unit's look, so every sibling's armed Turn is cleared
+        // too (a sibling left armed would keep owning its yaw); nothing outside the unit is touched.
+        ALGhostStudio& s = ALGhostStudio::instance(); world(s);
+        for (auto& i : s.mInstances) i.mTurnMode = ALGhostStudio::TURN_MODE_ONCE;
+        ALGhostCloneActions::lookAt(rows({ 12 }), ALGhostStudio::LOOK_TARGET_ACTOR, id(77));
+        expect(s.getInstance(id(11))->mTurnMode == ALGhostStudio::TURN_MODE_OFF && s.getInstance(id(12))->mTurnMode == ALGhostStudio::TURN_MODE_OFF &&
+               s.getInstance(id(13))->mTurnMode == ALGhostStudio::TURN_MODE_OFF, "Look at on a collapsed member row clears Turn on every sibling");
+        expect(s.getInstance(id(1))->mTurnMode == ALGhostStudio::TURN_MODE_ONCE && s.getInstance(id(21))->mTurnMode == ALGhostStudio::TURN_MODE_ONCE,
+               "... and only on the unit the look writes");
+        world(s);
+        for (auto& i : s.mInstances) i.mTurnMode = ALGhostStudio::TURN_MODE_ONCE;
+        ALGhostCloneActions::lookAt(rows({ 100 }), ALGhostStudio::LOOK_TARGET_ACTOR, id(77));
+        expect(s.getInstance(id(11))->mTurnMode == ALGhostStudio::TURN_MODE_OFF && s.getInstance(id(13))->mTurnMode == ALGhostStudio::TURN_MODE_OFF,
+               "Look at on the group header clears Turn on its members");
+    }
+    expect(ALGhostCloneActions::hasExpandedMember(rows({ 22 })) && !ALGhostCloneActions::hasExpandedMember(rows({ 200 })) &&
+           !ALGhostCloneActions::hasExpandedMember(rows({ 12 })) && !ALGhostCloneActions::hasExpandedMember(rows({ 2 })), "only a member of an EXPANDED group is refused");
+    // Fade: entity clones only, eligibility from the explicit state, undo restores the resting state
+    {
+        ALGhostStudio& s = ALGhostStudio::instance(); world(s);
+        s.getInstance(id(2))->mUserHidden = true;                                                // B is hidden already
+        auto out = ALGhostCloneActions::fadeRows(rows({ 1, 2, 31 }), true);                       // Fade out: only A (B is hidden, the overlay is never faded)
+        expect(out.size() == 1 && out[0].mId == id(1) && !out[0].mHidden && s.getInstance(id(1))->mUserHidden && !s.getInstance(id(31))->mUserHidden,
+               "Fade out touches only entity clones that are not hidden");
+        auto in = ALGhostCloneActions::fadeRows(rows({ 1, 2, 3, 31 }), false);                    // Fade in: A and B are hidden now, C is shown, the overlay is skipped
+        expect(in.size() == 2 && !s.getInstance(id(1))->mUserHidden && !s.getInstance(id(2))->mUserHidden && !s.getInstance(id(31))->mUserHidden,
+               "Fade in touches only hidden entity clones");
+        ALGhostCloneActions::restoreFade(in, false, false);                                       // undo: A and B hidden again
+        expect(s.getInstance(id(1))->mUserHidden && s.getInstance(id(2))->mUserHidden && !s.getInstance(id(3))->mUserHidden, "undo restores the resting state");
+        expect(ALGhostCloneActions::fadeRows(rows({ 31 }), true).empty(), "an overlay is never faded");
+    }
+    if (failures) return 1;
+    std::printf("PASS: recording fixture\n");
+    return 0;
+}
+"""
+
+_RECORD_CACHE: dict = {}
+
+
+def record_findings(src: dict[str, str]) -> list[str]:
+    """Run the EXTRACTED production look / turn / restart / fade actions (and the studio's setLookTarget with its
+    member-edit rule) against a recording Studio and require the complete touched-id set to equal the targets."""
+    try:
+        studio = "\n".join(definition(src["alghoststudio.cpp"], sig) for sig in (
+            "std::vector<LLUUID> ALGhostStudio::groupMembers(", "void ALGhostStudio::setLookTarget("))
+        actions = "\n".join(definition(src["alghostcloneactions.cpp"], sig) for sig in (
+            "std::vector<LLUUID> instances(const std::vector<LLUUID>& rows)", "std::vector<LLUUID> units(const std::vector<LLUUID>& rows)",
+            "std::vector<LLUUID> unitRepresentatives(", "bool hasExpandedMember(", "bool lookAt(", "void stopLooking(", "bool turnTo(", "void stopTurning(",
+            "bool restartRows(", "std::vector<LLUUID> fadeTargets(", "std::vector<FadeBefore> fadeRows(", "bool restoreFade("))
+    except ValueError:
+        return ["the recording fixture could not extract the production actions"]
+    actions = actions.replace("struct FadeBefore", "struct FadeBefore")
+    key = (studio, actions)
+    if key not in _RECORD_CACHE:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from native_check_tools import check_directory, compile_run
+        head = "namespace ALGhostCloneActions { struct FadeBefore { LLUUID mId; bool mHidden = false; }; }\n"
+        source = RECORD_FIXTURE.replace("@STUDIO@", head + studio).replace("@ACTIONS@", actions)
+        try:
+            result = compile_run(check_directory("clone_menu_record"), source, "record", flags=['/I"%s"' % NV])
+            ok = result.returncode == 0 and "PASS" in result.stdout
+            _RECORD_CACHE[key] = [] if ok else ["look / turn / fade actions touch more or less than their targets: " + (result.stdout + result.stderr).strip()[:400]]
+        except RuntimeError as exc:
+            _RECORD_CACHE[key] = ["the recording fixture did not compile: " + str(exc).strip().splitlines()[-1][:300]]
+    return _RECORD_CACHE[key]
+
+ORPHAN_FIXTURE = r"""
+#include <algorithm>
+#include <cstdio>
+#include <map>
+#include <string>
+#include <vector>
+typedef float F32;
+struct LLUUID
+{
+    int v = 0;
+    bool isNull() const { return v == 0; }
+    bool notNull() const { return v != 0; }
+    bool operator==(const LLUUID& o) const { return v == o.v; }
+    bool operator<(const LLUUID& o) const { return v < o.v; }
+};
+static LLUUID gAgentID;
+struct LLGhostAvatar { static bool isGhostId(const LLUUID& id) { return id.v >= 1000; } };      // clones; real and control avatars are below
+struct LLDirectorCast
+{
+    struct ActorStyle { bool mEnabled = false; int mMode = 0; int mStyle = 3; F32 mAlpha = .7f; F32 mDissolveProgress = .13f; };
+    enum { ACTOR_STYLE_REPLACE = 1 };
+    struct CastMember { LLUUID mId; ActorStyle mActorStyle, mCloneFadeStyle; bool mCloneFading = false; };
+    std::vector<CastMember> mCast;
+    std::map<LLUUID, size_t> mMemberIndex;
+    ActorStyle mSelfActorStyle;
+    std::map<LLUUID, ActorStyle> mCloneFadeOrphans;
+    CastMember* getMember(const LLUUID& id) { auto it = mMemberIndex.find(id); return it == mMemberIndex.end() ? nullptr : &mCast[it->second]; }
+    void setCloneFadeAlpha(const LLUUID& id, F32 alpha);
+    void forgetCloneFade(const LLUUID& runtime_id);
+    const ActorStyle& getRenderActorStyle(const LLUUID& id) const;
+    const ActorStyle& resolveStoredActorStyle(const LLUUID& primary, const LLUUID& fallback, LLUUID& resolved_id) const;
+    void enroll(int v) { CastMember m; m.mId.v = v; mMemberIndex[m.mId] = mCast.size(); mCast.push_back(m); }
+    void drop(int v) { mMemberIndex.clear(); std::vector<CastMember> keep; for (auto& m : mCast) if (m.mId.v != v) keep.push_back(m); mCast = keep; for (size_t i = 0; i < mCast.size(); ++i) mMemberIndex[mCast[i].mId] = i; }
+};
+@CAST@
+static int failures = 0;
+static void expect(bool ok, const char* what) { if (!ok) { std::printf("FAIL %s\n", what); ++failures; } }
+static LLUUID id(int v) { LLUUID u; u.v = v; return u; }
+static bool isDefault(const LLDirectorCast::ActorStyle& s) { return !s.mEnabled && s.mDissolveProgress == .13f && s.mStyle == 3; }
+static bool dissolve(const LLDirectorCast::ActorStyle& s, F32 want) { return s.mEnabled && s.mStyle == 10 && s.mAlpha == 1.f && s.mDissolveProgress > want - .001f && s.mDissolveProgress < want + .001f; }
+int main()
+{
+    LLDirectorCast c;
+    c.setCloneFadeAlpha(id(1001), .4f);                                                       // a clone that is not a Cast member
+    expect(dissolve(c.getRenderActorStyle(id(1001)), .6f), "a non-member clone's ramp reaches the renderer getter");
+    LLUUID resolved;
+    expect(dissolve(c.resolveStoredActorStyle(id(1001), LLUUID(), resolved), .6f) && resolved.v == 1001, "... and the resolved getter (primary)");
+    expect(dissolve(c.resolveStoredActorStyle(id(7), id(1001), resolved), .6f) && resolved.v == 1001, "a worn animesh (control avatar primary, clone fallback) fades with its non-member wearer");
+    c.setCloneFadeAlpha(id(5), .4f);                                                          // a real avatar (not a clone)
+    expect(isDefault(c.getRenderActorStyle(id(5))) && c.mCloneFadeOrphans.size() == 1, "a real avatar is never given a fade");
+    c.setCloneFadeAlpha(id(1001), 1.f);                                                       // completion at exactly 1
+    expect(isDefault(c.getRenderActorStyle(id(1001))) && c.mCloneFadeOrphans.empty(), "a completed fade (alpha 1) retires the entry");
+    c.setCloneFadeAlpha(id(1001), .999f);
+    expect(dissolve(c.getRenderActorStyle(id(1001)), .001f), "a barely-faded clone still carries its dissolve");
+    c.forgetCloneFade(id(1001));
+    expect(isDefault(c.getRenderActorStyle(id(1001))) && c.mCloneFadeOrphans.empty(), "forgetCloneFade retires the entry with its body");
+    expect(isDefault(c.getRenderActorStyle(id(9))) && c.mCloneFadeOrphans.empty(), "an empty map changes nothing");
+    // membership transitions
+    c.enroll(1003);
+    c.setCloneFadeAlpha(id(1003), .5f);
+    expect(c.getMember(id(1003))->mCloneFading && c.mCloneFadeOrphans.empty() && dissolve(c.getRenderActorStyle(id(1003)), .5f), "a Cast member keeps its own path");
+    c.drop(1003);                                                                              // removed from the Cast mid-ramp
+    c.setCloneFadeAlpha(id(1003), .5f);
+    expect(c.mCloneFadeOrphans.size() == 1 && dissolve(c.getRenderActorStyle(id(1003)), .5f), "Cast removal mid-ramp: the ramp continues without membership");
+    c.enroll(1003);                                                                            // re-enrolled
+    c.setCloneFadeAlpha(id(1003), .5f);
+    expect(c.mCloneFadeOrphans.empty() && c.getMember(id(1003))->mCloneFading, "re-enrolment: the member carries the fade and the orphan entry is gone");
+    // precedence: a Cast-member primary wins over an orphan fallback
+    c.enroll(7);
+    c.setCloneFadeAlpha(id(1004), .2f);
+    expect(isDefault(c.resolveStoredActorStyle(id(7), id(1004), resolved)) == true && resolved.v == 7, "a Cast-member primary keeps its precedence over a fallback orphan");
+    if (failures) return 1;
+    std::printf("PASS: orphan fixture\n");
+    return 0;
+}
+"""
+
+_ORPHAN_CACHE: dict = {}
+
+
+def orphan_findings(src: dict[str, str]) -> list[str]:
+    """Run the EXTRACTED production fade coverage for a clone that is not a Cast member against a mock Cast: ramp reaches both
+    getters (and a worn animesh through the fallback), real avatars are refused, completion and retirement erase, Cast membership
+    transitions hand over without a pop, and a member primary keeps its precedence."""
+    try:
+        cast = "\n".join(definition(src["lldirectorcast.cpp"], sig) for sig in (
+            "void LLDirectorCast::setCloneFadeAlpha(", "void LLDirectorCast::forgetCloneFade(",
+            "const LLDirectorCast::ActorStyle& LLDirectorCast::getRenderActorStyle(const LLUUID& id) const",
+            "const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle("))
+    except ValueError:
+        return ["the orphan fixture could not extract the production fade coverage"]
+    if cast not in _ORPHAN_CACHE:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from native_check_tools import check_directory, compile_run
+        source = ORPHAN_FIXTURE.replace("@CAST@", cast)
+        try:
+            result = compile_run(check_directory("clone_menu_orphan"), source, "orphan", flags=['/I"%s"' % NV])
+            ok = result.returncode == 0 and "PASS" in result.stdout
+            _ORPHAN_CACHE[cast] = [] if ok else ["a non-Cast clone's fade coverage is wrong: " + (result.stdout + result.stderr).strip()[:400]]
+        except RuntimeError as exc:
+            _ORPHAN_CACHE[cast] = ["the orphan fixture did not compile: " + str(exc).strip().splitlines()[-1][:300]]
+    return _ORPHAN_CACHE[cast]
+
 
 def findings(src: dict[str, str]) -> list[str]:
     out: list[str] = []
     out += parity_findings(src)
+    out += record_findings(src)
+    out += orphan_findings(src)
     cpp = strip_comments(src["alghostclonemenu.cpp"])
 
     # ---- every XUI callback is registered ----------------------------------------
@@ -586,8 +1167,8 @@ def findings(src: dict[str, str]) -> list[str]:
     try:
         root = ET.fromstring(src["menu_ghost_clone.xml"])
         labels = [c.get("label") if c.tag != "menu_item_separator" else "-" for c in root]
-        want = ["Select in Director", "-", "Pause", "Play", "Mirror", "Size", "Stagger", "Edit", "-", "Freeze pose",
-                "Clear animations", "Solo", "Duplicate", "Delete", "-", "Open in Director"]
+        want = ["Select in Director", "-", "Pause", "Play", "Mirror", "Size", "Stagger", "Edit", "Look / turn", "Animation",
+                "Appearance", "-", "Freeze pose", "Clear animations", "Solo", "Duplicate", "Delete", "-", "Open in Director"]
         if labels != want:
             out.append(f"menu_ghost_clone.xml item order is {labels}")
         size = [c.get("label") for c in root.find("context_menu[@name='Size']")]
@@ -680,10 +1261,11 @@ def findings(src: dict[str, str]) -> list[str]:
 
     # ---- the menu acts only on the planned set ------------------------------------
     show = function_body(cpp, "void showEntityMenu")
-    if "const bool unit_is_group = Actions::collapsedGroup(clone) != nullptr;" not in show or \
-            "stagger->setVisible(Logic::staggerVisible(unit_is_group));" not in show or \
-            'sMenu->getItem(std::string("Stagger"))' not in show:
-        out.append("showEntityMenu: Stagger is shown only when the picked clone's unit is a collapsed group")
+    present = function_body(cpp, "void presentEntityMenu")
+    if "const bool unit_is_group = Actions::collapsedGroup(sPicked) != nullptr;" not in present or \
+            "stagger->setVisible(Logic::staggerVisible(unit_is_group));" not in present or \
+            'sMenu->getItem(std::string("Stagger"))' not in present:
+        out.append("presentEntityMenu: Stagger is shown only when the picked clone's unit is a collapsed group")
     try:
         stagger = ET.fromstring(src["menu_ghost_clone.xml"]).find("context_menu[@name='Stagger']")
         names = [c.get("label") for c in stagger] if stagger is not None else None
@@ -787,7 +1369,7 @@ def findings(src: dict[str, str]) -> list[str]:
             "instances(std::vector<LLUUID>{ group->mId })" not in plan_fn:
         out.append("planAnimationDrop must expand a collapsed group through the page's unit planner and dropTargets")
     panel_play = function_body(strip_comments(src["alpanelghoststudio.cpp"]), "S32 ALPanelGhostStudio::playAnimationOnClonesRecorded")
-    if "if (!shell && !host && director_fallback && played > 0)" not in panel_play or 'LLFloaterReg::getInstance("director")' not in panel_play:
+    if "if (!shell && director_fallback && played > 0)" not in panel_play or 'LLFloaterReg::getInstance("director")' not in panel_play:
         out.append("the world drop must always record its undo step: Director shell fallback in playAnimationOnClonesRecorded")
     if "studio.resolveEntityClone(id)" not in plan_fn:
         out.append("planAnimationDrop: every target needs a live clone body (hover and toast counts match what plays)")
@@ -810,8 +1392,28 @@ def findings(src: dict[str, str]) -> list[str]:
         out.append("showEntityMenu does not use planTargets")
     if "sTargets" in cpp:
         out.append("sTargets is gone: actions consume sRows, so only sRows may carry the plan")
-    if len(re.findall(r"\bsRows\s*=", cpp)) != 2:
-        out.append("sRows may be assigned only by showEntityMenu's two plan branches (the rows actions consume)")
+    if len(re.findall(r"\bsRows\s*=", cpp)) != 4:
+        out.append("sRows may be assigned only by showEntityMenu's two plan branches and openForListRow's two (the rows actions consume)")
+    list_open = function_body(cpp, "bool openForListRow")
+    if not re.search(r"if \(std::find\(host_rows\.begin\(\), host_rows\.end\(\), row\) != host_rows\.end\(\)\)\s*\{\s*sRows = host_rows;\s*\}\s*else\s*\{\s*"
+                     r"sRows = std::vector<LLUUID>\{ row \};\s*studio\.setSelected\(row\);\s*\}\s*sPicked = picked;\s*presentEntityMenu\(x, y, /\*opened_on_press=\*/true\);",
+                     src["alghostclonemenu.cpp"].split("bool openForListRow", 1)[1].split("bool pressRight", 1)[0]) or \
+            "ALDirectorSelect::hostRows()" not in list_open or "const LLUUID picked = listRowInstance(row);" not in list_open:
+        out.append("openForListRow: a Clones list row targets the row, or the whole list selection when the row is in it (the world click's rule)")
+    if "bool openForListRow(const LLUUID& row, S32 screen_x, S32 screen_y);" not in src["alghostclonemenu.h"]:
+        out.append("alghostclonemenu.h: openForListRow is the list row entry point")
+    page_click = function_body(strip_comments(src["alpanelghoststudio.cpp"]), "bool ALPanelGhostStudio::handleRightMouseDown")
+    for needle in ("mList->getEnabled()", "mList->getItemAtPoint(list_x, list_y)", "ALGhostCloneMenu::canOpenForListRow(row)", "noteActiveHost();",
+                   "mList->selectByID(row);", "onListSelect();",
+                   "ALGhostCloneMenu::openForListRow(row, screen_x, screen_y)", "return LLPanel::handleRightMouseDown(x, y, mask);"):
+        if needle not in page_click:
+            out.append(f"alpanelghoststudio.cpp handleRightMouseDown: a Clones list row opens the clone menu: missing {needle}")
+    if page_click.find("canOpenForListRow") > page_click.find("noteActiveHost();") or page_click.find("canOpenForListRow") > page_click.find("selectByID"):
+        out.append("handleRightMouseDown: a row is validated BEFORE the selection or the active host changes (an unopenable row falls through untouched)")
+    if "bool handleRightMouseDown(S32 x, S32 y, MASK mask) override;" not in src["alpanelghoststudio.h"]:
+        out.append("alpanelghoststudio.h: the Clones panel takes the list-row right click")
+    if 'return "hidden";' not in strip_comments(src["alpanelghoststudio.cpp"]) or "inst.mUserHidden" not in function_body(strip_comments(src["alpanelghoststudio.cpp"]), "const char* state_name"):
+        out.append("alpanelghoststudio.cpp: the Clones list State column marks a hidden clone")
     if not re.search(r"if \(plan\.mSelectPickedFirst\)\s*\{[^{}]*sRows = std::vector<LLUUID>\{ Actions::rowFor\(clone\) \};"
                      r"[^{}]*studio\.setSelected\(sRows\.front\(\)\);\s*\}\s*else\s*\{[^{}]*sRows = host_rows;[^{}]*\}\s*sPicked = clone;", show):
         out.append("showEntityMenu: sRows must come from the plan (picked unit when not selected, else the page's rows) before sPicked is set")
@@ -822,14 +1424,15 @@ def findings(src: dict[str, str]) -> list[str]:
     if not re.search(r"sRows = std::vector<LLUUID>\{ Actions::rowFor\(clone\) \};\s*studio\.setSelected\(sRows\.front\(\)\);", show) \
             or "sRows = host_rows;" not in show:
         out.append("showEntityMenu: rows are the page's rows, or the picked unit selected first")
-    if "sMenu->show(x, y);" not in show:
-        out.append("showEntityMenu never shows the menu")
+    if "presentEntityMenu(x, y, /*opened_on_press=*/false);" not in src["alghostclonemenu.cpp"].split("void showEntityMenu", 1)[1].split("} // namespace", 1)[0] or \
+            "sMenu->show(x, y);" not in present:
+        out.append("showEntityMenu never shows the menu (through presentEntityMenu)")
     if "constexpr S32 SPAWN_DISARMED = S32_MAX;" not in cpp or "S32_MAX / 2" in cpp or "S32_MAX, S32_MAX" in cpp:
         out.append("the spawn point is disarmed with exactly S32_MAX, the stock value (any other value arms every menu item's right-release)")
     if "sContextMenuSpawnPos.set(SPAWN_DISARMED, SPAWN_DISARMED);" not in function_body(cpp, "bool pressRight"):
         out.append("pressRight must disarm an earlier menu's spawn point once a clone is hit")
-    if "LLMenuHolderGL::sContextMenuSpawnPos.set(SPAWN_DISARMED, SPAWN_DISARMED);" not in show.split("sMenu->show(x, y);")[-1]:
-        out.append("showEntityMenu must disarm the holder's spawn point after showing (the next right-click would be swallowed)")
+    if not re.search(r"if \(!opened_on_press\)\s*\{\s*LLMenuHolderGL::sContextMenuSpawnPos\.set\(SPAWN_DISARMED, SPAWN_DISARMED\);\s*\}", present.split("sMenu->show(x, y);")[-1]):
+        out.append("a world click's menu must disarm the holder's spawn point after showing (the next right-click would be swallowed); a list row's press-opened menu keeps it armed")
     camera_src = src["llagentcamera.cpp"]
     for mode in ("MOUSELOOK", "FOLLOW", "THIRD_PERSON", "CUSTOMIZE_AVATAR"):
         if not re.search(r"mCameraMode = CAMERA_MODE_%s;\s*ALGhostCloneMenu::cancelRight\(\);" % mode, camera_src):
@@ -992,6 +1595,8 @@ def findings(src: dict[str, str]) -> list[str]:
         out.append("Clear animations must record undo even without a visible Clones host (Director shell fallback)")
     for name in ("alghostclonemenu.cpp", "aldirectorselect.cpp", "altooldirectorpick.cpp"):
         code = strip_comments(src[name])
+        # the Recent replay compares an inventory item against its asset id in ONE place (never shown, logged or copied)
+        code = code.replace("item->getAssetUUID() == mAsset", "")
         if re.search(r"(?i)id\w*\.asString\(\)|getAssetUUID|mDirectedAnim", code):
             out.append(f"{name}: must not format an id or touch an animation asset (never show or copy asset ids)")
 
@@ -1095,6 +1700,9 @@ def findings(src: dict[str, str]) -> list[str]:
     if '("pick", "Select")' not in src["director_kit_gen.py"]:
         out.append("director_kit_gen.py: the Select button is not generated")
 
+    # ---- Look / turn, Animation, Appearance ----------------------------------------------
+    out += look_turn_findings(src, cpp)
+
     # ---- strings + build ---------------------------------------------------------------
     keys = set(re.findall(r'<string name="([^"]+)"', src["strings.xml"]))
     for name in ("alghostclonemenu.cpp", "aldirectorselect.cpp", "altooldirectorpick.cpp"):
@@ -1109,6 +1717,398 @@ def findings(src: dict[str, str]) -> list[str]:
                  "alghostclonemenulogic.h", "aldirectorselect.h", "altooldirectorpick.h"):
         if name not in src["CMakeLists.txt"]:
             out.append(f"CMakeLists.txt does not list {name}")
+    return out
+
+
+def look_turn_findings(src: dict[str, str], cpp: str) -> list[str]:
+    out: list[str] = []
+    actions_cpp = strip_comments(src["alghostcloneactions.cpp"])
+    panel = strip_comments(src["alpanelghoststudio.cpp"])
+    logic = src["alghostclonemenulogic.h"]
+
+    # menu structure: items, callbacks, parameters
+    try:
+        root = ET.fromstring(src["menu_ghost_clone.xml"])
+    except ET.ParseError:
+        return out
+
+    def sub(parent, name):
+        return parent.find(f"context_menu[@name='{name}']") if parent is not None else None
+
+    def call(item):
+        data = {e.tag.split(".")[-1]: (e.get("function"), e.get("parameter")) for e in item}
+        return data.get("on_click", (None, None))
+
+    look_turn = sub(root, "Look Turn")
+    if look_turn is None or [c.get("label") for c in look_turn] != ["Look at", "Turn to face"]:
+        out.append("menu_ghost_clone.xml: Look / turn must hold Look at and Turn to face")
+    else:
+        for name, label_stop, function in (("Look At", "Stop looking", "GhostClone.Look"), ("Turn To Face", "Stop turning", "GhostClone.Turn")):
+            node = sub(look_turn, name)
+            if node is None or [c.get("label") for c in node] != ["Camera", "Me", "Nearby people", label_stop]:
+                out.append(f"menu_ghost_clone.xml: {name} must be Camera, Me, Nearby people, {label_stop}")
+                continue
+            got = [call(c) for c in node if c.tag == "menu_item_call"]
+            if got != [(function, "camera"), (function, "me"), (function, "stop")]:
+                out.append(f"menu_ghost_clone.xml: {name} items must call {function} with camera / me / stop: {got}")
+        if sub(sub(look_turn, "Look At"), "Look Nearby") is None or sub(sub(look_turn, "Turn To Face"), "Turn Nearby") is None:
+            out.append("menu_ghost_clone.xml: the Nearby people submenus are named Look Nearby / Turn Nearby (the code fills them)")
+    animation = sub(root, "Animation")
+    if animation is None or [c.get("label") for c in animation] != ["Restart animation", "Recent"] or \
+            sub(animation, "Recent Animations") is None:
+        out.append("menu_ghost_clone.xml: Animation must hold Restart animation and Recent")
+    appearance = sub(root, "Appearance")
+    if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Look", "Fade out", "Fade in"] or \
+            sub(appearance, "Swap Source") is None:
+        out.append("menu_ghost_clone.xml: Appearance must hold Swap source, Look, Fade out and Fade in")
+    elif [(call(c), [(e.get("function"), e.get("parameter")) for e in c if e.tag.endswith("on_enable")])
+          for c in appearance if c.tag == "menu_item_call"] != [
+            (("GhostClone.Fade", "out"), [("GhostClone.EnableFade", "out")]),
+            (("GhostClone.Fade", "in"), [("GhostClone.EnableFade", "in")])]:
+        out.append("menu_ghost_clone.xml: Fade out / Fade in must call GhostClone.Fade and be enabled by GhostClone.EnableFade (out / in)")
+    # Look items == the Clones page Render look combo
+    look = sub(appearance, "Entity Look")
+    page_look = src["panel_ghost_studio.xml"].split('name="entity_look_combo"', 1)
+    if look is None or len(page_look) < 2:
+        out.append("menu_ghost_clone.xml: Appearance > Look missing")
+    else:
+        page = sorted((m.group(1), int(m.group(2))) for m in
+                      re.finditer(r'<combo_box\.item label="([^"]+)"[^>]*value="(\d+)"', page_look[1].split("</combo_box>", 1)[0]))
+        items = []
+        for check in look.iter("menu_item_check"):
+            params = {e.tag.split(".")[-1]: e.get("parameter") for e in check}
+            if params.get("on_click") != params.get("on_check"):
+                out.append(f"menu_ghost_clone.xml: Look item {check.get('label')} click/check parameters differ")
+            items.append((check.get("label"), int(params.get("on_click") or -1)))
+        if sorted(items) != page:
+            out.append("menu_ghost_clone.xml: Appearance > Look items differ from the Clones page Render look combo")
+    header = src["alghoststudio.h"]
+    if "LOOK_NORMAL = 0, LOOK_APPARITION, LOOK_HOLOGRAM, LOOK_CHROME,\n        LOOK_TOON, LOOK_SILHOUETTE" not in header:
+        out.append("EGhostLook changed: update Appearance > Look and this check")
+    if "look > ALGhostStudio::LOOK_SILHOUETTE" not in function_body(cpp, "void actEntityLook"):
+        out.append("actEntityLook must refuse a look outside the EGhostLook range")
+
+    # the look target: no new enum value; the one resolver already finds any avatar by id
+    if "LOOK_TARGET_AVATAR" in header or "LOOK_TARGET_AVATAR" in src["alghoststudio.cpp"] or "LOOK_TARGET_AVATAR" in cpp:
+        out.append("ELookTarget must not gain a value: LOOK_TARGET_ACTOR already resolves any avatar by agent id")
+    if "        LOOK_TARGET_GHOST,\n        // A bare world position" not in header or "LOOK_TARGET_POINT\n    };" not in header:
+        out.append("ELookTarget values changed: saved / numeric values must not shift")
+    studio_cpp = src["alghoststudio.cpp"]
+    target_fn = function_body(studio_cpp, "bool ALGhostStudio::resolveTargetGlobal")
+    if "case LOOK_TARGET_ME:\n    case LOOK_TARGET_ACTOR:" not in target_fn or "source_foot_agent(actor, foot)" not in target_fn:
+        out.append("resolveTargetGlobal: LOOK_TARGET_ACTOR must resolve through source_foot_agent (LLDirectorCast::resolve)")
+    resolve = function_body(strip_comments(src["lldirectorcast.cpp"]), "LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id, bool refresh_name)")
+    if "gObjectList.findObject(actor_id)" not in resolve or "obj->asAvatar()" not in resolve or \
+            re.search(r"getMember\(|getStoredMember\(|containsStored\(", resolve.split("gObjectList.findObject(actor_id)")[0]):
+        out.append("LLDirectorCast::resolve must find any avatar by agent id through gObjectList (no cast membership needed)")
+
+    # shared actions
+    for fn, needles in (
+            ("bool lookAt", ("studio.setLookTarget(rep, target, target_id, true);", "studio.faceInstance(rep);", "unitRepresentatives(rows)")),
+            ("void stopLooking", ("studio.setLookTarget(rep, target, target_id, false);", "unitRepresentatives(rows)")),
+            ("bool turnTo", ("ALGhostStudio::TURN_MODE_ONCE", "studio.setTurnTarget(id, ", "instances(rows)")),
+            ("void stopTurning", ("ALGhostStudio::TURN_MODE_OFF", "studio.setTurnTarget(id, ", "instances(rows)")),
+            ("bool restartRows", ("studio.restartInstanceAnimation(id)", "instances(rows)")),
+            ("std::string swapSource", ("studio.swapSource(id, source, label)", "instances(rows)", "findInstanceByRuntime(source)")),
+            ("bool setEntityLook", ("studio.setInstanceLook(id, look)", "instances(rows)"))):
+        body = function_body(actions_cpp, fn)
+        for needle in needles:
+            if needle not in body:
+                out.append(f"alghostcloneactions.cpp {fn}: expected the page's path {needle}")
+    for fn in ("bool lookAt", "void stopLooking", "bool turnTo", "void stopTurning", "bool restartRows", "std::string swapSource",
+               "bool setEntityLook", "void noteRecentAnimation", "const std::vector<RecentAnimation>& recentAnimations"):
+        if re.search(r"gSavedSettings|LL_INFOS|LL_WARNS|LL_DEBUGS|LLSD|asString\(|setSelected|getString", function_body(actions_cpp, fn)):
+            out.append(f"alghostcloneactions.cpp {fn}: session-only, no setting / log / id text / selection change")
+    # the Recent list: the one funnel, name only, never an id
+    note = function_body(actions_cpp, "void noteRecentAnimation")
+    if "ALGhostAnimDrop::mentionsUuid(anim_name, asset_id) ? std::string() : anim_name" not in note or \
+            "ALGhostCloneMenuLogic::recentPush(recentList(), asset_id, name)" not in note or "asset_id.isNull()" not in note:
+        out.append("noteRecentAnimation: a name that carries the asset id is dropped; the list is the shared newest-first push")
+    funnel = function_body(panel, "S32 ALPanelGhostStudio::playAnimationOnClonesRecorded")
+    if not re.search(r"const S32 played = studio\.playAnimationOnClones\(ids, asset_id\);\s*if \(played > 0\)\s*\{\s*"
+                     r"ALGhostCloneActions::noteRecentAnimation\(asset_id, anim_name\);", funnel):
+        out.append("playAnimationOnClonesRecorded (the one funnel: drop, Play on selected clones, Inventory combo, the menu) must note a successful play")
+    if len(re.findall(r"noteRecentAnimation\(", panel)) != 1 or "noteRecentAnimation(" in cpp or "recentList()" in cpp:
+        out.append("only the play funnel may add to the Recent list")
+    # the page handlers call the same actions
+    if "ALGhostCloneActions::swapSource(selectedRowValues(), source, label)" not in panel or \
+            "ALGhostCloneActions::setEntityLook(selectedRowValues(), look)" not in panel:
+        out.append("alpanelghoststudio.cpp: the page's Swap source and Render look handlers must call the shared actions")
+    apply_fn = function_body(panel, "void ALPanelGhostStudio::applyInventoryAnimationTo")
+    if "playAnimationOnClonesRecorded(plan.mPlay, asset_id, anim_name, director_fallback)" not in apply_fn or \
+            "ALGhostAnimDrop::planApply(selected)" not in apply_fn or "bool director_fallback)" not in panel.split("applyInventoryAnimationTo(", 1)[1][:400]:
+        out.append("applyInventoryAnimationTo keeps the page's Directed rule and passes the undo fallback through")
+    if "bool director_fallback = false);" not in src["alpanelghoststudio.h"].split("applyInventoryAnimationTo(", 1)[1][:400]:
+        out.append("alpanelghoststudio.h: applyInventoryAnimationTo(..., bool director_fallback = false) is public for the menu")
+    if "applyInventoryAnimationTo(const std::vector<ALGhostAnimDrop::SelectedClone>& selected," not in \
+            src["alpanelghoststudio.h"].split("private:", 1)[0]:
+        out.append("alpanelghoststudio.h: applyInventoryAnimationTo must be public")
+    if "NEARBY_MAX = 16;" not in logic or "RECENT_ANIM_MAX = 8;" not in logic:
+        out.append("alghostclonemenulogic.h: Nearby people are capped at 16, Recent animations at 8")
+
+    # the menu: targets, names only, build order
+    for m in re.finditer(r"Actions::(lookAt|turnTo|stopLooking|stopTurning|restartRows|swapSource|setEntityLook|fadeRows)\(\s*([^,)]*)", cpp):
+        if m.group(2).strip() != "sRows":
+            out.append(f"alghostclonemenu.cpp: Actions::{m.group(1)} must act on sRows (the picked clone or the whole multi-selection), not {m.group(2).strip()!r}")
+    for fn in ("lookAt", "turnTo", "stopLooking", "stopTurning", "restartRows", "swapSource", "setEntityLook", "fadeRows"):
+        if f"Actions::{fn}(sRows" not in cpp:
+            out.append(f"alghostclonemenu.cpp: expected Actions::{fn}(sRows ...)")
+    face = function_body(cpp, "void actFace")
+    for needle in ("liveTargets().empty()", "personNearby(target_id)", "GhostCloneMenuPersonGone",
+                   "Actions::turnTo(sRows, target, target_id)", "Actions::lookAt(sRows, target, target_id)"):
+        if needle not in face:
+            out.append(f"actFace: missing {needle}")
+    if "ALGhostStudio::LOOK_TARGET_ACTOR" not in function_body(cpp, "void populateNearbyMenu") or \
+            "ALGhostStudio::LOOK_TARGET_ME" not in function_body(cpp, "void actFaceParam") or \
+            "ALGhostStudio::LOOK_TARGET_CAMERA" not in function_body(cpp, "void actFaceParam"):
+        out.append("Look / turn targets: camera, me, and a nearby avatar through LOOK_TARGET_ACTOR")
+    person = function_body(cpp, "bool personNearby")
+    if "ALAvatarSubjectPicker::valid(avatar)" not in person or "!avatar->isSelf()" not in person:
+        out.append("personNearby: a real avatar (not a clone, animesh or yourself) still in the world")
+    nearby = function_body(cpp, "std::vector<NearbyEntry> nearbyPeople")
+    for needle in ("ALAvatarSubjectPicker::valid(avatar)", "avatar->isSelf()", "LLCharacter::sInstances", "getFar()",
+                   "LLAvatarNameCache::get(avatar->getID(), &av_name)", "getDisplayName()", "nameHiddenByRlva(avatar->getID())",
+                   "if (dist_vec(position, camera) > draw_distance)\n        {\n            continue;\n        }",
+                   "Logic::nearbyLabel(name, cast.getMember(avatar->getID()) != nullptr, suffix)", "if (entry.mLabel.empty())",
+                   "return Logic::nearbySelect(found);", "entry.mDistance = dist_vec(position, origin);"):
+        if needle not in nearby:
+            out.append(f"nearbyPeople: missing {needle}")
+    if "getFullname" in nearby:
+        out.append("nearbyPeople: display names only (never the legacy full name); an uncached name is left out")
+    if cpp.count("nearbyPeople()") != 2 or "const std::vector<NearbyEntry> people = nearbyPeople();" not in function_body(cpp, "void populateDynamicMenus"):
+        out.append("the Nearby people scan runs once per menu open and is shared by Look and Turn")
+    rlva = function_body(cpp, "bool nameHiddenByRlva")
+    if "RlvActions::isRlvEnabled() && id != gAgentID && !RlvActions::canShowName(RlvActions::SNC_DEFAULT, id)" not in rlva or \
+            "if (nameHiddenByRlva(id))" not in function_body(cpp, "std::string castMemberName"):
+        out.append("a name RLVa hides (@shownames) is never listed: Nearby people and Swap source")
+    face_param = function_body(cpp, "void actFaceParam")
+    if 'if (kind != "camera" && kind != "me")' not in face_param:
+        out.append("actFaceParam refuses an unknown parameter instead of looking at the camera")
+    pop = function_body(cpp, "void populateNearbyMenu")
+    if "addListItem(menu, person.mLabel," not in pop or "GhostCloneMenuNobodyNearby" not in pop or "menu->empty();" not in pop:
+        out.append("populateNearbyMenu: label is the person's name; a placeholder when nobody is nearby; rebuilt on every open")
+    recent = function_body(cpp, "void populateRecentMenu")
+    for needle in ("Logic::recentLabel(entry.mName, fallback)", "addListItem(recent, label,", "recent->empty();",
+                   "branch->setVisible(Logic::recentSubmenuVisible(list.size()));", "actPlayRecent(asset, label)"):
+        if needle not in recent:
+            out.append(f"populateRecentMenu: missing {needle}")
+    play = function_body(cpp, "void actPlayRecent")
+    if "ALPanelGhostStudio::applyInventoryAnimationTo(selected, asset, name, /*director_fallback=*/true)" not in src["alghostclonemenu.cpp"] or \
+            "applyInventoryAnimationTo(selected, asset, name," not in play or "liveEntityTargets()" not in play or "DRIVE_DIRECTED" not in play:
+        out.append("actPlayRecent: the page's apply (Directed rule, one undo step) on the live entity targets, with the Director undo fallback")
+    swap_menu = function_body(cpp, "void populateSwapMenu")
+    for needle in ("LLDirectorCast::instance().getActorChoices()", "LLGhostAvatar::isGhostId(choice.mId)", "castMemberName(choice.mId)",
+                   "const LLUUID source = self ? LLUUID::null : choice.mId;", "addListItem(menu, name,"):
+        if needle not in swap_menu:
+            out.append(f"populateSwapMenu: missing {needle}")
+    if "return Logic::containsUuidText(name) ? std::string() : name;" not in function_body(cpp, "std::string castMemberName"):
+        out.append("castMemberName: a cast member is named, never listed by id")
+    dynamic = "\n".join(function_body(cpp, f) for f in ("void populateNearbyMenu", "void populateRecentMenu", "void populateSwapMenu",
+                                                         "std::vector<NearbyEntry> nearbyPeople", "std::string castMemberName",
+                                                         "void addListItem", "void addPlaceholder"))
+    if re.search(r"(?:getID\(\)|asset\w*|mAsset|source|target_id|\bid|choice\.mId)\.asString\(\)|LL_INFOS|LL_WARNS|LL_DEBUGS|getAssetUUID", dynamic):
+        out.append("the dynamic lists must never format, log or show an id (names only)")
+    if "list_item" not in function_body(cpp, "void addListItem") or "Nobody" not in function_body(cpp, "void addPlaceholder"):
+        out.append("dynamic list items: names come from the labels passed in")
+    present = function_body(cpp, "void presentEntityMenu")
+    if not re.search(r"sStaggerCurrent = [^;]*;\s*populateDynamicMenus\(\);\s*sMenu->show\(x, y\);", present):
+        out.append("presentEntityMenu: the lists are built for this clone after the targets are fixed and before the menu shows")
+    dyn = function_body(cpp, "void populateDynamicMenus")
+    for needle in ('subMenu(sMenu, "Look Turn")', 'subMenu(look_turn, "Look At"), "Look Nearby"', 'subMenu(look_turn, "Turn To Face"), "Turn Nearby"',
+                   'populateRecentMenu(subMenu(sMenu, "Animation"))', 'subMenu(subMenu(sMenu, "Appearance"), "Swap Source")'):
+        if needle not in dyn:
+            out.append(f"populateDynamicMenus: missing {needle}")
+    reg = function_body(cpp, "void registerEntityCallbacks")
+    for needle in ('commit.add("GhostClone.Look", [](LLUICtrl*, const LLSD& param) { actFaceParam(false, param); });',
+                   'commit.add("GhostClone.Turn", [](LLUICtrl*, const LLSD& param) { actFaceParam(true, param); });',
+                   'commit.add("GhostClone.RestartAnim"', 'commit.add("GhostClone.EntityLook"', "sAgg.mLook == param.asInteger()",
+                   'state(ctrl, sAgg.mEntities > 0, "GhostCloneMenuNotReady")'):
+        if needle not in reg:
+            out.append(f"registerEntityCallbacks: missing {needle}")
+
+    # ---- Fade out / Fade in (hidden-only), Look at clears Turn --------------------------------
+    for needle in ('commit.add("GhostClone.Fade", [](LLUICtrl*, const LLSD& param) { actFade(param.asString() == "out"); });',
+                   "(fade_out ? sAgg.mFadeOutable : sAgg.mFadeInable) > 0"):
+        if needle not in reg:
+            out.append(f"registerEntityCallbacks: missing {needle}")
+    fade_cb = function_body(cpp, "void actFade")
+    for needle in ("Actions::fadeRows(sRows, fade_out)", "if (before.empty())", 'recordCustom(shell, "clone_fade"',
+                   "Actions::restoreFade(before, redo, fade_out)", "GhostCloneMenuAlreadyFaded", "GhostCloneMenuNotFaded"):
+        if needle not in fade_cb:
+            out.append(f"actFade: missing {needle}")
+    if not (fade_cb.find("if (before.empty())") < fade_cb.find("LLFloaterReg::getInstance")):
+        out.append("actFade: a refusal never constructs the Director")
+    agg_body = function_body(cpp, "Aggregate computeAggregate")
+    if "Logic::fadeEligible(true, inst->mUserHidden)" not in agg_body or "Logic::fadeEligible(false, inst->mUserHidden)" not in agg_body or \
+            agg_body.find("continue;") > agg_body.find("Logic::fadeEligible(true"):
+        out.append("computeAggregate: the Fade items count ENTITY targets only, from the explicit hidden state")
+    enable_fade = src["alghostclonemenu.cpp"].split('enable.add("GhostClone.EnableFade"', 1)[1][:700]
+    if "sAgg.mLive == 0" not in enable_fade or "sAgg.mEntities == 0" not in enable_fade or \
+            not (enable_fade.find("sAgg.mLive == 0") < enable_fade.find("sAgg.mEntities == 0") < enable_fade.find("sAgg.mFadeOutable")) or \
+            "GhostCloneMenuMirrorEntityOnly" not in enable_fade:
+        out.append("EnableFade: not ready first, then entity clones only (an overlay is never faded), then the hidden state")
+    if re.search(r"gSavedSettings|requestRemoveInstance|removeInstance|setEnabled|setInstanceEnabled", fade_cb):
+        out.append("actFade: hidden-only: no setting write, no delete, no hide switch")
+    for fn, needles in (
+            ("std::vector<LLUUID> fadeTargets", ("ALGhostCloneMenuLogic::fadeApplies(inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE, fade_out, inst->mUserHidden)", "!inst->mDeleting", "instances(rows)")),
+            ("std::vector<FadeBefore> fadeRows", ("fadeTargets(rows, fade_out)", "studio.fadeInstance(id, fade_out, true)", "saved.mHidden = studio.getInstance(id)->mUserHidden")),
+            ("bool restoreFade", ("studio.fadeInstance(saved.mId, saved.mHidden, false)", "studio.fadeInstance(saved.mId, fade_out, true)", "!inst->mDeleting"))):
+        body = function_body(actions_cpp, fn)
+        for needle in needles:
+            if needle not in body:
+                out.append(f"alghostcloneactions.cpp {fn}: missing {needle}")
+        if re.search(r"gSavedSettings|requestRemoveInstance|removeInstance|LL_INFOS|LL_WARNS|LLSD|setSelected", body):
+            out.append(f"alghostcloneactions.cpp {fn}: hidden-only and session-only: no delete, setting, log or selection change")
+    look_fn = function_body(actions_cpp, "bool lookAt")
+    turn_clear = "for (const LLUUID& member : studio.groupMembers(rep))"
+    if turn_clear not in look_fn or "studio.setTurnTarget(member, ALGhostStudio::TURN_MODE_OFF" not in look_fn or \
+            look_fn.find("hasExpandedMember(rows)") > look_fn.find("unitRepresentatives(rows)") or \
+            look_fn.find("unitRepresentatives(rows)") > look_fn.find("reps.empty()") or \
+            look_fn.find("reps.empty()") > look_fn.find(turn_clear) or look_fn.find(turn_clear) > look_fn.find("studio.setLookTarget"):
+        out.append("lookAt: find the representatives, return when there are none, THEN clear an armed Turn over every member of each representative's unit, THEN set the look target")
+    if "stopTurning(rows)" in function_body(actions_cpp, "bool turnTo"):
+        out.append("Turn to face is unchanged: it does not touch the look")
+    studio_cpp2 = src["alghoststudio.cpp"]
+    fade_fn = function_body(studio_cpp2, "bool ALGhostStudio::fadeInstance")
+    for needle in ("if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;", "isVisible(*inst)",
+                   "mFades[id].mFade = {LLTimer::getTotalSeconds(), seconds, inst->mFadeAlpha, hidden};",
+                   "inst->mUserHidden = hidden;", "mFades.erase(id);", "++mInstanceRevision;", 'LLCachedControl<F32> fade_out(gSavedSettings, "GhostStudioFadeOut", 0.f)',
+                   'LLCachedControl<F32> fade_in(gSavedSettings, "GhostStudioFadeIn", 0.f)'):
+        if needle not in fade_fn:
+            out.append(f"ALGhostStudio::fadeInstance: missing {needle}")
+    if re.search(r"requestRemoveInstance|removeInstance|mDeleting = true|gSavedSettings\.set|mState = STATE_TEARING_DOWN|LLSD", fade_fn):
+        out.append("ALGhostStudio::fadeInstance is hidden-only: it never deletes or tears a clone down, never writes a setting, never saves")
+    if "if (it->second.mFade.removing && inst->mDeleting) finished.push_back(it->first);" not in function_body(studio_cpp2, "void ALGhostStudio::updateFades") or \
+            "if (it->second.mFade.removing) finished" in studio_cpp2:
+        out.append("updateFades: a finished fade removes a clone ONLY when it was marked deleting (ALGhostCloneMenuLogic::fadeRemovesClone)")
+    if "inst->mDeleting = true;" not in function_body(studio_cpp2, "void ALGhostStudio::requestRemoveInstance"):
+        out.append("requestRemoveInstance must still mark every retiring clone deleting (the delete fade ends in removeInstance)")
+    cast_cpp = src["lldirectorcast.cpp"]
+    if "mFadeAlpha" in cast_cpp or "GhostStudioFade" in cast_cpp:
+        out.append("lldirectorcast.cpp: a clone fade is session-only, never part of scene data")
+    for scene_fn in ("LLSD LLDirectorCast::sceneData() const", "void LLDirectorCast::applySceneData("):
+        if re.search(r"(?i)fade", function_body(cast_cpp, scene_fn)):
+            out.append(f"{scene_fn}: no fade state in a scene")
+    if not (ROOT / "scripts/code_tools/clone_menu_fade_hunks.json").exists():
+        out.append("the reviewed fade allowance layer clone_menu_fade_hunks.json is missing")
+    if "bool fadeInstance(const LLUUID& id, bool hidden, bool ramp);" not in src["alghoststudio.h"] or \
+            "mUserHidden = false;" not in src["alghoststudio.h"]:
+        out.append("alghoststudio.h: fadeInstance and mUserHidden must be declared")
+    # the explicit hidden state: Studio owns the hidden coverage (the isVisible gate), whether or not the clone is a Cast member
+    if "!(inst.mUserHidden && !(inst.mFadeAlpha > 0.f))" not in src["alghoststudio.h"]:
+        out.append("alghoststudio.h: isVisible hides a settled user-hidden clone (the Show clones / Solo gate: neither drawn nor picked, no Cast dissolve needed)")
+    if function_body(strip_comments(src["alghoststudio.h"]), "bool isVisible(const Instance& inst) const").count("mUserHidden") != 1:
+        out.append("alghoststudio.h: isVisible reads mUserHidden once")
+    ramp_part = fade_fn.split("mFades[id].mFade = ", 1)[-1]
+    if "setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha)" not in ramp_part or \
+            ramp_part.find("setCloneFadeAlpha") > ramp_part.find("set_entity_clone_visible"):
+        out.append("fadeInstance ramp branch: push the current coverage BEFORE the body is shown (no full-opacity flash on a fade-in)")
+    cast_set = function_body(strip_comments(src["lldirectorcast.cpp"]), "void LLDirectorCast::setCloneFadeAlpha")
+    cast_gets = strip_comments(src["lldirectorcast.cpp"])
+    if "mCloneFadeOrphans" not in cast_set or "mCloneFadeOrphans.erase(id);" not in cast_set or "for (auto it" in cast_set or "gObjectList" in cast_set or \
+            "orphan.mDissolveProgress = 1.f-alpha;" not in cast_set or \
+            cast_set.find("if (!member)") > cast_set.find("mCloneFadeOrphans.erase(id);        ") or \
+            function_body(cast_gets, "const LLDirectorCast::ActorStyle& LLDirectorCast::getRenderActorStyle(const LLUUID& id) const").count("mCloneFadeOrphans.find(id)") != 1 or \
+            cast_gets.count("mCloneFadeOrphans.find(primary)") != 1 or cast_gets.count("mCloneFadeOrphans.find(fallback)") != 1 or \
+            cast_gets.count("return orphan->second;") != 3 or cast_gets.count("if (!mCloneFadeOrphans.empty())") != 3 or \
+            "resolved_id = primary;\n            return orphan->second;" not in cast_gets or \
+            "void LLDirectorCast::forgetCloneFade(const LLUUID& runtime_id)\n{\n    mCloneFadeOrphans.erase(runtime_id);\n}" not in cast_gets or \
+            "std::map<LLUUID, ActorStyle> mCloneFadeOrphans;" not in src["lldirectorcast.h"] or \
+            "void              forgetCloneFade(const LLUUID& runtime_id);" not in src["lldirectorcast.h"]:
+        out.append("LLDirectorCast: the fade ramp of a clone that is NOT a Cast member is kept (mCloneFadeOrphans) and read by the renderer getters; a Cast member's path is unchanged")
+    if "mCloneFadeOrphans" in function_body(cast_gets, "LLSD LLDirectorCast::sceneData() const") or "mCloneFadeOrphans" in function_body(cast_gets, "void LLDirectorCast::applySceneData("):
+        out.append("LLDirectorCast: the orphan fade is session-only, never part of scene data")
+    if "headers.find(group->mId) == headers.end()" not in function_body(actions_cpp, "bool hasExpandedMember"):
+        out.append("hasExpandedMember: a selected group row owns its member rows (the units() rule)")
+    if "GhostCloneMenuInventoryLoading" not in function_body(cpp, "void actPlayRecent") or "GhostCloneMenuInventoryLoading" not in src["strings.xml"]:
+        out.append("actPlayRecent: a half-fetched inventory says so (its own string)")
+    page_menu = strip_comments(src["alpanelghoststudio.cpp"]).split('mLookTargetCombo->add("(menu target)"', 1)[0][-900:]
+    if strip_comments(src["alpanelghoststudio.cpp"]).count('remove("(menu target)")') != 2 or "menu_row" not in page_menu:
+        out.append("the Look combo keeps ONE neutral (menu target) row and drops it when stale or listed")
+    if fade_fn.count("set_entity_clone_visible(") != 2:
+        out.append("fadeInstance refreshes the body's visibility on both the instant and the ramp path (a fade-in shows the body at once)")
+    fades = function_body(studio_cpp2, "void ALGhostStudio::updateFades")
+    if not re.search(r"else if \(inst->mUserHidden && inst->mKind == BACKING_ENTITY_CLONE\)\s*\{[^{}]*resolveEntityClone\(inst->mId\)[^{}]*set_entity_clone_visible\(ghost, isVisible\(\*inst\)", fades):
+        out.append("updateFades: a finished hide re-gates the body through isVisible")
+    if not re.search(r"set_entity_clone_visible\(ghost, isVisible\(\*inst\)[^;]*;\s*(?://[^\n]*\n\s*)?if \(inst->mEntityId\.notNull\(\) && !\(inst->mFadeAlpha > 0\.f\)\)\s*LLDirectorCast::instance\(\)\.forgetCloneFade\(inst->mEntityId\);\s*\}\s*it = mFades\.erase\(it\);", fades):
+        out.append("updateFades: a clone settled hidden forgets its alpha-0 coverage entry (the empty-map fast path returns)")
+    fade_fn = function_body(studio_cpp2, "bool ALGhostStudio::fadeInstance")
+    if not re.search(r"if \(inst->mEntityId\.notNull\(\) && !\(inst->mFadeAlpha > 0\.f\)\)\s*LLDirectorCast::instance\(\)\.forgetCloneFade\(inst->mEntityId\);[^\n]*\n\s*return true;\s*\}\s*if \(gAgent\.getRegion\(\)\)", fade_fn):
+        out.append("fadeInstance: an instant hide forgets its alpha-0 coverage entry")
+    begin = function_body(studio_cpp2, "void ALGhostStudio::beginAppearance")
+    if not re.search(r"if \(inst->mUserHidden && !inst->mDeleting\)\s*\{[^{}]*mFades\.erase\(id\);[^{}]*inst->mFadeAlpha = 0\.f;[^{}]*setCloneFadeAlpha\(inst->mEntityId, 0\.f\);[^{}]*set_entity_clone_visible\(ghost, isVisible\(\*inst\)[^{}]*forgetCloneFade\(inst->mEntityId\);[^{}]*return;\s*\}\s*if \(!fade\) return;", begin):
+        out.append("beginAppearance: a user-hidden clone stays hidden (swap, duplicate, crowd fade-in) before any creation fade starts")
+    replaced = function_body(studio_cpp2, "void ALGhostStudio::onEntityRuntimeReplaced")
+    if not re.search(r"if \(!removing_instance && old_runtime != new_runtime\)\s*if \(Instance\* current = getInstance\(stable_id\)\)\s*\{\s*if \(current->mUserHidden && !current->mDeleting\)\s*\{\s*mFades\.erase\(stable_id\);\s*current->mFadeAlpha = 0\.f;\s*"
+                     r"LLDirectorCast::instance\(\)\.setCloneFadeAlpha\(new_runtime, 0\.f\);\s*if \(LLGhostAvatar\* replaced = resolveEntityClone\(stable_id\)\)\s*"
+                     r"set_entity_clone_visible\(replaced, isVisible\(\*current\)[^;]*;\s*LLDirectorCast::instance\(\)\.forgetCloneFade\(new_runtime\);[^\n]*\n\s*\}\s*else if \(mFades\.count\(stable_id\)\)\s*\{\s*"
+                     r"LLDirectorCast::instance\(\)\.setCloneFadeAlpha\(new_runtime, current->mFadeAlpha\);", replaced) or \
+            "if (old_runtime.notNull() && old_runtime != new_runtime)\n    {\n        LLDirectorCast::instance().forgetCloneFade(old_runtime);" not in replaced or \
+            replaced.find("consumer(stable_id") > replaced.find("current->mUserHidden") or replaced.find("consumer(stable_id") > replaced.find("forgetCloneFade"):
+        out.append("onEntityRuntimeReplaced: a replaced body of a user-hidden clone is hidden again AFTER the Cast rekey, and a ramp in flight is cancelled at 0 (stored and rendered coverage agree)")
+    remove_fn = function_body(studio_cpp2, "void ALGhostStudio::requestRemoveInstance")
+    if "if (seconds <= 0.f || all_invisible) { removeInstance(id); return; }" not in remove_fn or "!(item->mFadeAlpha > 0.f)" not in remove_fn:
+        out.append("requestRemoveInstance: a clone that is already invisible is removed at once (no 0-to-0 ramp)")
+    if studio_cpp2.count("if (copy->mUserHidden) fadeInstance(copy->mId, false, true);") != 2 or "fadeInstance(copy->mId, false, false)" in studio_cpp2:
+        out.append("arrays / formations and crowds: ONLY a copy that inherited a hidden prototype is unhidden, with the normal Fade-in ramp (a visible prototype's copy keeps its creation fade-in); Duplicate keeps copying the flag")
+    # Studio look / turn is exactly the base: no member-edit special case anywhere
+    if "isExpandedMember" in studio_cpp2 or "isExpandedMember" in src["alghoststudio.h"] or "look_members" in studio_cpp2:
+        out.append("Studio look / turn behaviour and per-frame cost are the base's: no isExpandedMember special case")
+    if "for (const LLUUID& member_id : groupMembers(id))\n    {\n        if (Instance* member = getInstance(member_id))\n        {\n            member->mLookTarget = target;" not in \
+            function_body(studio_cpp2, "void ALGhostStudio::setLookTarget") and \
+            "for (const LLUUID& member_id : groupMembers(id))" not in function_body(studio_cpp2, "void ALGhostStudio::setLookTarget"):
+        out.append("setLookTarget acts on the whole authoring unit (groupMembers), as the base does")
+    if "hasExpandedMember(rows)" not in function_body(actions_cpp, "bool lookAt") or "hasExpandedMember(rows)" not in function_body(actions_cpp, "void stopLooking") or \
+            "hasExpandedMember(rows)" not in function_body(actions_cpp, "bool turnTo") or "hasExpandedMember(rows)" not in function_body(actions_cpp, "void stopTurning"):
+        out.append("look / stop looking / turn / stop turning refuse a target set that holds a member of an expanded group (nothing is written)")
+    if "mEditMembers" in function_body(actions_cpp, "std::vector<LLUUID> unitRepresentatives"):
+        out.append("unitRepresentatives: a group header is one unit (its first live member), as before; expanded members are refused by hasExpandedMember")
+    if "agg.mExpandedMember = Actions::hasExpandedMember(sRows);" not in function_body(cpp, "Aggregate computeAggregate") or \
+            'return state(ctrl, false, "GhostCloneMenuWholeGroup");' not in src["alghostclonemenu.cpp"].split('enable.add("GhostClone.EnableFace"', 1)[1][:500] or \
+            "sAgg.mLive > 0 && sAgg.mExpandedMember" not in src["alghostclonemenu.cpp"]:
+        out.append("EnableFace: Look / turn items are disabled with 'applies to the whole group - use the group row' on an expanded member")
+    for fn in ("void actFace", "void actFaceParam"):
+        if "Actions::hasExpandedMember(sRows)" not in function_body(cpp, fn) or "GhostCloneMenuWholeGroup" not in function_body(cpp, fn):
+            out.append(f"{fn} refuses an expanded member at commit too")
+    if "sAgg.mLive > 0 && !sAgg.mExpandedMember" not in function_body(cpp, "void populateNearbyMenu"):
+        out.append("Nearby people items follow the same expanded-member refusal")
+    try:
+        for name in ("Look Turn",):
+            lt = ET.fromstring(src["menu_ghost_clone.xml"]).find(f"context_menu[@name='{name}']")
+            funcs = [e.get("function") for e in lt.iter() if e.tag.endswith("on_enable")] if lt is not None else []
+            if funcs != ["GhostClone.EnableFace"] * 6:
+                out.append(f"menu_ghost_clone.xml: every Look / turn item is enabled by GhostClone.EnableFace: {funcs}")
+    except ET.ParseError:
+        pass
+    if "GhostCloneMenuWholeGroup" not in src["strings.xml"]:
+        out.append("strings.xml: GhostCloneMenuWholeGroup")
+    swap_fn = function_body(cpp, "void actSwapSource")
+    if "ALPanelGhostStudio::sourceName(source)" not in swap_fn:
+        out.append("actSwapSource: the Source column label comes from the page's own sourceName helper")
+    hdr_public = src["alpanelghoststudio.h"].split("private:", 1)[0]
+    if "static std::string sourceName(const LLUUID& id);" not in hdr_public:
+        out.append("alpanelghoststudio.h: sourceName is public (shared with the clone menu)")
+    if 'mLookTargetCombo->add("(menu target)", LLSD(target));' not in src["alpanelghoststudio.cpp"]:
+        out.append("the page's Look combo shows a neutral (menu target) row for a look target it does not list")
+    if "bool canOpenForListRow(const LLUUID& row);" not in src["alghostclonemenu.h"] or "bool canOpenForListRow(const LLUUID& row)" not in cpp:
+        out.append("canOpenForListRow is the validation the panel asks before it changes anything")
+    if "LLScrollListItem* getItemAtPoint(S32 x, S32 y)" not in read(ROOT / "indra/llui/llscrolllistctrl.h"):
+        out.append("llscrolllistctrl.h: getItemAtPoint (the row under a point) is how the Clones list right click finds its row")
+    recent_play = function_body(cpp, "void actPlayRecent")
+    for needle in ("struct AssetMatcher : public LLInventoryCollectFunctor", "gInventory.collectDescendentsIf(", "item->getPermissions().getOwner() == gAgentID",
+                   "if (items.empty())", "LLInventoryModelBackgroundFetch::instance().isEverythingFetched()", "Actions::removeRecentAnimation(asset);",
+                   'args["[NAME]"] = name;'):
+        if needle not in recent_play:
+            out.append(f"actPlayRecent: an asset-id inventory matcher; an entry is dropped only when the inventory is fully fetched and the asset is not in it (name-only toast): missing {needle}")
+    if "refreshInventory" in recent_play or recent_play.find("collectDescendentsIf") > recent_play.find("applyInventoryAnimationTo"):
+        out.append("actPlayRecent: no whole-inventory rebuild; the matcher runs before anything plays")
+    if recent_play.find("isEverythingFetched") > recent_play.find("removeRecentAnimation"):
+        out.append("actPlayRecent: an entry is removed only after the inventory is known to be fully fetched")
+    page_look = function_body(strip_comments(src["alpanelghoststudio.cpp"]), "void ALPanelGhostStudio::onLookTargetCommit")
+    if "if (!from_combo && inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ACTOR)" not in page_look or "representable" not in page_look:
+        out.append("the page's Look combo must not rewrite a look target it cannot show (Keep facing / Face now keep a non-cast avatar target)")
+    if "return fade_out ? !hidden : hidden;" not in logic or "return removing && deleting;" not in logic or "return entity && fadeEligible(fade_out, hidden);" not in logic:
+        out.append("alghostclonemenulogic.h: fadeEligible / fadeRemovesClone are the rules the native fixture proves")
     return out
 
 
@@ -1198,8 +2198,8 @@ def selftest() -> int:
         ("release opens the menu for a drag (if (open) -> if (true))",
          swap(src, "alghostclonemenu.cpp", "if (open)", "if (true)")),
         ("actions pointed at the previous menu's clone (sRows = { sPicked } before sPicked updates)",
-         swap(src, "alghostclonemenu.cpp", "    sPicked = clone;\n    sAgg = computeAggregate();",
-              "    sRows = std::vector<LLUUID>{ sPicked };\n    sPicked = clone;\n    sAgg = computeAggregate();")),
+         swap(src, "alghostclonemenu.cpp", "    sPicked = clone;\n    presentEntityMenu(x, y, /*opened_on_press=*/false);",
+              "    sRows = std::vector<LLUUID>{ sPicked };\n    sPicked = clone;\n    presentEntityMenu(x, y, /*opened_on_press=*/false);")),
         ("hidden host list not refreshed before Ctrl-add",
          swap(src, "aldirectorselect.cpp", "        host->refreshList(true);\n", "")),
         ("hidden host list not reconciled with the shared selection",
@@ -1293,7 +2293,7 @@ def selftest() -> int:
          swap(src, "alghoststudio.cpp", "void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed, bool timing, bool assign_looks, bool building)\n{",
               "void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed, bool timing, bool assign_looks, bool building)\n{ stableCloneKey(member_id);")),
         ("world drop records no undo without a host",
-         swap(src, "alpanelghoststudio.cpp", "    if (!shell && !host && director_fallback && played > 0)", "    if (false)")),
+         swap(src, "alpanelghoststudio.cpp", "    if (!shell && director_fallback && played > 0)", "    if (false)")),
         ("world drop does not ask for the undo fallback",
          swap(src, "lltooldraganddrop.cpp", ", /*director_fallback=*/true);", ");")),
         ("drop plan includes a clone without a body",
@@ -1321,7 +2321,7 @@ def selftest() -> int:
         ("Stagger no-op guard looks at the mode",
          swap(src, "alghostclonemenu.cpp", "    if (before.mOffsets == after.mOffsets)\n", "    if (before.mOffsets == after.mOffsets && before.mMode == after.mMode)\n")),
         ("recorded fallback builds the Director while a host is visible",
-         swap(src, "alpanelghoststudio.cpp", "    if (!shell && !host && director_fallback && played > 0)", "    if (!shell && director_fallback && played > 0)")),
+         swap(src, "alpanelghoststudio.cpp", "    if (!shell && director_fallback && played > 0)", "    if (!shell && !host && director_fallback && played > 0)")),
         ("hidden Ctrl-add starts the inventory scan",
          swap(src, "aldirectorselect.cpp", "        } scan_guard(host->mSuppressLibraryScan);\n", "        } scan_guard(dummy);\n")),
         ("any kit shell ends pick mode",
@@ -1399,6 +2399,269 @@ def selftest() -> int:
          swap(src, "alghostclonemenu.cpp", "        submenu->arrange();\n", "")),
         ("Which overlay capped",
          swap(src, "alghostclonemenu.cpp", "for (size_t i = 0; i < sOverlays.size(); ++i)\n    {\n        const LLUUID id = sOverlays[sOverlays.size() - 1 - i];", "for (size_t i = 0; i < 12; ++i)\n    {\n        const LLUUID id = sOverlays[sOverlays.size() - 1 - i];")),
+        # Look / turn, Animation, Appearance
+        ("Nearby list shows a UUID for a nameless person",
+         swap(src, "alghostclonemenu.cpp", "entry.mLabel = Logic::nearbyLabel(name, cast.getMember(avatar->getID()) != nullptr, suffix);",
+              "entry.mLabel = name.empty() ? avatar->getID().asString() : name;")),
+        ("Nearby list not nearest first",
+         swap(src, "alghostclonemenu.cpp", "return Logic::nearbySelect(found);", "return found;")),
+        ("Nearby list includes yourself",
+         swap(src, "alghostclonemenu.cpp", "if (!avatar || avatar->isSelf() || !ALAvatarSubjectPicker::valid(avatar))", "if (!avatar || !ALAvatarSubjectPicker::valid(avatar))")),
+        ("Nearby list includes clones and animesh",
+         swap(src, "alghostclonemenu.cpp", "avatar->isSelf() || !ALAvatarSubjectPicker::valid(avatar))\n        {\n            continue;", "avatar->isSelf())\n        {\n            continue;")),
+        ("Nearby list labels by the avatar id",
+         swap(src, "alghostclonemenu.cpp", "addListItem(menu, person.mLabel,", "addListItem(menu, person.mId.asString(),")),
+        ("Recent list exposes the asset id",
+         swap(src, "alghostclonemenu.cpp", "Logic::recentLabel(entry.mName, fallback)", "entry.mName.empty() ? entry.mAsset.asString() : entry.mName")),
+        ("Recent list keeps a name that is the asset id",
+         swap(src, "alghostcloneactions.cpp", "ALGhostAnimDrop::mentionsUuid(anim_name, asset_id) ? std::string() : anim_name", "anim_name")),
+        ("Recent list never hides when empty",
+         swap(src, "alghostclonemenu.cpp", "branch->setVisible(Logic::recentSubmenuVisible(list.size()));", "branch->setVisible(true);")),
+        ("Recent list capped at 80",
+         swap(src, "alghostclonemenulogic.h", "RECENT_ANIM_MAX = 8;", "RECENT_ANIM_MAX = 80;")),
+        ("Nearby list capped at 160",
+         swap(src, "alghostclonemenulogic.h", "NEARBY_MAX = 16;", "NEARBY_MAX = 160;")),
+        ("the play funnel no longer feeds the Recent list",
+         swap(src, "alpanelghoststudio.cpp", "        ALGhostCloneActions::noteRecentAnimation(asset_id, anim_name);\n", "")),
+        ("the Recent list is also fed from the menu",
+         swap(src, "alghostclonemenu.cpp", "void actPlayRecent(const LLUUID& asset, const std::string& name)\n{\n",
+              "void actPlayRecent(const LLUUID& asset, const std::string& name)\n{\n    Actions::noteRecentAnimation(asset, name);\n")),
+        ("Recent replay without the Director undo fallback",
+         swap(src, "alghostclonemenu.cpp", "selected, asset, name, /*director_fallback=*/true", "selected, asset, name")),
+        ("Look at acts on the picked clone only",
+         swap(src, "alghostclonemenu.cpp", "Actions::lookAt(sRows, target, target_id)", "Actions::lookAt(std::vector<LLUUID>{ sPicked }, target, target_id)")),
+        ("Look at acts outside the selection (every clone)",
+         swap(src, "alghostclonemenu.cpp", "Actions::lookAt(sRows, target, target_id)", "Actions::lookAt(ALDirectorSelect::hostRows(), target, target_id)")),
+        ("Turn acts on a different set",
+         swap(src, "alghostclonemenu.cpp", "Actions::turnTo(sRows, target, target_id)", "Actions::turnTo(liveTargets(), target, target_id)")),
+        ("Stop looking acts on a different set",
+         swap(src, "alghostclonemenu.cpp", "Actions::stopLooking(sRows)", "Actions::stopLooking(std::vector<LLUUID>{ sPicked })")),
+        ("Restart animation acts on a non-target",
+         swap(src, "alghostclonemenu.cpp", "Actions::restartRows(sRows)", "Actions::restartRows(ALDirectorSelect::hostRows())")),
+        ("Swap source acts on a non-target",
+         swap(src, "alghostclonemenu.cpp", "Actions::swapSource(sRows, source, ALPanelGhostStudio::sourceName(source))", "Actions::swapSource(std::vector<LLUUID>{ sPicked }, source, ALPanelGhostStudio::sourceName(source))")),
+        ("Render look acts on a non-target",
+         swap(src, "alghostclonemenu.cpp", "Actions::setEntityLook(sRows,", "Actions::setEntityLook(ALDirectorSelect::hostRows(),")),
+        ("Look at skips the page's Keep facing",
+         swap(src, "alghostcloneactions.cpp", "studio.setLookTarget(rep, target, target_id, true);", "studio.setLookTarget(rep, target, target_id, false);")),
+        ("Turn is not once",
+         swap(src, "alghostcloneactions.cpp", "ALGhostStudio::TURN_MODE_ONCE", "ALGhostStudio::TURN_MODE_TRACK")),
+        ("Stop turning leaves the turn armed",
+         swap(src, "alghostcloneactions.cpp", "ALGhostStudio::TURN_MODE_OFF", "ALGhostStudio::TURN_MODE_ONCE")),
+        ("a nearby person who left is still targeted",
+         swap(src, "alghostclonemenu.cpp", "    if (target == ALGhostStudio::LOOK_TARGET_ACTOR && !personNearby(target_id))\n", "    if (false)\n")),
+        ("a new ELookTarget value is added",
+         swap(src, "alghoststudio.h", "LOOK_TARGET_POINT\n    };", "LOOK_TARGET_POINT, LOOK_TARGET_AVATAR\n    };")),
+        ("the actor resolver needs cast membership",
+         swap(src, "lldirectorcast.cpp", "    LLViewerObject* obj = gObjectList.findObject(actor_id);", "    LLViewerObject* obj = getMember(actor_id) ? gObjectList.findObject(actor_id) : nullptr;")),
+        ("Fade items removed from the menu",
+         swap(src, "menu_ghost_clone.xml", 'label="Fade out"', 'label="Fade outx"')),
+        ("Fade out deletes the clone when its ramp ends",
+         swap(src, "alghoststudio.cpp", "if (it->second.mFade.removing && inst->mDeleting) finished.push_back(it->first);   // a hidden-only fade ends at 0, never deletes", "if (it->second.mFade.removing) finished.push_back(it->first);")),
+        ("fadeInstance deletes at zero",
+         swap(src, "alghoststudio.cpp", "    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    static LLCachedControl<F32> fade_in", "    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    if (hidden) { requestRemoveInstance(id); return true; }\n    static LLCachedControl<F32> fade_in")),
+        ("fadeInstance writes a setting",
+         swap(src, "alghoststudio.cpp", "    const F32 target = hidden ? 0.f : 1.f;", "    gSavedSettings.setF32(\"GhostStudioFadeOut\", 0.f);\n    const F32 target = hidden ? 0.f : 1.f;")),
+        ("fade state saved in a scene",
+         swap(src, "lldirectorcast.cpp", "LLSD LLDirectorCast::sceneData() const\n{", "LLSD LLDirectorCast::sceneData() const\n{\n    (void)ALGhostStudio::instance().getInstances().front().mFadeAlpha;")),
+        ("Fade out acts on a non-target",
+         swap(src, "alghostclonemenu.cpp", "Actions::fadeRows(sRows, fade_out)", "Actions::fadeRows(ALDirectorSelect::hostRows(), fade_out)")),
+        ("Fade in enabled on a shown clone",
+         swap(src, "alghostclonemenu.cpp", "(fade_out ? sAgg.mFadeOutable : sAgg.mFadeInable) > 0", "true")),
+        ("Fade eligibility ignores the coverage",
+         swap(src, "alghostclonemenulogic.h", "return fade_out ? !hidden : hidden;", "return true;")),
+        ("Fade undo does not restore the resting state",
+         swap(src, "alghostcloneactions.cpp", "studio.fadeInstance(saved.mId, saved.mHidden, false)", "studio.fadeInstance(saved.mId, false, false)")),
+        ("Fade records no undo step",
+         swap(src, "alghostclonemenu.cpp", '        shell->history().recordCustom(shell, "clone_fade",', '        shell->history().barrier(//')),
+        ("Fade looks the Director up before refusing",
+         swap(src, "alghostclonemenu.cpp", "    const std::vector<Actions::FadeBefore> before = Actions::fadeRows(sRows, fade_out);\n", "    LLFloaterReg::getInstance(\"director\");\n    const std::vector<Actions::FadeBefore> before = Actions::fadeRows(sRows, fade_out);\n")),
+        ("Fade writes the Crowd tab setting",
+         swap(src, "alghostcloneactions.cpp", "        saved.mHidden = studio.getInstance(id)->mUserHidden;", "        saved.mHidden = studio.getInstance(id)->mUserHidden;\n        gSavedSettings.setF32(\"GhostStudioFadeOut\", 0.f);")),
+        ("Look at leaves an armed Turn",
+         swap(src, "alghostcloneactions.cpp", "    for (const LLUUID& rep : reps)\n    {\n        for (const LLUUID& member : studio.groupMembers(rep))\n        {\n            if (studio.getInstance(member) && !studio.isDeleting(member))\n            {\n                studio.setTurnTarget(member, ALGhostStudio::TURN_MODE_OFF, ALGhostStudio::LOOK_TARGET_CAMERA,\n                                     LLUUID::null, LLVector3d());\n            }\n        }\n    }\n", "")),
+        ("Look at clears the turn after the look",
+         swap(swap(src, "alghostcloneactions.cpp", "    for (const LLUUID& rep : reps)\n    {\n        for (const LLUUID& member : studio.groupMembers(rep))\n        {\n            if (studio.getInstance(member) && !studio.isDeleting(member))\n            {\n                studio.setTurnTarget(member, ALGhostStudio::TURN_MODE_OFF, ALGhostStudio::LOOK_TARGET_CAMERA,\n                                     LLUUID::null, LLVector3d());\n            }\n        }\n    }\n", ""),
+              "alghostcloneactions.cpp", "        studio.faceInstance(rep);\n        any = true;", "        studio.faceInstance(rep);\n        stopTurning(rows);\n        any = true;")),
+        ("Look at clears Turn only on the picked rows (a collapsed sibling keeps its Turn)",
+         swap(src, "alghostcloneactions.cpp", "    for (const LLUUID& rep : reps)\n    {\n        for (const LLUUID& member : studio.groupMembers(rep))\n        {\n            if (studio.getInstance(member) && !studio.isDeleting(member))\n            {\n                studio.setTurnTarget(member, ALGhostStudio::TURN_MODE_OFF, ALGhostStudio::LOOK_TARGET_CAMERA,\n                                     LLUUID::null, LLVector3d());\n            }\n        }\n    }\n", "    stopTurning(rows);\n")),
+        ("Look at clears Turn on the representative only",
+         swap(src, "alghostcloneactions.cpp", "        for (const LLUUID& member : studio.groupMembers(rep))\n        {\n            if (studio.getInstance(member) && !studio.isDeleting(member))\n            {\n                studio.setTurnTarget(member,", "        for (const LLUUID& member : std::vector<LLUUID>(1, rep))\n        {\n            if (studio.getInstance(member) && !studio.isDeleting(member))\n            {\n                studio.setTurnTarget(member,")),
+        # fix round 1
+        ("an overlay can be faded out",
+         swap(src, "alghostcloneactions.cpp", "fadeApplies(inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE, fade_out", "fadeApplies(true, fade_out")),
+        ("Look at touches an extra instance (recording fixture)",
+         swap(src, "alghostcloneactions.cpp", "        studio.faceInstance(rep);\n        any = true;", "        studio.faceInstance(rep);\n        studio.setLookTarget(studio.getInstances().back().mId, target, target_id, true);\n        any = true;")),
+        ("Stop looking touches an extra instance",
+         swap(src, "alghostcloneactions.cpp", "            studio.setLookTarget(rep, target, target_id, false);      // Keep facing off", "            studio.setLookTarget(rep, target, target_id, false);      // Keep facing off\n            studio.setLookTarget(studio.getInstances().back().mId, target, target_id, false);")),
+        ("Turn to face touches an extra instance",
+         swap(src, "alghostcloneactions.cpp", "            studio.setTurnTarget(id, ALGhostStudio::TURN_MODE_ONCE, target, target_id, LLVector3d());\n            any = true;", "            studio.setTurnTarget(id, ALGhostStudio::TURN_MODE_ONCE, target, target_id, LLVector3d());\n            studio.setTurnTarget(studio.getInstances().back().mId, ALGhostStudio::TURN_MODE_ONCE, target, target_id, LLVector3d());\n            any = true;")),
+        ("Nearby people ignore the draw distance",
+         swap(src, "alghostclonemenu.cpp", "        if (dist_vec(position, camera) > draw_distance)\n        {\n            continue;\n        }", "        if (false)\n        {\n            continue;\n        }")),
+        ("Nearby people fall back to the legacy full name",
+         swap(src, "alghostclonemenu.cpp", "            name = av_name.getDisplayName();\n        }\n        NearbyEntry entry;", "            name = av_name.getDisplayName();\n        }\n        if (name.empty()) { name = avatar->getFullname(); }\n        NearbyEntry entry;")),
+        ("Nearby people list a name RLVa hides",
+         swap(src, "alghostclonemenu.cpp", "        if (nameHiddenByRlva(avatar->getID()))\n        {\n            continue;               // RLVa hides this name: the person is omitted\n        }\n", "")),
+        ("Swap source lists a name RLVa hides",
+         swap(src, "alghostclonemenu.cpp", "    if (nameHiddenByRlva(id))\n    {\n        return std::string();       // RLVa hides this name: the member is left out\n    }\n", "")),
+        ("Nearby people scanned once per list",
+         swap(src, "alghostclonemenu.cpp", "    const std::vector<NearbyEntry> people = nearbyPeople();       // one scan per open, shared by both lists\n", "    const std::vector<NearbyEntry> people = nearbyPeople();\n    const std::vector<NearbyEntry> again = nearbyPeople();\n")),
+        ("an unknown Look / turn parameter looks at the camera",
+         swap(src, "alghostclonemenu.cpp", '    if (kind != "camera" && kind != "me")\n    {\n        return;                         // an unknown parameter is never a quiet "camera"\n    }\n', "")),
+        ("Fade enable misreports a vanished clone",
+         swap(src, "alghostclonemenu.cpp", '        if (sAgg.mLive == 0)\n        {\n            return state(ctrl, false, "GhostCloneMenuNotReady");\n        }\n        if (sAgg.mEntities == 0)', "        if (sAgg.mEntities == 0)")),
+        ("Fade enabled on an overlay-only selection",
+         swap(src, "alghostclonemenu.cpp", '            return state(ctrl, false, "GhostCloneMenuMirrorEntityOnly");       // an overlay is never faded\n', "")),
+        ("Clones list row right-click not wired",
+         swap(src, "alpanelghoststudio.cpp", "                if (ALGhostCloneMenu::openForListRow(row, screen_x, screen_y))", "                if (false)")),
+        ("Clones list row right-click ignores the list selection",
+         swap(src, "alghostclonemenu.cpp", "    if (std::find(host_rows.begin(), host_rows.end(), row) != host_rows.end())\n    {\n        sRows = host_rows;", "    if (false)\n    {\n        sRows = host_rows;")),
+        ("a press-opened list menu disarms its spawn point",
+         swap(src, "alghostclonemenu.cpp", "    if (!opened_on_press)\n    {", "    if (true)\n    {")),
+        ("the State column does not mark a hidden clone",
+         swap(src, "alpanelghoststudio.cpp", '        if (inst.mUserHidden)\n        {\n            return "hidden";', '        if (false)\n        {\n            return "hidden";')),
+        ("Look combo rewrites a non-cast look target",
+         swap(src, "alpanelghoststudio.cpp", "    if (!from_combo && inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ACTOR)", "    if (false)")),
+        ("Look at clears the turn before checking there is anything to look at",
+         swap(src, "alghostcloneactions.cpp", "    const std::vector<LLUUID> reps = unitRepresentatives(rows);\n    if (reps.empty())\n    {\n        return false;\n    }\n", "    const std::vector<LLUUID> reps = unitRepresentatives(rows);\n")),
+        # fix round 2
+        ("a swap reveals a hidden clone (beginAppearance)",
+         swap(src, "alghoststudio.cpp", "    if (inst->mUserHidden && !inst->mDeleting)\n    {\n        // A clone the user faded out stays hidden through a swap, a duplicate or a crowd fade-in.", "    if (false)\n    {\n        // A clone the user faded out stays hidden through a swap, a duplicate or a crowd fade-in.")),
+        ("beginAppearance cancels the delete fade of a hidden clone",
+         swap(src, "alghoststudio.cpp", "    if (inst->mUserHidden && !inst->mDeleting)\n    {\n        // A clone the user faded out stays hidden", "    if (inst->mUserHidden)\n    {\n        // A clone the user faded out stays hidden")),
+        ("a respawned body reveals a hidden clone",
+         swap(src, "alghoststudio.cpp", "if (current->mUserHidden && !current->mDeleting)\n            {\n                mFades.erase(stable_id);", "if (false)\n            {\n                mFades.erase(stable_id);")),
+        ("a replaced body of a clone being deleted loses its delete fade",
+         swap(src, "alghoststudio.cpp", "if (current->mUserHidden && !current->mDeleting)", "if (current->mUserHidden)")),
+        ("a replaced body of a clone in a fade starts at full coverage",
+         swap(src, "alghoststudio.cpp", "            else if (mFades.count(stable_id))\n            {\n                LLDirectorCast::instance().setCloneFadeAlpha(new_runtime, current->mFadeAlpha);\n            }\n", "")),
+        ("a retired body keeps its orphan fade",
+         swap(src, "alghoststudio.cpp", "        LLDirectorCast::instance().forgetCloneFade(old_runtime);\n", "")),
+        ("a replaced body leaves the fade ramp running",
+         swap(src, "alghoststudio.cpp", "                mFades.erase(stable_id);\n                current->mFadeAlpha = 0.f;", "                current->mFadeAlpha = 0.f;")),
+        ("settled hide is not through isVisible",
+         swap(src, "alghoststudio.h", " &&\n             !(inst.mUserHidden && !(inst.mFadeAlpha > 0.f));", ";")),
+        ("a finished hide never re-gates the body",
+         swap(src, "alghoststudio.cpp", "        else if (inst->mUserHidden && inst->mKind == BACKING_ENTITY_CLONE)", "        else if (false)")),
+        ("fadeInstance does not refresh the instant path visibility",
+         swap(src, "alghoststudio.cpp", "        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);\n        if (LLGhostAvatar* ghost = resolveEntityClone(id))\n            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);\n        if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))\n            LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return true;",
+              "        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);\n        return true;")),
+        ("Delete of an invisible clone ramps 0 to 0",
+         swap(src, "alghoststudio.cpp", "if (seconds <= 0.f || all_invisible)", "if (seconds <= 0.f)")),
+        ("an array of a hidden clone is built hidden",
+         swap(src, "alghoststudio.cpp", "        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n        copy->setFootGlobal(foot);", "        copy->setFootGlobal(foot);")),
+        ("a crowd of a hidden clone is built hidden",
+         swap(src, "alghoststudio.cpp", "        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n    }", "    }")),
+        ("array copies lose their creation fade-in",
+         swap(src, "alghoststudio.cpp", "        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n        copy->setFootGlobal(foot);", "        fadeInstance(copy->mId, false, false);\n        copy->setFootGlobal(foot);")),
+        ("crowd copies lose their creation fade-in",
+         swap(src, "alghoststudio.cpp", "        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n    }", "        fadeInstance(copy->mId, false, false);\n    }")),
+        ("a hidden prototype's copies pop in",
+         swap(src, "alghoststudio.cpp", "        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n    }", "        if (copy->mUserHidden) fadeInstance(copy->mId, false, false);\n    }")),
+        ("the ramp shows the body before its coverage",
+         swap(src, "alghoststudio.cpp", "    if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha);   // coverage first, so a fade-in never flashes\n", "")),
+        ("a settled hide keeps an alpha-0 entry (updateFades)",
+         swap(src, "alghoststudio.cpp", "            if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))\n                LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);\n        }\n        it = mFades.erase(it);", "        }\n        it = mFades.erase(it);")),
+        ("a settled hide keeps an alpha-0 entry (instant fade)",
+         swap(src, "alghoststudio.cpp", "            LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return true;", "        return true;")),
+        ("a settled hide keeps an alpha-0 entry (beginAppearance)",
+         swap(src, "alghoststudio.cpp", "        if (inst->mEntityId.notNull()) LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return;", "        return;")),
+        ("a settled hide keeps an alpha-0 entry (replaced body)",
+         swap(src, "alghoststudio.cpp", "                LLDirectorCast::instance().forgetCloneFade(new_runtime);      // settled hidden: no alpha-0 coverage entry kept\n", "")),
+        ("the replacement hook acts on a removed instance",
+         swap(src, "alghoststudio.cpp", "        if (!removing_instance && old_runtime != new_runtime)\n        if (Instance* current", "        if (Instance* current")),
+        ("the replacement hook acts on an unchanged runtime",
+         swap(src, "alghoststudio.cpp", "        if (!removing_instance && old_runtime != new_runtime)\n        if (Instance* current", "        if (!removing_instance)\n        if (Instance* current")),
+        ("a clone that is not a Cast member gets no ramp (renderer getter)",
+         swap(src, "lldirectorcast.cpp", "        return orphan->second;      // a clone that is not a Cast member: Studio's own fade\n", "        return default_style;\n")),
+        ("a clone that is not a Cast member gets no ramp (resolved style)",
+         swap(src, "lldirectorcast.cpp", "            resolved_id = primary;\n            return orphan->second;", "            resolved_id = primary;\n            return mSelfActorStyle;")),
+        ("orphan fades are scanned in the setter",
+         swap(src, "lldirectorcast.cpp", "        if (alpha >= 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }\n        ActorStyle& orphan", "        for (auto it = mCloneFadeOrphans.begin(); it != mCloneFadeOrphans.end();)\n            it = gObjectList.findObject(it->first) ? std::next(it) : mCloneFadeOrphans.erase(it);\n        if (alpha >= 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }\n        ActorStyle& orphan")),
+        ("orphan fades are never retired with their body",
+         swap(src, "lldirectorcast.cpp", "void LLDirectorCast::forgetCloneFade(const LLUUID& runtime_id)\n{\n    mCloneFadeOrphans.erase(runtime_id);\n}", "void LLDirectorCast::forgetCloneFade(const LLUUID& runtime_id)\n{\n    (void)runtime_id;\n}")),
+        ("a real avatar is given an orphan fade",
+         swap(src, "lldirectorcast.cpp", "if (alpha >= 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }", "if (alpha >= 1.f) { mCloneFadeOrphans.erase(id); return; }")),
+        ("an orphan fade completes only above 1",
+         swap(src, "lldirectorcast.cpp", "if (alpha >= 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }", "if (alpha > 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }")),
+        ("a worn animesh of a non-member clone does not fade",
+         swap(src, "lldirectorcast.cpp", "            const auto orphan = mCloneFadeOrphans.find(fallback);\n            if (orphan != mCloneFadeOrphans.end())", "            const auto orphan = mCloneFadeOrphans.end();\n            if (orphan != mCloneFadeOrphans.end())")),
+        ("a Cast member primary returns the fallback orphan's style",
+         swap(src, "lldirectorcast.cpp", "        const auto& member = mCast[primary_it->second];\n        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n    }\n    if (!mCloneFadeOrphans.empty())\n    {\n        const auto orphan = mCloneFadeOrphans.find(primary);",
+              "        const auto& member = mCast[primary_it->second];\n        if (!mCloneFadeOrphans.empty() && fallback.notNull())\n        {\n            const auto fallback_orphan = mCloneFadeOrphans.find(fallback);\n            if (fallback_orphan != mCloneFadeOrphans.end()) return fallback_orphan->second;\n        }\n        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n    }\n    if (!mCloneFadeOrphans.empty())\n    {\n        const auto orphan = mCloneFadeOrphans.find(primary);")),
+        ("the orphan map is read without an empty fast path",
+         swap(src, "lldirectorcast.cpp", "    if (!mCloneFadeOrphans.empty())\n    {\n        const auto orphan = mCloneFadeOrphans.find(id);", "    {\n        const auto orphan = mCloneFadeOrphans.find(id);")),
+        ("a re-enrolled clone keeps a stale orphan fade",
+         swap(src, "lldirectorcast.cpp", "    mCloneFadeOrphans.erase(id);        // a (re-)enrolled clone: the member carries its fade\n", "")),
+        ("an orphan fade is saved in the scene",
+         swap(src, "lldirectorcast.cpp", "LLSD LLDirectorCast::sceneData() const\n{", "LLSD LLDirectorCast::sceneData() const\n{\n    (void)mCloneFadeOrphans.size();")),
+        ("a selected group row no longer owns its members",
+         swap(src, "alghostcloneactions.cpp", " && headers.find(group->mId) == headers.end())\n        {\n            return true;", ")\n        {\n            return true;")),
+        ("the half-fetched inventory message is lost",
+         swap(src, "alghostclonemenu.cpp", 'tip(str("GhostCloneMenuInventoryLoading"));', 'tip(str("GhostCloneMenuNotReady"));')),
+        ("the Look combo accumulates menu target rows",
+         swap(src, "alpanelghoststudio.cpp", 'mLookTargetCombo->remove("(menu target)");', 'static_cast<void>(0);')),
+        ("expanded-member Look at is allowed",
+         swap(src, "alghostcloneactions.cpp", "    if (hasExpandedMember(rows))\n    {\n        return false;\n    }\n    const std::vector<LLUUID> reps = unitRepresentatives(rows);", "    const std::vector<LLUUID> reps = unitRepresentatives(rows);")),
+        ("expanded-member Stop looking is allowed",
+         swap(src, "alghostcloneactions.cpp", "    if (hasExpandedMember(rows))\n    {\n        return;\n    }\n    for (const LLUUID& rep : unitRepresentatives(rows))", "    for (const LLUUID& rep : unitRepresentatives(rows))")),
+        ("expanded-member Turn to face is allowed",
+         swap(src, "alghostcloneactions.cpp", "    if (hasExpandedMember(rows))\n    {\n        return false;\n    }\n    for (const LLUUID& id : instances(rows))", "    for (const LLUUID& id : instances(rows))")),
+        ("expanded-member Stop turning is allowed",
+         swap(src, "alghostcloneactions.cpp", "    if (hasExpandedMember(rows))\n    {\n        return;\n    }\n    for (const LLUUID& id : instances(rows))", "    for (const LLUUID& id : instances(rows))")),
+        ("only some expanded members are refused",
+         swap(src, "alghostcloneactions.cpp", "headers.find(group->mId) == headers.end())\n        {\n            return true;", "headers.find(group->mId) == headers.end())\n        {\n            continue;")),
+        ("Look / turn items stay enabled on an expanded member",
+         swap(src, "alghostclonemenu.cpp", "        if (sAgg.mLive > 0 && sAgg.mExpandedMember)", "        if (false)")),
+        ("Look / turn commit without the expanded-member refusal",
+         swap(src, "alghostclonemenu.cpp", "    if (Actions::hasExpandedMember(sRows))\n    {\n        tip(str(\"GhostCloneMenuWholeGroup\"));\n        return;\n    }\n    if (target == ALGhostStudio::LOOK_TARGET_ACTOR", "    if (target == ALGhostStudio::LOOK_TARGET_ACTOR")),
+        ("a Look / turn item uses the plain target enable",
+         swap(src, "menu_ghost_clone.xml", 'function="GhostClone.EnableFace"', 'function="GhostClone.EnableTargets"')),
+        ("a Nearby person item ignores the expanded-member refusal",
+         swap(src, "alghostclonemenu.cpp", "return sAgg.mLive > 0 && !sAgg.mExpandedMember; }", "return sAgg.mLive > 0; }")),
+        ("Studio setLookTarget changed from the base",
+         swap(src, "alghoststudio.cpp", "    for (const LLUUID& member_id : groupMembers(id))\n    {\n        if (Instance* member = getInstance(member_id))\n        {\n            member->mLookTarget = target;", "    for (const LLUUID& member_id : std::vector<LLUUID>(1, id))\n    {\n        if (Instance* member = getInstance(member_id))\n        {\n            member->mLookTarget = target;")),
+        ("a member-edit special case returns to the studio",
+         swap(src, "alghoststudio.h", "    bool fadeInstance(const LLUUID& id, bool hidden, bool ramp);\n", "    bool fadeInstance(const LLUUID& id, bool hidden, bool ramp);\n    bool isExpandedMember(const LLUUID& id) const;\n")),
+        ("Recent replay skips the inventory matcher",
+         swap(src, "alghostclonemenu.cpp", "    if (items.empty())\n    {\n        if (LLInventoryModelBackgroundFetch", "    if (false)\n    {\n        if (LLInventoryModelBackgroundFetch")),
+        ("Recent drops an entry while the inventory is still fetching",
+         swap(src, "alghostclonemenu.cpp", "        if (LLInventoryModelBackgroundFetch::instance().isEverythingFetched())", "        if (true)")),
+        ("Recent validation rebuilds the whole inventory index",
+         swap(src, "alghostclonemenu.cpp", "    if (items.empty())\n    {\n        if (LLInventoryModelBackgroundFetch", "    ALGhostAnimAssetIndex::instance().refreshInventory();\n    if (items.empty())\n    {\n        if (LLInventoryModelBackgroundFetch")),
+        ("list row selection changes before validation",
+         swap(src, "alpanelghoststudio.cpp", "            if (ALGhostCloneMenu::canOpenForListRow(row))", "            if (true)")),
+        ("list row right-click ignores a disabled list",
+         swap(src, "alpanelghoststudio.cpp", "mList->getEnabled() && ", "")),
+        ("Swap source label differs from the page's",
+         swap(src, "alghostclonemenu.cpp", "ALPanelGhostStudio::sourceName(source))", "label)")),
+        ("the Look combo has no neutral menu target row",
+         swap(src, "alpanelghoststudio.cpp", 'mLookTargetCombo->add("(menu target)"', 'mLookTargetCombo->add("x"')),
+        ("Turn to face clears the look",
+         swap(src, "alghostcloneactions.cpp", "bool turnTo(const std::vector<LLUUID>& rows, ALGhostStudio::ELookTarget target, const LLUUID& target_id)\n{", "bool turnTo(const std::vector<LLUUID>& rows, ALGhostStudio::ELookTarget target, const LLUUID& target_id)\n{\n    stopTurning(rows);")),
+        ("Appearance > Look item with a wrong value",
+         swap(src, "menu_ghost_clone.xml", '<menu_item_check.on_click function="GhostClone.EntityLook" parameter="3" />', '<menu_item_check.on_click function="GhostClone.EntityLook" parameter="2" />')),
+        ("Appearance > Look label differs from the page",
+         swap(src, "menu_ghost_clone.xml", 'label="Chrome*"', 'label="Chrome"')),
+        ("Look / turn moved",
+         swap(src, "menu_ghost_clone.xml", 'label="Animation"', 'label="Animationx"')),
+        ("Look at items call the wrong function",
+         swap(src, "menu_ghost_clone.xml", '<menu_item_call.on_click function="GhostClone.Look" parameter="me" />', '<menu_item_call.on_click function="GhostClone.Turn" parameter="me" />')),
+        ("Swap source lists a cast member by id",
+         swap(src, "alghostclonemenu.cpp", "return Logic::containsUuidText(name) ? std::string() : name;", "return name;")),
+        ("Swap source lists Studio clones",
+         swap(src, "alghostclonemenu.cpp", "        if (!self && LLGhostAvatar::isGhostId(choice.mId))\n", "        if (false)\n")),
+        ("the page Swap source handler no longer uses the shared action",
+         swap(src, "alpanelghoststudio.cpp", "ALGhostCloneActions::swapSource(selectedRowValues(), source, label)", "std::string()")),
+        ("the page Render look handler no longer uses the shared action",
+         swap(src, "alpanelghoststudio.cpp", "ALGhostCloneActions::setEntityLook(selectedRowValues(), look);", "")),
+        ("the lists are built after the menu shows",
+         swap(src, "alghostclonemenu.cpp", "    populateDynamicMenus();\n    sMenu->show(x, y);", "    sMenu->show(x, y);\n    populateDynamicMenus();")),
+        ("Recent replay bypasses the page's Directed rule",
+         swap(src, "alghostclonemenu.cpp", "ALPanelGhostStudio::applyInventoryAnimationTo(selected, asset, name, /*director_fallback=*/true);",
+              "ALPanelGhostStudio::playAnimationOnClonesRecorded(liveEntityTargets(), asset, name, true);")),
+        ("Look is applied while a look outside the range is allowed",
+         swap(src, "alghostclonemenu.cpp", "look < ALGhostStudio::LOOK_NORMAL || look > ALGhostStudio::LOOK_SILHOUETTE ||\n        ", "")),
     ]
     failures = []
     for label, mutated in mutations:

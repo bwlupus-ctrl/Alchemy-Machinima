@@ -126,6 +126,77 @@ bool setStagger(const LLUUID& instance_id, S32 mode);
 // animation restarted so the phase matches). False, changing nothing, when no
 // saved member survives. Never touches the selection or any setting.
 bool restoreStagger(const StaggerState& state);
+
+// ---- Look / turn (the page's "Look at" combo with Keep facing + Face now, and the
+// /ghostturn chat command: ALGhostStudio::setLookTarget / setTurnTarget) ----------
+// `target` is LOOK_TARGET_CAMERA, LOOK_TARGET_ME or LOOK_TARGET_ACTOR. ACTOR takes any
+// avatar's agent id: ALGhostStudio::resolveTargetGlobal resolves it through
+// LLDirectorCast::resolve, which finds any avatar in gObjectList by id (a Director cast
+// member is not required). When the target leaves, the clone holds its last facing.
+// Look and turn act on a whole authoring unit: a collapsed group, a group header row or an ungrouped
+// clone. A single member of an EXPANDED group cannot be addressed alone (the Studio's look / turn paths
+// address the whole group), so any target set that holds one is REFUSED: nothing is written.
+// Per-member look / turn inside an expanded group is a separate feature.
+bool hasExpandedMember(const std::vector<LLUUID>& rows);
+// Look at: first Turn off on every live instance of the rows (stopTurning: an armed Turn
+// owns body yaw and would hold the clone, so the look would not show), then the unit's look
+// target + Keep facing, then face it now (the page's path). A collapsed group is one unit
+// (its first live member stands for it, as on the page). True when any unit was set (nothing, not
+// even Turn, is changed when none was, or when the rows hold an expanded group member).
+bool lookAt(const std::vector<LLUUID>& rows, ALGhostStudio::ELookTarget target, const LLUUID& target_id);
+// Keep facing off for those units (the look target is kept, as the page does).
+void stopLooking(const std::vector<LLUUID>& rows);
+// Turn to face once (TURN_MODE_ONCE: rotate to the target, then hold) on every live
+// instance of the rows (the /ghostturn path). True when any instance was set.
+bool turnTo(const std::vector<LLUUID>& rows, ALGhostStudio::ELookTarget target, const LLUUID& target_id);
+// Turn off (/ghostturn off).
+void stopTurning(const std::vector<LLUUID>& rows);
+
+// ---- Animation ---------------------------------------------------------------
+// Restart the animation of every entity clone of the rows (restartInstanceAnimation,
+// the call the Sync path makes after zeroing offsets). True when any restarted.
+bool restartRows(const std::vector<LLUUID>& rows);
+
+// Inventory animations played on clones this session, newest first, one per
+// animation, capped. Session-only memory: never saved, never logged. The asset id is
+// kept only so the menu can play the entry again (the drop path does the same); the
+// name is the only thing ever shown, and is empty when it would have carried the id.
+struct RecentAnimation
+{
+    LLUUID mAsset;
+    std::string mName;
+};
+// Called by the one funnel every play goes through (the drop, Play on selected clones,
+// the Inventory combo, this menu): ALPanelGhostStudio::playAnimationOnClonesRecorded.
+void noteRecentAnimation(const LLUUID& asset_id, const std::string& anim_name);
+const std::vector<RecentAnimation>& recentAnimations();
+// Forget an entry (its item is gone from the inventory).
+void removeRecentAnimation(const LLUUID& asset_id);
+
+// ---- Appearance --------------------------------------------------------------
+// Swap source button: swap every entity / overlay clone of the rows to `source` (null =
+// You). Returns the status text the page shows (empty on success). Body of the page handler.
+std::string swapSource(const std::vector<LLUUID>& rows, const LLUUID& source, const std::string& label);
+// Render look combo (entity clones only). True when any clone took it.
+bool setEntityLook(const std::vector<LLUUID>& rows, ALGhostStudio::EGhostLook look);
+
+// Fade out / Fade in: hide an existing ENTITY clone (or show it again) with the Crowd tab's Fade
+// out / Fade in duration, through ALGhostStudio::fadeInstance (the updateFades ramp). Hidden-only:
+// the clone is never deleted, stays hidden (mUserHidden) until Fade in or the session ends, and
+// nothing is saved. Overlays are not faded.
+struct FadeBefore
+{
+    LLUUID mId;
+    bool mHidden = false;   // the RESTING state before the action (undo restores it, never a mid-ramp alpha)
+};
+// Live entity instances of the rows a fade applies to: Fade out takes those not user-hidden, Fade in
+// those that are (ALGhostCloneMenuLogic::fadeEligible).
+std::vector<LLUUID> fadeTargets(const std::vector<LLUUID>& rows, bool fade_out);
+// Fades the eligible instances; returns what each was before (empty = nothing to do).
+std::vector<FadeBefore> fadeRows(const std::vector<LLUUID>& rows, bool fade_out);
+// Undo (jump back to the saved resting state) / redo (the same fade again). False when no saved
+// clone survives.
+bool restoreFade(const std::vector<FadeBefore>& before, bool redo, bool fade_out);
 }
 
 #endif // AL_ALGHOSTCLONEACTIONS_H

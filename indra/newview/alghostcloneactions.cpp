@@ -15,6 +15,7 @@
 
 #include "alghostcloneactions.h"
 
+#include "alghostanimdrop.h"
 #include "alghostclonemenulogic.h"
 #include "alghostgroupmodel.h"
 #include "llviewercontrol.h"
@@ -508,5 +509,276 @@ bool restoreStagger(const StaggerState& state)
         }
     }
     return true;
+}
+
+namespace
+{
+// The instance that stands for each authoring unit of the rows, as the page's
+// selectedInstance() does: a collapsed group's first live member, else the instance.
+std::vector<LLUUID> unitRepresentatives(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<LLUUID> reps;
+    for (const LLUUID& unit : units(rows))
+    {
+        LLUUID rep = unit;
+        const ALGhostGroupModel::Group* group = studio.groupForMember(unit);
+        if (group && unit == group->mId)
+        {
+            rep.setNull();
+            for (const ALGhostGroupModel::Member& member : group->mMembers)
+            {
+                if (studio.getInstance(member.mInstanceId) && !studio.isDeleting(member.mInstanceId))
+                {
+                    rep = member.mInstanceId;
+                    break;
+                }
+            }
+        }
+        const ALGhostStudio::Instance* inst = rep.notNull() ? studio.getInstance(rep) : nullptr;
+        if (inst && !inst->mDeleting && std::find(reps.begin(), reps.end(), rep) == reps.end())
+        {
+            reps.push_back(rep);
+        }
+    }
+    return reps;
+}
+
+std::vector<RecentAnimation>& recentList()
+{
+    static std::vector<RecentAnimation> list;      // session only: never saved
+    return list;
+}
+}
+
+bool hasExpandedMember(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    // A selected group header already owns its authoring unit (the units() rule): its member rows add nothing.
+    std::set<LLUUID> headers;
+    for (const LLUUID& row : rows)
+    {
+        const ALGhostGroupModel::Group* group = studio.groupForMember(row);
+        if (group && row == group->mId)
+        {
+            headers.insert(group->mId);
+        }
+    }
+    for (const LLUUID& row : rows)
+    {
+        const ALGhostGroupModel::Group* group = studio.groupForMember(row);
+        if (group && group->mEditMembers && row != group->mId && headers.find(group->mId) == headers.end())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool lookAt(const std::vector<LLUUID>& rows, ALGhostStudio::ELookTarget target, const LLUUID& target_id)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool any = false;
+    if (hasExpandedMember(rows))
+    {
+        return false;
+    }
+    const std::vector<LLUUID> reps = unitRepresentatives(rows);
+    if (reps.empty())
+    {
+        return false;
+    }
+    // An armed Turn owns body yaw (faceInstance declines while it is set): clear it first so the clone
+    // looks at the target right away. setLookTarget writes every member of the representative's
+    // authoring unit, so Turn is cleared over exactly those members: a collapsed-group member row
+    // cannot leave a sibling with an armed Turn.
+    for (const LLUUID& rep : reps)
+    {
+        for (const LLUUID& member : studio.groupMembers(rep))
+        {
+            if (studio.getInstance(member) && !studio.isDeleting(member))
+            {
+                studio.setTurnTarget(member, ALGhostStudio::TURN_MODE_OFF, ALGhostStudio::LOOK_TARGET_CAMERA,
+                                     LLUUID::null, LLVector3d());
+            }
+        }
+    }
+    for (const LLUUID& rep : reps)
+    {
+        // The page's Keep facing + Face now: store the target, then aim.
+        studio.setLookTarget(rep, target, target_id, true);
+        studio.faceInstance(rep);
+        any = true;
+    }
+    return any;
+}
+
+void stopLooking(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (hasExpandedMember(rows))
+    {
+        return;
+    }
+    for (const LLUUID& rep : unitRepresentatives(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(rep);
+        if (inst)
+        {
+            const ALGhostStudio::ELookTarget target = inst->mLookTarget;
+            const LLUUID target_id = inst->mLookTargetId;
+            studio.setLookTarget(rep, target, target_id, false);      // Keep facing off
+        }
+    }
+}
+
+bool turnTo(const std::vector<LLUUID>& rows, ALGhostStudio::ELookTarget target, const LLUUID& target_id)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool any = false;
+    if (hasExpandedMember(rows))
+    {
+        return false;
+    }
+    for (const LLUUID& id : instances(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && !inst->mDeleting)
+        {
+            studio.setTurnTarget(id, ALGhostStudio::TURN_MODE_ONCE, target, target_id, LLVector3d());
+            any = true;
+        }
+    }
+    return any;
+}
+
+void stopTurning(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (hasExpandedMember(rows))
+    {
+        return;
+    }
+    for (const LLUUID& id : instances(rows))
+    {
+        if (studio.getInstance(id))
+        {
+            studio.setTurnTarget(id, ALGhostStudio::TURN_MODE_OFF, ALGhostStudio::LOOK_TARGET_CAMERA,
+                                 LLUUID::null, LLVector3d());
+        }
+    }
+}
+
+bool restartRows(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool any = false;
+    for (const LLUUID& id : instances(rows))
+    {
+        any = studio.restartInstanceAnimation(id) || any;
+    }
+    return any;
+}
+
+void noteRecentAnimation(const LLUUID& asset_id, const std::string& anim_name)
+{
+    if (asset_id.isNull())
+    {
+        return;
+    }
+    // A name that carries the asset id is never kept: the entry shows the fallback label.
+    const std::string name = ALGhostAnimDrop::mentionsUuid(anim_name, asset_id) ? std::string() : anim_name;
+    ALGhostCloneMenuLogic::recentPush(recentList(), asset_id, name);
+}
+
+const std::vector<RecentAnimation>& recentAnimations()
+{
+    return recentList();
+}
+
+void removeRecentAnimation(const LLUUID& asset_id)
+{
+    std::vector<RecentAnimation>& list = recentList();
+    list.erase(std::remove_if(list.begin(), list.end(),
+                              [&asset_id](const RecentAnimation& e) { return e.mAsset == asset_id; }),
+               list.end());
+}
+
+std::string swapSource(const std::vector<LLUUID>& rows, const LLUUID& source, const std::string& label)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    // Snapshot the instances: a runtime replacement synchronously rewrites outside references.
+    const std::vector<LLUUID> ids = instances(rows);
+    const auto* source_clone = studio.findInstanceByRuntime(source);
+    const LLUUID source_instance = source_clone ? source_clone->mId : source;
+    bool skipped = false;
+    std::string status;
+    for (const LLUUID& id : ids)
+    {
+        if (id == source_instance) skipped = true;
+        else if (!studio.swapSource(id, source, label)) status = studio.swapStatus();
+    }
+    if (skipped && status.empty()) status = "Swap: skipped the picked source clone (cannot copy itself)";
+    return status;
+}
+
+bool setEntityLook(const std::vector<LLUUID>& rows, ALGhostStudio::EGhostLook look)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool any = false;
+    for (const LLUUID& id : instances(rows))
+    {
+        any = studio.setInstanceLook(id, look) || any;
+    }
+    return any;
+}
+
+std::vector<LLUUID> fadeTargets(const std::vector<LLUUID>& rows, bool fade_out)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<LLUUID> ids;
+    for (const LLUUID& id : instances(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && !inst->mDeleting &&
+            ALGhostCloneMenuLogic::fadeApplies(inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE, fade_out, inst->mUserHidden))
+        {
+            ids.push_back(id);
+        }
+    }
+    return ids;
+}
+
+std::vector<FadeBefore> fadeRows(const std::vector<LLUUID>& rows, bool fade_out)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<FadeBefore> before;
+    for (const LLUUID& id : fadeTargets(rows, fade_out))
+    {
+        FadeBefore saved;
+        saved.mId = id;
+        saved.mHidden = studio.getInstance(id)->mUserHidden;
+        if (studio.fadeInstance(id, fade_out, true))
+        {
+            before.push_back(saved);
+        }
+    }
+    return before;
+}
+
+bool restoreFade(const std::vector<FadeBefore>& before, bool redo, bool fade_out)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool any = false;
+    for (const FadeBefore& saved : before)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(saved.mId);
+        if (inst && !inst->mDeleting)
+        {
+            any = (redo ? studio.fadeInstance(saved.mId, fade_out, true)
+                        : studio.fadeInstance(saved.mId, saved.mHidden, false)) || any;
+        }
+    }
+    return any;
 }
 }

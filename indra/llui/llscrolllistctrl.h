@@ -232,6 +232,7 @@ public:
     bool            selectNthItem( S32 index );
     bool            selectItemRange( S32 first, S32 last );
     bool            selectItemAt(S32 x, S32 y, MASK mask);
+    LLScrollListItem* getItemAtPoint(S32 x, S32 y) { return hitItem(x, y); }   // the row under a local point, no selection change
 
     void            deleteSingleItem( S32 index );
 // [SL:KB] - Patch: Control-ScrollList | Checked: Catznip-3.5

@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace ALGhostCloneMenuLogic
@@ -295,6 +296,151 @@ inline int staggerChecked(int last_mode_for_group, bool all_offsets_zero)
 inline bool ctrlAddsToSet(bool is_clone, bool ctrl)
 {
     return is_clone && ctrl;
+}
+
+// ---- Look / turn, Animation and Appearance submenus -------------------------
+// Dynamic lists (Nearby people, Recent animations, Swap source) show NAMES only.
+// An id is carried by the item's callback, never by its label.
+
+// Real avatars shown in a Look at / Turn to face "Nearby people" list.
+constexpr std::size_t NEARBY_MAX = 16;
+// Inventory animations remembered for the Animation > Recent list.
+constexpr std::size_t RECENT_ANIM_MAX = 8;
+
+inline bool isHexDigit(char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+// True when the text carries a UUID: dashed (8-4-4-4-12) or 32 hex digits in a
+// row. The guard every dynamic label passes before it is shown.
+inline bool containsUuidText(const std::string& text)
+{
+    static const int GROUPS[5] = { 8, 4, 4, 4, 12 };
+    for (std::size_t start = 0; start + 36 <= text.size(); ++start)
+    {
+        std::size_t p = start;
+        bool ok = true;
+        for (int g = 0; g < 5 && ok; ++g)
+        {
+            for (int k = 0; k < GROUPS[g]; ++k, ++p)
+            {
+                if (!isHexDigit(text[p])) { ok = false; break; }
+            }
+            if (ok && g < 4)
+            {
+                if (text[p] != '-') { ok = false; }
+                else { ++p; }
+            }
+        }
+        if (ok) return true;
+    }
+    std::size_t run = 0;
+    for (char c : text)
+    {
+        run = isHexDigit(c) ? run + 1 : 0;
+        if (run >= 32) return true;
+    }
+    return false;
+}
+
+// A nearby person's label: the display name, with the cast suffix for Director
+// cast members. Empty (the person is left out) when there is no name or the
+// "name" carries a UUID; a person is never listed by id.
+inline std::string nearbyLabel(const std::string& name, bool cast, const std::string& cast_suffix)
+{
+    if (name.empty() || containsUuidText(name))
+    {
+        return std::string();
+    }
+    return cast && !cast_suffix.empty() ? name + " (" + cast_suffix + ")" : name;
+}
+
+// Nearest first (stable for equal distances), capped. Entry needs mDistance.
+template <class Entry>
+std::vector<Entry> nearbySelect(std::vector<Entry> entries, std::size_t cap = NEARBY_MAX)
+{
+    std::stable_sort(entries.begin(), entries.end(),
+                     [](const Entry& a, const Entry& b) { return a.mDistance < b.mDistance; });
+    if (entries.size() > cap)
+    {
+        entries.resize(cap);
+    }
+    return entries;
+}
+
+// Recent animations: newest first, one entry per animation (replaying moves it
+// to the front), capped. Entry needs mAsset and mName.
+template <class Entry, class Id>
+void recentPush(std::vector<Entry>& list, const Id& asset, const std::string& name,
+                std::size_t cap = RECENT_ANIM_MAX)
+{
+    list.erase(std::remove_if(list.begin(), list.end(),
+                              [&asset](const Entry& e) { return e.mAsset == asset; }),
+               list.end());
+    Entry entry;
+    entry.mAsset = asset;
+    entry.mName = name;
+    list.insert(list.begin(), entry);
+    if (list.size() > cap)
+    {
+        list.resize(cap);
+    }
+}
+
+// A recent animation's label: its name only. The fallback stands in when the
+// name is empty or carries a UUID.
+inline std::string recentLabel(const std::string& name, const std::string& fallback)
+{
+    return name.empty() || containsUuidText(name) ? fallback : name;
+}
+
+// The Animation > Recent submenu exists only while something was played.
+inline bool recentSubmenuVisible(std::size_t count)
+{
+    return count > 0;
+}
+
+// The look / turn / animation actions touch exactly the picked-or-selected set
+// (not a subset, not more): every target, and nothing else.
+template <class Id>
+bool targetsExact(const Id& picked, const std::vector<Id>& selection, const std::vector<Id>& touched)
+{
+    const TargetPlan<Id> plan = planTargets(picked, selection);
+    if (touched.size() != plan.mTargets.size())
+    {
+        return false;
+    }
+    for (const Id& id : plan.mTargets)
+    {
+        if (std::find(touched.begin(), touched.end(), id) == touched.end())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// ---- Fade out / Fade in (hidden-only: never deletes, session only) ----------------
+// An entity clone takes Fade out while it is not user-hidden and Fade in while it is (an
+// explicit state, never inferred from a mid-ramp coverage); an already-faded clone is skipped,
+// and a menu with no eligible target disables the item.
+inline bool fadeEligible(bool fade_out, bool hidden)
+{
+    return fade_out ? !hidden : hidden;
+}
+
+// Fade acts on ENTITY clones only: an overlay hidden from the menu would have no way back.
+inline bool fadeApplies(bool entity, bool fade_out, bool hidden)
+{
+    return entity && fadeEligible(fade_out, hidden);
+}
+
+// ALGhostStudio::updateFades: a finished fade removes its clone ONLY when that clone was
+// marked for deletion (requestRemoveInstance). A hidden-only fade ends at alpha 0 and stays.
+inline bool fadeRemovesClone(bool removing, bool deleting)
+{
+    return removing && deleting;
 }
 } // namespace ALGhostCloneMenuLogic
 

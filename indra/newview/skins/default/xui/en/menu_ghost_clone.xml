@@ -97,6 +97,171 @@
     <menu_item_check.on_check function="GhostClone.CheckEdit" />
     <menu_item_check.on_enable function="GhostClone.EnableEdit" />
   </menu_item_check>
+  <context_menu
+   label="Look / turn"
+   name="Look Turn">
+    <context_menu
+     label="Look at"
+     name="Look At">
+      <menu_item_call
+       label="Camera"
+       name="Look Camera"
+       tool_tip="Keep the clone facing the camera.">
+        <menu_item_call.on_click function="GhostClone.Look" parameter="camera" />
+        <menu_item_call.on_enable function="GhostClone.EnableFace" />
+      </menu_item_call>
+      <menu_item_call
+       label="Me"
+       name="Look Me"
+       tool_tip="Keep the clone facing your avatar.">
+        <menu_item_call.on_click function="GhostClone.Look" parameter="me" />
+        <menu_item_call.on_enable function="GhostClone.EnableFace" />
+      </menu_item_call>
+      <context_menu
+       label="Nearby people"
+       name="Look Nearby">
+        <menu_item_call
+         label="No one nearby"
+         name="Nobody"
+         enabled="false" />
+      </context_menu>
+      <menu_item_call
+       label="Stop looking"
+       name="Look Stop"
+       tool_tip="Stop keeping the clone facing its look target.">
+        <menu_item_call.on_click function="GhostClone.Look" parameter="stop" />
+        <menu_item_call.on_enable function="GhostClone.EnableFace" />
+      </menu_item_call>
+    </context_menu>
+    <context_menu
+     label="Turn to face"
+     name="Turn To Face">
+      <menu_item_call
+       label="Camera"
+       name="Turn Camera"
+       tool_tip="Turn once to face the camera, then hold.">
+        <menu_item_call.on_click function="GhostClone.Turn" parameter="camera" />
+        <menu_item_call.on_enable function="GhostClone.EnableFace" />
+      </menu_item_call>
+      <menu_item_call
+       label="Me"
+       name="Turn Me"
+       tool_tip="Turn once to face your avatar, then hold.">
+        <menu_item_call.on_click function="GhostClone.Turn" parameter="me" />
+        <menu_item_call.on_enable function="GhostClone.EnableFace" />
+      </menu_item_call>
+      <context_menu
+       label="Nearby people"
+       name="Turn Nearby">
+        <menu_item_call
+         label="No one nearby"
+         name="Nobody"
+         enabled="false" />
+      </context_menu>
+      <menu_item_call
+       label="Stop turning"
+       name="Turn Stop"
+       tool_tip="Stop turning the clone toward its turn target.">
+        <menu_item_call.on_click function="GhostClone.Turn" parameter="stop" />
+        <menu_item_call.on_enable function="GhostClone.EnableFace" />
+      </menu_item_call>
+    </context_menu>
+  </context_menu>
+  <context_menu
+   label="Animation"
+   name="Animation">
+    <menu_item_call
+     label="Restart animation"
+     name="Restart animation"
+     tool_tip="Start the clone's animation again from its beginning (re-sync).">
+      <menu_item_call.on_click function="GhostClone.RestartAnim" />
+      <menu_item_call.on_enable function="GhostClone.EnableEntities" />
+    </menu_item_call>
+    <context_menu
+     label="Recent"
+     name="Recent Animations">
+      <menu_item_call
+       label="No recent animations"
+       name="Nobody"
+       enabled="false" />
+    </context_menu>
+  </context_menu>
+  <context_menu
+   label="Appearance"
+   name="Appearance">
+    <context_menu
+     label="Swap source"
+     name="Swap Source">
+      <menu_item_call
+       label="No cast members"
+       name="Nobody"
+       enabled="false" />
+    </context_menu>
+    <context_menu
+     label="Look"
+     name="Entity Look">
+      <menu_item_check
+       label="Normal"
+       name="look_normal">
+        <menu_item_check.on_click function="GhostClone.EntityLook" parameter="0" />
+        <menu_item_check.on_check function="GhostClone.CheckEntityLook" parameter="0" />
+        <menu_item_check.on_enable function="GhostClone.EnableEntities" />
+      </menu_item_check>
+      <menu_item_check
+       label="Apparition"
+       name="look_apparition">
+        <menu_item_check.on_click function="GhostClone.EntityLook" parameter="1" />
+        <menu_item_check.on_check function="GhostClone.CheckEntityLook" parameter="1" />
+        <menu_item_check.on_enable function="GhostClone.EnableEntities" />
+      </menu_item_check>
+      <menu_item_check
+       label="Hologram*"
+       name="look_hologram"
+       tool_tip="Starred looks are not built yet.">
+        <menu_item_check.on_click function="GhostClone.EntityLook" parameter="2" />
+        <menu_item_check.on_check function="GhostClone.CheckEntityLook" parameter="2" />
+        <menu_item_check.on_enable function="GhostClone.EnableEntities" />
+      </menu_item_check>
+      <menu_item_check
+       label="Chrome*"
+       name="look_chrome"
+       tool_tip="Starred looks are not built yet.">
+        <menu_item_check.on_click function="GhostClone.EntityLook" parameter="3" />
+        <menu_item_check.on_check function="GhostClone.CheckEntityLook" parameter="3" />
+        <menu_item_check.on_enable function="GhostClone.EnableEntities" />
+      </menu_item_check>
+      <menu_item_check
+       label="Toon*"
+       name="look_toon"
+       tool_tip="Starred looks are not built yet.">
+        <menu_item_check.on_click function="GhostClone.EntityLook" parameter="4" />
+        <menu_item_check.on_check function="GhostClone.CheckEntityLook" parameter="4" />
+        <menu_item_check.on_enable function="GhostClone.EnableEntities" />
+      </menu_item_check>
+      <menu_item_check
+       label="Silhouette*"
+       name="look_silhouette"
+       tool_tip="Starred looks are not built yet.">
+        <menu_item_check.on_click function="GhostClone.EntityLook" parameter="5" />
+        <menu_item_check.on_check function="GhostClone.CheckEntityLook" parameter="5" />
+        <menu_item_check.on_enable function="GhostClone.EnableEntities" />
+      </menu_item_check>
+    </context_menu>
+    <menu_item_call
+     label="Fade out"
+     name="Fade out"
+     tool_tip="Fade the clone out to invisible over the Crowd tab Fade out time. It stays hidden (never deleted) until Fade in.">
+      <menu_item_call.on_click function="GhostClone.Fade" parameter="out" />
+      <menu_item_call.on_enable function="GhostClone.EnableFade" parameter="out" />
+    </menu_item_call>
+    <menu_item_call
+     label="Fade in"
+     name="Fade in"
+     tool_tip="Fade a faded-out clone back in over the Crowd tab Fade in time.">
+      <menu_item_call.on_click function="GhostClone.Fade" parameter="in" />
+      <menu_item_call.on_enable function="GhostClone.EnableFade" parameter="in" />
+    </menu_item_call>
+  </context_menu>
   <menu_item_separator />
   <menu_item_call
    label="Freeze pose"
