@@ -265,6 +265,16 @@ public:
     const LLUUID& getAnchor() const { return mAnchor; }
     void setObjectTarget(const LLUUID& id);
     const LLUUID& getObjectTarget() const { return mObjectTarget; }
+    void setLitGroup(const std::string& name);
+    void renameLitGroup(const std::string& old_name, const std::string& new_name);
+    const std::string& getLitGroup() const { return mLitGroup; }
+    // Actual avatar identities after per-tick resolution; includes the own-subject fallback.
+    const uuid_vec_t& lastResolvedMembers() const { return mLastResolvedMembers; }
+    const uuid_vec_t& lastResolvedStoredMembers() const { return mLastResolvedStoredMembers; }
+    S32 litGroupPresent() const { return mLitGroupPresent; }
+    S32 litGroupSize() const { return mLitGroupSize; }
+    bool litGroupFallback() const { return mLitGroupFallback; }
+    bool litGroupWide() const { return mLitGroupWide; }
     void setGroupEnabled(bool enabled);
     bool isGroupEnabled() const { return mGroupEnabled; }
     void setGroupSlots(U32 mask);
@@ -431,6 +441,20 @@ private:
     ALCineLightRigSlot mSlot = ALCineLightRigSlot::SELF;
     LLUUID mAnchor;
     LLUUID mObjectTarget;
+    std::string mLitGroup;
+    uuid_vec_t mLitGroupMembers;
+    uuid_vec_t mLitRuntimeMembers;
+    F64 mLitMemberRetryAt = 0.0;
+    uuid_vec_t mLastResolvedMembers;
+    uuid_vec_t mLastResolvedStoredMembers;
+    LLUUID mGroupRepresentative;
+    bool mLitMembersDirty = true;
+    S32 mLitGroupPresent = 0;
+    U64 mLitCastRevision = 0;
+    U64 mLitGroupRevision = 0;
+    S32 mLitGroupSize = 0;
+    bool mLitGroupFallback = false;
+    bool mLitGroupWide = false;
     bool mGroupEnabled = false;
     U32 mGroupSlots = 0;
     U32 mLastResolvedGroupSlots = 0;

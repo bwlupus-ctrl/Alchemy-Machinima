@@ -60,6 +60,7 @@ public:
     static void notePointer(LLView*);
     void        watchSettings(const std::string&, const std::vector<std::string>&);
     void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
+    void        normalizeWidgetValue(LLUICtrl*, const LLSD& transient, const LLSD& final_value);
     void        recordCustom(LLView*, const std::string&, const std::string&, std::function<bool(bool, std::string&)>, bool join_gesture = false,
                              std::function<bool(bool, std::string&)> validate = {},
                              std::function<void(const LLUUID&, const LLUUID&)> rewrite_actor = {});
@@ -92,6 +93,9 @@ public:
     void        redo(const std::string& page);
     U64         revision() const { return mRevision; }
     void        registerContext(const std::string&, std::function<std::string(const std::string&)>);
+    using WidgetValidator = std::function<bool(const std::string&, const LLSD&, std::string&)>;
+    void registerWidgetValidator(const std::string& page, WidgetValidator validate)
+        { mWidgetValidators[page] = std::move(validate); }
     struct ScopedSuspend
     {
         ScopedSuspend();
@@ -133,5 +137,6 @@ private:
     std::unordered_map<std::string, std::vector<boost::signals2::scoped_connection>> mWatches;
     std::unordered_map<std::string, std::set<std::string>>                          mSettingPages;
     std::unordered_map<std::string, std::function<std::string(const std::string&)>>  mContexts;
+    std::unordered_map<std::string, WidgetValidator> mWidgetValidators;
 };
 #endif

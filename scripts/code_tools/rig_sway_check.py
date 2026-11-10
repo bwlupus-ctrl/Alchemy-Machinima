@@ -47,7 +47,7 @@ def main():
     (out / 'linden_common.h').write_text('#include "stdtypes.h"\n')
     controller = (ROOT / 'indra/newview/alcinelightrig.cpp').read_text(encoding='utf-8')
     tests = (ROOT / 'indra/newview/tests/alcinelightrigmodel_test.cpp').read_text(encoding='utf-8')
-    lines = [extended_shim(SHIM), '#include <limits>\n#include <stdexcept>',
+    lines = [extended_shim(SHIM), '#include <limits>\n#include <stdexcept>\n#include <boost/signals2.hpp>',
              'void set_test_name(const char* name){std::cout<<name<<"\\n";}',
              'void ensure(const char* name,bool ok){if(!ok)throw std::runtime_error(name);}',
              'template<class A,class B>void ensure_equals(const char* name,A a,B b){ensure(name,a==b);}']
@@ -86,7 +86,7 @@ def main():
                  'F32 offset[3];evalLightSway(mCurrentLive[0],12345,step/60.0,.56f,offset);}'
                  '}gTrackAllocations=false;assert(gAllocationCount==0);'
                  'std::cout<<"PASS: zero heap allocations in 1000 off + 1000 active computeLive/blend/FX handoff/render updates\\n";}')
-    for number in (120, 121, 122, 124, 125, 126, 127):
+    for number in (120, 121, 122, 124, 125, 126, 127, 134, 135, 136):
         signature = f'void cine_light_rig_model_object::test<{number}>()'
         lines.append(function(tests, signature).replace(signature, f'void test_{number}()'))
     library = llsd(ET.parse(ROOT / 'indra/newview/app_settings/cine_light_rig_presets.xml').getroot())
@@ -109,7 +109,7 @@ def main():
     assert bulb['lights'][0]['ev'] == 0 and bulb['lights'][0]['beam_idx'] == 0
     assert bulb['lights'][1]['yaw'] == -40 and bulb['lights'][1]['pitch'] == 10
     assert bulb['lights'][1]['ev'] == -4 and bulb['lights'][1]['beam_idx'] == 1
-    lines.append('int main(){test_120();test_121();test_122();test_124();test_125();test_126();test_127();testNoAllocations();LLSD authored;')
+    lines.append('int main(){test_120();test_121();test_122();test_124();test_125();test_126();test_127();test_134();test_135();test_136();testNoAllocations();LLSD authored;')
     cpp_data(bulb, 'authored', lines)
     lines.append('testRecovery(authored);')
     lines.append('''
@@ -155,10 +155,12 @@ def main():
     source = out / 'sway.cpp'
     source.write_text('\n'.join(lines), encoding='utf-8')
     vcvars = r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'
+    from native_check_tools import viewer_native_flags
+    boost_includes = ' '.join(f for f in viewer_native_flags()[0] if f.startswith('/I') and 'vcpkg' in f)
     build = out / 'build.cmd'
     build.write_text(f'@echo off\ncall "{vcvars}" >nul\n'
                      f'cl /nologo /std:c++20 /utf-8 /EHsc /O2 /Ob3 /arch:AVX2 /fp:fast /W3 /WX /I"{out}" '
-                     f'/I"{ROOT / "indra/newview"}" "{source}" '
+                     f'/I"{ROOT / "indra/newview"}" {boost_includes} "{source}" '
                      f'/Fe:"{out / "sway.exe"}" /Fo:"{out / "sway.obj"}"\nexit /b %ERRORLEVEL%\n')
     result = subprocess.run(['cmd', '/d', '/c', str(build)], cwd=out,
                             capture_output=True, text=True, timeout=120)
@@ -169,6 +171,37 @@ def main():
     (out / 'run.log').write_text(result.stdout + result.stderr, encoding='utf-8')
     print(result.stdout, end='')
     assert result.returncode == 0, result.stderr
+    # Each planted bug must fail the same executable assertions as production.
+    generated = source.read_text(encoding='utf8')
+    shutdown = function(controller, 'void ALCineLightRig::shutdown()')
+    negatives = {
+        'open_combo_baseline': ('combo && combo->isListVisible()', 'combo && false'),
+        'make_coalesced': ('history.normalizeWidgetValue(mLitTarget, LLSD("make"), baseline);', '/* planted coalesced baseline */'),
+        'make_left_open': ('            history.finishGesture();\n        }\n        std::string moved;', '        }\n        std::string moved;'),
+        'runtime_no_retry': ('&& retry)', '&& false && retry)'),
+        'runtime_unthrottled': ('const bool retry_members = member_now >= mLitMemberRetryAt;', 'const bool retry_members = true;'),
+        'open_combo_selection': ('if (!mLitTarget->isListVisible())\n            setValueIfChanged(mLitTarget,', 'if (true)\n            setValueIfChanged(mLitTarget,'),
+        'make_transient': ('history.normalizeWidgetValue(mLitTarget, LLSD("make"), LLSD(value));', '/* planted transient history */'),
+        'make_unjoined': ('}, true, validate,', '}, false, validate,'),
+        'scene_stale_names': ('setLitGroup(static_cast<Slot>(i), std::string());', '(void)i;'),
+        'missing_group_refusal': ('// Missing names are authored targets: fallback now, rebind by name later.',
+            'if(target.compare(0,6,"group:")==0 && LLDirectorCast::instance().membersInGroup(target.substr(6)).empty())return false;'),
+        'names_per_tick': ('auto* object = gObjectList.findObject(runtime[index]);', 'auto* object = LLDirectorCast::instance().resolve(runtime[index]);'),
+        'shutdown_stale': (shutdown, shutdown.replace('    mLastResolvedMembers.clear();', '')),
+        'representative_snap': ('if (group_members[i]->getID() == mGroupRepresentative)', 'if (group_members[i]->getID().isNull())'),
+    }
+    for name, (before, after) in negatives.items():
+        assert before in generated, name
+        source.write_text(generated.replace(before, after, 1), encoding='utf8')
+        compiled = subprocess.run(['cmd', '/d', '/c', str(build)], cwd=out, capture_output=True, text=True, timeout=120)
+        assert compiled.returncode == 0, (name, compiled.stdout, compiled.stderr)
+        planted = subprocess.run([str(out / 'sway.exe')], cwd=out, capture_output=True, text=True, timeout=30)
+        assert planted.returncode != 0, 'planted negative unexpectedly passed: ' + name
+        (out / (name + '.log')).write_text(planted.stdout + planted.stderr, encoding='utf8')
+        print('PASS: rejected planted ' + name, flush=True)
+    source.write_text(generated, encoding='utf8')
+    from rig_lit_group_check import run_registered_unit
+    run_registered_unit(ROOT)
     return 0
 
 

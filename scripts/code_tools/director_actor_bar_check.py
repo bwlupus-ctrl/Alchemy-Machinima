@@ -95,6 +95,8 @@ def reverse_feature_allowance(source, name, filename, digest, label):
 
 
 def reverse_director_groups_cast(source, name):
+    source = reverse_feature_allowance(source, name, "rig_lit_group_cast_hunks.json",
+        "35c6ab1cb0144851a6fe8201e9665431ee234db68cd89c4a7e3ccc950a9e0a17", "reviewed rig lit-group no-name resolution")
     # Groups integrate on top of rig-no-group; peel them before that older layer.
     return reverse_feature_allowance(source, name, "director_groups_cast_hunks.json",
         "320a044ff24581975b613b3d6defa3ffffe1cfe285dba574f61ad7a66c29f144", "reviewed Director groups cast")

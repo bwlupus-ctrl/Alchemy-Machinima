@@ -239,7 +239,7 @@ private:
     void clearGroupMergeConfirmation();
     void editGroupMembers(const uuid_vec_t& ids, const std::string& name, bool make = false);
     void selectGroupMembers(const std::string& name);
-    void recordGroupEdit(const ALDirectorGroups::GroupSnapshot& before, const std::string& label,
+    void recordGroupEdit(const ALDirectorGroups::GroupSnapshot& before, const LLSD& rigs_before, const std::string& label,
                          const std::string& renamed_from = {}, const std::string& renamed_to = {});
     void updateCastGroupMenu(LLContextMenu* menu);
 

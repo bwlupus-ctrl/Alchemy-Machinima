@@ -248,6 +248,17 @@ void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv,
     addEntry(std::move(e), label);
 }
 
+void ALKitHistory::normalizeWidgetValue(LLUICtrl* control, const LLSD& transient, const LLSD& final_value)
+{
+    if (suspended() || mReplaying || !control) return;
+    if (mOpen)
+        for (auto& entry : mOpen->entries)
+            if (entry.widget && entry.ctrl.get() == control && entry.newv == transient)
+                entry.newv = final_value;
+    if (auto* row = dynamic_cast<ALKitRow*>(control->getParent()))
+        row->mLastValue = final_value;
+}
+
 void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std::string& label,
                                  std::function<bool(bool, std::string&)> fn, bool join_gesture,
                                  std::function<bool(bool, std::string&)> validate,
@@ -483,6 +494,9 @@ bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string
     }
     for (Entry& entry : it->entries)
     {
+        auto validator = mWidgetValidators.find(entry.binding_page);
+        if (entry.widget && validator != mWidgetValidators.end() &&
+            !validator->second(entry.key, redo ? entry.newv : entry.oldv, reason)) return false;
         if (!entry.contextMatches(currentContext(entry.binding_page, entry.key)))
         {
             reason = "Skipped a change made on " + entry.context + ".";

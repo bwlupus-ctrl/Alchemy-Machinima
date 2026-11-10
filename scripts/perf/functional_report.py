@@ -1706,6 +1706,9 @@ def prepare_manifest(path: Path, repo: Path, output: Path, check: bool = False) 
 
         # Code-bound light-rig rows have live prerequisites/oracles that XUI
         # control_name scanning cannot infer.
+        if row.get("page") == "cine_light_rig_tab" and widget == "cine_lit_target":
+            row["consumer"] = "rig_lit_target"
+        # Native v1 compatibility rows retain their old mask oracle.
         group_slots = {
             "cine_group_self": 0, "cine_group_a": 1, "cine_group_b": 2,
             "cine_group_c": 3, "cine_group_d": 4,

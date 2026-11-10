@@ -549,7 +549,7 @@ struct cine_light_rig_model_data {};
 // geometry, transition continuity and persistence. 124..125 cover the bounded
 // mixture and repeated-interruption weight invariant. 126..127 cover
 // overflow continuity, endpoint ordering and 2000 random interruption chains.
-typedef test_group<cine_light_rig_model_data, 133> cine_light_rig_model_group;
+typedef test_group<cine_light_rig_model_data, 136> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -8130,6 +8130,47 @@ void cine_light_rig_model_object::test<133>()
         ensure_equals("scene preserves selected Subject", static_cast<S32>(selected), 3);
         ensure_equals("old settings still load", blobs[3].mRadius, 3.5f);
     }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<134>()
+{
+    for (S32 count : {6, 16})
+    {
+        F32 points[LIT_GROUP_MAX][3] = {}, scales[LIT_GROUP_MAX];
+        for (S32 i = 0; i < count; ++i) { points[i][0] = 2.f * i; scales[i] = 1.f; }
+        F32 centre[3];
+        groupBoundsCentre(points, count, centre);
+        ensure_equals("all members contribute to centre", centre[0], F32(count - 1));
+        ensure_equals("all members contribute to framing", groupSubjectScale(points, scales, count, centre, 2.f), 1.f + F32(count - 1) / 2.f);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<135>()
+{
+    ensure("object wins", resolveLitTarget(true, true, 6, true) == LitTarget::OBJECT);
+    ensure("group wins over legacy", resolveLitTarget(false, true, 1, true) == LitTarget::GROUP);
+    ensure("empty/missing/all-away group lights own subject", resolveLitTarget(false, true, 0, true) == LitTarget::SUBJECT);
+    ensure("legacy mask passthrough", resolveLitTarget(false, false, 0, true) == LitTarget::LEGACY);
+    ensure("default own subject", resolveLitTarget(false, false, 0, false) == LitTarget::SUBJECT);
+    // Planted dark-rig policy must fail the fallback oracle.
+    const auto bad = [](bool named, S32 here) { return named && !here ? LitTarget::GROUP : LitTarget::SUBJECT; };
+    ensure("dark fallback negative rejected", bad(true, 0) != resolveLitTarget(false, true, 0, true));
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<136>()
+{
+    std::string name = "guards";
+    renameLitGroup(name, "others", "wrong");
+    ensure_equals("unrelated rename ignored", name, std::string("guards"));
+    renameLitGroup(name, "guards", "crew");
+    ensure_equals("rename follows", name, std::string("crew"));
+    const std::vector<S32> ids{0, 7, 1, 2, 1, 3};
+    const auto unique = litGroupMembers(ids, [](S32 id) { return id == 0 ? 7 : id; });
+    ensure_equals("You in cast deduped against self", unique.size(), size_t(4));
+    ensure("cast order preserved", unique == std::vector<S32>({7, 1, 2, 3}));
 }
 
 } // namespace tut

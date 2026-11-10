@@ -18,14 +18,21 @@ template<class T> struct LLHandle {
 };
 struct LLView {
     virtual ~LLView()=default;
-    LLView* getParent() const { return nullptr; }
+    LLView* parent=nullptr;
+    LLView* getParent() const { return parent; }
 };
 struct LLUICtrl : LLView {
+    using commit_signal_t = boost::signals2::signal<void (LLUICtrl*, const LLSD&)>;
+    commit_signal_t* mCommitSignal=nullptr;
+    boost::signals2::connection setCommitCallback(const commit_signal_t::slot_type&);
     LLSD value;
+    std::string name;
+    std::function<void()> commit;
+    const std::string& getName() const { return name; }
     LLHandle<LLUICtrl> getHandle() { return {this}; }
     const LLSD& getValue() const { return value; }
-    void setValue(const LLSD& v) { value=v; }
-    void onCommit() { assert(false && "Unexpected widget replay"); }
+    virtual void setValue(const LLSD& v) { value=v; }
+    void onCommit() { if (mCommitSignal) (*mCommitSignal)(this,value); else if (commit) commit(); }
 };
 struct LLControlVariable {
     LLSD get() const { return {}; } int type() const { return 0; }
@@ -38,18 +45,23 @@ inline bool alUndoValuesEqual(int, const LLSD& a, const LLSD& b) { return a==b; 
 inline bool alUndoWidgetValuesEqual(const LLSD& a, const LLSD& b) { return a==b; }
 struct LLTimer { static F64 getTotalSeconds() { return 1.; } };
 inline U64 alNextUndoSequence() { static U64 sequence=0; return ++sequence; }
-namespace boost { namespace signals2 { struct scoped_connection {}; } }
 struct ALKitRow : LLView {
     std::string label;
+    LLSD mLastValue;
     void setDisplayLabel(const std::string& text) { label=text; }
     template<class C> static void setControlVisible(C* c, bool v) { c->visible=v; }
-    struct Meta { std::string setting; };
+    struct Meta { std::string setting, label; };
+    Meta mMeta;
+    void bindingChanged() {}
+    void connectHistory(LLUICtrl*);
     Meta meta() const { return {}; }
-    LLUICtrl* control() { return nullptr; }
-    void replayBoundValue(const LLSD&) { assert(false); }
+    LLUICtrl* bound=nullptr;
+    LLUICtrl* control() { return bound; }
+    void replayBoundValue(const LLSD& v) { assert(bound); bound->setValue(v); bound->onCommit(); }
 };
 struct ALKitPage : LLView {
     std::string pageKey() const { return "light_group/cine_light_rig_tab"; }
+    ALKitRow* findRowBySetting(const std::string&) { return nullptr; }
     void historyEdited(bool) {}
 };
 struct ALKitShell;
@@ -70,6 +82,7 @@ struct ALKitShell : LLView {
     ALKitHistory history_value;
     static ALKitShell* find(LLView*) { static ALKitShell shell; return &shell; }
     ALKitHistory& history() { return history_value; }
+    std::string pagePathLabel(const std::string&) { return {}; }
     ALKitPage* findBuiltPage(const std::string&) { return nullptr; }
     ALKitRow* resolveHistoryRow(const std::string&, const std::string&) { return nullptr; }
 };
@@ -77,6 +90,17 @@ ALKitHistory::ALKitHistory()=default;
 ALKitHistory::~ALKitHistory()=default;
 LLView* ALKitHistory::inputPage() { return nullptr; }
 ''']
+    ui = (root / 'indra/llui/lluictrl.cpp').read_text(encoding='utf8')
+    lines.append(function(ui, 'boost::signals2::connection LLUICtrl::setCommitCallback( const commit_signal_t::slot_type& cb )'))
+    row = (root / 'indra/newview/alkitrow.cpp').read_text(encoding='utf8')
+    start = row.index('[this](LLUICtrl* c, const LLSD&)', row.index('mHistoryConnection ='))
+    brace = row.index('{', start)
+    depth, end = 1, brace + 1
+    while depth:
+        depth += (row[end] == '{') - (row[end] == '}')
+        end += 1
+    observer = row[start:end]
+    lines.append('void ALKitRow::connectHistory(LLUICtrl* c){c->setCommitCallback(' + observer + ');}')
     for signature in (
             'ALKitHistory::ScopedSuspend::ScopedSuspend()',
             'ALKitHistory::ScopedSuspend::~ScopedSuspend()',
@@ -85,6 +109,9 @@ LLView* ALKitHistory::inputPage() { return nullptr; }
             'ALKitHistory::ScopedReplay::~ScopedReplay()',
             'bool ALKitHistory::replaying()',
             'void ALKitHistory::beginGesture(',
+            'void ALKitHistory::recordWidget(',
+            'void ALKitHistory::addEntry(',
+            'void ALKitHistory::normalizeWidgetValue(',
             'void ALKitHistory::recordCustom(',
             'void ALKitHistory::finishGesture()',
             'std::string ALKitHistory::currentContext(',

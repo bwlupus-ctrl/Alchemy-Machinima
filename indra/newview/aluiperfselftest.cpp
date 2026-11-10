@@ -2816,6 +2816,12 @@ private:
             if (field == "cone_width")
                 return ALCineLightRigModel::easyConeWidthFromBeam(blob.mLights[index].mBeam);
         }
+        if (consumer == "rig_lit_target")
+        {
+            const auto& rig = ALCineLightRigManager::instance().selected();
+            return !rig.getLitGroup().empty() ? "group:" + rig.getLitGroup()
+                : rig.isGroupEnabled() ? std::string("legacy") : std::string("subject");
+        }
         if (consumer == "rig_group_slots")
             return static_cast<S32>(ALCineLightRigManager::instance().selected().getGroupSlots());
         if (consumer == "catchlight_enabled")
@@ -2935,6 +2941,11 @@ private:
                 value, control->getValue(),
                 entry["widget_type"].asString() == "toggle" ? "Boolean" : "S32",
                 entry["increment"]);
+        }
+        if (consumer == "rig_lit_target")
+        {
+            LLUICtrl* control = mFunctionalControl.get();
+            return control && value.asString() == control->getValue().asString();
         }
         if (consumer == "rig_group_slots")
         {

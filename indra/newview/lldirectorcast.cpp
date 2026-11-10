@@ -2017,7 +2017,7 @@ F32 LLDirectorCast::evaluateGazeInfluence(const GazeInfluenceKeyList& keys,
 // ---------------------------------------------------------------------------
 // resolution
 // ---------------------------------------------------------------------------
-LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
+LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id, bool refresh_name)
 {
     if (isSelf(id))
     {
@@ -2053,7 +2053,7 @@ LLVOAvatar* LLDirectorCast::resolve(const LLUUID& id)
     }
     // refresh the cached display name whenever one is available, so the
     // cast list can keep labelling an actor who later leaves the region
-    if (CastMember* m = getMember(actor_id))
+    if (CastMember* m = refresh_name ? getMember(actor_id) : nullptr)
     {
         std::string name = av->getFullname();
         if (!name.empty() && name != m->mLastName)

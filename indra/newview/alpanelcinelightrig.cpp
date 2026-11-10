@@ -710,15 +710,23 @@ bool ALPanelCineLightRig::postBuild()
     mObjectTargetButton = getChild<LLButton>("cine_target_object");
     mObjectTargetClear = getChild<LLButton>("cine_clear_object");
     mObjectTargetStatus = getChild<LLTextBox>("cine_object_target_status");
-    mGroupEnable = getChild<LLCheckBoxCtrl>("cine_group_enable");
-    mGroupStatus = getChild<LLTextBox>("cine_group_status");
+    mLitTarget = findChild<LLComboBox>("cine_lit_target");
+    mLitMembers = findChild<LLTextBox>("cine_lit_members");
+    mLitFallback = findChild<LLTextBox>("cine_lit_fallback");
+    mLitCap = findChild<LLTextBox>("cine_lit_cap");
+    mLitActorOnly = findChild<LLTextBox>("cine_lit_actor_only");
+    mLitWide = findChild<LLTextBox>("cine_lit_wide");
+    if (mLitTarget) mLitTarget->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&) { onLitTargetCommit(); });
+    mGroupEnable = findChild<LLCheckBoxCtrl>("cine_group_enable");
+    mGroupStatus = findChild<LLTextBox>("cine_group_status");
     const char* const group_slot_names[5] = {
         "cine_group_self", "cine_group_a", "cine_group_b",
         "cine_group_c", "cine_group_d",
     };
     for (S32 i = 0; i < 5; ++i)
     {
-        mGroupSlotChecks[i] = getChild<LLCheckBoxCtrl>(group_slot_names[i]);
+        mGroupSlotChecks[i] = findChild<LLCheckBoxCtrl>(group_slot_names[i]);
     }
     mSetupCombo = getChild<LLComboBox>("cine_setup_combo");
     mFlarePreset = getChild<LLComboBox>("cine_flare_preset");
@@ -851,11 +859,11 @@ bool ALPanelCineLightRig::postBuild()
         [this](LLUICtrl*, const LLSD&) { onTargetObject(); });
     mObjectTargetClear->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClearObjectTarget(); });
-    mGroupEnable->setCommitCallback(
+    if (mGroupEnable) mGroupEnable->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onGroupEnabledCommit(); });
     for (LLCheckBoxCtrl* control : mGroupSlotChecks)
     {
-        control->setCommitCallback(
+        if (control) control->setCommitCallback(
             [this](LLUICtrl*, const LLSD&) { onGroupSlotsCommit(); });
     }
     mSetupCombo->setCommitCallback(
@@ -1061,6 +1069,7 @@ bool ALPanelCineLightRig::postBuild()
             const auto& look_settings = ALPresetLook::owned(ALPresetLook::LIGHT_RIG);
             if (std::find(look_settings.begin(), look_settings.end(), widget) != look_settings.end())
                 return std::string(slots[slot]) + " rig";
+            if (widget == "cine_lit_target") return std::string(slots[slot]) + " rig";
             // Global rig widgets and saved settings do not follow light selection.
             if (widget.find("cine_fixture_") == 0 || widget == "cine_gobo_library" || widget == "cine_gobo_preview")
                 return std::string(slots[slot]) + " rig, " + ROLE_NAMES[fixture] + " fixture";
@@ -1069,6 +1078,32 @@ bool ALPanelCineLightRig::postBuild()
                     return std::string(slots[slot]) + " rig";
             return std::string();
         });
+        shell->history().registerWidgetValidator("light_group/cine_light_rig_tab",
+            [handle](const std::string& widget, const LLSD& value, std::string& reason)
+            {
+                if (widget != "cine_lit_target") return true;
+                if (!validateLitTarget(value, reason)) return false;
+                const std::string target = value.asString();
+                if (target.compare(0, 6, "group:") == 0)
+                    if (auto* panel = handle.get(); panel && panel->mLitTarget &&
+                        std::find(panel->mLitTargetValues.begin(), panel->mLitTargetValues.end(), target) == panel->mLitTargetValues.end())
+                    {
+                        panel->mLitTarget->add("Group: " + target.substr(6) + " (0)", target);
+                        panel->mLitTargetValues.push_back(target);
+                        panel->mLitTargetForceRefresh = true;
+                    }
+                if (target == "legacy")
+                {
+                    if (auto* panel = handle.get(); panel && panel->mLitTarget &&
+                        std::find(panel->mLitTargetValues.begin(), panel->mLitTargetValues.end(), "legacy") == panel->mLitTargetValues.end())
+                    {
+                        panel->mLitTarget->add("Custom (old scene)", "legacy");
+                        panel->mLitTargetValues.push_back("legacy"); panel->mLitTargetForceRefresh = true;
+                    }
+                    return true;
+                }
+                return true;
+            });
         if (ALKitPage* page = findChild<ALKitPage>("cine_light_rig_kit"))
             page->setAvailabilityRefresh([handle]()
             {
@@ -1600,6 +1635,7 @@ std::string ALPanelCineLightRig::rigTargetDescription(S32 slot)
 {
     const auto& rig = ALCineLightRigManager::instance().at(
         static_cast<ALCineLightRigManager::Slot>(slot));
+    if (!rig.getLitGroup().empty() && rig.getObjectTarget().isNull()) return "group " + rig.getLitGroup();
     // Object targeting overrides both group mode and the slot assignment in tick().
     if (rig.getObjectTarget().notNull())
         return rig.getObjectTarget().asString().substr(0, 8) + " (object)";
@@ -1638,6 +1674,11 @@ void ALPanelCineLightRig::updateAnchorList()
     LLDirectorCast& cast = LLDirectorCast::instance();
     ALCineLightRigManager& manager = ALCineLightRigManager::instance();
     const U64 subject_revision = cast.getActorChoiceRevision();
+    if (mAnchorCastGroupRevision != cast.getGroupRevision())
+    {
+        mAnchorCastGroupRevision = cast.getGroupRevision();
+        mCastListInitialized = false;
+    }
     if (subject_revision != mSubjectChoiceRevision)
     {
         mSubjectChoiceRevision = subject_revision;
@@ -1665,6 +1706,12 @@ void ALPanelCineLightRig::updateAnchorList()
         const auto& rig = manager.at(static_cast<ALCineLightRigManager::Slot>(value));
         group_states[value] = (rig.isGroupEnabled() ? 1u : 0u) |
             (rig.getGroupSlots() << 1) | (rig.lastResolvedGroupSlots() << 6);
+        if (mAnchorLitGroups[value] != rig.getLitGroup() || mAnchorLitMembers[value] != rig.lastResolvedMembers())
+        {
+            mAnchorLitGroups[value] = rig.getLitGroup();
+            mAnchorLitMembers[value] = rig.lastResolvedMembers();
+            mCastListInitialized = false;
+        }
         object_targets[value] = rig.getObjectTarget();
         if (anchor_ids[value].notNull())
             assigned_slots |= 1u << value;
@@ -1717,8 +1764,8 @@ void ALPanelCineLightRig::updateAnchorList()
             continue;
         const auto& rig = manager.at(slot);
         std::string label = value == 0 ? "You" : llformat("Subject %c", 'A' + value - 1);
-        if (value != 0 || rig.getAnchor().notNull() || rig.isGroupEnabled() || rig.getObjectTarget().notNull())
-            label += " \xE2\x80\x93 " + rigTargetDescription(value);
+        if (value != 0 || rig.getAnchor().notNull() || rig.isGroupEnabled() || !rig.getLitGroup().empty() || rig.getObjectTarget().notNull())
+            label += ": " + rigTargetDescription(value);
         ids.push_back(id);
         labels.push_back(label);
         values.push_back(value);
@@ -2018,6 +2065,110 @@ void ALPanelCineLightRig::onClearObjectTarget()
     updateAnchorList();
 }
 
+bool ALPanelCineLightRig::validateLitTarget(const LLSD& value, std::string& reason)
+{
+    const std::string target = value.asString();
+    // Missing names are authored targets: fallback now, rebind by name later.
+    if (target == "make") { reason = "Transient Lights action"; return false; }
+    return true;
+}
+
+void ALPanelCineLightRig::onLitTargetCommit()
+{
+    auto& rig = ALCineLightRigManager::instance().selected();
+    auto& cast = LLDirectorCast::instance();
+    std::string value = mLitTarget->getValue().asString();
+    const bool make = value == "make";
+    auto before = cast.captureGroups();
+    if (make)
+        if (auto* shell = ALKitShell::find(this))
+        {
+            auto& history = shell->history();
+            const LLSD baseline(!rig.getLitGroup().empty() ? "group:" + rig.getLitGroup()
+                : rig.isGroupEnabled() ? "legacy" : "subject");
+            // The row observer already recorded Make, possibly coalescing it with
+            // an earlier choice. Flush that choice before creating this action.
+            history.normalizeWidgetValue(mLitTarget, LLSD("make"), baseline);
+            history.finishGesture();
+            history.recordWidget(mLitTarget, baseline, LLSD("make"), "Make group");
+        }
+    uuid_vec_t made_ids;
+    // Normalize the isolated widget action to the created group's final value.
+    mLitTargetForceRefresh = true;
+    if (value == "legacy")
+    {
+        if (!ALKitHistory::replaying()) return;
+        ALCineLightRigManager::instance().setLitGroup(ALCineLightRigManager::instance().selectedSlot(), std::string());
+        rig.setGroupEnabled(true);
+        syncGroupControls();
+        return;
+    }
+    if (value == "make")
+    {
+        cast.add(gAgentID);
+        before = cast.captureGroups();
+        uuid_vec_t ids{gAgentID};
+        for (const LLUUID& id : {cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD()})
+            if (id.notNull() && std::find(ids.begin(), ids.end(), id) == ids.end()) ids.push_back(id);
+        made_ids = ids;
+        value = "group:" + cast.makeGroup(ids);
+    }
+    ALCineLightRigManager::instance().setLitGroup(ALCineLightRigManager::instance().selectedSlot(),
+        value.compare(0, 6, "group:") == 0 ? value.substr(6) : std::string());
+    rig.setGroupEnabled(false);
+    mCastListInitialized = false;
+    syncGroupControls();
+    updateAnchorList();
+    if (make)
+    {
+        if (auto* shell = ALKitShell::find(this))
+        {
+            auto& history = shell->history();
+            history.normalizeWidgetValue(mLitTarget, LLSD("make"), LLSD(value));
+            // Membership belongs to the custom entry; the widget owns the binding.
+            struct Edit { ALDirectorGroups::GroupSnapshot before, after; };
+            auto edit = std::make_shared<Edit>(Edit{before, cast.captureGroups()});
+            auto validate = [edit](bool redo, std::string& reason)
+            {
+                auto current = LLDirectorCast::instance().captureGroups();
+                if (ALDirectorGroups::patchDelta(current, redo ? edit->before : edit->after,
+                    redo ? edit->after : edit->before, false)) return true;
+                reason = "An edited group value changed or a member left the cast";
+                return false;
+            };
+            history.recordCustom(mLitTarget, "rig_make_group", "Make group",
+                [edit, validate](bool redo, std::string& reason)
+                {
+                    if (!validate(redo, reason)) return false;
+                    auto& cast = LLDirectorCast::instance();
+                    auto current = cast.captureGroups();
+                    ALDirectorGroups::patchDelta(current, redo ? edit->before : edit->after,
+                        redo ? edit->after : edit->before, true);
+                    cast.restoreGroups(current);
+                    return true;
+                }, true, validate,
+                [edit](const LLUUID& old_id, const LLUUID& new_id)
+                {
+                    edit->before.rewriteActor(old_id, new_id);
+                    edit->after.rewriteActor(old_id, new_id);
+                });
+            history.finishGesture();
+        }
+        std::string moved;
+        for (const auto& id : made_ids)
+        {
+            auto old = before.tags.find(id);
+            const auto* member = cast.getMember(id);
+            if (!member || old == before.tags.end() || old->second.empty() || old->second == member->mGroup) continue;
+            if (!moved.empty()) moved += ", ";
+            moved += (member->mLastName.empty() ? id.asString() : member->mLastName) + " from '" + old->second + "'";
+        }
+        std::string message = llformat("Made '%s' (%d). Rename in Cast > Groups", rig.getLitGroup().c_str(), (S32)cast.membersInGroup(rig.getLitGroup()).size());
+        if (!moved.empty()) message += ". Moved " + moved;
+        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", message));
+    }
+}
+
 void ALPanelCineLightRig::onGroupEnabledCommit()
 {
     if (mGroupEnable->getValue().asBoolean())
@@ -2090,10 +2241,111 @@ void ALPanelCineLightRig::commitGroupState(U32 slots, bool enabled)
     }
 }
 
+// ui-draw-lint: allow-function(raw-write) combo rebuild is revision/target gated and deferred while its list is open
 void ALPanelCineLightRig::syncGroupControls()
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
+    if (mLitTarget)
+    {
+        const auto actorName = [&cast](const LLUUID& id) -> std::string
+        {
+            if (id.isNull() || LLDirectorCast::isSelf(id)) return "You";
+            if (const auto* member = cast.getMember(id); member && !member->mLastName.empty()) return member->mLastName;
+            return id.asString();
+        };
+        const S32 slot = static_cast<S32>(ALCineLightRigManager::instance().selectedSlot());
+        const LLUUID ids[] = { rig.getAnchor(), cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+        const bool legacy = rig.getLitGroup().empty() && rig.isGroupEnabled();
+        if (!mLitTarget->isListVisible() && (mLitTargetForceRefresh || mLitComboCastRevision != cast.getActorChoiceRevision() ||
+            mLitComboGroupRevision != cast.getGroupRevision() || mLitComboSlot != slot ||
+            mLitComboGroup != rig.getLitGroup() || mLitComboSlots != rig.getGroupSlots() || mLitComboLegacy != legacy))
+        {
+            const std::string subject = slot == 0 ? actorName(ids[0])
+                : llformat("Subject %c, ", 'A' + slot - 1) + (ids[slot].isNull() ? "not set" : actorName(ids[slot]));
+            std::vector<std::string> labels{ "This rig's subject: " + subject }, values{ "subject" };
+            for (const auto& name : cast.getGroupNames())
+            {
+                labels.push_back("Group: " + name + llformat(" (%d)", static_cast<S32>(cast.membersInGroup(name).size())));
+                values.push_back("group:" + name);
+            }
+            if (!rig.getLitGroup().empty() && std::find(values.begin(), values.end(), "group:" + rig.getLitGroup()) == values.end())
+            {
+                labels.push_back("Group: " + rig.getLitGroup() + " (0)");
+                values.push_back("group:" + rig.getLitGroup());
+            }
+            if (legacy)
+            {
+                std::string custom;
+                for (S32 i = 0; i < 5; ++i) if (rig.getGroupSlots() & (1u << i))
+                {
+                    if (!custom.empty()) custom += " + ";
+                    custom += i == 0 ? "You" : llformat("%c", 'A' + i - 1);
+                }
+                labels.push_back("Custom (old scene): " + custom); values.push_back("legacy");
+            }
+            labels.push_back("Make a group..."); values.push_back("make");
+            if (!mLitTarget->isListVisible())
+            {
+                mLitTarget->removeall();
+                for (size_t i = 0; i < labels.size(); ++i) mLitTarget->add(labels[i], values[i]);
+                mLitTargetLabels = labels; mLitTargetValues = values;
+                mLitComboCastRevision = cast.getActorChoiceRevision();
+                mLitComboGroupRevision = cast.getGroupRevision();
+                mLitComboSlot = slot;
+                mLitComboGroup = rig.getLitGroup();
+                mLitComboSlots = rig.getGroupSlots();
+                mLitComboLegacy = legacy;
+                mLitTargetForceRefresh = false;
+            }
+        }
+        if (!mLitTarget->isListVisible())
+            setValueIfChanged(mLitTarget, LLSD(!rig.getLitGroup().empty() ? "group:" + rig.getLitGroup() : legacy ? "legacy" : "subject"), true);
+        setEnabledIfChanged(mLitTarget, rig.getObjectTarget().isNull());
+        std::string names;
+        for (const auto& id : rig.lastResolvedStoredMembers())
+        {
+            if (!names.empty()) names += ", ";
+            names += actorName(id);
+        }
+        if (rig.getLitGroup().empty() || rig.getObjectTarget().notNull()) names = rigTargetDescription(slot);
+        else names += llformat(" (%d of %d here)", static_cast<S32>(rig.litGroupFallback() ? 0 : rig.lastResolvedMembers().size()), rig.litGroupSize());
+        const bool on = ALCineLightRigManager::instance().isSlotEnabled(
+            static_cast<ALCineLightRigManager::Slot>(slot));
+        const bool no_subject = slot != 0 && ids[slot].isNull();
+        if (!on) names = "Off";
+        else if (no_subject && rig.lastResolvedMembers().empty() && rig.getObjectTarget().isNull()) names = "No subject assigned";
+        setTextIfChanged(mLitMembers, "Lit now: " + names);
+        setToolTipIfChanged(mLitMembers, "Lit now: " + names);
+        const auto chip = [](LLTextBox* control, const std::string& text)
+        {
+            setTextIfChanged(control, text);
+            ALKitRow::setControlVisible(control, !text.empty());
+        };
+        chip(mLitFallback, on && rig.getObjectTarget().isNull() && rig.litGroupFallback()
+            ? (no_subject ? "Group empty, missing or away: no subject assigned" : "Group empty, missing or away: lighting this rig's subject") : "");
+        chip(mLitCap, on && rig.getObjectTarget().isNull() && rig.litGroupPresent() > ALCineLightRigModel::LIT_GROUP_MAX
+            ? llformat("Lighting the first 16 of %d", rig.litGroupPresent()) : "");
+        auto& manager = ALCineLightRigManager::instance();
+        S32 unlit = manager.actorOnlyUnlit(rig.lastResolvedMembers());
+        bool actor_only = rig.actorOnlyAll() || rig.catchlightActorOnlyEffective();
+        for (S32 i = 0; i < ALCineLightRigModel::LIGHT_COUNT; ++i) actor_only |= rig.lightActorOnly(i);
+        chip(mLitActorOnly, on && rig.getObjectTarget().isNull() && actor_only && manager.actorOnlyOverflow() && unlit > 0
+            ? llformat("Actor-only lights reach 6 people; %d members aren't lit by actor-only lights", unlit) : "");
+        chip(mLitWide, on && rig.getObjectTarget().isNull() && rig.litGroupWide() ? "Wide spread: group framing has reached the light radius limit" : "");
+        return;
+    }
+    if (!mGroupEnable) return;
+    const bool legacy_controls = rig.getLitGroup().empty() && (rig.isGroupEnabled() || rig.getGroupSlots() != 0);
+    ALKitRow::setControlVisible(mGroupEnable, legacy_controls);
+    if (!legacy_controls)
+    {
+        for (auto* control : mGroupSlotChecks) ALKitRow::setControlVisible(control, false);
+        mDisplayedGroupSlots = ~0u;
+        setTextIfChanged(mGroupStatus, rig.getLitGroup().empty() ? std::string() : "Group: " + rig.getLitGroup() + " (edit in Director)");
+        return;
+    }
+    ALKitRow::setControlVisible(mGroupSlotChecks[0], true);
     const bool enabled = rig.isGroupEnabled();
     const U32 slots = rig.getGroupSlots();
     const U32 resolved = rig.lastResolvedGroupSlots();
@@ -2109,7 +2361,7 @@ void ALPanelCineLightRig::syncGroupControls()
         return;
     }
 
-    setEnabledIfChanged(mGroupEnable, object_target.isNull());
+    setEnabledIfChanged(mGroupEnable, object_target.isNull() && rig.getLitGroup().empty());
     const LLUUID subjects[] = { cast.getSubjectA(), cast.getSubjectB(),
                                 cast.getSubjectC(), cast.getSubjectD() };
     U32 self_slot_mask = 1u;
@@ -2122,7 +2374,7 @@ void ALPanelCineLightRig::syncGroupControls()
         const bool duplicate_self = i > 0 && (self_slot_mask & (1u << i));
         setValueIfChanged(mGroupSlotChecks[i], LLSD((i == 0 || duplicate_self)
             ? self_selected : (slots & (1u << i)) != 0), true);
-        setEnabledIfChanged(mGroupSlotChecks[i], object_target.isNull());
+        setEnabledIfChanged(mGroupSlotChecks[i], object_target.isNull() && rig.getLitGroup().empty());
     }
     std::string self_letters;
     for (S32 i = 0; i < 4; ++i)

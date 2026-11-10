@@ -11,6 +11,22 @@
       "TOOLING": 444
     },
     "dirty_product_inputs": [
+      "indra/newview/alcinelightrig.cpp",
+      "indra/newview/alcinelightrig.h",
+      "indra/newview/alcinelightrigmanager.cpp",
+      "indra/newview/alcinelightrigmanager.h",
+      "indra/newview/alcinelightrigmodel.h",
+      "indra/newview/aldirectoralloff.cpp",
+      "indra/newview/alkithistory.cpp",
+      "indra/newview/alkithistory.h",
+      "indra/newview/alkitrow.cpp",
+      "indra/newview/alpanelcinelightrig.cpp",
+      "indra/newview/alpanelcinelightrig.h",
+      "indra/newview/aluiperfselftest.cpp",
+      "indra/newview/lldirectorcast.cpp",
+      "indra/newview/lldirectorcast.h",
+      "indra/newview/llfloaterdirector.cpp",
+      "indra/newview/llfloaterdirector.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
@@ -54,7 +70,22 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
+      "indra/newview/tests/alcinelightrigmodel_test.cpp",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_all_off_check.py",
+      "scripts/code_tools/director_functional_manifest.py",
+      "scripts/code_tools/director_groups_check.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit/kit_pages.json",
+      "scripts/code_tools/director_kit_gen.py",
+      "scripts/code_tools/director_page_sources.py",
+      "scripts/code_tools/rig_group_history_check.py",
+      "scripts/code_tools/rig_session_ui_check.py",
+      "scripts/code_tools/rig_subject_assignment_check.py",
+      "scripts/code_tools/rig_sway_check.py",
+      "scripts/code_tools/rig_sway_recovery.py",
+      "scripts/perf/functional_report.py"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -68,14 +99,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "0993231540bc0cc74f711386ab9bceb550647ff54049d423ff8a14fadcc614ae",
+        "csv_sha256": "e0c55bd1d82ba97b03bad7384d09ed3d29d38528f81fbfec9354b49cd9bf2db6",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4791,
+        "entries": 4786,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -118,9 +149,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2575,
+        "generated_kit_rows": 2574,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2170,
+        "interactive_rows": 2166,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -173,7 +204,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 847
+        "xui_files": 846
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -230,19 +261,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2297,
+        "independent_json_rows": 2298,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2297,
+        "rows": 2298,
         "unresolved_rows": 76
       },
-      "wiring_rows": 2297
+      "wiring_rows": 2298
     },
-    "head_source_tree": "4f6c3f67d45dd49e1c1ae5bb0ffe537c7b696854",
+    "head_source_tree": "e6d50dde1096f9f9fc2ac260a3325f3615d6dd74",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "e7cc5b0dc374086a5e279179915c79e81fa1fe7f7aa8fb3d073d88f7febe1586",
+    "input_sha256": "87a79c39d990ed932382e62de59546392b7b810807081dccb5800a6c34c08f3f",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",

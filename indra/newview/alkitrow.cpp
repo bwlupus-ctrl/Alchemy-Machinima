@@ -137,6 +137,9 @@ bool baselineEditActive(const LLView* control)
 {
     if (!control)
         return false;
+    // Keyboard navigation changes a combo value before Enter commits it.
+    if (const auto* combo = dynamic_cast<const LLComboBox*>(control); combo && combo->isListVisible())
+        return true;
     if (gFocusMgr.childHasMouseCapture(control))
         return true;
     LLView* focus = dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus());
