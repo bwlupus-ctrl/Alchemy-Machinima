@@ -114,7 +114,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@186,55", "indra/newview/CMakeLists.txt@335,123", "indra/newview/CMakeLists.txt@1129,13", "indra/newview/CMakeLists.txt@1144,59", "indra/newview/CMakeLists.txt@1300,176", "indra/newview/CMakeLists.txt@2870,32", "indra/newview/CMakeLists.txt@2976,197"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@170,13", "indra/newview/CMakeLists.txt@186,55", "indra/newview/CMakeLists.txt@335,123", "indra/newview/CMakeLists.txt@1129,13", "indra/newview/CMakeLists.txt@1144,59", "indra/newview/CMakeLists.txt@1300,178", "indra/newview/CMakeLists.txt@2872,32", "indra/newview/CMakeLists.txt@2978,197"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14799", "indra/newview/app_settings/settings.xml@23031,412", "indra/newview/app_settings/settings.xml@23579,362", "indra/newview/app_settings/settings.xml@29270,100", "indra/newview/app_settings/settings.xml@29415,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@1728,12", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5809,129", "indra/newview/llappviewer.cpp@5993,30", "indra/newview/llappviewer.cpp@6493,45"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@30,11", "indra/newview/alchatcommand.cpp@57,31", "indra/newview/alchatcommand.cpp@372,747"]}
@@ -241,7 +241,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 192, "text": "alavatarstaging.cpp", "source": "indra/newview/alavatarstaging.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1150, "text": "alavatarstaging.h", "source": "indra/newview/alavatarstaging.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 193, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2885, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2887, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1151, "text": "alavatarstagingmodel.h", "source": "indra/newview/alavatarstagingmodel.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 185, "text": "alchatcommand.cpp", "source": "indra/newview/alchatcommand.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1215, "text": "alcineflycamhandover.h", "source": "indra/newview/alcineflycamhandover.h"}
@@ -249,7 +249,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 190, "text": "aldanceball.cpp", "source": "indra/newview/aldanceball.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1148, "text": "aldanceball.h", "source": "indra/newview/aldanceball.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 191, "text": "aldanceballmodel.cpp", "source": "indra/newview/aldanceballmodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2884, "text": "aldanceballmodel.cpp", "source": "indra/newview/aldanceballmodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2886, "text": "aldanceballmodel.cpp", "source": "indra/newview/aldanceballmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1149, "text": "aldanceballmodel.h", "source": "indra/newview/aldanceballmodel.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 203, "text": "aldirectoralloff.cpp", "source": "indra/newview/aldirectoralloff.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 189, "text": "aldirectoranimswitcher.cpp", "source": "indra/newview/aldirectoranimswitcher.cpp"}
@@ -261,12 +261,12 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 420, "text": "alfloatergazecues.cpp", "source": "indra/newview/alfloatergazecues.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1412, "text": "alfloatergazecues.h", "source": "indra/newview/alfloatergazecues.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 348, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2877, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2879, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1317, "text": "alformationsolver.h", "source": "indra/newview/alformationsolver.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1456, "text": "algazeblink.h", "source": "indra/newview/algazeblink.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1459, "text": "algazehot.h", "source": "indra/newview/algazehot.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1460, "text": "algazehotslots.h", "source": "indra/newview/algazehotslots.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1461, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1463, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1458, "text": "algazepolicy.h", "source": "indra/newview/algazepolicy.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1455, "text": "algazerecruit.h", "source": "indra/newview/algazerecruit.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1311, "text": "alghostattachmentenumerator.h", "source": "indra/newview/alghostattachmentenumerator.h"}
@@ -283,17 +283,17 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 427, "text": "alpanelanimpreview.cpp", "source": "indra/newview/alpanelanimpreview.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1421, "text": "alpanelanimpreview.h", "source": "indra/newview/alpanelanimpreview.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 445, "text": "alpaneldanceball.cpp", "source": "indra/newview/alpaneldanceball.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1463, "text": "alpaneldanceball.h", "source": "indra/newview/alpaneldanceball.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1465, "text": "alpaneldanceball.h", "source": "indra/newview/alpaneldanceball.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 446, "text": "alpaneldirectoranimswitcher.cpp", "source": "indra/newview/alpaneldirectoranimswitcher.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1464, "text": "alpaneldirectoranimswitcher.h", "source": "indra/newview/alpaneldirectoranimswitcher.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1468, "text": "alpanelflycamrecorder.h", "source": "indra/newview/alpanelflycamrecorder.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1466, "text": "alpaneldirectoranimswitcher.h", "source": "indra/newview/alpaneldirectoranimswitcher.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1470, "text": "alpanelflycamrecorder.h", "source": "indra/newview/alpanelflycamrecorder.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 434, "text": "alpanelgazecues.cpp", "source": "indra/newview/alpanelgazecues.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1428, "text": "alpanelgazecues.h", "source": "indra/newview/alpanelgazecues.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 407, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1394, "text": "alpanelghoststudio.h", "source": "indra/newview/alpanelghoststudio.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 444, "text": "alpanellensgaze.cpp", "source": "indra/newview/alpanellensgaze.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 451, "text": "alpanelpatheditor.cpp", "source": "indra/newview/alpanelpatheditor.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1469, "text": "alpanelpatheditor.h", "source": "indra/newview/alpanelpatheditor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1471, "text": "alpanelpatheditor.h", "source": "indra/newview/alpanelpatheditor.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 408, "text": "alpanelpropmover.cpp", "source": "indra/newview/alpanelpropmover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1397, "text": "alpanelpropmover.h", "source": "indra/newview/alpanelpropmover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1415, "text": "alpaneltemporalcapture.h", "source": "indra/newview/alpaneltemporalcapture.h"}
@@ -309,7 +309,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 280, "text": "alviewermenu.cpp", "source": "indra/newview/alviewermenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 179, "text": "animationexplorer.cpp", "source": "indra/newview/animationexplorer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1138, "text": "animationexplorer.h", "source": "indra/newview/animationexplorer.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2330, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2332, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 281, "text": "fsfloaterposer.cpp", "source": "indra/newview/fsfloaterposer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 285, "text": "fsmaniprotatejoint.cpp", "source": "indra/newview/fsmaniprotatejoint.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 286, "text": "fsmaniptranslatejoint.cpp", "source": "indra/newview/fsmaniptranslatejoint.cpp"}
@@ -338,7 +338,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 589, "text": "llfloaterimcontainer.cpp", "source": "indra/newview/llfloaterimcontainer.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 627, "text": "llfloaterpreferencesgraphicsadvanced.cpp", "source": "indra/newview/llfloaterpreferencesgraphicsadvanced.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 674, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1698, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1700, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1315, "text": "llghostcoverage.h", "source": "indra/newview/llghostcoverage.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 347, "text": "llghostdeferreddiagnostics.cpp", "source": "indra/newview/llghostdeferreddiagnostics.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 916, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
@@ -347,9 +347,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 735, "text": "lllocalmesh.cpp", "source": "indra/newview/lllocalmesh.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 756, "text": "llmeshrepository.cpp", "source": "indra/newview/llmeshrepository.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 454, "text": "llpathcamera.cpp", "source": "indra/newview/llpathcamera.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1472, "text": "llpathcamera.h", "source": "indra/newview/llpathcamera.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1474, "text": "llpathcamera.h", "source": "indra/newview/llpathcamera.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 907, "text": "llprismlens.cpp", "source": "indra/newview/llprismlens.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1931, "text": "llreshadebridgeabi.h", "source": "indra/newview/llreshadebridgeabi.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1933, "text": "llreshadebridgeabi.h", "source": "indra/newview/llreshadebridgeabi.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 922, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 960, "text": "llsurface.cpp", "source": "indra/newview/llsurface.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1032, "text": "llviewerdisplay.cpp", "source": "indra/newview/llviewerdisplay.cpp"}
@@ -361,15 +361,15 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1057, "text": "llvieweroctree.cpp", "source": "indra/newview/llvieweroctree.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1063, "text": "llviewerpartsim.cpp", "source": "indra/newview/llviewerpartsim.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1066, "text": "llviewershadermgr.cpp", "source": "indra/newview/llviewershadermgr.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2083, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2085, "text": "llviewershadermgr.h", "source": "indra/newview/llviewershadermgr.h"}
 - {"file": "indra/llwindow/CMakeLists.txt", "line": 107, "text": "# llviewerwindow.cpp's (guarded) include still resolves.", "source": "indra/newview/llviewerwindow.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1076, "text": "llviewerwindow.cpp", "source": "indra/newview/llviewerwindow.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1081, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2098, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2099, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2100, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2101, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1091, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1115, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2131, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2133, "text": "pipeline.h", "source": "indra/newview/pipeline.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1119, "text": "rlveffects.cpp", "source": "indra/newview/rlveffects.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1122, "text": "rlvhandler.cpp", "source": "indra/newview/rlvhandler.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1125, "text": "rlvlocks.cpp", "source": "indra/newview/rlvlocks.cpp"}

@@ -84,7 +84,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,55", "indra/newview/CMakeLists.txt@335,123", "indra/newview/CMakeLists.txt@1144,59", "indra/newview/CMakeLists.txt@1300,176", "indra/newview/CMakeLists.txt@2870,32", "indra/newview/CMakeLists.txt@2976,197"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,55", "indra/newview/CMakeLists.txt@335,123", "indra/newview/CMakeLists.txt@1144,59", "indra/newview/CMakeLists.txt@1300,178", "indra/newview/CMakeLists.txt@2872,32", "indra/newview/CMakeLists.txt@2978,197"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@6493,45"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@201,9", "indra/newview/llstartup.cpp@2647,19"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,37", "indra/newview/alviewermenu.cpp@605,830"]}
@@ -132,7 +132,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 192, "text": "alavatarstaging.cpp", "source": "indra/newview/alavatarstaging.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1150, "text": "alavatarstaging.h", "source": "indra/newview/alavatarstaging.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 193, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2885, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2887, "text": "alavatarstagingmodel.cpp", "source": "indra/newview/alavatarstagingmodel.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1151, "text": "alavatarstagingmodel.h", "source": "indra/newview/alavatarstagingmodel.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 401, "text": "alavatarsubjectpicker.cpp", "source": "indra/newview/alavatarsubjectpicker.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1386, "text": "alavatarsubjectpicker.h", "source": "indra/newview/alavatarsubjectpicker.h"}
@@ -143,7 +143,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 190, "text": "aldanceball.cpp", "source": "indra/newview/aldanceball.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1148, "text": "aldanceball.h", "source": "indra/newview/aldanceball.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 371, "text": "aldirectoractorchoice.cpp", "source": "indra/newview/aldirectoractorchoice.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2983, "text": "LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/aldirectoractorchoice.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2985, "text": "LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/aldirectoractorchoice.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1406, "text": "aldirectoractorchoice.h", "source": "indra/newview/aldirectoractorchoice.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 203, "text": "aldirectoralloff.cpp", "source": "indra/newview/aldirectoralloff.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 189, "text": "aldirectoranimswitcher.cpp", "source": "indra/newview/aldirectoranimswitcher.cpp"}
@@ -176,9 +176,9 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1428, "text": "alpanelgazecues.h", "source": "indra/newview/alpanelgazecues.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 407, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 444, "text": "alpanellensgaze.cpp", "source": "indra/newview/alpanellensgaze.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1462, "text": "alpanellensgaze.h", "source": "indra/newview/alpanellensgaze.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1464, "text": "alpanellensgaze.h", "source": "indra/newview/alpanellensgaze.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 451, "text": "alpanelpatheditor.cpp", "source": "indra/newview/alpanelpatheditor.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1469, "text": "alpanelpatheditor.h", "source": "indra/newview/alpanelpatheditor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1471, "text": "alpanelpatheditor.h", "source": "indra/newview/alpanelpatheditor.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 437, "text": "alpanelpracticals.cpp", "source": "indra/newview/alpanelpracticals.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 426, "text": "alpanelsteppedanim.cpp", "source": "indra/newview/alpanelsteppedanim.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 402, "text": "alprojectortracker.cpp", "source": "indra/newview/alprojectortracker.cpp"}
@@ -217,8 +217,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1045, "text": "llviewerjoystick.cpp", "source": "indra/newview/llviewerjoystick.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1071, "text": "llviewertexture.cpp", "source": "indra/newview/llviewertexture.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1081, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2098, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2099, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2100, "text": "llvoavatar.h", "source": "indra/newview/llvoavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2101, "text": "llvoavatarself.h", "source": "indra/newview/llvoavatarself.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1095, "text": "llvovolume.cpp", "source": "indra/newview/llvovolume.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1115, "text": "pipeline.cpp", "source": "indra/newview/pipeline.cpp"}
 

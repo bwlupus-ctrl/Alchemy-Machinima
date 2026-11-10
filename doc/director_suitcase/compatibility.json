@@ -1911,7 +1911,25 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alfloatergazecues.cpp",
+    "dependency": "indra/newview/algazenearbyname.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alfloatergazecues.cpp",
     "dependency": "indra/newview/llpresentationtime.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alfloatergazecues.h",
+    "dependency": "indra/newview/aluirefresh.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -2182,6 +2200,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/algazemotor.h",
     "dependency": "indra/newview/altrajectory.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/algazenearbyname.h",
+    "dependency": "indra/newview/algazenearby.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -5304,6 +5331,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alpanelgazecues.h",
+    "dependency": "indra/newview/aluirefresh.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelgazecues.h",
     "dependency": "indra/newview/lldirectorcast.h",
     "excluded": false,
     "origin": "fork-added",
@@ -5565,6 +5601,24 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alpanellensgaze.cpp",
+    "dependency": "indra/newview/alavatarsubjectpicker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanellensgaze.cpp",
+    "dependency": "indra/newview/algazenearbyname.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanellensgaze.cpp",
     "dependency": "indra/newview/alghoststudio.h",
     "excluded": false,
     "origin": "fork-added",
@@ -5638,6 +5692,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanellensgaze.h",
     "dependency": "indra/newview/aluirefresh.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanellensgaze.h",
+    "dependency": "indra/newview/algazenearby.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -8113,6 +8176,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.cpp",
     "dependency": "indra/newview/altoolpathedit.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.cpp",
+    "dependency": "indra/newview/algazenearbyname.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

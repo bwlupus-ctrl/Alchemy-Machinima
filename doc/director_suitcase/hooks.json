@@ -5765,7 +5765,8 @@
           "base_start": 118,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -5789,6 +5790,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -5803,10 +5808,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -5818,7 +5819,8 @@
           "base_start": 148,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5843,6 +5845,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -5857,10 +5863,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "mixed/perf-review",
@@ -5872,7 +5874,8 @@
           "base_start": 158,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5904,6 +5907,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -5918,10 +5925,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -5933,7 +5936,8 @@
           "base_start": 175,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -5958,6 +5962,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -5972,10 +5980,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "mixed/perf-review",
@@ -5987,7 +5991,8 @@
           "base_start": 202,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -6009,6 +6014,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6023,10 +6032,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -6038,7 +6043,8 @@
           "base_start": 253,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6080,6 +6086,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6094,10 +6104,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6109,7 +6115,8 @@
           "base_start": 334,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -6131,6 +6138,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6145,10 +6156,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -6160,7 +6167,8 @@
           "base_start": 362,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6184,6 +6192,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6198,10 +6210,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6213,7 +6221,8 @@
           "base_start": 459,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6237,6 +6246,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6251,10 +6264,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6266,7 +6275,8 @@
           "base_start": 469,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6290,6 +6300,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6304,10 +6318,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6319,7 +6329,8 @@
           "base_start": 624,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -6341,6 +6352,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6355,10 +6370,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -6370,7 +6381,8 @@
           "base_start": 698,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6394,6 +6406,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6408,10 +6424,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6423,7 +6435,8 @@
           "base_start": 707,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6447,6 +6460,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6461,10 +6478,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6476,7 +6489,8 @@
           "base_start": 899,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6500,6 +6514,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6514,10 +6532,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6529,7 +6543,8 @@
           "base_start": 917,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6554,6 +6569,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6568,10 +6587,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "mixed/perf-review",
@@ -6583,7 +6598,8 @@
           "base_start": 926,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6615,6 +6631,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6629,10 +6649,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6644,7 +6660,8 @@
           "base_start": 943,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6669,6 +6686,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6683,10 +6704,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "mixed/perf-review",
@@ -6698,7 +6715,8 @@
           "base_start": 973,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -6720,6 +6738,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
+            {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
             },
@@ -6734,10 +6756,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -6749,7 +6767,8 @@
           "base_start": 1022,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6782,14 +6801,18 @@
           "git_context": "set(viewer_HEADER_FILES",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 176,
-          "head_end": 1475,
+          "head_count": 178,
+          "head_end": 1477,
           "head_start": 1300,
-          "id": "indra/newview/CMakeLists.txt@1300,176",
-          "patch": "     llbox.h\n     llbuycurrencyhtml.h\n     llcallingcard.h\n+    llcameraoperator.h\n+    llactormaskeligibility.h # [ActorMask]\n+    alactorkeyui.h\n+    alactorchromakey.h\n+    alactorkeyset.h\n+    alcoverpolicy.h\n+    alactormaskdiagnostics.h # [ActorMask] WP7\n+    llactormover.h\n+    alghostattachmentenumerator.h\n+    alghostmaterialresolver.h\n+    alghostspawnengine.h\n+    llclonefidelityaudit.h\n+    llghostcoverage.h\n+    llghostdeferreddiagnostics.h\n+    alformationsolver.h\n+    alcinelightrig.h\n+    alcinelightrigmanager.h\n+    alcinelightrigmodel.h\n+    alcineliveproberefresh.h # [LiveProbeRefresh]\n+    alavatarlightresponse.h # [AvatarLightResponse]\n+    alavatarlightresponsemodel.h # [AvatarLightResponse]\n+    alfloateravatarlightresponse.h # [AvatarLightResponse]\n+    alavatarkey.h # [ClientHeight]\n+    alclientheight.h # [ClientHeight]\n+    alclientheightmodel.h # [ClientHeight]\n+    aldiopterpresetbank.h\n+    aldiopterrelevance.h\n+    alfloatercinelightcues.h\n+    alfloaterultimatediopter.h\n+    alvcambonepov.h\n+    alcinecamobjectlock.h\n+    alcinecamobjectlockui.h\n+    alcinecampresentation.h\n+    alvcambonepovmath.h\n+    alvcamobjectpovsettings.h\n+    alvcamautovol.h\n+    alviewfinder.h\n+    alweathermodel.h\n+    slweather.h\n+    alweatherbridge.h\n+    alweatherresources.h\n+    alweatherparticles.h\n+    alweathercovercache.h\n+    alweathershelter.h\n+    alweatherclock.h\n+    alweatheruimodel.h\n+    alsensormodel.h\n+    alsensorsettings.h\n+    alghostgroupmodel.h\n+    alghostrotation.h\n+    alghostinteractionstate.h\n+    alghostplacementresolver.h\n+    alghostplacementadapter.h\n+    alghostmanipproxy.h\n+    alghostbounds.h\n+    alcolorchart.h\n+    alcolorchartdata.h\n+    alghostnameplates.h\n+    alghostautoanimmodel.h # [AutoAnimate]\n+    alareashadowmath.h\n+    alrelightmath.h\n+    alrelighttakerecord.h\n+    alrelighttakewriter.h\n+    alvramrecovery.h\n+    alavatarlifepolicy.h\n+    alghostanimnames.h\n+    alprobereach.h\n+    alshadowslotmath.h\n+    alhidecursor.h\n+    alshadowdepthmath.h\n+    alriggroupsubject.h\n+    alghostanimmirrormath.h\n+    alreflectmath.h\n+    alreflectanim.h\n+    alavataranimspeed.h\n+    alghoststudio.h\n+    alghostanimassetindex.h\n+    alghostanimdrop.h # [CloneAnimDrop]\n+    alghostclearanim.h # [ClearAnim]\n+    alwornanimnames.h # [CloneAnimDrop]\n+    alworldoverlayviz.h\n+    alscrollfocus.h\n+    alscrollfit.h # [ScrollFit]\n+    alavatarsubjectpicker.h\n+    alprojectortracker.h\n+    alprojectortrackmath.h\n+    alobjectpathmover.h\n+    alghostcloneactions.h\n+    alghostclonemenu.h\n+    alghostclonemenulogic.h\n+    aldirectorselect.h\n+    alpanelghoststudio.h\n+    aluiperfselftest.h\n+    aluirefresh.h # [GhostPanelPerf]\n+    alpanelpropmover.h\n+    altoolcrowdplace.h\n+    altooldirectorpick.h\n+    altoolfocuspick.h\n+    altoolghostedit.h\n+    altoolghostplace.h\n+    altoolpathedit.h\n+    llcinematiccamera.h\n+    lldirectorcast.h\n+    aldirectoractorchoice.h\n+    aldirectorgroups.h\n+    aldirectorcastui.h\n+    llfloateractormover.h\n+    llfloaterdirector.h\n+    alfloateractorgaze.h\n+    alfloatergazecues.h\n+    llfloaterprismmanager.h\n+    alfloatertemporalcapture.h\n+    alpaneltemporalcapture.h\n+    llpresentationtime.h\n+    alworldwinddown.h\n+    alworldwinddowncontrol.h\n+    lltemporalframecontext.h\n+    alpanelactormover.h\n+    alpanelanimpreview.h\n+    alpanelatmosphericvolumes.h\n+    alpanelavatarlightresponse.h\n+    alpaneldof.h\n+    alpanelexposurehub.h\n+    alpanelexposurepage.h\n+    alpanelactorkey.h\n+    alpanelgazecues.h\n+    alpanellenslooks.h\n+    alpanellightcues.h\n+    alpanelpracticals.h\n+    alpanelprojectorshafts.h\n+    alcinehaze.h\n+    alcinerigrim.h\n+    allenslooks.h\n+    allocallightsize.h\n+    alenvintensity.h\n+    alenvonlydiagnostics.h\n+    alenvintensitypresets.h\n+    alsettingsundohistory.h\n+    alsettingsundohistorymodel.h\n+    alfloaterenvintensitypresets.h\n+    alrotoink.h\n+    altron.h\n+    alpanelcinelightrig.h\n+    alprobedirty.h # [ProbeOnDemand]\n+    alprobeschedule.h # [ProbeOnDemand]\n+    alprojectorshaftlooks.h\n+    alprojectorshaftpresets.h\n+    alpanelcinecamparams.h\n+    algazemath.h\n+    alghostmotionmath.h # [GhostMotionModes]\n+    alpathgeometry.h\n+    altrajectory.h\n+    algazerecruit.h\n+    algazeblink.h\n+    algazenoise.h\n+    algazepolicy.h\n+    algazehot.h\n+    algazehotslots.h\n+    algazemotor.h\n+    alpanellensgaze.h\n+    alpaneldanceball.h\n+    alpaneldirectoranimswitcher.h\n+    alpaneldirectorswitcher.h\n+    alpanelweathersettings.h\n+    alpanelflycamorbit.h\n+    alpanelflycamrecorder.h\n+    alpanelpatheditor.h\n+    llflycamdrone.h\n+    llflycamrecorder.h\n+    llpathcamera.h\n     llcapabilityprovider.h\n     llcefaccelinterop.h\n     llcefsurfacereceiver.h\n",
+          "id": "indra/newview/CMakeLists.txt@1300,178",
+          "patch": "     llbox.h\n     llbuycurrencyhtml.h\n     llcallingcard.h\n+    llcameraoperator.h\n+    llactormaskeligibility.h # [ActorMask]\n+    alactorkeyui.h\n+    alactorchromakey.h\n+    alactorkeyset.h\n+    alcoverpolicy.h\n+    alactormaskdiagnostics.h # [ActorMask] WP7\n+    llactormover.h\n+    alghostattachmentenumerator.h\n+    alghostmaterialresolver.h\n+    alghostspawnengine.h\n+    llclonefidelityaudit.h\n+    llghostcoverage.h\n+    llghostdeferreddiagnostics.h\n+    alformationsolver.h\n+    alcinelightrig.h\n+    alcinelightrigmanager.h\n+    alcinelightrigmodel.h\n+    alcineliveproberefresh.h # [LiveProbeRefresh]\n+    alavatarlightresponse.h # [AvatarLightResponse]\n+    alavatarlightresponsemodel.h # [AvatarLightResponse]\n+    alfloateravatarlightresponse.h # [AvatarLightResponse]\n+    alavatarkey.h # [ClientHeight]\n+    alclientheight.h # [ClientHeight]\n+    alclientheightmodel.h # [ClientHeight]\n+    aldiopterpresetbank.h\n+    aldiopterrelevance.h\n+    alfloatercinelightcues.h\n+    alfloaterultimatediopter.h\n+    alvcambonepov.h\n+    alcinecamobjectlock.h\n+    alcinecamobjectlockui.h\n+    alcinecampresentation.h\n+    alvcambonepovmath.h\n+    alvcamobjectpovsettings.h\n+    alvcamautovol.h\n+    alviewfinder.h\n+    alweathermodel.h\n+    slweather.h\n+    alweatherbridge.h\n+    alweatherresources.h\n+    alweatherparticles.h\n+    alweathercovercache.h\n+    alweathershelter.h\n+    alweatherclock.h\n+    alweatheruimodel.h\n+    alsensormodel.h\n+    alsensorsettings.h\n+    alghostgroupmodel.h\n+    alghostrotation.h\n+    alghostinteractionstate.h\n+    alghostplacementresolver.h\n+    alghostplacementadapter.h\n+    alghostmanipproxy.h\n+    alghostbounds.h\n+    alcolorchart.h\n+    alcolorchartdata.h\n+    alghostnameplates.h\n+    alghostautoanimmodel.h # [AutoAnimate]\n+    alareashadowmath.h\n+    alrelightmath.h\n+    alrelighttakerecord.h\n+    alrelighttakewriter.h\n+    alvramrecovery.h\n+    alavatarlifepolicy.h\n+    alghostanimnames.h\n+    alprobereach.h\n+    alshadowslotmath.h\n+    alhidecursor.h\n+    alshadowdepthmath.h\n+    alriggroupsubject.h\n+    alghostanimmirrormath.h\n+    alreflectmath.h\n+    alreflectanim.h\n+    alavataranimspeed.h\n+    alghoststudio.h\n+    alghostanimassetindex.h\n+    alghostanimdrop.h # [CloneAnimDrop]\n+    alghostclearanim.h # [ClearAnim]\n+    alwornanimnames.h # [CloneAnimDrop]\n+    alworldoverlayviz.h\n+    alscrollfocus.h\n+    alscrollfit.h # [ScrollFit]\n+    alavatarsubjectpicker.h\n+    alprojectortracker.h\n+    alprojectortrackmath.h\n+    alobjectpathmover.h\n+    alghostcloneactions.h\n+    alghostclonemenu.h\n+    alghostclonemenulogic.h\n+    aldirectorselect.h\n+    alpanelghoststudio.h\n+    aluiperfselftest.h\n+    aluirefresh.h # [GhostPanelPerf]\n+    alpanelpropmover.h\n+    altoolcrowdplace.h\n+    altooldirectorpick.h\n+    altoolfocuspick.h\n+    altoolghostedit.h\n+    altoolghostplace.h\n+    altoolpathedit.h\n+    llcinematiccamera.h\n+    lldirectorcast.h\n+    aldirectoractorchoice.h\n+    aldirectorgroups.h\n+    aldirectorcastui.h\n+    llfloateractormover.h\n+    llfloaterdirector.h\n+    alfloateractorgaze.h\n+    alfloatergazecues.h\n+    llfloaterprismmanager.h\n+    alfloatertemporalcapture.h\n+    alpaneltemporalcapture.h\n+    llpresentationtime.h\n+    alworldwinddown.h\n+    alworldwinddowncontrol.h\n+    lltemporalframecontext.h\n+    alpanelactormover.h\n+    alpanelanimpreview.h\n+    alpanelatmosphericvolumes.h\n+    alpanelavatarlightresponse.h\n+    alpaneldof.h\n+    alpanelexposurehub.h\n+    alpanelexposurepage.h\n+    alpanelactorkey.h\n+    alpanelgazecues.h\n+    alpanellenslooks.h\n+    alpanellightcues.h\n+    alpanelpracticals.h\n+    alpanelprojectorshafts.h\n+    alcinehaze.h\n+    alcinerigrim.h\n+    allenslooks.h\n+    allocallightsize.h\n+    alenvintensity.h\n+    alenvonlydiagnostics.h\n+    alenvintensitypresets.h\n+    alsettingsundohistory.h\n+    alsettingsundohistorymodel.h\n+    alfloaterenvintensitypresets.h\n+    alrotoink.h\n+    altron.h\n+    alpanelcinelightrig.h\n+    alprobedirty.h # [ProbeOnDemand]\n+    alprobeschedule.h # [ProbeOnDemand]\n+    alprojectorshaftlooks.h\n+    alprojectorshaftpresets.h\n+    alpanelcinecamparams.h\n+    algazemath.h\n+    alghostmotionmath.h # [GhostMotionModes]\n+    alpathgeometry.h\n+    altrajectory.h\n+    algazerecruit.h\n+    algazeblink.h\n+    algazenoise.h\n+    algazepolicy.h\n+    algazehot.h\n+    algazehotslots.h\n+    algazenearby.h\n+    algazenearbyname.h\n+    algazemotor.h\n+    alpanellensgaze.h\n+    alpaneldanceball.h\n+    alpaneldirectoranimswitcher.h\n+    alpaneldirectorswitcher.h\n+    alpanelweathersettings.h\n+    alpanelflycamorbit.h\n+    alpanelflycamrecorder.h\n+    alpanelpatheditor.h\n+    llflycamdrone.h\n+    llflycamrecorder.h\n+    llpathcamera.h\n     llcapabilityprovider.h\n     llcefaccelinterop.h\n     llcefsurfacereceiver.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -6805,10 +6828,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6820,7 +6839,8 @@
           "base_start": 1105,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -6834,13 +6854,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1559,
-          "head_start": 1553,
-          "id": "indra/newview/CMakeLists.txt@1553,7",
+          "head_end": 1561,
+          "head_start": 1555,
+          "id": "indra/newview/CMakeLists.txt@1555,7",
           "patch": "     llfloateravatartextures.h\n     llfloaterbanduration.h\n     llfloaterbeacons.h\n+    llfloaterbigpreview.h\n     llfloaterbuildoptions.h\n     llfloaterbulkpermission.h\n     llfloaterbulkupload.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -6856,10 +6880,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -6871,7 +6891,8 @@
           "base_start": 1133,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6887,13 +6908,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1588,
-          "head_start": 1582,
-          "id": "indra/newview/CMakeLists.txt@1582,7",
+          "head_end": 1590,
+          "head_start": 1584,
+          "id": "indra/newview/CMakeLists.txt@1584,7",
           "patch": "     llfloatereditextdaycycle.h\n     llfloateremojipicker.h\n     llfloaterenvironmentadjust.h\n+    llfloaterenvironmentsettings.h\n     llfloaterevent.h\n     llfloaterexperiencepicker.h\n     llfloaterexperienceprofile.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -6909,10 +6934,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6924,7 +6945,8 @@
           "base_start": 1234,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6940,13 +6962,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1690,
-          "head_start": 1684,
-          "id": "indra/newview/CMakeLists.txt@1684,7",
+          "head_end": 1692,
+          "head_start": 1686,
+          "id": "indra/newview/CMakeLists.txt@1686,7",
           "patch": "     llfloateruipreview.h\n     llfloaterurlentry.h\n     llfloatervoicevolume.h\n+    llfloaterwateradjust.h\n     llfloaterwebcontent.h\n     llfloaterwhitelistentry.h\n     llfloaterwindowsize.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -6962,10 +6988,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -6977,7 +6999,8 @@
           "base_start": 1244,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -6993,13 +7016,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 1701,
-          "head_start": 1695,
-          "id": "indra/newview/CMakeLists.txt@1695,7",
+          "head_end": 1703,
+          "head_start": 1697,
+          "id": "indra/newview/CMakeLists.txt@1697,7",
           "patch": "     llflyoutcombobtn.h\n     llgesturelistener.h\n     llgesturemgr.h\n+    llghostavatar.h\n     llgiveinventory.h\n     llgltffolderitem.h\n     llgltffoldermodel.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7015,10 +7042,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -7030,7 +7053,8 @@
           "base_start": 1388,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -7044,13 +7068,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1847,
-          "head_start": 1840,
-          "id": "indra/newview/CMakeLists.txt@1840,8",
+          "head_end": 1849,
+          "head_start": 1842,
+          "id": "indra/newview/CMakeLists.txt@1842,8",
           "patch": "     llpanellandmedia.h\n     llpanellogin.h\n     llpanelloginlistener.h\n+    fsinventorycustomtabs.h\n+    fsinventorycustomtabmodel.h\n     llpanelmaininventory.h\n     llpanelmarketplaceinbox.h\n     llpanelmarketplaceinboxinventory.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7066,10 +7094,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -7081,7 +7105,8 @@
           "base_start": 1457,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7097,13 +7122,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 13,
-          "head_end": 1923,
-          "head_start": 1911,
-          "id": "indra/newview/CMakeLists.txt@1911,13",
+          "head_end": 1925,
+          "head_start": 1913,
+          "id": "indra/newview/CMakeLists.txt@1913,13",
           "patch": "     llpreviewscript.h\n     llpreviewsound.h\n     llpreviewtexture.h\n+    llprismgate.h\n+    llprismlens.h\n+    alvcammediafileio.h\n+    alvcammediafilecontainer.h\n+    alvcammediafilepolicy.h\n+    alvcammediafileposix.h\n+    llprismpreview.h\n     llproductinforequest.h\n     llprogressview.h\n     llrecentpeople.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7119,10 +7148,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -7134,7 +7159,8 @@
           "base_start": 1466,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7150,13 +7176,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 1934,
-          "head_start": 1927,
-          "id": "indra/newview/CMakeLists.txt@1927,8",
+          "head_end": 1936,
+          "head_start": 1929,
+          "id": "indra/newview/CMakeLists.txt@1929,8",
           "patch": "     llregioninfomodel.h\n     llregionposition.h\n     llremoteparcelrequest.h\n+    llreshadebridge.h\n+    llreshadebridgeabi.h\n     llresourcedata.h\n     llrootview.h\n     llsaveoutfitcombobtn.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7172,10 +7202,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -7187,7 +7213,8 @@
           "base_start": 1663,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7203,13 +7230,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2132,
-          "head_start": 2126,
-          "id": "indra/newview/CMakeLists.txt@2126,7",
+          "head_end": 2134,
+          "head_start": 2128,
+          "id": "indra/newview/CMakeLists.txt@2128,7",
           "patch": "     llxmlrpclistener.h\n     llxmlrpctransaction.h\n     lutcube.h\n+    allpm.h\n     noise.h\n     pipeline.h\n     rlvactions.h\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7225,10 +7256,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -7240,7 +7267,8 @@
           "base_start": 1902,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -7254,13 +7282,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2372,
-          "head_start": 2366,
-          "id": "indra/newview/CMakeLists.txt@2366,7",
+          "head_end": 2374,
+          "head_start": 2368,
+          "id": "indra/newview/CMakeLists.txt@2368,7",
           "patch": " list(APPEND viewer_SOURCE_FILES ${viewer_CHARACTER_FILES})\n \n set(viewer_MISC_FILES\n+    stage_runtime_assets.cmake\n     viewer_manifest.py\n     )\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7276,10 +7308,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -7291,7 +7319,8 @@
           "base_start": 2181,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -7307,13 +7336,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 38,
-          "head_end": 2683,
-          "head_start": 2646,
-          "id": "indra/newview/CMakeLists.txt@2646,38",
+          "head_end": 2685,
+          "head_start": 2648,
+          "id": "indra/newview/CMakeLists.txt@2648,38",
           "patch": "   set(MANIFEST_PACKAGE_OUT_FILE ${product}.tar.xz)\n endif()\n \n+# Runtime settings and XUI are consumed from the staged tree, but the viewer\n+# manifest POST_BUILD command does not run when only an asset changes. Keep a\n+# lightweight, always-run dependency for Windows developer builds so direct\n+# viewer-target builds refresh those files without forcing a C++ relink.\n+set(RUNTIME_ASSET_PACKAGE_DEPENDENCIES)\n+if(WINDOWS)\n+  set(RUNTIME_ASSET_CONFIG\n+    \"$<IF:$<BOOL:${LL_GENERATOR_IS_MULTI_CONFIG}>,$<CONFIG>,default>\")\n+  set(RUNTIME_ASSET_INDEX\n+    \"${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.txt\")\n+  set(RUNTIME_ASSET_STAMP\n+    \"${CMAKE_CURRENT_BINARY_DIR}/runtime_assets_${RUNTIME_ASSET_CONFIG}.sha256\")\n+  add_custom_target(stage_viewer_runtime_assets\n+    COMMAND ${CMAKE_COMMAND}\n+      \"-DRUNTIME_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}\"\n+      \"-DRUNTIME_DEST_DIR=${MANIFEST_DEST_DIR}\"\n+      \"-DRUNTIME_INDEX_FILE=${RUNTIME_ASSET_INDEX}\"\n+      \"-DRUNTIME_STAMP_FILE=${RUNTIME_ASSET_STAMP}\"\n+      -P ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake\n+    # The index is intentionally not a BYPRODUCT: preserving it across `clean`\n+    # retains deletion provenance for files staged before the clean. The stamp\n+    # is disposable and exists only to retrigger package/local-dist outputs.\n+    BYPRODUCTS ${RUNTIME_ASSET_STAMP}\n+    COMMENT \"Staging viewer runtime settings, shaders, dust, and XUI\"\n+    VERBATIM\n+    )\n+  add_dependencies(${VIEWER_BINARY_NAME} stage_viewer_runtime_assets)\n+  list(APPEND RUNTIME_ASSET_PACKAGE_DEPENDENCIES\n+    ${CMAKE_CURRENT_SOURCE_DIR}/stage_runtime_assets.cmake\n+    ${RUNTIME_ASSET_STAMP})\n+endif()\n+\n # Viewer Manifest Copy\n add_custom_command(\n   TARGET ${VIEWER_BINARY_NAME} POST_BUILD\n",
           "purpose": "Edits LL_GENERATOR_IS_MULTI_CONFIG",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7329,10 +7362,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -7344,7 +7373,8 @@
           "base_start": 2244,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -7358,13 +7388,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2747,
-          "head_start": 2741,
-          "id": "indra/newview/CMakeLists.txt@2741,7",
+          "head_end": 2749,
+          "head_start": 2743,
+          "id": "indra/newview/CMakeLists.txt@2743,7",
           "patch": "       DEPENDS\n       ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py\n       ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt\n+      ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}\n       ${VIEWER_BINARY_NAME}\n       COMMENT \"Performing viewer_manifest local dist copy\"\n       )\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7380,10 +7414,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -7395,7 +7425,8 @@
           "base_start": 2283,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -7409,13 +7440,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 2787,
-          "head_start": 2781,
-          "id": "indra/newview/CMakeLists.txt@2781,7",
+          "head_end": 2789,
+          "head_start": 2783,
+          "id": "indra/newview/CMakeLists.txt@2783,7",
           "patch": "       DEPENDS\n         ${CMAKE_CURRENT_SOURCE_DIR}/viewer_manifest.py\n         ${CMAKE_CURRENT_BINARY_DIR}/viewer_version.txt\n+        ${RUNTIME_ASSET_PACKAGE_DEPENDENCIES}\n         ${VIEWER_BINARY_NAME} # Prevents two copies of manifest from running at the same time\n     COMMENT \"Performing viewer_manifest package\"\n     )\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7431,10 +7466,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "unknown-review",
@@ -7446,7 +7477,8 @@
           "base_start": 2371,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7474,13 +7506,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 32,
-          "head_end": 2901,
-          "head_start": 2870,
-          "id": "indra/newview/CMakeLists.txt@2870,32",
+          "head_end": 2903,
+          "head_start": 2872,
+          "id": "indra/newview/CMakeLists.txt@2872,32",
           "patch": "   # This creates a separate test project per file listed.\n \n   SET(viewer_TEST_SOURCE_FILES\n+    alactorkeyset.cpp # [ActorKey] pure membership TUT\n+    fsinventorycustomtabmodel.cpp\n+    allocallightsize.cpp\n+    alghostautoanimmodel.cpp # [AutoAnimate]\n+    alformationsolver.cpp\n+    alcinelightrigmodel.cpp\n+    alavatarlightresponsemodel.cpp # [AvatarLightResponse]\n+    aldirectorswitchermodel.cpp\n+    aldirectorqol.cpp\n+    aldirectortabmigration.cpp\n+    alprojectorshaftlooks.cpp\n+    aldanceballmodel.cpp\n+    alavatarstagingmodel.cpp\n+    alweathermodel.cpp\n+    slweather.cpp\n+    alweatherbridge.cpp\n+    alweathershelter.cpp\n+    alweatherclock.cpp\n+    alweatheruimodel.cpp\n+    alsensormodel.cpp\n+    alghostgroupmodel.cpp\n+    alghostinteractionstate.cpp\n+    alghostplacementresolver.cpp\n     alsceneexplorerpredicate.cpp\n+    alsettingsundohistorymodel.cpp\n+    llprismgate.cpp\n     llagentaccess.cpp\n     lldateutil.cpp\n #    llmediadataclient.cpp\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7496,10 +7532,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -7511,7 +7543,8 @@
           "base_start": 2384,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7529,13 +7562,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 20,
-          "head_end": 2927,
-          "head_start": 2908,
-          "id": "indra/newview/CMakeLists.txt@2908,20",
+          "head_end": 2929,
+          "head_start": 2910,
+          "id": "indra/newview/CMakeLists.txt@2910,20",
           "patch": "     llworldmipmap.cpp\n   )\n \n+  set_source_files_properties(alweathershelter.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+  set_source_files_properties(alweatherbridge.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+  set_source_files_properties(alweatheruimodel.cpp PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES \"alweatherbridge.cpp;slweather.cpp;alweatherclock.cpp;alweathermodel.cpp\")\n+\n+  set_source_files_properties(\n+    llprismgate.cpp\n+    PROPERTIES\n+    LL_TEST_ADDITIONAL_SOURCE_FILES\n+    aldirectorswitchermodel.cpp\n+  )\n+\n   set_source_files_properties(\n     llworldmap.cpp\n     llworldmipmap.cpp\n",
           "purpose": "Edits LL_TEST_ADDITIONAL_SOURCE_FILES",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7551,10 +7588,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",
@@ -7566,7 +7599,8 @@
           "base_start": 2438,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7593,13 +7627,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 197,
-          "head_end": 3172,
-          "head_start": 2976,
-          "id": "indra/newview/CMakeLists.txt@2976,197",
+          "head_end": 3174,
+          "head_start": 2978,
+          "id": "indra/newview/CMakeLists.txt@2978,197",
           "patch": " \n   LL_ADD_PROJECT_UNIT_TESTS(${VIEWER_BINARY_NAME} \"${viewer_TEST_SOURCE_FILES}\")\n \n+  LL_ADD_INTEGRATION_TEST(llflycamdrone \"llflycamdrone.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamclassic \"alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alflycamweighted \"alflycamweighted.cpp;alflycamclassic.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(lldirectorcast_choice \"aldirectoractorchoice.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectorgroups \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectorsubjectmapping \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alxinputmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alframelimiter \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alviewfinder \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitqol \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectortheme \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alkitlistselection \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostclearanim \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(aldirectoralloff \"\" \"${test_libs}\" \"${test_project}\")\n+\n+  # ALGazeMath is deliberately header-only, so register its TUT directly\n+  # instead of inventing a production .cpp solely for the per-source macro.\n+  LL_ADD_INTEGRATION_TEST(alrelightmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alreflectmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprojectortrackmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimmirror \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostbounds \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alvramrecovery \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alavataranimationtime \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alghostanimnames \"\" \"${test_libs};llcharacter\" \"${test_project}\")\n+  # [CloneAnimDrop] pure drop-target / never-expose rules (TPV policy 2.a.i)\n+  LL_ADD_INTEGRATION_TEST(alghostanimdrop \"alghostanimdrop.cpp\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alprobereach \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowslotmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alhidecursor \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alshadowdepthmath \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(alriggroupsubject \"\" \"${test_libs}\" \"${test_project}\")\n+  LL_ADD_INTEGRATION_TEST(algazemath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pose Polish math plus the real keyframe loop-seam update path.\n+  LL_ADD_INTEGRATION_TEST(alposepolish\n+    \"\"\n+    \"${test_libs};llcharacter\"\n+    \"${test_project}\"\n+  )\n+\n+  # [ClientHeight] The pure store / per-avatar resolve model is header-only\n+  # (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alclientheightmodel\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Character Mover exact path primitives are header-only pure geometry so the\n+  # runtime, preview and tests share one evaluator.\n+  LL_ADD_INTEGRATION_TEST(alpathgeometry\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [GhostMotionModes] Ghost Studio procedural motion (hover, jump, float, ...)\n+  # is a header-only pure evaluator; TUT registered directly like ALGazeMath.\n+  LL_ADD_INTEGRATION_TEST(alghostmotionmath\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALTrajectory is the pure, header-only C2 continuity core (gaze spec 2.1);\n+  # like ALGazeMath its TUT is registered directly against the header.\n+  LL_ADD_INTEGRATION_TEST(altrajectory\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Gaze life/feel/emotion pure leaf modules (gaze spec 2.2): soft anatomical\n+  # recruitment, asymmetric blink shape, band-limited fixation noise, and\n+  # oculomotor policy math. All header-only, TUTs registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazerecruit\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazeblink\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazenoise\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazepolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # ALGazeMotor is the header-only assembly core (gaze spec 6A) composing the\n+  # leaf modules above with ALTrajectory; TUT registered directly.\n+  LL_ADD_INTEGRATION_TEST(algazemotor\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(algazehot\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Bone POV math and selection normalization are pure/header-only, so their\n+  # regression tests need no viewer singleton or avatar fixture.\n+  LL_ADD_INTEGRATION_TEST(alvcambonepov\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Pure envelope plus real LLControlVariable write-intent cancellation.\n+  LL_ADD_INTEGRATION_TEST(alworldwinddown\n+    \"\"\n+    \"${test_libs};llxml\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alcinecamobjectlock\n+    \"alcinecammodes.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alcineflycamhandover\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(alvcammediafilepolicy\n+    \"alvcammediafilepolicy.cpp\"\n+    \"${test_libs};ll::openssl\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only preview scheduler policy: no renderer/GL fixture required.\n+  LL_ADD_INTEGRATION_TEST(llprismpreviewpolicy\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Header-only VP1/VP2 projector schema and demand-policy contract.\n+  LL_ADD_INTEGRATION_TEST(llprismgate\n+    \"llprismgate.cpp;aldirectorswitchermodel.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  LL_ADD_INTEGRATION_TEST(llprismprojector\n+    \"llprismgate.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # Temporary volumetric ownership policy, also verified by static_assert.\n+  LL_ADD_INTEGRATION_TEST(alvcamautovol\n+    \"\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §2.3 relevance model: the 181-row sRelevance table,\n+  # its predicate helpers, and the S0-S8 sweep corpus asserted against the\n+  # committed consumed-set oracle (tests/aldiopterrelevance_oracle.llsd,\n+  # regenerated by tests/aldiopterrelevance_oracle.py). The model unit is\n+  # LLUI/gSavedSettings-free, so only the production .cpp is linked in.\n+  LL_ADD_INTEGRATION_TEST(aldiopterrelevance\n+    \"aldiopterrelevance.cpp\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n   #set(TEST_DEBUG on)\n   LL_ADD_INTEGRATION_TEST(cppfeatures\n     \"\"\n",
           "purpose": "Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7615,10 +7653,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "mixed/perf-review",
@@ -7630,7 +7664,8 @@
           "base_start": 2505,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -7646,13 +7681,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 40,
-          "head_end": 3273,
-          "head_start": 3234,
-          "id": "indra/newview/CMakeLists.txt@3234,40",
+          "head_end": 3275,
+          "head_start": 3236,
+          "id": "indra/newview/CMakeLists.txt@3236,40",
           "patch": "   )\n   LL_ADD_INTEGRATION_TEST(lltextureinfo \"${lltextureinfo_test_sources}\" \"${test_libs}\" \"${test_project}\")\n   #LL_ADD_INTEGRATION_TEST(lltextureinfodetails \"\" \"${test_libs}\" \"${test_project}\") test cases currently empty\n+\n+  set(llcameraoperator_test_sources\n+    llcameraoperator.cpp\n+    ../llxml/llcontrol.cpp\n+    ../llxml/llxmltree.cpp\n+    ../llxml/llxmlparser.cpp\n+    ../llcommon/commoncontrol.cpp\n+  )\n+  LL_ADD_INTEGRATION_TEST(llcameraoperator\n+    \"${llcameraoperator_test_sources}\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n+\n+  # [Ultimate Diopter] §6.3 Custom preset bank state machine (design doc\n+  # DIOPTER_SMART_UI_DESIGN.md). llcontrol/llxmltree/llxmlparser/commoncontrol\n+  # give a working LLControlGroup (same combination as llviewercontrollistener\n+  # and llcameraoperator above). test_libs already brings in `llfilesystem`,\n+  # which supplies the real LLDir/gDirUtilp (lldir.cpp/lldir_win32.cpp) --\n+  # aldiopterpresetbank_test_stubs.cpp must NOT also define those (Codex\n+  # review finding F1: doing so collided with the real symbols, LNK2005); it\n+  # stubs only LLNotificationsUtil::add, since the real llnotifications.cpp\n+  # needs the full LLNotifications singleton and is far too heavy here.\n+  set(aldiopterpresetbank_test_sources\n+    aldiopterpresetbank.cpp\n+    ../llxml/llcontrol.cpp\n+    ../llxml/llxmltree.cpp\n+    ../llxml/llxmlparser.cpp\n+    ../llcommon/commoncontrol.cpp\n+    tests/aldiopterpresetbank_test_stubs.cpp\n+  )\n+  LL_ADD_INTEGRATION_TEST(aldiopterpresetbank\n+    \"${aldiopterpresetbank_test_sources}\"\n+    \"${test_libs}\"\n+    \"${test_project}\"\n+  )\n endif ()\n",
           "purpose": "Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "14701df70ed",
+              "subject": "Gaze: nearby people as targets (Gaze page, Hot targets, Gaze Cues)"
+            },
             {
               "commit": "ab66a130fc9",
               "subject": "Clones: right-click menus, Select in Director, group animation drop, Stagger"
@@ -7668,10 +7707,6 @@
             {
               "commit": "23c45e6ee7f",
               "subject": "Director lists: visible selection, full-width Clone list, clone multi-select"
-            },
-            {
-              "commit": "41c866c7ea8",
-              "subject": "Clones: play inventory animations by drag or right-click; worn AO names"
             }
           ],
           "scope": "creative-candidate",

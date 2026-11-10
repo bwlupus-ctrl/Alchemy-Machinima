@@ -7,55 +7,10 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
       "HOOK": 543,
-      "OWNED": 930,
-      "TOOLING": 459
+      "OWNED": 932,
+      "TOOLING": 462
     },
-    "dirty_product_inputs": [
-      "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
-      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
-    ],
+    "dirty_product_inputs": [],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -68,7 +23,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "be8ba3d18275bc9ba0f1015e4b9944313e10853485edd58a7d466fc430a3d78d",
+        "csv_sha256": "3c2ae2c0a03871e373d31bf88477ad50b6d014c3dedf3d057c3d46884e2eac62",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -239,10 +194,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "e0f9793d47a22f9d1b53f0fcd0df412af6b94912",
+    "head_source_tree": "ccf352ba48ea2ec61b0986b106d8129dbd90355b",
     "hook_files": 543,
     "hunks": 3404,
-    "input_sha256": "575bcbc5fc6b116bb90d1d81a71b3c735e42b3e818f51a2f3ddbabe648794c0f",
+    "input_sha256": "174cebb4ce3697eb865f561b3dc783033a5e51e0b17fd9eda3300c3d6d7cd8ca",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -12517,7 +12472,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -14741,11 +14697,12 @@
       "features": [
         "actor-bar",
         "actor-path",
+        "common-ui",
         "director-shell",
         "gaze"
       ],
       "git_status": "A",
-      "layer": 2,
+      "layer": 1,
       "path": "indra/newview/alfloatergazecues.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -15203,6 +15160,44 @@
       "git_status": "A",
       "layer": 2,
       "path": "indra/newview/algazemotor.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "crowd",
+        "director-shell",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/algazenearby.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/algazenearbyname.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -17716,11 +17711,12 @@
       "features": [
         "actor-bar",
         "actor-path",
+        "common-ui",
         "director-shell",
         "gaze"
       ],
       "git_status": "A",
-      "layer": 2,
+      "layer": 1,
       "path": "indra/newview/alpanelgazecues.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -17784,7 +17780,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell",
         "gaze"
       ],
@@ -41721,6 +41716,22 @@
         "path/prefix"
       ],
       "features": [
+        "director-shell",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_gaze_nearby_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
         "director-shell"
       ],
       "git_status": "A",
@@ -42944,6 +42955,36 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "scripts/code_tools/gaze_cue_nearby_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "scripts/code_tools/gaze_nearby_mover_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

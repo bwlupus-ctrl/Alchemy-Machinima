@@ -18,6 +18,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/algazehotslots.h`
 - `indra/newview/algazemath.h`
 - `indra/newview/algazemotor.h`
+- `indra/newview/algazenearby.h`
+- `indra/newview/algazenearbyname.h`
 - `indra/newview/algazenoise.h`
 - `indra/newview/algazepolicy.h`
 - `indra/newview/algazerecruit.h`
@@ -69,7 +71,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## hooks
 
-- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,123", "indra/newview/CMakeLists.txt@1300,176", "indra/newview/CMakeLists.txt@2976,197"]}
+- {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,123", "indra/newview/CMakeLists.txt@1300,178", "indra/newview/CMakeLists.txt@2978,197"]}
 - {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@6575,14799", "indra/newview/app_settings/settings.xml@29415,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@1728,12", "indra/newview/llappviewer.cpp@5383,37", "indra/newview/llappviewer.cpp@5671,49", "indra/newview/llappviewer.cpp@5993,30"]}
 - {"path": "indra/newview/llstartup.cpp", "hunks": ["indra/newview/llstartup.cpp@201,9", "indra/newview/llstartup.cpp@2263,11"]}
@@ -259,7 +261,9 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1459, "text": "algazehot.h", "source": "indra/newview/algazehot.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1460, "text": "algazehotslots.h", "source": "indra/newview/algazehotslots.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1451, "text": "algazemath.h", "source": "indra/newview/algazemath.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1461, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1463, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1461, "text": "algazenearby.h", "source": "indra/newview/algazenearby.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1462, "text": "algazenearbyname.h", "source": "indra/newview/algazenearbyname.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1457, "text": "algazenoise.h", "source": "indra/newview/algazenoise.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1458, "text": "algazepolicy.h", "source": "indra/newview/algazepolicy.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1455, "text": "algazerecruit.h", "source": "indra/newview/algazerecruit.h"}
@@ -275,17 +279,17 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 407, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1394, "text": "alpanelghoststudio.h", "source": "indra/newview/alpanelghoststudio.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 444, "text": "alpanellensgaze.cpp", "source": "indra/newview/alpanellensgaze.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1462, "text": "alpanellensgaze.h", "source": "indra/newview/alpanellensgaze.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1464, "text": "alpanellensgaze.h", "source": "indra/newview/alpanellensgaze.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1154, "text": "alpovblinkmath.h", "source": "indra/newview/alpovblinkmath.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 249, "text": "alsteppedanim.cpp", "source": "indra/newview/alsteppedanim.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2982, "text": "LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/alsteppedanim.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2984, "text": "LL_ADD_INTEGRATION_TEST(alsteppedanim \"alsteppedanim.cpp\" \"${test_libs}\" \"${test_project}\")", "source": "indra/newview/alsteppedanim.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1211, "text": "alsteppedanim.h", "source": "indra/newview/alsteppedanim.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 250, "text": "alsteppedanimruntime.cpp", "source": "indra/newview/alsteppedanimruntime.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1454, "text": "altrajectory.h", "source": "indra/newview/altrajectory.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 376, "text": "alvcambonepov.cpp", "source": "indra/newview/alvcambonepov.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1336, "text": "alvcambonepovmath.h", "source": "indra/newview/alvcambonepovmath.h"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2328, "text": "app_settings/key_bindings.xml", "source": "indra/newview/app_settings/key_bindings.xml"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2330, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2330, "text": "app_settings/key_bindings.xml", "source": "indra/newview/app_settings/key_bindings.xml"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2332, "text": "app_settings/settings.xml", "source": "indra/newview/app_settings/settings.xml"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 342, "text": "llactormover.cpp", "source": "indra/newview/llactormover.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1310, "text": "llactormover.h", "source": "indra/newview/llactormover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 320, "text": "llappviewer.cpp", "source": "indra/newview/llappviewer.cpp"}
@@ -299,7 +303,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1410, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 626, "text": "llfloaterpreference.cpp", "source": "indra/newview/llfloaterpreference.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 674, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 1698, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1700, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 916, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 692, "text": "llhudeffecttrail.cpp", "source": "indra/newview/llhudeffecttrail.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 424, "text": "llpresentationtime.cpp", "source": "indra/newview/llpresentationtime.cpp"}
@@ -308,12 +312,12 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1034, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llviewerinput.cpp", "source": "indra/newview/llviewerinput.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1045, "text": "llviewerjoystick.cpp", "source": "indra/newview/llviewerjoystick.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2061, "text": "llviewerjoystick.h", "source": "indra/newview/llviewerjoystick.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2063, "text": "llviewerjoystick.h", "source": "indra/newview/llviewerjoystick.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1063, "text": "llviewerpartsim.cpp", "source": "indra/newview/llviewerpartsim.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2079, "text": "llviewerpartsim.h", "source": "indra/newview/llviewerpartsim.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2081, "text": "llviewerpartsim.h", "source": "indra/newview/llviewerpartsim.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1081, "text": "llvoavatar.cpp", "source": "indra/newview/llvoavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1091, "text": "llvopartgroup.cpp", "source": "indra/newview/llvopartgroup.cpp"}
-- {"file": "indra/newview/CMakeLists.txt", "line": 2121, "text": "llworld.h", "source": "indra/newview/llworld.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2123, "text": "llworld.h", "source": "indra/newview/llworld.h"}
 
 ## kit wiring pages
 
@@ -325,5 +329,6 @@ None identified by local evidence; not a claim that none is needed.
 ## checks
 
 - `scripts/code_tools/director_gaze_hot_check.py`
+- `scripts/code_tools/director_gaze_nearby_check.py`
 
 Full include/call edges: ../features.json. Shared hooks: ../hooks.md. Setting values and save coverage: ../settings.csv.
