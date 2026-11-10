@@ -11,8 +11,24 @@
       "TOOLING": 444
     },
     "dirty_product_inputs": [
+      "indra/newview/CMakeLists.txt",
+      "indra/newview/alghostanimassetindex.cpp",
+      "indra/newview/alghostanimassetindex.h",
+      "indra/newview/alghoststudio.cpp",
+      "indra/newview/alghoststudio.h",
+      "indra/newview/alkitrow.cpp",
+      "indra/newview/alkitrow.h",
+      "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/alpanelghoststudio.h",
+      "indra/newview/altoolghostedit.cpp",
+      "indra/newview/llinventorybridge.cpp",
+      "indra/newview/lltooldraganddrop.cpp",
+      "indra/newview/lltooldraganddrop.h",
+      "indra/newview/llviewerobject.cpp",
+      "indra/newview/llvoavatarself.cpp",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/menu_inventory.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
@@ -54,6 +70,8 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
@@ -68,7 +86,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "0993231540bc0cc74f711386ab9bceb550647ff54049d423ff8a14fadcc614ae",
+        "csv_sha256": "221276d2c0351c8efec1617f668a4dd6d76c0aaab7f402f5b68768e927676a0f",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -173,7 +191,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 847
+        "xui_files": 846
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -239,10 +257,10 @@
       },
       "wiring_rows": 2297
     },
-    "head_source_tree": "4f6c3f67d45dd49e1c1ae5bb0ffe537c7b696854",
+    "head_source_tree": "e6d50dde1096f9f9fc2ac260a3325f3615d6dd74",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "e7cc5b0dc374086a5e279179915c79e81fa1fe7f7aa8fb3d073d88f7febe1586",
+    "input_sha256": "cadc4344149a3b6eb0ea7d8bca4608ef6f7e95b428f69b1711d2e981f83c16a6",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",

@@ -27,6 +27,11 @@
 #include "llviewerprecompiledheaders.h"
 #include "lltooldraganddrop.h"
 #include "llkeyboard.h"
+#include "alghostanimdrop.h"        // [CloneAnimDrop] drop verdict + UI strings
+#include "alghostanimassetindex.h"  // [CloneAnimDrop] restriction ledger
+#include "alghoststudio.h"          // [CloneAnimDrop] clone pick + play
+#include "alpanelghoststudio.h"     // [CloneAnimDrop] recorded (undoable) play
+#include "llviewercamera.h"         // [CloneAnimDrop] clone-vs-pick depth
 
 #include "alvcampagemodel.h"
 #include "alvcammonitorstrip.h"
@@ -193,7 +198,8 @@ LLToolDragAndDrop::DragAndDropEntry::DragAndDropEntry(dragOrDrop3dImpl f_none,
                                                       dragOrDrop3dImpl f_self,
                                                       dragOrDrop3dImpl f_avatar,
                                                       dragOrDrop3dImpl f_object,
-                                                      dragOrDrop3dImpl f_land) :
+                                                      dragOrDrop3dImpl f_land,
+                                                      dragOrDrop3dImpl f_ghost_clone) :
     LLDictionaryEntry("")
 {
     mFunctions[DT_NONE] = f_none;
@@ -201,6 +207,7 @@ LLToolDragAndDrop::DragAndDropEntry::DragAndDropEntry(dragOrDrop3dImpl f_none,
     mFunctions[DT_AVATAR] = f_avatar;
     mFunctions[DT_OBJECT] = f_object;
     mFunctions[DT_LAND] = f_land;
+    mFunctions[DT_GHOST_CLONE] = f_ghost_clone;
 }
 
 LLToolDragAndDrop::dragOrDrop3dImpl LLToolDragAndDrop::LLDragAndDropDictionary::get(EDragAndDropType dad_type, LLToolDragAndDrop::EDropTarget drop_target)
@@ -230,7 +237,7 @@ LLToolDragAndDrop::LLDragAndDropDictionary::LLDragAndDropDictionary()
     addEntry(DAD_CATEGORY,      new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dWearCategory,          &LLToolDragAndDrop::dad3dGiveInventoryCategory, &LLToolDragAndDrop::dad3dRezCategoryOnObject,       &LLToolDragAndDrop::dad3dNULL));
     addEntry(DAD_ROOT_CATEGORY, new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                      &LLToolDragAndDrop::dad3dNULL));
     addEntry(DAD_BODYPART,      new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dWearItem,              &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dUpdateInventory,           &LLToolDragAndDrop::dad3dNULL));
-    addEntry(DAD_ANIMATION,     new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dUpdateInventory,           &LLToolDragAndDrop::dad3dNULL));
+    addEntry(DAD_ANIMATION,     new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dUpdateInventory,           &LLToolDragAndDrop::dad3dNULL,                      &LLToolDragAndDrop::dad3dPlayOnGhostClone)); // [CloneAnimDrop]
     addEntry(DAD_GESTURE,       new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dActivateGesture,       &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dUpdateInventory,           &LLToolDragAndDrop::dad3dNULL));
     addEntry(DAD_LINK,          new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dNULL,                      &LLToolDragAndDrop::dad3dNULL));
     addEntry(DAD_MESH,          new DragAndDropEntry(&LLToolDragAndDrop::dad3dNULL, &LLToolDragAndDrop::dad3dNULL,                  &LLToolDragAndDrop::dad3dGiveInventory,         &LLToolDragAndDrop::dad3dMeshObject,                &LLToolDragAndDrop::dad3dNULL));
@@ -761,8 +768,58 @@ void LLToolDragAndDrop::pick(const LLPickInfo& pick_info)
     LLViewerObject* hit_obj = pick_info.getObject();
     LLSelectMgr::getInstance()->unhighlightAll();
     bool highlight_object = false;
+    // [CloneAnimDrop] A Ghost Studio entity clone under the cursor is its own
+    // drop target: a direct hit on the clone's body or one of its attachments,
+    // or -- for an all-animation drag from the agent's inventory -- the same
+    // screen-space foot / mid-body pick the Ghost edit tool uses, but only
+    // when that clone is nearer the camera than whatever the real pick hit
+    // (proximity never steals a drop from an object, avatar or land in front
+    // of the clone). Every other drag keeps today's dispatch.
+    mGhostCloneTarget.setNull();
+    if (mSource == SOURCE_AGENT && !mCargoTypes.empty())
+    {
+        ALGhostStudio& studio = ALGhostStudio::instance();
+        LLUUID clone = studio.entityCloneForObject(hit_obj);
+        if (clone.isNull())
+        {
+            bool all_animations = true;
+            for (EDragAndDropType cargo : mCargoTypes)
+            {
+                all_animations = all_animations && cargo == DAD_ANIMATION;
+            }
+            if (all_animations)
+            {
+                LLVector3 probe_agent;
+                const LLUUID nearby = studio.pickInstanceAtScreen(
+                    pick_info.mMousePt.mX, pick_info.mMousePt.mY,
+                    ALGhostStudio::SCREEN_PICK_PX, true, &probe_agent);
+                if (nearby.notNull())
+                {
+                    const bool real_pick = hit_obj != NULL ||
+                        pick_info.mPickType == LLPickInfo::PICK_LAND;
+                    // A HUD hit is in HUD coordinates: no depth compare, the
+                    // HUD keeps the drop (so does a HUD icon pick).
+                    const bool hud_pick = (hit_obj != NULL && hit_obj->isHUDAttachment()) ||
+                        pick_info.mPickType == LLPickInfo::PICK_ICON;
+                    const LLVector3 eye = LLViewerCamera::getInstance()->getOrigin();
+                    const LLVector3 hit_agent = gAgent.getPosAgentFromGlobal(pick_info.mPosGlobal);
+                    if (ALGhostAnimDrop::cloneInFront(real_pick, hud_pick, dist_vec(probe_agent, eye),
+                                                      dist_vec(hit_agent, eye)))
+                    {
+                        clone = nearby;
+                    }
+                }
+            }
+        }
+        mGhostCloneTarget = clone;
+    }
     // Treat attachments as part of the avatar they are attached to.
-    if (hit_obj != NULL)
+    if (mGhostCloneTarget.notNull())
+    {
+        target = DT_GHOST_CLONE;
+        hit_face = -1;
+    }
+    else if (hit_obj != NULL)
     {
         // don't allow drag and drop on grass, trees, etc.
         if (pick_info.mPickType == LLPickInfo::PICK_FLORA)
@@ -2412,6 +2469,53 @@ EAcceptance LLToolDragAndDrop::dad3dVCamLand(
 {
     mCustomMsg = "VCam feeds can only be dropped on object faces, not land.";
     return ACCEPT_NO_CUSTOM;
+}
+
+// [CloneAnimDrop] ------------------------------------------------------------
+EAcceptance LLToolDragAndDrop::dad3dGhostCloneRefuse(
+    LLViewerObject*, S32, MASK, bool)
+{
+    mCustomMsg = "A clone can only play an animation from your own inventory.";
+    return ACCEPT_NO_CUSTOM;
+}
+
+EAcceptance LLToolDragAndDrop::dad3dPlayOnGhostClone(
+    LLViewerObject*, S32, MASK, bool drop)
+{
+    LL_DEBUGS() << "LLToolDragAndDrop::dad3dPlayOnGhostClone()" << LL_ENDL;
+    LLViewerInventoryItem* item;
+    LLViewerInventoryCategory* cat;
+    locateInventory(item, cat);
+    // Links resolve to the animation they point at. The item's restriction is
+    // recorded first, so the asset is masked everywhere before it ever plays.
+    const LLViewerInventoryItem* real =
+        item && item->getLinkedItem() ? item->getLinkedItem() : item;
+    ALGhostAnimAssetIndex::instance().noteItemRestriction(real);
+    const bool owned = real && real->getPermissions().getOwner() == gAgent.getID();
+    const bool asset_known = real && real->getAssetUUID().notNull();
+    if (ALGhostAnimDrop::classify3D(mGhostCloneTarget.notNull(), true,
+                                    mSource == SOURCE_AGENT, owned, asset_known) !=
+        ALGhostAnimDrop::VERDICT_PLAY_ON_CLONE)
+    {
+        return dad3dGhostCloneRefuse(nullptr, -1, MASK_NONE, drop);
+    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const std::string clone_name = studio.cloneDisplayName(mGhostCloneTarget);
+    if (!drop)
+    {
+        mToolTipMsg = ALGhostAnimDrop::hoverText(real->getName(), clone_name);
+        return ACCEPT_YES_SINGLE;
+    }
+    // The internal asset id only ever reaches the player; the toast carries
+    // names (TPV policy 2.a.i: a non-full-perm asset id is never shown). One
+    // undo step (on the active Ghost Studio host) restores drive mode + anim.
+    if (ALPanelGhostStudio::playAnimationOnClonesRecorded({ mGhostCloneTarget },
+                                                          real->getAssetUUID(), real->getName()) > 0)
+    {
+        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE",
+            ALGhostAnimDrop::playingToast(real->getName(), clone_name)));
+    }
+    return ACCEPT_YES_SINGLE;
 }
 
 EAcceptance LLToolDragAndDrop::dad3dRezAttachmentFromInv(

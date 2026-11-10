@@ -18,6 +18,8 @@
 #include "alkitcard.h"
 #include "alkitpage.h"
 #include "alkitrow.h"               // ALKitRow::setControlVisible (Director kit page rows)
+#include "alkitshell.h"             // [CloneAnimDrop] history for recorded clone play
+#include "alkithistory.h"           // [CloneAnimDrop]
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
 #include "alghostanimassetindex.h"
@@ -35,6 +37,8 @@
 #include "lldir.h"                  // [FileSafety] sibling path splitting
 #include "llfile.h"                 // [FileSafety] LLFile::exists
 #include "llnotificationsutil.h"    // [FileSafety] skipped-sibling notice
+#include "llinventorymodel.h"       // [CloneAnimDrop] gInventory item lookup
+#include "llviewerinventory.h"      // [CloneAnimDrop] link resolution
 #include "llf32uictrl.h"
 #include "lldirectorcast.h"         // source picker = the cast
 #include "lljoint.h"
@@ -69,6 +73,14 @@ std::set<ALPanelGhostStudio*>& ghostStudioPanels()
 {
     static std::set<ALPanelGhostStudio*> panels;
     return panels;
+}
+
+// [CloneAnimDrop] kit row "Copy value" guard: a value that is, or mentions, an
+// asset id backed by a non-full-perm item never reaches a clipboard.
+bool protectedAnimIdCopyGuard(const LLSD& value)
+{
+    return ALGhostAnimDrop::clipboardValueAllowed(
+        value, ALGhostAnimAssetIndex::instance().restrictions());
 }
 
 // Name of column `index` of a scroll list. The standalone floater names the ghost list columns
@@ -354,9 +366,12 @@ ALPanelGhostStudio::ALPanelGhostStudio()
     mPlacementOwner.generate();
 }
 
+ALPanelGhostStudio* ALPanelGhostStudio::sActiveHost = nullptr;
+
 ALPanelGhostStudio::~ALPanelGhostStudio()
 {
     ghostStudioPanels().erase(this);
+    if (sActiveHost == this) sActiveHost = nullptr;
     // If owner-scoped cancellation invokes the stored callback while this
     // derived destructor is running, make it a no-op before touching the tool.
     mCrowdFacingPrototype.setNull();
@@ -605,6 +620,17 @@ bool ALPanelGhostStudio::postBuild()
     mDirectedMirrorCheck = getChild<LLCheckBoxCtrl>("directed_anim_mirror_check");
     mSourceAnimationsCombo = getChild<LLComboBox>("source_animations_combo");
     mAnimationLibraryCombo = getChild<LLComboBox>("animation_library_combo");
+    mAnimAssetCard = findChild<ALKitCard>("kc_anim_asset"); // [CloneAnimDrop] kit host only
+    // [CloneAnimDrop] the typed row clipboard ("Copy value") must never carry
+    // a protected asset id: these three rows hold animation ids as values.
+    LLUICtrl* protected_id_controls[3] = { mDirectedAnimEdit, mSourceAnimationsCombo, mAnimationLibraryCombo };
+    for (LLUICtrl* control : protected_id_controls)
+    {
+        if (ALKitRow* row = ALKitRow::rowFor(control))
+        {
+            row->setCopyGuard(&protectedAnimIdCopyGuard);
+        }
+    }
     mAnimationLibraryRefreshBtn = getChild<LLButton>("btn_anim_library_refresh");
     mLoopModeCombo = getChild<LLComboBox>("anim_loop_mode_combo");
     mAnimSyncBtn = getChild<LLButton>("btn_anim_sync");
@@ -1129,6 +1155,7 @@ void ALPanelGhostStudio::onVisibilityChange(bool new_visibility)
         mRigDiagShown = false;
         noteListSelectionChanged();
         mAnimLibraryShownRev = 0; // re-mirror the shared library when directed controls show
+        noteActiveHost();         // [CloneAnimDrop] the shown host is the one the menu targets
     }
     LLPanel::onVisibilityChange(new_visibility);
 }
@@ -2174,11 +2201,13 @@ void ALPanelGhostStudio::refreshDetail()
     {
         setValueIfChanged(mDriveModeCombo, LLSD((S32)inst->mDriveMode));
         // no LLUUID::asString() per tick: format only when the model value moved
-        // (or the selection/key changed)
-        if (key_changed || mDirectedAnimShown != inst->mDirectedAnim)
+        // (or the selection/key changed, or what may be shown changed)
+        if (key_changed || mDirectedAnimShown != inst->mDirectedAnim ||
+            mDirectedAnimShownLibraryRev != studio.animLibraryRevision() ||
+            mDirectedAnimShownNameRev != ALGhostAnimAssetIndex::instance().metadataRevision() ||
+            mDirectedAnimShownRestrictionRev != ALGhostAnimAssetIndex::instance().restrictionRevision())
         {
-            setTextIfChanged(mDirectedAnimEdit, inst->mDirectedAnim.asString());
-            mDirectedAnimShown = inst->mDirectedAnim;
+            showDirectedAnim(inst->mDirectedAnim);
         }
     }
     setValueIfChanged(mLoopModeCombo, LLSD((S32)inst->mLoopMode));
@@ -2322,8 +2351,7 @@ void ALPanelGhostStudio::refreshDetail()
         setValueIfChanged(mAnimSpeedSpin, LLSD((F64)inst->mAnimSpeed), true);
         setValueIfChanged(mPhysicsCheck, LLSD(inst->mPhysicsEnabled), true);
         setValueIfChanged(mDriveModeCombo, LLSD((S32)inst->mDriveMode), true);
-        setTextIfChanged(mDirectedAnimEdit, inst->mDirectedAnim.asString(), true);
-        mDirectedAnimShown = inst->mDirectedAnim;
+        showDirectedAnim(inst->mDirectedAnim, true);
         setValueIfChanged(mEffectFps, LLSD((F64)inst->mEffectFps), true);
         setValueIfChanged(mPoseRate, LLSD((F64)inst->mPoseRateHz), true);
         // the combo values the enable block reads just changed
@@ -2489,6 +2517,7 @@ void ALPanelGhostStudio::onListSelect()
     // [R2-3] the list drives the SHARED selection (tool + both hosts follow);
     // refreshDetail() loads the widgets on the next draw
     noteListSelectionChanged(); // [GhostPanelPerf] user changed the list selection
+    noteActiveHost();           // [CloneAnimDrop] this host's multiselection is the menu's
     ALGhostStudio& studio = ALGhostStudio::instance();
     const LLUUID row_value = selectedListValue();
     const ALGhostGroupModel::Group* group =
@@ -3206,14 +3235,21 @@ void ALPanelGhostStudio::refreshAutoAnimate(const ALGhostStudio::Instance* inst)
 
 void ALPanelGhostStudio::onDirectedAnimCommit()
 {
-    // See onDriveModeCommit(): apply to every member of a selected group, not
-    // just the representative.
+    // A UUID pasted by hand. Masked editor text ("<name> (inventory animation,
+    // UUID hidden)") does not parse, so re-committing it is a no-op.
     LLUUID anim;
     if (!LLUUID::parseUUID(mDirectedAnimEdit->getText(), &anim) || anim.isNull())
     {
         return;
     }
-    mDirectedAnimEdit->setText(anim.asString());
+    showDirectedAnim(anim, true);
+    applyDirectedAnimToSelection(anim);
+}
+
+void ALPanelGhostStudio::applyDirectedAnimToSelection(const LLUUID& anim)
+{
+    // See onDriveModeCommit(): apply to every member of a selected group, not
+    // just the representative.
     ALGhostAnimAssetIndex::instance().requestMetadata(anim);
     ALGhostStudio& studio = ALGhostStudio::instance();
     for (const LLUUID& id : selectedInstances())
@@ -3235,9 +3271,253 @@ void ALPanelGhostStudio::onAnimationLibraryCommit()
     {
         return;
     }
-    mDirectedAnimEdit->setText(asset_id.asString());
-    onDirectedAnimCommit();
-    ALGhostAnimAssetIndex::instance().requestMetadata(asset_id);
+    // [CloneAnimDrop] the one path shared with the card drop and the
+    // inventory menu: Directed members, else switch the selection to Directed.
+    ALGhostAnimAssetIndex& index = ALGhostAnimAssetIndex::instance();
+    if (const ALGhostAnimAssetIndex::Entry* entry = index.find(asset_id))
+    {
+        index.noteRestriction(asset_id, entry->mExposable); // before play / format
+    }
+    applyInventoryAnimation(asset_id, mAnimationLibraryCombo->getSelectedItemLabel());
+}
+
+// [CloneAnimDrop] ------------------------------------------------------------
+std::string ALPanelGhostStudio::directedAnimEditorText(const LLUUID& asset_id)
+{
+    // TPV policy 2.a.i: an asset id backed by a non-full-perm item of the
+    // agent's is used to play, never shown. Anything else (full-perm item,
+    // pasted or source-broadcast id) still shows as before.
+    const bool hidden = ALGhostAnimAssetIndex::instance().isAssetIdHidden(asset_id);
+    return ALGhostAnimDrop::directedAnimEditorText(asset_id, !hidden,
+        hidden ? ALGhostStudio::instance().animationName(asset_id) : std::string());
+}
+
+// ui-draw-lint: allow-function(raw-write) diff-guarded redaction that must bypass the focus rule
+void ALPanelGhostStudio::showDirectedAnim(const LLUUID& asset_id, bool force)
+{
+    ALGhostAnimAssetIndex& index = ALGhostAnimAssetIndex::instance();
+    const std::string text = directedAnimEditorText(asset_id);
+    if (index.isAssetIdHidden(asset_id) && mDirectedAnimEdit->getText() != text)
+    {
+        // Redaction outranks the focus rule: a restriction learned while the
+        // editor is being edited still replaces the UUID on screen now.
+        mDirectedAnimEdit->setText(text);
+    }
+    else
+    {
+        setTextIfChanged(mDirectedAnimEdit, text, force);
+    }
+    mDirectedAnimShown = asset_id;
+    mDirectedAnimShownLibraryRev = ALGhostStudio::instance().animLibraryRevision();
+    mDirectedAnimShownNameRev = index.metadataRevision();
+    mDirectedAnimShownRestrictionRev = index.restrictionRevision();
+}
+
+void ALPanelGhostStudio::noteActiveHost()
+{
+    sActiveHost = this;
+}
+
+// static
+ALPanelGhostStudio* ALPanelGhostStudio::activeHost()
+{
+    return sActiveHost && sActiveHost->isInVisibleChain() ? sActiveHost : nullptr;
+}
+
+// static
+S32 ALPanelGhostStudio::playAnimationOnClonesRecorded(const std::vector<LLUUID>& ids,
+                                                      const LLUUID& asset_id,
+                                                      const std::string& anim_name)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    struct Before
+    {
+        LLUUID mId;
+        ALGhostStudio::EDriveMode mMode;
+        LLUUID mAnim;
+    };
+    auto snapshot = std::make_shared<std::vector<Before>>();
+    for (const LLUUID& id : ids)
+    {
+        if (const ALGhostStudio::Instance* inst = studio.getInstance(id))
+        {
+            snapshot->push_back({ id, inst->mDriveMode, inst->mDirectedAnim });
+        }
+    }
+    const S32 played = studio.playAnimationOnClones(ids, asset_id);
+    ALPanelGhostStudio* host = activeHost();
+    ALKitShell* shell = host && played > 0 ? ALKitShell::find(host) : nullptr;
+    if (!shell)
+    {
+        return played;
+    }
+    // One step restores every clone's previous drive mode AND animation; the
+    // asset id lives only inside the closure (the label is the name).
+    const LLUUID asset = asset_id;
+    shell->history().recordCustom(host, "clone_directed_anim", "Play " + anim_name + " on clones",
+        [snapshot, asset](bool redo, std::string& reason)
+        {
+            ALGhostStudio& studio = ALGhostStudio::instance();
+            bool any = false;
+            for (const Before& before : *snapshot)
+            {
+                if (!studio.getInstance(before.mId)) continue;
+                any = studio.setInstanceDriveMode(before.mId,
+                    redo ? ALGhostStudio::DRIVE_DIRECTED : before.mMode,
+                    redo ? asset : before.mAnim) || any;
+            }
+            if (!any) reason = "Those clones are no longer available";
+            return any;
+        });
+    return played;
+}
+
+std::vector<ALGhostAnimDrop::SelectedClone> ALPanelGhostStudio::selectedEntityClonesForApply() const
+{
+    std::vector<ALGhostAnimDrop::SelectedClone> clones;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            clones.emplace_back(id, inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED);
+        }
+    }
+    // An empty list selection falls back to the shared Studio selection (the
+    // in-world edit tool's), so a clone picked in-world counts too.
+    return clones.empty() ? studio.selectedEntityClones() : clones;
+}
+
+// static
+void ALPanelGhostStudio::applyInventoryAnimationTo(
+    const std::vector<ALGhostAnimDrop::SelectedClone>& selected,
+    const LLUUID& asset_id, const std::string& anim_name)
+{
+    const ALGhostAnimDrop::ApplyPlan plan = ALGhostAnimDrop::planApply(selected);
+    if (plan.mNothingSelected)
+    {
+        LLNotificationsUtil::add("SystemMessageTip",
+            LLSD().with("MESSAGE", ALGhostAnimDrop::selectCloneFirstToast()));
+        return;
+    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const S32 played = playAnimationOnClonesRecorded(plan.mPlay, asset_id, anim_name);
+    std::string message;
+    if (played <= 0)
+    {
+        message = "The selected clone is not ready to play yet";
+    }
+    else if (played == 1)
+    {
+        message = ALGhostAnimDrop::playingToast(anim_name, studio.cloneDisplayName(plan.mPlay.front()));
+    }
+    else
+    {
+        message = ALGhostAnimDrop::playingToast(anim_name, (size_t)played);
+    }
+    LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", message));
+}
+
+void ALPanelGhostStudio::applyInventoryAnimation(const LLUUID& asset_id, const std::string& anim_name)
+{
+    if (asset_id.isNull()) return;
+    noteActiveHost();
+    applyInventoryAnimationTo(selectedEntityClonesForApply(), asset_id, anim_name);
+    showDirectedAnim(asset_id, true);
+}
+
+bool ALPanelGhostStudio::pointOverAnimAssetCard(S32 x, S32 y) const
+{
+    LLRect rect;
+    if (mAnimAssetCard)
+    {
+        return mAnimAssetCard->isInVisibleChain() &&
+               mAnimAssetCard->localRectToOtherView(mAnimAssetCard->getLocalRect(), &rect, this) &&
+               rect.pointInRect(x, y);
+    }
+    // v1 floater layout (no kit card): the Inventory / Source playing rows.
+    for (const LLView* row : { static_cast<const LLView*>(mAnimationLibraryCombo),
+                               static_cast<const LLView*>(mSourceAnimationsCombo),
+                               static_cast<const LLView*>(mDirectedAnimEdit) })
+    {
+        if (row && row->isInVisibleChain() &&
+            row->localRectToOtherView(row->getLocalRect(), &rect, this) &&
+            rect.pointInRect(x, y))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ALPanelGhostStudio::handleDragAndDrop(S32 x, S32 y, MASK mask, bool drop,
+                                           EDragAndDropType cargo_type, void* cargo_data,
+                                           EAcceptance* accept, std::string& tooltip_msg)
+{
+    // Children first: every other drop keeps today's behaviour.
+    if (LLPanel::handleDragAndDrop(x, y, mask, drop, cargo_type, cargo_data, accept, tooltip_msg))
+    {
+        return true;
+    }
+    if (cargo_type != DAD_ANIMATION || !cargo_data || !pointOverAnimAssetCard(x, y))
+    {
+        return false;
+    }
+    const LLViewerInventoryItem* item =
+        dynamic_cast<const LLViewerInventoryItem*>(static_cast<LLInventoryItem*>(cargo_data));
+    const LLViewerInventoryItem* real = item && item->getLinkedItem() ? item->getLinkedItem() : item;
+    // Restriction first (hover included): the asset is masked before it is
+    // ever played or formatted, even when acquired after the Inventory scan.
+    ALGhostAnimAssetIndex::instance().noteItemRestriction(real);
+    if (!real || real->getPermissions().getOwner() != gAgent.getID() || real->getAssetUUID().isNull())
+    {
+        *accept = ACCEPT_NO;
+        return true;
+    }
+    noteActiveHost();
+    *accept = ACCEPT_YES_SINGLE;
+    tooltip_msg = selectedEntityClonesForApply().empty()
+        ? std::string(ALGhostAnimDrop::selectCloneFirstToast())
+        : ALGhostAnimDrop::hoverText(real->getName(), "the selected clones");
+    if (drop)
+    {
+        applyInventoryAnimation(real->getAssetUUID(), real->getName());
+    }
+    return true;
+}
+
+// static
+bool ALPanelGhostStudio::anyEntityCloneSelected()
+{
+    if (ALPanelGhostStudio* host = activeHost())
+    {
+        return !host->selectedEntityClonesForApply().empty();
+    }
+    return !ALGhostStudio::instance().selectedEntityClones().empty();
+}
+
+// static
+bool ALPanelGhostStudio::playInventoryAnimationOnSelectedClones(const LLUUID& item_id)
+{
+    const LLViewerInventoryItem* item = gInventory.getItem(item_id);
+    if (item && item->getLinkedItem()) item = item->getLinkedItem();
+    if (!item || item->getType() != LLAssetType::AT_ANIMATION ||
+        item->getPermissions().getOwner() != gAgent.getID() || item->getAssetUUID().isNull())
+    {
+        return false;
+    }
+    ALGhostAnimAssetIndex::instance().noteItemRestriction(item); // before play / format
+    // The active host's multiselection, else the authoritative shared
+    // selection (never whichever panel happens to sort first).
+    if (ALPanelGhostStudio* host = activeHost())
+    {
+        host->applyInventoryAnimation(item->getAssetUUID(), item->getName());
+        return true;
+    }
+    applyInventoryAnimationTo(ALGhostStudio::instance().selectedEntityClones(),
+                              item->getAssetUUID(), item->getName());
+    return true;
 }
 
 void ALPanelGhostStudio::onDirectedMirrorCommit()
@@ -3251,10 +3531,9 @@ void ALPanelGhostStudio::onSourceAnimationCommit()
 {
     const LLUUID id = mSourceAnimationsCombo->getSelectedValue().asUUID();
     if (id.isNull()) return;
-    mDirectedAnimEdit->setText(id.asString());
-    onDirectedAnimCommit();
+    showDirectedAnim(id, true);
+    applyDirectedAnimToSelection(id);
     mSourceAnimationsCombo->setSelectedByValue(LLUUID::null, true);
-    ALGhostAnimAssetIndex::instance().requestMetadata(id);
 }
 
 void ALPanelGhostStudio::onLoopModeCommit()

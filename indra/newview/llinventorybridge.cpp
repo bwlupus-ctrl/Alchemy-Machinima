@@ -27,6 +27,7 @@
 
 #include "llviewerprecompiledheaders.h"
 #include "llinventorybridge.h"
+#include "alpanelghoststudio.h"     // [CloneAnimDrop] "Play on selected clones"
 
 // external projects
 #include "lltransfersourceasset.h"
@@ -7480,6 +7481,13 @@ void LLAnimationBridge::buildContextMenu(LLMenuGL& menu, U32 flags)
         items.push_back(std::string("Animation Separator"));
         items.push_back(std::string("Animation Play"));
         items.push_back(std::string("Animation Audition"));
+        // [CloneAnimDrop] plays on the Ghost Studio selection (links resolved);
+        // only offered while an entity clone is selected.
+        items.push_back(std::string("Animation Play On Clones"));
+        if (!ALPanelGhostStudio::anyEntityCloneSelected())
+        {
+            disabled_items.push_back(std::string("Animation Play On Clones"));
+        }
     }
 
     addLinkReplaceMenuOption(items, disabled_items);
@@ -7489,7 +7497,12 @@ void LLAnimationBridge::buildContextMenu(LLMenuGL& menu, U32 flags)
 // virtual
 void LLAnimationBridge::performAction(LLInventoryModel* model, std::string action)
 {
-    if ((action == "playworld") || (action == "playlocal"))
+    if (action == "playclones")
+    {
+        // [CloneAnimDrop] same path as the Clones page Inventory combo.
+        ALPanelGhostStudio::playInventoryAnimationOnSelectedClones(mUUID);
+    }
+    else if ((action == "playworld") || (action == "playlocal"))
     {
         if (getItem())
         {

@@ -850,6 +850,20 @@ bool ALKitRow::setControlVisible(bool visible)
     return true;
 }
 
+ALKitRow* ALKitRow::rowFor(LLView* c)
+{
+    for (LLView* p = c ? c->getParent() : nullptr; p; p = p->getParent())
+        if (ALKitRow* row = dynamic_cast<ALKitRow*>(p))
+            return row->mControl == c ? row : nullptr;
+    return nullptr;
+}
+
+bool ALKitRow::copyAllowed() const
+{
+    const ALKitRow* origin = mSourceRow.get() ? mSourceRow.get() : this;
+    return !origin->mCopyGuard || origin->mCopyGuard(boundValue());
+}
+
 bool ALKitRow::setControlVisible(LLView* c, bool v)
 {
     if (!c)
@@ -1472,6 +1486,8 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
         add_item("reset", "Reset to default", [this]() { reset(); });
         add_item("copy", "Copy value", [this]()
         {
+            if (!copyAllowed())
+                return; // a protected identifier never reaches either clipboard
             sRowClipboard = boundValue();
             if (mMeta.kind == "text" || dynamic_cast<LLLineEditor*>(mControl))
             {
@@ -1509,6 +1525,8 @@ void ALKitRow::showContextMenu(S32 x, S32 y)
         return;
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("reset"))
         item->setVisible(resettable());
+    if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("copy"))
+        item->setEnabled(copyAllowed());
     if (LLMenuItemGL* item = menu->findChild<LLMenuItemGL>("paste"))
         item->setEnabled((mMeta.kind == "text" || dynamic_cast<LLLineEditor*>(mControl))
             ? LLClipboard::instance().isTextAvailable() && enabledForEdit() && !mUnconnected &&

@@ -1521,6 +1521,163 @@ bool ALGhostStudio::restartInstanceAnimation(const LLUUID& id)
     return true;
 }
 
+// ---- [CloneAnimDrop] ------------------------------------------------------
+LLUUID ALGhostStudio::pickInstanceAtScreen(S32 x, S32 y, F32 radius_px,
+                                           bool entity_only,
+                                           LLVector3* out_probe_agent) const
+{
+    if (!mShowAll)
+    {
+        return LLUUID::null;
+    }
+    LLVector3 best_probe;
+    // screen-space pick like the path tool's node pick: the ghosts are overlay
+    // draws, not scene objects, so project each enabled instance's FOOT and a
+    // MID-BODY point (foot + 1 m, easier to grab) and take the nearest in radius
+    LLViewerCamera* cam = LLViewerCamera::getInstance();
+    LLUUID best;
+    F32 best_d2 = radius_px * radius_px;
+    for (const Instance& inst : mInstances)
+    {
+        if (!isVisible(inst) || inst.mDeleting)
+        {
+            continue;       // you pick what you can see; hidden ghosts via the list
+        }
+        if (entity_only && inst.mKind != BACKING_ENTITY_CLONE)
+        {
+            continue;
+        }
+        const LLVector3 foot = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
+        LLVector3 probes[2] = { foot, foot };
+        probes[1].mV[VZ] += 1.f * inst.mScale;      // mid-body, scale-aware
+        if (inst.mKind == BACKING_ENTITY_CLONE)
+        {
+            LLVector3 center, size;
+            if (const LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+                ghost && ghost->getVisualBounds(center, size))
+            {
+                probes[0] = probes[1] = center;
+                probes[0].mV[VZ] -= .5f * size[VZ];
+            }
+        }
+        for (const LLVector3& p : probes)
+        {
+            LLCoordGL screen;
+            if (!cam->projectPosAgentToScreen(p, screen, false))
+            {
+                continue;   // behind the camera
+            }
+            const F32 dx = (F32)(screen.mX - x);
+            const F32 dy = (F32)(screen.mY - y);
+            const F32 d2 = dx * dx + dy * dy;
+            if (d2 < best_d2)
+            {
+                best_d2 = d2;
+                best = inst.mId;
+                best_probe = p;
+            }
+        }
+    }
+    if (out_probe_agent)
+    {
+        *out_probe_agent = best_probe;
+    }
+    return best;
+}
+
+LLUUID ALGhostStudio::entityCloneForObject(LLViewerObject* object) const
+{
+    if (!object)
+    {
+        return LLUUID::null;
+    }
+    // A clone's attachments resolve to the clone before any avatar dispatch,
+    // so a drop on its accessory never reaches give-inventory with a
+    // synthetic avatar id.
+    if (object->isAttachment())
+    {
+        object = LLVOAvatar::findAvatarFromAttachment(object);
+        if (!object)
+        {
+            return LLUUID::null;
+        }
+    }
+    if (!object->isAvatar() ||
+        !static_cast<const LLVOAvatar*>(object)->isGhostAvatar())
+    {
+        return LLUUID::null;
+    }
+    const Instance* inst = findInstanceByRuntime(object->getID());
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || inst->mDeleting ||
+        !isVisible(*inst))
+    {
+        return LLUUID::null;
+    }
+    return inst->mId;
+}
+
+std::vector<ALGhostAnimDrop::SelectedClone> ALGhostStudio::selectedEntityClones() const
+{
+    std::vector<ALGhostAnimDrop::SelectedClone> clones;
+    std::vector<LLUUID> ids;
+    if (const ALGhostGroupModel::Group* group = groupForMember(mSelected);
+        group && mSelected == group->mId)
+    {
+        for (const ALGhostGroupModel::Member& member : group->mMembers)
+        {
+            ids.push_back(member.mInstanceId);
+        }
+    }
+    else if (mSelected.notNull())
+    {
+        ids.push_back(mSelected);
+    }
+    for (const LLUUID& id : ids)
+    {
+        const Instance* inst = getInstance(id);
+        if (inst && inst->mKind == BACKING_ENTITY_CLONE && !inst->mDeleting)
+        {
+            clones.emplace_back(id, inst->mDriveMode == DRIVE_DIRECTED);
+        }
+    }
+    return clones;
+}
+
+S32 ALGhostStudio::playAnimationOnClones(const std::vector<LLUUID>& ids,
+                                         const LLUUID& asset_id)
+{
+    assert_main_thread();
+    if (asset_id.isNull())
+    {
+        return 0;
+    }
+    S32 played = 0;
+    for (const LLUUID& id : ids)
+    {
+        const Instance* inst = getInstance(id);
+        if (!inst || inst->mKind != BACKING_ENTITY_CLONE || inst->mDeleting)
+        {
+            continue;
+        }
+        // Directed + this asset: the same call the panel's Directed editor makes.
+        if (setInstanceDriveMode(id, DRIVE_DIRECTED, asset_id))
+        {
+            ++played;
+        }
+    }
+    if (played)
+    {
+        ALGhostAnimAssetIndex::instance().requestMetadata(asset_id);
+    }
+    return played;
+}
+
+std::string ALGhostStudio::cloneDisplayName(const LLUUID& id) const
+{
+    const Instance* inst = getInstance(id);
+    return ALGhostAnimDrop::cloneLabel(inst ? inst->mName : std::string());
+}
+
 LLGhostAvatar* ALGhostStudio::resolveEntityClone(const LLUUID& id) const
 {
     const Instance* match = getInstance(id);
