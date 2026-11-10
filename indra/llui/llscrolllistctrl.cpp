@@ -2367,7 +2367,7 @@ S32 LLScrollListCtrl::getColumnAreaWidth() const
 S32 LLScrollListCtrl::getColumnIndexFromOffset(S32 x)
 {
     // Cells are drawn the gutter in from the row edge; hit testing moves with them.
-    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter());
+    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft);
     // which column did we hit?
     S32 left = 0;
     S32 right = 0;

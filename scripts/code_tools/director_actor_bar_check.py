@@ -13,7 +13,7 @@ from relight_area_policy_check import method as source_method
 ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f521240063afe57136c341bc1898177c75ee839f0580'), ('actor_key_wp2_hunks.json', 'f3a43e5c9d72ce23e55e7692d985609b36e11c8e1d177828dd707b5b9754baf8'), ('actor_key_lens_hunks.json', '844681a5ef69be59d5b25963eb31c390313762ad9877fafd4cd5845d887745b8'), ('actor_key_wp1b_hunks.json', '61e677b1d11538f03a399943091deeab599c599cd6d0d8904064c52264d80edf'), ('actor_key_shadow_hunks.json', 'b1575e291227801c5ed9b2ab5645ed52964b3f1651e7dc9d53a34fb2780d6b67'), ('actor_key_wp5_ui_hunks.json', 'c12e8b597cf14cd0a6fb06484ca436acbb8595bbe833e6a078311a1fd8231130'), ('actor_key_fix_all_hunks.json', 'aaca4e8c58bf144096032c4765adfb5287840dc2b15f1ce837ba76edb146017a'), ('actor_key_noguard_hunks.json', '580c6cd973d4e90cb196cb1f66070a4320b28054ee271eb0aab06a2f4d85d926'))
 
 
-CLEAR_ANIM_DIGEST = "127c248722996367b489a69be5a37e63a0343065b7cf21adec64075a07ae7236"
+CLEAR_ANIM_DIGEST = "41b4a2a0c7495e145f3cbe8540d71dde754f089c1da0bc06c08ce317e0699f4c"
 
 
 def reverse_clear_anim_mover(source, name):

@@ -46,6 +46,7 @@ XUI = os.path.join(NEWVIEW, "skins", "default", "xui", "en")
 LLUI = os.path.join(REPO, "indra", "llui")
 CTRL_CPP = "llscrolllistctrl.cpp"
 GUTTER_H = "llscrolllistgutter.h"
+COLUMN_CPP = "llscrolllistcolumn.cpp"
 GHOST_CPP = "alpanelghoststudio.cpp"
 
 # list name -> (owning source, list member). Reviewed for the rules in the module docstring.
@@ -89,8 +90,9 @@ GHOST_PINS = (
 
 GUTTER_PINS = {
     CTRL_CPP: (
-        ("x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter());",
-         "getColumnIndexFromOffset() no longer shifts hit testing by the gutter"),
+        ("x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft);",
+         "getColumnIndexFromOffset() no longer shifts hit testing by the item-list origin and the gutter"),
+
         ("S32 column_offset = LLScrollListGutter::columnOffset(0, getSelectedBarGutter());",
          "getColumnOffsetFromIndex() no longer starts after the gutter"),
         ("return LLScrollListGutter::availableWidth(mItemListRect.getWidth(), getSelectedBarGutter());",
@@ -107,10 +109,19 @@ GUTTER_PINS = {
          "mColumnPadding, getSelectedBarGutter());",
          "rows no longer draw their cells after the gutter"),
     ),
+    COLUMN_CPP: (
+        ("columnp->mRelWidth = (F32)columnp->getWidth() / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());",
+         "relative column ratios of the other columns no longer use the column area width"),
+        ("mColumn->mRelWidth = (F32)new_width / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());",
+         "the resized column's ratio no longer uses the column area width"),
+    ),
     GUTTER_H: (
-        ("return std::max(0, x - gutter);", "a click in the gutter can fall off the column walk"),
-        ("return columns_before + gutter;", "column offsets no longer include the gutter"),
-        ("return std::max(0, list_width - gutter);", "the available width no longer excludes the gutter"),
+        ("if (gutter == 0) return x; return std::max(0, x - origin - gutter);",
+         "a click in the gutter can fall off the column walk, or a list without the bar is no longer unchanged"),
+        ("if (gutter == 0) return columns_before; return columns_before + gutter;",
+         "column offsets no longer include the gutter (or change a list without the bar)"),
+        ("if (gutter == 0) return list_width; return std::max(0, list_width - gutter);",
+         "the available width no longer excludes the gutter (or changes a list without the bar)"),
     ),
 }
 
@@ -206,7 +217,7 @@ def load_inputs():
         if os.path.isfile(path):
             with open(path, encoding="utf-8", errors="replace") as fh:
                 sources[name] = fh.read()
-    for name in (CTRL_CPP, GUTTER_H):
+    for name in (CTRL_CPP, GUTTER_H, COLUMN_CPP):
         path = os.path.join(LLUI, name)
         if os.path.isfile(path):
             with open(path, encoding="utf-8", errors="replace") as fh:
@@ -291,7 +302,13 @@ def selftest():
         ("pure rules header missing", {k: v for k, v in sources.items() if k != "alkitlistselection.h"}, xui_texts),
         # Gutter hit testing (review round 2): the bar moves what is drawn, so it must move what is hit.
         ("hit testing ignores the gutter",
-         ctrl_swap("    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter());\n", ""), xui_texts),
+         ctrl_swap("    x = LLScrollListGutter::columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft);\n", ""), xui_texts),
+        ("hit testing ignores the item-list origin",
+         ctrl_swap("columnLocalX(x, getSelectedBarGutter(), mItemListRect.mLeft)", "columnLocalX(x, getSelectedBarGutter())"), xui_texts),
+        ("column ratios use the full item list width",
+         dict(sources, **{COLUMN_CPP: sources.get(COLUMN_CPP, "").replace(
+             "(F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth())",
+             "(F32)mColumn->mParentCtrl->getItemListRect().getWidth()")}), xui_texts),
         ("cell rectangles ignore the gutter",
          ctrl_swap("LLScrollListGutter::columnOffset(0, getSelectedBarGutter())", "0"), xui_texts),
         ("columns share the width under the gutter",
@@ -304,7 +321,11 @@ def selftest():
          ctrl_swap("    S32 left = mItemListRect.mLeft + getSelectedBarGutter();\n    LLScrollColumnHeader* last_header",
                    "    S32 left = mItemListRect.mLeft;\n    LLScrollColumnHeader* last_header"), xui_texts),
         ("gutter click falls off the column walk",
-         gutter_swap("return std::max(0, x - gutter);", "return x - gutter;"), xui_texts),
+         gutter_swap("return std::max(0, x - origin - gutter);", "return x - origin - gutter;"), xui_texts),
+        ("gutter-less list is clamped",
+         gutter_swap("if (gutter == 0) return x;\n", ""), xui_texts),
+        ("gutter-less width is clamped",
+         gutter_swap("if (gutter == 0) return list_width;\n", ""), xui_texts),
         ("gutter helper loses the width",
          gutter_swap("return std::max(0, list_width - gutter);", "return list_width;"), xui_texts),
     ]

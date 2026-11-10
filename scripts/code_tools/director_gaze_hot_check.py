@@ -94,6 +94,7 @@ int currentGazePriority(){return 0;}
 bool gazeCameraSafe(LLVOAvatar*,bool){return true;}
 bool gaze_suppressed_by_clear(LLVOAvatar*){return false;} // [ClearAnim] fixture clones are never cleared
 struct LLActorMover {
+struct{void migrate(const LLUUID&,const LLUUID&){} void clear(){} template<class F>void forEach(F&&){}} mParkedHotGazes; // [ClearAnim] store stand-in (rules: alghostclearanim_test)
 '''
     source += method(NV/'llactormover.h', '    struct GazeTarget\n') + ';\n'
     for signature in ('    struct Gaze\n', '    struct DirectorJointPose\n',

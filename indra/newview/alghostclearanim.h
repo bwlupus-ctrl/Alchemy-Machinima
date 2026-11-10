@@ -15,7 +15,9 @@
 #define AL_GHOST_CLEAR_ANIM_H
 
 #include <cstddef>
+#include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace ALGhostClearAnim
@@ -116,6 +118,74 @@ namespace ALGhostClearAnim
         float       mPos[3] = {0.f, 0.f, 0.f};
     };
     typedef std::vector<HeldJoint> HeldPose;
+
+    // The held pose is what the clone shows UNDER a transient Directed Mirror stamp (when one
+    // is written), so undo hands the pose back and the normal stamp mirrors it exactly once.
+    inline HeldJoint heldJoint(const std::string& name, const float displayed_rot[4],
+                               const float displayed_pos[3], const float* under_rot,
+                               const float* under_pos)
+    {
+        HeldJoint held;
+        held.mName = name;
+        for (int i = 0; i < 4; ++i) held.mRot[i] = under_rot ? under_rot[i] : displayed_rot[i];
+        for (int i = 0; i < 3; ++i) held.mPos[i] = under_pos ? under_pos[i] : displayed_pos[i];
+        return held;
+    }
+
+    // The authored Directed Mirror setting stays for later playback, but a cleared clone
+    // is never stamped: the shape-aware neutral positions must not be mirrored.
+    inline bool mayStampMirror(bool cleared)
+    {
+        return !cleared;
+    }
+
+    // Saved state (a parked Hot Gaze) owned by ONE Clear snapshot through a token. An undo
+    // takes exactly its own token; a respawn migrates the owner; deletion drops it.
+    // Token 0 is "nothing was parked".
+    template <typename Owner, typename State>
+    class ParkedStore
+    {
+    public:
+        unsigned park(const Owner& owner, State state)
+        {
+            const unsigned token = mNext++;
+            mEntries.emplace(token, Entry{owner, std::move(state)});
+            return token;
+        }
+        // Moves the state out only for the same owner; the token is spent either way.
+        bool take(unsigned token, const Owner& owner, State& out)
+        {
+            const auto it = mEntries.find(token);
+            if (it == mEntries.end()) return false;
+            const bool mine = it->second.mOwner == owner;
+            if (mine) out = std::move(it->second.mState);
+            mEntries.erase(it);
+            return mine;
+        }
+        // new_owner == Owner() (null) deletes what old_owner parked.
+        void migrate(const Owner& old_owner, const Owner& new_owner)
+        {
+            for (auto it = mEntries.begin(); it != mEntries.end();)
+            {
+                if (it->second.mOwner == old_owner)
+                {
+                    if (new_owner == Owner()) { it = mEntries.erase(it); continue; }
+                    it->second.mOwner = new_owner;
+                }
+                ++it;
+            }
+        }
+        void drop(const Owner& owner) { migrate(owner, Owner()); }
+        void clear() { mEntries.clear(); }
+        bool empty() const { return mEntries.empty(); }
+        std::size_t size() const { return mEntries.size(); }
+        template <typename Fn>
+        void forEach(Fn&& fn) { for (auto& entry : mEntries) fn(entry.second.mState); }
+    private:
+        struct Entry { Owner mOwner; State mState; };
+        std::map<unsigned, Entry> mEntries;
+        unsigned mNext = 1;
+    };
 
     // Only a Frozen clone has a held pose that Clear would destroy.
     inline bool needsHeldPose(int drive, int frozen_drive)

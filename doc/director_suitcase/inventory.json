@@ -10,9 +10,29 @@
       "OWNED": 918,
       "TOOLING": 454
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/llui/llscrolllistcolumn.cpp",
+      "indra/llui/llscrolllistctrl.cpp",
+      "indra/llui/llscrolllistgutter.h",
+      "indra/newview/alghostclearanim.h",
+      "indra/newview/alghoststudio.cpp",
+      "indra/newview/alghoststudio.h",
+      "indra/newview/alpanelghoststudio.cpp",
+      "indra/newview/llactormover.cpp",
+      "indra/newview/llactormover.h",
+      "indra/newview/llghostavatar.cpp",
+      "indra/newview/tests/alghostclearanim_test.cpp",
+      "indra/newview/tests/alkitlistselection_test.cpp",
+      "scripts/code_tools/clear_anim_studio_hunks.json",
+      "scripts/code_tools/director_actor_bar_check.py",
+      "scripts/code_tools/director_clone_clear_check.py",
+      "scripts/code_tools/director_clone_rekey_check.py",
+      "scripts/code_tools/director_gaze_hot_check.py",
+      "scripts/code_tools/director_gaze_hot_integration.py",
+      "scripts/code_tools/director_list_select_check.py"
+    ],
     "evidence": {
-      "functional_csv_hash_matches": true,
+      "functional_csv_hash_matches": false,
       "functional_meta": {
         "actions": [
           "RUN",
@@ -197,7 +217,7 @@
     "head_source_tree": "af2fb489580b30103e31e2e6895235e306bed120",
     "hook_files": 540,
     "hunks": 3369,
-    "input_sha256": "89583cbb2a6ddab0eebe59dfbec9fd399700c8795a9cd2dbb0065991c265363b",
+    "input_sha256": "8c65d7f6284c7db4c71d8ce5b3e35b760e422550e994ee56890a5ca772a698b7",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",

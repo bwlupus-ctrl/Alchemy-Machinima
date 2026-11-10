@@ -3333,7 +3333,12 @@ bool ALGhostStudio::clearInstanceAnimations(const LLUUID& id, ClearAnimBefore* b
         setInstanceAutoAnimate(id, false);
     }
     mover.stop(actor); // its walk / turn animation and root override, and a queued staggered start
-    mover.parkHotGaze(actor); // a held Hot Gaze would keep painting the neutral pose
+    // A held Hot Gaze would keep painting the neutral pose; the snapshot owns it.
+    const U32 hot_token = mover.parkHotGaze(actor);
+    if (before)
+    {
+        before->mHotGazeToken = hot_token;
+    }
     if (mover.isGazeEnabled(actor))
     {
         mover.setGazeEnabled(actor, false); // head / eye look-at layer and its eye motion
@@ -3399,7 +3404,7 @@ bool ALGhostStudio::restoreInstanceAnimations(const ClearAnimBefore& before)
     {
         mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled);
     }
-    mover.unparkHotGaze(ghost->getID());
+    mover.unparkHotGaze(before.mHotGazeToken, ghost->getID());
     ++mInstanceRevision;
     return true;
 }

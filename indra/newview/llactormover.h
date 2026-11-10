@@ -38,6 +38,7 @@
 #include "v4color.h"        // actorPathColor()
 #include "llquaternion.h"
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
+#include "alghostclearanim.h" // [ClearAnim] ParkedStore
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
 #include "alghostanimmirrormath.h" // Directed mirror gaze observer
 #include "algazehot.h"
@@ -668,8 +669,9 @@ public:
     void rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id);
     // [ClearAnim] Clear animations parks the clone's Hot Gaze (pose restored, no more painting);
     // undo brings it back unless it finished meanwhile.
-    void parkHotGaze(const LLUUID& actor);
-    void unparkHotGaze(const LLUUID& actor);
+    // Each Clear snapshot owns the token parkHotGaze() returns (0 = nothing was held).
+    U32 parkHotGaze(const LLUUID& actor);
+    void unparkHotGaze(U32 token, const LLUUID& actor);
 
 
     // Director Console camera-facing pose for selected REAL cast avatars. Restore the
@@ -1844,7 +1846,7 @@ private:
         F32 mFromHead = 1.f, mFromEyes = 1.f, mFromTorso = .2f;
     };
     std::map<LLUUID, HotGaze> mHotGazes;
-    std::map<LLUUID, HotGaze> mParkedHotGazes; // [ClearAnim] session only; undo of Clear animations
+    ALGhostClearAnim::ParkedStore<LLUUID, HotGaze> mParkedHotGazes; // [ClearAnim] session only; one token per Clear snapshot
     std::map<LLUUID, DirectorGaze> mHotGazeCopies; // inherited Studio overlays; frame-local captures
     std::map<LLUUID, Gaze> mGazes;      // per-actor look-at config + runtime (session-only)
     U64 mGazeRevision = 1;

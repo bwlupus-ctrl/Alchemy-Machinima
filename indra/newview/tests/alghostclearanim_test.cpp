@@ -3,6 +3,8 @@
 #include "../alghostclearanim.h"
 
 #include <iterator>
+#include <map>
+#include <utility>
 #include <set>
 #include <string>
 #include <vector>
@@ -19,6 +21,7 @@ using namespace ALGhostClearAnim;
 namespace
 {
     const int kMirror = 0, kFrozen = 2;
+    const float* under_rot_of(float v) { static float q[4]; q[0] = v; q[1] = 0.f; q[2] = 0.f; q[3] = 1.f; return q; }
 
     // A clone as the viewer drives it: a drive, the motions active on its own
     // controller, and the things that try to start motions every tick.
@@ -457,5 +460,108 @@ template<> template<> void alghostclearanim_object::test<13>()
     ensure("posed clone is refused", !canClear(true, true));
     ensure("free entity clone can clear", canClear(true, false));
     ensure("overlay clone is refused", !canClear(false, false));
+}
+// Review round 3, finding 1: every Clear snapshot owns its parked Hot Gaze through a token.
+template<> template<> void alghostclearanim_object::test<14>()
+{
+    typedef ParkedStore<std::string, std::string> Store;
+    // Clear (holds a Hot Gaze), Clear again (nothing held), Undo, one frame, Undo.
+    Store store;
+    const unsigned first = store.park("clone", "hot");
+    const unsigned second = 0;                       // the second Clear found no Hot Gaze
+    std::string out;
+    ensure("the second undo takes nothing", !store.take(second, "clone", out) && out.empty());
+    ensure("the first snapshot still owns its state", store.size() == 1);
+    ensure("the first undo restores its own Hot Gaze", store.take(first, "clone", out) && out == "hot");
+    ensure("the token is spent", store.empty() && !store.take(first, "clone", out));
+
+    // Planted negative: one parked entry per runtime id, consumed by whichever undo runs first.
+    std::map<std::string, std::string> per_owner;
+    per_owner["clone"] = "hot";                      // first Clear
+    const std::string consumed_by_second_undo = per_owner["clone"]; per_owner.erase("clone");
+    ensure("per-owner parking is consumed by the wrong undo",
+           consumed_by_second_undo == "hot" && per_owner.find("clone") == per_owner.end());
+
+    // Respawn migrates the owner; the old id no longer matches.
+    Store respawn;
+    const unsigned token = respawn.park("old", "hot");
+    respawn.migrate("old", "new");
+    ensure("a respawned clone gets its parked state back", respawn.take(token, "new", out) && out == "hot");
+    Store stale;
+    const unsigned stale_token = stale.park("old", "hot");
+    ensure("without the migration the respawned clone gets nothing", !stale.take(stale_token, "new", out));
+
+    // Slot release / clone deletion / global clear drop the parked state.
+    Store dropped;
+    dropped.park("gone", "hot"); dropped.park("kept", "hot");
+    dropped.drop("gone");
+    ensure("a released slot keeps nothing parked", dropped.size() == 1);
+    dropped.migrate("kept", std::string());          // deletion: new owner is null
+    ensure("a deleted clone keeps nothing parked", dropped.empty());
+    Store cleared;
+    cleared.park("a", "hot"); cleared.park("b", "hot");
+    cleared.clear();
+    ensure("a global clear drops every parked state", cleared.empty());
+    // A state is never handed to another owner.
+    Store other;
+    const unsigned other_token = other.park("a", "hot");
+    ensure("another owner cannot take it", !other.take(other_token, "b", out) && other.empty());
+}
+
+// Finding 2: the held pose of a Frozen clone is the one UNDER the Directed Mirror stamp.
+template<> template<> void alghostclearanim_object::test<15>()
+{
+    // Two mirrored joints with an asymmetric pose; the stamp swaps them.
+    auto stamp = [](float (&pose)[2]) { std::swap(pose[0], pose[1]); };
+    float under[2] = { 10.f, 20.f };
+    float displayed[2] = { 10.f, 20.f };
+    stamp(displayed);                                // what the clone shows while stamped
+    const float zero_pos[3] = { 0.f, 0.f, 0.f };
+    auto capture = [&](bool use_under)
+    {
+        float held[2];
+        for (int i = 0; i < 2; ++i)
+        {
+            const float disp_rot[4] = { displayed[i], 0.f, 0.f, 1.f };
+            const float under_rot[4] = { under[i], 0.f, 0.f, 1.f };
+            held[i] = heldJoint("joint", disp_rot, zero_pos, use_under ? under_rot : nullptr, nullptr).mRot[0];
+        }
+        return std::vector<float>{ held[0], held[1] };
+    };
+    // Undo writes the held pose, then the normal stamp presents it once.
+    auto after_undo = [&](bool use_under)
+    {
+        std::vector<float> held = capture(use_under);
+        float written[2] = { held[0], held[1] };
+        stamp(written);
+        return std::vector<float>{ written[0], written[1] };
+    };
+    const std::vector<float> shown{ displayed[0], displayed[1] };
+    ensure("undo returns the pose the clone showed", after_undo(true) == shown);
+    ensure("an unstamped clone holds its own pose",
+           heldJoint("j", under_rot_of(5.f), zero_pos, nullptr, nullptr).mRot[0] == 5.f);
+    // Planted negative: the displayed pose is mirrored a second time.
+    ensure("holding the stamped pose is rejected", after_undo(false) != shown);
+}
+
+// Finding 3: a cleared clone is never stamped; the authored setting stays.
+template<> template<> void alghostclearanim_object::test<16>()
+{
+    ensure("a cleared clone is not mirrored", !mayStampMirror(true));
+    ensure("an ordinary clone is mirrored", mayStampMirror(false));
+    float neutral[2] = { 1.f, 2.f };                 // asymmetric shape-aware rest positions
+    bool authored_mirror = true;
+    auto frame = [&](bool cleared, bool always)
+    {
+        if ((always || mayStampMirror(cleared)) && authored_mirror) std::swap(neutral[0], neutral[1]);
+    };
+    frame(true, false);
+    ensure("the neutral positions survive the frame", neutral[0] == 1.f && neutral[1] == 2.f && authored_mirror);
+    frame(false, false);
+    ensure("later playback mirrors again", neutral[0] == 2.f && neutral[1] == 1.f);
+    // Planted negative: an unconditional stamp mirrors the neutral pose.
+    neutral[0] = 1.f; neutral[1] = 2.f;
+    frame(true, true);
+    ensure("the unconditional stamp is rejected", neutral[0] == 2.f);
 }
 } // namespace tut

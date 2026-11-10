@@ -17,23 +17,27 @@
 
 namespace LLScrollListGutter
 {
-    // x is relative to the item list's left edge. A point inside the gutter belongs
-    // to the first column (it must not fall off the left end of the column walk).
-    inline int columnLocalX(int x, int gutter)
+    // x is control-local; origin is the item list's left edge inside the control. A point
+    // inside the gutter belongs to the first column (it must not fall off the left end of
+    // the column walk). Gutter 0: x comes back unchanged (no clamping, no origin).
+    inline int columnLocalX(int x, int gutter, int origin = 0)
     {
-        return std::max(0, x - gutter);
+        if (gutter == 0) return x;
+        return std::max(0, x - origin - gutter);
     }
 
     // Offset of a column's left edge from the item list's left edge, given the sum of
     // the widths + padding of the columns before it.
     inline int columnOffset(int columns_before, int gutter)
     {
+        if (gutter == 0) return columns_before;
         return columns_before + gutter;
     }
 
     // Width the columns may share: the list's width without the gutter.
     inline int availableWidth(int list_width, int gutter)
     {
+        if (gutter == 0) return list_width;
         return std::max(0, list_width - gutter);
     }
 } // namespace LLScrollListGutter

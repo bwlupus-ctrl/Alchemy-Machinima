@@ -5536,6 +5536,7 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
         if (hot != mHotGazes.end())
         { restoreDirectorLookAtPose(body, hot->second.mPaint); mHotGazes.erase(hot); }
     }
+    mParkedHotGazes.drop(actor_id); // [ClearAnim]
     auto it = mMoves.find(actor_id);
     if (it != mMoves.end())
     {
@@ -20429,10 +20430,10 @@ void LLActorMover::applyHotGaze(LLVOAvatar* av)
 }
 
 // [ClearAnim]
-void LLActorMover::parkHotGaze(const LLUUID& actor)
+U32 LLActorMover::parkHotGaze(const LLUUID& actor)
 {
     const auto it = mHotGazes.find(actor);
-    if (it == mHotGazes.end()) return;
+    if (it == mHotGazes.end()) return 0;
     LLVOAvatar* body = LLDirectorCast::instance().resolve(actor);
     restoreDirectorLookAtPose(body, it->second.mPaint);
     if (body) body->invalidateSkinPalettesAfterOverlay();
@@ -20443,18 +20444,18 @@ void LLActorMover::parkHotGaze(const LLUUID& actor)
     saved.mPaint.mRekeyMotorPending = true;
     saved.mPaint.mGaze.mHotGeneration = generation;
     saved.mPaint.mGaze.mGazeMotor = motor;
-    mParkedHotGazes[actor] = std::move(saved);
+    const U32 token = mParkedHotGazes.park(actor, std::move(saved)); // owned by one Clear snapshot
     mHotGazes.erase(it);
+    return token;
 }
 
 // [ClearAnim]
-void LLActorMover::unparkHotGaze(const LLUUID& actor)
+void LLActorMover::unparkHotGaze(U32 token, const LLUUID& actor)
 {
-    const auto parked = mParkedHotGazes.find(actor);
-    if (parked == mParkedHotGazes.end()) return;
+    HotGaze back;
+    if (!mParkedHotGazes.take(token, actor, back)) return;
     const F64 now = LLPresentationTime::currentFrame().presentation_time;
-    if (!parked->second.mState.finished(now)) mHotGazes[actor] = std::move(parked->second);
-    mParkedHotGazes.erase(parked);
+    if (!back.mState.finished(now)) mHotGazes[actor] = std::move(back);
 }
 
 void LLActorMover::clearHotGazes()
@@ -20463,10 +20464,18 @@ void LLActorMover::clearHotGazes()
     for (auto& entry : mHotGazes)
         restoreDirectorLookAtPose(LLDirectorCast::instance().resolve(entry.first), entry.second.mPaint);
     mHotGazes.clear();
+    mParkedHotGazes.clear();
 }
 
 void LLActorMover::rewriteHotGazeReferences(const LLUUID& old_id, const LLUUID& new_id)
 {
+    // [ClearAnim] A parked state migrates with the respawned clone, or goes with a deleted one.
+    mParkedHotGazes.migrate(old_id, new_id);
+    mParkedHotGazes.forEach([&](HotGaze& parked)
+    {
+        if (rewriteGazeTarget(parked.mTarget, old_id, new_id) && new_id.isNull())
+            parked.mState.release(LLPresentationTime::currentFrame().presentation_time);
+    });
     const auto actor = mHotGazes.find(old_id);
     if (actor != mHotGazes.end())
     {

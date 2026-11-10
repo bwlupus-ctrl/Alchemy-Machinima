@@ -1822,25 +1822,28 @@ bool LLGhostAvatar::isEntityPosed()
 ALGhostClearAnim::HeldPose LLGhostAvatar::captureHeldPose()
 {
     ALGhostClearAnim::HeldPose pose;
+    // The transient Directed Mirror stamp is presentation: hold the pose underneath it,
+    // so undo writes it back and the normal stamp mirrors it exactly once.
+    std::map<const LLJoint*, const ALReflect::LocalPose*> underneath;
+    if (mDirectedMirrorWritten && directedMirrorCacheMatches())
+    {
+        for (size_t i = 0; i < mDirectedMirrorJoints.size() && i < mDirectedMirrorInput.size(); ++i)
+        {
+            underneath[mDirectedMirrorJoints[i]] = &mDirectedMirrorInput[i];
+        }
+    }
     for (LLJoint* joint : mSkeleton)
     {
         if (!joint)
         {
             continue;
         }
-        ALGhostClearAnim::HeldJoint held;
-        held.mName = joint->getName();
+        const auto stamped = underneath.find(joint);
         const LLQuaternion& rot = joint->getRotation();
-        for (S32 i = 0; i < 4; ++i)
-        {
-            held.mRot[i] = rot.mQ[i];
-        }
         const LLVector3& pos = joint->getPosition();
-        for (S32 i = 0; i < 3; ++i)
-        {
-            held.mPos[i] = pos.mV[i];
-        }
-        pose.push_back(held);
+        const bool under = stamped != underneath.end();
+        pose.push_back(ALGhostClearAnim::heldJoint(joint->getName(), rot.mQ, pos.mV,
+            under ? stamped->second->rotation.mQ : nullptr, under ? stamped->second->position.mV : nullptr));
     }
     return pose;
 }
@@ -1848,6 +1851,7 @@ ALGhostClearAnim::HeldPose LLGhostAvatar::captureHeldPose()
 // [ClearAnim]
 void LLGhostAvatar::applyHeldPose(const ALGhostClearAnim::HeldPose& pose)
 {
+    restoreDirectedMirrorPose(false); // a stale stamp record must not outlive the written pose
     for (const ALGhostClearAnim::HeldJoint& held : pose)
     {
         if (LLJoint* joint = getJoint(held.mName))
@@ -2256,6 +2260,9 @@ void LLGhostAvatar::restoreDirectedMirrorPose(bool invalidate_skin)
 
 void LLGhostAvatar::applyDirectedMirrorStamp(S32 authored_drive, S32 resume_drive, bool hot_gaze)
 {
+    // [ClearAnim] The neutral pose is symmetric by construction; the authored mirror
+    // setting stays for later playback.
+    if (!ALGhostClearAnim::mayStampMirror(mEntityAnimCleared)) return;
     if (!ALGhostAnimMirrorMath::eligible(authored_drive, resume_drive, mDirectedMirror, mEntityDriveMode) ||
         isDead() || !isBuilt() || !mRoot) return;
     if (!directedMirrorCacheMatches()) buildDirectedMirrorJoints();

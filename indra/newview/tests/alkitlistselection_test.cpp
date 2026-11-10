@@ -5,6 +5,7 @@
 
 #include "lluuid.h"
 
+#include <algorithm>
 #include <vector>
 
 namespace tut
@@ -299,9 +300,9 @@ template<> template<> void alkitlistselection_object::test<9>()
     // The column walk of LLScrollListCtrl::getColumnIndexFromOffset / getColumnOffsetFromIndex.
     const int widths[3] = { 40, 60, 80 };
     const int padding = 2;
-    auto index_at = [&](int x, int gutter)
+    auto index_at = [&](int x, int gutter, int origin = 0)
     {
-        x = LLScrollListGutter::columnLocalX(x, gutter);
+        x = LLScrollListGutter::columnLocalX(x, gutter, origin);
         int left = 0, right = 0, index = 0;
         for (int w : widths)
         {
@@ -337,5 +338,41 @@ template<> template<> void alkitlistselection_object::test<9>()
     ensure("gutter-blind hit testing is rejected", index_at(45, 0) == 1 && index_at(45, gutter) == 0);
     // Planted negative: without the clamp a click in the gutter falls off the column walk.
     ensure("unclamped gutter click is rejected", (2 - gutter) < 0 && LLScrollListGutter::columnLocalX(2, gutter) == 0);
+}
+
+// Review round 3: control-local clicks subtract the item-list origin (opted-in lists only), and a
+// list without the bar gets its input back unchanged.
+template<> template<> void alkitlistselection_object::test<10>()
+{
+    const int widths[3] = { 40, 60, 80 };
+    const int padding = 2;
+    auto index_at = [&](int x, int gutter, int origin)
+    {
+        x = LLScrollListGutter::columnLocalX(x, gutter, origin);
+        int left = 0, right = 0, index = 0;
+        for (int w : widths)
+        {
+            right += w + padding;
+            if (left <= x && x < right) break;
+            left = right;
+            ++index;
+        }
+        return index > 2 ? 2 : index;
+    };
+    const int gutter = 4, origin = 2;
+    // Drawn cell 1 starts at origin + gutter + 42 = 48 in control coordinates.
+    ensure_equals("last pixel of drawn cell 0", index_at(47, gutter, origin), 0);
+    ensure_equals("first pixel of drawn cell 1", index_at(48, gutter, origin), 1);
+    ensure_equals("a click on the border / gutter is cell 0", index_at(1, gutter, origin), 0);
+    // Planted negative: ignoring the origin hits cell 1 at x = 47, where cell 0 is still drawn.
+    ensure("origin-blind hit testing is rejected", index_at(47, gutter, 0) == 1 && index_at(47, gutter, origin) == 0);
+    // No bar: every helper returns its input (no clamping, no origin).
+    ensure_equals("no bar: negative x unchanged", LLScrollListGutter::columnLocalX(-3, 0), -3);
+    ensure_equals("no bar: origin ignored", LLScrollListGutter::columnLocalX(5, 0, 2), 5);
+    ensure_equals("no bar: offset unchanged", LLScrollListGutter::columnOffset(7, 0), 7);
+    ensure_equals("no bar: negative width unchanged", LLScrollListGutter::availableWidth(-5, 0), -5);
+    // Planted negative: a clamping helper changes a list that did not opt in.
+    ensure("clamped zero-gutter helper is rejected", std::max(0, -3 - 0) != LLScrollListGutter::columnLocalX(-3, 0));
+    ensure("clamped zero-gutter width is rejected", std::max(0, -5 - 0) != LLScrollListGutter::availableWidth(-5, 0));
 }
 } // namespace tut

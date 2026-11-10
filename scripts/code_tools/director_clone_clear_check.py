@@ -86,14 +86,21 @@ PINS = {
          "the neutral pose no longer starts from the default skeleton positions"),
         ("joint->setPosition(LLVector3(rest.x, rest.y, rest.z));", "the neutral pose no longer writes joint positions"),
         ("if (dynamic_cast<FSPosingMotion*>(motion) != nullptr) { return true; }", "isEntityPosed no longer sees the posing motion"),
-        ("held.mName = joint->getName();", "the held pose is no longer keyed by joint name"),
+        ("pose.push_back(ALGhostClearAnim::heldJoint(joint->getName(), rot.mQ, pos.mV,",
+         "the held pose is no longer keyed by joint name"),
+        ("if (mDirectedMirrorWritten && directedMirrorCacheMatches()) { for (size_t i = 0; "
+         "i < mDirectedMirrorJoints.size() && i < mDirectedMirrorInput.size(); ++i) "
+         "{ underneath[mDirectedMirrorJoints[i]] = &mDirectedMirrorInput[i]; } }",
+         "the held pose is no longer taken from under the Directed Mirror stamp"),
+        ("if (!ALGhostClearAnim::mayStampMirror(mEntityAnimCleared)) return;",
+         "Directed Mirror stamps a cleared clone's neutral pose"),
         ("if (!ALGhostClearAnim::holds(mEntityAnimCleared, mode, directed_anim.notNull())) "
          "{ setEntityAnimationsCleared(false); } autoAnimOnDriveModeChanged(old_mode, mode);",
          "a drive change no longer ends the cleared state through the pure rule"),
     ),
     "alghoststudio.cpp": (
-        ("if (inst->mAutoAnimate) { setInstanceAutoAnimate(id, false); } mover.stop(actor); mover.parkHotGaze(actor); "
-         "if (mover.isGazeEnabled(actor)) { mover.setGazeEnabled(actor, false); } inst->mPendingFreezeFrames = 0; "
+        ("if (inst->mAutoAnimate) { setInstanceAutoAnimate(id, false); } mover.stop(actor); const U32 hot_token = mover.parkHotGaze(actor); "
+         "if (before) { before->mHotGazeToken = hot_token; } if (mover.isGazeEnabled(actor)) { mover.setGazeEnabled(actor, false); } inst->mPendingFreezeFrames = 0; "
          "if (!setInstanceDriveMode(id, DRIVE_DIRECTED, LLUUID::null)) { return false; }",
          "Clear no longer stops the walk (unconditionally), parks Hot Gaze and switches AutoAnimate and gaze off before the drive"),
         ("if (!ALGhostClearAnim::canClear(true, ghost->isEntityPosed())) { return false; }",
@@ -118,7 +125,7 @@ PINS = {
          "if (before.mAutoAnimate != inst->mAutoAnimate) { setInstanceAutoAnimate(before.mId, before.mAutoAnimate); }",
          "undo no longer restores drive, animation, the Frozen pose and AutoAnimate exactly"),
         ("if (before.mGazeEnabled != mover.isGazeEnabled(ghost->getID())) { mover.setGazeEnabled(ghost->getID(), before.mGazeEnabled); } "
-         "mover.unparkHotGaze(ghost->getID());",
+         "mover.unparkHotGaze(before.mHotGazeToken, ghost->getID());",
          "undo no longer restores gaze and Hot Gaze"),
         ("inst.mAnimCleared = ALGhostClearAnim::holds( inst.mAnimCleared, inst.mDriveMode, inst.mDirectedAnim.notNull()); "
          "ghost->setEntityAnimationsCleared(inst.mAnimCleared);",
@@ -137,8 +144,10 @@ PINS = {
          "the button no longer snapshots each cleared clone"),
         ('shell->history().recordCustom(host, "clone_clear_anim", "Clear animations on clones",',
          "the button no longer records one undo step"),
-        ("any = (redo ? studio.clearInstanceAnimations(before.mId) : studio.restoreInstanceAnimations(before)) || any;",
-         "the undo step no longer restores / re-clears every clone"),
+        ("if (redo) { ALGhostStudio::ClearAnimBefore again; const bool cleared = studio.clearInstanceAnimations(before.mId, &again); "
+         "if (cleared) before.mHotGazeToken = again.mHotGazeToken; any = cleared || any; } "
+         "else { any = studio.restoreInstanceAnimations(before) || any; before.mHotGazeToken = 0; }",
+         "the undo step no longer restores / re-clears every clone with its own Hot Gaze token"),
         ("ALGhostClearAnim::clearedToast((size_t)cleared)", "the count toast is gone"),
         ("const bool clear_enabled = ALGhostClearAnim::canClear(have_selected_entity, selected_posed); "
          "setEnabledIfChanged(mClearAnimBtn, clear_enabled);",
@@ -157,8 +166,11 @@ PINS = {
         ("if (gaze_suppressed_by_clear(body)) return;", "Hot Gaze can start on a cleared clone"),
         ("if (gaze_suppressed_by_clear(av)) { restoreDirectorLookAtPose(av, hot.mPaint); mHotGazes.erase(it); return; }",
          "a running Hot Gaze keeps painting a cleared clone"),
-        ("void LLActorMover::parkHotGaze(", "Hot Gaze can no longer be parked by Clear"),
-        ("void LLActorMover::unparkHotGaze(", "Hot Gaze can no longer be restored by undo"),
+        ("U32 LLActorMover::parkHotGaze(", "Hot Gaze can no longer be parked by Clear"),
+        ("void LLActorMover::unparkHotGaze(U32 token, const LLUUID& actor)", "Hot Gaze can no longer be restored by its own snapshot"),
+        ("mParkedHotGazes.migrate(old_id, new_id);", "a parked Hot Gaze no longer follows a respawned / deleted clone"),
+        ("mParkedHotGazes.drop(actor_id);", "slot release keeps a parked Hot Gaze"),
+        ("mHotGazes.clear(); mParkedHotGazes.clear(); }", "a global Hot Gaze clear keeps parked states"),
     ),
     "aldirectoranimswitcher.cpp": (
         ("ghost->setEntityDriveMode(mode, anim); ALGhostStudio::instance().adoptBodyDrive(ghost);",
@@ -178,6 +190,10 @@ PINS = {
     "alghostclearanim.h": (
         ("return !cleared || owner == OWNER_POSER;", "mayStart no longer blocks a cleared clone"),
         ("inline bool mayPaintGaze(bool cleared) { return !cleared; }", "mayPaintGaze changed"),
+        ("inline bool mayStampMirror(bool cleared) { return !cleared; }", "mayStampMirror changed"),
+        ("under_rot ? under_rot[i] : displayed_rot[i]", "the held pose ignores the pose under the mirror stamp"),
+        ("const bool mine = it->second.mOwner == owner; if (mine) out = std::move(it->second.mState); mEntries.erase(it);",
+         "a parked state can be taken by another owner or kept after its token is spent"),
         ("inline bool mayAutomate(bool cleared, bool manual) { return manual || !cleared; }", "mayAutomate changed"),
         ("inline bool canClear(bool is_eligible, bool is_posed) { return is_eligible && !is_posed; }", "canClear changed"),
         ("if (has_override) { return override_pos; }", "restPosition ignores the attachment override"),
@@ -342,7 +358,7 @@ def selftest():
          swap(S, "    mover.stop(actor); // its walk / turn animation and root override, and a queued staggered start",
               "    if (mover.isMoving(actor)) { mover.stop(actor); }")),
         ("Hot Gaze keeps running through Clear",
-         swap(S, "    mover.parkHotGaze(actor); // a held Hot Gaze would keep painting the neutral pose\n", "")),
+         swap(S, "    const U32 hot_token = mover.parkHotGaze(actor);\n", "    const U32 hot_token = 0;\n")),
         ("running Hot Gaze paints a cleared clone",
          swap(M, "    if (gaze_suppressed_by_clear(av)) // [ClearAnim] cleared after the layer was running", "    if (false)")),
         ("Hot Gaze can fire on a cleared clone",
@@ -389,6 +405,29 @@ def selftest():
          swap(G, "            distortion->addAppliedPositionOffsets(shape);\n", "")),
         ("neutral pose ignores attachment overrides",
          swap(G, "joint->hasAttachmentPosOverride(override_pos, override_mesh)", "false")),
+        # Review round 3.
+        ("snapshot does not own the parked Hot Gaze",
+         swap(S, "        before->mHotGazeToken = hot_token;\n", "")),
+        ("undo takes any parked Hot Gaze (no token)",
+         swap(S, "mover.unparkHotGaze(before.mHotGazeToken, ghost->getID());", "mover.unparkHotGaze(0, ghost->getID());")),
+        ("redo loses the new Hot Gaze token",
+         swap(P, "if (cleared) before.mHotGazeToken = again.mHotGazeToken;", "")),
+        ("respawn does not migrate the parked Hot Gaze",
+         swap(M, "    mParkedHotGazes.migrate(old_id, new_id);\n", "")),
+        ("slot release keeps the parked Hot Gaze",
+         swap(M, "    mParkedHotGazes.drop(actor_id); // [ClearAnim]\n", "")),
+        ("global clear keeps parked Hot Gazes",
+         swap(M, "    mHotGazes.clear();\n    mParkedHotGazes.clear();\n", "    mHotGazes.clear();\n")),
+        ("parked store hands a state to another owner",
+         swap(H, "const bool mine = it->second.mOwner == owner;", "const bool mine = true;")),
+        ("held pose taken from the displayed (stamped) pose",
+         swap(G, "underneath[mDirectedMirrorJoints[i]] = &mDirectedMirrorInput[i];", "")),
+        ("held pose helper ignores the pose under the stamp",
+         swap(H, "under_rot ? under_rot[i] : displayed_rot[i]", "displayed_rot[i]")),
+        ("Directed Mirror stamps a cleared clone",
+         swap(G, "    if (!ALGhostClearAnim::mayStampMirror(mEntityAnimCleared)) return;\n", "")),
+        ("mirror rule always stamps",
+         swap(H, "inline bool mayStampMirror(bool cleared)\n    {\n        return !cleared;", "inline bool mayStampMirror(bool cleared)\n    {\n        return true;")),
     ]
     for label, mutated in mutations:
         if mutated == sources:

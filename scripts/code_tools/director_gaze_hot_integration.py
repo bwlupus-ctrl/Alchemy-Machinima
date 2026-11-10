@@ -21,6 +21,7 @@ using LLControlAvatar=LLVOAvatar;
 #define LL_PROFILE_PLOT(...)
 void assert_main_thread(){}
 struct LLGhostAvatar;
+namespace ALGhostClearAnim{inline bool mayStampMirror(bool cleared){return !cleared;}} // [ClearAnim] stand-in for the pure rule
 struct ALGhostStudio {
  enum{BACKING_OVERLAY=0,BACKING_ENTITY_CLONE=1,DRIVE_TRUE_MIRROR=3,DRIVE_REFLECT=4,DRIVE_FROZEN=2,DRIVE_DIRECTED=1,POSE_FROZEN=1};
  struct Instance {
@@ -49,6 +50,7 @@ using avatar_joint_list_t=std::vector<LLJoint*>;
 struct LLGhostAvatar:LLVOAvatar {
  LLGhostAvatar(){ghost=true;}
  ~LLGhostAvatar(){sOffsetHotGazes.erase(this);}
+ bool mEntityAnimCleared=false; // [ClearAnim] fixture clones are never cleared
  LLJoint* mRoot=getRootJoint();LLUUID mAnimationSourceId;int mEntityDriveMode=3;
  U32 mTrueMirrorLastStampFrame=0xFFFFFFFF,mReflectLastFrame=0xFFFFFFFF;
  bool mTrueMirrorSourceValid=false,mReflectPreviousWritten=false,mTrueMirrorParamSetsBuilt=true,mEntityPhysicsEnabled=false,mGhostFloorPosition=false;

@@ -3495,10 +3495,21 @@ S32 ALPanelGhostStudio::clearAnimationsOnClonesRecorded(const std::vector<LLUUID
         {
             ALGhostStudio& studio = ALGhostStudio::instance();
             bool any = false;
-            for (const ALGhostStudio::ClearAnimBefore& before : *snapshot)
+            for (ALGhostStudio::ClearAnimBefore& before : *snapshot)
             {
-                any = (redo ? studio.clearInstanceAnimations(before.mId)
-                            : studio.restoreInstanceAnimations(before)) || any;
+                if (redo)
+                {
+                    // The re-clear parks the Hot Gaze again: the snapshot owns the new token.
+                    ALGhostStudio::ClearAnimBefore again;
+                    const bool cleared = studio.clearInstanceAnimations(before.mId, &again);
+                    if (cleared) before.mHotGazeToken = again.mHotGazeToken;
+                    any = cleared || any;
+                }
+                else
+                {
+                    any = studio.restoreInstanceAnimations(before) || any;
+                    before.mHotGazeToken = 0; // consumed
+                }
             }
             if (!any) reason = "Those clones are no longer available";
             return any;
