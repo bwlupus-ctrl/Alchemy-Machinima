@@ -696,6 +696,7 @@
   "cast_group/ghosts_tab": {"scope": "global", "no_history_rows": ["source_combo", "clone_type_combo", "array_count_spinner", "array_spacing_spinner", "formation_edge_gap_spinner", "formation_jitter_spinner", "formation_seed_spinner", "formation_terrain_check", "formation_facing_combo", "facing_yaw_offset_spinner", "preserve_source_tilt_check", "formation_guide_shape_combo", "formation_guide_size_spinner", "crowd_copies_as_combo", "crowd_create_mode_combo", "brigade_columns_spinner", "brigade_rows_spinner", "brigade_file_spacing_spinner", "brigade_rank_spacing_spinner", "strip_count_spinner", "strip_interval_spinner", "formation_motion_combo", "formation_motion_speed", "formation_motion_amplitude", "rig_diagnostics"]}
  },
  "parity_allow": {"cine_rig_rim_preset": "replaced by the kit preset strip (provider rig_rim)",
+                  "cine_group_*": "legacy native-panel Who's lit ticks/status; v2 uses the Lights combo cine_lit_target (Director groups phase 1c)",
                   "card_snapshot_open": "retired Director launcher; Snapshot remains in its standalone floater",
                   "card_snapshot_summary": "retired Director launcher; Snapshot remains in its standalone floater",
                   "card_diopter_open": "retired launcher replaced by the inline Diopter summary/editor action",

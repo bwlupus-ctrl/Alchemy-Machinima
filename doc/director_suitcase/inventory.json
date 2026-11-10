@@ -54,7 +54,9 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "scripts/code_tools/director_kit/gen_report.txt"
+      "scripts/code_tools/director_kit/gate_policy.json",
+      "scripts/code_tools/director_kit/gen_report.txt",
+      "scripts/code_tools/director_kit/kit_pages.json"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -239,10 +241,10 @@
       },
       "wiring_rows": 2298
     },
-    "head_source_tree": "273082665766c90e1b54747594e585d7ce86ffad",
+    "head_source_tree": "615b2b66a78cefec696c1e6880ea754c473df4f7",
     "hook_files": 536,
     "hunks": 3354,
-    "input_sha256": "6381b3713a9d2c03c4fa776bbf4397a0dbb9427b5ad3de033a21b4ba4627d10a",
+    "input_sha256": "f5ac69d2d409b79c6ced51c142bffc2d6ad71c6f7de5d9e328e3f4feacbc2be3",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",

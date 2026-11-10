@@ -29,6 +29,13 @@
   "cine_seed": {"reason": "known v1 presentation mismatch: U32 seed is edited as text by code", "citation": "DIRECTOR_KIT_P0_SPEC.md sections 4.4 and 6.1", "expires": "WP12"}
  },
  "retired_cpp_targets": {
-  "cine_rig_rim_preset": {"reason": "replaced by the kit preset provider", "citation": "DIRECTOR_KIT_P0_SPEC.md section 5.2", "expires": "WP12"}
+  "cine_rig_rim_preset": {"reason": "replaced by the kit preset provider", "citation": "DIRECTOR_KIT_P0_SPEC.md section 5.2", "expires": "WP12"},
+  "cine_group_enable": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"},
+  "cine_group_status": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"},
+  "cine_group_self": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"},
+  "cine_group_a": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"},
+  "cine_group_b": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"},
+  "cine_group_c": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"},
+  "cine_group_d": {"reason": "legacy native-panel Who's lit control; v2 uses the Lights combo cine_lit_target", "citation": "Director groups phase 1c (DESIGN.md section 3)", "expires": "legacy panel_cine_light_rig retirement"}
  }
 }
