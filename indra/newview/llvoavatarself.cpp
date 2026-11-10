@@ -54,6 +54,7 @@
 #include "llviewertexlayer.h"
 #include "llviewerwearable.h"
 #include "llappearancemgr.h"
+#include "alwornanimnames.h"        // [CloneAnimDrop] own-attachment animation names
 #include "llmeshrepository.h"
 #include "llvovolume.h"
 #include "llsdutil.h"
@@ -1301,6 +1302,9 @@ const LLViewerJointAttachment *LLVOAvatarSelf::attachObject(LLViewerObject *view
         {
             const LLUUID& attachment_id = viewer_object->getAttachmentItemID();
             LLAppearanceMgr::instance().registerAttachment(attachment_id);
+            // [CloneAnimDrop] learn animation names from this own attachment's
+            // task inventory (event driven, throttled; never other residents').
+            ALWornAnimNames::instance().onAttach(viewer_object);
 
 // [RLVa:KB] - Checked: 2010-08-22 (RLVa-1.2.1a) | Modified: RLVa-1.2.1a
             // NOTE: RLVa event handlers should be invoked *after* LLVOAvatar::attachObject() calls LLViewerJointAttachment::addObject()
@@ -1351,6 +1355,10 @@ bool LLVOAvatarSelf::detachObject(LLViewerObject *viewer_object)
     }
 // [/RLVa:KB]
 
+    if (!is_local)
+    {
+        ALWornAnimNames::instance().onDetach(viewer_object); // [CloneAnimDrop]
+    }
     if ( LLVOAvatar::detachObject(viewer_object) )
     {
         // the simulator should automatically handle permission revocation

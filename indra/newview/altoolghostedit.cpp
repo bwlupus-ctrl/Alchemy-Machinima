@@ -23,7 +23,7 @@
 
 namespace
 {
-constexpr F32 GHOST_PICK_PX = 18.f;     // screen radius for a ghost hit, px
+constexpr F32 GHOST_PICK_PX = ALGhostStudio::SCREEN_PICK_PX; // screen radius for a ghost hit, px
 } // anonymous namespace
 
 ALToolGhostEdit::ALToolGhostEdit()
@@ -62,54 +62,10 @@ bool ALToolGhostEdit::stopEditModeFor(
 // ---------------------------------------------------------------------------
 LLUUID ALToolGhostEdit::pickInstance(S32 x, S32 y) const
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    if (!studio.getShowAll())
-    {
-        return LLUUID::null;
-    }
-    // screen-space pick like the path tool's node pick: the ghosts are overlay
-    // draws, not scene objects, so project each enabled instance's FOOT and a
-    // MID-BODY point (foot + 1 m, easier to grab) and take the nearest in radius
-    LLViewerCamera* cam = LLViewerCamera::getInstance();
-    LLUUID best;
-    F32 best_d2 = GHOST_PICK_PX * GHOST_PICK_PX;
-    for (const ALGhostStudio::Instance& inst : studio.getInstances())
-    {
-        if (!studio.isVisible(inst) || inst.mDeleting)
-        {
-            continue;       // you pick what you can see; hidden ghosts via the list
-        }
-        const LLVector3 foot = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
-        LLVector3 probes[2] = { foot, foot };
-        probes[1].mV[VZ] += 1.f * inst.mScale;      // mid-body, scale-aware
-        if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
-        {
-            LLVector3 center, size;
-            if (const LLGhostAvatar* ghost = studio.resolveEntityClone(inst.mId);
-                ghost && ghost->getVisualBounds(center, size))
-            {
-                probes[0] = probes[1] = center;
-                probes[0].mV[VZ] -= .5f * size[VZ];
-            }
-        }
-        for (const LLVector3& p : probes)
-        {
-            LLCoordGL screen;
-            if (!cam->projectPosAgentToScreen(p, screen, false))
-            {
-                continue;   // behind the camera
-            }
-            const F32 dx = (F32)(screen.mX - x);
-            const F32 dy = (F32)(screen.mY - y);
-            const F32 d2 = dx * dx + dy * dy;
-            if (d2 < best_d2)
-            {
-                best_d2 = d2;
-                best = inst.mId;
-            }
-        }
-    }
-    return best;
+    // [CloneAnimDrop] the screen-space pick (foot / mid-body probes within
+    // GHOST_PICK_PX) lives in ALGhostStudio so 3D drag-and-drop hits clones
+    // exactly the way this tool does.
+    return ALGhostStudio::instance().pickInstanceAtScreen(x, y, GHOST_PICK_PX);
 }
 
 // ---------------------------------------------------------------------------

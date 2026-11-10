@@ -200,36 +200,36 @@ HEAD coordinates; guards/features are candidate evidence
 | 186–239 (n=54) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 242–252 (n=11) | unknown/non-function (set(viewer_SOURCE_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 274–297 (n=24) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 334–450 (n=117) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 526–532 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 555–561 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 653–659 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 664–670 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 820–827 (n=8) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 896–906 (n=11) | unknown/non-function (set(viewer_SOURCE_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 910–916 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1103–1109 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1122–1134 (n=13) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-path, environment | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1137–1193 (n=57) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1196–1209 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1234–1253 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1291–1458 (n=168) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1536–1542 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1565–1571 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1667–1673 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1678–1684 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1823–1830 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1894–1906 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1910–1917 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2109–2115 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2349–2355 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2629–2666 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
-| 2724–2730 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2764–2770 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2853–2884 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2891–2910 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
-| 2959–3151 (n=193) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
-| 3213–3252 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
+| 334–452 (n=119) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 528–534 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 557–563 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 655–661 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 666–672 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 822–829 (n=8) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 898–908 (n=11) | unknown/non-function (set(viewer_SOURCE_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 912–918 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1105–1111 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1124–1136 (n=13) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-path, environment | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1139–1195 (n=57) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1198–1211 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1236–1255 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1293–1462 (n=170) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1540–1546 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1569–1575 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1671–1677 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1682–1688 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1827–1834 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1898–1910 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1914–1921 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2113–2119 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2353–2359 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2633–2670 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
+| 2728–2734 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2768–2774 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2857–2888 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2895–2914 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
+| 2963–3157 (n=195) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
+| 3219–3258 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
 
 ## Slice 1: `indra/newview/app_settings/settings.xml`
 
@@ -2208,34 +2208,36 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 25–36 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | clones, stepped-animation, tracking | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 58–64 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 69–75 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 78–84 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 103–109 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 123–149 (n=27) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits LLViewerObject, LLSD, LLMaterialID, LLUUID, LLPointer, LLViewerTexture |
-| 240–251 (n=12) | LLViewerObject::createObject | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
-| 960–994 (n=35) | LLViewerObject::invalidateWorldShadowBounds, LLViewerObject::nextWorldShadowRevision, LLViewerObject::setParent | rig, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: O(1): one process-unique tag (atomic counter) on this object and on its edit root, found by a parent walk (no recursion, no allocation). The tags are unique, so a recreated object with a recycled UUID never matches a stale cache entry. The revision FIELDS themselves are only writ |
-| 1014–1020 (n=7) | LLViewerObject::addChild | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1044–1050 (n=7) | LLViewerObject::removeChild | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1348–1354 (n=7) | LLViewerObject::processUpdateMessage | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2300–2306 (n=7) | LLViewerObject::processUpdateMessage | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3 |
-| 2339–2371 (n=33) | LLViewerObject::processUpdateMessage | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Track only accepted packets, before ping extrapolation / target omega. Keep the packet frame, including unresolved parents, independently of recursive setRegion propagation and later orphan adoption. Terse packets have no scale: never cache a local manip preview as a server scale |
-| 2577–2599 (n=23) | LLViewerObject::idleUpdate | clones, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [Temporal Capture] Objects drive: scale ONLY the local target-omega integrator so prim spin slows/speeds with the world clock. The shared dt (linear extrapolation below) stays on wall time -- simulator-driven linear/physical motion is a later pillar. Capped so a hitch at fast sca |
-| 4597–4623 (n=27) | LLViewerObject::getLastServerTransform | tracking | creative-candidate | unknown; conditional evidence present | Edits LLViewerObject, LLVector3, LLQuaternion, ALProjectorTrackMath |
-| 4670–4685 (n=16) | LLViewerObject::getManipPivotPositionAgent | clones | creative-candidate | unknown; conditional evidence present | Edits LLVector3, LLViewerObject, LLGhostAvatar |
-| 5209–5419 (n=211) | LLViewerObject::getGhostResolvedBakedTexture, LLViewerObject::getGhostResolvedMaterialBindingCount, LLViewerObject::ghostResolvedMaterialBindingMatches, LLViewerObject::ghostResolvedMaterialSemanticMatches, LLViewerObject::hasGhostResolvedMaterialBinding, LLViewerObject::isGhostResolvedMaterialBindingPending, LLViewerObject::restoreGhostResolvedMaterialBinding, LLViewerObject::setGhostResolvedBakedTexture, LLViewerObject::setGhostResolvedMaterialBinding | clones | creative-candidate | unknown; conditional evidence present | Edits LLViewerObject, LLUUID, LLViewerTexture, LLAvatarAppearanceDefines, LLAvatarAppearanceDictionary, LLCachedControl, gSavedSettings, LLTextureEntry, LLFetchedGLTFMaterial, LLViewerFetchedTexture |
-| 5421–5431 (n=11) | LLViewerObject::getBakedTextureForMagicId | clones | creative-candidate | unknown; conditional evidence present | Edits LLViewerTexture |
-| 5482–5495 (n=14) | LLViewerObject::setTE | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A TE with a registered source-resolved binding must get a clone-private render material before updateTEMaterialTextures writes fetched PBR channels. initRenderMaterial is a no-op when uniqueness is unnecessary. |
-| 5505–5522 (n=18) | LLViewerObject::updateTEMaterialTextures | clones | creative-candidate | unknown; no local conditional evidence | Edits LLViewerTextureManager, LLGLTexture, LLViewerTexture |
-| 5533–5543 (n=11) | LLViewerObject::updateTEMaterialTextures | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
-| 5581–5587 (n=7) | LLViewerObject::updateTEMaterialTextures | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 5951–5960 (n=10) | LLViewerObject::initRenderMaterial | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: A managed ghost binding must never write pinned channels back into a fetched base shared by source/world faces. |
-| 5972–5981 (n=10) | LLViewerObject::initRenderMaterial | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Also covers asynchronous material-completion callbacks that re-init. |
-| 6210–6221 (n=12) | LLViewerObject::getBoundingBoxAgent | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, LLVector3, LLBBox, LLQuaternion |
-| 7888–7907 (n=20) | LLViewerObject::setRenderMaterialID, onMaterialComplete | clones, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
-| 7918–7928 (n=11) | LLViewerObject::setRenderMaterialID, onMaterialComplete | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
-| 8168–8170 (n=3) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 25–37 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | clones, stepped-animation, tracking | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 59–65 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 70–76 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 79–85 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 104–110 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 124–150 (n=27) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits LLViewerObject, LLSD, LLMaterialID, LLUUID, LLPointer, LLViewerTexture |
+| 241–252 (n=12) | LLViewerObject::createObject | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
+| 462–471 (n=10) | LLViewerObject::markDead | clones | creative-candidate | unknown; conditional evidence present | Edits ALWornAnimNames |
+| 965–999 (n=35) | LLViewerObject::invalidateWorldShadowBounds, LLViewerObject::nextWorldShadowRevision, LLViewerObject::setParent | rig, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: O(1): one process-unique tag (atomic counter) on this object and on its edit root, found by a parent walk (no recursion, no allocation). The tags are unique, so a recreated object with a recycled UUID never matches a stale cache entry. The revision FIELDS themselves are only writ |
+| 1019–1030 (n=12) | LLViewerObject::addChild | clones, rig | creative-candidate | unknown; conditional evidence present | Edits ALWornAnimNames |
+| 1053–1063 (n=11) | LLViewerObject::removeChild | clones, rig | creative-candidate | unknown; conditional evidence present | Edits ALWornAnimNames |
+| 1361–1367 (n=7) | LLViewerObject::processUpdateMessage | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2313–2319 (n=7) | LLViewerObject::processUpdateMessage | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3 |
+| 2352–2384 (n=33) | LLViewerObject::processUpdateMessage | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Track only accepted packets, before ping extrapolation / target omega. Keep the packet frame, including unresolved parents, independently of recursive setRegion propagation and later orphan adoption. Terse packets have no scale: never cache a local manip preview as a server scale |
+| 2590–2612 (n=23) | LLViewerObject::idleUpdate | clones, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [Temporal Capture] Objects drive: scale ONLY the local target-omega integrator so prim spin slows/speeds with the world clock. The shared dt (linear extrapolation below) stays on wall time -- simulator-driven linear/physical motion is a later pillar. Capped so a hitch at fast sca |
+| 3009–3018 (n=10) | LLViewerObject::dirtyInventory | clones | creative-candidate | unknown; conditional evidence present | Edits ALWornAnimNames |
+| 4614–4640 (n=27) | LLViewerObject::getLastServerTransform | tracking | creative-candidate | unknown; conditional evidence present | Edits LLViewerObject, LLVector3, LLQuaternion, ALProjectorTrackMath |
+| 4687–4702 (n=16) | LLViewerObject::getManipPivotPositionAgent | clones | creative-candidate | unknown; conditional evidence present | Edits LLVector3, LLViewerObject, LLGhostAvatar |
+| 5226–5436 (n=211) | LLViewerObject::getGhostResolvedBakedTexture, LLViewerObject::getGhostResolvedMaterialBindingCount, LLViewerObject::ghostResolvedMaterialBindingMatches, LLViewerObject::ghostResolvedMaterialSemanticMatches, LLViewerObject::hasGhostResolvedMaterialBinding, LLViewerObject::isGhostResolvedMaterialBindingPending, LLViewerObject::restoreGhostResolvedMaterialBinding, LLViewerObject::setGhostResolvedBakedTexture, LLViewerObject::setGhostResolvedMaterialBinding | clones | creative-candidate | unknown; conditional evidence present | Edits LLViewerObject, LLUUID, LLViewerTexture, LLAvatarAppearanceDefines, LLAvatarAppearanceDictionary, LLCachedControl, gSavedSettings, LLTextureEntry, LLFetchedGLTFMaterial, LLViewerFetchedTexture |
+| 5438–5448 (n=11) | LLViewerObject::getBakedTextureForMagicId | clones | creative-candidate | unknown; conditional evidence present | Edits LLViewerTexture |
+| 5499–5512 (n=14) | LLViewerObject::setTE | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: A TE with a registered source-resolved binding must get a clone-private render material before updateTEMaterialTextures writes fetched PBR channels. initRenderMaterial is a no-op when uniqueness is unnecessary. |
+| 5522–5539 (n=18) | LLViewerObject::updateTEMaterialTextures | clones | creative-candidate | unknown; no local conditional evidence | Edits LLViewerTextureManager, LLGLTexture, LLViewerTexture |
+| 5550–5560 (n=11) | LLViewerObject::updateTEMaterialTextures | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
+| 5598–5604 (n=7) | LLViewerObject::updateTEMaterialTextures | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 5968–5977 (n=10) | LLViewerObject::initRenderMaterial | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: A managed ghost binding must never write pinned channels back into a fetched base shared by source/world faces. |
+| 5989–5998 (n=10) | LLViewerObject::initRenderMaterial | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Also covers asynchronous material-completion callbacks that re-init. |
+| 6227–6238 (n=12) | LLViewerObject::getBoundingBoxAgent | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, LLVector3, LLBBox, LLQuaternion |
+| 7905–7924 (n=20) | LLViewerObject::setRenderMaterialID, onMaterialComplete | clones, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
+| 7935–7945 (n=11) | LLViewerObject::setRenderMaterialID, onMaterialComplete | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
+| 8185–8187 (n=3) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/newview/llviewerpartsim.cpp`
 
@@ -2842,6 +2844,33 @@ HEAD coordinates; guards/features are candidate evidence
 | 115–121 (n=7) | LLHUDText::renderText | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, ALDerenderList |
 | 355–361 (n=7) | LLHUDText::updateVisibility | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, ALDerenderList |
 
+## Slice 4: `indra/newview/llinventorybridge.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–33 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 60–66 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 97–104 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 117–255 (n=139) | category_items_pass, clear_inventory_drag_validation_cache | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Match collectDescendents(EXCLUDE_TRASH): the Trash category is part of the result, but its contents are not. Test the category itself before deciding whether to descend into it. Match the legacy test exactly: getType(), not getActualType(). Don't return yet: the legacy path rejec |
+| 1423–1429 (n=7) | LLInvFVBridge::startDrag | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 2673–2690 (n=18) | LLFolderBridge::getLabelSuffix | unknown | unknown-review | unknown; conditional evidence present | Edits LLInventoryModel, gInventory, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 2900–2911 (n=12) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 2939–2984 (n=46) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 3120–3130 (n=11) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The drop path needs this materialized list below to deactivate gestures moved to Trash. Collect it once and reuse it. |
+| 3139–3145 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3160–3176 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 3181–3187 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 3230–3236 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 3498–3514 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 5292–5298 (n=7) | LLFolderBridge::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 6490–6546 (n=57) | check_category | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: One DFS. The former implementation collected every subtree and then recursively repeated those same collections for each child folder. Empty folder should be checked as any other folder view item. If we are filtering by date the folder should not pass because it doesn't have its  |
+| 7481–7493 (n=13) | LLAnimationBridge::buildContextMenu | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] plays on the Ghost Studio selection (links resolved); only offered while an entity clone is selected. |
+| 7497–7508 (n=12) | LLAnimationBridge::performAction | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] same path as the Clones page Inventory combo. |
+| 7648–7659 (n=12) | LLObjectBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] Restores 366a7f2325d (lost in the 663df365ca6 history merge): DoubleClickAttachmentAdd adds instead of replacing; Ctrl inverts. |
+| 8032–8046 (n=15) | LLWearableBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] DoubleClickWearableAdd adds clothing (alphas, tattoos, layers) instead of replacing that type; Ctrl inverts. Body parts always replace. |
+
 ## Slice 4: `indra/newview/llmanip.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -2894,6 +2923,53 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 81–96 (n=16) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [GhostStudio] True while an internal LLManip is actively dragging (holds mouse capture). The composite / getCurrentTool() do NOT hold the capture -- the internal manip does -- so an external driver must ask THIS, not hasMouseCapture(), to detect a gizmo drag. Out-of-line: LLManip |
 | 252–261 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Functional self-test only: forget this composite's OWN grab instance state without sending anything (its mouse capture was dropped without the tool callback). |
+
+## Slice 4: `indra/newview/lltooldraganddrop.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 26–40 (n=15) | unknown/non-function (declaration, XML, build list or global scope) | clones, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 67–73 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 83–88 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; conditional evidence present | Edits LLNoPreferredType, LLInventoryCollectFunctor, LLInventoryCategory, LLInventoryItem, LLFolderType, LLNoPreferredTypeOrItem |
+| 148–153 (n=6) | unknown/non-function (bool LLDropCopyableItems::operator()() | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Starts a fetch on folders and items.  This is really not used as an observer in the traditional sense; we're just using it to request a fetch and we don't care about when/if the response arrives. no-op: it's fire n forget right? */ |
+| 198–205 (n=8) | unknown/non-function (LLToolDragAndDrop::DragAndDropEntry::DragAndDropEntry(dragOrDrop3dImpl f_none,) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 207–213 (n=7) | LLToolDragAndDrop::DragAndDropEntry::DragAndDropEntry | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 237–250 (n=14) | LLToolDragAndDrop::LLDragAndDropDictionary::LLDragAndDropDictionary | clones, vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: DAD_VCAM_FEED (22) is viewer-local UUID cargo. Only world object faces accept it; it is never interpreted as inventory. |
+| 284–300 (n=17) | LLToolDragAndDrop::beginDrag | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: VCam cargo is a registry UUID, never an inventory UUID. In particular, do not let a coincidentally matching inventory item trigger a fetch. |
+| 302–312 (n=11) | LLToolDragAndDrop::beginDrag | unknown | unknown-review | unknown; conditional evidence present | Edits gInventory, LL_PROFILE_ZONE_NAMED_CATEGORY_UI, LLInventoryModelBackgroundFetch |
+| 319–328 (n=10) | LLToolDragAndDrop::beginDrag | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: go ahead and fire & forget the descendents if we are not dragging a protected folder. The root category is queued above (and folder-view sources already did so in LLInvFVBridge::startDrag()). Enumerating the entire subtree here only built lists for a fire-and-forget fetch and was |
+| 331–338 (n=8) | LLToolDragAndDrop::beginMultiDrag | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 353–366 (n=14) | LLToolDragAndDrop::beginMultiDrag, LLToolDragAndDrop::endDrag | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: find categories (i.e. inventory folders) in the cargo. The removed subtree walk was consumed solely by a fire-and-forget observer which was never started, never by the drag cargo itself. Preserve that original no-fetch behavior here. |
+| 376–391 (n=16) | LLToolDragAndDrop::handleMouseUp, LLToolDragAndDrop::onMouseCaptureLost | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The drop starts with a drop=false acceptance pass. It must recompute state that is not represented by the inventory revision (wear state, Marketplace state, RLV locks, settings, and the active panel). |
+| 467–473 (n=7) | LLToolDragAndDrop::handleHover | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 516–522 (n=7) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 533–551 (n=19) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: For people drag and drop we don't need an actual inventory object, instead we need the current cargo id, which should be a person id. People and VCam drags carry UUIDs rather than inventory objects. VCam is kept as an explicit source/type pair so no other viewer cargo can inherit |
+| 561–569 (n=9) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 577–588 (n=12) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 606–618 (n=13) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Only VCam cargo gets the real drop pass; people cargo keeps its old behaviour. |
+| 628–640 (n=13) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 650–658 (n=9) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 666–676 (n=11) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 692–700 (n=9) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 734–750 (n=17) | LLToolDragAndDrop::dragOrDrop3D | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 768–849 (n=82) | LLToolDragAndDrop::pick | clones, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] A Ghost Studio entity clone under the cursor is its own drop target: a direct hit on the clone's body or one of its attachments, or -- for an all-animation drag from the agent's inventory -- the same screen-space foot / mid-body pick the Ghost edit tool uses, but  |
+| 1854–1864 (n=11) | LLToolDragAndDrop::dropObject | unknown | unknown-review | unknown; conditional evidence present | Edits LLViewerObject, gObjectList |
+| 2373–2523 (n=151) | LLToolDragAndDrop::dad3dGhostCloneRefuse, LLToolDragAndDrop::dad3dPlayOnGhostClone, LLToolDragAndDrop::dad3dVCamAvatar, LLToolDragAndDrop::dad3dVCamFeed, LLToolDragAndDrop::dad3dVCamLand, LLToolDragAndDrop::dad3dVCamNoTarget, getAssetUUID | clones, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Real projectors take the projector path. A plain (point) light only does with Shift held, so a glowing TV/screen prim still accepts a normal face/display drop. [CloneAnimDrop] ------------------------------------------------------------ Links resolve to the animation they point a |
+| 3574–3581 (n=8) | LLToolDragAndDrop::locateInventory | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/lltooldraganddrop.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 65–71 (n=7) | unknown/non-function (public:) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 108–115 (n=8) | unknown/non-function (protected:) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 152–158 (n=7) | unknown/non-function (protected:) | clones | creative-candidate | unknown; no local conditional evidence | Edits LLUUID |
+| 175–189 (n=15) | unknown/non-function (protected:) | clones, vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneAnimDrop] an agent-inventory animation over an entity clone plays there (mGhostCloneTarget); any other cargo over a clone is refused. |
+| 317–324 (n=8) | unknown/non-function (private:) | clones | creative-candidate | unknown; no local conditional evidence | Edits LLToolDragAndDrop |
 
 ## Slice 4: `indra/newview/llviewercamera.cpp`
 
@@ -2972,6 +3048,18 @@ HEAD coordinates; guards/features are candidate evidence
 | 133–139 (n=7) | LLViewerTextureAnim::animateTextures | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 237–288 (n=52) | LLViewerTextureAnim::advanceSteppedTime, LLViewerTextureAnim::advanceTime | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Advance phase only; leave the displayed frame/offset/rotation untouched. This also consumes every presentation delta when temporal capture drives us. [Temporal Capture] Texture-anim drive: advance this instance's phase on the presentation clock when driven, else exactly the stock |
 
+## Slice 4: `indra/newview/llvoavatarself.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 54–60 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 74–80 (n=7) | unknown/non-function (extern bool gTeleportDisplay;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID, LLVOAvatarSelf |
+| 842–877 (n=36) | LLVOAvatarSelf::isLocalOnlyMotion, LLVOAvatarSelf::registerLocalOnlyMotion, LLVOAvatarSelf::requestStopMotion, LLVOAvatarSelf::unregisterLocalOnlyMotion | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep protection until the owner releases the preview. Native/LOD paths can notify more than once while an instance is fading out. A simulator-signaled instance retains its normal animation lifecycle. |
+| 1302–1310 (n=9) | LLVOAvatarSelf::attachObject | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneAnimDrop] learn animation names from this own attachment's task inventory (event driven, throttled; never other residents'). |
+| 1355–1364 (n=10) | LLVOAvatarSelf::detachObject | clones | creative-candidate | unknown; conditional evidence present | Edits ALWornAnimNames |
+
 ## Slice 4: `indra/newview/llworld.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -2994,6 +3082,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 81–88 (n=8) | rlvGetItemNameFromObjID | clones | creative-candidate | unknown; conditional evidence present | Edits LLVOAvatar |
+
+## Slice 4: `indra/newview/skins/default/xui/en/menu_inventory.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 569–583 (n=15) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 5: `indra/llrender/llrendertarget.cpp`
 
@@ -4102,48 +4198,6 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 884–892 (n=9) | LLToolBarView::handleDropTool | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: DAD_PERSON means that cargo_data contains an uuid, not an LLInventoryObject These cargo types carry a UUID, not an LLInventoryObject. |
-
-## Slice 9: `indra/newview/lltooldraganddrop.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 26–35 (n=10) | unknown/non-function (declaration, XML, build list or global scope) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 62–68 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 78–83 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; conditional evidence present | Edits LLNoPreferredType, LLInventoryCollectFunctor, LLInventoryCategory, LLInventoryItem, LLFolderType, LLNoPreferredTypeOrItem |
-| 143–148 (n=6) | unknown/non-function (bool LLDropCopyableItems::operator()() | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Starts a fetch on folders and items.  This is really not used as an observer in the traditional sense; we're just using it to request a fetch and we don't care about when/if the response arrives. no-op: it's fire n forget right? */ |
-| 235–243 (n=9) | LLToolDragAndDrop::LLDragAndDropDictionary::LLDragAndDropDictionary | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: DAD_VCAM_FEED (22) is viewer-local UUID cargo. Only world object faces accept it; it is never interpreted as inventory. |
-| 277–293 (n=17) | LLToolDragAndDrop::beginDrag | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: VCam cargo is a registry UUID, never an inventory UUID. In particular, do not let a coincidentally matching inventory item trigger a fetch. |
-| 295–305 (n=11) | LLToolDragAndDrop::beginDrag | unknown | unknown-review | unknown; conditional evidence present | Edits gInventory, LL_PROFILE_ZONE_NAMED_CATEGORY_UI, LLInventoryModelBackgroundFetch |
-| 312–321 (n=10) | LLToolDragAndDrop::beginDrag | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: go ahead and fire & forget the descendents if we are not dragging a protected folder. The root category is queued above (and folder-view sources already did so in LLInvFVBridge::startDrag()). Enumerating the entire subtree here only built lists for a fire-and-forget fetch and was |
-| 324–331 (n=8) | LLToolDragAndDrop::beginMultiDrag | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 346–359 (n=14) | LLToolDragAndDrop::beginMultiDrag, LLToolDragAndDrop::endDrag | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: find categories (i.e. inventory folders) in the cargo. The removed subtree walk was consumed solely by a fire-and-forget observer which was never started, never by the drag cargo itself. Preserve that original no-fetch behavior here. |
-| 369–384 (n=16) | LLToolDragAndDrop::handleMouseUp, LLToolDragAndDrop::onMouseCaptureLost | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The drop starts with a drop=false acceptance pass. It must recompute state that is not represented by the inventory revision (wear state, Marketplace state, RLV locks, settings, and the active panel). |
-| 460–466 (n=7) | LLToolDragAndDrop::handleHover | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 509–515 (n=7) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 526–544 (n=19) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: For people drag and drop we don't need an actual inventory object, instead we need the current cargo id, which should be a person id. People and VCam drags carry UUIDs rather than inventory objects. VCam is kept as an explicit source/type pair so no other viewer cargo can inherit |
-| 554–562 (n=9) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 570–581 (n=12) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 599–611 (n=13) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Only VCam cargo gets the real drop pass; people cargo keeps its old behaviour. |
-| 621–633 (n=13) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 643–651 (n=9) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 659–669 (n=11) | LLToolDragAndDrop::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 685–693 (n=9) | LLToolDragAndDrop::dragOrDrop | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 727–743 (n=17) | LLToolDragAndDrop::dragOrDrop3D | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 767–792 (n=26) | LLToolDragAndDrop::pick | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: VCam bindings are viewer-local face identities. Preserve a picked attachment object so its static, non-rigged face can pass through the same geometry validator as any other visible object face. |
-| 1797–1807 (n=11) | LLToolDragAndDrop::dropObject | unknown | unknown-review | unknown; conditional evidence present | Edits LLViewerObject, gObjectList |
-| 2316–2419 (n=104) | LLToolDragAndDrop::dad3dVCamAvatar, LLToolDragAndDrop::dad3dVCamFeed, LLToolDragAndDrop::dad3dVCamLand, LLToolDragAndDrop::dad3dVCamNoTarget | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Real projectors take the projector path. A plain (point) light only does with Shift held, so a glowing TV/screen prim still accepts a normal face/display drop. |
-| 3470–3477 (n=8) | LLToolDragAndDrop::locateInventory | vcam | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 9: `indra/newview/lltooldraganddrop.h`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 65–71 (n=7) | unknown/non-function (public:) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 173–183 (n=11) | unknown/non-function (protected:) | vcam | creative-candidate | unknown; no local conditional evidence | Edits LLViewerObject |
 
 ## Slice 9: `indra/newview/llviewermedia.cpp`
 
@@ -6143,30 +6197,6 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 216–226 (n=11) | LLInspectObject::onOpen | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
-## Slice 99: `indra/newview/llinventorybridge.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 59–65 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 96–103 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 116–254 (n=139) | category_items_pass, clear_inventory_drag_validation_cache | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Match collectDescendents(EXCLUDE_TRASH): the Trash category is part of the result, but its contents are not. Test the category itself before deciding whether to descend into it. Match the legacy test exactly: getType(), not getActualType(). Don't return yet: the legacy path rejec |
-| 1422–1428 (n=7) | LLInvFVBridge::startDrag | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 2672–2689 (n=18) | LLFolderBridge::getLabelSuffix | unknown | unknown-review | unknown; conditional evidence present | Edits LLInventoryModel, gInventory, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 2899–2910 (n=12) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 2938–2983 (n=46) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 3119–3129 (n=11) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The drop path needs this materialized list below to deactivate gestures moved to Trash. Collect it once and reuse it. |
-| 3138–3144 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 3159–3175 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 3180–3186 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 3229–3235 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 3497–3513 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 5291–5297 (n=7) | LLFolderBridge::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 6489–6545 (n=57) | check_category | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: One DFS. The former implementation collected every subtree and then recursively repeated those same collections for each child folder. Empty folder should be checked as any other folder view item. If we are filtering by date the folder should not pass because it doesn't have its  |
-| 7635–7646 (n=12) | LLObjectBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] Restores 366a7f2325d (lost in the 663df365ca6 history merge): DoubleClickAttachmentAdd adds instead of replacing; Ctrl inverts. |
-| 8019–8033 (n=15) | LLWearableBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] DoubleClickWearableAdd adds clothing (alphas, tattoos, layers) instead of replacing that type; Ctrl inverts. Body parts always replace. |
-
 ## Slice 99: `indra/newview/llinventorybridge.h`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6598,15 +6628,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 193–213 (n=21) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge HideUI] True when in-world INDICATOR overlays (selection outlines + manipulators, selection/edit particle beams, beacon lines, face highlights) should draw. False when the interface is hidden by EITHER mechanism: the HideUIControls / mouselook path (mUIVisible) or the Ad |
 | 516–522 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 601–610 (n=10) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Active Frame format rectangle inside a width x height view (any units, same origin); false when the format is Off / Native. Defined in llviewerwindow.cpp. |
-
-## Slice 99: `indra/newview/llvoavatarself.cpp`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 73–79 (n=7) | unknown/non-function (extern bool gTeleportDisplay;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLUUID, LLVOAvatarSelf |
-| 841–876 (n=36) | LLVOAvatarSelf::isLocalOnlyMotion, LLVOAvatarSelf::registerLocalOnlyMotion, LLVOAvatarSelf::requestStopMotion, LLVOAvatarSelf::unregisterLocalOnlyMotion | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Keep protection until the owner releases the preview. Native/LOD paths can notify more than once while an instance is fading out. A simulator-signaled instance retains its normal animation lifecycle. |
 
 ## Slice 99: `indra/newview/llvoavatarself.h`
 

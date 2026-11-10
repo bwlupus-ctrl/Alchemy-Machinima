@@ -258,14 +258,18 @@ ALGhostAnimAssetIndex::refreshInventory()
         entry.mAssetId = item->getAssetUUID();
         entry.mItemId = item->getUUID();
         entry.mName = item->getName();
+        entry.mExposable = item->getIsFullPerm();
+        mRestrictions.note(entry.mAssetId, entry.mExposable);
         auto cached = mMetadata.find(entry.mAssetId);
         if (cached != mMetadata.end())
         {
             const LLUUID item_id = entry.mItemId;
             const std::string name = entry.mName;
+            const bool exposable = entry.mExposable;
             entry = cached->second;
             entry.mItemId = item_id;
             entry.mName = name;
+            entry.mExposable = exposable;
         }
         fresh.push_back(entry);
     }
@@ -294,6 +298,44 @@ ALGhostAnimAssetIndex::find(const LLUUID& asset_id) const
         }
     }
     return nullptr;
+}
+
+void ALGhostAnimAssetIndex::noteSessionName(const LLUUID& asset_id,
+                                            const std::string& name,
+                                            bool exposable)
+{
+    if (asset_id.isNull() || !ALGhostAnimNames::hasDisplayName(name))
+    {
+        return;
+    }
+    const std::string previous_name = sessionName(asset_id);
+    mSessionNames[asset_id].mName = name;
+    // Once any non-full-perm item is known to back this asset, it stays hidden.
+    mRestrictions.note(asset_id, exposable);
+    if (sessionName(asset_id) != previous_name)
+    {
+        ++mMetadataRevision; // ALGhostAnimNames re-resolves learned names on this
+    }
+}
+
+void ALGhostAnimAssetIndex::noteRestriction(const LLUUID& asset_id, bool exposable)
+{
+    mRestrictions.note(asset_id, exposable);
+}
+
+void ALGhostAnimAssetIndex::noteItemRestriction(const LLViewerInventoryItem* item)
+{
+    if (!item)
+    {
+        return;
+    }
+    if (const LLViewerInventoryItem* linked = item->getLinkedItem())
+    {
+        item = linked;
+    }
+    // Recorded before any playback or formatting of this asset (never shown
+    // when the backing item is not full perm).
+    mRestrictions.note(item->getAssetUUID(), item->getIsFullPerm());
 }
 
 void ALGhostAnimAssetIndex::requestMetadata(const LLUUID& asset_id)

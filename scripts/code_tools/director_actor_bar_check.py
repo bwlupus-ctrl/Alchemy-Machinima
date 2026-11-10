@@ -107,6 +107,13 @@ def reverse_rig_no_group_cast(source, name):
         "5d967cf95fada38b1bbe10eb5aac5bdae6c996a1643298760138c31301652e14", "reviewed rig-no-group cast")
 
 
+def reverse_clone_anim_drop(source, name):
+    # Clone animation drop integrates on top of main 845dfff22e9; peel it before
+    # the post-chroma reversal that pins that main state.
+    return reverse_feature_allowance(source, name, "clone_anim_drop_hunks.json",
+        "621dfd76f4562913468a6b127b7f254773b5812b4ff04adb8f5739054f62acf0", "reviewed clone animation drop")
+
+
 def hot_gaze_baseline(source, name):
     # Peel independent layers newest first. In particular, retiring renderer
     # looks must preserve interplay until its own exact allowance reverses it.
@@ -243,7 +250,8 @@ def main():
     # Guard every additional file covered by the new layers, including Studio
     # where retirement and interplay both changed the Hot Gaze implementation.
     for name in ("alghoststudio.cpp", "llactormover.h", "lldirectorcast.h"):
-        hot_gaze_baseline(actor_key_baseline(reverse_post_chroma_main((nv / name).read_text(encoding="utf-8"), name), name), name)
+        hot_gaze_baseline(actor_key_baseline(reverse_post_chroma_main(
+            reverse_clone_anim_drop((nv / name).read_text(encoding="utf-8"), name), name), name), name)
     guarded_mover = hot_gaze_baseline(current_mover, "llactormover.cpp")
     # Reversal order: key WP5/WP4/WP1b/LENS/WP2/WP01, Matrix, retired looks, interplay, Hot Gaze, QoL, phase 2,
     # rekey, phase 1, then the unchanged original round-2 guard.
