@@ -328,7 +328,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,54", "indra/newview/CMakeLists.txt@334,119", "indra/newview/CMakeLists.txt@1139,58", "indra/newview/CMakeLists.txt@1294,171", "indra/newview/CMakeLists.txt@2859,32", "indra/newview/CMakeLists.txt@2965,197"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@5299,241", "indra/newview/app_settings/settings.xml@6575,14777", "indra/newview/app_settings/settings.xml@21354,1113", "indra/newview/app_settings/settings.xml@28599,648", "indra/newview/app_settings/settings.xml@29393,2466", "indra/newview/app_settings/settings.xml@31860,209", "indra/newview/app_settings/settings.xml@32070,364"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3455", "indra/newview/app_settings/settings.xml@5299,241", "indra/newview/app_settings/settings.xml@6575,14788", "indra/newview/app_settings/settings.xml@21365,1113", "indra/newview/app_settings/settings.xml@28610,648", "indra/newview/app_settings/settings.xml@29404,2466", "indra/newview/app_settings/settings.xml@31871,209", "indra/newview/app_settings/settings.xml@32081,364"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@25,19", "indra/newview/llappviewer.cpp@156,7", "indra/newview/llappviewer.cpp@1954,24", "indra/newview/llappviewer.cpp@2625,53", "indra/newview/llappviewer.cpp@2877,7", "indra/newview/llappviewer.cpp@4589,17", "indra/newview/llappviewer.cpp@4618,10", "indra/newview/llappviewer.cpp@4729,11", "indra/newview/llappviewer.cpp@5809,129", "indra/newview/llappviewer.cpp@6454,16", "indra/newview/llappviewer.cpp@6493,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.h", "hunks": ["indra/newview/llfloaterenvironmentadjust.h@60,19"]}
 - {"path": "indra/newview/llfloaterhoverheight.cpp", "hunks": ["indra/newview/llfloaterhoverheight.cpp@93,41"]}
@@ -423,6 +423,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `DirectorArmRecorderCapture`
 - `DirectorArmRecorderPlay`
 - `DirectorAutosaveMinutes`
+- `DirectorBackgroundOpacity`
 - `DirectorExposureEasyMode`
 - `DirectorFavorites`
 - `DirectorGazeAnimationPriority`
