@@ -364,8 +364,9 @@ def validate_data(data: dict) -> None:
     # Includes the DirectorThemeInvert row in Director settings.
     # Group chat Snooze: two settings rows, 2499 -> 2501.
     # Independent rigs + Director Groups 1a/1b: 40/2506; Lights combo + readouts in 1c: 40/2507.
-    if len(pages) != 40 or row_count != 2507:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2507")
+    # Director background opacity: one Appearance slider, 2507 -> 2508.
+    if len(pages) != 40 or row_count != 2508:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2508")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -869,7 +870,7 @@ def row_element(row: dict, by_name: dict[str, ET.Element], by_control: dict[str,
         if row.get(src):
             attrs[dst] = "true"
     for src, dst in (("mn", "min_val"), ("mx", "max_val"), ("st", "increment"), ("dc", "decimals"),
-                      ("row_height", "row_height")):
+                      ("cd", "compare_decimals"), ("row_height", "row_height")):
         if src in row:
             attrs[dst] = scalar(row[src])
     # Conditional rows are created once and hidden until their page adapter
@@ -1743,7 +1744,7 @@ def index_bytes(data: dict, config: dict, classes: dict[str, str], note: str,
                 fields = [group["name"], page["name"], page.get("label", ""), group.get("label", ""),
                           section_for.get(ci, ""), card.get("id", ""), card.get("t", ""),
                           "" if oi is None else oi, row.get("w", ""), row.get("l", ""), row.get("k", ""),
-                          row.get("s") or row.get("code_setting", ""), str(row.get("dc") if row.get("dc") is not None
+                          row.get("s") or row.get("code_setting", ""), str(row.get("cd") if row.get("cd") is not None else row.get("dc") if row.get("dc") is not None
                                                    else (0 if row.get("k") in ("dial", "arc") else 3)),
                           flags, row.get("kw", ""), row.get("h", "")]
                 # [Connectedness B8] Only index widgets that exist on their page: a row naming a widget the

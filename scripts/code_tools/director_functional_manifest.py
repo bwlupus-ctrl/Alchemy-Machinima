@@ -184,6 +184,8 @@ POINTER_SLIDER_ENDPOINT_TESTS = {
 # These two controls display whole-percent darkness but deliberately store the
 # inverse 0..1 brightness floor (alpanelcinelightrig.cpp:964-995).
 TRANSFORMED_VALUE_TESTS = {
+    # Director Appearance displays percent and stores a normalized backing alpha.
+    ("v2", "director_settings_tab", "settings_background_opacity"): (50.0, 0.5),
     ("v2", "cine_light_rig_tab", "cine_easy_night_mask_darkness"): (1.0, 0.99),
     ("v2", "cine_light_rig_tab", "cine_night_mask_darkness"): (1.0, 0.99),
 }
