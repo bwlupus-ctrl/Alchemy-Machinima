@@ -240,7 +240,8 @@ private:
     void editGroupMembers(const uuid_vec_t& ids, const std::string& name, bool make = false);
     void selectGroupMembers(const std::string& name);
     void recordGroupEdit(const ALDirectorGroups::GroupSnapshot& before, const LLSD& rigs_before, const std::string& label,
-                         const std::string& renamed_from = {}, const std::string& renamed_to = {});
+                         const std::string& renamed_from = {}, const std::string& renamed_to = {},
+                         const std::string& delay_group = {});
     void updateCastGroupMenu(LLContextMenu* menu);
 
 
@@ -459,8 +460,7 @@ private:
     LLButton*   mGroupStartBtn = nullptr;
     LLButton*   mGroupStopBtn = nullptr;
     std::vector<std::string> mLastGroupNames;   // last set the combos were built from
-    // Groups management page: the list is rebuilt only when its
-    // composed name/count/delay snapshot changes (draw()-rate friendly)
+    // Groups management page: rebuild only on group/cast revisions; presence at 4 Hz.
     LLScrollListCtrl* mGroupsList = nullptr;
     LLScrollListCtrl* mGroupMembersList = nullptr;
     LLButton* mGroupNewBtn = nullptr;
@@ -469,7 +469,20 @@ private:
     LLButton* mGroupRemoveBtn = nullptr;
     LLTextBox* mGroupUsedBy = nullptr;
     LLHandle<LLContextMenu> mGroupPickerMenu;
-    std::vector<std::string> mLastGroupMembersSnapshot;
+    std::string mGroupMembersShownFor;
+    U64 mGroupListRevision = 0;
+    U64 mGroupCastRevision = 0;
+    ALLiveReadoutClock mGroupPresenceClock{4.f};
+    struct GroupEdit
+    {
+        ALDirectorGroups::GroupSnapshot before, after;
+        std::string gazeBefore, gazeAfter, renamedFrom, renamedTo;
+        LLSD rigsBefore, rigsAfter;
+    };
+    std::shared_ptr<GroupEdit> mLastGroupDelayEdit;
+    std::string mLastGroupDelayName;
+    U64 mGroupDelayHistoryRevision = 0;
+    U64 mGroupDelayHistorySequence = 0;
     std::string mGroupMergeFrom;
     std::string mGroupMergeTo;
     std::string mGroupMergeText;
@@ -479,7 +492,6 @@ private:
     LLLineEditor*     mGroupRenameEditor = nullptr;
     LLButton*         mGroupRenameBtn = nullptr;
     LLButton*         mGroupDissolveBtn = nullptr;
-    std::vector<std::string> mGroupsListSnapshot;   // "name|count|delay" rows last built
     std::string       mGroupDelayShownFor;          // whose delay the spinner shows
 
     // Move tab -- the shared transport (scope, heading dial, params, Walk/Stop);

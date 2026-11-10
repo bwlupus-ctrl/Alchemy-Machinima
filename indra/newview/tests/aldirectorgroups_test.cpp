@@ -52,4 +52,24 @@ template<> template<> void director_groups_object::test<3>()
     replay.rewriteActor(old_id, LLUUID::null);
     ensure("retired actor is dropped", replay.tags.empty());
 }
+template<> template<> void director_groups_object::test<4>()
+{
+    using namespace ALDirectorGroups;
+    const LLUUID actor("00000000-0000-0000-0000-000000000001");
+    GroupSnapshot before, after;
+    before.tags[actor] = "Guards";
+    before.hotGroups[0] = { "Guards", actor };
+    after.tags[actor] = "";
+    after.hotGroups[0] = { "", LLUUID::null };
+    auto current = after;
+    current.hotGroups[0] = { "Later binding", actor };
+    ensure("later Hot rebind does not invalidate membership", patchDelta(current, after, before, false));
+    bool skipped = false;
+    ensure("membership replay succeeds", patchDelta(current, after, before, true, &skipped));
+    ensure("later binding is skipped", skipped);
+    ensure_equals("membership restored", current.tags.at(actor), std::string("Guards"));
+    ensure_equals("later binding retained", current.hotGroups.at(0).first, std::string("Later binding"));
+    current.tags[actor] = "Edited elsewhere";
+    ensure("membership conflict still rejects", !patchDelta(current, before, after, false));
+}
 } // namespace tut

@@ -8,27 +8,22 @@
       "GENERATED": 736,
       "HOOK": 535,
       "OWNED": 911,
-      "TOOLING": 444
+      "TOOLING": 446
     },
     "dirty_product_inputs": [
-      "indra/newview/alcinelightrig.cpp",
-      "indra/newview/alcinelightrig.h",
-      "indra/newview/alcinelightrigmanager.cpp",
       "indra/newview/alcinelightrigmanager.h",
-      "indra/newview/alcinelightrigmodel.h",
-      "indra/newview/aldirectoralloff.cpp",
-      "indra/newview/alkithistory.cpp",
+      "indra/newview/aldirectorgroups.h",
       "indra/newview/alkithistory.h",
-      "indra/newview/alkitrow.cpp",
-      "indra/newview/alpanelcinelightrig.cpp",
-      "indra/newview/alpanelcinelightrig.h",
-      "indra/newview/aluiperfselftest.cpp",
+      "indra/newview/alkitpage.cpp",
+      "indra/newview/llactormover.cpp",
       "indra/newview/lldirectorcast.cpp",
       "indra/newview/lldirectorcast.h",
       "indra/newview/llfloaterdirector.cpp",
       "indra/newview/llfloaterdirector.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
@@ -70,22 +65,16 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/tests/alcinelightrigmodel_test.cpp",
+      "indra/newview/tests/aldirectorgroups_test.cpp",
       "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_all_off_check.py",
-      "scripts/code_tools/director_functional_manifest.py",
       "scripts/code_tools/director_groups_check.py",
+      "scripts/code_tools/director_groups_fable_hunks.json",
+      "scripts/code_tools/director_kit/check_kit_pages.py",
       "scripts/code_tools/director_kit/director_mockup_data.json",
       "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json",
       "scripts/code_tools/director_kit_gen.py",
       "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/rig_group_history_check.py",
-      "scripts/code_tools/rig_session_ui_check.py",
-      "scripts/code_tools/rig_subject_assignment_check.py",
-      "scripts/code_tools/rig_sway_check.py",
-      "scripts/code_tools/rig_sway_recovery.py",
-      "scripts/perf/functional_report.py"
+      "scripts/code_tools/ui_draw_lint_baseline.json"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -99,7 +88,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "e0c55bd1d82ba97b03bad7384d09ed3d29d38528f81fbfec9354b49cd9bf2db6",
+        "csv_sha256": "6104fbacaafef3ec0fa8b6097fba76b0ad6c92a740ebfe6da88cff05e4989d93",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -270,10 +259,10 @@
       },
       "wiring_rows": 2298
     },
-    "head_source_tree": "e6d50dde1096f9f9fc2ac260a3325f3615d6dd74",
+    "head_source_tree": "59621f6970dc79f8d455da828d38eabf9cf92e3d",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "87a79c39d990ed932382e62de59546392b7b810807081dccb5800a6c34c08f3f",
+    "input_sha256": "b035cd89ea554f9457a12befc77af4bf6080ce52437f7959c790c79f809e4c4b",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13180,8 +13169,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
-        "rig"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -13297,6 +13285,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "director-shell",
         "roto-tron"
       ],
       "class": "OWNED",
@@ -15894,7 +15883,6 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "vcam",
         "weather"
       ],
       "class": "OWNED",
@@ -16182,7 +16170,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -28176,11 +28163,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -43324,6 +43308,32 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/rig_group_history_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/rig_lit_group_cast_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/rig_lit_group_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

@@ -13,6 +13,7 @@
 #include "alcinelightrig.h"
 
 #include <boost/signals2/connection.hpp>
+#include <boost/signals2/shared_connection_block.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -1407,6 +1408,9 @@ public:
     void removeMirror(const LLUUID& clone_id);
     void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
+    // Group history restores exact binding deltas instead of following names.
+    boost::signals2::shared_connection_block blockLitGroupFollower()
+    { return boost::signals2::shared_connection_block(mLitGroupConnection); }
     LLSD captureLitGroups() const;
     void restoreLitGroups(const LLSD& bindings);
     void restoreLitGroupDelta(const LLSD& expected, const LLSD& desired, const LLSD& current);
