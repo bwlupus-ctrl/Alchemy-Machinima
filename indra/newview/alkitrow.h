@@ -21,6 +21,7 @@ struct ALKitRowMeta
     std::string kind, widget, label, help, keywords, setting, unit, sub, link_to, action, mirror_setting, default_value;
     F32         min_val = 0, max_val = 0, increment = 0.f;
     S32         decimals = 3;
+    S32         compare_decimals = -1; // changed/reset comparison precision; -1 = use decimals
     bool        advanced = false, has_min = false, has_max = false;
     S32         option = -1;
     std::string card_id, page_key;
@@ -39,7 +40,7 @@ public:
         Optional<bool> advanced, card_preset, who_picker, hidden, added, widget_history, bulk_reset, unconnected, fill_width, action_row, label_wrap;
         // Authored readout/action geometry, validated by xui_layout_check; no runtime packing.
         Optional<bool> fixed_actions;
-        Optional<S32>  row_height, decimals;
+        Optional<S32>  row_height, decimals, compare_decimals;
         Optional<F32>  min_val, max_val, increment;
         Params();
     };

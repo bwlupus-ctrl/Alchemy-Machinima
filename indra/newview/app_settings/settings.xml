@@ -8187,6 +8187,17 @@
       <key>Value</key>
       <integer>-1</integer>
     </map>
+    <key>DirectorBackgroundOpacity</key>
+    <map>
+      <key>Comment</key>
+      <string>Opacity of a solid backing layer drawn behind the whole Director window in the theme's window colour. 1 = fully solid.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>F32</string>
+      <key>Value</key>
+      <real>1.0</real>
+    </map>
     <key>DirectorTheme</key>
     <map>
       <key>Comment</key>
