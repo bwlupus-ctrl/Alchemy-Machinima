@@ -40,6 +40,7 @@
 #include "lluuid.h"
 #include "v3math.h"
 
+#include <map>
 #include <set>
 #include <boost/signals2.hpp>
 #include "aldirectorgroups.h"
@@ -356,6 +357,7 @@ public:
     const ActorStyle& getActorStyle(const LLUUID& id) const;
     const ActorStyle& getRenderActorStyle(const LLUUID& id) const;
     void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);
+    void              forgetCloneFade(const LLUUID& runtime_id);   // the clone's body is retired: drop its Studio-owned fade
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
     LLUUID            getSteppedActorId() const { return runtimeActorId(mActiveActorId); }
     void              setSteppedActorId(const LLUUID& id);
@@ -555,6 +557,7 @@ private:
     std::vector<CastMember> mCast;
     uuid_vec_t              mIds;       // mirrors mCast order
     std::unordered_map<LLUUID, std::size_t> mMemberIndex;
+    std::map<LLUUID, ActorStyle> mCloneFadeOrphans;   // session-only dissolve of a clone that is not a Cast member (never serialized)
     std::set<LLUUID>        mLookAtCameraIds;
     bool                    mSelfLookAtCamera = false;
 

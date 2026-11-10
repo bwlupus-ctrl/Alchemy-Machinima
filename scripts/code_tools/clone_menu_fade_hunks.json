@@ -1,0 +1,72 @@
+{
+ "base": "831f6cd3ebb",
+ "description": "Reviewed clone menu: hidden-only Fade out / Fade in of entity clones (ALGhostStudio::fadeInstance; mUserHidden kept through beginAppearance and runtime replacement, never for a clone being deleted; settled hide through the isVisible gate; the ramp reaches the renderer for a clone that is not a Cast member, and its worn animesh, through LLDirectorCast::mCloneFadeOrphans, retired with the body by forgetCloneFade; updateFades removes only a clone marked deleting; Delete of an invisible clone at once; arrays and crowds of a hidden clone fade in).",
+ "files": {
+  "alghoststudio.cpp": [
+   {
+    "before": "        if (it->second.mFade.removing) finished.push_back(it->first);\n",
+    "after": "        if (it->second.mFade.removing && inst->mDeleting) finished.push_back(it->first);   // a hidden-only fade ends at 0, never deletes\n        else if (inst->mUserHidden && inst->mKind == BACKING_ENTITY_CLONE)\n        {\n            // The fade finished at 0: the body is now hidden by Studio's own visibility gate (isVisible),\n            // which no Cast style path can reset, whether or not the clone is a Cast member.\n            if (LLGhostAvatar* ghost = resolveEntityClone(inst->mId))\n                set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);\n            // Settled hidden: the isVisible gate now hides the body, so a non-Cast clone keeps no alpha-0 coverage entry.\n            if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))\n                LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);\n        }\n"
+   },
+   {
+    "before": "    for (const auto& id : finished) removeInstance(id);\n}\n\nbool ALGhostStudio::swapSource(",
+    "after": "    for (const auto& id : finished) removeInstance(id);\n}\n// Hidden-only fade of an existing ENTITY clone: hidden = true fades it out to invisible and keeps it\n// hidden (mUserHidden), false fades it back in, with the Crowd tab Fade out / Fade in duration (the\n// updateFades ramp; ramp = false jumps, used by undo). Never deletes: only a clone marked mDeleting by\n// requestRemoveInstance is removed when its ramp ends. Session only, never saved. A settled hidden clone is\n// hidden through isVisible (the same gate as Show clones / Solo, so it is neither drawn nor picked); the\n// ramp itself is the Cast dissolve.\nbool ALGhostStudio::fadeInstance(const LLUUID& id, bool hidden, bool ramp)\n{\n    assert_main_thread();\n    Instance* inst = getInstance(id);\n    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    static LLCachedControl<F32> fade_in(gSavedSettings, \"GhostStudioFadeIn\", 0.f);\n    static LLCachedControl<F32> fade_out(gSavedSettings, \"GhostStudioFadeOut\", 0.f);\n    const F32 target = hidden ? 0.f : 1.f;\n    const F32 seconds = llclamp(F32(hidden ? fade_out : fade_in), 0.f, 5.f);\n    if (inst->mUserHidden != hidden) ++mInstanceRevision;     // the Clones list State column\n    inst->mUserHidden = hidden;\n    if (!ramp || seconds <= 0.f || target == inst->mFadeAlpha)\n    {\n        mFades.erase(id);\n        inst->mFadeAlpha = target;\n        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);\n        if (LLGhostAvatar* ghost = resolveEntityClone(id))\n            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);\n        if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))\n            LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return true;\n    }\n    if (gAgent.getRegion()) mFadeRegion = gAgent.getRegion()->getRegionID();\n    mFades[id].mFade = {LLTimer::getTotalSeconds(), seconds, inst->mFadeAlpha, hidden};\n    if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha);   // coverage first, so a fade-in never flashes\n    if (LLGhostAvatar* ghost = resolveEntityClone(id))        // a fade-in shows the body at once, then ramps it\n        set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);\n    return true;\n}\n\nbool ALGhostStudio::swapSource("
+   },
+   {
+    "before": "    if (!fade) return; // region recovery restores the prior visibility without a fade\n",
+    "after": "    if (inst->mUserHidden && !inst->mDeleting)\n    {\n        // A clone the user faded out stays hidden through a swap, a duplicate or a crowd fade-in.\n        mFades.erase(id);\n        inst->mFadeAlpha = 0.f;\n        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, 0.f);\n        if (LLGhostAvatar* ghost = resolveEntityClone(id))\n            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);\n        if (inst->mEntityId.notNull()) LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return;\n    }\n    if (!fade) return; // region recovery restores the prior visibility without a fade\n"
+   },
+   {
+    "before": "            member->mLastName = stable_name;\n            LLDirectorCast::instance().touchCast(); // [GhostPanelPerf]\n        }\n    }\n}\n",
+    "after": "            member->mLastName = stable_name;\n            LLDirectorCast::instance().touchCast(); // [GhostPanelPerf]\n        }\n        // A clone the user faded out stays hidden on its new body. A Fade out still ramping is cancelled and\n        // settled at 0 (stored and rendered coverage agree); the body is hidden through Studio's own gate. Any\n        // other fade in flight (creation, Fade in, delete) reaches the new body at once. Only a real replacement\n        // of a live instance's body: not an instance being removed, not a re-publish of the same runtime.\n        if (!removing_instance && old_runtime != new_runtime)\n        if (Instance* current = getInstance(stable_id))\n        {\n            if (current->mUserHidden && !current->mDeleting)\n            {\n                mFades.erase(stable_id);\n                current->mFadeAlpha = 0.f;\n                LLDirectorCast::instance().setCloneFadeAlpha(new_runtime, 0.f);\n                if (LLGhostAvatar* replaced = resolveEntityClone(stable_id))\n                    set_entity_clone_visible(replaced, isVisible(*current), mShowAll && current->mEnabled && mSolo && !current->mSoloVisible);\n                LLDirectorCast::instance().forgetCloneFade(new_runtime);      // settled hidden: no alpha-0 coverage entry kept\n            }\n            else if (mFades.count(stable_id))\n            {\n                LLDirectorCast::instance().setCloneFadeAlpha(new_runtime, current->mFadeAlpha);\n            }\n        }\n    }\n    // The old body is retired (replaced, parked or removed): its Studio-owned dissolve goes with it.\n    if (old_runtime.notNull() && old_runtime != new_runtime)\n    {\n        LLDirectorCast::instance().forgetCloneFade(old_runtime);\n    }\n}\n"
+   },
+   {
+    "before": "    if (seconds <= 0.f) { removeInstance(id); return; }\n",
+    "after": "    bool all_invisible = true;\n    for (const LLUUID& member : members)\n        if (const Instance* item = getInstance(member)) all_invisible = all_invisible && !(item->mFadeAlpha > 0.f);\n    if (seconds <= 0.f || all_invisible) { removeInstance(id); return; }\n"
+   },
+   {
+    "before": "        Instance* copy = duplicateInstanceInPlace(proto.mId);\n        if (!copy)\n        {\n            return;\n        }\n        copy->setFootGlobal(foot);",
+    "after": "        Instance* copy = duplicateInstanceInPlace(proto.mId);\n        if (!copy)\n        {\n            return;\n        }\n        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n        copy->setFootGlobal(foot);"
+   },
+   {
+    "before": "        created.push_back(copy->mId);\n        ids.push_back(copy->mId);\n    }",
+    "after": "        created.push_back(copy->mId);\n        ids.push_back(copy->mId);\n        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone\n    }"
+   }
+  ],
+  "lldirectorcast.cpp": [
+   {
+    "before": "        resolved_id = primary;\n        const auto& member = mCast[primary_it->second];\n        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n    }\n\n    // Preserve the established animesh/control-avatar fallback semantics even",
+    "after": "        resolved_id = primary;\n        const auto& member = mCast[primary_it->second];\n        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n    }\n    if (!mCloneFadeOrphans.empty())\n    {\n        const auto orphan = mCloneFadeOrphans.find(primary);\n        if (orphan != mCloneFadeOrphans.end())\n        {\n            // A clone that is not a Cast member: Studio's own fade reaches the renderer without membership.\n            resolved_id = primary;\n            return orphan->second;\n        }\n    }\n\n    // Preserve the established animesh/control-avatar fallback semantics even"
+   },
+   {
+    "before": "            const auto& member = mCast[fallback_it->second];\n            return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n        }\n        return default_style;\n    }\n\n    resolved_id = primary;\n    return default_style;",
+    "after": "            const auto& member = mCast[fallback_it->second];\n            return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n        }\n        if (!mCloneFadeOrphans.empty())\n        {\n            const auto orphan = mCloneFadeOrphans.find(fallback);\n            if (orphan != mCloneFadeOrphans.end())\n            {\n                return orphan->second;      // the wearer is a non-member clone: its worn animesh fades with it\n            }\n        }\n        return default_style;\n    }\n\n    resolved_id = primary;\n    return default_style;"
+   },
+   {
+    "before": "        const auto& member = mCast[it->second];\n        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n    }\n    return default_style;\n}\n\nvoid LLDirectorCast::setActorStyle(",
+    "after": "        const auto& member = mCast[it->second];\n        return member.mCloneFading ? member.mCloneFadeStyle : member.mActorStyle;\n    }\n    if (!mCloneFadeOrphans.empty())\n    {\n        const auto orphan = mCloneFadeOrphans.find(id);\n        if (orphan != mCloneFadeOrphans.end())\n        {\n            return orphan->second;      // a clone that is not a Cast member: Studio's own fade\n        }\n    }\n    return default_style;\n}\n\nvoid LLDirectorCast::setActorStyle("
+   },
+   {
+    "before": "    CastMember* member = getMember(id);\n    if (!member) return;\n    if (alpha >= 1.f) { member->mCloneFading = false; return; }",
+    "after": "    CastMember* member = getMember(id);\n    if (!member)\n    {\n        // A clone that is not (or no longer) a Cast member keeps its fade here, so the renderer needs no\n        // membership (removal, re-enrolment and runtime replacement all keep the ramp). Session only; the entry\n        // is retired when its body is (forgetCloneFade), never by a scan in this setter.\n        if (alpha >= 1.f || !LLGhostAvatar::isGhostId(id)) { mCloneFadeOrphans.erase(id); return; }\n        ActorStyle& orphan = mCloneFadeOrphans[id];\n        orphan = ActorStyle();\n        orphan.mEnabled = true;\n        orphan.mMode = ACTOR_STYLE_REPLACE;\n        orphan.mStyle = 10; // the same native noise-threshold dissolve as a member's\n        orphan.mAlpha = 1.f;\n        orphan.mDissolveProgress = 1.f-alpha;\n        return;\n    }\n    mCloneFadeOrphans.erase(id);        // a (re-)enrolled clone: the member carries its fade\n    if (alpha >= 1.f) { member->mCloneFading = false; return; }"
+   },
+   {
+    "before": "    style.mDissolveProgress = 1.f-alpha;\n}\n\nvoid LLDirectorCast::setHotGazeTargetName(",
+    "after": "    style.mDissolveProgress = 1.f-alpha;\n}\n\nvoid LLDirectorCast::forgetCloneFade(const LLUUID& runtime_id)\n{\n    mCloneFadeOrphans.erase(runtime_id);\n}\n\nvoid LLDirectorCast::setHotGazeTargetName("
+   }
+  ],
+  "lldirectorcast.h": [
+   {
+    "before": "#include <set>\n",
+    "after": "#include <map>\n#include <set>\n"
+   },
+   {
+    "before": "    void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);\n",
+    "after": "    void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);\n    void              forgetCloneFade(const LLUUID& runtime_id);   // the clone's body is retired: drop its Studio-owned fade\n"
+   },
+   {
+    "before": "    std::unordered_map<LLUUID, std::size_t> mMemberIndex;\n",
+    "after": "    std::unordered_map<LLUUID, std::size_t> mMemberIndex;\n    std::map<LLUUID, ActorStyle> mCloneFadeOrphans;   // session-only dissolve of a clone that is not a Cast member (never serialized)\n"
+   }
+  ]
+ }
+}

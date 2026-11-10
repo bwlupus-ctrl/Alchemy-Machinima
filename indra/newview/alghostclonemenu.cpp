@@ -14,13 +14,17 @@
 
 #include "alghostclonemenu.h"
 
+#include "alavatarsubjectpicker.h"
 #include "aldirectorselect.h"
+#include "alghostanimassetindex.h"
+#include "alghostanimdrop.h"
 #include "alghostclearanim.h"
 #include "alghostcloneactions.h"
 #include "alghostclonemenulogic.h"
 #include "alghoststudio.h"
 #include "alkithistory.h"
 #include "alkitshell.h"
+#include "lldirectorcast.h"
 #include "llfloater.h"
 #include "llfloaterreg.h"
 #include "alpanelghoststudio.h"
@@ -29,6 +33,10 @@
 #include "llagent.h"
 #include "llagentcamera.h"
 #include "llappviewer.h"
+#include "llinventoryfunctions.h"
+#include "llviewerinventory.h"
+#include "llavatarname.h"
+#include "llavatarnamecache.h"
 #include "llfocusmgr.h"
 #include "llghostavatar.h"
 #include "llmenugl.h"
@@ -40,12 +48,17 @@
 #include "lluicolortable.h"
 #include "lluictrl.h"
 #include "lluictrlfactory.h"
+#include "llinventorymodel.h"
+#include "llinventorymodelbackgroundfetch.h"
+#include "llviewercamera.h"
 #include "llviewermenu.h"           // gMenuHolder, the four avatar menus
 #include "llviewerwindow.h"
 #include "llvoavatar.h"
 #include "llvoavatarself.h"
+#include "rlvactions.h"
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -81,6 +94,10 @@ struct Aggregate
     size_t mPaused = 0;
     size_t mReflecting = 0;
     size_t mPosed = 0;
+    S32 mLook = -1;             // the entity targets' common EGhostLook, -1 when they differ
+    size_t mFadeOutable = 0;    // entity targets Fade out can still hide (not user-hidden)
+    size_t mFadeInable = 0;     // entity targets Fade in can still show (user-hidden)
+    bool mExpandedMember = false;   // a target is one member of an EXPANDED group (look / turn refuse it)
 };
 Aggregate                   sAgg;
 S32                         sStaggerCurrent = 0;        // cached when the menu opens
@@ -186,6 +203,7 @@ Aggregate computeAggregate()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
     Aggregate agg;
+    agg.mExpandedMember = Actions::hasExpandedMember(sRows);
     for (const LLUUID& id : liveTargets())
     {
         ++agg.mLive;
@@ -195,6 +213,16 @@ Aggregate computeAggregate()
             continue;
         }
         ++agg.mEntities;
+        agg.mFadeOutable += Logic::fadeEligible(true, inst->mUserHidden) ? 1 : 0;
+        agg.mFadeInable += Logic::fadeEligible(false, inst->mUserHidden) ? 1 : 0;
+        if (agg.mEntities == 1)
+        {
+            agg.mLook = (S32)inst->mLook;
+        }
+        else if (agg.mLook != (S32)inst->mLook)
+        {
+            agg.mLook = -1;
+        }
         agg.mPaused += inst->mDriveMode == ALGhostStudio::DRIVE_FROZEN ? 1 : 0;
         agg.mReflecting += inst->mDriveMode == ALGhostStudio::DRIVE_REFLECT ? 1 : 0;
         agg.mPosed += studio.isInstancePosed(id) ? 1 : 0;
@@ -468,6 +496,390 @@ void actDelete()
     }
 }
 
+// ---- Look / turn, Animation, Appearance -------------------------------------------
+// Every item acts on exactly sRows (the picked clone, or the whole multi-selection when
+// the picked clone belongs to it) through the shared actions in alghostcloneactions.cpp.
+// The lists below (Nearby people, Recent animations, Swap source) are built when the menu
+// opens and show names only: an item carries its id in its callback, never in its label.
+LLContextMenu* subMenu(LLContextMenu* parent, const char* name)
+{
+    LLMenuItemGL* item = parent ? parent->getItem(std::string(name)) : nullptr;
+    LLContextMenuBranch* branch = dynamic_cast<LLContextMenuBranch*>(item);
+    return branch ? branch->getBranch() : nullptr;
+}
+
+void addPlaceholder(LLContextMenu* menu, const std::string& label)
+{
+    LLMenuItemCallGL::Params item;
+    item.name = "Nobody";
+    item.label = label;
+    item.enabled = false;
+    menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+}
+
+void addListItem(LLContextMenu* menu, const std::string& label, std::function<bool()> enabled,
+                 std::function<void()> click)
+{
+    LLMenuItemCallGL::Params item;
+    item.name = "list_item";
+    item.label = label;
+    item.on_click.function = [click](LLUICtrl*, const LLSD&) { click(); };
+    item.on_enable.function = [enabled](LLUICtrl*, const LLSD&) { return enabled(); };
+    menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
+}
+
+// A person the clone can look at / turn toward: a real avatar still in the world.
+bool personNearby(const LLUUID& id)
+{
+    LLVOAvatar* avatar = LLDirectorCast::instance().resolve(id, false);
+    return avatar && !avatar->isSelf() && ALAvatarSubjectPicker::valid(avatar);
+}
+
+// Look at / Turn to face: camera, me, or a nearby avatar (LOOK_TARGET_ACTOR with the
+// avatar's agent id: the one resolver finds any avatar, cast member or not).
+void actFace(bool turn, ALGhostStudio::ELookTarget target, const LLUUID& target_id)
+{
+    if (liveTargets().empty())
+    {
+        tip(str("GhostCloneMenuNotReady"));
+        return;
+    }
+    if (Actions::hasExpandedMember(sRows))
+    {
+        tip(str("GhostCloneMenuWholeGroup"));
+        return;
+    }
+    if (target == ALGhostStudio::LOOK_TARGET_ACTOR && !personNearby(target_id))
+    {
+        tip(str("GhostCloneMenuPersonGone"));
+        return;
+    }
+    const bool any = turn ? Actions::turnTo(sRows, target, target_id)
+                          : Actions::lookAt(sRows, target, target_id);
+    if (!any)
+    {
+        tip(str("GhostCloneMenuNotReady"));
+    }
+}
+
+void actFaceParam(bool turn, const LLSD& param)
+{
+    const std::string kind = param.asString();
+    if (kind == "stop")
+    {
+        if (liveTargets().empty())
+        {
+            tip(str("GhostCloneMenuNotReady"));
+            return;
+        }
+        if (Actions::hasExpandedMember(sRows))
+        {
+            tip(str("GhostCloneMenuWholeGroup"));
+            return;
+        }
+        if (turn)
+        {
+            Actions::stopTurning(sRows);
+        }
+        else
+        {
+            Actions::stopLooking(sRows);
+        }
+        return;
+    }
+    if (kind != "camera" && kind != "me")
+    {
+        return;                         // an unknown parameter is never a quiet "camera"
+    }
+    actFace(turn, kind == "me" ? ALGhostStudio::LOOK_TARGET_ME : ALGhostStudio::LOOK_TARGET_CAMERA,
+            LLUUID::null);
+}
+
+// RLVa @shownames: a restricted name is never listed (you are never restricted).
+bool nameHiddenByRlva(const LLUUID& id)
+{
+    return RlvActions::isRlvEnabled() && id != gAgentID && !RlvActions::canShowName(RlvActions::SNC_DEFAULT, id);
+}
+
+struct NearbyEntry
+{
+    F64 mDistance = 0.;
+    std::string mLabel;
+    LLUUID mId;
+};
+
+// Real avatars in draw distance of the camera, nearest to the picked clone first, up to
+// NEARBY_MAX. Display names (LLAvatarNameCache), cast members marked; never an id.
+std::vector<NearbyEntry> nearbyPeople()
+{
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    const ALGhostStudio::Instance* clone = ALGhostStudio::instance().getInstance(sPicked);
+    const LLVector3d camera = gAgent.getPosGlobalFromAgent(LLViewerCamera::getInstance()->getOrigin());
+    const LLVector3d origin = clone ? clone->mFootGlobal : camera;
+    const F32 draw_distance = LLViewerCamera::getInstance()->getFar();
+    const std::string suffix = str("GhostCloneMenuCastSuffix");
+    std::vector<NearbyEntry> found;
+    for (LLCharacter* character : LLCharacter::sInstances)
+    {
+        LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(character);
+        if (!avatar || avatar->isSelf() || !ALAvatarSubjectPicker::valid(avatar))
+        {
+            continue;               // you are "Me"; clones, animesh and dead avatars are not people
+        }
+        const LLVector3d position = avatar->getPositionGlobal();
+        if (dist_vec(position, camera) > draw_distance)
+        {
+            continue;
+        }
+        if (nameHiddenByRlva(avatar->getID()))
+        {
+            continue;               // RLVa hides this name: the person is omitted
+        }
+        std::string name;
+        LLAvatarName av_name;
+        if (LLAvatarNameCache::get(avatar->getID(), &av_name))
+        {
+            name = av_name.getDisplayName();
+        }
+        NearbyEntry entry;
+        entry.mLabel = Logic::nearbyLabel(name, cast.getMember(avatar->getID()) != nullptr, suffix);
+        if (entry.mLabel.empty())
+        {
+            continue;               // no name yet: left out, never listed by id
+        }
+        entry.mDistance = dist_vec(position, origin);
+        entry.mId = avatar->getID();
+        found.push_back(entry);
+    }
+    return Logic::nearbySelect(found);
+}
+
+void populateNearbyMenu(LLContextMenu* menu, bool turn, const std::vector<NearbyEntry>& people)
+{
+    if (!menu)
+    {
+        return;
+    }
+    menu->empty();
+    for (const NearbyEntry& person : people)
+    {
+        const LLUUID id = person.mId;
+        addListItem(menu, person.mLabel, []() { return sAgg.mLive > 0 && !sAgg.mExpandedMember; },
+                    [turn, id]() { actFace(turn, ALGhostStudio::LOOK_TARGET_ACTOR, id); });
+    }
+    if (people.empty())
+    {
+        addPlaceholder(menu, str("GhostCloneMenuNobodyNearby"));
+    }
+}
+
+// Animation > Restart animation: the animation restarts on the entity clones (the call
+// the Sync path makes after zeroing offsets).
+void actRestartAnimation()
+{
+    if (!Actions::restartRows(sRows))
+    {
+        tip(str("GhostCloneMenuNotReady"));
+    }
+}
+
+// Animation > Recent: the page's own "play on the selected clones" apply (Directed clones
+// of the targets, else every target switched to Directed), one undo step on the Director
+// shell. The toast carries the name only.
+void actPlayRecent(const LLUUID& asset, const std::string& name)
+{
+    // The drop path plays only an animation the agent owns. An asset-id matcher over the inventory finds
+    // it; an entry is dropped only when the inventory is fully fetched and the asset is not in it (a
+    // Library animation or a half-fetched inventory never loses its entry).
+    struct AssetMatcher : public LLInventoryCollectFunctor
+    {
+        LLUUID mAsset;
+        bool operator()(LLInventoryCategory*, LLInventoryItem* item) override
+        {
+            return item && item->getType() == LLAssetType::AT_ANIMATION && item->getAssetUUID() == mAsset &&
+                   item->getPermissions().getOwner() == gAgentID;
+        }
+    } matcher;
+    matcher.mAsset = asset;
+    LLInventoryModel::cat_array_t cats;
+    LLInventoryModel::item_array_t items;
+    gInventory.collectDescendentsIf(gInventory.getRootFolderID(), cats, items, LLInventoryModel::EXCLUDE_TRASH, matcher);
+    if (items.empty())
+    {
+        if (LLInventoryModelBackgroundFetch::instance().isEverythingFetched())
+        {
+            Actions::removeRecentAnimation(asset);
+            LLStringUtil::format_map_t args;
+            args["[NAME]"] = name;
+            tip(LLTrans::getString("GhostCloneMenuAnimGone", args));
+        }
+        else
+        {
+            tip(str("GhostCloneMenuInventoryLoading"));
+        }
+        return;
+    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<ALGhostAnimDrop::SelectedClone> selected;
+    for (const LLUUID& id : liveEntityTargets())
+    {
+        selected.emplace_back(id, studio.getInstance(id)->mDriveMode == ALGhostStudio::DRIVE_DIRECTED);
+    }
+    if (selected.empty())
+    {
+        tip(str("GhostCloneMenuNotReady"));
+        return;
+    }
+    ALPanelGhostStudio::applyInventoryAnimationTo(selected, asset, name, /*director_fallback=*/true);
+}
+
+void populateRecentMenu(LLContextMenu* animation)
+{
+    LLContextMenu* recent = subMenu(animation, "Recent Animations");
+    LLMenuItemGL* branch = animation ? animation->getItem(std::string("Recent Animations")) : nullptr;
+    if (!recent || !branch)
+    {
+        return;
+    }
+    recent->empty();
+    const std::vector<Actions::RecentAnimation>& list = Actions::recentAnimations();
+    const std::string fallback = str("GhostCloneMenuAnimUnnamed");
+    for (const Actions::RecentAnimation& entry : list)
+    {
+        const LLUUID asset = entry.mAsset;
+        const std::string label = Logic::recentLabel(entry.mName, fallback);
+        addListItem(recent, label, []() { return sAgg.mEntities > 0; },
+                    [asset, label]() { actPlayRecent(asset, label); });
+    }
+    branch->setVisible(Logic::recentSubmenuVisible(list.size()));      // hidden when empty
+    animation->arrange();
+}
+
+// A cast member's display name, never its id: the Cast's cached name, else the name
+// cache, else the live avatar's name. Empty when none is known (the member is left out).
+std::string castMemberName(const LLUUID& id)
+{
+    if (nameHiddenByRlva(id))
+    {
+        return std::string();       // RLVa hides this name: the member is left out
+    }
+    std::string name;
+    if (const LLDirectorCast::CastMember* member = LLDirectorCast::instance().getMember(id))
+    {
+        name = member->mLastName;
+    }
+    if (name.empty())
+    {
+        LLAvatarName av_name;
+        if (LLAvatarNameCache::get(id, &av_name))
+        {
+            name = av_name.getDisplayName();
+        }
+    }
+    if (name.empty())
+    {
+        if (LLVOAvatar* avatar = LLDirectorCast::instance().resolve(id, false))
+        {
+            name = avatar->getFullname();
+        }
+    }
+    return Logic::containsUuidText(name) ? std::string() : name;
+}
+
+// Appearance > Swap source: the Clones page source combo's "You" and cast members.
+void actSwapSource(const LLUUID& source, const std::string& label)
+{
+    // The Source column label comes from the page's own helper, so both entry points agree.
+    (void)label;
+    const std::string status = Actions::swapSource(sRows, source, ALPanelGhostStudio::sourceName(source));
+    if (!status.empty())
+    {
+        tip(status);
+    }
+}
+
+void populateSwapMenu(LLContextMenu* menu)
+{
+    if (!menu)
+    {
+        return;
+    }
+    menu->empty();
+    bool any = false;
+    for (const LLDirectorCast::ActorChoice& choice : LLDirectorCast::instance().getActorChoices())
+    {
+        const bool self = LLDirectorCast::isSelf(choice.mId);
+        if (!self && LLGhostAvatar::isGhostId(choice.mId))
+        {
+            continue;               // cast members only, not Studio clones
+        }
+        const std::string name = self ? str("GhostCloneMenuSwapYou") : castMemberName(choice.mId);
+        if (name.empty())
+        {
+            continue;
+        }
+        const LLUUID source = self ? LLUUID::null : choice.mId;      // null = You, as on the page
+        addListItem(menu, name, []() { return sAgg.mLive > 0; },
+                    [source, name]() { actSwapSource(source, name); });
+        any = true;
+    }
+    if (!any)
+    {
+        addPlaceholder(menu, str("GhostCloneMenuNoCast"));
+    }
+}
+
+void actEntityLook(S32 look)
+{
+    if (look < ALGhostStudio::LOOK_NORMAL || look > ALGhostStudio::LOOK_SILHOUETTE ||
+        !Actions::setEntityLook(sRows, (ALGhostStudio::EGhostLook)look))
+    {
+        tip(str("GhostCloneMenuNotReady"));
+    }
+    sAgg = computeAggregate();
+}
+
+// Appearance > Fade out / Fade in: hidden-only (the clone is never deleted), session only. The
+// Crowd tab Fade out / Fade in duration drives the ramp (ALGhostStudio::fadeInstance). One undo
+// step on the Director shell: undo jumps back to the previous coverage, redo fades again. A
+// refusal (nothing eligible) never constructs the Director.
+void actFade(bool fade_out)
+{
+    const std::vector<Actions::FadeBefore> before = Actions::fadeRows(sRows, fade_out);
+    if (before.empty())
+    {
+        tip(str(fade_out ? "GhostCloneMenuAlreadyFaded" : "GhostCloneMenuNotFaded"));
+        return;
+    }
+    LLFloater* director = LLFloaterReg::getInstance("director");
+    ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+    if (shell)
+    {
+        shell->history().recordCustom(shell, "clone_fade", fade_out ? "Fade out clones" : "Fade in clones",
+            [before, fade_out](bool redo, std::string& reason)
+            {
+                if (!Actions::restoreFade(before, redo, fade_out))
+                {
+                    reason = "Those clones are no longer available";
+                    return false;
+                }
+                return true;
+            });
+    }
+    sAgg = computeAggregate();
+}
+
+// Rebuilds every dynamic list for the clone the menu is opening on.
+void populateDynamicMenus()
+{
+    LLContextMenu* look_turn = subMenu(sMenu, "Look Turn");
+    const std::vector<NearbyEntry> people = nearbyPeople();       // one scan per open, shared by both lists
+    populateNearbyMenu(subMenu(subMenu(look_turn, "Look At"), "Look Nearby"), false, people);
+    populateNearbyMenu(subMenu(subMenu(look_turn, "Turn To Face"), "Turn Nearby"), true, people);
+    populateRecentMenu(subMenu(sMenu, "Animation"));
+    populateSwapMenu(subMenu(subMenu(sMenu, "Appearance"), "Swap Source"));
+}
+
 // ---- registration ---------------------------------------------------------------
 void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable,
                              LLUICtrl::CommitCallbackRegistry::Registrar& commit)
@@ -538,6 +950,44 @@ void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
             toggleEdit(target, /*keep_multi_selection=*/true);
         }
     });
+
+    // Look / turn, Animation, Appearance: sRows through the shared actions.
+    // Look / turn act on a whole unit: a single member of an expanded group is refused with a reason.
+    enable.add("GhostClone.EnableFace", [](LLUICtrl* ctrl, const LLSD&)
+    {
+        if (sAgg.mLive > 0 && sAgg.mExpandedMember)
+        {
+            return state(ctrl, false, "GhostCloneMenuWholeGroup");
+        }
+        return state(ctrl, sAgg.mLive > 0, "GhostCloneMenuNotReady");
+    });
+    commit.add("GhostClone.Look", [](LLUICtrl*, const LLSD& param) { actFaceParam(false, param); });
+    commit.add("GhostClone.Turn", [](LLUICtrl*, const LLSD& param) { actFaceParam(true, param); });
+    enable.add("GhostClone.EnableEntities", [](LLUICtrl* ctrl, const LLSD&)
+    {
+        return state(ctrl, sAgg.mEntities > 0, "GhostCloneMenuNotReady");
+    });
+    commit.add("GhostClone.RestartAnim", [](LLUICtrl*, const LLSD&) { actRestartAnimation(); });
+    enable.add("GhostClone.CheckEntityLook", [](LLUICtrl*, const LLSD& param)
+    {
+        return sAgg.mLook == param.asInteger();
+    });
+    commit.add("GhostClone.EntityLook", [](LLUICtrl*, const LLSD& param) { actEntityLook(param.asInteger()); });
+    enable.add("GhostClone.EnableFade", [](LLUICtrl* ctrl, const LLSD& param)
+    {
+        const bool fade_out = param.asString() == "out";
+        if (sAgg.mLive == 0)
+        {
+            return state(ctrl, false, "GhostCloneMenuNotReady");
+        }
+        if (sAgg.mEntities == 0)
+        {
+            return state(ctrl, false, "GhostCloneMenuMirrorEntityOnly");       // an overlay is never faded
+        }
+        return state(ctrl, (fade_out ? sAgg.mFadeOutable : sAgg.mFadeInable) > 0,
+                     fade_out ? "GhostCloneMenuAlreadyFaded" : "GhostCloneMenuNotFaded");
+    });
+    commit.add("GhostClone.Fade", [](LLUICtrl*, const LLSD& param) { actFade(param.asString() == "out"); });
 
     commit.add("GhostClone.FreezePose", [](LLUICtrl*, const LLSD&) { actFreezePose(); });
 
@@ -713,6 +1163,29 @@ bool gestureContextValid()
            LLModalDialog::activeCount() == 0 && !gDisconnected;
 }
 
+// Fixes what the menu shows about sRows / sPicked and pops it. A world click opens it AFTER the
+// release (its spawn point is then disarmed); a Clones list row opens it on the press, where the
+// holder's armed spawn point is what keeps the release from clicking an item.
+void presentEntityMenu(S32 x, S32 y, bool opened_on_press)
+{
+    sAgg = computeAggregate();
+    // Stagger exists only when the picked clone's unit is a collapsed group.
+    const bool unit_is_group = Actions::collapsedGroup(sPicked) != nullptr;
+    if (LLMenuItemGL* stagger = sMenu->getItem(std::string("Stagger")))
+    {
+        stagger->setVisible(Logic::staggerVisible(unit_is_group));
+    }
+    sStaggerCurrent = unit_is_group ? Actions::staggerCurrent(sPicked) : 0;
+    populateDynamicMenus();
+    sMenu->show(x, y);
+    if (!opened_on_press)
+    {
+        // The menu was shown after the release, so its spawn point must not stay
+        // armed: the holder would swallow the release of the next right-click here.
+        LLMenuHolderGL::sContextMenuSpawnPos.set(SPAWN_DISARMED, SPAWN_DISARMED);
+    }
+}
+
 void showEntityMenu(const LLUUID& clone, S32 x, S32 y)
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
@@ -734,18 +1207,7 @@ void showEntityMenu(const LLUUID& clone, S32 x, S32 y)
         sRows = host_rows;      // the page's rows, group headers kept
     }
     sPicked = clone;
-    sAgg = computeAggregate();
-    // Stagger exists only when the picked clone's unit is a collapsed group.
-    const bool unit_is_group = Actions::collapsedGroup(clone) != nullptr;
-    if (LLMenuItemGL* stagger = sMenu->getItem(std::string("Stagger")))
-    {
-        stagger->setVisible(Logic::staggerVisible(unit_is_group));
-    }
-    sStaggerCurrent = unit_is_group ? Actions::staggerCurrent(clone) : 0;
-    sMenu->show(x, y);
-    // The menu was shown after the release, so its spawn point must not stay
-    // armed: the holder would swallow the release of the next right-click here.
-    LLMenuHolderGL::sContextMenuSpawnPos.set(SPAWN_DISARMED, SPAWN_DISARMED);
+    presentEntityMenu(x, y, /*opened_on_press=*/false);
 }
 } // namespace
 
@@ -789,6 +1251,59 @@ void destroyMenu()
     sBase.clear();
     delete sMenu;
     sMenu = nullptr;
+}
+
+// The instance a Clones list row stands for: the row itself, or a group header's first live member.
+// Null when the row cannot open the menu (not a live clone).
+static LLUUID listRowInstance(const LLUUID& row)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (row.isNull())
+    {
+        return LLUUID::null;
+    }
+    if (const ALGhostGroupModel::Group* group = studio.groupForMember(row); group && row == group->mId)
+    {
+        for (const ALGhostGroupModel::Member& member : group->mMembers)
+        {
+            if (live(member.mInstanceId))
+            {
+                return member.mInstanceId;
+            }
+        }
+        return LLUUID::null;
+    }
+    return live(row) ? row : LLUUID::null;
+}
+
+bool canOpenForListRow(const LLUUID& row)
+{
+    return sMenu && listRowInstance(row).notNull();
+}
+
+bool openForListRow(const LLUUID& row, S32 x, S32 y)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const LLUUID picked = listRowInstance(row);
+    if (!sMenu || picked.isNull())
+    {
+        return false;
+    }
+    // The same targeting rule as a world click: the whole Clones list selection when the row belongs to
+    // it, otherwise only that row (selected first).
+    const std::vector<LLUUID> host_rows = ALDirectorSelect::hostRows();
+    if (std::find(host_rows.begin(), host_rows.end(), row) != host_rows.end())
+    {
+        sRows = host_rows;
+    }
+    else
+    {
+        sRows = std::vector<LLUUID>{ row };
+        studio.setSelected(row);
+    }
+    sPicked = picked;
+    presentEntityMenu(x, y, /*opened_on_press=*/true);
+    return true;
 }
 
 bool pressRight(S32 x, S32 y, const LLPickInfo& pick)

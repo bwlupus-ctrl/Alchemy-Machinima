@@ -4585,4 +4585,15 @@ and report the problem.
     <string name="DirectorSelectNoClone">that clone is gone</string>
     <string name="DirectorSelectCloneNotReady">clone not ready</string>
     <string name="DirectorSelectCastRefused">The Cast refused this avatar</string>
+    <string name="GhostCloneMenuCastSuffix">cast</string>
+    <string name="GhostCloneMenuNobodyNearby">No one nearby</string>
+    <string name="GhostCloneMenuPersonGone">That person is no longer nearby</string>
+    <string name="GhostCloneMenuAnimUnnamed">Animation</string>
+    <string name="GhostCloneMenuSwapYou">You</string>
+    <string name="GhostCloneMenuNoCast">No cast members</string>
+    <string name="GhostCloneMenuAlreadyFaded">already faded out</string>
+    <string name="GhostCloneMenuNotFaded">not faded out</string>
+    <string name="GhostCloneMenuAnimGone">[NAME] is no longer in your inventory</string>
+    <string name="GhostCloneMenuInventoryLoading">Your inventory is still loading</string>
+    <string name="GhostCloneMenuWholeGroup">applies to the whole group - use the group row</string>
 </strings>

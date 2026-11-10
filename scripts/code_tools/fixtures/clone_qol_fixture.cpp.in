@@ -74,13 +74,13 @@ struct ALActorChoiceSource{LLUUID mId;std::string mLabel;};struct ALActorChoice{
 std::vector<ALActorChoice> alBuildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ALActorChoiceSource>&);
 struct LLDirectorCast{
  enum{ACTOR_STYLE_REPLACE=1};struct ActorStyle{bool mEnabled=false;int mMode=0,mStyle=3,mStepped=0;float mAlpha=.7f,mDissolveProgress=.13f;};
- struct CastMember{LLUUID mId;ActorStyle mActorStyle,mCloneFadeStyle;bool mCloneFading=false;};std::vector<CastMember> mCast;std::map<LLUUID,size_t>mMemberIndex;ActorStyle mSelfActorStyle;
+ struct CastMember{LLUUID mId;ActorStyle mActorStyle,mCloneFadeStyle;bool mCloneFading=false;};std::vector<CastMember> mCast;std::map<LLUUID,size_t>mMemberIndex;ActorStyle mSelfActorStyle;std::map<LLUUID,ActorStyle> mCloneFadeOrphans;
  using ActorChoice=ALActorChoice;using ActorChoiceSource=ALActorChoiceSource;static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
  static bool isSelf(LLUUID id){return id.isNull()||id==gAgentID;}static LLUUID canonicalActorId(LLUUID id){return id;}
  LLVOAvatar* resolve(LLUUID id){auto* o=gObjectList.findObject(isSelf(id)?gAgentID:id);return o?o->asAvatar():nullptr;}
  CastMember* getMember(LLUUID id){auto it=mMemberIndex.find(id);return it==mMemberIndex.end()?nullptr:&mCast[it->second];}
  void touchScene(){}void sanitizeActorStyle(ActorStyle&){}void setActorStyle(const LLUUID&,const ActorStyle&);
- const ActorStyle& getActorStyle(const LLUUID&)const;const ActorStyle& getRenderActorStyle(const LLUUID&)const;void setCloneFadeAlpha(const LLUUID&,float);
+ const ActorStyle& getActorStyle(const LLUUID&)const;const ActorStyle& getRenderActorStyle(const LLUUID&)const;void setCloneFadeAlpha(const LLUUID&,float);void forgetCloneFade(const LLUUID& id){mCloneFadeOrphans.erase(id);}
  static std::vector<ActorChoice>buildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ActorChoiceSource>&);
 };
 template<class T>struct Ref{T* p;T* get(){return p;}T* operator->(){return p;}operator bool()const{return p!=nullptr;}};
@@ -104,7 +104,7 @@ struct ALGhostStudio{
  using palette_map_t=std::map<std::pair<LLUUID,U64>,std::vector<float>>;
  struct Instance{
  LLUUID mId,mEntityId,mGroupId,mCrowdId,mSource,mAppearanceSource,mAnimationSource,mOverlayAvatar,mAppearanceSwapTintSeed;
- bool mDeleting=false,mEnabled=true,mSoloVisible=true,mHasAnimationSource=false,mSourceRemoved=false,mAppearanceSourceRemoved=false,mAnimationSourceRemoved=false,mCrowdMixed=false;
+ bool mDeleting=false,mEnabled=true,mSoloVisible=true,mUserHidden=false,mHasAnimationSource=false,mSourceRemoved=false,mAppearanceSourceRemoved=false,mAnimationSourceRemoved=false,mCrowdMixed=false;
  int mKind=BACKING_OVERLAY,mState=STATE_READY,mDriveMode=DRIVE_MIRROR,mPose=POSE_LIVE,mPendingFreezeFrames=0,mCrowdRow=0,mStyle=0,mCrowdSingleStyle=0;U32 mCrowdSeed=0;
  float mPoseRateHz=0,mStartOffset=0,mFadeAlpha=1,mScale=2,mNextPoseRefresh=0;double mCrowdLocalX=0,mCrowdLocalY=0;std::string mSourceLabel;
  float mFrozenBoundsRadius=2,mCadenceBoundsRadius=2;

@@ -13,6 +13,7 @@
 #include "alkitlistselection.h"     // [ListMultiSelect] pure primary/mirror/rebuild rules
 #include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules and texts
 #include "alghostcloneactions.h"    // [CloneMenu] row actions shared with the clone menus
+#include "alghostclonemenu.h"       // [CloneMenu] a Clones list row opens the clone menu
 #include "aldirectorcastui.h"
 #include "llviewermenufile.h" // [AutoAnimate]
 #include "llfilepicker.h" // [AutoAnimate]
@@ -229,6 +230,10 @@ const char* state_name(const ALGhostStudio::Instance& inst)
     case ALGhostStudio::STATE_ERROR:           return "error";
     case ALGhostStudio::STATE_RECOVERABLE:     return "recoverable";
     default:
+        if (inst.mUserHidden)
+        {
+            return "hidden";        // faded out from the clone menu: only the list can reach it
+        }
         if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
             inst.mDriveMode == ALGhostStudio::DRIVE_FROZEN)
         {
@@ -467,19 +472,11 @@ bool ALPanelGhostStudio::postBuild()
         if (LLView* label = findChild<LLView>(control->getName()+"_label")) mQolLabels[control] = label;
     mSwapSourceBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
-        ALGhostStudio& studio = ALGhostStudio::instance();
         const LLUUID source = mSourceCombo->getValue().asUUID();
         const std::string label = sourceName(source);
-        // Snapshot selection: a runtime replacement synchronously rewrites outside UI references.
-        auto ids = selectedInstances();
-        const auto* source_clone = studio.findInstanceByRuntime(source);
-        const LLUUID source_instance = source_clone ? source_clone->mId : source;
-        bool skipped = false;
-        mSwapStatus.clear();
-        for (const auto& id : ids)
-            if (id == source_instance) skipped = true;
-            else if (!studio.swapSource(id, source, label)) mSwapStatus = studio.swapStatus();
-        if (skipped && mSwapStatus.empty()) mSwapStatus = "Swap: skipped the picked source clone (cannot copy itself)";
+        // The shared swap (also the clone menu's): it snapshots the selection itself, since a
+        // runtime replacement synchronously rewrites outside UI references.
+        mSwapStatus = ALGhostCloneActions::swapSource(selectedRowValues(), source, label);
         refreshList(true);
         mDetailDirty = true;
     });
@@ -907,7 +904,7 @@ bool ALPanelGhostStudio::postBuild()
     mPasteTransformBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPasteTransform(); });
     mPastePositionBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickPastePosition(); });
     mLookTargetCombo->setCommitCallback(
-        [this](LLUICtrl*, const LLSD&) { onLookTargetCommit(); });
+        [this](LLUICtrl*, const LLSD&) { onLookTargetCommit(/*from_combo=*/true); });
     mFaceNowBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickFaceNow(); });
     mKeepFacingCheck->setCommitCallback(
@@ -2338,6 +2335,46 @@ void ALPanelGhostStudio::refreshDetail()
             target = "actor:" + inst->mLookTargetId.asString();
         else if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_GHOST)
             target = "ghost:" + inst->mLookTargetId.asString();
+        if (inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ACTOR)
+        {
+            // A look target the combo does not list (an avatar that is not in the Cast, set from the clone menu)
+            // shows as a neutral "(menu target)" row, never a stale entry or an id.
+            bool listed = false;
+            LLScrollListItem* menu_row = nullptr;
+            for (LLScrollListItem* item : mLookTargetCombo->getAllData())
+            {
+                const LLScrollListCell* label = item->getColumn(0);
+                if (label && label->getValue().asString() == "(menu target)")
+                {
+                    menu_row = item;            // the one neutral row: its value follows the current target
+                    continue;
+                }
+                listed = listed || item->getValue().asString() == target;
+            }
+            if (menu_row && (listed || menu_row->getValue().asString() != target))
+            {
+                // The target is listed now, or the neutral row names someone else: drop the stale row.
+                mLookTargetCombo->remove("(menu target)"); // ui-draw-lint: allow(raw-write) one row, only when the look-target model moved
+                menu_row = nullptr;
+            }
+            if (!listed && !menu_row)
+            {
+                mLookTargetCombo->add("(menu target)", LLSD(target)); // ui-draw-lint: allow(raw-write) one row, only when the look-target model moved
+            }
+        }
+        else
+        {
+            // Camera, Me or a clone: a leftover neutral person row must not stay selectable.
+            for (LLScrollListItem* item : mLookTargetCombo->getAllData())
+            {
+                const LLScrollListCell* label = item->getColumn(0);
+                if (label && label->getValue().asString() == "(menu target)")
+                {
+                    mLookTargetCombo->remove("(menu target)"); // ui-draw-lint: allow(raw-write) one row, only when the look-target model moved
+                    break;
+                }
+            }
+        }
         setValueIfChanged(mLookTargetCombo, LLSD(target), force);
         mShownLookTarget = (S32)inst->mLookTarget;
         mShownLookTargetId = inst->mLookTargetId;
@@ -2526,6 +2563,44 @@ void ALPanelGhostStudio::onClickRigDiagRefresh()
 // ---------------------------------------------------------------------------
 // list + CRUD
 // ---------------------------------------------------------------------------
+// [CloneMenu] A right-click on a Clones list row opens the entity clone menu for that row (the same
+// targets as a world click: the row, or the whole list selection when the row is in it). A hidden
+// clone has no body to click, so this is how it is reached (Fade in and everything else).
+bool ALPanelGhostStudio::handleRightMouseDown(S32 x, S32 y, MASK mask)
+{
+    S32 list_x = 0;
+    S32 list_y = 0;
+    if (mList && mList->getEnabled() && mList->isInVisibleChain() && localPointToOtherView(x, y, &list_x, &list_y, mList) &&
+        mList->pointInView(list_x, list_y))
+    {
+        if (const LLScrollListItem* item = mList->getItemAtPoint(list_x, list_y))
+        {
+            const LLUUID row = item->getValue().asUUID();
+            // Validate BEFORE anything changes: a row that cannot open the menu leaves the selection and the
+            // active host untouched and the click falls through.
+            if (ALGhostCloneMenu::canOpenForListRow(row))
+            {
+                noteActiveHost();
+                const std::vector<LLUUID> selected = selectedRowValues();
+                if (std::find(selected.begin(), selected.end(), row) == selected.end())
+                {
+                    mList->deselectAllItems();
+                    mList->selectByID(row);
+                    onListSelect();
+                }
+                S32 screen_x = 0;
+                S32 screen_y = 0;
+                localPointToScreen(x, y, &screen_x, &screen_y);
+                if (ALGhostCloneMenu::openForListRow(row, screen_x, screen_y))
+                {
+                    return true;
+                }
+            }
+        }
+    }
+    return LLPanel::handleRightMouseDown(x, y, mask);
+}
+
 void ALPanelGhostStudio::onListSelect()
 {
     // [R2-3] the list drives the SHARED selection (tool + both hosts follow);
@@ -2837,7 +2912,7 @@ void ALPanelGhostStudio::onHeadingDialCommit()
     onRotationCommit(0, mHeadingDial->getValue().asReal());
 }
 
-void ALPanelGhostStudio::onLookTargetCommit()
+void ALPanelGhostStudio::onLookTargetCommit(bool from_combo)
 {
     ALGhostStudio::Instance* inst =
         ALGhostStudio::instance().getInstance(selectedInstance());
@@ -2862,13 +2937,30 @@ void ALPanelGhostStudio::onLookTargetCommit()
         target = ALGhostStudio::LOOK_TARGET_GHOST;
         target_id.set(value.substr(6), false);
     }
+    if (!from_combo && inst->mLookTarget == ALGhostStudio::LOOK_TARGET_ACTOR)
+    {
+        // Keep facing / Face now re-commit what the combo shows. A look target the combo cannot show (an
+        // avatar that is not in the Cast, set from the clone menu) is kept as it is, never rewritten to
+        // the combo's stale selection. Only a deliberate pick in the combo replaces it.
+        const std::string stored = "actor:" + inst->mLookTargetId.asString();
+        bool representable = false;
+        for (LLScrollListItem* item : mLookTargetCombo->getAllData())
+        {
+            representable = representable || item->getValue().asString() == stored;
+        }
+        if (!representable)
+        {
+            target = ALGhostStudio::LOOK_TARGET_ACTOR;
+            target_id = inst->mLookTargetId;
+        }
+    }
     ALGhostStudio::instance().setLookTarget(
         inst->mId, target, target_id, mKeepFacingCheck->get());
 }
 
 void ALPanelGhostStudio::onClickFaceNow()
 {
-    onLookTargetCommit();
+    onLookTargetCommit(/*from_combo=*/false);
     if (ALGhostStudio::Instance* inst =
             ALGhostStudio::instance().getInstance(selectedInstance()))
     {
@@ -2890,7 +2982,7 @@ void ALPanelGhostStudio::onClickFaceNow()
 
 void ALPanelGhostStudio::onKeepFacingCommit()
 {
-    onLookTargetCommit();
+    onLookTargetCommit(/*from_combo=*/false);
     if (mKeepFacingCheck->get())
     {
         onClickFaceNow();
@@ -3230,10 +3322,17 @@ S32 ALPanelGhostStudio::playAnimationOnClonesRecorded(const std::vector<LLUUID>&
         }
     }
     const S32 played = studio.playAnimationOnClones(ids, asset_id);
+    if (played > 0)
+    {
+        // The one funnel every play goes through: the clone menu's Animation > Recent list.
+        ALGhostCloneActions::noteRecentAnimation(asset_id, anim_name);
+    }
     LLView* host = activeHost();
     ALKitShell* shell = host && played > 0 ? ALKitShell::find(host) : nullptr;
-    if (!shell && !host && director_fallback && played > 0)
+    if (!shell && director_fallback && played > 0)
     {
+        // No kit shell owns the undo step (no visible host, or a standalone Ghost Studio host): the
+        // Director shell does.
         if (LLFloater* director = LLFloaterReg::getInstance("director"))
         {
             shell = director->findChild<ALKitShell>("director_shell");
@@ -3376,7 +3475,7 @@ std::vector<ALGhostAnimDrop::SelectedClone> ALPanelGhostStudio::selectedEntityCl
 // static
 void ALPanelGhostStudio::applyInventoryAnimationTo(
     const std::vector<ALGhostAnimDrop::SelectedClone>& selected,
-    const LLUUID& asset_id, const std::string& anim_name)
+    const LLUUID& asset_id, const std::string& anim_name, bool director_fallback)
 {
     const ALGhostAnimDrop::ApplyPlan plan = ALGhostAnimDrop::planApply(selected);
     if (plan.mNothingSelected)
@@ -3386,7 +3485,7 @@ void ALPanelGhostStudio::applyInventoryAnimationTo(
         return;
     }
     ALGhostStudio& studio = ALGhostStudio::instance();
-    const S32 played = playAnimationOnClonesRecorded(plan.mPlay, asset_id, anim_name);
+    const S32 played = playAnimationOnClonesRecorded(plan.mPlay, asset_id, anim_name, director_fallback);
     std::string message;
     if (played <= 0)
     {
@@ -4134,11 +4233,7 @@ void ALPanelGhostStudio::onEntityLookCommit()
     // just the representative selectedInstance() would collapse to.
     const ALGhostStudio::EGhostLook look =
         (ALGhostStudio::EGhostLook)mEntityLookCombo->getValue().asInteger();
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        studio.setInstanceLook(id, look);
-    }
+    ALGhostCloneActions::setEntityLook(selectedRowValues(), look);
 }
 
 // ---------------------------------------------------------------------------

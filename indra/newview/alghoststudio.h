@@ -414,6 +414,7 @@ public:
         bool        mDeleting = false;
         bool        mSoloVisible = true;
         F32         mFadeAlpha = 1.f;
+        bool        mUserHidden = false;    // faded out by the user (clone menu): session only, never saved
         F32         mStartOffset = 0.f;
         LLUUID      mCrowdId; // independent of grouping; session only
         U32         mCrowdRow = 0;
@@ -667,12 +668,16 @@ public:
     void setSolo(const std::vector<LLUUID>& ids);
     bool getSolo() const { return mSolo; }
     bool isVisible(const Instance& inst) const
-    { return ALCloneQol::visible(mShowAll, inst.mEnabled, mSolo, inst.mSoloVisible); }
+    { return ALCloneQol::visible(mShowAll, inst.mEnabled, mSolo, inst.mSoloVisible) &&
+             !(inst.mUserHidden && !(inst.mFadeAlpha > 0.f)); }    // a faded-out clone is hidden like Show clones off
     bool isDeleting(const LLUUID& actor) const;
     bool isPrivateOverlayRuntime(const LLUUID& actor) const;
     // Shared body identity for attachments and private overlay pose consumers.
     LLUUID actorOwner(const LLUUID& actor) const;
     void requestRemoveInstance(const LLUUID& id);
+    // Hidden-only fade of an existing ENTITY clone (true = fade out and stay hidden, false = fade back in;
+    // ramp = false jumps). Never deletes; session only.
+    bool fadeInstance(const LLUUID& id, bool hidden, bool ramp);
     void beginAppearance(const LLUUID& id, bool fade = true);
     void refreshOverlayOffset(Instance& inst, F64 now);
 

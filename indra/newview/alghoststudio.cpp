@@ -468,6 +468,32 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
             member->mLastName = stable_name;
             LLDirectorCast::instance().touchCast(); // [GhostPanelPerf]
         }
+        // A clone the user faded out stays hidden on its new body. A Fade out still ramping is cancelled and
+        // settled at 0 (stored and rendered coverage agree); the body is hidden through Studio's own gate. Any
+        // other fade in flight (creation, Fade in, delete) reaches the new body at once. Only a real replacement
+        // of a live instance's body: not an instance being removed, not a re-publish of the same runtime.
+        if (!removing_instance && old_runtime != new_runtime)
+        if (Instance* current = getInstance(stable_id))
+        {
+            if (current->mUserHidden && !current->mDeleting)
+            {
+                mFades.erase(stable_id);
+                current->mFadeAlpha = 0.f;
+                LLDirectorCast::instance().setCloneFadeAlpha(new_runtime, 0.f);
+                if (LLGhostAvatar* replaced = resolveEntityClone(stable_id))
+                    set_entity_clone_visible(replaced, isVisible(*current), mShowAll && current->mEnabled && mSolo && !current->mSoloVisible);
+                LLDirectorCast::instance().forgetCloneFade(new_runtime);      // settled hidden: no alpha-0 coverage entry kept
+            }
+            else if (mFades.count(stable_id))
+            {
+                LLDirectorCast::instance().setCloneFadeAlpha(new_runtime, current->mFadeAlpha);
+            }
+        }
+    }
+    // The old body is retired (replaced, parked or removed): its Studio-owned dissolve goes with it.
+    if (old_runtime.notNull() && old_runtime != new_runtime)
+    {
+        LLDirectorCast::instance().forgetCloneFade(old_runtime);
     }
 }
 
@@ -4959,6 +4985,7 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
         {
             return;
         }
+        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone
         copy->setFootGlobal(foot);
         if (author_yaw)
         {
@@ -5873,6 +5900,7 @@ ALGhostStudio::PlacementCommitResult ALGhostStudio::commitCrowdPlacement(
         }
         created.push_back(copy->mId);
         ids.push_back(copy->mId);
+        if (copy->mUserHidden) fadeInstance(copy->mId, false, true);      // a copy that inherited a hidden prototype fades in like any new clone
     }
 
     // Runtime creation may pump viewer consumers. Placement-draft mutations
@@ -6300,6 +6328,17 @@ void ALGhostStudio::beginAppearance(const LLUUID& id, bool fade)
         inst = getInstance(id); // creation may pump observers
         if (!inst) return;
     }
+    if (inst->mUserHidden && !inst->mDeleting)
+    {
+        // A clone the user faded out stays hidden through a swap, a duplicate or a crowd fade-in.
+        mFades.erase(id);
+        inst->mFadeAlpha = 0.f;
+        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, 0.f);
+        if (LLGhostAvatar* ghost = resolveEntityClone(id))
+            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+        if (inst->mEntityId.notNull()) LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept
+        return;
+    }
     if (!fade) return; // region recovery restores the prior visibility without a fade
     if (seconds > 0.f)
     {
@@ -6314,7 +6353,10 @@ void ALGhostStudio::requestRemoveInstance(const LLUUID& id)
     const auto members = groupMembers(id);
     static LLCachedControl<F32> duration(gSavedSettings, "GhostStudioFadeOut", 0.f);
     const F32 seconds = llclamp(F32(duration), 0.f, 5.f);
-    if (seconds <= 0.f) { removeInstance(id); return; }
+    bool all_invisible = true;
+    for (const LLUUID& member : members)
+        if (const Instance* item = getInstance(member)) all_invisible = all_invisible && !(item->mFadeAlpha > 0.f);
+    if (seconds <= 0.f || all_invisible) { removeInstance(id); return; }
     const F64 now = LLTimer::getTotalSeconds();
     if (gAgent.getRegion()) mFadeRegion = gAgent.getRegion()->getRegionID();
     for (const LLUUID& member : members)
@@ -6348,12 +6390,57 @@ void ALGhostStudio::updateFades()
         if (inst->mEntityId.notNull())
             LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha);
         if (!done) { ++it; continue; }
-        if (it->second.mFade.removing) finished.push_back(it->first);
+        if (it->second.mFade.removing && inst->mDeleting) finished.push_back(it->first);   // a hidden-only fade ends at 0, never deletes
+        else if (inst->mUserHidden && inst->mKind == BACKING_ENTITY_CLONE)
+        {
+            // The fade finished at 0: the body is now hidden by Studio's own visibility gate (isVisible),
+            // which no Cast style path can reset, whether or not the clone is a Cast member.
+            if (LLGhostAvatar* ghost = resolveEntityClone(inst->mId))
+                set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+            // Settled hidden: the isVisible gate now hides the body, so a non-Cast clone keeps no alpha-0 coverage entry.
+            if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))
+                LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);
+        }
         it = mFades.erase(it);
     }
     // Whole groups were retired together, with identical duration; removeInstance
     // owns their authoritative final rekey/deletion transaction.
     for (const auto& id : finished) removeInstance(id);
+}
+// Hidden-only fade of an existing ENTITY clone: hidden = true fades it out to invisible and keeps it
+// hidden (mUserHidden), false fades it back in, with the Crowd tab Fade out / Fade in duration (the
+// updateFades ramp; ramp = false jumps, used by undo). Never deletes: only a clone marked mDeleting by
+// requestRemoveInstance is removed when its ramp ends. Session only, never saved. A settled hidden clone is
+// hidden through isVisible (the same gate as Show clones / Solo, so it is neither drawn nor picked); the
+// ramp itself is the Cast dissolve.
+bool ALGhostStudio::fadeInstance(const LLUUID& id, bool hidden, bool ramp)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    static LLCachedControl<F32> fade_in(gSavedSettings, "GhostStudioFadeIn", 0.f);
+    static LLCachedControl<F32> fade_out(gSavedSettings, "GhostStudioFadeOut", 0.f);
+    const F32 target = hidden ? 0.f : 1.f;
+    const F32 seconds = llclamp(F32(hidden ? fade_out : fade_in), 0.f, 5.f);
+    if (inst->mUserHidden != hidden) ++mInstanceRevision;     // the Clones list State column
+    inst->mUserHidden = hidden;
+    if (!ramp || seconds <= 0.f || target == inst->mFadeAlpha)
+    {
+        mFades.erase(id);
+        inst->mFadeAlpha = target;
+        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);
+        if (LLGhostAvatar* ghost = resolveEntityClone(id))
+            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+        if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))
+            LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept
+        return true;
+    }
+    if (gAgent.getRegion()) mFadeRegion = gAgent.getRegion()->getRegionID();
+    mFades[id].mFade = {LLTimer::getTotalSeconds(), seconds, inst->mFadeAlpha, hidden};
+    if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha);   // coverage first, so a fade-in never flashes
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))        // a fade-in shows the body at once, then ramps it
+        set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+    return true;
 }
 
 bool ALGhostStudio::swapSource(const LLUUID& id, const LLUUID& source_id, const std::string& label)
