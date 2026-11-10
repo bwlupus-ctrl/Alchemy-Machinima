@@ -22,6 +22,7 @@
 #include "alkitbinding.h"
 #include "alkitbar.h"
 #include "alkithistory.h"
+#include "alundosequence.h"
 #include "aldiopterpresetbank.h"
 #include "alkitpage.h"
 #include "alkitlazypage.h"
@@ -2811,26 +2812,26 @@ void LLFloaterDirector::bindGroupsPage(LLView* root)
         mGroupRenameBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupRename(); });
         mGroupDissolveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickGroupDissolve(); });
     }
-    mGroupRunCombo->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    if (mGroupRunCombo && mGroupsList) mGroupRunCombo->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         mGroupsList->setSelectedByValue(mGroupRunCombo->getValue(), true);
         onGroupsListSelect();
     });
-    mGroupMembersList = root->getChild<LLScrollListCtrl>("group_members_list");
-    mGroupMembersList->setAllowMultipleSelection(true);
-    mGroupNewBtn = root->getChild<LLButton>("btn_group_new");
-    mGroupAddSelectedBtn = root->getChild<LLButton>("btn_group_add_selected");
-    mGroupAddBtn = root->getChild<LLButton>("btn_group_add");
-    mGroupRemoveBtn = root->getChild<LLButton>("btn_group_remove");
-    mGroupUsedBy = root->getChild<LLTextBox>("group_used_by");
-    mGroupNewBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    mGroupMembersList = root->findChild<LLScrollListCtrl>("group_members_list");
+    if (mGroupMembersList) mGroupMembersList->setAllowMultipleSelection(true);
+    mGroupNewBtn = root->findChild<LLButton>("btn_group_new");
+    mGroupAddSelectedBtn = root->findChild<LLButton>("btn_group_add_selected");
+    mGroupAddBtn = root->findChild<LLButton>("btn_group_add");
+    mGroupRemoveBtn = root->findChild<LLButton>("btn_group_remove");
+    mGroupUsedBy = root->findChild<LLTextBox>("group_used_by");
+    if (mGroupNewBtn) mGroupNewBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
         { editGroupMembers(selectedCastIds(), {}, true); });
-    mGroupAddSelectedBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    if (mGroupAddSelectedBtn) mGroupAddSelectedBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
         {
             const auto group = selectedManagedGroup();
             if (!group.empty()) editGroupMembers(selectedCastIds(), group);
         });
-    mGroupAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    if (mGroupAddBtn) mGroupAddBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         const std::string group = selectedManagedGroup();
         if (group.empty()) return;
@@ -2838,19 +2839,26 @@ void LLFloaterDirector::bindGroupsPage(LLView* root)
             [this, group](const LLUUID& id)
             {
                 auto& cast = LLDirectorCast::instance();
-                if (cast.membersInGroup(group).empty()) return;
-                cast.add(id);
-                editGroupMembers({ id }, group);
+                if (cast.membersInGroup(group).empty())
+                {
+                    recoveryToast("Group '" + group + "' no longer exists");
+                    return;
+                }
+                const LLUUID picked = id.isNull() ? gAgentID : id;
+                const LLUUID actor = cast.containsStored(picked) ? picked :
+                    LLDirectorCast::canonicalActorId(picked);
+                if (!cast.containsStored(actor)) cast.add(actor);
+                editGroupMembers({ actor }, group);
             }, true);
     });
-    mGroupRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    if (mGroupRemoveBtn) mGroupRemoveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         uuid_vec_t ids;
+        if (!mGroupMembersList) return;
         for (auto* item : mGroupMembersList->getAllSelected()) ids.push_back(item->getValue().asUUID());
         editGroupMembers(ids, {});
     });
     mLastGroupNames.assign(1, std::string());
-    mGroupsListSnapshot = { "" };
     mGroupDelayShownFor.clear();
     mGroupsTabDirty = true;
     refreshGroupControls();
@@ -5441,6 +5449,12 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
         gSavedSettings.setS32("CinematicCamMode", scene["cinecam_mode"].asInteger());
     }
     clearGroupMergeConfirmation();
+    mGroupDelayShownFor.clear();
+    mGroupMembersShownFor.clear();
+    mGroupListRevision = mGroupCastRevision = 0;
+    mGroupsTabDirty = true;
+    mGroupPresenceClock.forceDue();
+    mLastGroupDelayEdit.reset();
     if (mGroupRenameEditor) ::setTextIfChanged(mGroupRenameEditor, "");
     if(mShell)
     {
@@ -6623,31 +6637,34 @@ void LLFloaterDirector::onCastRemove()
 void LLFloaterDirector::recordGroupEdit(const ALDirectorGroups::GroupSnapshot& before,
                                          const std::string& label,
                                          const std::string& renamed_from,
-                                         const std::string& renamed_to)
+                                         const std::string& renamed_to,
+                                         const std::string& delay_group)
 {
     if (!mShell) return;
     const auto after = LLDirectorCast::instance().captureGroups();
     if (before == after) return;
-    struct Edit
+    // Only uninterrupted delay commits on the same group extend this snapshot.
+    // Any history mutation (including replay, page edits or a barrier) ends it.
+    if (!delay_group.empty() && mLastGroupDelayEdit && mLastGroupDelayName == delay_group &&
+        mGroupDelayHistoryRevision == mShell->history().revision() &&
+        mGroupDelayHistorySequence == alUndoSequenceClock() && mLastGroupDelayEdit->after == before)
     {
-        ALDirectorGroups::GroupSnapshot before, after;
-        std::string gazeBefore, gazeAfter;
-    };
+        mLastGroupDelayEdit->after = after;
+        return;
+    }
+    mLastGroupDelayEdit.reset();
     const std::string gaze_before = mGazePanel ? mGazePanel->selectedApplyGroup() : std::string();
     std::string gaze_after = gaze_before;
     if (!renamed_from.empty() && gaze_before == renamed_from) gaze_after = renamed_to;
     else if (LLDirectorCast::instance().membersInGroup(gaze_before).empty()) gaze_after.clear();
-    auto edit = std::make_shared<Edit>(Edit{ before, after, gaze_before, gaze_after });
+    auto edit = std::make_shared<GroupEdit>(GroupEdit{ before, after, gaze_before, gaze_after, renamed_from, renamed_to });
     if (mGazePanel && gaze_before != gaze_after) mGazePanel->restoreApplyGroup(gaze_after);
-    auto validate = [this, edit](bool redo, std::string& reason)
+    auto validate = [edit](bool redo, std::string& reason)
     {
         auto current = LLDirectorCast::instance().captureGroups();
         if (!ALDirectorGroups::patchDelta(current, redo ? edit->before : edit->after,
                                           redo ? edit->after : edit->before, false))
         { reason = "An edited group value changed or a member left the cast"; return false; }
-        if (mGazePanel && edit->gazeBefore != edit->gazeAfter &&
-            mGazePanel->selectedApplyGroup() != (redo ? edit->gazeBefore : edit->gazeAfter))
-        { reason = "The Gaze apply group changed"; return false; }
         return true;
     };
     mShell->history().recordCustom(mShell, "cast_groups", label,
@@ -6656,11 +6673,25 @@ void LLFloaterDirector::recordGroupEdit(const ALDirectorGroups::GroupSnapshot& b
             if (!validate(redo, reason)) return false;
             auto& cast = LLDirectorCast::instance();
             auto current = cast.captureGroups();
+            bool skipped_hot = false;
             ALDirectorGroups::patchDelta(current, redo ? edit->before : edit->after,
-                                         redo ? edit->after : edit->before, true);
-            cast.restoreGroups(current);
+                                         redo ? edit->after : edit->before, true, &skipped_hot);
+            // Splitting a merge leaves the destination alive. A reverse rename
+            // would move bindings that belonged to that destination all along.
+            const bool split = !redo && !edit->renamedFrom.empty() &&
+                std::any_of(edit->before.tags.begin(), edit->before.tags.end(),
+                    [edit](const auto& tag) { return tag.second == edit->renamedTo; });
+            cast.restoreGroups(current, split ? std::string() : redo ? edit->renamedFrom : edit->renamedTo,
+                               split ? std::string() : redo ? edit->renamedTo : edit->renamedFrom);
+            bool skipped_gaze = false;
             if (mGazePanel && edit->gazeBefore != edit->gazeAfter)
-                mGazePanel->restoreApplyGroup(redo ? edit->gazeAfter : edit->gazeBefore);
+            {
+                if (mGazePanel->selectedApplyGroup() == (redo ? edit->gazeBefore : edit->gazeAfter))
+                    mGazePanel->restoreApplyGroup(redo ? edit->gazeAfter : edit->gazeBefore);
+                else skipped_gaze = true;
+            }
+            if (skipped_hot || skipped_gaze)
+                recoveryToast("Group edit restored; later Gaze bindings were kept");
             return true;
         }, false, validate,
         [edit](const LLUUID& old_id, const LLUUID& new_id)
@@ -6668,6 +6699,13 @@ void LLFloaterDirector::recordGroupEdit(const ALDirectorGroups::GroupSnapshot& b
             edit->before.rewriteActor(old_id, new_id);
             edit->after.rewriteActor(old_id, new_id);
         });
+    if (!delay_group.empty())
+    {
+        mLastGroupDelayEdit = edit;
+        mLastGroupDelayName = delay_group;
+        mGroupDelayHistoryRevision = mShell->history().revision();
+        mGroupDelayHistorySequence = alUndoSequenceClock();
+    }
 }
 
 void LLFloaterDirector::editGroupMembers(const uuid_vec_t& ids, const std::string& name, bool make)
@@ -6681,13 +6719,17 @@ void LLFloaterDirector::editGroupMembers(const uuid_vec_t& ids, const std::strin
         if (used.empty()) cast.removeFromGroup(ids);
         else cast.addToGroup(ids, used);
     }
-    if (before == cast.captureGroups()) return;
+    if (before == cast.captureGroups())
+    {
+        if (!used.empty()) recoveryToast("Already in '" + used + "'");
+        return;
+    }
     recordGroupEdit(before, make ? "Make group" : used.empty() ? "Remove from group" : "Add to group");
     std::string moved;
     for (const auto& id : ids)
     {
         auto old = before.tags.find(id);
-        const auto* member = cast.getMember(id);
+        const auto* member = cast.getStoredMember(id);
         if (!member || old == before.tags.end() || old->second.empty() || old->second == member->mGroup) continue;
         if (!moved.empty()) moved += ", ";
         moved += (member->mLastName.empty() ? id.asString() : member->mLastName) + " from '" + old->second + "'";
@@ -6697,11 +6739,17 @@ void LLFloaterDirector::editGroupMembers(const uuid_vec_t& ids, const std::strin
     else message = used.empty() ? "Removed selected members from their groups" : "Added selected members to '" + used + "'";
     if (!moved.empty()) message += ". " + std::string(used.empty() ? "Removed " : "Moved ") + moved;
     recoveryToast(message);
+    if (make) { if (mShell) mShell->navigateTo("cast_group/groups_tab"); else selectLeafTab("move_tab"); }
     refreshGroupControls();
     if (make && mGroupsList && mGroupsList->isInVisibleChain()
         && mGroupsList->setSelectedByValue(used, true))
     {
         onGroupsListSelect();
+        if (mGroupRenameEditor)
+        {
+            mGroupRenameEditor->setFocus(true);
+            mGroupRenameEditor->selectAll();
+        }
     }
 }
 
@@ -6736,7 +6784,6 @@ void LLFloaterDirector::updateCastGroupMenu(LLContextMenu* menu)
         item.on_click.function = [this, group, make](LLUICtrl*, const LLSD&)
         {
             const auto ids = selectedCastIds();
-            if (make && mShell) mShell->navigateTo("cast_group/groups_tab");
             editGroupMembers(ids, group, make);
         };
         add_menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
@@ -6746,7 +6793,7 @@ void LLFloaterDirector::updateCastGroupMenu(LLContextMenu* menu)
         add("group_" + std::to_string(index++), llformat("%s (%d)", name.c_str(), (S32)cast.membersInGroup(name).size()), name, false);
     LLMenuItemSeparatorGL::Params separator;
     add_menu->addChild(LLUICtrlFactory::create<LLMenuItemSeparatorGL>(separator));
-    add("new_group", "New group...", {}, true);
+    add("new_group", "New group", {}, true);
 }
 
 void LLFloaterDirector::onClickGroup(bool start)
@@ -6794,12 +6841,12 @@ void LLFloaterDirector::onGroupsListSelect()
         return;
     }
     LLDirectorCast& cast = LLDirectorCast::instance();
-    selectGroupMembers(name);
+    mGroupPresenceClock.forceDue();
     if (mGroupRunCombo) mGroupRunCombo->setSimple(LLStringExplicit(name));
     // load the delay spinner + prefill the rename editor with the current name
     mGroupDelayShownFor = name;
-    mGroupDelaySpinner->setValue(cast.getGroupDelay(name));
-    mGroupRenameEditor->setText(name);
+    if (mGroupDelaySpinner) mGroupDelaySpinner->setValue(cast.getGroupDelay(name));
+    if (mGroupRenameEditor) mGroupRenameEditor->setText(name);
 }
 
 void LLFloaterDirector::onCommitGroupDelay()
@@ -6810,7 +6857,11 @@ void LLFloaterDirector::onCommitGroupDelay()
         auto& cast = LLDirectorCast::instance();
         const auto before = cast.captureGroups();
         cast.setGroupDelay(name, (F32)mGroupDelaySpinner->getValue().asReal());
-        recordGroupEdit(before, "Group start delay");
+        if (before != cast.captureGroups())
+        {
+            recordGroupEdit(before, "Group start delay", {}, {}, name);
+            if (mGroupsList) mGroupsList->setFocus(true);
+        }
     }
 }
 
@@ -6854,10 +6905,11 @@ void LLFloaterDirector::onClickGroupRename()
         recordGroupEdit(before, "Rename group", old_name, new_name);
         recoveryToast("Renamed '" + old_name + "' to '" + new_name + "'");
         clearGroupMergeConfirmation();
-        mGroupsListSnapshot = { "" }; mGroupDelayShownFor.clear();
+        mGroupDelayShownFor.clear();
         refreshGroupControls();
         mGroupsList->setSelectedByValue(new_name, true);
         onGroupsListSelect();
+        mGroupsList->setFocus(true);
     }
 }
 
@@ -6870,7 +6922,7 @@ void LLFloaterDirector::onClickGroupDissolve()
     cast.dissolveGroup(name);
     recordGroupEdit(before, "Dissolve group");
     recoveryToast("Dissolved '" + name + "'; members stay in Cast");
-    mGroupsListSnapshot = { "" }; mGroupDelayShownFor.clear();
+    mGroupDelayShownFor.clear();
     clearGroupMergeConfirmation();
 }
 
@@ -6879,11 +6931,19 @@ void LLFloaterDirector::refreshGroupControls()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("Director refreshGroupControls");
     if (!mGroupsList || !mGroupsList->isInVisibleChain()) return;
     auto& cast = LLDirectorCast::instance();
-    if (mGroupMergeRevision && (mGroupMergeRevision != cast.getGroupRevision() ||
-        mGroupMergeFrom != selectedManagedGroup() || mGroupMergeText != mGroupRenameEditor->getText()))
-        clearGroupMergeConfirmation();
+    const bool rebuild = mGroupsTabDirty || mGroupListRevision != cast.getGroupRevision() ||
+        mGroupCastRevision != cast.getCastRevision();
+    const bool presence_due = mGroupPresenceClock.due();
+    if (!mGroupsTabDirty && mGroupListRevision == cast.getGroupRevision() &&
+        mGroupCastRevision == cast.getCastRevision() && !presence_due) return;
+    mGroupsTabDirty = false;
+    mGroupListRevision = cast.getGroupRevision();
+    mGroupCastRevision = cast.getCastRevision();
     const auto names = cast.getGroupNames();
-    if (names != mLastGroupNames)
+    if (mGroupMergeRevision && (mGroupMergeRevision != cast.getGroupRevision() ||
+        mGroupMergeFrom != selectedManagedGroup() || !mGroupRenameEditor ||
+        mGroupMergeText != mGroupRenameEditor->getText())) clearGroupMergeConfirmation();
+    if (mGroupRunCombo && names != mLastGroupNames)
     {
         mLastGroupNames = names;
         const std::string selected = mGroupRunCombo->getSelectedItemLabel();
@@ -6892,117 +6952,136 @@ void LLFloaterDirector::refreshGroupControls()
         if (!mGroupRunCombo->setSimple(LLStringExplicit(selected)))
             mGroupRunCombo->setLabel(LLStringExplicit("Group"));
     }
-    if (mGroupsTabDirty)
-    {
-        mGroupsTabDirty = false;
-        mGroupsListSnapshot = { "" };
-        mGroupDelayShownFor.clear();
-    }
-    std::vector<std::string> snapshot;
-    std::vector<S32> here;
+    const auto selected = selectedManagedGroup();
+    if (rebuild) mGroupsList->deleteAllItems();
+    std::map<LLUUID, bool> present;
     for (const auto& name : names)
     {
-        S32 count = 0;
         const auto members = cast.membersInGroup(name);
-        for (const auto& id : members) if (cast.resolve(id)) ++count;
-        here.push_back(count);
-        snapshot.push_back(llformat("%s|%d|%d|%.3f", name.c_str(), (S32)members.size(), count, cast.getGroupDelay(name)));
-    }
-    if (snapshot != mGroupsListSnapshot)
-    {
-        mGroupsListSnapshot = snapshot;
-        const auto selected = selectedManagedGroup();
-        mGroupsList->deleteAllItems();
-        for (size_t i = 0; i < names.size(); ++i)
+        S32 here = 0;
+        for (const auto& id : members)
         {
-            const auto& name = names[i];
+            const bool in_world = cast.resolve(id) != nullptr;
+            present[id] = in_world;
+            if (in_world) ++here;
+        }
+        if (rebuild)
+        {
             LLSD row;
             row["value"] = name;
             row["columns"][0]["column"] = "group";
             row["columns"][0]["value"] = name;
             row["columns"][1]["column"] = "members";
-            row["columns"][1]["value"] = (S32)cast.membersInGroup(name).size();
+            row["columns"][1]["value"] = (S32)members.size();
             if (mGroupMembersList)
             {
                 row["columns"][2]["column"] = "here";
-                row["columns"][2]["value"] = here[i];
+                row["columns"][2]["value"] = here;
             }
             const S32 delay_column = mGroupMembersList ? 3 : 2;
             row["columns"][delay_column]["column"] = "delay";
             row["columns"][delay_column]["value"] = llformat("%.1f s", cast.getGroupDelay(name));
-            // V2 Groups list inherits themed list text; no per-group tint override.
             mGroupsList->addElement(row, ADD_BOTTOM);
         }
-        if (!selected.empty()) mGroupsList->setSelectedByValue(selected, true);
+        else if (mGroupMembersList)
+        {
+            if (auto* row = mGroupsList->getItem(name))
+                if (auto* cell = row->getColumn(2))
+                    if (cell->getValue().asInteger() != here) cell->setValue(here);
+        }
     }
+    if (rebuild && !selected.empty()) mGroupsList->setSelectedByValue(selected, true);
     const auto managed = selectedManagedGroup();
     const bool have_group = !managed.empty();
     const bool have_selection = !selectedCastIds().empty();
-    if (managed != mGroupDelayShownFor && !mGroupDelaySpinner->hasFocus())
+    if (mGroupRenameEditor && managed != mGroupDelayShownFor && !mGroupRenameEditor->hasFocus())
     {
         mGroupDelayShownFor = managed;
         ::setTextIfChanged(mGroupRenameEditor, managed);
     }
-    setValueIfChanged(mGroupDelaySpinner, have_group ? cast.getGroupDelay(managed) : 0.f);
-    setEnabledIfChanged(mGroupNewBtn, have_selection);
-    setToolTipIfChanged(mGroupNewBtn, have_selection ? "Make a group from selected cast members" : "Select cast members first to make a group");
-    setEnabledIfChanged(mGroupAddSelectedBtn, have_group && have_selection);
-    setEnabledIfChanged(mGroupAddBtn, have_group);
-    setEnabledIfChanged(mGroupRemoveBtn, have_group && mGroupMembersList && !mGroupMembersList->getAllSelected().empty());
-    setEnabledIfChanged(mGroupDelaySpinner, have_group);
-    setEnabledIfChanged(mGroupRenameEditor, have_group);
-    setEnabledIfChanged(mGroupRenameBtn, have_group);
-    setEnabledIfChanged(mGroupDissolveBtn, have_group);
-    const std::string rename_label = mGroupMergeFrom == managed && !mGroupMergeTo.empty()
-        && ALDirectorGroups::resolveGroupName(cast.getGroupNames(), mGroupRenameEditor->getText()) == mGroupMergeTo
-        ? "Merge" : "Rename";
-    setLabelIfChanged(mGroupRenameBtn, rename_label);
-
+    if (mGroupDelaySpinner)
+    {
+        if (!mGroupDelaySpinner->hasFocus())
+            setValueIfChanged(mGroupDelaySpinner, have_group ? cast.getGroupDelay(managed) : 0.f);
+        setEnabledIfChanged(mGroupDelaySpinner, have_group);
+    }
+    if (mGroupNewBtn)
+    {
+        setEnabledIfChanged(mGroupNewBtn, have_selection);
+        setToolTipIfChanged(mGroupNewBtn, have_selection ? "Make a group from selected cast members" : "Select cast members first to make a group");
+    }
+    if (mGroupAddSelectedBtn) setEnabledIfChanged(mGroupAddSelectedBtn, have_group && have_selection);
+    if (mGroupAddBtn) setEnabledIfChanged(mGroupAddBtn, have_group);
+    if (mGroupRemoveBtn) setEnabledIfChanged(mGroupRemoveBtn, have_group && mGroupMembersList && !mGroupMembersList->getAllSelected().empty());
+    if (mGroupRenameEditor) setEnabledIfChanged(mGroupRenameEditor, have_group);
+    if (mGroupRenameBtn)
+    {
+        setEnabledIfChanged(mGroupRenameBtn, have_group);
+        setLabelIfChanged(mGroupRenameBtn, mGroupMergeFrom == managed && !mGroupMergeTo.empty() ? "Merge" : "Rename");
+    }
+    if (mGroupDissolveBtn) setEnabledIfChanged(mGroupDissolveBtn, have_group);
     if (mGroupMembersList)
     {
-        std::vector<std::string> members_snapshot{ managed };
         const auto members = cast.membersInGroup(managed);
-        for (const auto& id : members)
+        const bool rebuild_members = rebuild || mGroupMembersShownFor != managed;
+        if (rebuild_members)
         {
-            const auto* member = cast.getMember(id);
-            members_snapshot.push_back(id.asString() + "|" + member->mLastName + (cast.resolve(id) ? "" : " (away)"));
-        }
-        if (mLastGroupMembersSnapshot != members_snapshot)
-        {
-            mLastGroupMembersSnapshot = members_snapshot;
-            uuid_vec_t selected;
-            for (auto* item : mGroupMembersList->getAllSelected()) selected.push_back(item->getValue().asUUID());
+            uuid_vec_t member_selection;
+            for (auto* item : mGroupMembersList->getAllSelected()) member_selection.push_back(item->getValue().asUUID());
             mGroupMembersList->deleteAllItems();
-            for (size_t i = 0; i < members.size(); ++i)
+            for (const auto& id : members)
             {
+                const auto* member = cast.getStoredMember(id);
+                const std::string label = (member && !member->mLastName.empty() ? member->mLastName : id.asString()) +
+                    (present[id] ? "" : " (away)");
                 LLSD row;
-                row["value"] = members[i];
+                row["value"] = id;
                 row["columns"][0]["column"] = "member";
-                row["columns"][0]["value"] = members_snapshot[i + 1].substr(37);
+                row["columns"][0]["value"] = label;
                 mGroupMembersList->addElement(row, ADD_BOTTOM);
             }
-            mGroupMembersList->selectMultiple(selected);
+            mGroupMembersList->selectMultiple(member_selection);
+            mGroupMembersShownFor = managed;
+        }
+        else
+        {
+            for (const auto& id : members)
+            {
+                const auto* member = cast.getStoredMember(id);
+                const std::string label = (member && !member->mLastName.empty() ? member->mLastName : id.asString()) +
+                    (present[id] ? "" : " (away)");
+                if (auto* row = mGroupMembersList->getItem(id))
+                    if (auto* cell = row->getColumn(0))
+                        if (cell->getValue().asString() != label) cell->setValue(label);
+            }
         }
     }
-    std::string used = "Select a group.";
-    if (have_group)
+    if (mGroupUsedBy)
     {
-        used = llformat("Move start delay: %.1f s. Gaze Hot targets:", cast.getGroupDelay(managed));
-        bool hot = false;
-        const auto& slots = cast.getHotGazeSlots();
-        for (size_t i = 0; i < slots.size(); ++i)
-            if (slots[i].mGroup == managed) { used += " " + std::to_string(i + 1); hot = true; }
-        if (!hot) used += " none";
-        used += ". Gaze apply group: ";
-        used += mGazePanel && mGazePanel->appliedGroup() == managed ? "yes" : "no";
+        std::string used = "Select a group.";
+        if (have_group)
+        {
+            used = llformat("Move start delay: %.1f s.", cast.getGroupDelay(managed));
+            if (cast.getGroupRate(managed)) used += llformat(" Stepped rate: %+d.", cast.getGroupRate(managed));
+            used += " Gaze Hot targets:";
+            bool hot = false;
+            const auto& slots = cast.getHotGazeSlots();
+            for (size_t i = 0; i < slots.size(); ++i)
+                if (slots[i].mGroup == managed) { used += " " + std::to_string(i + 1); hot = true; }
+            if (!hot) used += " none";
+            used += ". Gaze apply group: ";
+            used += mGazePanel && mGazePanel->appliedGroup() == managed ? "yes" : "no";
+        }
+        setTextIfChanged(mGroupUsedBy, used);
     }
-    setTextIfChanged(mGroupUsedBy, used);
-    const auto run = mGroupRunCombo->getSelectedItemLabel();
-    const bool can_run = !cast.membersInGroup(run).empty();
-    setEnabledIfChanged(mGroupRunCombo, !names.empty());
-    setEnabledIfChanged(mGroupStartBtn, can_run);
-    setEnabledIfChanged(mGroupStopBtn, can_run);
-    setToolTipIfChanged(mGroupRunCombo, names.empty() ? "Select cast members and click New to make a group" : "Choose the group to walk");
+    if (mGroupRunCombo)
+    {
+        const bool can_run = !cast.membersInGroup(mGroupRunCombo->getSelectedItemLabel()).empty();
+        setEnabledIfChanged(mGroupRunCombo, !names.empty());
+        if (mGroupStartBtn) setEnabledIfChanged(mGroupStartBtn, can_run);
+        if (mGroupStopBtn) setEnabledIfChanged(mGroupStopBtn, can_run);
+        setToolTipIfChanged(mGroupRunCombo, names.empty() ? "Select cast members and click New to make a group" : "Choose the group to walk");
+    }
 }
 
 // ---------------------------------------------------------------------------

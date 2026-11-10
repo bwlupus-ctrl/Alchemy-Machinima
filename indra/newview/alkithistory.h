@@ -91,6 +91,8 @@ public:
     void        undo(const std::string& page);
     void        redo(const std::string& page);
     U64         revision() const { return mRevision; }
+    // Owned page histories also interrupt custom-entry coalescing.
+    void        noteOwnedEdit() { ++mRevision; }
     void        registerContext(const std::string&, std::function<std::string(const std::string&)>);
     struct ScopedSuspend
     {

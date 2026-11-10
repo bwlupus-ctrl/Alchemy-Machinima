@@ -2042,8 +2042,11 @@ void ALKitPage::historyEdited(bool owned)
 {
     if (ALKitShell* shell = ALKitShell::find(this))
     {
-        if (owned && !alUndoSequenceGroup())
-            shell->history().finishGesture();
+        if (owned)
+        {
+            shell->history().noteOwnedEdit();
+            if (!alUndoSequenceGroup()) shell->history().finishGesture();
+        }
         shell->history().discardRedo(mPage);
     }
     if (!owned && !alUndoSequenceGroup())

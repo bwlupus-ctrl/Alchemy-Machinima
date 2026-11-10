@@ -95,6 +95,8 @@ def reverse_feature_allowance(source, name, filename, digest, label):
 
 
 def reverse_director_groups_cast(source, name):
+    source = reverse_feature_allowance(source, name, "director_groups_fable_hunks.json",
+        "a64443cd524bf2231e329175d9e356762c78f8a73cd3e05ca745317c673ca985", "reviewed Director groups fixes")
     # Groups integrate on top of rig-no-group; peel them before that older layer.
     return reverse_feature_allowance(source, name, "director_groups_cast_hunks.json",
         "320a044ff24581975b613b3d6defa3ffffe1cfe285dba574f61ad7a66c29f144", "reviewed Director groups cast")
@@ -308,7 +310,8 @@ def main():
     assert 'f.isSelected = selected.isNull() ? f.isSelf : actor_id == selected' in runtime
     assert 'return runtimeActorId(mActiveActorId)' in (nv / "lldirectorcast.h").read_text()
     group = method(nv / "llfloaterdirector.cpp", "void LLFloaterDirector::onGroupsListSelect(")
-    assert "selectGroupMembers(name);" in group
+    assert "selectGroupMembers(name);" not in group
+    assert "setActiveActorId" not in group and "touchScene" not in group
     group = method(nv / "llfloaterdirector.cpp", "void LLFloaterDirector::selectGroupMembers(")
     assert group.index('selectMultiple(cast.membersInGroup(name))') < group.index('cast.setActiveActorId(firstSelectedCastId())')
     assert 'mShell->setCastSelection(selectedCastIds())' in group
