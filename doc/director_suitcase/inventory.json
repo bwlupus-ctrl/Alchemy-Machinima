@@ -8,21 +8,11 @@
       "GENERATED": 736,
       "HOOK": 536,
       "OWNED": 915,
-      "TOOLING": 446
+      "TOOLING": 447
     },
     "dirty_product_inputs": [
-      "indra/newview/aldirectorgroups.h",
-      "indra/newview/alkithistory.h",
-      "indra/newview/alkitpage.cpp",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/lldirectorcast.cpp",
-      "indra/newview/lldirectorcast.h",
-      "indra/newview/llfloaterdirector.cpp",
-      "indra/newview/llfloaterdirector.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
-      "indra/newview/skins/default/xui/en/floater_director.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/panel_director_move_src.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
@@ -64,16 +54,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/tests/aldirectorgroups_test.cpp",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_groups_check.py",
-      "scripts/code_tools/director_groups_fable_hunks.json",
-      "scripts/code_tools/director_kit/check_kit_pages.py",
-      "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit_gen.py",
-      "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/ui_draw_lint_baseline.json"
+      "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -192,7 +173,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 846
+        "xui_files": 847
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -258,10 +239,10 @@
       },
       "wiring_rows": 2297
     },
-    "head_source_tree": "1fced79f10f2470dbdfc32d38456e5bd27923cc2",
+    "head_source_tree": "dc76c64eb2b21886de85e26f100a0a687a0b081f",
     "hook_files": 536,
     "hunks": 3354,
-    "input_sha256": "162c4ad7072dfddcec999aa5631b0e81881af004e7aac1d99626d3c26d879033",
+    "input_sha256": "7d2301114db990658faa51c49596c67b8ccc0e60f0b6bf2120080e8b40f3f840",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13878,6 +13859,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -16052,6 +16034,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -28202,6 +28185,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -28235,11 +28219,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -35367,9 +35348,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "common-ui",
-        "director-shell",
-        "vcam"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -36589,6 +36568,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -41206,6 +41186,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_groups_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_groups_fable_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

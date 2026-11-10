@@ -9048,6 +9048,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterdirector.cpp",
+    "dependency": "indra/newview/alundosequence.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.cpp",
     "dependency": "indra/newview/aldiopterpresetbank.h",
     "excluded": false,
     "origin": "fork-added",
