@@ -12,6 +12,7 @@
 
 #include "alghoststudio.h"
 #include "alcinelightrigmanager.h"
+#include "aldirectortagtargets.h" // Director tag highlight + group label
 #include "alreflectmath.h"
 #include "altoolghostedit.h"
 #include "alghostanimassetindex.h" // [GhostPanelPerf] shared animation library
@@ -2193,12 +2194,18 @@ void ALGhostStudio::updateNameplates()
 
     std::vector<ALGhostNameplates::Label> labels;
     std::set<LLUUID> grouped_members;
+    ALDirectorTagTargets& tag_targets = ALDirectorTagTargets::instance();
     for (const auto& entry : mGroups.groups())
     {
         const ALGhostGroupModel::Group& group = entry.second;
         LLVector3 centre;
         F32 top = -1.0e30f;
         S32 visible_members = 0;
+        bool group_highlighted = tag_targets.isHighlighted(group.mId);
+        // A collapsed crowd plate shows a Director group line only when every visible member
+        // shares ONE Director group; mixed or partly ungrouped crowds show none.
+        const std::string* shared_group = nullptr;
+        bool shared_group_ok = true;
         for (const ALGhostGroupModel::Member& member : group.mMembers)
         {
             grouped_members.insert(member.mInstanceId);
@@ -2212,6 +2219,15 @@ void ALGhostStudio::updateNameplates()
             {
                 continue;
             }
+            // Only a member that really contributes to the crowd plate counts for its highlight
+            // and for the shared Director group.
+            group_highlighted = group_highlighted ||
+                tag_targets.isHighlighted(inst->mId, inst->mEntityId);
+            const std::string& member_group = tag_targets.groupLabel(inst->mEntityId, inst->mId);
+            if (member_group.empty() || (shared_group && *shared_group != member_group))
+                shared_group_ok = false;
+            else if (!shared_group)
+                shared_group = &member_group;
             centre += member_anchor;
             top = llmax(top, member_anchor.mV[VZ]);
             ++visible_members;
@@ -2231,6 +2247,8 @@ void ALGhostStudio::updateNameplates()
         label.mSelected = mSelected == group.mId ||
             (selected_instance &&
              selected_instance->mGroupId == group.mId);
+        label.mHighlighted = group_highlighted;
+        label.mGroupLine = shared_group_ok ? shared_group : nullptr;
         labels.push_back(label);
 
         if (group.mEditMembers)
@@ -2252,6 +2270,8 @@ void ALGhostStudio::updateNameplates()
                     continue;
                 }
                 member_label.mSelected = inst->mId == mSelected;
+                member_label.mHighlighted = tag_targets.isHighlighted(inst->mId, inst->mEntityId);
+                member_label.mGroupLine = &tag_targets.groupLabel(inst->mEntityId, inst->mId);
                 labels.push_back(member_label);
             }
         }
@@ -2272,6 +2292,8 @@ void ALGhostStudio::updateNameplates()
             continue;
         }
         label.mSelected = inst.mId == mSelected;
+        label.mHighlighted = tag_targets.isHighlighted(inst.mId, inst.mEntityId);
+        label.mGroupLine = &tag_targets.groupLabel(inst.mEntityId, inst.mId);
         labels.push_back(label);
     }
     mNameplates->update(labels, true);

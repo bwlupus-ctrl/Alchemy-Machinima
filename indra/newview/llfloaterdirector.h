@@ -64,6 +64,7 @@ public:
     void onClose(bool app_quitting) override;
     void onFocusLost() override;
     void setMinimized(bool minimized) override;
+    void setVisible(bool visible) override;
     void draw() override;
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
@@ -473,6 +474,11 @@ private:
     U64 mGroupListRevision = 0;
     U64 mGroupCastRevision = 0;
     ALLiveReadoutClock mGroupPresenceClock{4.f};
+    // Name-tag highlight: who the visible page acts on, published at 10 Hz (see aldirectortagtargets.h).
+    void refreshTagHighlight();
+    ALLiveReadoutClock mTagHighlightClock{10.f};
+    uuid_vec_t mTagTargetScratch;
+    uuid_vec_t mTagSelectionScratch;
     struct GroupEdit
     {
         ALDirectorGroups::GroupSnapshot before, after;

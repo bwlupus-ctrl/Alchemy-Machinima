@@ -130,9 +130,16 @@ def reverse_rig_no_group_cast(source, name):
         "5d967cf95fada38b1bbe10eb5aac5bdae6c996a1643298760138c31301652e14", "reviewed rig-no-group cast")
 
 
+TAG_HIGHLIGHT_DIGEST = "ab65349f18b818569a996d2c1acc5d2c9eef1461db95f348f111d9658dbe0461"
+TAG_HIGHLIGHT_PIPELINE_DIGEST = "b7907a9921708e57910c4b9b778caf08e683674a7a32a7d62d465560054f1ba5"
+
+
 def reverse_clone_anim_drop(source, name):
-    # Clear animations integrates on top of 23c45e6ee7f; peel it first (newest layer).
-    source = reverse_feature_allowance(source.replace("\r\n", "\n"), name, "clear_anim_studio_hunks.json",
+    # The Director tag highlight sits on top of main fc5f3e5a78f; peel it first (newest layer).
+    source = reverse_feature_allowance(source.replace("\r\n", "\n"), name, "tag_highlight_studio_hunks.json",
+        TAG_HIGHLIGHT_DIGEST, "reviewed Director tag highlight")
+    # Clear animations integrates on top of 23c45e6ee7f; peel it next.
+    source = reverse_feature_allowance(source, name, "clear_anim_studio_hunks.json",
         CLEAR_ANIM_DIGEST, "reviewed Clear animations")
     # Clone animation drop integrates on top of main 845dfff22e9; peel it before
     # the post-chroma reversal that pins that main state.
@@ -216,7 +223,10 @@ def main():
         assert "\t" + widget + "\t" in index
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
-        guarded = reverse_post_chroma_main((nv / path).read_text(encoding="utf-8"), path)
+        # The Director tag highlight's exact renderer-selection hooks sit on top of main fc5f3e5a78f.
+        tagged = reverse_feature_allowance((nv / path).read_text(encoding="utf-8").replace("\r\n", "\n"), path,
+            "tag_highlight_pipeline_hunks.json", TAG_HIGHLIGHT_PIPELINE_DIGEST, "reviewed Director tag highlight renderer hooks")
+        guarded = reverse_post_chroma_main(tagged, path)
         guarded = actor_key_baseline(guarded, path)
         if path == "pipeline.cpp":
             # Remove only the two pinned blink hooks before reversing clone QoL.

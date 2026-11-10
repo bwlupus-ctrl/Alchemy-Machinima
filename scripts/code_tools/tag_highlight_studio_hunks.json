@@ -1,0 +1,36 @@
+{
+ "base": "fc5f3e5a78f",
+ "description": "Director name-tag highlight and Director group labels: Studio nameplate labels carry the highlight bit and the Director group line.",
+ "files": {
+  "alghoststudio.cpp": [
+   {
+    "before": "\n#include \"alghoststudio.h\"\n#include \"alcinelightrigmanager.h\"\n#include \"alreflectmath.h\"\n#include \"altoolghostedit.h\"\n#include \"alghostanimassetindex.h\" // [GhostPanelPerf] shared animation library\n",
+    "after": "\n#include \"alghoststudio.h\"\n#include \"alcinelightrigmanager.h\"\n#include \"aldirectortagtargets.h\" // Director tag highlight + group label\n#include \"alreflectmath.h\"\n#include \"altoolghostedit.h\"\n#include \"alghostanimassetindex.h\" // [GhostPanelPerf] shared animation library\n"
+   },
+   {
+    "before": "\n    std::vector<ALGhostNameplates::Label> labels;\n    std::set<LLUUID> grouped_members;\n    for (const auto& entry : mGroups.groups())\n    {\n        const ALGhostGroupModel::Group& group = entry.second;\n",
+    "after": "\n    std::vector<ALGhostNameplates::Label> labels;\n    std::set<LLUUID> grouped_members;\n    ALDirectorTagTargets& tag_targets = ALDirectorTagTargets::instance();\n    for (const auto& entry : mGroups.groups())\n    {\n        const ALGhostGroupModel::Group& group = entry.second;\n"
+   },
+   {
+    "before": "        LLVector3 centre;\n        F32 top = -1.0e30f;\n        S32 visible_members = 0;\n        for (const ALGhostGroupModel::Member& member : group.mMembers)\n        {\n            grouped_members.insert(member.mInstanceId);\n",
+    "after": "        LLVector3 centre;\n        F32 top = -1.0e30f;\n        S32 visible_members = 0;\n        bool group_highlighted = tag_targets.isHighlighted(group.mId);\n        // A collapsed crowd plate shows a Director group line only when every visible member\n        // shares ONE Director group; mixed or partly ungrouped crowds show none.\n        const std::string* shared_group = nullptr;\n        bool shared_group_ok = true;\n        for (const ALGhostGroupModel::Member& member : group.mMembers)\n        {\n            grouped_members.insert(member.mInstanceId);\n"
+   },
+   {
+    "before": "            {\n                continue;\n            }\n            centre += member_anchor;\n            top = llmax(top, member_anchor.mV[VZ]);\n            ++visible_members;\n",
+    "after": "            {\n                continue;\n            }\n            // Only a member that really contributes to the crowd plate counts for its highlight\n            // and for the shared Director group.\n            group_highlighted = group_highlighted ||\n                tag_targets.isHighlighted(inst->mId, inst->mEntityId);\n            const std::string& member_group = tag_targets.groupLabel(inst->mEntityId, inst->mId);\n            if (member_group.empty() || (shared_group && *shared_group != member_group))\n                shared_group_ok = false;\n            else if (!shared_group)\n                shared_group = &member_group;\n            centre += member_anchor;\n            top = llmax(top, member_anchor.mV[VZ]);\n            ++visible_members;\n"
+   },
+   {
+    "before": "        label.mSelected = mSelected == group.mId ||\n            (selected_instance &&\n             selected_instance->mGroupId == group.mId);\n        labels.push_back(label);\n\n        if (group.mEditMembers)\n",
+    "after": "        label.mSelected = mSelected == group.mId ||\n            (selected_instance &&\n             selected_instance->mGroupId == group.mId);\n        label.mHighlighted = group_highlighted;\n        label.mGroupLine = shared_group_ok ? shared_group : nullptr;\n        labels.push_back(label);\n\n        if (group.mEditMembers)\n"
+   },
+   {
+    "before": "                    continue;\n                }\n                member_label.mSelected = inst->mId == mSelected;\n                labels.push_back(member_label);\n            }\n        }\n",
+    "after": "                    continue;\n                }\n                member_label.mSelected = inst->mId == mSelected;\n                member_label.mHighlighted = tag_targets.isHighlighted(inst->mId, inst->mEntityId);\n                member_label.mGroupLine = &tag_targets.groupLabel(inst->mEntityId, inst->mId);\n                labels.push_back(member_label);\n            }\n        }\n"
+   },
+   {
+    "before": "            continue;\n        }\n        label.mSelected = inst.mId == mSelected;\n        labels.push_back(label);\n    }\n    mNameplates->update(labels, true);\n",
+    "after": "            continue;\n        }\n        label.mSelected = inst.mId == mSelected;\n        label.mHighlighted = tag_targets.isHighlighted(inst.mId, inst.mEntityId);\n        label.mGroupLine = &tag_targets.groupLabel(inst.mEntityId, inst.mId);\n        labels.push_back(label);\n    }\n    mNameplates->update(labels, true);\n"
+   }
+  ]
+ }
+}

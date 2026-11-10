@@ -198,6 +198,7 @@ set(viewer_SOURCE_FILES
     aldirectorswitchermodel.cpp
     aldirectorqol.cpp
     aldirectortabmigration.cpp
+    aldirectortagtargets.cpp
     aldirectortheme.cpp
     aldirectoralloff.cpp
     aldroptarget.cpp
@@ -1156,6 +1157,7 @@ set(viewer_HEADER_FILES
     aldirectorswitchermodel.h
     aldirectorqol.h
     aldirectortabmigration.h
+    aldirectortagtargets.h
     aldirectortheme.h
     aldirectoralloff.h
     aldroptarget.h

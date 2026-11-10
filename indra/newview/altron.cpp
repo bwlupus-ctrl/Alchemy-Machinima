@@ -885,6 +885,32 @@ const ALTron::Frame& ALTron::frame()
     return sFrame;
 }
 
+namespace
+{
+bool trailDrawable(const Trail& t)
+{
+    for (const TrailSegment& seg : t.mSegs)
+    {
+        if (seg.mPts.size() >= 2)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::vector<LLUUID> sTrailTagIds;   // Director tag highlight record (see ALTron::recordedTrailActors)
+U32  sTrailTagFrame = 0;
+bool sTrailTagRecorded = false;
+}
+
+bool ALTron::recordedTrailActors(const std::vector<LLUUID>*& ids, U32& frame)
+{
+    ids = &sTrailTagIds;
+    frame = sTrailTagFrame;
+    return sTrailTagRecorded;
+}
+
 // [TronT3] Light-cycle trails: sample emitters, age/prune, enforce every
 // storage cap, handle clears -- T3 contract section 3.3. Exactly once per
 // main-loop iteration: guarded on LLPresentationTime::currentFrame().
@@ -1023,20 +1049,21 @@ void ALTron::updateTrails()
     if (!sampling)
     {
         sHasGeometry = false;
+        // Director tag highlight: paused trails are still drawn, so the highlight follows exactly
+        // the retained drawable histories (owner id per history, after pruning and caps). Cleared or
+        // disabled trails leave nothing, so the record expires.
+        sTrailTagIds.clear();
         for (const auto& kv : sTrails)
         {
-            for (const TrailSegment& seg : kv.second.mSegs)
+            if (trailDrawable(kv.second))
             {
-                if (seg.mPts.size() >= 2)
-                {
-                    sHasGeometry = true;
-                    break;
-                }
+                sHasGeometry = true;
+                sTrailTagIds.push_back(kv.first);
             }
-            if (sHasGeometry)
-            {
-                break;
-            }
+        }
+        if (sHasGeometry)
+        {
+            sTrailTagFrame = LLFrameTimer::getFrameCount();
         }
         return; // no emission -- idle/unseen accumulators + mPrevGlobal frozen too
     }
@@ -1109,6 +1136,24 @@ void ALTron::updateTrails()
         // Invariant: |inset| <= max_actors, so after evicting every
         // not-in-set trail the set still fits.
     }
+
+    // Director tag highlight: record who really lays trails PLUS whose retained history is still drawn
+    // (so the set does not change at the moment of a pause). Recorded AFTER the eviction above, so only
+    // owners whose trails will really render are published. Stale = nobody.
+    sTrailTagIds.clear();
+    for (const auto& cand : cands)
+    {
+        sTrailTagIds.push_back(cand.mId);
+    }
+    for (const auto& kv : sTrails)
+    {
+        if (trailDrawable(kv.second))
+        {
+            sTrailTagIds.push_back(kv.first);
+        }
+    }
+    sTrailTagFrame = LLFrameTimer::getFrameCount();
+    sTrailTagRecorded = true;
 
     // --- 6: per-candidate sample/emit ----------------------------------------
     for (const auto& cand : cands)

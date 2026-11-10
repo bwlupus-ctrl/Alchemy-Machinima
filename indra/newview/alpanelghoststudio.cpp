@@ -3481,6 +3481,36 @@ bool ALPanelGhostStudio::anyEntityCloneSelected()
     return !ALGhostStudio::instance().selectedEntityClones().empty();
 }
 
+void ALPanelGhostStudio::appendSelectedInstances(std::vector<LLUUID>& out)
+{
+    const std::vector<LLUUID>& listed = selection().mInstances;
+    if (!listed.empty())
+    {
+        out.insert(out.end(), listed.begin(), listed.end());
+        return;
+    }
+    // Nothing selected in this list: an in-world pick lives in the shared selection.
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const LLUUID& selected = studio.getSelected();
+    if (selected.isNull())
+    {
+        return;
+    }
+    // A group row is looked up by its GROUP id and expands to its members.
+    if (const ALGhostGroupModel::Group* group = studio.groupForMember(selected);
+        group && selected == group->mId)
+    {
+        for (const ALGhostGroupModel::Member& member : group->mMembers)
+        {
+            out.push_back(member.mInstanceId);
+        }
+    }
+    else
+    {
+        out.push_back(selected);
+    }
+}
+
 // static
 bool ALPanelGhostStudio::playInventoryAnimationOnSelectedClones(const LLUUID& item_id)
 {

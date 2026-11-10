@@ -370,8 +370,9 @@ def validate_data(data: dict) -> None:
     # Group chat Snooze: two settings rows, 2499 -> 2501.
     # Independent rigs + Director Groups 1a/1b: 40/2506; Lights combo + readouts in 1c: 40/2507.
     # Clones "Clear animations" button + Director background opacity slider: 2507 -> 2509.
-    if len(pages) != 40 or row_count != 2509:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2509")
+    # Director tag highlight toggle: 2509 -> 2510.
+    if len(pages) != 40 or row_count != 2510:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2510")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
