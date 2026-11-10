@@ -8,7 +8,7 @@
       "GENERATED": 736,
       "HOOK": 535,
       "OWNED": 911,
-      "TOOLING": 444
+      "TOOLING": 445
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -68,7 +68,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "0993231540bc0cc74f711386ab9bceb550647ff54049d423ff8a14fadcc614ae",
+        "csv_sha256": "c0470420f2094c11990223533c354e3cb52ffa3c77a9320ef56fc51710120b35",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -239,10 +239,10 @@
       },
       "wiring_rows": 2297
     },
-    "head_source_tree": "4f6c3f67d45dd49e1c1ae5bb0ffe537c7b696854",
+    "head_source_tree": "ad93b0b65d1b3c6e3fba553718ea7dd30630841a",
     "hook_files": 535,
     "hunks": 3340,
-    "input_sha256": "e7cc5b0dc374086a5e279179915c79e81fa1fe7f7aa8fb3d073d88f7febe1586",
+    "input_sha256": "3b93f94ec127fd1339a038377c14d535ac8caec18312ad83c97a20e4885c02d6",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13859,6 +13859,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -15999,6 +16000,7 @@
     {
       "candidate_features_from_subjects": [
         "actor-bar",
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -28112,6 +28114,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -28145,11 +28148,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
-        "director-shell",
-        "gaze",
-        "roto-tron"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -35283,9 +35283,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "common-ui",
-        "director-shell",
-        "vcam"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -36488,6 +36486,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell",
         "gaze"
       ],
@@ -41075,6 +41074,21 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_groups_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "scripts/code_tools/director_groups_fable_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
