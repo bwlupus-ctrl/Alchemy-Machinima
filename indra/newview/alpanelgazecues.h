@@ -22,6 +22,7 @@
 #ifndef AL_ALPANELGAZECUES_H
 #define AL_ALPANELGAZECUES_H
 
+#include "aluirefresh.h"
 #include "lldirectorcast.h"
 #include "llpanel.h"
 
@@ -59,6 +60,8 @@ private:
     LLButton*         mStopBtn = nullptr;
     U64               mSeenRevision = U64(-1);
     LLUUID            mSeenActor;
+    std::string       mLabelSignature;      // rendered target labels (re-checked every 2 s for RLV)
+    ALLiveReadoutClock mNameClock{0.5f};    // Hz: every 2 s
     LLUUID            mPreviewActor;    // the actor this page started a cue preview on
 };
 

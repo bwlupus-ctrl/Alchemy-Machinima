@@ -4,6 +4,7 @@ from native_check_tools import check_directory, vcvars64
 import os
 import re
 import subprocess
+import sys
 import xml.etree.ElementTree as ET
 
 from relight_area_policy_check import method as source_method
@@ -14,6 +15,24 @@ ACTOR_KEY_LAYERS = (('actor_key_wp01_hunks.json', 'dc44aa60b218927b77f4f52124006
 
 
 CLEAR_ANIM_DIGEST = "4bed3598af86a7f82bd07b9a00f6cf83f056e157914cd4d12e9603b3690d6b3c"
+GAZE_NEARBY_DIGEST = "6c575e2bd500ef4f4ff972d267a0e6363eec5e035f7455b5681ffb5c1a051856"
+
+
+def reverse_gaze_nearby_mover(source, name):
+    """Peel the reviewed Gaze Nearby hunks (the newest layer, on top of Clear animations).
+
+    Skipped when the hunks are already gone; the older layers below still demand the exact
+    older source, so nothing unreviewed is accepted. The layer is the gaze status line only.
+    """
+    if name != "llactormover.cpp":
+        return source
+    import json
+    source = source.replace("\r\n", "\n")
+    allowed = json.loads((Path(__file__).parent / "gaze_nearby_mover_hunks.json").read_bytes().replace(b"\r\n", b"\n"))
+    if not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "gaze_nearby_mover_hunks.json", GAZE_NEARBY_DIGEST,
+                                     "reviewed Gaze Nearby")
 
 
 def reverse_clear_anim_mover(source, name):
@@ -25,6 +44,7 @@ def reverse_clear_anim_mover(source, name):
     if name not in ("llactormover.cpp", "llactormover.h"):
         return source
     source = source.replace("\r\n", "\n")
+    source = reverse_gaze_nearby_mover(source, name)
     import json
     allowed = json.loads((Path(__file__).parent / "clear_anim_studio_hunks.json").read_bytes().replace(b"\r\n", b"\n"))
     if not any(hunk["after"] in source for hunk in allowed["files"][name]):
@@ -703,11 +723,16 @@ struct Value {
 };
 using LLSD = Value;
 struct Combo {
-    Value value; std::vector<std::string> rows; bool visible = false;
-    Value getValue() const { return value; }
-    void removeall() { rows.clear(); clear(); }
+    Value value; std::vector<std::string> rows; std::vector<bool> enabled; bool visible = false;
+    bool focus = false, list_open = false;
+    bool isListVisible() const { return list_open; } void hideList() { list_open = false; }
+    Value getValue() const { return value; } Value getSelectedValue() const { return value; }
+    void removeall() { rows.clear(); enabled.clear(); clear(); }
     void clear() { value={}; }
-    void add(const std::string&, Value v) { rows.push_back(v.name); }
+    void add(const std::string&, Value v) { rows.push_back(v.name); enabled.push_back(true); }
+    void add(const std::string&, Value v, int, bool row_enabled) { rows.push_back(v.name); enabled.push_back(row_enabled); }
+    bool valueExists(const std::string& v) const { return std::find(rows.begin(),rows.end(),v)!=rows.end(); }
+    bool setCurrentByIndex(int i) { if(i<0||i>=int(rows.size())||!enabled[i]) return false; value=Value(rows[i]); return true; }
     bool setSelectedByValue(Value v, bool) { if(std::find(rows.begin(),rows.end(),v.name)==rows.end()) return false; value=v; return true; }
     void selectFirstItem() { if(!rows.empty()) value=rows.front(); }
     int getItemCount() const { return int(rows.size()); }
@@ -716,8 +741,21 @@ struct Combo {
 };
 void setVisibleIfChanged(Combo* c, bool visible) { c->visible=visible; }
 void setValueIfChanged(Combo* c, Value value, bool) { c->setSelectedByValue(value,true); }
-bool isEditing(Combo*) { return false; }
+bool isEditing(Combo* c) { return c->focus; }
 std::string actorName(LLUUID id) { return id.asString(); }
+constexpr int ADD_BOTTOM = 0; // Nearby section (selection rules: director_gaze_nearby_check.py)
+namespace ALGazeNearby { struct Entry { LLUUID mId; std::string mName; };
+    constexpr const char* HEADER_LABEL = "Nearby"; constexpr const char* HEADER_VALUE = "nearby-header";
+    inline std::string awayLabel(const std::string& n) { return n + " (away)"; }
+    inline bool sameMembers(const std::vector<Entry>& a, const std::vector<Entry>& b) {
+        if (a.size() != b.size()) return false;
+        for (size_t i = 0; i < a.size(); ++i) if (a[i].mId != b[i].mId || a[i].mName != b[i].mName) return false;
+        return true; } }
+std::vector<ALGazeNearby::Entry> nearby_double; // what nearbyFor() projects for the displayed actor
+bool rlv_hides_names = false;                   // RLV adapter for liveNearbyName
+LLUUID comboValueId(const std::string& v) { return (v.empty() || v == ALGazeNearby::HEADER_VALUE) ? LLUUID::null : LLUUID{std::stoi(v)}; }
+std::string knownPersonName(const LLUUID& id) { return id.asString() == "777" ? std::string("Departed") : std::string(); }
+bool listedAmong(const std::vector<ALGazeNearby::Entry>& people, const LLUUID& id) { for (const auto& e : people) if (e.mId == id) return true; return false; }
 struct AgentAvatar { LLUUID getID() const { return gAgentID; } } agentAvatar;
 AgentAvatar* gAgentAvatarp = &agentAvatar;
 bool isAgentAvatarValid() { return true; }
@@ -731,6 +769,16 @@ struct ALPanelLensGaze {
     bool mEditingEyeTarget = false;
     U64 mCastComboRevision = 0;
     LLUUID mCastComboActor, mCastComboSelection;
+    std::vector<ALGazeNearby::Entry> mCastNearbyShown; std::string mCastAwayShown;
+    LLUUID mCastAwayId; bool mCastAwayNamed = false, mCastRestore = false;
+    U64 mPollGeneration = 0, mAwayPoll = U64(-1); LLUUID mAwayFor; std::string mAwayLabelCached; bool mAwayNamedCached = false;
+    struct NearbyProjection { std::vector<ALGazeNearby::Entry> mList; } mCastProjection;
+    void nearbyFor(NearbyProjection& proj, const LLUUID&, const LLUUID&) const { proj.mList = nearby_double; }
+    bool liveNearbyName(const LLUUID& id, std::string& name) const {
+        if (rlv_hides_names) return false;
+        for (const auto& e : nearby_double) if (e.mId == id) { name = e.mName; return true; }
+        return false; }
+    void onCastCommit();
     bool mEditAll = false;
     LLUUID activeSlotActor() const { return LLDirectorCast::instance().getActiveActorId(); }
     uuid_vec_t editActors() const;
@@ -745,6 +793,19 @@ struct ALPanelLensGaze {
                       "void ALPanelLensGaze::refreshApplyGroupCombo("):
         fixture += method(nv / "alpanellensgaze.cpp", signature)
     fixture += method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::onPerformanceCommit(")
+    # The production Gaze cast commit. Only the edit-target walk is an adapter (it applies the
+    # mutation to the stub Cast's head/eye targets); everything before it is production code.
+    fixture += r'''
+template <typename Fn>
+void editDetailTargetsFor(const uuid_vec_t& actors, bool editing_eye, Fn&& mutate)
+{
+    auto& cast = LLDirectorCast::instance();
+    for (const LLUUID& actor : actors)
+        mutate(editing_eye && cast.hasEyeGazeTarget(actor) ? cast.eyeTargets[actor] : cast.targets[actor]);
+}
+'''
+    fixture += method(nv / "alpanellensgaze.cpp", "void ALPanelLensGaze::onCastCommit(").replace(
+        "LLActorMover::GazeTarget", "LLDirectorCast::GazeTarget")
     fixture += r'''
 struct LLFloater {};
 struct NullHandle { LLFloater* get() const { return nullptr; } } sRecoveryDirectorHandle;
@@ -1066,6 +1127,59 @@ int main() {
     gaze.refreshCastCombo(); assert(castPicker.value.name=="3");
     cast.setActiveActorId({2}); gaze.refreshCastCombo();
     assert(castPicker.value.name=="3" && castPicker.rows==std::vector<std::string>({"2","3"}));
+    // Gaze Nearby picker (production refreshCastCombo): disabled header, people after the cast,
+    // default row chosen by value (never the header), saved target kept (away only if absent).
+    nearby_double = {{LLUUID{90},"Nearby Person"}};
+    gaze.refreshCastCombo();
+    {
+        auto header = std::find(castPicker.rows.begin(), castPicker.rows.end(), std::string(ALGazeNearby::HEADER_VALUE));
+        assert(header != castPicker.rows.end() && !castPicker.enabled[header - castPicker.rows.begin()]);
+        assert(*(header + 1) == "90" && castPicker.value.name == "3");
+    }
+    const auto saved_ids = cast.mIds; const auto saved_eye = cast.eyeTargets[{80}].mCastRef;
+    cast.mIds = {}; cast.eyeTargets[{80}].mCastRef = {};
+    gaze.refreshCastCombo();
+    assert(castPicker.value.name == "90"); // empty cast: the default is the first PERSON, not the header
+    cast.eyeTargets[{80}].mCastRef = {777};
+    gaze.refreshCastCombo();
+    assert(castPicker.value.name == "777" && castPicker.rows.back() == "777"); // absent target stays visible as an away row
+    nearby_double = {{LLUUID{777},"Departed"}, {LLUUID{90},"Nearby Person"}};
+    gaze.refreshCastCombo();
+    assert(std::count(castPicker.rows.begin(), castPicker.rows.end(), std::string("777")) == 1 && castPicker.value.name == "777"); // present: listed once, not away
+    cast.mIds = saved_ids; cast.eyeTargets[{80}].mCastRef = saved_eye; nearby_double.clear();
+    gaze.refreshCastCombo();
+    assert(castPicker.rows == std::vector<std::string>({"2","3"}) && castPicker.value.name == "3");
+    // Gaze Nearby COMMITS (production onCastCommit; the combo has focus, so only a refusal's own
+    // forced rebuild can restore it): header, departed pick, RLV-hidden pick, live pick, saved away ref.
+    {
+        const auto saved_targets = cast.targets;
+        const LLUUID head_before = cast.eyeTargets[{80}].mCastRef; // {3}
+        nearby_double = {{LLUUID{90},"Nearby Person"}};
+        castPicker.focus = false; gaze.refreshCastCombo();
+        assert(castPicker.valueExists("90") && castPicker.valueExists(ALGazeNearby::HEADER_VALUE));
+        castPicker.focus = true;
+        castPicker.value = Value(std::string(ALGazeNearby::HEADER_VALUE)); gaze.onCastCommit();
+        assert(cast.eyeTargets[{80}].mCastRef == head_before && castPicker.value.name == "3"); // header refused + restored
+        nearby_double.clear(); // 90 left while the (focused) list still offers the row
+        castPicker.value = Value(std::string("90")); gaze.onCastCommit();
+        assert(cast.eyeTargets[{80}].mCastRef == head_before && castPicker.value.name == "3"); // departed pick refused + restored
+        nearby_double = {{LLUUID{90},"Nearby Person"}};
+        castPicker.focus = false; gaze.refreshCastCombo(); castPicker.focus = true;
+        rlv_hides_names = true;
+        castPicker.value = Value(std::string("90")); gaze.onCastCommit();
+        rlv_hides_names = false;
+        assert(cast.eyeTargets[{80}].mCastRef == head_before && castPicker.value.name == "3"); // RLV-hidden pick refused + restored
+        castPicker.value = Value(std::string("90")); gaze.onCastCommit();
+        assert(cast.eyeTargets[{80}].mCastRef == LLUUID{90}); // a live, nameable pick is stored as-is
+        cast.eyeTargets[{80}].mCastRef = LLUUID{777}; nearby_double.clear();
+        castPicker.focus = false; gaze.refreshCastCombo(); castPicker.focus = true;
+        assert(castPicker.rows.back() == "777");
+        castPicker.value = Value(std::string("777")); gaze.onCastCommit();
+        assert(cast.eyeTargets[{80}].mCastRef == LLUUID{777}); // the saved away reference is untouched
+        cast.eyeTargets[{80}].mCastRef = head_before; cast.targets = saved_targets; castPicker.focus = false;
+        gaze.refreshCastCombo();
+        assert(castPicker.rows == std::vector<std::string>({"2","3"}) && castPicker.value.name == "3");
+    }
     // N4: execute group mutations and the real combo rebuild; names need not
     // change for membership/representative invalidation to be required.
     gaze.refreshApplyGroupCombo(); assert(group.value.name=="ensemble");
@@ -1103,6 +1217,35 @@ int main() {
     subprocess.run(["cmd", "/d", "/c", str(directory / "compile.cmd")], check=True)
     subprocess.run([str(directory / "actor.exe")], check=True)
     print("PASS: picker/search contracts, independent renderer subjects, legacy Stepped scene round-trip, group publication, despawned-clone filter, compact rail geometry")
+    if "--negative-check" in sys.argv:
+        negative_gaze_nearby_controls(directory, fixture)
+
+
+def negative_gaze_nearby_controls(directory, fixture):
+    """Planted regressions in the production Gaze Nearby code the native fixture executes: each
+    mutated fixture must fail its asserts (compile errors are a broken control, not a pass)."""
+    header_block = ("        mCastRestore = true;\n        refreshCastCombo(true);\n        return;\n    }\n"
+                    "    const LLUUID cast_target")
+    departed_block = ("        mCastRestore = true;\n        refreshCastCombo(true);\n        return;\n    }\n"
+                      "    editDetailTargetsFor")
+    controls = {
+        "gaze_header_guard_removed": ("    if (value == ALGazeNearby::HEADER_VALUE)\n", "    if (false)\n"),
+        "gaze_header_restore_missing": (header_block, header_block.replace("mCastRestore = true;", "(void)0;")),
+        "gaze_departed_pick_accepted": ("!liveNearbyName(cast_target, live_name))", "false)"),
+        "gaze_refusal_restore_missing": (departed_block, departed_block.replace("mCastRestore = true;", "(void)0;")),
+        "gaze_restore_flag_ignored": ("current != mCastComboSelection || mCastRestore ||", "current != mCastComboSelection ||"),
+    }
+    for name, (old, new) in controls.items():
+        assert fixture.count(old) == 1, (name, fixture.count(old))
+        path = directory / ("negative_" + name)
+        path.with_suffix(".cpp").write_text(fixture.replace(old, new), encoding="utf-8")
+        command = directory / ("negative_" + name + ".cmd")
+        command.write_text(f'@echo off\ncall "{vcvars64()}" >nul\n'
+            f'cl /nologo /std:c++17 /EHsc /Fo"{path}.obj" /Fe"{path}.exe" "{path}.cpp"\nexit /b %ERRORLEVEL%\n', encoding="utf-8")
+        subprocess.run(["cmd", "/d", "/c", str(command)], check=True, capture_output=True)
+        result = subprocess.run([str(path.with_suffix(".exe"))], capture_output=True)
+        assert result.returncode != 0, "regression survived: " + name
+        print("PASS: planted Gaze Nearby regression rejected: " + name)
 
 
 if __name__ == "__main__":

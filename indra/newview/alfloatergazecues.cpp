@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alfloatergazecues.h"
+#include "algazenearbyname.h"
 
 #include "llagent.h"
 #include "llavatarnamecache.h"
@@ -41,16 +42,36 @@ std::string actorName(const LLUUID& id)
     if (const LLDirectorCast::CastMember* member =
             LLDirectorCast::instance().getMember(id))
     {
+        // Cast members keep their existing behaviour exactly: the stored name, else the name
+        // cache's complete name.
         if (!member->mLastName.empty())
         {
             return member->mLastName;
         }
+        if (LLAvatarName name; LLAvatarNameCache::get(id, &name))
+        {
+            return name.getCompleteName();
+        }
+        return "Unknown";
     }
-    if (LLAvatarName name; LLAvatarNameCache::get(id, &name))
+    // Not a cast member: a Nearby gaze target can reach the cue editor, so the shared rule
+    // applies (display name only, withheld under RLV name hiding and under @shownearby, never
+    // a UUID).
+    const std::string name = ALGazeNearby::nonCastTargetName(id);
+    return name.empty() ? std::string("Unknown") : name;
+}
+
+// Select a cue-combo row by value AND sync LLComboBox's remembered selection: setSelectedByValue
+// leaves mLastSelectedIndex stale, and hideList() re-selects that index later (a dismissed list
+// would silently pick another row).
+bool selectComboByValue(LLComboBox* combo, const std::string& value)
+{
+    if (!combo->setSelectedByValue(LLSD(value), true))
     {
-        return name.getCompleteName();
+        return false;
     }
-    return id.asString().substr(0, 8);
+    combo->setCurrentByIndex(combo->getCurrentIndex());
+    return true;
 }
 
 const char* macroName(ALGazeMath::EGazeCueMacro macro)
@@ -220,7 +241,28 @@ bool ALFloaterGazeCues::postBuild()
 void ALFloaterGazeCues::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
-    refreshCastCombo();
+    // Names RLV now hides (or that finally arrived) are redacted/healed on a 2 s tick, with no
+    // cue revision change: the cast combo's extra row and the cue list's target labels.
+    // Label-only: rows are relabelled IN PLACE and the combo keeps the user's current value, so a
+    // tick never reloads the editor or discards a pending edit (no loadEditor on this path).
+    const bool names_due = mNameClock.due();
+    refreshCastCombo(false, names_due);
+    if (names_due)
+    {
+        const LLDirectorCast::GazeCueList& cues = LLDirectorCast::instance().getGazeCues(mActorId);
+        const std::string signature = targetLabelSignature(cues);
+        if (signature != mCueLabelSignature)
+        {
+            if (relabelRows(mCueList, cues, 1))
+            {
+                mCueLabelSignature = signature;
+            }
+            else
+            {
+                refreshCueList(true); // the row set itself differs: a real model reload
+            }
+        }
+    }
     refreshCueList();
     refreshEditorVisibility();
     refreshInfluenceList();
@@ -293,6 +335,34 @@ LLDirectorCast::GazeCue ALFloaterGazeCues::makeDefaultCue(const LLUUID& actor_id
     return cue;
 }
 
+// Rewrite the target column of existing rows in place (names RLV hid, or that arrived). Nothing
+// is cleared, reselected or reloaded. False when the rows do not match the cues (caller reloads).
+//static
+bool ALFloaterGazeCues::relabelRows(LLScrollListCtrl* list, const LLDirectorCast::GazeCueList& cues, S32 column)
+{
+    if (list->getItemCount() != static_cast<S32>(cues.size()))
+    {
+        return false;
+    }
+    // Rows may be sorted: each row's VALUE (not its position) is the index of its cue.
+    for (S32 row = 0; row < list->getItemCount(); ++row)
+    {
+        LLScrollListItem* item = list->getItemByIndex(row);
+        const S32 cue_index = item ? item->getValue().asInteger() : -1;
+        LLScrollListCell* cell = item ? item->getColumn(column) : nullptr;
+        if (!cell || cue_index < 0 || cue_index >= static_cast<S32>(cues.size()))
+        {
+            return false;
+        }
+        cell->setValue(LLSD(targetLabel(cues[cue_index]))); // ui-draw-lint: allow(raw-write) Runs only on the 2 s name tick when a rendered label changed.
+    }
+    if (list->getSortColumnIndex() == column)
+    {
+        list->setNeedsSort(true); // the sorted column's text changed: re-sort on the next draw
+    }
+    return true;
+}
+
 S32 ALFloaterGazeCues::selectedCueIndex() const
 {
     LLScrollListItem* selected = mCueList->getFirstSelected();
@@ -311,6 +381,7 @@ void ALFloaterGazeCues::refreshCueList(bool force)
     const S32 old_selection = selectedCueIndex();
     mCueList->deleteAllItems();
     const LLDirectorCast::GazeCueList& cues = cast.getGazeCues(mActorId);
+    mCueLabelSignature = targetLabelSignature(cues);
     for (std::size_t i = 0; i < cues.size(); ++i)
     {
         LLSD row;
@@ -338,18 +409,79 @@ void ALFloaterGazeCues::refreshCueList(bool force)
     mDelete->setEnabled(selected);
 }
 
-void ALFloaterGazeCues::refreshCastCombo(bool force)
+// Label of the saved gaze target when it is NOT a cast member (picked from the Gaze page's Nearby
+// list): its display name (RLV-gated), the generic "Unknown person" when no name is known, and
+// "(away)" appended when the person is not here. Empty when the target is unset, the actor
+// itself or a cast member (those already have rows). Never a UUID.
+std::string ALFloaterGazeCues::extraTargetLabel() const
+{
+    const LLUUID ref = mEditorTarget.mCastRef;
+    if (ref.isNull() || ref == mActorId)
+    {
+        return std::string();
+    }
+    const uuid_vec_t& ids = LLDirectorCast::instance().getIds();
+    if (std::find(ids.begin(), ids.end(), ref) != ids.end())
+    {
+        return std::string();
+    }
+    if (LLDirectorCast::isSelf(ref))
+    {
+        return "You";
+    }
+    const std::string name = ALGazeNearby::nonCastTargetName(ref);
+    if (LLDirectorCast::instance().resolve(ref, false))
+    {
+        return name.empty() ? std::string("Unknown person") : name;
+    }
+    return ALGazeNearby::awayLabel(name);
+}
+
+std::string ALFloaterGazeCues::targetLabelSignature(const LLDirectorCast::GazeCueList& cues)
+{
+    std::string signature;
+    for (const LLDirectorCast::GazeCue& cue : cues)
+    {
+        signature += targetLabel(cue);
+        signature += '\n';
+    }
+    return signature;
+}
+
+// `force` is a model load (a cue was loaded): rows rebuild and the cue's own target is selected.
+// Otherwise this is a context or label refresh: the rows rebuild only if the cast ids, the actor,
+// the saved target id or the extra row's (id, label) changed, and the user's CURRENT combo value
+// is kept when its row still exists. The extra row's id is stored beside its label (mExtraRef), so
+// a label can never sit on the wrong id, and it vanishes when the target joins the cast.
+void ALFloaterGazeCues::refreshCastCombo(bool force, bool relabel)
 {
     std::string signature = mActorId.asString();
     for (const LLUUID& id : LLDirectorCast::instance().getIds())
     {
         signature += id.asString();
     }
-    if (!force && signature == mCastSignature)
+    signature += mEditorTarget.mCastRef.asString();
+    const bool context_changed = signature != mCastSignature;
+    if (!force && !relabel && !context_changed)
     {
         return;
     }
+    // Re-derived on a load, a context change and the 2 s tick, never per frame.
+    const std::string label = extraTargetLabel();
+    const LLUUID extra_ref = label.empty() ? LLUUID::null : mEditorTarget.mCastRef;
+    const bool rows_changed = force || context_changed || label != mExtraLabel || extra_ref != mExtraRef;
     mCastSignature = signature;
+    mExtraLabel = label;
+    mExtraRef = extra_ref;
+    if (!rows_changed)
+    {
+        return;
+    }
+    const std::string keep_value = force ? std::string() : mCastTarget->getSelectedValue().asString();
+    if (mCastTarget->isListVisible())
+    {
+        mCastTarget->hideList(); // a redaction must not leave the old rows open
+    }
     mCastTarget->removeall();
     mCastTarget->add("(unset)", LLSD(std::string()));
     for (const LLUUID& id : LLDirectorCast::instance().getIds())
@@ -359,9 +491,17 @@ void ALFloaterGazeCues::refreshCastCombo(bool force)
             mCastTarget->add(actorName(id), LLSD(id.asString()));
         }
     }
+    if (!mExtraLabel.empty())
+    {
+        // The saved non-cast target, so editing the cue (or adding one from it) keeps it.
+        mCastTarget->add(mExtraLabel, LLSD(mExtraRef.asString()));
+    }
+    if (!force && selectComboByValue(mCastTarget, keep_value))
+    {
+        return; // the user's current choice (a pending, uncommitted edit) is kept
+    }
     if (mEditorTarget.mCastRef.isNull() ||
-        !mCastTarget->setSelectedByValue(
-            LLSD(mEditorTarget.mCastRef.asString()), true))
+        !selectComboByValue(mCastTarget, mEditorTarget.mCastRef.asString()))
     {
         mCastTarget->selectFirstItem();
     }
@@ -387,12 +527,12 @@ void ALFloaterGazeCues::refreshEditorVisibility()
 void ALFloaterGazeCues::loadEditor(const LLDirectorCast::GazeCue& cue)
 {
     mEditorTarget = cue.mTarget;
+    refreshCastCombo(true); // offers the cue's saved non-cast target as a row before it is selected
     mTime->setValue(cue.mStartSec);
     mDuration->setValue(cue.mDurationSec);
     mTargetMode->setValue(static_cast<S32>(cue.mTarget.mMode));
     if (cue.mTarget.mCastRef.isNull() ||
-        !mCastTarget->setSelectedByValue(
-            LLSD(cue.mTarget.mCastRef.asString()), true))
+        !selectComboByValue(mCastTarget, cue.mTarget.mCastRef.asString()))
     {
         mCastTarget->selectFirstItem();
     }

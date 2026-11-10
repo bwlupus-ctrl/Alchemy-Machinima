@@ -79,6 +79,24 @@ void ALPanelGazeCues::draw()
     // Event-driven: the list rebuilds only when the cue revision or the actor changes; the
     // buttons are diff-guarded.
     refreshRows(false);
+    // Target names RLV now hides (or that finally arrived) are redacted/healed on a 2 s tick
+    // with no cue revision change, IN PLACE: the rows, selection and scroll position stay.
+    if (mNameClock.due())
+    {
+        const LLDirectorCast::GazeCueList& cues = LLDirectorCast::instance().getGazeCues(actorId());
+        const std::string signature = ALFloaterGazeCues::targetLabelSignature(cues);
+        if (signature != mLabelSignature)
+        {
+            if (ALFloaterGazeCues::relabelRows(mCueList, cues, 1))
+            {
+                mLabelSignature = signature;
+            }
+            else
+            {
+                refreshRows(true);
+            }
+        }
+    }
     refreshButtons();
     LLPanel::draw();
 }
@@ -111,8 +129,9 @@ void ALPanelGazeCues::refreshRows(bool force)
     const S32 old_selection = actor == mSeenActor ? selectedCueIndex() : -1;
     mSeenRevision = revision;
     mSeenActor = actor;
-    mCueList->deleteAllItems();
+    mCueList->deleteAllItems(); // ui-draw-lint: allow(raw-write) Rebuilt only when the cue revision, actor or rendered labels change.
     const LLDirectorCast::GazeCueList& cues = cast.getGazeCues(actor);
+    mLabelSignature = ALFloaterGazeCues::targetLabelSignature(cues);
     for (std::size_t i = 0; i < cues.size(); ++i)
     {
         LLSD row;
