@@ -5316,9 +5316,10 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 189–195 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 205–211 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 233–239 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 161–178 (n=18) | columnRelDenominator | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Denominator of a column's proportional width. A list without the selected bar keeps the original item-list width untouched; only an opted-in list (gutter > 0) uses the guarded column-area width, which cannot reach zero during a narrow reshape. |
+| 201–207 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 217–223 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 245–251 (n=7) | LLScrollColumnHeader::handleReshape | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/llui/llscrolllistctrl.cpp`
 

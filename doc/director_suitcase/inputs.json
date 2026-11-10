@@ -10,20 +10,7 @@
       "OWNED": 918,
       "TOOLING": 454
     },
-    "dirty_product_inputs": [
-      "indra/llui/llscrolllistcolumn.cpp",
-      "indra/newview/alghostclearanim.h",
-      "indra/newview/alghoststudio.cpp",
-      "indra/newview/alghoststudio.h",
-      "indra/newview/alpanelghoststudio.cpp",
-      "indra/newview/llactormover.cpp",
-      "indra/newview/llactormover.h",
-      "indra/newview/tests/alghostclearanim_test.cpp",
-      "scripts/code_tools/clear_anim_studio_hunks.json",
-      "scripts/code_tools/director_actor_bar_check.py",
-      "scripts/code_tools/director_clone_clear_check.py",
-      "scripts/code_tools/director_list_select_check.py"
-    ],
+    "dirty_product_inputs": [],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -207,9 +194,9 @@
       },
       "wiring_rows": 2299
     },
-    "head_source_tree": "5c86f94977f6f58448751fa1b066dd844f4b4677",
+    "head_source_tree": "a653c0abd66e86519f131bc9b4506ef2a199516f",
     "hook_files": 541,
-    "hunks": 3372,
+    "hunks": 3373,
     "input_sha256": "2508d1491b5ea91be45417ef94e1edb13a23c408029cac05b34e40d54a25b040",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",

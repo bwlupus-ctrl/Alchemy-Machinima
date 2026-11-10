@@ -164621,6 +164621,47 @@
       ],
       "hunks": [
         {
+          "base_count": 6,
+          "base_start": 161,
+          "candidate_features_from_subjects": [
+            "clones",
+            "gaze"
+          ],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "columnRelDenominator"
+          ],
+          "git_context": "LLView* LLScrollColumnHeader::findSnapEdge(S32& new_edge_val, const LLCoordGL& m",
+          "guard_evidence": [
+            "if (list->getSelectedBarGutter() > 0)"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 18,
+          "head_end": 178,
+          "head_start": 161,
+          "id": "indra/llui/llscrolllistcolumn.cpp@161,18",
+          "patch": "     return this;\n }\n \n+// Denominator of a column's proportional width. A list without the selected bar keeps the\n+// original item-list width untouched; only an opted-in list (gutter > 0) uses the guarded\n+// column-area width, which cannot reach zero during a narrow reshape.\n+static F32 columnRelDenominator(LLScrollListCtrl* list)\n+{\n+    if (list->getSelectedBarGutter() > 0)\n+    {\n+        return (F32)llmax(1, list->getColumnAreaWidth());\n+    }\n+    return (F32)list->getItemListRect().getWidth();\n+}\n+\n void LLScrollColumnHeader::handleReshape(const LLRect& new_rect, bool by_user)\n {\n     S32 new_width = new_rect.getWidth();\n",
+          "purpose": "Comment evidence: Denominator of a column's proportional width. A list without the selected bar keeps the original item-list width untouched; only an opted-in list (gutter > 0) uses the guarded column-area width, which cannot reach zero during a narrow reshape.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "b571f55f6a0",
+              "subject": "Clones: Clear animations review round 4 (parked gaze release + lifetime)"
+            },
+            {
+              "commit": "a53ab136326",
+              "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [],
+          "slice": 99
+        },
+        {
           "base_count": 7,
           "base_start": 189,
           "candidate_features_from_subjects": [
@@ -164639,13 +164680,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 195,
-          "head_start": 189,
-          "id": "indra/llui/llscrolllistcolumn.cpp@189,7",
-          "patch": "                         columnp->setWidth(columnp->getWidth() + remaining_width);\n                         if (columnp->mRelWidth > 0.f)\n                         {\n-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());\n                         }\n                         // all padding went to this widget, we're done\n                         break;\n",
+          "head_end": 207,
+          "head_start": 201,
+          "id": "indra/llui/llscrolllistcolumn.cpp@201,7",
+          "patch": "                         columnp->setWidth(columnp->getWidth() + remaining_width);\n                         if (columnp->mRelWidth > 0.f)\n                         {\n-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+                            columnp->mRelWidth = (F32)columnp->getWidth() / columnRelDenominator(mColumn->mParentCtrl);\n                         }\n                         // all padding went to this widget, we're done\n                         break;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b571f55f6a0",
+              "subject": "Clones: Clear animations review round 4 (parked gaze release + lifetime)"
+            },
             {
               "commit": "a53ab136326",
               "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
@@ -164674,13 +164719,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 211,
-          "head_start": 205,
-          "id": "indra/llui/llscrolllistcolumn.cpp@205,7",
-          "patch": "                         columnp->setWidth(columnp->getWidth() - llmin(columnp->getWidth() - MIN_COLUMN_WIDTH, delta_width));\n                         if (columnp->mRelWidth > 0.f)\n                         {\n-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());\n                         }\n                     }\n \n",
+          "head_end": 223,
+          "head_start": 217,
+          "id": "indra/llui/llscrolllistcolumn.cpp@217,7",
+          "patch": "                         columnp->setWidth(columnp->getWidth() - llmin(columnp->getWidth() - MIN_COLUMN_WIDTH, delta_width));\n                         if (columnp->mRelWidth > 0.f)\n                         {\n-                            columnp->mRelWidth = (F32)columnp->getWidth() / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+                            columnp->mRelWidth = (F32)columnp->getWidth() / columnRelDenominator(mColumn->mParentCtrl);\n                         }\n                     }\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b571f55f6a0",
+              "subject": "Clones: Clear animations review round 4 (parked gaze release + lifetime)"
+            },
             {
               "commit": "a53ab136326",
               "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"
@@ -164709,13 +164758,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 239,
-          "head_start": 233,
-          "id": "indra/llui/llscrolllistcolumn.cpp@233,7",
-          "patch": "         // update proportional spacing\n         if (mColumn->mRelWidth > 0.f)\n         {\n-            mColumn->mRelWidth = (F32)new_width / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+            mColumn->mRelWidth = (F32)new_width / (F32)llmax(1, mColumn->mParentCtrl->getColumnAreaWidth());\n         }\n \n         // tell scroll list to layout columns again\n",
+          "head_end": 251,
+          "head_start": 245,
+          "id": "indra/llui/llscrolllistcolumn.cpp@245,7",
+          "patch": "         // update proportional spacing\n         if (mColumn->mRelWidth > 0.f)\n         {\n-            mColumn->mRelWidth = (F32)new_width / (F32)mColumn->mParentCtrl->getItemListRect().getWidth();\n+            mColumn->mRelWidth = (F32)new_width / columnRelDenominator(mColumn->mParentCtrl);\n         }\n \n         // tell scroll list to layout columns again\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "b571f55f6a0",
+              "subject": "Clones: Clear animations review round 4 (parked gaze release + lifetime)"
+            },
             {
               "commit": "a53ab136326",
               "subject": "Clones: Clear animations review round 3 (Hot gaze ownership, mirror)"

@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3372 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3373 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (181)
 
@@ -188,7 +188,7 @@ All 3372 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1809)
+## Unknown hunk features (1810)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -1482,9 +1482,10 @@ All 3372 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llscrolllistcell.cpp@795,3`
 - `indra/llui/llscrolllistcell.h@67,8`
 - `indra/llui/llscrolllistcell.h@92,7`
-- `indra/llui/llscrolllistcolumn.cpp@189,7`
-- `indra/llui/llscrolllistcolumn.cpp@205,7`
-- `indra/llui/llscrolllistcolumn.cpp@233,7`
+- `indra/llui/llscrolllistcolumn.cpp@161,18`
+- `indra/llui/llscrolllistcolumn.cpp@201,7`
+- `indra/llui/llscrolllistcolumn.cpp@217,7`
+- `indra/llui/llscrolllistcolumn.cpp@245,7`
 - `indra/llui/llscrolllistctrl.cpp@28,7`
 - `indra/llui/llscrolllistctrl.cpp@710,11`
 - `indra/llui/llscrolllistctrl.cpp@769,7`
