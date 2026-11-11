@@ -60,6 +60,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/llprismlens.cpp`
 - `indra/newview/skins/default/xui/en/floater_director.xml`
 - `indra/newview/skins/default/xui/en/floater_prism_manager.xml`
+- `indra/newview/skins/default/xui/en/menu_ghost_clone.xml`
 - `indra/newview/skins/default/xui/en/panel_ghost_studio.xml`
 - `indra/newview/skins/default/xui/en/panel_weather_settings.xml`
 - `indra/newview/slweather.cpp`
@@ -266,6 +267,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/skins/default/xui/en/menu_attachment_self.xml`
 - `indra/newview/skins/default/xui/en/menu_avatar_other.xml`
 - `indra/newview/skins/default/xui/en/menu_avatar_self.xml`
+- `indra/newview/skins/default/xui/en/menu_ghost_clone.xml`
 - `indra/newview/skins/default/xui/en/notifications.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml`

@@ -82222,7 +82222,8 @@
           "base_start": 21,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -82244,6 +82245,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "6888a557370",
+              "subject": "Clone menu: overlay right-click, Style, Gaze, Speed, Back to live"
+            },
+            {
               "commit": "7e48494a8c2",
               "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
             },
@@ -82258,10 +82263,6 @@
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
-            },
-            {
-              "commit": "1f92ed02c8e",
-              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
             }
           ],
           "scope": "unknown-review",
@@ -82273,7 +82274,8 @@
           "base_start": 311,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -82295,6 +82297,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "6888a557370",
+              "subject": "Clone menu: overlay right-click, Style, Gaze, Speed, Back to live"
+            },
+            {
               "commit": "7e48494a8c2",
               "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
             },
@@ -82309,10 +82315,6 @@
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
-            },
-            {
-              "commit": "1f92ed02c8e",
-              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
             }
           ],
           "scope": "unknown-review",
@@ -82326,7 +82328,8 @@
           "base_start": 4232,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -82350,6 +82353,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "6888a557370",
+              "subject": "Clone menu: overlay right-click, Style, Gaze, Speed, Back to live"
+            },
+            {
               "commit": "7e48494a8c2",
               "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
             },
@@ -82364,10 +82371,6 @@
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
-            },
-            {
-              "commit": "1f92ed02c8e",
-              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
             }
           ],
           "scope": "creative-candidate",
@@ -82383,7 +82386,8 @@
           "base_start": 4278,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -82407,6 +82411,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "6888a557370",
+              "subject": "Clone menu: overlay right-click, Style, Gaze, Speed, Back to live"
+            },
+            {
               "commit": "7e48494a8c2",
               "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
             },
@@ -82421,10 +82429,6 @@
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
-            },
-            {
-              "commit": "1f92ed02c8e",
-              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
             }
           ],
           "scope": "creative-candidate",
@@ -82440,7 +82444,8 @@
           "base_start": 4315,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -82464,6 +82469,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "6888a557370",
+              "subject": "Clone menu: overlay right-click, Style, Gaze, Speed, Back to live"
+            },
+            {
               "commit": "7e48494a8c2",
               "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
             },
@@ -82478,10 +82487,6 @@
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
-            },
-            {
-              "commit": "1f92ed02c8e",
-              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
             }
           ],
           "scope": "creative-candidate",
@@ -82496,7 +82501,8 @@
           "base_start": 4531,
           "candidate_features_from_subjects": [
             "clones",
-            "director-shell"
+            "director-shell",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -82513,14 +82519,18 @@
           "git_context": "and report the problem.",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 56,
-          "head_end": 4599,
+          "head_count": 63,
+          "head_end": 4606,
           "head_start": 4544,
-          "id": "indra/newview/skins/default/xui/en/strings.xml@4544,56",
-          "patch": "     <string name=\"TooltipDistance\">\n         Distance: [OBJECT_DISTANCE]\n     </string>\n+\n+    <!-- [F4] Phototools environment quick-switcher combo placeholder entries\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F4, alfloaterphototools.cpp) -->\n+    <string name=\"QP_WL_Region_Default\">Shared Environment</string>\n+    <string name=\"QP_WL_Day_Cycle_Based\">Day cycle based</string>\n+    <string name=\"QP_WL_None\">None</string>\n+\n+    <!-- [BDMerge F6] Pose Stand animation display names\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F6, fsfloaterposestand.cpp / app_settings/posestand.xml) -->\n+    <string name=\"PS_T_Pose\">T-Pose</string>\n+    <string name=\"PS_Arms_Down_Legs_together\">Arms down, Legs together</string>\n+    <string name=\"PS_Arms_down_sitting\">Arms down, sitting</string>\n+    <string name=\"PS_Arms_downward_Legs_together\">Arms downward, Legs together</string>\n+    <string name=\"PS_Arms_downward_Legs_apart\">Arms downward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_apart\">Arms forward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_together\">Arms forward, Legs together</string>\n+    <string name=\"PS_Arms_straight_Legs_apart\">Arms straight, Legs apart</string>\n+    <string name=\"PS_Arms_straight_sitting\">Arms straight, sitting</string>\n+    <string name=\"PS_Arms_upward_Legs_apart\">Arms upward, Legs apart</string>\n+    <string name=\"PS_Arms_upward_Legs_together\">Arms upward, Legs together</string>\n+    <string name=\"FSInventoryCustomTabDefaultName\">Custom</string>\n+    <string name=\"FSInventoryCustomTabShowHidden\">Show hidden tabs</string>\n+    <string name=\"GhostCloneMenuNotReady\">clone not ready</string>\n+    <string name=\"GhostCloneMenuPosed\">posed: release the pose first</string>\n+    <string name=\"GhostCloneMenuEditBusy\">finish Place or crowd placement first</string>\n+    <string name=\"GhostCloneMenuMirrorEntityOnly\">entity clones only</string>\n+    <string name=\"GhostCloneMenuFreezeFail\">Nothing to grab yet -- clone must be rendering</string>\n+    <string name=\"GhostCloneMenuResizeFail\">The clone size could not be changed</string>\n+    <string name=\"GhostCloneMenuGroupDelete\">Expanded group members cannot be deleted one by one; delete the group row</string>\n+    <string name=\"GhostCloneMenuOverlayN\">Overlay [N]</string>\n+    <string name=\"GhostCloneMenuOverlayInGroup\">this overlay is in a group: use the group row in the Clones list</string>\n+    <string name=\"DirectorSelectHud\">not for a HUD attachment</string>\n+    <string name=\"GhostCloneMenuNoCrowd\">needs one crowd</string>\n+    <string name=\"GhostCloneMenuPausedMirror\">paused: press Play first</string>\n+    <string name=\"DirectorSelectPickBusy\">Finish the current tool first (Edit clones, Place, crowd placement or another pick), then use Select</string>\n+    <string name=\"DirectorSelectNoAvatar\">not an avatar the Director can use</string>\n+    <string name=\"DirectorSelectNoClone\">that clone is gone</string>\n+    <string name=\"DirectorSelectCloneNotReady\">clone not ready</string>\n+    <string name=\"DirectorSelectCastRefused\">The Cast refused this avatar</string>\n+    <string name=\"GhostCloneMenuCastSuffix\">cast</string>\n+    <string name=\"GhostCloneMenuNobodyNearby\">No one nearby</string>\n+    <string name=\"GhostCloneMenuPersonGone\">That person is no longer nearby</string>\n+    <string name=\"GhostCloneMenuAnimUnnamed\">Animation</string>\n+    <string name=\"GhostCloneMenuSwapYou\">You</string>\n+    <string name=\"GhostCloneMenuNoCast\">No cast members</string>\n+    <string name=\"GhostCloneMenuAlreadyFaded\">already faded out</string>\n+    <string name=\"GhostCloneMenuNotFaded\">not faded out</string>\n+    <string name=\"GhostCloneMenuAnimGone\">[NAME] is no longer in your inventory</string>\n+    <string name=\"GhostCloneMenuInventoryLoading\">Your inventory is still loading</string>\n+    <string name=\"GhostCloneMenuWholeGroup\">applies to the whole group - use the group row</string>\n </strings>\n",
+          "id": "indra/newview/skins/default/xui/en/strings.xml@4544,63",
+          "patch": "     <string name=\"TooltipDistance\">\n         Distance: [OBJECT_DISTANCE]\n     </string>\n+\n+    <!-- [F4] Phototools environment quick-switcher combo placeholder entries\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F4, alfloaterphototools.cpp) -->\n+    <string name=\"QP_WL_Region_Default\">Shared Environment</string>\n+    <string name=\"QP_WL_Day_Cycle_Based\">Day cycle based</string>\n+    <string name=\"QP_WL_None\">None</string>\n+\n+    <!-- [BDMerge F6] Pose Stand animation display names\n+         (donor: Firestorm I:\\enve indra/newview/skins/default/xui/en/strings.xml;\n+         campaign item F6, fsfloaterposestand.cpp / app_settings/posestand.xml) -->\n+    <string name=\"PS_T_Pose\">T-Pose</string>\n+    <string name=\"PS_Arms_Down_Legs_together\">Arms down, Legs together</string>\n+    <string name=\"PS_Arms_down_sitting\">Arms down, sitting</string>\n+    <string name=\"PS_Arms_downward_Legs_together\">Arms downward, Legs together</string>\n+    <string name=\"PS_Arms_downward_Legs_apart\">Arms downward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_apart\">Arms forward, Legs apart</string>\n+    <string name=\"PS_Arms_forward_Legs_together\">Arms forward, Legs together</string>\n+    <string name=\"PS_Arms_straight_Legs_apart\">Arms straight, Legs apart</string>\n+    <string name=\"PS_Arms_straight_sitting\">Arms straight, sitting</string>\n+    <string name=\"PS_Arms_upward_Legs_apart\">Arms upward, Legs apart</string>\n+    <string name=\"PS_Arms_upward_Legs_together\">Arms upward, Legs together</string>\n+    <string name=\"FSInventoryCustomTabDefaultName\">Custom</string>\n+    <string name=\"FSInventoryCustomTabShowHidden\">Show hidden tabs</string>\n+    <string name=\"GhostCloneMenuNotReady\">clone not ready</string>\n+    <string name=\"GhostCloneMenuPosed\">posed: release the pose first</string>\n+    <string name=\"GhostCloneMenuEditBusy\">finish Place or crowd placement first</string>\n+    <string name=\"GhostCloneMenuMirrorEntityOnly\">entity clones only</string>\n+    <string name=\"GhostCloneMenuFreezeFail\">Nothing to grab yet -- clone must be rendering</string>\n+    <string name=\"GhostCloneMenuResizeFail\">The clone size could not be changed</string>\n+    <string name=\"GhostCloneMenuGroupDelete\">Expanded group members cannot be deleted one by one; delete the group row</string>\n+    <string name=\"GhostCloneMenuOverlayN\">Overlay [N]</string>\n+    <string name=\"GhostCloneMenuOverlayInGroup\">this overlay is in a group: use the group row in the Clones list</string>\n+    <string name=\"DirectorSelectHud\">not for a HUD attachment</string>\n+    <string name=\"GhostCloneMenuNoCrowd\">needs one crowd</string>\n+    <string name=\"GhostCloneMenuPausedMirror\">paused: press Play first</string>\n+    <string name=\"GhostCloneMenuAlreadyLive\">already live</string>\n+    <string name=\"GhostCloneMenuCastGone\">That cast member is no longer available</string>\n+    <string name=\"GhostCloneMenuSpeedInfo\">Speed [SPEED]x</string>\n+    <string name=\"GhostCloneMenuSpeedMixed\">Speed mixed</string>\n+    <string name=\"GhostCloneMenuSpeedAtMax\">already at the fastest speed</string>\n+    <string name=\"GhostCloneMenuSpeedAtMin\">already at the slowest speed</string>\n+    <string name=\"GhostCloneMenuSpeedAtOne\">already at normal speed</string>\n+    <string name=\"DirectorSelectPickBusy\">Finish the current tool first (Edit clones, Place, crowd placement or another pick), then use Select</string>\n+    <string name=\"DirectorSelectNoAvatar\">not an avatar the Director can use</string>\n+    <string name=\"DirectorSelectNoClone\">that clone is gone</string>\n+    <string name=\"DirectorSelectCloneNotReady\">clone not ready</string>\n+    <string name=\"DirectorSelectCastRefused\">The Cast refused this avatar</string>\n+    <string name=\"GhostCloneMenuCastSuffix\">cast</string>\n+    <string name=\"GhostCloneMenuNobodyNearby\">No one nearby</string>\n+    <string name=\"GhostCloneMenuPersonGone\">That person is no longer nearby</string>\n+    <string name=\"GhostCloneMenuAnimUnnamed\">Animation</string>\n+    <string name=\"GhostCloneMenuSwapYou\">You</string>\n+    <string name=\"GhostCloneMenuNoCast\">No cast members</string>\n+    <string name=\"GhostCloneMenuAlreadyFaded\">already faded out</string>\n+    <string name=\"GhostCloneMenuNotFaded\">not faded out</string>\n+    <string name=\"GhostCloneMenuAnimGone\">[NAME] is no longer in your inventory</string>\n+    <string name=\"GhostCloneMenuInventoryLoading\">Your inventory is still loading</string>\n+    <string name=\"GhostCloneMenuWholeGroup\">applies to the whole group - use the group row</string>\n </strings>\n",
           "purpose": "Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "6888a557370",
+              "subject": "Clone menu: overlay right-click, Style, Gaze, Speed, Back to live"
+            },
             {
               "commit": "7e48494a8c2",
               "subject": "Clones: Look / turn, Animation and Appearance menus, Fade, list right-click"
@@ -82536,10 +82546,6 @@
             {
               "commit": "ba980568fa4",
               "subject": "About: Absolute Cinema name, fork notice, credits"
-            },
-            {
-              "commit": "1f92ed02c8e",
-              "subject": "Inventory: custom tabs (saved filter tabs), ported from Firestorm FIRE-35598"
             }
           ],
           "scope": "creative-candidate",
@@ -82553,8 +82559,10 @@
             "FSInventoryCustomTabDefaultName",
             "FSInventoryCustomTabShowHidden",
             "GhostCloneMenuAlreadyFaded",
+            "GhostCloneMenuAlreadyLive",
             "GhostCloneMenuAnimGone",
             "GhostCloneMenuAnimUnnamed",
+            "GhostCloneMenuCastGone",
             "GhostCloneMenuCastSuffix",
             "GhostCloneMenuEditBusy",
             "GhostCloneMenuFreezeFail",
@@ -82572,6 +82580,11 @@
             "GhostCloneMenuPersonGone",
             "GhostCloneMenuPosed",
             "GhostCloneMenuResizeFail",
+            "GhostCloneMenuSpeedAtMax",
+            "GhostCloneMenuSpeedAtMin",
+            "GhostCloneMenuSpeedAtOne",
+            "GhostCloneMenuSpeedInfo",
+            "GhostCloneMenuSpeedMixed",
             "GhostCloneMenuSwapYou",
             "GhostCloneMenuWholeGroup",
             "PS_Arms_Down_Legs_together",

@@ -2315,6 +2315,15 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alghostcloneactions.cpp",
+    "dependency": "indra/newview/llactormover.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alghostcloneactions.h",
     "dependency": "indra/newview/alghoststudio.h",
     "excluded": false,
@@ -2397,6 +2406,24 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/algazenearby.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/algazenearbyname.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
     "dependency": "indra/newview/alghoststudio.h",
     "excluded": false,
     "origin": "fork-added",
@@ -2452,6 +2479,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghostclonemenu.cpp",
     "dependency": "indra/newview/altoolghostplace.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/llactormover.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -25,6 +25,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/algazerecruit.h`
 - `indra/newview/alghostanimmirrormath.h`
 - `indra/newview/alghostclearanim.h`
+- `indra/newview/alghostcloneactions.cpp`
+- `indra/newview/alghostcloneactions.h`
+- `indra/newview/alghostclonemenu.cpp`
 - `indra/newview/alghoststudio.cpp`
 - `indra/newview/alghoststudio.h`
 - `indra/newview/alkitpage.cpp`
@@ -63,6 +66,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/skins/default/xui/en/floater_actor_mover.xml`
 - `indra/newview/skins/default/xui/en/floater_director.xml`
 - `indra/newview/skins/default/xui/en/floater_gaze_cues.xml`
+- `indra/newview/skins/default/xui/en/menu_ghost_clone.xml`
 - `indra/newview/skins/default/xui/en/panel_gaze_cues_src.xml`
 - `indra/newview/skins/default/xui/en/panel_ghost_studio.xml`
 - `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
@@ -207,6 +211,7 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/menu_attachment_self.xml`
 - `indra/newview/skins/default/xui/en/menu_avatar_other.xml`
 - `indra/newview/skins/default/xui/en/menu_avatar_self.xml`
+- `indra/newview/skins/default/xui/en/menu_ghost_clone.xml`
 - `indra/newview/skins/default/xui/en/menu_viewer.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml`
@@ -269,6 +274,9 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1455, "text": "algazerecruit.h", "source": "indra/newview/algazerecruit.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1374, "text": "alghostanimmirrormath.h", "source": "indra/newview/alghostanimmirrormath.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1381, "text": "alghostclearanim.h # [ClearAnim]", "source": "indra/newview/alghostclearanim.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 404, "text": "alghostcloneactions.cpp # [CloneMenu] Clones page row actions shared with the menus", "source": "indra/newview/alghostcloneactions.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1390, "text": "alghostcloneactions.h", "source": "indra/newview/alghostcloneactions.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu", "source": "indra/newview/alghostclonemenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1378, "text": "alghoststudio.h", "source": "indra/newview/alghoststudio.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 213, "text": "alkitpage.cpp", "source": "indra/newview/alkitpage.cpp"}

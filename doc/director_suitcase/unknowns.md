@@ -2511,7 +2511,7 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/strings.xml@4234,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
 - `indra/newview/skins/default/xui/en/strings.xml@4284,10`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
 - `indra/newview/skins/default/xui/en/strings.xml@4325,9`: unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>)
-- `indra/newview/skins/default/xui/en/strings.xml@4544,56`: unknown/non-function (and report the problem.)
+- `indra/newview/skins/default/xui/en/strings.xml@4544,63`: unknown/non-function (and report the problem.)
 - `indra/newview/viewer_manifest.py@76,12`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@91,6`: unknown/non-function (class ViewerManifest(LLManifest):)
 - `indra/newview/viewer_manifest.py@108,12`: unknown/non-function (class ViewerManifest(LLManifest):)

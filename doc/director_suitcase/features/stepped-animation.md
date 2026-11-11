@@ -14,6 +14,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alcinelightrigmanager.cpp`
 - `indra/newview/aldirectoralloff.h`
 - `indra/newview/alghostanimmirrormath.h`
+- `indra/newview/alghostcloneactions.cpp`
+- `indra/newview/alghostcloneactions.h`
+- `indra/newview/alghostclonemenu.cpp`
+- `indra/newview/alghostclonemenulogic.h`
 - `indra/newview/alghoststudio.cpp`
 - `indra/newview/alghoststudio.h`
 - `indra/newview/alkitpresets.cpp`
@@ -149,6 +153,10 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 1162, "text": "aldirectoralloff.h", "source": "indra/newview/aldirectoralloff.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 227, "text": "alfloaterblocked.cpp", "source": "indra/newview/alfloaterblocked.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1374, "text": "alghostanimmirrormath.h", "source": "indra/newview/alghostanimmirrormath.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 404, "text": "alghostcloneactions.cpp # [CloneMenu] Clones page row actions shared with the menus", "source": "indra/newview/alghostcloneactions.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1390, "text": "alghostcloneactions.h", "source": "indra/newview/alghostcloneactions.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu", "source": "indra/newview/alghostclonemenu.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1392, "text": "alghostclonemenulogic.h", "source": "indra/newview/alghostclonemenulogic.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1378, "text": "alghoststudio.h", "source": "indra/newview/alghoststudio.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 215, "text": "alkitpresets.cpp", "source": "indra/newview/alkitpresets.cpp"}

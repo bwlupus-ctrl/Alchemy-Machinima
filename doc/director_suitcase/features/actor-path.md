@@ -34,6 +34,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/algazepolicy.h`
 - `indra/newview/algazerecruit.h`
 - `indra/newview/alghostattachmentenumerator.h`
+- `indra/newview/alghostcloneactions.cpp`
+- `indra/newview/alghostcloneactions.h`
+- `indra/newview/alghostclonemenu.cpp`
 - `indra/newview/alghostmotionmath.h`
 - `indra/newview/alghostspawnengine.cpp`
 - `indra/newview/alghoststudio.cpp`
@@ -270,6 +273,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1458, "text": "algazepolicy.h", "source": "indra/newview/algazepolicy.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1455, "text": "algazerecruit.h", "source": "indra/newview/algazerecruit.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1311, "text": "alghostattachmentenumerator.h", "source": "indra/newview/alghostattachmentenumerator.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 404, "text": "alghostcloneactions.cpp # [CloneMenu] Clones page row actions shared with the menus", "source": "indra/newview/alghostcloneactions.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1390, "text": "alghostcloneactions.h", "source": "indra/newview/alghostcloneactions.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu", "source": "indra/newview/alghostclonemenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1452, "text": "alghostmotionmath.h # [GhostMotionModes]", "source": "indra/newview/alghostmotionmath.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 345, "text": "alghostspawnengine.cpp", "source": "indra/newview/alghostspawnengine.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}

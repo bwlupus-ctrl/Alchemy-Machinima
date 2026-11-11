@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "ccf352ba48ea2ec61b0986b106d8129dbd90355b",
+    "head_source_tree": "570f7f4e3f0b15831af653314ec10be55b169541",
     "hook_files": 543,
     "hunks": 3404,
-    "input_sha256": "174cebb4ce3697eb865f561b3dc783033a5e51e0b17fd9eda3300c3d6d7cd8ca",
+    "input_sha256": "d32bb874a910a4a0ae48e928b03bcc36c33e7d802a2ed33e8a122a5d8fe46f07",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -14015,7 +14015,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -14036,7 +14037,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15488,7 +15490,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15497,18 +15500,22 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "actor-path",
         "clones",
-        "crowd"
+        "crowd",
+        "gaze",
+        "stepped-animation"
       ],
       "git_status": "A",
-      "layer": 4,
+      "layer": 3,
       "path": "indra/newview/alghostcloneactions.cpp",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15518,9 +15525,12 @@
       ],
       "features": [
         "actor-bar",
+        "actor-path",
         "clones",
         "crowd",
-        "director-shell"
+        "director-shell",
+        "gaze",
+        "stepped-animation"
       ],
       "git_status": "A",
       "layer": 2,
@@ -15530,7 +15540,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15540,9 +15551,12 @@
       ],
       "features": [
         "actor-bar",
+        "actor-path",
         "clones",
         "crowd",
-        "director-shell"
+        "director-shell",
+        "gaze",
+        "stepped-animation"
       ],
       "git_status": "A",
       "layer": 2,
@@ -15572,7 +15586,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15583,7 +15598,8 @@
       "features": [
         "actor-bar",
         "clones",
-        "director-shell"
+        "director-shell",
+        "stepped-animation"
       ],
       "git_status": "A",
       "layer": 2,
@@ -36563,7 +36579,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -36574,7 +36591,10 @@
       "features": [
         "clones",
         "crowd",
-        "director-shell"
+        "director-shell",
+        "gaze",
+        "vcam",
+        "weather"
       ],
       "git_status": "A",
       "layer": 2,
@@ -38439,7 +38459,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,

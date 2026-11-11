@@ -1815,7 +1815,7 @@ HEAD coordinates; guards/features are candidate evidence
 | 4234–4243 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
 | 4284–4293 (n=10) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | environment | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge B13] BD environment editor toolbar buttons --> |
 | 4325–4333 (n=9) | unknown/non-function (name="Command_360_Capture_Label">360 snapshot</string>) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 4544–4599 (n=56) | unknown/non-function (and report the problem.) | clones, crowd, director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names |
+| 4544–4606 (n=63) | unknown/non-function (and report the problem.) | clones, crowd, director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: [F4] Phototools environment quick-switcher combo placeholder entries [BDMerge F6] Pose Stand animation display names |
 
 ## Slice 2: `indra/newview/viewer_manifest.py`
 

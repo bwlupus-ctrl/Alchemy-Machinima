@@ -68,11 +68,11 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [common-ui](features/common-ui.md) | 1 | 88 | 23 | 5 |
 | [director-shell](features/director-shell.md) | 2 | 332 | 60 | 204 |
 | [actor-bar](features/actor-bar.md) | 3 | 75 | 14 | 0 |
-| [actor-path](features/actor-path.md) | 3 | 105 | 34 | 34 |
+| [actor-path](features/actor-path.md) | 3 | 108 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 80 | 31 | 493 |
 | [composition](features/composition.md) | 3 | 42 | 23 | 12 |
-| [gaze](features/gaze.md) | 3 | 62 | 27 | 88 |
-| [stepped-animation](features/stepped-animation.md) | 3 | 28 | 20 | 53 |
+| [gaze](features/gaze.md) | 3 | 66 | 27 | 88 |
+| [stepped-animation](features/stepped-animation.md) | 3 | 32 | 20 | 53 |
 | [clones](features/clones.md) | 4 | 197 | 97 | 83 |
 | [crowd](features/crowd.md) | 4 | 54 | 11 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 123 | 55 | 227 |
@@ -81,8 +81,8 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 63 | 24 | 104 |
 | [tracking](features/tracking.md) | 7 | 9 | 17 | 0 |
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
-| [weather](features/weather.md) | 8 | 58 | 44 | 104 |
-| [vcam](features/vcam.md) | 9 | 91 | 47 | 30 |
+| [weather](features/weather.md) | 8 | 59 | 44 | 104 |
+| [vcam](features/vcam.md) | 9 | 92 | 47 | 30 |
 | [looks](features/looks.md) | 10 | 139 | 129 | 100 |
 | [sensor](features/sensor.md) | 10 | 101 | 56 | 62 |
 
