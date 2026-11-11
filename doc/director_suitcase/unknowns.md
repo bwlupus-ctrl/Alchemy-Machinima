@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3404 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3408 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (181)
 
@@ -188,7 +188,7 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1812)
+## Unknown hunk features (1813)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -314,12 +314,13 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llappviewer.cpp@1769,15`
 - `indra/newview/llappviewer.cpp@1790,12`
 - `indra/newview/llappviewer.cpp@1857,23`
-- `indra/newview/llappviewer.cpp@2122,9`
-- `indra/newview/llappviewer.cpp@2447,25`
-- `indra/newview/llappviewer.cpp@2510,25`
-- `indra/newview/llappviewer.cpp@2771,7`
-- `indra/newview/llappviewer.cpp@5077,9`
-- `indra/newview/llappviewer.cpp@5480,15`
+- `indra/newview/llappviewer.cpp@2081,29`
+- `indra/newview/llappviewer.cpp@2141,9`
+- `indra/newview/llappviewer.cpp@2466,25`
+- `indra/newview/llappviewer.cpp@2529,25`
+- `indra/newview/llappviewer.cpp@2790,7`
+- `indra/newview/llappviewer.cpp@5096,9`
+- `indra/newview/llappviewer.cpp@5499,15`
 - `indra/newview/llfloaterenvironmentadjust.cpp@682,32`
 - `indra/newview/llfloaterhoverheight.cpp@149,31`
 - `indra/newview/llpanelmaininventory.cpp@145,8`
@@ -866,6 +867,10 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/lldrawpoolalpha.cpp@1575,8`
 - `indra/newview/llfloater360capture.cpp@841,12`
 - `indra/newview/llfloaterhoverheight.h@29,21`
+- `indra/newview/llmeshrepository.cpp@29,8`
+- `indra/newview/llmeshrepository.cpp@2031,48`
+- `indra/newview/llmeshrepository.cpp@2430,10`
+- `indra/newview/llmeshrepository.cpp@4558,9`
 - `indra/newview/llpreviewanim.cpp@58,13`
 - `indra/newview/llpreviewanim.cpp@204,9`
 - `indra/newview/llpreviewanim.cpp@223,16`
@@ -1806,10 +1811,6 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llkeyconflict.cpp@579,10`
 - `indra/newview/lllocalmesh.cpp@1554,7`
 - `indra/newview/llmediactrl.cpp@844,12`
-- `indra/newview/llmeshrepository.cpp@29,8`
-- `indra/newview/llmeshrepository.cpp@2031,48`
-- `indra/newview/llmeshrepository.cpp@2430,10`
-- `indra/newview/llmeshrepository.cpp@4554,9`
 - `indra/newview/llpaneleditwater.cpp@33,8`
 - `indra/newview/llpaneleditwater.cpp@56,20`
 - `indra/newview/llpaneleditwater.cpp@119,16`
@@ -2565,6 +2566,7 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llfloaterhoverheight.h@1,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterhoverheight.h@29,21`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterhoverheight.h@56,37`: unknown/non-function (public:)
+- `indra/newview/llmeshrepository.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llpreviewanim.cpp@27,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llselectmgr.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llselectmgr.cpp@58,7`: unknown/non-function (declaration, XML, build list or global scope)
@@ -3117,7 +3119,6 @@ All 3404 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llinventorymodel.cpp@5246,3`: unknown/non-function (void LLInventoryModel::FetchItemHttpHandler::processFailure(const char * const r)
 - `indra/newview/llinventorymodel.h@611,7`: unknown/non-function (private:)
 - `indra/newview/llinventorymodel.h@751,3`: unknown/non-function (public:)
-- `indra/newview/llmeshrepository.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llpaneleditwater.cpp@33,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llpanellogin.cpp@77,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llpanellogin.h@61,10`: unknown/non-function (public:)

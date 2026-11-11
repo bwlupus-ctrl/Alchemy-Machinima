@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "a55c08c0689aa5494ca9a8fd18ba654e31746871",
+    "head_source_tree": "19fbabeea3cf875cdbaa6c18690cf4d245d85b35",
     "hook_files": 543,
-    "hunks": 3404,
-    "input_sha256": "de61464a820892fe5133908406882bf93a0b84d4ee76f93627687a8034b59000",
+    "hunks": 3408,
+    "input_sha256": "b1f113b1408f76cf64c4531ebfd528c0cb1280aeb4e080e61c4d094b71ed5d8b",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -27515,9 +27515,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
-        "clones",
-        "gaze"
+        "camera"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29870,25 +29868,13 @@
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
-        "one-hop include neighbors; tentative, not required closure"
+        "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "actor-path",
-        "camera",
-        "capture-sidecar",
-        "clones",
-        "composition",
-        "director-shell",
-        "looks",
-        "rig",
-        "roto-tron",
-        "sensor",
-        "shafts-volumetrics",
-        "vcam",
-        "weather"
+        "composition"
       ],
       "git_status": "M",
-      "layer": 2,
+      "layer": 3,
       "path": "indra/newview/llmeshrepository.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },

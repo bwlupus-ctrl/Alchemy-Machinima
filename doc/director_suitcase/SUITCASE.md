@@ -70,7 +70,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [actor-bar](features/actor-bar.md) | 3 | 75 | 14 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 108 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 80 | 31 | 493 |
-| [composition](features/composition.md) | 3 | 42 | 23 | 12 |
+| [composition](features/composition.md) | 3 | 42 | 24 | 12 |
 | [gaze](features/gaze.md) | 3 | 66 | 27 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 32 | 20 | 53 |
 | [clones](features/clones.md) | 4 | 197 | 97 | 83 |
@@ -238,7 +238,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 543 shared files / 3404 canonical
+The generated hook map covers 543 shared files / 3408 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and
