@@ -106,11 +106,31 @@ LLUUID cloneAtPick(const LLPickInfo& pick)
     // Same rule as the 3D inventory drop: the screen-space probe may claim the
     // click only when the clone is nearer than the real hit.
     LLVector3 probe_agent;
-    const LLUUID nearby = studio.pickInstanceAtScreen(
+    LLUUID nearby = studio.pickInstanceAtScreen(
         pick.mMousePt.mX, pick.mMousePt.mY, ALGhostStudio::SCREEN_PICK_PX, true, &probe_agent);
     if (nearby.isNull())
     {
-        return LLUUID::null;
+        // [OverlayPick] No entity clone here: a free-standing overlay clone may
+        // claim the click too. An overlay drawn on its own source avatar stays
+        // with that avatar's menu (its "Clone overlay" branch), so a click that
+        // really hit the source never becomes an overlay click.
+        nearby = studio.pickInstanceAtScreen(
+            pick.mMousePt.mX, pick.mMousePt.mY, ALGhostStudio::SCREEN_PICK_PX, false, &probe_agent);
+        const ALGhostStudio::Instance* inst = nearby.notNull() ? studio.getInstance(nearby) : nullptr;
+        if (!inst || inst->mKind != ALGhostStudio::BACKING_OVERLAY)
+        {
+            return LLUUID::null;
+        }
+        if (!inst->mSourceRemoved)
+        {
+            const LLUUID owner = inst->mSource.isNull() ? gAgentID : inst->mSource;
+            const LLVOAvatar* under = avatarAtPick(pick);
+            const LLViewerObject* root = hit ? hit->getRootEdit() : nullptr;
+            if ((under && under->getID() == owner) || (root && root->getID() == owner))
+            {
+                return LLUUID::null;
+            }
+        }
     }
     const bool real_pick = hit != nullptr || pick.mPickType == LLPickInfo::PICK_LAND;
     const bool hud_pick = (hit != nullptr && hit->isHUDAttachment()) ||

@@ -168,8 +168,67 @@
     </context_menu>
   </context_menu>
   <context_menu
+   label="Gaze"
+   name="Gaze">
+    <menu_item_check
+     label="Camera"
+     name="Gaze Camera"
+     tool_tip="Head and eyes follow the camera.">
+      <menu_item_check.on_click function="GhostClone.Gaze" parameter="camera" />
+      <menu_item_check.on_check function="GhostClone.CheckGaze" parameter="camera" />
+      <menu_item_check.on_enable function="GhostClone.EnableGaze" />
+    </menu_item_check>
+    <menu_item_check
+     label="Me"
+     name="Gaze Me"
+     tool_tip="Head and eyes follow your avatar.">
+      <menu_item_check.on_click function="GhostClone.Gaze" parameter="me" />
+      <menu_item_check.on_check function="GhostClone.CheckGaze" parameter="me" />
+      <menu_item_check.on_enable function="GhostClone.EnableGaze" />
+    </menu_item_check>
+    <context_menu
+     label="Cast member"
+     name="Gaze Cast">
+      <menu_item_call
+       label="No cast members"
+       name="Nobody"
+       enabled="false" />
+    </context_menu>
+    <context_menu
+     label="Nearby people"
+     name="Gaze Nearby">
+      <menu_item_call
+       label="No one nearby"
+       name="Nobody"
+       enabled="false" />
+    </context_menu>
+    <menu_item_check
+     label="Travel direction"
+     name="Gaze Travel"
+     tool_tip="Head and eyes face the direction the clone is moving.">
+      <menu_item_check.on_click function="GhostClone.Gaze" parameter="travel" />
+      <menu_item_check.on_check function="GhostClone.CheckGaze" parameter="travel" />
+      <menu_item_check.on_enable function="GhostClone.EnableGaze" />
+    </menu_item_check>
+    <menu_item_check
+     label="Off"
+     name="Gaze Off"
+     tool_tip="Turn head and eye gaze off.">
+      <menu_item_check.on_click function="GhostClone.Gaze" parameter="off" />
+      <menu_item_check.on_check function="GhostClone.CheckGaze" parameter="off" />
+      <menu_item_check.on_enable function="GhostClone.EnableGaze" />
+    </menu_item_check>
+  </context_menu>
+  <context_menu
    label="Animation"
    name="Animation">
+    <menu_item_call
+     label="Back to live"
+     name="Back to live"
+     tool_tip="Put the clone back on the live mirror of its source (after Clear animations, a Directed animation, Reflect or Pause).">
+      <menu_item_call.on_click function="GhostClone.BackToLive" />
+      <menu_item_call.on_enable function="GhostClone.EnableBackToLive" />
+    </menu_item_call>
     <menu_item_call
      label="Restart animation"
      name="Restart animation"
@@ -177,6 +236,35 @@
       <menu_item_call.on_click function="GhostClone.RestartAnim" />
       <menu_item_call.on_enable function="GhostClone.EnableEntities" />
     </menu_item_call>
+    <context_menu
+     label="Speed"
+     name="Anim Speed">
+      <menu_item_call
+       label="Speed 1.00x"
+       name="Speed Info"
+       enabled="false" />
+      <menu_item_call
+       label="Faster"
+       name="Speed Faster"
+       tool_tip="Step the clone's animation speed up (0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4).">
+        <menu_item_call.on_click function="GhostClone.Speed" parameter="faster" />
+        <menu_item_call.on_enable function="GhostClone.EnableSpeed" parameter="faster" />
+      </menu_item_call>
+      <menu_item_call
+       label="Slower"
+       name="Speed Slower"
+       tool_tip="Step the clone's animation speed down.">
+        <menu_item_call.on_click function="GhostClone.Speed" parameter="slower" />
+        <menu_item_call.on_enable function="GhostClone.EnableSpeed" parameter="slower" />
+      </menu_item_call>
+      <menu_item_call
+       label="Reset speed"
+       name="Speed Reset"
+       tool_tip="Back to normal speed (1.00).">
+        <menu_item_call.on_click function="GhostClone.Speed" parameter="reset" />
+        <menu_item_call.on_enable function="GhostClone.EnableSpeed" parameter="reset" />
+      </menu_item_call>
+    </context_menu>
     <context_menu
      label="Recent"
      name="Recent Animations">
@@ -261,6 +349,471 @@
       <menu_item_call.on_click function="GhostClone.Fade" parameter="in" />
       <menu_item_call.on_enable function="GhostClone.EnableFade" parameter="in" />
     </menu_item_call>
+  </context_menu>
+  <context_menu
+   label="Style"
+   name="Clone Style">
+      <context_menu
+       label="Classic"
+       name="Overlay Style Classic">
+        <menu_item_check
+         label="Ghost"
+         name="ov_style_0">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="0" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="0" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Clone"
+         name="ov_style_1">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="1" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="1" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Hologram"
+         name="ov_style_2">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="2" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="2" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Wireframe"
+         name="ov_style_3">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="3" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="3" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="X-ray"
+         name="ov_style_4">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="4" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="4" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Thermal"
+         name="ov_style_5">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="5" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="5" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Neon Outline"
+         name="ov_style_6">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="6" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="6" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Silhouette"
+         name="ov_style_7">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="7" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="7" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Toon/Ink"
+         name="ov_style_8">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="8" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="8" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Chrome"
+         name="ov_style_9">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="9" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="9" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Dissolve"
+         name="ov_style_10">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="10" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="10" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Negative"
+         name="ov_style_11">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="11" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="11" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Gold Statue"
+         name="ov_style_12">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="12" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="12" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Night-vision"
+         name="ov_style_13">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="13" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="13" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+      </context_menu>
+      <context_menu
+       label="Surfaces and HUD"
+       name="Overlay Style Surfaces and HUD">
+        <menu_item_check
+         label="Blueprint"
+         name="ov_style_14">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="14" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="14" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Ectoplasm"
+         name="ov_style_15">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="15" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="15" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Frost/Ice"
+         name="ov_style_16">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="16" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="16" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Prism"
+         name="ov_style_17">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="17" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="17" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Thermal Scope"
+         name="ov_style_18">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="18" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="18" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Wallhack/ESP"
+         name="ov_style_19">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="19" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="19" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Night-vision Tube"
+         name="ov_style_20">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="20" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="20" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Damage Overlay"
+         name="ov_style_21">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="21" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="21" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Killcam"
+         name="ov_style_22">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="22" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="22" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Oil Slick"
+         name="ov_style_23">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="23" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="23" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Vaporwave"
+         name="ov_style_24">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="24" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="24" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Halftone/Comic"
+         name="ov_style_25">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="25" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="25" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Sonar Reveal"
+         name="ov_style_26">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="26" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="26" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Hologram Echo"
+         name="ov_style_27">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="27" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="27" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+      </context_menu>
+      <context_menu
+       label="Materials"
+       name="Overlay Style Materials">
+        <menu_item_check
+         label="Glass"
+         name="ov_style_64">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="64" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="64" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Mercury"
+         name="ov_style_65">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="65" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="65" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Marble"
+         name="ov_style_66">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="66" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="66" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Crystal"
+         name="ov_style_67">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="67" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="67" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Magma"
+         name="ov_style_69">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="69" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="69" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Void"
+         name="ov_style_70">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="70" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="70" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Sumi-e"
+         name="ov_style_71">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="71" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="71" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Lidar"
+         name="ov_style_73">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="73" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="73" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Code Rain"
+         name="ov_style_74">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="74" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="74" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Datamosh"
+         name="ov_style_75">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="75" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="75" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Scan Build"
+         name="ov_style_76">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="76" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="76" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Contour"
+         name="ov_style_77">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="77" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="77" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+      </context_menu>
+      <context_menu
+       label="Matrix"
+       name="Overlay Style Matrix">
+        <menu_item_check
+         label="Decode"
+         name="ov_style_78">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="78" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="78" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Glyph Skin"
+         name="ov_style_79">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="79" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="79" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Construct Wire"
+         name="ov_style_80">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="80" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="80" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Deja Vu"
+         name="ov_style_81">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="81" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="81" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Operator"
+         name="ov_style_82">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="82" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="82" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Dial Out"
+         name="ov_style_83">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="83" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="83" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Source"
+         name="ov_style_84">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="84" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="84" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+      </context_menu>
+      <context_menu
+       label="Angelic and Signal"
+       name="Overlay Style Angelic and Signal">
+        <menu_item_check
+         label="Aureole"
+         name="ov_style_85">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="85" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="85" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Choir Light"
+         name="ov_style_86">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="86" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="86" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Featherfall"
+         name="ov_style_87">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="87" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="87" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Rapture"
+         name="ov_style_88">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="88" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="88" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Emitter"
+         name="ov_style_89">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="89" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="89" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Bad Reception"
+         name="ov_style_90">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="90" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="90" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Static Veil"
+         name="ov_style_91">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="91" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="91" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Latency"
+         name="ov_style_92">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="92" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="92" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Facets"
+         name="ov_style_93">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="93" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="93" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Cold Gaze"
+         name="ov_style_94">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="94" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="94" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Intrusion"
+         name="ov_style_95">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="95" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="95" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Overclock"
+         name="ov_style_96">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="96" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="96" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Reform"
+         name="ov_style_97">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="97" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="97" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Torn Husk"
+         name="ov_style_98">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="98" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="98" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Hunter Vision"
+         name="ov_style_99">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="99" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="99" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+        <menu_item_check
+         label="Ooze"
+         name="ov_style_100">
+          <menu_item_check.on_click function="GhostClone.Style" parameter="100" />
+          <menu_item_check.on_check function="GhostClone.CheckStyle" parameter="100" />
+          <menu_item_check.on_enable function="GhostClone.EnableStyle" />
+        </menu_item_check>
+      </context_menu>
   </context_menu>
   <menu_item_separator />
   <menu_item_call

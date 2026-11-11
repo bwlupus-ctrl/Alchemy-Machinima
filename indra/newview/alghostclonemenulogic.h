@@ -280,6 +280,49 @@ inline bool staggerVisible(bool unit_is_collapsed_group)
     return unit_is_collapsed_group;
 }
 
+// [OverlayMenu] Items only entity clones support (Pause / Play, Mirror, Look / turn, Animation,
+// Appearance, Clear animations, Stagger) show unless EVERY target is an overlay clone.
+inline bool entityItemsVisible(std::size_t entity_targets)
+{
+    return entity_targets > 0;
+}
+
+// [OverlayMenu] The Style branch (overlay looks) shows when any target is an overlay clone.
+inline bool styleVisible(std::size_t overlay_targets)
+{
+    return overlay_targets > 0;
+}
+
+// Animation > Speed: the rungs Faster / Slower walk (the Clones page spinner range is 0.05..4).
+constexpr float ANIM_SPEED_LADDER[] = { 0.25f, 0.5f, 0.75f, 1.f, 1.25f, 1.5f, 2.f, 3.f, 4.f };
+constexpr float ANIM_SPEED_EPSILON = 1e-4f;
+constexpr int ANIM_SPEED_RUNGS = (int)(sizeof(ANIM_SPEED_LADDER) / sizeof(ANIM_SPEED_LADDER[0]));
+
+// The next rung above (direction > 0) or below (direction < 0) `current`; a value between rungs goes
+// to the next rung in that direction. Past the last rung in that direction the value is kept.
+inline float steppedAnimSpeed(float current, int direction)
+{
+    if (direction > 0)
+    {
+        for (int i = 0; i < ANIM_SPEED_RUNGS; ++i)
+        {
+            if (ANIM_SPEED_LADDER[i] > current + ANIM_SPEED_EPSILON)
+            {
+                return ANIM_SPEED_LADDER[i];
+            }
+        }
+        return current;
+    }
+    for (int i = ANIM_SPEED_RUNGS - 1; i >= 0; --i)
+    {
+        if (ANIM_SPEED_LADDER[i] < current - ANIM_SPEED_EPSILON)
+        {
+            return ANIM_SPEED_LADDER[i];
+        }
+    }
+    return current;
+}
+
 // Which Stagger item is checked: "In sync" while every member starts together,
 // else the mode last applied to THIS group (1 Random, 2 Ripple), else none.
 // Returns 0 In sync, 1 Random, 2 Ripple, -1 no check.

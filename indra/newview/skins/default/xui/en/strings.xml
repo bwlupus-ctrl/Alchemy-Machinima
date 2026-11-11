@@ -4580,6 +4580,13 @@ and report the problem.
     <string name="DirectorSelectHud">not for a HUD attachment</string>
     <string name="GhostCloneMenuNoCrowd">needs one crowd</string>
     <string name="GhostCloneMenuPausedMirror">paused: press Play first</string>
+    <string name="GhostCloneMenuAlreadyLive">already live</string>
+    <string name="GhostCloneMenuCastGone">That cast member is no longer available</string>
+    <string name="GhostCloneMenuSpeedInfo">Speed [SPEED]x</string>
+    <string name="GhostCloneMenuSpeedMixed">Speed mixed</string>
+    <string name="GhostCloneMenuSpeedAtMax">already at the fastest speed</string>
+    <string name="GhostCloneMenuSpeedAtMin">already at the slowest speed</string>
+    <string name="GhostCloneMenuSpeedAtOne">already at normal speed</string>
     <string name="DirectorSelectPickBusy">Finish the current tool first (Edit clones, Place, crowd placement or another pick), then use Select</string>
     <string name="DirectorSelectNoAvatar">not an avatar the Director can use</string>
     <string name="DirectorSelectNoClone">that clone is gone</string>
