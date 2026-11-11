@@ -608,9 +608,9 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5690,49",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5696,49",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -5539,6 +5539,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -5866,6 +5867,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -11578,12 +11580,12 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@1728,12",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5690,49",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@6012,30",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@1729,12",
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5696,49",
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@6018,30",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -16258,6 +16260,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -16585,6 +16588,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -23887,13 +23891,13 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@381,60",
-          "indra/newview/llappviewer.cpp@1635,8",
-          "indra/newview/llappviewer.cpp@1954,24",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@4608,17",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@5959,44"
+          "indra/newview/llappviewer.cpp@382,60",
+          "indra/newview/llappviewer.cpp@1636,8",
+          "indra/newview/llappviewer.cpp@1955,24",
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@4614,17",
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@5965,44"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -27678,6 +27682,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -28005,6 +28010,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -35217,8 +35223,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5368,24"
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5374,24"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -39145,6 +39151,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -39472,6 +39479,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -47457,13 +47465,14 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5368,24",
-          "indra/newview/llappviewer.cpp@5690,49",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@6012,30",
-          "indra/newview/llappviewer.cpp@6473,16",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@2023,11",
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5374,24",
+          "indra/newview/llappviewer.cpp@5696,49",
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@6018,30",
+          "indra/newview/llappviewer.cpp@6479,16",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -57491,6 +57500,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -57818,6 +57828,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -61502,6 +61513,7 @@
           "LLHUDNameTag::getWorldHeight",
           "LLHUDNameTag::lineSegmentIntersect",
           "LLHUDNameTag::markDead",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDNameTag::render",
           "LLHUDNameTag::renderText",
           "LLHUDNameTag::reshape",
@@ -61527,7 +61539,8 @@
           "LLUI::getUIImage",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance",
-          "LLViewerCamera::getVelocityStat"
+          "LLViewerCamera::getVelocityStat",
+          "LLViewerCamera::instanceExists"
         ],
         "unresolved_includes": []
       },
@@ -70865,8 +70878,8 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@4678,10",
-          "indra/newview/llappviewer.cpp@6065,8"
+          "indra/newview/llappviewer.cpp@4684,10",
+          "indra/newview/llappviewer.cpp@6071,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -75814,6 +75827,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -76141,6 +76155,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -78946,8 +78961,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@2041,34",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@2047,34",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -81623,6 +81638,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -81950,6 +81966,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -93274,15 +93291,15 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@156,7",
-          "indra/newview/llappviewer.cpp@1954,24",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@2896,7",
-          "indra/newview/llappviewer.cpp@4608,17",
-          "indra/newview/llappviewer.cpp@4637,10",
-          "indra/newview/llappviewer.cpp@4748,11",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@6473,16",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@1955,24",
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@2902,7",
+          "indra/newview/llappviewer.cpp@4614,17",
+          "indra/newview/llappviewer.cpp@4643,10",
+          "indra/newview/llappviewer.cpp@4754,11",
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@6479,16",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -101971,6 +101988,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -102298,6 +102316,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -104879,6 +104898,7 @@
           "LLHUDNameTag::getWorldHeight",
           "LLHUDNameTag::lineSegmentIntersect",
           "LLHUDNameTag::markDead",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDNameTag::render",
           "LLHUDNameTag::renderText",
           "LLHUDNameTag::reshape",
@@ -104904,7 +104924,8 @@
           "LLUI::getUIImage",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance",
-          "LLViewerCamera::getVelocityStat"
+          "LLViewerCamera::getVelocityStat",
+          "LLViewerCamera::instanceExists"
         ],
         "unresolved_includes": []
       },
@@ -116302,10 +116323,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@1728,12",
-          "indra/newview/llappviewer.cpp@5402,37",
-          "indra/newview/llappviewer.cpp@5690,49",
-          "indra/newview/llappviewer.cpp@6012,30"
+          "indra/newview/llappviewer.cpp@1729,12",
+          "indra/newview/llappviewer.cpp@5408,37",
+          "indra/newview/llappviewer.cpp@5696,49",
+          "indra/newview/llappviewer.cpp@6018,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -119547,6 +119568,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -119874,6 +119896,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -124407,12 +124430,12 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@915,26",
-          "indra/newview/llappviewer.cpp@1954,24",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5690,49",
-          "indra/newview/llappviewer.cpp@5959,44",
-          "indra/newview/llappviewer.cpp@6473,16"
+          "indra/newview/llappviewer.cpp@916,26",
+          "indra/newview/llappviewer.cpp@1955,24",
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5696,49",
+          "indra/newview/llappviewer.cpp@5965,44",
+          "indra/newview/llappviewer.cpp@6479,16"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -130874,6 +130897,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -131201,6 +131225,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -140464,10 +140489,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2322,8",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@2328,8",
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -146395,6 +146420,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -146722,6 +146748,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -156601,8 +156628,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5368,24"
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5374,24"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -163169,6 +163196,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -163496,6 +163524,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -170159,10 +170188,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@2216,17",
-          "indra/newview/llappviewer.cpp@3640,7",
-          "indra/newview/llappviewer.cpp@3650,7",
-          "indra/newview/llappviewer.cpp@6494,8"
+          "indra/newview/llappviewer.cpp@2222,17",
+          "indra/newview/llappviewer.cpp@3646,7",
+          "indra/newview/llappviewer.cpp@3656,7",
+          "indra/newview/llappviewer.cpp@6500,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -173690,6 +173719,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -174017,6 +174047,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -180194,8 +180225,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -182221,6 +182252,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -182548,6 +182580,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -186263,10 +186296,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@915,26",
-          "indra/newview/llappviewer.cpp@1728,12",
-          "indra/newview/llappviewer.cpp@5368,24",
-          "indra/newview/llappviewer.cpp@6012,30"
+          "indra/newview/llappviewer.cpp@916,26",
+          "indra/newview/llappviewer.cpp@1729,12",
+          "indra/newview/llappviewer.cpp@5374,24",
+          "indra/newview/llappviewer.cpp@6018,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -189302,6 +189335,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -189629,6 +189663,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -193290,10 +193325,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@1954,24",
-          "indra/newview/llappviewer.cpp@5646,9",
-          "indra/newview/llappviewer.cpp@6012,30",
-          "indra/newview/llappviewer.cpp@6148,7"
+          "indra/newview/llappviewer.cpp@1955,24",
+          "indra/newview/llappviewer.cpp@5652,9",
+          "indra/newview/llappviewer.cpp@6018,30",
+          "indra/newview/llappviewer.cpp@6154,7"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -194532,6 +194567,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -194859,6 +194895,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -198805,14 +198842,14 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@275,8",
-          "indra/newview/llappviewer.cpp@1954,24",
-          "indra/newview/llappviewer.cpp@4860,12",
-          "indra/newview/llappviewer.cpp@4989,12",
-          "indra/newview/llappviewer.cpp@5828,129",
-          "indra/newview/llappviewer.cpp@5959,44",
-          "indra/newview/llappviewer.cpp@6473,16",
-          "indra/newview/llappviewer.cpp@6512,45"
+          "indra/newview/llappviewer.cpp@276,8",
+          "indra/newview/llappviewer.cpp@1955,24",
+          "indra/newview/llappviewer.cpp@4866,12",
+          "indra/newview/llappviewer.cpp@4995,12",
+          "indra/newview/llappviewer.cpp@5834,129",
+          "indra/newview/llappviewer.cpp@5965,44",
+          "indra/newview/llappviewer.cpp@6479,16",
+          "indra/newview/llappviewer.cpp@6518,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -204233,6 +204270,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -204560,6 +204598,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
@@ -212205,8 +212244,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2644,53",
-          "indra/newview/llappviewer.cpp@5828,129"
+          "indra/newview/llappviewer.cpp@2650,53",
+          "indra/newview/llappviewer.cpp@5834,129"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -217177,6 +217216,7 @@
           "indra/newview/llgroupmgr.h",
           "indra/newview/llhudeffecttrail.h",
           "indra/newview/llhudmanager.h",
+          "indra/newview/llhudnametag.h",
           "indra/newview/llimprocessing.h",
           "indra/newview/llimview.h",
           "indra/newview/llinventoryicon.h",
@@ -217504,6 +217544,7 @@
           "LLGroupMgr::parseRoleActions",
           "LLHUDManager::getInstance",
           "LLHUDManager::instanceExists",
+          "LLHUDNameTag::releaseSourcelessTags",
           "LLHUDObject::cleanupHUDObjects",
           "LLHUDObject::updateAll",
           "LLHeadRotMotion::resetHeadRotationConstraint",
