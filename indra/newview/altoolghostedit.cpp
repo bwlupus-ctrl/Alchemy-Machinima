@@ -13,6 +13,7 @@
 
 #include "indra_constants.h"        // KEY_DELETE / KEY_BACKSPACE / KEY_ESCAPE
 #include "alghoststudio.h"
+#include "aldirectorselect.h"       // cloneInFrontOfPick: the same foreground rule as the menu / Director pick
 #include "altoolghostplace.h"
 #include "llagent.h"                // global <-> agent (pick projection)
 #include "llghostavatar.h"
@@ -102,7 +103,13 @@ bool ALToolGhostEdit::handleStockPick(const LLPickInfo& pick_info, bool gizmo_pa
     {
         return false;   // the (invisible) proxy itself: stock keeps it selected
     }
-    const LLUUID ghost = pickInstance(pick_info.mMousePt.mX, pick_info.mMousePt.mY);
+    LLVector3 probe_agent;
+    LLUUID ghost = studio.pickInstanceAtScreen(pick_info.mMousePt.mX, pick_info.mMousePt.mY,
+                                               GHOST_PICK_PX, false, &probe_agent);
+    if (ghost.notNull() && !ALDirectorSelect::cloneInFrontOfPick(pick_info, probe_agent))
+    {
+        ghost.setNull();    // a wall / avatar in front of the clone keeps its stock selection click
+    }
     if (ghost.notNull())
     {
         if (ghost != studio.getSelected())

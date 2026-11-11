@@ -42,6 +42,8 @@ struct ALGhostCloneMenuAccess
 {
     static void selectInHosts(const LLUUID& instance_id, bool additive);
     static std::vector<LLUUID> hostRows();
+    static void promotePrimary(const LLUUID& instance_id);
+    static ALPanelGhostStudio* menuHost();
 };
 
 namespace ALDirectorSelect
@@ -88,6 +90,11 @@ std::vector<LLUUID> hostRows()
     return ALGhostCloneMenuAccess::hostRows();
 }
 
+void makePrimaryInSelection(const LLUUID& instance_id)
+{
+    ALGhostCloneMenuAccess::promotePrimary(instance_id);
+}
+
 bool directorVisible()
 {
     LLFloater* floater = LLFloaterReg::findInstance("director");
@@ -132,14 +139,19 @@ LLUUID cloneAtPick(const LLPickInfo& pick)
             }
         }
     }
+    return cloneInFrontOfPick(pick, probe_agent) ? nearby : LLUUID::null;
+}
+
+bool cloneInFrontOfPick(const LLPickInfo& pick, const LLVector3& clone_probe_agent)
+{
+    LLViewerObject* hit = pick.getObject();
     const bool real_pick = hit != nullptr || pick.mPickType == LLPickInfo::PICK_LAND;
     const bool hud_pick = (hit != nullptr && hit->isHUDAttachment()) ||
         pick.mPickType == LLPickInfo::PICK_ICON;
     const LLVector3 eye = LLViewerCamera::getInstance()->getOrigin();
     const LLVector3 hit_agent = gAgent.getPosAgentFromGlobal(pick.mPosGlobal);
-    return ALGhostAnimDrop::cloneInFront(real_pick, hud_pick, dist_vec(probe_agent, eye),
-                                         dist_vec(hit_agent, eye))
-        ? nearby : LLUUID::null;
+    return ALGhostAnimDrop::cloneInFront(real_pick, hud_pick, dist_vec(clone_probe_agent, eye),
+                                         dist_vec(hit_agent, eye));
 }
 
 LLVOAvatar* avatarAtPick(const LLPickInfo& pick)
@@ -383,22 +395,61 @@ void ALGhostCloneMenuAccess::selectInHosts(const LLUUID& instance_id, bool addit
     host->mObservedSelectionRevision = studio.getSelectionRevision();
 }
 
-std::vector<LLUUID> ALGhostCloneMenuAccess::hostRows()
+// The host whose list selection the clone menu targets: the visible host the user last worked in, else the
+// Director's already-built host while it has mirrored the current shared selection (never built here).
+ALPanelGhostStudio* ALGhostCloneMenuAccess::menuHost()
 {
     if (ALPanelGhostStudio* host = ALPanelGhostStudio::activeHost())
     {
-        return host->selectedRowValues();
+        return host;
     }
-    // No visible host: a multi-selection built while the Clones page was hidden
-    // lives in the Director's already-built host (never built here). It counts
-    // only while it has mirrored the current shared selection.
     LLFloater* floater = LLFloaterReg::findInstance("director");
     ALKitShell* shell = floater ? floater->findChild<ALKitShell>("director_shell") : nullptr;
     ALKitLazyPage* lazy = shell ? shell->findChild<ALKitLazyPage>("ghosts_tab") : nullptr;
     ALPanelGhostStudio* hidden = findHostBelow(lazy);
     if (hidden && hidden->mObservedSelectionRevision == ALGhostStudio::instance().getSelectionRevision())
     {
-        return hidden->selectedRowValues();
+        return hidden;
     }
-    return std::vector<LLUUID>();
+    return nullptr;
+}
+
+std::vector<LLUUID> ALGhostCloneMenuAccess::hostRows()
+{
+    ALPanelGhostStudio* host = menuHost();
+    return host ? host->selectedRowValues() : std::vector<LLUUID>();
+}
+
+// [ClonePick] Promote the selected row that carries this clone to the primary row. Every selected row stays
+// selected: nothing is added, removed or toggled, the Director is not raised and no undo step is made. A clone
+// reached through a selected group header (collapsed or expanded) promotes that header, never a child row.
+// Idempotent: the shared selection is only touched when the primary really changes.
+void ALGhostCloneMenuAccess::promotePrimary(const LLUUID& instance_id)
+{
+    ALPanelGhostStudio* host = menuHost();
+    if (!host)
+    {
+        return;
+    }
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const std::vector<LLUUID> rows = host->selectedRowValues();
+    LLUUID row = ALGhostCloneActions::rowFor(instance_id);
+    if (std::find(rows.begin(), rows.end(), row) == rows.end())
+    {
+        const ALGhostGroupModel::Group* group = studio.groupForMember(instance_id);
+        if (!group || std::find(rows.begin(), rows.end(), group->mId) == rows.end())
+        {
+            return;
+        }
+        row = group->mId;
+    }
+    const LLUUID current = studio.getSelected().notNull() ? ALGhostCloneActions::rowFor(studio.getSelected()) : LLUUID::null;
+    if (current == row)
+    {
+        return;
+    }
+    host->mPrimaryRow = row;
+    host->noteListSelectionChanged();
+    studio.setSelected(row);
+    host->mObservedSelectionRevision = studio.getSelectionRevision();
 }

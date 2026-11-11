@@ -109,6 +109,9 @@ public:
     // Fitted agent-space bounds (outer scale included), ONLY for displaced
     // poses. False preserves the exact historical standing box and pivot.
     // refresh never changes the authored foot/root transform.
+    // The extents the clone is RENDERED with (outer scale included), whether or not the selection box
+    // follows them: what a world click is tested against so it matches the drawn body at any size.
+    bool getRenderedBounds(LLVector3& center, LLVector3& size) const;
     bool getVisualBounds(LLVector3& center, LLVector3& size) const;
     // Per-frame forcing is selected || fitted; true is reserved for event-driven
     // late transform writes. Other clones retain native extent throttling.

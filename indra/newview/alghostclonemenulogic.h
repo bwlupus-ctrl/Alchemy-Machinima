@@ -147,6 +147,163 @@ std::vector<Id> additiveRows(const std::vector<Id>& list_rows, bool shared_moved
     return rows;
 }
 
+// Which clone a world click means. Every candidate carries the cursor's distance to its nearest
+// projected probe point (squared, -1 when no probe is inside the pick radius) and, when its body box
+// could be projected, the box's screen rectangle. A click INSIDE one or more boxes belongs to the
+// one nearest the camera (a clone stands in front of the ones behind it); only a click outside every
+// box falls back to the nearest probe inside the radius. This is what keeps a close or overlapping
+// neighbour (or the clone picked last) from winning just because its centre is nearer the cursor.
+// The body box of a clone with no rendered extents (an overlay draw, or a body still loading / just respawned):
+// a person on the foot point, scaled WITH the clone (the clone's uniform scale is pivoted at the foot, so every
+// dimension grows and shrinks with it). Rendered entity clones use their own extents instead, which already
+// contain the clone's scale (llvoavatar.cpp updateSpatialExtents applies the outer transform).
+struct BodyBox
+{
+    float mCenter[3];
+    float mHalf[3];
+};
+
+inline BodyBox scaledBodyBox(const float foot[3], float scale)
+{
+    BodyBox box;
+    box.mCenter[0] = foot[0];
+    box.mCenter[1] = foot[1];
+    box.mCenter[2] = foot[2] + 1.f * scale;
+    box.mHalf[0] = .35f * scale;
+    box.mHalf[1] = .35f * scale;
+    box.mHalf[2] = 1.f * scale;
+    return box;
+}
+
+// The rendered extents of a body scaled about its foot pivot (what the renderer does to the box).
+inline void scaleExtentsAboutPivot(float minimum[3], float maximum[3], const float pivot[3], float scale)
+{
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        minimum[axis] = pivot[axis] + scale * (minimum[axis] - pivot[axis]);
+        maximum[axis] = pivot[axis] + scale * (maximum[axis] - pivot[axis]);
+    }
+}
+
+// The camera's near plane is a FORWARD depth; a cursor ray off the view axis reaches it later, at
+// near / cos(angle to the view axis). False when the ray is (nearly) parallel to the near plane: no box hit.
+inline bool rayNearDistance(float near_clip, const float dir[3], const float forward[3], float& near_t)
+{
+    const float cosine = dir[0] * forward[0] + dir[1] * forward[1] + dir[2] * forward[2];
+    if (cosine <= 1e-3f)
+    {
+        return false;
+    }
+    near_t = near_clip / cosine;
+    return true;
+}
+
+// Ray against an axis-aligned box in agent space (slab test). t is the distance along the (unit) ray at which
+// it ENTERS the box, clamped to the near plane's ray distance (rayNearDistance) when the near plane cuts the box. A box the eye is inside of is
+// never a hit (standing in or against a big clone must not steal every click), nor is one behind the eye or
+// wholly nearer than the near clip.
+inline bool rayBoxEntry(const float origin[3], const float dir[3], const BodyBox& box, float near_clip, float& t)
+{
+    float t_min = -1e30f;
+    float t_max = 1e30f;
+    bool inside = true;
+    for (int axis = 0; axis < 3; ++axis)
+    {
+        const float lo = box.mCenter[axis] - box.mHalf[axis];
+        const float hi = box.mCenter[axis] + box.mHalf[axis];
+        if (origin[axis] < lo || origin[axis] > hi)
+        {
+            inside = false;
+        }
+        if (dir[axis] > -1e-8f && dir[axis] < 1e-8f)
+        {
+            if (origin[axis] < lo || origin[axis] > hi)
+            {
+                return false;           // parallel to this slab and outside it
+            }
+            continue;
+        }
+        float t0 = (lo - origin[axis]) / dir[axis];
+        float t1 = (hi - origin[axis]) / dir[axis];
+        if (t0 > t1)
+        {
+            const float swap = t0;
+            t0 = t1;
+            t1 = swap;
+        }
+        t_min = t0 > t_min ? t0 : t_min;
+        t_max = t1 < t_max ? t1 : t_max;
+        if (t_min > t_max)
+        {
+            return false;
+        }
+    }
+    if (inside || t_max <= near_clip)
+    {
+        return false;
+    }
+    t = t_min > near_clip ? t_min : near_clip;
+    return true;
+}
+
+// Which clone a world click means. Every candidate carries the ENTRY distance of the cursor's world ray into
+// its body box (mHasBox false when the ray misses it, or the eye is inside it) and the cursor's squared screen
+// distance to its nearest probe point inside the pick radius (-1 when none). A ray that hits boxes belongs to
+// the box it enters FIRST (the clone nearest along the ray); only a click that hits no box falls back to the
+// nearest probe. This keeps a close or overlapping neighbour (or the clone picked last) from winning just
+// because its centre is nearer the cursor, and gives the click a real depth (the entry point).
+template <class Id>
+struct PickCandidate
+{
+    Id mId;
+    bool mHasBox = false;
+    float mEntryT = 0.f;
+    float mProbeD2 = -1.f;
+};
+
+template <class Id>
+Id choosePickedClone(const std::vector<PickCandidate<Id>>& candidates, const Id& none, bool* from_box = nullptr)
+{
+    Id best = none;
+    float best_t = 0.f;
+    float best_d2 = 0.f;
+    bool have_box = false;
+    for (const PickCandidate<Id>& c : candidates)
+    {
+        if (!c.mHasBox)
+        {
+            continue;
+        }
+        const float d2 = c.mProbeD2 < 0.f ? 1e30f : c.mProbeD2;
+        if (!have_box || c.mEntryT < best_t || (c.mEntryT == best_t && d2 < best_d2))
+        {
+            have_box = true;
+            best = c.mId;
+            best_t = c.mEntryT;
+            best_d2 = d2;
+        }
+    }
+    if (from_box)
+    {
+        *from_box = have_box;
+    }
+    if (have_box)
+    {
+        return best;
+    }
+    bool have_probe = false;
+    for (const PickCandidate<Id>& c : candidates)
+    {
+        if (c.mProbeD2 >= 0.f && (!have_probe || c.mProbeD2 < best_d2))
+        {
+            have_probe = true;
+            best = c.mId;
+            best_d2 = c.mProbeD2;
+        }
+    }
+    return best;
+}
+
 // Play/Pause is one toggle: all targets paused -> resume, otherwise pause.
 inline bool pauseAction(std::size_t paused, std::size_t total)
 {
