@@ -180,6 +180,12 @@ void LLToastNotifyPanel::updateButtonsLayout(const std::vector<index_button_pair
             // looks like we need to add button to the next row
             left = 0;
             bottom_offset += (BTN_HEIGHT + VPAD);
+            // [OfferBlockAway] A Block ("Mute") button that wraps on an offer toast goes to the far
+            // right of its row, so it never sits directly above Keep/Show at the left edge.
+            if (!mIsScriptDialog && btn->getName() == "Mute")
+            {
+                left = llmax(0, max_width - btn_rect.getWidth());
+            }
         }
         //we arrange buttons from bottom to top for backward support of old script
         btn_rect.setOriginAndSize(left, bottom_offset, btn_rect.getWidth(), btn_rect.getHeight());
