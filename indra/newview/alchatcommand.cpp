@@ -410,7 +410,7 @@ bool ALChatCommand::parseCommand(std::string data)
             LLGhostAvatar::runPaletteIsolationTest();
             return true;
         }
-        else if (cmd == "/ghostdress")  // ONE dressed clone in front of me
+        else if (cmd == "/ghostdress")  // ONE dressed clone on top of me
         {
             ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().spawnEntityClone(LLUUID::null, "You");
