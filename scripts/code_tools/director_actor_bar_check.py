@@ -135,14 +135,33 @@ def reverse_feature_allowance(source, name, filename, digest, label):
     return source
 
 
+ENTITY_SPAWN_ON_SOURCE_DIGEST = "63ce56881cbc42b08045b590eb39c0bcd7018d19795efc5c79a18bca39217068"
+
+
+def reverse_entity_spawn_on_source(source, name):
+    """Peel the entity spawn-on-source layer (the newest layer on alghoststudio.cpp). Idempotent: skipped when
+    its hunk is already gone; the pinned digest is checked every time."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "entity_spawn_on_source_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == ENTITY_SPAWN_ON_SOURCE_DIGEST, ("reviewed entity spawn on source", "allowance pin")
+    allowed = json.loads(raw)
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "entity_spawn_on_source_hunks.json",
+                                     ENTITY_SPAWN_ON_SOURCE_DIGEST, "reviewed entity spawn on source")
+
+
 CLONE_SELECT_PICK_DIGEST = "6cc20778f4d8f6908c39f607ed4e5b6acf6b3e8b854b3d05fb0d337a737f4f86"
 
 
 def reverse_clone_select_pick(source, name):
-    """Peel the clone world-pick layer (the newest layer on alghoststudio.cpp: the body-box pick). Idempotent:
+    """Peel the clone world-pick layer (the body-box pick), after the newer spawn-on-source layer. Idempotent:
     skipped when its hunks are already gone; the pinned digest is checked every time."""
     import hashlib
     import json
+    source = reverse_entity_spawn_on_source(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "clone_select_pick_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == CLONE_SELECT_PICK_DIGEST, ("reviewed clone world pick", "allowance pin")
