@@ -1147,6 +1147,359 @@ def orphan_findings(src: dict[str, str]) -> list[str]:
     return _ORPHAN_CACHE[cast]
 
 
+def style_items(branch):
+    """Every check item of an overlay Style branch in document order:
+    (group label, label, name, click parameter, check parameter)."""
+    rows = []
+
+    def walk(node, group):
+        for child in node:
+            if child.tag == "context_menu":
+                walk(child, child.get("label"))
+            elif child.tag == "menu_item_check":
+                params = {e.tag.split(".")[-1]: e.get("parameter") for e in child}
+                rows.append((group, child.get("label"), child.get("name"), params.get("on_click"),
+                             params.get("on_check")))
+    walk(branch, None)
+    return rows
+
+
+def overlay_menu_findings(src: dict[str, str], cpp: str) -> list[str]:
+    """[OverlayMenu] The clone menu adapts to its targets' kinds: a Style branch identical to the avatar
+    menus' Overlay Style with its own callbacks, entity-only items hidden for all-overlay targets,
+    tidy separators, the hidden Entity Look, Back to live, and the Gaze submenu."""
+    out: list[str] = []
+    try:
+        clone_root = ET.fromstring(src["menu_ghost_clone.xml"])
+        avatar_root = ET.fromstring(src["menu_avatar_self.xml"])
+    except ET.ParseError:
+        return out
+    style = clone_root.find("context_menu[@name='Clone Style']")
+    avatar_style = next((c for c in avatar_root.find("context_menu[@name='Clone Overlay']")
+                         if c.get("name") == "Overlay Style"), None)
+    if style is None or avatar_style is None:
+        return ["menu_ghost_clone.xml: the Style branch (name Clone Style) is missing"]
+    if style.get("label") != avatar_style.get("label"):
+        out.append("menu_ghost_clone.xml: the Style branch label differs from the avatar menus' Overlay Style")
+    want = style_items(avatar_style)
+    have = style_items(style)
+    if [r[:3] for r in have] != [r[:3] for r in want]:
+        out.append("menu_ghost_clone.xml: Style groups / labels / order differ from the avatar menus' Overlay Style")
+    if [r[3] for r in have] != [r[3] for r in want]:
+        out.append("menu_ghost_clone.xml: Style item ids differ from the avatar menus' Overlay Style")
+    for row in have:
+        if row[3] != row[4]:
+            out.append(f"menu_ghost_clone.xml: Style item {row[1]} click / check parameters differ")
+    for node in style.iter():
+        function = node.get("function") or ""
+        if node.tag.endswith("on_click") and function != "GhostClone.Style":
+            out.append(f"menu_ghost_clone.xml: a Style item clicks {function}, not GhostClone.Style")
+        if node.tag.endswith("on_check") and function != "GhostClone.CheckStyle":
+            out.append(f"menu_ghost_clone.xml: a Style item checks {function}, not GhostClone.CheckStyle")
+        if node.tag.endswith("on_enable") and function != "GhostClone.EnableStyle":
+            out.append(f"menu_ghost_clone.xml: a Style item enables with {function}, not GhostClone.EnableStyle")
+    for name in AVATAR_MENUS:        # the avatar menus keep their own GhostOverlay.* path
+        if 'function="GhostOverlay.Style"' not in src[name] or "GhostClone.Style" in src[name]:
+            out.append(f"{name}: the avatar menus' Overlay Style must keep GhostOverlay.Style only")
+    style_commit = function_body(cpp, 'commit.add("GhostClone.Style"')
+    if "Actions::setOverlayStyle(overlays, param.asInteger());" not in style_commit or \
+            "const std::vector<LLUUID> overlays = liveOverlayTargets();" not in style_commit:
+        out.append("GhostClone.Style must set the style on the overlay targets only (Actions::setOverlayStyle)")
+    overlays_fn = function_body(cpp, "std::vector<LLUUID> liveOverlayTargets")
+    if "mKind == ALGhostStudio::BACKING_OVERLAY" not in overlays_fn:
+        out.append("liveOverlayTargets must keep only overlay clones")
+    agg_fn = function_body(cpp, "Aggregate computeAggregate")
+    if "agg.mOverlayStyle = -1;" not in agg_fn or "agg.mOverlayStyle != inst->mStyle" not in agg_fn:
+        out.append("the Style check mark shows a style only when every overlay target has it")
+    if "return state(ctrl, sAgg.mOverlays > 0," not in cpp or \
+            "return sAgg.mOverlayStyle == param.asInteger();" not in cpp:
+        out.append("GhostClone.EnableStyle / CheckStyle must read the overlay aggregate")
+    layout = function_body(cpp, "void applyKindLayout")
+    for needle in ("const bool entity_items = Logic::entityItemsVisible(agg.mEntities);",
+                   "item->setVisible(entity_items);",
+                   'sMenu->getItem(std::string("Stagger"))', "stagger->setVisible(false);",
+                   'sMenu->getItem(std::string("Clone Style"))',
+                   "style->setVisible(Logic::styleVisible(agg.mOverlays));",
+                   "tidySeparators(sMenu);",
+                   'subMenu(sMenu, "Appearance")', 'appearance->getItem(std::string("Entity Look"))',
+                   "look->setVisible(false);"):
+        if needle not in layout:
+            out.append(f"applyKindLayout: missing {needle}")
+    hidden = re.search(r"ENTITY_ONLY_ITEMS\[\] = \{([^}]*)\}", cpp)
+    names = re.findall(r'"([^"]+)"', hidden.group(1)) if hidden else []
+    if sorted(names) != sorted(["Pause", "Play", "Mirror", "Look Turn", "Gaze", "Animation", "Appearance",
+                                "Clear animations"]):
+        out.append(f"applyKindLayout must hide exactly Pause, Play, Mirror, Look Turn, Gaze, Animation, "
+                   f"Appearance, Clear animations for all-overlay targets (has {names})")
+    root_names = {c.get("name") for c in clone_root}
+    for name in names:
+        if name not in root_names:
+            out.append(f"ENTITY_ONLY_ITEMS names {name}, which is not an item of menu_ghost_clone.xml")
+    for keep in ("Select in Director", "Size", "Edit", "Freeze pose", "Solo", "Duplicate", "Delete",
+                 "Open in Director"):
+        if keep in names:
+            out.append(f"{keep} supports overlay clones and must stay visible")
+    present = function_body(cpp, "void presentEntityMenu")
+    if "applyKindLayout(sAgg);" not in present:
+        out.append("presentEntityMenu must adapt the menu to its targets' kinds on every open")
+    if present.find("stagger->setVisible(Logic::staggerVisible(unit_is_group));") > present.find("applyKindLayout(sAgg);"):
+        out.append("presentEntityMenu: the kind layout must run after the Stagger rule")
+    if "Logic::entityItemsVisible(sAgg.mEntities) && !Logic::allOf(sAgg.mPaused, sAgg.mEntities)" not in cpp:
+        out.append("GhostClone.VisiblePause must stay hidden for all-overlay targets (its on_visible would re-show it)")
+    ties = function_body(cpp, "void tidySeparators")
+    for needle in ("item->setVisible(real_since_separator);", "last_shown_separator->setVisible(false);"):
+        if needle not in ties:
+            out.append(f"tidySeparators: missing {needle}")
+    logic = src["alghostclonemenulogic.h"]
+    if "inline bool entityItemsVisible(std::size_t entity_targets)\n{\n    return entity_targets > 0;" not in logic or \
+            "inline bool styleVisible(std::size_t overlay_targets)\n{\n    return overlay_targets > 0;" not in logic:
+        out.append("alghostclonemenulogic.h: entityItemsVisible / styleVisible changed")
+
+    # ---- Back to live ----------------------------------------------------------------
+    animation = clone_root.find("context_menu[@name='Animation']")
+    first = list(animation)[0] if animation is not None and len(animation) else None
+    if first is None or first.get("name") != "Back to live" or first.get("label") != "Back to live":
+        out.append("menu_ghost_clone.xml: Back to live must be the first item of the Animation submenu")
+    elif [e.get("function") for e in first] != ["GhostClone.BackToLive", "GhostClone.EnableBackToLive"]:
+        out.append("menu_ghost_clone.xml: Back to live callbacks changed")
+    live_fn = function_body(cpp, "void actBackToLive")
+    for needle in ("Actions::setPaused(entities, false);", "inst->mDriveMode != ALGhostStudio::DRIVE_MIRROR",
+                   "Actions::setDriveMode(off_mirror, ALGhostStudio::DRIVE_MIRROR, LLUUID::null);",
+                   "liveEntityTargets()"):
+        if needle not in live_fn:
+            out.append(f"actBackToLive: missing {needle}")
+    if live_fn.find("Actions::setPaused(entities, false);") > live_fn.find("Actions::setDriveMode("):
+        out.append("actBackToLive: a paused clone must be resumed before it is set to the live mirror")
+    if "agg.mNotLive += inst->mDriveMode != ALGhostStudio::DRIVE_MIRROR ? 1 : 0;" not in agg_fn or \
+            "return state(ctrl, sAgg.mNotLive > 0," not in cpp or '"GhostCloneMenuAlreadyLive"' not in cpp or \
+            'name="GhostCloneMenuAlreadyLive"' not in src["strings.xml"]:
+        out.append("Back to live is enabled only while an entity target is off the live mirror, with an 'already live' reason")
+
+    # ---- Gaze -----------------------------------------------------------------------------
+    gaze = clone_root.find("context_menu[@name='Gaze']")
+    order = [c.get("name") for c in clone_root]
+    if gaze is None or order.index("Gaze") != order.index("Look Turn") + 1:
+        out.append("menu_ghost_clone.xml: Gaze must follow Look / turn")
+    else:
+        labels = [c.get("label") for c in gaze]
+        if labels != ["Camera", "Me", "Cast member", "Nearby people", "Travel direction", "Off"]:
+            out.append(f"menu_ghost_clone.xml: Gaze items are {labels}")
+        wanted = {"Gaze Camera": "camera", "Gaze Me": "me", "Gaze Travel": "travel", "Gaze Off": "off"}
+        for item in gaze:
+            kind = wanted.get(item.get("name"))
+            if kind is None:
+                continue
+            calls = {e.tag.split(".")[-1]: (e.get("function"), e.get("parameter")) for e in item}
+            if calls.get("on_click") != ("GhostClone.Gaze", kind) or calls.get("on_check") != ("GhostClone.CheckGaze", kind) \
+                    or calls.get("on_enable", (None,))[0] != "GhostClone.EnableGaze":
+                out.append(f"menu_ghost_clone.xml: Gaze item {item.get('label')} is not wired to {kind}")
+    gaze_fn = function_body(cpp, "void actGazeParam")
+    for needle in ("actGaze(-1, LLUUID::null, true);", "actGaze(LLActorMover::GAZE_CAMERA, LLUUID::null, false);",
+                   "actGaze(LLActorMover::GAZE_TANGENT, LLUUID::null, false);",
+                   "actGaze(LLActorMover::GAZE_CAST, gAgentID, false);"):
+        if needle not in gaze_fn:
+            out.append(f"actGazeParam: missing {needle}")
+    act = function_body(cpp, "void actGaze(S32 mode")
+    for needle in ("if (Actions::hasExpandedMember(sRows))", "GhostCloneMenuWholeGroup",
+                   "Actions::applyGazeTarget(entities, mode, cast_target, !off);",
+                   "Actions::snapshotGaze(sRows)", 'recordCustom(shell, "clone_gaze"',
+                   "Actions::restoreGaze(redo ? history->mAfter : history->mBefore)", "if (!gazeUnchanged(before, after))",
+                   "Actions::rewriteGazeReferences(history->mBefore, old_id, new_id);",
+                   "Actions::rewriteGazeReferences(history->mAfter, old_id, new_id);", "std::make_shared<History>()"):
+        if needle not in act:
+            out.append(f"actGaze: missing {needle}")
+    if act.count("Actions::snapshotGaze(sRows)") != 2:
+        out.append("actGaze must snapshot before and after for undo / redo")
+    for forbidden in ("setGazeTargetMode", "setGazeEnabled", "setGazeCastTarget"):
+        if forbidden in cpp:
+            out.append(f"alghostclonemenu.cpp: {forbidden} belongs to the shared applyGazeTarget, not the menu")
+    populate = function_body(cpp, "void populateGazeMenus")
+    for needle in ("LLDirectorCast::isSelf(choice.mId)", "std::find(own.begin(), own.end(), choice.mId) != own.end()",
+                   "gazeCastLabel(choice)", "[id]() { actGazeCast(id); }", "ALGazeNearby::nearbyAllowed()", "LLDirectorCast::instance().getMember(person.mId)",
+                   "offered.count(person.mId)", "personNearby(id)", "GhostCloneMenuNoCast", "GhostCloneMenuNobodyNearby",
+                   "actGaze(LLActorMover::GAZE_CAST, id, false);"):
+        if needle not in populate:
+            out.append(f"populateGazeMenus: missing {needle}")
+    label_fn = function_body(cpp, "std::string gazeCastLabel")
+    for needle in ("nameHiddenByRlva(choice.mId)", "Logic::containsUuidText(choice.mLabel)", "castMemberName(choice.mId)",
+                   'std::string("Unknown")', "return choice.mLabel;"):
+        if needle not in label_fn:
+            out.append(f"gazeCastLabel: missing {needle} (no RLV-hidden name, never a UUID)")
+    cast_fn = function_body(cpp, "void actGazeCast")
+    for needle in ("LLDirectorCast::instance().getActorChoices()", "!LLDirectorCast::isSelf(choice.mId)",
+                   "if (!current || std::find(own.begin(), own.end(), id) != own.end())", '"GhostCloneMenuCastGone"',
+                   "actGaze(LLActorMover::GAZE_CAST, id, false);"):
+        if needle not in cast_fn:
+            out.append(f"actGazeCast: missing {needle} (a retired cast id is refused at click time)")
+    if 'name="GhostCloneMenuCastGone"' not in src["strings.xml"]:
+        out.append("strings.xml: GhostCloneMenuCastGone is missing")
+    rewrite_fn = function_body(strip_comments(src["alghostcloneactions.cpp"]), "void rewriteGazeReferences")
+    for needle in ("saved.mCast = new_id;", "new_id.isNull() && saved.mMode == LLActorMover::GAZE_CAST",
+                   "saved.mMode = LLActorMover::GAZE_TANGENT;"):
+        if needle not in rewrite_fn:
+            out.append(f"rewriteGazeReferences: missing {needle}")
+    if "mGazeBodies" not in gazeItemEnabled_text(cpp) or "sAgg.mGazeBodies == 0" not in function_body(cpp, "bool gazeChecked"):
+        out.append("Gaze items need a spawned body: disabled, and no check mark (not even Off), without one")
+    speed_head = function_body(cpp, "void actSpeed")
+    gaze_head = function_body(cpp, "void actGazeParam")
+    if speed_head.find('kind != "faster"') < 0 or speed_head.find('kind != "faster"') > speed_head.find("liveEntityTargets()"):
+        out.append("actSpeed must validate its parameter before any tip")
+    live = function_body(cpp, "void actBackToLive")
+    if "resumed = resumed ||" not in live or "if (!resumed)" not in live or \
+            live.find("resumed = resumed ||") > live.find("Actions::setPaused(entities, false);"):
+        out.append("actBackToLive: no 'already live' tip after a successful unpause")
+    if "Pause" not in "".join(e.get("tool_tip", "") for e in clone_root.iter("menu_item_call") if e.get("name") == "Back to live") \
+            or "agg.mNotLive += inst->mDriveMode != ALGhostStudio::DRIVE_MIRROR ? 1 : 0;" not in agg_fn:
+        out.append("Back to live promises Pause: a paused target (not on DRIVE_MIRROR) must count as not live")
+    if "populateGazeMenus(people);" not in function_body(cpp, "void populateDynamicMenus"):
+        out.append("populateDynamicMenus must rebuild the Gaze lists")
+    if 'return state(ctrl, false, "GhostCloneMenuWholeGroup");' not in function_body(cpp, "void registerEntityCallbacks") or \
+            '"GhostClone.EnableGaze"' not in cpp:
+        out.append("Gaze items are greyed with the whole-group reason for a single member of an expanded group")
+    agg_gaze = ("agg.mGazeAgree = false;", "mover.isGazeEnabled(inst->mEntityId)")
+    for needle in agg_gaze:
+        if needle not in agg_fn:
+            out.append(f"computeAggregate: Gaze check marks need {needle}")
+    check = function_body(cpp, "bool gazeChecked")
+    if "!sAgg.mGazeAgree" not in check or "sAgg.mGazeCast == gAgentID" not in check:
+        out.append("the Gaze check mark shows a target only when every entity target agrees")
+    acts_cpp = strip_comments(src["alghostcloneactions.cpp"])
+    apply_fn = function_body(acts_cpp, "void applyGazeTarget")
+    for needle in ("mover.setGazeTargetMode(entity, mode);", "mover.setGazeCastTarget(entity, cast_target);",
+                   "mover.setGazeEnabled(entity, enabled);"):
+        if needle not in apply_fn:
+            out.append(f"applyGazeTarget: missing {needle}")
+    ents = function_body(acts_cpp, "std::vector<LLUUID> gazeEntities")
+    if "BACKING_ENTITY_CLONE" not in ents or "inst->mEntityId.notNull()" not in ents:
+        out.append("gazeEntities must be the live entity clones' actor ids only")
+    panel = strip_comments(src["alpanelghoststudio.cpp"])
+    for fn in ("void ALPanelGhostStudio::onLensGazeToggle", "void ALPanelGhostStudio::onClickLensGazeSelection"):
+        if "ALGhostCloneActions::applyGazeTarget(" not in function_body(panel, fn) or \
+                "ALGhostCloneActions::gazeEntities(selectedInstances())" not in function_body(panel, fn):
+            out.append(f"{fn} must write through the shared applyGazeTarget (the page and the menu cannot drift)")
+    out += speed_findings(src, cpp, clone_root, agg_fn)
+    return out
+
+
+SPEED_FIXTURE = r"""
+#include "alghostclonemenulogic.h"
+#include <cstdio>
+#include <cmath>
+using namespace ALGhostCloneMenuLogic;
+static int fails = 0;
+static void expect(bool ok, const char* what) { if (!ok) { std::printf("FAIL: %s\n", what); ++fails; } }
+static bool near_(float a, float b) { return std::fabs(a - b) < 1e-5f; }
+int main()
+{
+    const float ladder[] = { 0.25f, 0.5f, 0.75f, 1.f, 1.25f, 1.5f, 2.f, 3.f, 4.f };
+    for (int i = 0; i < 9; ++i)
+        expect(near_(ANIM_SPEED_LADDER[i], ladder[i]), "ladder rung");
+    expect(ANIM_SPEED_RUNGS == 9, "nine rungs");
+    for (int i = 0; i < 8; ++i)
+        expect(near_(steppedAnimSpeed(ladder[i], 1), ladder[i + 1]), "faster from a rung goes to the next rung");
+    for (int i = 1; i < 9; ++i)
+        expect(near_(steppedAnimSpeed(ladder[i], -1), ladder[i - 1]), "slower from a rung goes to the previous rung");
+    expect(near_(steppedAnimSpeed(4.f, 1), 4.f), "faster at the top stays");
+    expect(near_(steppedAnimSpeed(0.25f, -1), 0.25f), "slower at the bottom stays");
+    expect(near_(steppedAnimSpeed(0.1f, -1), 0.1f), "slower below the bottom rung never raises the speed");
+    expect(near_(steppedAnimSpeed(0.1f, 1), 0.25f), "faster below the bottom rung goes to 0.25");
+    expect(near_(steppedAnimSpeed(1.1f, 1), 1.25f), "between rungs: faster goes to the next rung up");
+    expect(near_(steppedAnimSpeed(1.1f, -1), 1.f), "between rungs: slower goes to the next rung down");
+    expect(near_(steppedAnimSpeed(2.5f, 1), 3.f), "2.5 faster is 3");
+    expect(near_(steppedAnimSpeed(2.5f, -1), 2.f), "2.5 slower is 2");
+    expect(near_(steppedAnimSpeed(1.00001f, 1), 1.25f), "a hair above a rung is that rung");
+    expect(near_(steppedAnimSpeed(3.99999f, 1), 3.99999f), "a hair under 4 is the top");
+    if (fails) return 1;
+    std::printf("PASS: animation speed ladder\n");
+    return 0;
+}
+"""
+
+
+def gazeItemEnabled_text(cpp: str) -> str:
+    return function_body(cpp, "bool gazeItemEnabled")
+
+
+def speed_ladder_native(logic_text: str) -> list[str]:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from native_check_tools import check_directory, compile_run
+    directory = check_directory("clone_menu_speed")
+    # The fixture includes THIS text of the header (next to the source, found before the repo copy), so
+    # a mutated ladder is compiled and run, not the file on disk.
+    (Path(directory) / "alghostclonemenulogic.h").write_text(logic_text, encoding="utf-8", newline="\n")
+    try:
+        result = compile_run(directory, SPEED_FIXTURE, "speed_ladder",
+                             flags=['/I"%s"' % NV])
+    except RuntimeError as exc:
+        return ["speed ladder fixture did not compile: " + str(exc).strip().splitlines()[-1][:200]]
+    if result.returncode != 0 or "PASS" not in result.stdout:
+        return ["Animation > Speed ladder: " + (result.stdout + result.stderr).strip()[:300]]
+    return []
+
+
+def speed_findings(src, cpp, clone_root, agg_fn) -> list[str]:
+    out: list[str] = []
+    animation = clone_root.find("context_menu[@name='Animation']")
+    speed = animation.find("context_menu[@name='Anim Speed']") if animation is not None else None
+    if speed is None or speed.get("label") != "Speed":
+        return ["menu_ghost_clone.xml: Animation > Speed submenu is missing"]
+    kids = list(speed)
+    if [c.get("label") for c in kids][1:] != ["Faster", "Slower", "Reset speed"] or kids[0].get("name") != "Speed Info" \
+            or kids[0].get("enabled") != "false":
+        out.append("menu_ghost_clone.xml: Speed must be a disabled info line, Faster, Slower, Reset speed")
+    else:
+        for item, kind in zip(kids[1:], ("faster", "slower", "reset")):
+            calls = {e.tag.split(".")[-1]: (e.get("function"), e.get("parameter")) for e in item}
+            if calls.get("on_click") != ("GhostClone.Speed", kind) or calls.get("on_enable") != ("GhostClone.EnableSpeed", kind):
+                out.append(f"menu_ghost_clone.xml: Speed item {item.get('label')} is not wired to {kind}")
+    logic = src["alghostclonemenulogic.h"]
+    if "{ 0.25f, 0.5f, 0.75f, 1.f, 1.25f, 1.5f, 2.f, 3.f, 4.f }" not in logic:
+        out.append("alghostclonemenulogic.h: the speed ladder changed")
+    out += speed_ladder_native(logic)
+    act = function_body(cpp, "void actSpeed")
+    for needle in ("if (Actions::hasExpandedMember(sRows))", "GhostCloneMenuWholeGroup", "Actions::setAnimSpeed(sRows, 1.f);",
+                   "Actions::stepAnimSpeed(sRows, kind == \"faster\" ? 1 : -1);", "Actions::snapshotAnimSpeed(sRows)",
+                   'recordCustom(shell, "clone_anim_speed"', "Actions::restoreAnimSpeed(redo ? after : before)",
+                   "if (changed)"):
+        if needle not in act:
+            out.append(f"actSpeed: missing {needle}")
+    if act.count("Actions::snapshotAnimSpeed(sRows)") != 2:
+        out.append("actSpeed must snapshot before and after for undo / redo")
+    if "setInstanceAnimSpeed" in cpp:
+        out.append("alghostclonemenu.cpp: setInstanceAnimSpeed belongs to the shared setAnimSpeed, not the menu")
+    enable = function_body(cpp, "void registerEntityCallbacks")
+    for needle in ('"GhostCloneMenuSpeedAtMax"', '"GhostCloneMenuSpeedAtMin"', '"GhostCloneMenuSpeedAtOne"',
+                   "sAgg.mAtFastest < sAgg.mEntities", "sAgg.mAtSlowest < sAgg.mEntities", "sAgg.mAtNormal < sAgg.mEntities",
+                   '"GhostClone.EnableSpeed"', 'state(ctrl, false, "GhostCloneMenuWholeGroup")'):
+        if needle not in enable:
+            out.append(f"GhostClone.EnableSpeed: missing {needle}")
+    for key in ("GhostCloneMenuSpeedInfo", "GhostCloneMenuSpeedMixed", "GhostCloneMenuSpeedAtMax", "GhostCloneMenuSpeedAtMin",
+                "GhostCloneMenuSpeedAtOne"):
+        if f'name="{key}"' not in src["strings.xml"]:
+            out.append(f"strings.xml: {key} is missing")
+    for needle in ("agg.mSpeedSame = false;", "agg.mAtFastest +=", "agg.mAtSlowest +=", "agg.mAtNormal +=",
+                   "Logic::ANIM_SPEED_LADDER[Logic::ANIM_SPEED_RUNGS - 1] - Logic::ANIM_SPEED_EPSILON",
+                   "Logic::ANIM_SPEED_LADDER[0] + Logic::ANIM_SPEED_EPSILON", "std::fabs(speed - 1.f) <= Logic::ANIM_SPEED_EPSILON"):
+        if needle not in agg_fn:
+            out.append(f"computeAggregate: Speed needs {needle}")
+    info = function_body(cpp, "void refreshSpeedInfo")
+    if "sAgg.mEntities > 0 && sAgg.mSpeedSame" not in info or "GhostCloneMenuSpeedMixed" not in info:
+        out.append("refreshSpeedInfo: shows the common speed, or 'mixed' when the targets differ")
+    if "refreshSpeedInfo();" not in function_body(cpp, "void populateDynamicMenus"):
+        out.append("populateDynamicMenus must refresh the Speed info line")
+    acts = strip_comments(src["alghostcloneactions.cpp"])
+    set_fn = function_body(acts, "void setAnimSpeed")
+    if "speed = llclamp(speed, 0.05f, 4.f);" not in set_fn or "studio.setInstanceAnimSpeed(id, speed);" not in set_fn:
+        out.append("setAnimSpeed must clamp 0.05..4 and call setInstanceAnimSpeed (the spinner's path)")
+    step = function_body(acts, "void stepAnimSpeed")
+    if "ALGhostCloneMenuLogic::steppedAnimSpeed(inst->mAnimSpeed, direction)" not in step or "BACKING_ENTITY_CLONE" not in step:
+        out.append("stepAnimSpeed must step each entity target from its own speed on the ladder")
+    panel = strip_comments(src["alpanelghoststudio.cpp"])
+    if "ALGhostCloneActions::setAnimSpeed(selectedInstances()," not in function_body(panel, "void ALPanelGhostStudio::onAnimSpeedCommit"):
+        out.append("onAnimSpeedCommit must write through the shared setAnimSpeed (the page and the menu cannot drift)")
+    return out
+
+
 def findings(src: dict[str, str]) -> list[str]:
     out: list[str] = []
     out += parity_findings(src)
@@ -1167,8 +1520,8 @@ def findings(src: dict[str, str]) -> list[str]:
     try:
         root = ET.fromstring(src["menu_ghost_clone.xml"])
         labels = [c.get("label") if c.tag != "menu_item_separator" else "-" for c in root]
-        want = ["Select in Director", "-", "Pause", "Play", "Mirror", "Size", "Stagger", "Edit", "Look / turn", "Animation",
-                "Appearance", "-", "Freeze pose", "Clear animations", "Solo", "Duplicate", "Delete", "-", "Open in Director"]
+        want = ["Select in Director", "-", "Pause", "Play", "Mirror", "Size", "Stagger", "Edit", "Look / turn", "Gaze", "Animation",
+                "Appearance", "Style", "-", "Freeze pose", "Clear animations", "Solo", "Duplicate", "Delete", "-", "Open in Director"]
         if labels != want:
             out.append(f"menu_ghost_clone.xml item order is {labels}")
         size = [c.get("label") for c in root.find("context_menu[@name='Size']")]
@@ -1176,6 +1529,8 @@ def findings(src: dict[str, str]) -> list[str]:
             out.append("menu_ghost_clone.xml Size submenu is not Smaller / Larger / Reset size")
     except ET.ParseError as exc:
         out.append(f"menu_ghost_clone.xml does not parse: {exc}")
+
+    out += overlay_menu_findings(src, cpp)
 
     # ---- the four avatar menus ----------------------------------------------------
     fragments = {}
@@ -1754,9 +2109,9 @@ def look_turn_findings(src: dict[str, str], cpp: str) -> list[str]:
         if sub(sub(look_turn, "Look At"), "Look Nearby") is None or sub(sub(look_turn, "Turn To Face"), "Turn Nearby") is None:
             out.append("menu_ghost_clone.xml: the Nearby people submenus are named Look Nearby / Turn Nearby (the code fills them)")
     animation = sub(root, "Animation")
-    if animation is None or [c.get("label") for c in animation] != ["Restart animation", "Recent"] or \
+    if animation is None or [c.get("label") for c in animation] != ["Back to live", "Restart animation", "Speed", "Recent"] or \
             sub(animation, "Recent Animations") is None:
-        out.append("menu_ghost_clone.xml: Animation must hold Restart animation and Recent")
+        out.append("menu_ghost_clone.xml: Animation must hold Back to live, Restart animation, Speed and Recent")
     appearance = sub(root, "Appearance")
     if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Look", "Fade out", "Fade in"] or \
             sub(appearance, "Swap Source") is None:
@@ -1905,13 +2260,14 @@ def look_turn_findings(src: dict[str, str], cpp: str) -> list[str]:
         out.append("castMemberName: a cast member is named, never listed by id")
     dynamic = "\n".join(function_body(cpp, f) for f in ("void populateNearbyMenu", "void populateRecentMenu", "void populateSwapMenu",
                                                          "std::vector<NearbyEntry> nearbyPeople", "std::string castMemberName",
-                                                         "void addListItem", "void addPlaceholder"))
+                                                         "void addListItem", "void addPlaceholder",
+                                                         "void populateGazeMenus", "void addCheckItem", "std::string gazeCastLabel", "void actGazeCast"))
     if re.search(r"(?:getID\(\)|asset\w*|mAsset|source|target_id|\bid|choice\.mId)\.asString\(\)|LL_INFOS|LL_WARNS|LL_DEBUGS|getAssetUUID", dynamic):
         out.append("the dynamic lists must never format, log or show an id (names only)")
     if "list_item" not in function_body(cpp, "void addListItem") or "Nobody" not in function_body(cpp, "void addPlaceholder"):
         out.append("dynamic list items: names come from the labels passed in")
     present = function_body(cpp, "void presentEntityMenu")
-    if not re.search(r"sStaggerCurrent = [^;]*;\s*populateDynamicMenus\(\);\s*sMenu->show\(x, y\);", present):
+    if not re.search(r"sStaggerCurrent = [^;]*;\s*applyKindLayout\(sAgg\);\s*populateDynamicMenus\(\);\s*sMenu->show\(x, y\);", present):
         out.append("presentEntityMenu: the lists are built for this clone after the targets are fixed and before the menu shows")
     dyn = function_body(cpp, "void populateDynamicMenus")
     for needle in ('subMenu(sMenu, "Look Turn")', 'subMenu(look_turn, "Look At"), "Look Nearby"', 'subMenu(look_turn, "Turn To Face"), "Turn Nearby"',
@@ -2188,6 +2544,150 @@ def selftest() -> int:
          swap(src, "alghostclonemenu.cpp", 'commit.add("GhostClone.Delete"', 'commit.add("GhostClone.Delete2"')),
         ("missing string",
          swap(src, "strings.xml", 'name="GhostCloneMenuPosed"', 'name="GhostCloneMenuPosedX"')),
+        ("Style branch: one item with a swapped style id",
+         swap(src, "menu_ghost_clone.xml", 'name="ov_style_9">\n          <menu_item_check.on_click function="GhostClone.Style" parameter="9" />',
+              'name="ov_style_9">\n          <menu_item_check.on_click function="GhostClone.Style" parameter="8" />')),
+        ("Style branch: a label differs from the avatar menus",
+         swap(src, "menu_ghost_clone.xml", 'label="Neon Outline"', 'label="Neon Outlinex"')),
+        ("Style branch: a group is renamed",
+         swap(src, "menu_ghost_clone.xml", 'label="Classic"', 'label="Classicx"')),
+        ("Style branch: an item clicks the avatar callback",
+         swap(src, "menu_ghost_clone.xml", 'function="GhostClone.Style" parameter="3"', 'function="GhostOverlay.Style" parameter="3"')),
+        ("Style branch missing from the clone menu",
+         swap(src, "menu_ghost_clone.xml", 'name="Clone Style"', 'name="Clone Stylex"')),
+        ("Style commit acts on every target, not only overlays",
+         swap(src, "alghostclonemenu.cpp", "const std::vector<LLUUID> overlays = liveOverlayTargets();", "const std::vector<LLUUID> overlays = liveTargets();")),
+        ("Style check shows a style when the overlays differ",
+         swap(src, "alghostclonemenu.cpp", "agg.mOverlayStyle = -1;", "agg.mOverlayStyle = agg.mOverlayStyle;")),
+        ("avatar menus' Overlay Style callback changed",
+         swap(src, "menu_avatar_self.xml", 'function="GhostOverlay.Style" parameter="0"', 'function="GhostClone.Style" parameter="0"')),
+        ("all-overlay menu forgets to hide the entity-only items",
+         swap(src, "alghostclonemenu.cpp", "item->setVisible(entity_items);", "item->setVisible(true);")),
+        ("all-overlay menu forgets to hide Stagger",
+         swap(src, "alghostclonemenu.cpp", "stagger->setVisible(false);     // an overlay group has no start offsets to stagger", "")),
+        ("all-overlay menu no longer hides Appearance",
+         swap(src, "alghostclonemenu.cpp", '"Appearance", "Clear animations" };', '"Clear animations" };')),
+        ("all-overlay menu no longer hides Gaze",
+         swap(src, "alghostclonemenu.cpp", '"Look Turn", "Gaze", "Animation",', '"Look Turn", "Animation",')),
+        ("overlay menu hides Edit",
+         swap(src, "alghostclonemenu.cpp", '"Appearance", "Clear animations" };', '"Appearance", "Clear animations", "Edit" };')),
+        ("Style branch always visible",
+         swap(src, "alghostclonemenu.cpp", "style->setVisible(Logic::styleVisible(agg.mOverlays));", "style->setVisible(true);")),
+        ("kind layout never applied",
+         swap(src, "alghostclonemenu.cpp", "    applyKindLayout(sAgg);\n    populateDynamicMenus();", "    populateDynamicMenus();")),
+        ("separators left untidy",
+         swap(src, "alghostclonemenu.cpp", "    tidySeparators(sMenu);\n    sMenu->arrange();", "    sMenu->arrange();")),
+        ("trailing separator kept",
+         swap(src, "alghostclonemenu.cpp", "last_shown_separator->setVisible(false);    // nothing visible after it", "")),
+        ("Pause re-shown for overlay targets by its on_visible",
+         swap(src, "alghostclonemenu.cpp", "return Logic::entityItemsVisible(sAgg.mEntities) && !Logic::allOf(sAgg.mPaused, sAgg.mEntities);", "return !Logic::allOf(sAgg.mPaused, sAgg.mEntities);")),
+        ("Style shown without an overlay target",
+         swap(src, "alghostclonemenulogic.h", "inline bool styleVisible(std::size_t overlay_targets)\n{\n    return overlay_targets > 0;", "inline bool styleVisible(std::size_t overlay_targets)\n{\n    return true;")),
+        ("Entity Look no longer hidden",
+         swap(src, "alghostclonemenu.cpp", "look->setVisible(false);", "look->setVisible(true);")),
+        ("Back to live missing from the Animation submenu",
+         swap(src, "menu_ghost_clone.xml", 'name="Back to live"', 'name="Back to livex"')),
+        ("Back to live skips the unpause",
+         swap(src, "alghostclonemenu.cpp", "    Actions::setPaused(entities, false);\n    std::vector<LLUUID> off_mirror;", "    std::vector<LLUUID> off_mirror;")),
+        ("Back to live sets the wrong drive",
+         swap(src, "alghostclonemenu.cpp", "Actions::setDriveMode(off_mirror, ALGhostStudio::DRIVE_MIRROR, LLUUID::null);", "Actions::setDriveMode(off_mirror, ALGhostStudio::DRIVE_REFLECT, LLUUID::null);")),
+        ("Back to live always enabled",
+         swap(src, "alghostclonemenu.cpp", "return state(ctrl, sAgg.mNotLive > 0,", "return state(ctrl, true,")),
+        ("Gaze menu after Animation instead of Look / turn",
+         swap(src, "menu_ghost_clone.xml", '  <context_menu\n   label="Gaze"\n   name="Gaze">', '  <context_menu\n   label="Gazex"\n   name="Gazex">')),
+        ("Gaze Camera sends the wrong target",
+         swap(src, "menu_ghost_clone.xml", 'function="GhostClone.Gaze" parameter="camera"', 'function="GhostClone.Gaze" parameter="travel"')),
+        ("Gaze Me targets the camera",
+         swap(src, "alghostclonemenu.cpp", "actGaze(LLActorMover::GAZE_CAST, gAgentID, false);", "actGaze(LLActorMover::GAZE_CAMERA, LLUUID::null, false);")),
+        ("Gaze Off does not turn gaze off",
+         swap(src, "alghostclonemenu.cpp", "actGaze(-1, LLUUID::null, true);", "actGaze(-1, LLUUID::null, false);")),
+        ("Gaze writes the mover directly",
+         swap(src, "alghostclonemenu.cpp", "Actions::applyGazeTarget(entities, mode, cast_target, !off);", "LLActorMover::instance().setGazeEnabled(entities.front(), !off);")),
+        ("Gaze ignores the expanded-member rule",
+         swap(src, "alghostclonemenu.cpp", "    if (Actions::hasExpandedMember(sRows))\n    {\n        tip(str(\"GhostCloneMenuWholeGroup\"));\n        return;\n    }\n    const std::vector<LLUUID> entities", "    const std::vector<LLUUID> entities")),
+        ("Gaze records no undo step",
+         swap(src, "alghostclonemenu.cpp", 'recordCustom(shell, "clone_gaze"', 'recordCustom(shell, "clone_gazex"')),
+        ("Gaze undo restores the new state",
+         swap(src, "alghostclonemenu.cpp", "Actions::restoreGaze(redo ? history->mAfter : history->mBefore)", "Actions::restoreGaze(history->mAfter)")),
+        ("Gaze cast list offers the clone itself",
+         swap(src, "alghostclonemenu.cpp", "std::find(own.begin(), own.end(), choice.mId) != own.end()", "false")),
+        ("Gaze cast list offers You",
+         swap(src, "alghostclonemenu.cpp", "if (LLDirectorCast::isSelf(choice.mId) ||\n                std::find(", "if (std::find(")),
+        ("Gaze nearby ignores RLV @shownearby",
+         swap(src, "alghostclonemenu.cpp", "if (ALGazeNearby::nearbyAllowed())", "if (true)")),
+        ("Gaze nearby lists cast members again",
+         swap(src, "alghostclonemenu.cpp", "offered.count(person.mId) || LLDirectorCast::instance().getMember(person.mId)", "false")),
+        ("Gaze check mark ignores disagreeing targets",
+         swap(src, "alghostclonemenu.cpp", "if (!sAgg.mGazeAgree || sAgg.mEntities == 0 || sAgg.mGazeBodies == 0)", "if (sAgg.mEntities == 0 || sAgg.mGazeBodies == 0)")),
+        ("Gaze lists not rebuilt on open",
+         swap(src, "alghostclonemenu.cpp", "    populateGazeMenus(people);\n", "")),
+        ("page gaze toggle bypasses the shared write",
+         swap(src, "alpanelghoststudio.cpp", "ALGhostCloneActions::applyGazeTarget(\n        ALGhostCloneActions::gazeEntities(selectedInstances()),\n        mLensGazeTargetMode->getValue().asInteger(), LLUUID::null, mLensGazeCheck->get());",
+              "LLActorMover::instance().setGazeEnabled(LLUUID::null, mLensGazeCheck->get());")),
+        ("shared gaze write forgets the enabled flag",
+         swap(src, "alghostcloneactions.cpp", "        mover.setGazeEnabled(entity, enabled);\n    }\n}\n\nstd::vector<GazeBefore>", "    }\n}\n\nstd::vector<GazeBefore>")),
+        ("Speed ladder: a wrong rung",
+         swap(src, "alghostclonemenulogic.h", "{ 0.25f, 0.5f, 0.75f, 1.f, 1.25f, 1.5f, 2.f, 3.f, 4.f }", "{ 0.25f, 0.5f, 0.75f, 1.f, 1.25f, 1.5f, 2.f, 2.5f, 4.f }")),
+        ("Speed ladder: faster skips a rung",
+         swap(src, "alghostclonemenulogic.h", "if (ANIM_SPEED_LADDER[i] > current + ANIM_SPEED_EPSILON)", "if (ANIM_SPEED_LADDER[i] > current + 0.3f)")),
+        ("Speed ladder: slower can raise a very slow clone",
+         swap(src, "alghostclonemenulogic.h", "        }\n    }\n    return current;\n}\n\n// Which Stagger", "        }\n    }\n    return ANIM_SPEED_LADDER[0];\n}\n\n// Which Stagger")),
+        ("Speed ladder: the top clamp removed",
+         swap(src, "alghostclonemenulogic.h", "        return current;\n    }\n    for (int i = ANIM_SPEED_RUNGS - 1;", "        return ANIM_SPEED_LADDER[ANIM_SPEED_RUNGS - 1] + 1.f;\n    }\n    for (int i = ANIM_SPEED_RUNGS - 1;")),
+        ("Speed shared write loses its clamp",
+         swap(src, "alghostcloneactions.cpp", "    speed = llclamp(speed, 0.05f, 4.f);\n    ALGhostStudio& studio = ALGhostStudio::instance();\n    for (const LLUUID& id : instances(rows))\n    {\n        studio.setInstanceAnimSpeed(id, speed);", "    ALGhostStudio& studio = ALGhostStudio::instance();\n    for (const LLUUID& id : instances(rows))\n    {\n        studio.setInstanceAnimSpeed(id, speed);")),
+        ("Speed step uses one speed for every target",
+         swap(src, "alghostcloneactions.cpp", "ALGhostCloneMenuLogic::steppedAnimSpeed(inst->mAnimSpeed, direction)", "ALGhostCloneMenuLogic::steppedAnimSpeed(1.f, direction)")),
+        ("page Anim speed spinner bypasses the shared write",
+         swap(src, "alpanelghoststudio.cpp", "    ALGhostCloneActions::setAnimSpeed(selectedInstances(), (F32)mAnimSpeedSpin->getValue().asReal());", "    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().setInstanceAnimSpeed(id, 1.f);")),
+        ("Speed menu writes the studio directly",
+         swap(src, "alghostclonemenu.cpp", "Actions::setAnimSpeed(sRows, 1.f);", "ALGhostStudio::instance().setInstanceAnimSpeed(sPicked, 1.f);")),
+        ("Speed Faster stays enabled at the top",
+         swap(src, "alghostclonemenu.cpp", "sAgg.mAtFastest < sAgg.mEntities", "true")),
+        ("Speed Slower enabled at the bottom",
+         swap(src, "alghostclonemenu.cpp", "sAgg.mAtSlowest < sAgg.mEntities", "true")),
+        ("Speed Reset enabled when already 1",
+         swap(src, "alghostclonemenu.cpp", "sAgg.mAtNormal < sAgg.mEntities", "true")),
+        ("Speed ignores the expanded-member rule",
+         swap(src, "alghostclonemenu.cpp", "    if (Actions::hasExpandedMember(sRows))\n    {\n        tip(str(\"GhostCloneMenuWholeGroup\"));\n        return;\n    }\n    const std::vector<Actions::SpeedBefore> before", "    const std::vector<Actions::SpeedBefore> before")),
+        ("Speed records no undo step",
+         swap(src, "alghostclonemenu.cpp", 'recordCustom(shell, "clone_anim_speed"', 'recordCustom(shell, "clone_anim_speedx"')),
+        ("Speed undo restores the new speeds",
+         swap(src, "alghostclonemenu.cpp", "Actions::restoreAnimSpeed(redo ? after : before)", "Actions::restoreAnimSpeed(after)")),
+        ("Speed info shows a speed when the targets differ",
+         swap(src, "alghostclonemenu.cpp", "if (sAgg.mEntities > 0 && sAgg.mSpeedSame)", "if (sAgg.mEntities > 0)")),
+        ("Speed info never refreshed",
+         swap(src, "alghostclonemenu.cpp", "    refreshSpeedInfo();\n", "")),
+        ("Speed Faster wired to Slower",
+         swap(src, "menu_ghost_clone.xml", 'function="GhostClone.Speed" parameter="faster"', 'function="GhostClone.Speed" parameter="slower"')),
+        ("Gaze cast label ignores RLV name hiding",
+         swap(src, "alghostclonemenu.cpp", "if (nameHiddenByRlva(choice.mId) || choice.mLabel.empty() || Logic::containsUuidText(choice.mLabel))", "if (choice.mLabel.empty() || Logic::containsUuidText(choice.mLabel))")),
+        ("Gaze cast label may be a UUID",
+         swap(src, "alghostclonemenu.cpp", "if (nameHiddenByRlva(choice.mId) || choice.mLabel.empty() || Logic::containsUuidText(choice.mLabel))", "if (nameHiddenByRlva(choice.mId) || choice.mLabel.empty())")),
+        ("Gaze cast label falls back to the id",
+         swap(src, "alghostclonemenu.cpp", 'return name.empty() ? std::string("Unknown") : name;\n    }\n    return choice.mLabel;', 'return name.empty() ? choice.mId.asString() : name;\n    }\n    return choice.mLabel;')),
+        ("Gaze history never rewrites a respawned target",
+         swap(src, "alghostclonemenu.cpp", "                    Actions::rewriteGazeReferences(history->mAfter, old_id, new_id);\n", "")),
+        ("Gaze history rewrites only the before snapshot",
+         swap(src, "alghostclonemenu.cpp", "Actions::rewriteGazeReferences(history->mAfter, old_id, new_id);", "(void)history;")),
+        ("Gaze rewrite keeps CAST mode for a deleted target",
+         swap(src, "alghostcloneactions.cpp", "saved.mMode = LLActorMover::GAZE_TANGENT;", "saved.mMode = saved.mMode;")),
+        ("Gaze rewrite does not follow the new id",
+         swap(src, "alghostcloneactions.cpp", "saved.mCast = new_id;", "saved.mCast = old_id;")),
+        ("Gaze cast click does not revalidate",
+         swap(src, "alghostclonemenu.cpp", "[id]() { actGazeCast(id); }", "[id]() { actGaze(LLActorMover::GAZE_CAST, id, false); }")),
+        ("Gaze cast click accepts a retired id",
+         swap(src, "alghostclonemenu.cpp", "    if (!current || std::find(own.begin(), own.end(), id) != own.end())", "    if (std::find(own.begin(), own.end(), id) != own.end())")),
+        ("Gaze items enabled without a spawned body",
+         swap(src, "alghostclonemenu.cpp", "    return sAgg.mGazeBodies > 0 && !sAgg.mExpandedMember;", "    return sAgg.mEntities > 0 && !sAgg.mExpandedMember;")),
+        ("Gaze Off checked without a spawned body",
+         swap(src, "alghostclonemenu.cpp", "sAgg.mEntities == 0 || sAgg.mGazeBodies == 0", "sAgg.mEntities == 0")),
+        ("Back to live tips 'already live' after a successful unpause",
+         swap(src, "alghostclonemenu.cpp", "        if (!resumed)\n        {", "        if (true)\n        {")),
+        ("Back to live tooltip no longer matches its enable rule",
+         swap(src, "menu_ghost_clone.xml", "Reflect or Pause).", "or Reflect).")),
+        ("Speed validates its parameter after the tips",
+         swap(src, "alghostclonemenu.cpp", "void actSpeed(const std::string& kind)\n{\n    if (kind != \"faster\" && kind != \"slower\" && kind != \"reset\")\n    {\n        return;                         // an unknown parameter never produces a tip or a change\n    }\n    if (liveEntityTargets().empty())", "void actSpeed(const std::string& kind)\n{\n    if (liveEntityTargets().empty())")),
         ("entity menu reordered",
          swap(src, "menu_ghost_clone.xml", 'label="Open in Director"', 'label="Open in Directorx"')),
         ("Select button missing from the generator",

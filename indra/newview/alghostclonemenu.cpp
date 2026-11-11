@@ -21,6 +21,8 @@
 #include "alghostclearanim.h"
 #include "alghostcloneactions.h"
 #include "alghostclonemenulogic.h"
+#include "algazenearby.h"
+#include "algazenearbyname.h"
 #include "alghoststudio.h"
 #include "alkithistory.h"
 #include "alkitshell.h"
@@ -31,6 +33,7 @@
 #include "altoolghostedit.h"
 #include "altoolghostplace.h"
 #include "llagent.h"
+#include "llactormover.h"
 #include "llagentcamera.h"
 #include "llappviewer.h"
 #include "llinventoryfunctions.h"
@@ -58,8 +61,10 @@
 #include "rlvactions.h"
 
 #include <algorithm>
+#include <cmath>
 #include <functional>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -91,6 +96,19 @@ struct Aggregate
 {
     size_t mLive = 0;
     size_t mEntities = 0;
+    bool mGazeAgree = true;     // every entity target has the same gaze (enabled, target)
+    bool mGazeOn = false;
+    size_t mGazeBodies = 0;     // entity targets with a spawned body (gaze needs one)
+    S32 mGazeMode = -1;         // LLActorMover GAZE_*, -1 when off
+    LLUUID mGazeCast;           // the GAZE_CAST target
+    bool mSpeedSame = true;     // every entity target has the same animation speed
+    F32 mSpeed = 1.f;
+    size_t mAtFastest = 0;      // entity targets at the top rung (4)
+    size_t mAtSlowest = 0;      // entity targets at or below the bottom rung (0.25)
+    size_t mAtNormal = 0;       // entity targets at exactly 1
+    size_t mNotLive = 0;        // entity targets not on the live mirror (Back to live acts on them)
+    size_t mOverlays = 0;       // [OverlayMenu] overlay targets (Style acts on these only)
+    S32 mOverlayStyle = -1;     // the overlay targets' common style, -1 when they differ
     size_t mPaused = 0;
     size_t mReflecting = 0;
     size_t mPosed = 0;
@@ -199,6 +217,19 @@ std::vector<LLUUID> liveEntityTargets()
     return ids;
 }
 
+std::vector<LLUUID> liveOverlayTargets()
+{
+    std::vector<LLUUID> ids;
+    for (const LLUUID& id : liveTargets())
+    {
+        if (ALGhostStudio::instance().getInstance(id)->mKind == ALGhostStudio::BACKING_OVERLAY)
+        {
+            ids.push_back(id);
+        }
+    }
+    return ids;
+}
+
 Aggregate computeAggregate()
 {
     ALGhostStudio& studio = ALGhostStudio::instance();
@@ -210,9 +241,51 @@ Aggregate computeAggregate()
         const ALGhostStudio::Instance* inst = studio.getInstance(id);
         if (inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE)
         {
+            ++agg.mOverlays;
+            if (agg.mOverlays == 1)
+            {
+                agg.mOverlayStyle = inst->mStyle;
+            }
+            else if (agg.mOverlayStyle != inst->mStyle)
+            {
+                agg.mOverlayStyle = -1;
+            }
             continue;
         }
         ++agg.mEntities;
+        if (inst->mEntityId.notNull())
+        {
+            ++agg.mGazeBodies;
+            LLActorMover& mover = LLActorMover::instance();
+            const bool on = mover.isGazeEnabled(inst->mEntityId);
+            const S32 mode = on ? mover.getGazeTargetMode(inst->mEntityId) : -1;
+            const LLUUID cast = mode == LLActorMover::GAZE_CAST ? mover.getGazeCastTarget(inst->mEntityId) : LLUUID::null;
+            if (agg.mEntities == 1)
+            {
+                agg.mGazeOn = on;
+                agg.mGazeMode = mode;
+                agg.mGazeCast = cast;
+            }
+            else if (agg.mGazeOn != on || agg.mGazeMode != mode || agg.mGazeCast != cast)
+            {
+                agg.mGazeAgree = false;
+            }
+        }
+        {
+            const F32 speed = inst->mAnimSpeed;
+            if (agg.mEntities == 1)
+            {
+                agg.mSpeed = speed;
+            }
+            else if (std::fabs(agg.mSpeed - speed) > Logic::ANIM_SPEED_EPSILON)
+            {
+                agg.mSpeedSame = false;
+            }
+            agg.mAtFastest += speed >= Logic::ANIM_SPEED_LADDER[Logic::ANIM_SPEED_RUNGS - 1] - Logic::ANIM_SPEED_EPSILON ? 1 : 0;
+            agg.mAtSlowest += speed <= Logic::ANIM_SPEED_LADDER[0] + Logic::ANIM_SPEED_EPSILON ? 1 : 0;
+            agg.mAtNormal += std::fabs(speed - 1.f) <= Logic::ANIM_SPEED_EPSILON ? 1 : 0;
+        }
+        agg.mNotLive += inst->mDriveMode != ALGhostStudio::DRIVE_MIRROR ? 1 : 0;
         agg.mFadeOutable += Logic::fadeEligible(true, inst->mUserHidden) ? 1 : 0;
         agg.mFadeInable += Logic::fadeEligible(false, inst->mUserHidden) ? 1 : 0;
         if (agg.mEntities == 1)
@@ -368,6 +441,48 @@ void actPlayPause()
         return;
     }
     Actions::setPaused(sRows, pause);
+}
+
+// Back to live (Animation submenu): a paused target is resumed through Play's own path first, then
+// every entity target still off the live mirror (cleared, Directed, Reflect, True mirror) is set to
+// DRIVE_MIRROR, which also ends the cleared state. Like Pause / Mirror, this records no undo step.
+void actBackToLive()
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    const std::vector<LLUUID> entities = liveEntityTargets();
+    if (entities.empty())
+    {
+        tip(str("GhostCloneMenuNotReady"));
+        return;
+    }
+    bool resumed = false;
+    for (const LLUUID& id : entities)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        resumed = resumed || (inst && inst->mDriveMode == ALGhostStudio::DRIVE_FROZEN);
+    }
+    Actions::setPaused(entities, false);
+    std::vector<LLUUID> off_mirror;
+    for (const LLUUID& id : entities)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mDriveMode != ALGhostStudio::DRIVE_MIRROR)
+        {
+            off_mirror.push_back(id);
+        }
+    }
+    if (off_mirror.empty())
+    {
+        if (!resumed)
+        {
+            tip(str("GhostCloneMenuAlreadyLive"));      // nothing was paused and nothing was off the mirror
+        }
+    }
+    else
+    {
+        Actions::setDriveMode(off_mirror, ALGhostStudio::DRIVE_MIRROR, LLUUID::null);
+    }
+    sAgg = computeAggregate();
 }
 
 void actMirror()
@@ -869,6 +984,321 @@ void actFade(bool fade_out)
     sAgg = computeAggregate();
 }
 
+// ---- Animation > Speed: the Clones page Anim speed spinner, stepped on a ladder -----------------
+void actSpeed(const std::string& kind)
+{
+    if (kind != "faster" && kind != "slower" && kind != "reset")
+    {
+        return;                         // an unknown parameter never produces a tip or a change
+    }
+    if (liveEntityTargets().empty())
+    {
+        tip(str("GhostCloneMenuNotReady"));
+        return;
+    }
+    if (Actions::hasExpandedMember(sRows))
+    {
+        tip(str("GhostCloneMenuWholeGroup"));
+        return;
+    }
+    const std::vector<Actions::SpeedBefore> before = Actions::snapshotAnimSpeed(sRows);
+    if (kind == "reset")
+    {
+        Actions::setAnimSpeed(sRows, 1.f);
+    }
+    else
+    {
+        Actions::stepAnimSpeed(sRows, kind == "faster" ? 1 : -1);
+    }
+    const std::vector<Actions::SpeedBefore> after = Actions::snapshotAnimSpeed(sRows);
+    bool changed = before.size() != after.size();
+    for (size_t i = 0; !changed && i < before.size(); ++i)
+    {
+        changed = before[i].mId != after[i].mId || before[i].mSpeed != after[i].mSpeed;
+    }
+    if (changed)
+    {
+        LLFloater* director = LLFloaterReg::getInstance("director");
+        ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+        if (shell)
+        {
+            shell->history().recordCustom(shell, "clone_anim_speed", "Set clone animation speed",
+                [before, after](bool redo, std::string& reason)
+                {
+                    if (!Actions::restoreAnimSpeed(redo ? after : before))
+                    {
+                        reason = "Those clones are no longer available";
+                        return false;
+                    }
+                    return true;
+                });
+        }
+    }
+    sAgg = computeAggregate();
+}
+
+void refreshSpeedInfo()
+{
+    LLContextMenu* speed = subMenu(subMenu(sMenu, "Animation"), "Anim Speed");
+    LLMenuItemGL* info = speed ? speed->getItem(std::string("Speed Info")) : nullptr;
+    if (!info)
+    {
+        return;
+    }
+    if (sAgg.mEntities > 0 && sAgg.mSpeedSame)
+    {
+        LLStringUtil::format_map_t args;
+        args["[SPEED]"] = llformat("%.2f", sAgg.mSpeed);
+        info->setLabel(LLTrans::getString("GhostCloneMenuSpeedInfo", args));
+    }
+    else
+    {
+        info->setLabel(str("GhostCloneMenuSpeedMixed"));
+    }
+}
+
+void addCheckItem(LLContextMenu* menu, const std::string& label, std::function<bool()> enabled,
+                  std::function<bool()> checked, std::function<void()> click)
+{
+    LLMenuItemCheckGL::Params item;
+    item.name = "list_item";
+    item.label = label;
+    item.on_click.function = [click](LLUICtrl*, const LLSD&) { click(); };
+    item.on_enable.function = [enabled](LLUICtrl*, const LLSD&) { return enabled(); };
+    item.on_check.function = [checked](LLUICtrl*, const LLSD&) { return checked(); };
+    menu->addChild(LLUICtrlFactory::create<LLMenuItemCheckGL>(item));
+}
+
+// ---- Gaze: the Clones page Motion > Head gaze target + toggle, on the same units as Look at -----
+bool gazeUnchanged(const std::vector<Actions::GazeBefore>& a, const std::vector<Actions::GazeBefore>& b)
+{
+    if (a.size() != b.size())
+    {
+        return false;
+    }
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        if (a[i].mId != b[i].mId || a[i].mEnabled != b[i].mEnabled || a[i].mMode != b[i].mMode ||
+            (a[i].mMode == LLActorMover::GAZE_CAST && a[i].mCast != b[i].mCast))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+// mode < 0 with off = true: Off (the page toggle unchecked); otherwise the target is set and gaze
+// turned on. One undo step (kit history custom record) on the Director shell.
+void actGaze(S32 mode, const LLUUID& cast_target, bool off)
+{
+    if (liveEntityTargets().empty())
+    {
+        tip(str("GhostCloneMenuNotReady"));
+        return;
+    }
+    if (Actions::hasExpandedMember(sRows))
+    {
+        tip(str("GhostCloneMenuWholeGroup"));
+        return;
+    }
+    const std::vector<LLUUID> entities = Actions::gazeEntities(sRows);
+    if (entities.empty())
+    {
+        tip(str("GhostCloneMenuNotReady"));
+        return;
+    }
+    const std::vector<Actions::GazeBefore> before = Actions::snapshotGaze(sRows);
+    Actions::applyGazeTarget(entities, mode, cast_target, !off);
+    const std::vector<Actions::GazeBefore> after = Actions::snapshotGaze(sRows);
+    if (!gazeUnchanged(before, after))
+    {
+        LLFloater* director = LLFloaterReg::getInstance("director");
+        ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+        if (shell)
+        {
+            // The snapshots hold cast target ids: they follow a respawned target clone and fall back to
+            // the travel-direction mode when it is deleted (the mover's own rewriteGazeTarget rule).
+            struct History
+            {
+                std::vector<Actions::GazeBefore> mBefore, mAfter;
+            };
+            auto history = std::make_shared<History>();
+            history->mBefore = before;
+            history->mAfter = after;
+            shell->history().recordCustom(shell, "clone_gaze", "Set clone gaze",
+                [history](bool redo, std::string& reason)
+                {
+                    if (!Actions::restoreGaze(redo ? history->mAfter : history->mBefore))
+                    {
+                        reason = "Those clones are no longer available";
+                        return false;
+                    }
+                    return true;
+                },
+                false, {},
+                [history](const LLUUID& old_id, const LLUUID& new_id)
+                {
+                    Actions::rewriteGazeReferences(history->mBefore, old_id, new_id);
+                    Actions::rewriteGazeReferences(history->mAfter, old_id, new_id);
+                });
+        }
+    }
+    sAgg = computeAggregate();
+}
+
+void actGazeParam(const LLSD& param)
+{
+    const std::string kind = param.asString();
+    if (kind == "off")
+    {
+        actGaze(-1, LLUUID::null, true);
+    }
+    else if (kind == "camera")
+    {
+        actGaze(LLActorMover::GAZE_CAMERA, LLUUID::null, false);
+    }
+    else if (kind == "travel")
+    {
+        actGaze(LLActorMover::GAZE_TANGENT, LLUUID::null, false);
+    }
+    else if (kind == "me")
+    {
+        actGaze(LLActorMover::GAZE_CAST, gAgentID, false);
+    }
+}
+
+bool gazeChecked(const std::string& kind)
+{
+    if (!sAgg.mGazeAgree || sAgg.mEntities == 0 || sAgg.mGazeBodies == 0)
+    {
+        return false;      // no spawned body: nothing is set, so nothing is checked (not even Off)
+    }
+    if (kind == "off")
+    {
+        return !sAgg.mGazeOn;
+    }
+    if (!sAgg.mGazeOn)
+    {
+        return false;
+    }
+    return kind == "camera" ? sAgg.mGazeMode == LLActorMover::GAZE_CAMERA
+         : kind == "travel" ? sAgg.mGazeMode == LLActorMover::GAZE_TANGENT
+         : kind == "me" ? (sAgg.mGazeMode == LLActorMover::GAZE_CAST && sAgg.mGazeCast == gAgentID)
+         : false;
+}
+
+bool gazeCastChecked(const LLUUID& id)
+{
+    return sAgg.mGazeBodies > 0 && sAgg.mGazeAgree && sAgg.mGazeOn && sAgg.mGazeMode == LLActorMover::GAZE_CAST && sAgg.mGazeCast == id;
+}
+
+bool gazeItemEnabled()
+{
+    return sAgg.mGazeBodies > 0 && !sAgg.mExpandedMember;
+}
+
+// A cast member's label for the Gaze list: the cast label, never a UUID (getActorChoices falls back to
+// the member id for an unnamed entry) and never a name RLVa hides; both show the page's "Unknown".
+std::string gazeCastLabel(const LLDirectorCast::ActorChoice& choice)
+{
+    if (nameHiddenByRlva(choice.mId) || choice.mLabel.empty() || Logic::containsUuidText(choice.mLabel))
+    {
+        const std::string name = castMemberName(choice.mId);     // RLVa-gated, never an id
+        return name.empty() ? std::string("Unknown") : name;
+    }
+    return choice.mLabel;
+}
+
+// An open menu may outlive its cast list: the id is checked against the CURRENT cast at click time
+// (a retired id of a respawned or deleted clone is refused with a tip, never written).
+void actGazeCast(const LLUUID& id)
+{
+    bool current = false;
+    for (const LLDirectorCast::ActorChoice& choice : LLDirectorCast::instance().getActorChoices())
+    {
+        current = current || (choice.mId == id && !LLDirectorCast::isSelf(choice.mId));
+    }
+    const std::vector<LLUUID> own = Actions::gazeEntities(sRows);
+    if (!current || std::find(own.begin(), own.end(), id) != own.end())
+    {
+        tip(str("GhostCloneMenuCastGone"));
+        return;
+    }
+    actGaze(LLActorMover::GAZE_CAST, id, false);
+}
+
+// Gaze > Cast member / Nearby people. Cast members by their cast label (never the clone itself or
+// its own unit members, never You: that is "Me"); Nearby people are the real avatars the Look at list
+// offers who are not cast members, and none at all under RLV @shownearby. A pick is stored as
+// GAZE_CAST + the agent id, like the Gaze page Nearby section.
+void populateGazeMenus(const std::vector<NearbyEntry>& people)
+{
+    LLContextMenu* gaze = subMenu(sMenu, "Gaze");
+    LLContextMenu* cast_menu = subMenu(gaze, "Gaze Cast");
+    LLContextMenu* near_menu = subMenu(gaze, "Gaze Nearby");
+    const std::vector<LLUUID> own = Actions::gazeEntities(sRows);
+    std::set<LLUUID> offered;
+    if (cast_menu)
+    {
+        cast_menu->empty();
+        bool any = false;
+        for (const LLDirectorCast::ActorChoice& choice : LLDirectorCast::instance().getActorChoices())
+        {
+            offered.insert(choice.mId);
+            if (LLDirectorCast::isSelf(choice.mId) ||
+                std::find(own.begin(), own.end(), choice.mId) != own.end())
+            {
+                continue;
+            }
+            const LLUUID id = choice.mId;
+            addCheckItem(cast_menu, gazeCastLabel(choice), []() { return gazeItemEnabled(); },
+                         [id]() { return gazeCastChecked(id); },
+                         [id]() { actGazeCast(id); });
+            any = true;
+        }
+        if (!any)
+        {
+            addPlaceholder(cast_menu, str("GhostCloneMenuNoCast"));
+        }
+    }
+    if (near_menu)
+    {
+        near_menu->empty();
+        bool any = false;
+        if (ALGazeNearby::nearbyAllowed())
+        {
+            for (const NearbyEntry& person : people)
+            {
+                if (offered.count(person.mId) || LLDirectorCast::instance().getMember(person.mId))
+                {
+                    continue;       // cast members are listed under Cast member
+                }
+                const LLUUID id = person.mId;
+                addCheckItem(near_menu, person.mLabel, []() { return gazeItemEnabled(); },
+                             [id]() { return gazeCastChecked(id); },
+                             [id]()
+                             {
+                                 if (!personNearby(id))
+                                 {
+                                     tip(str("GhostCloneMenuPersonGone"));
+                                     return;
+                                 }
+                                 actGaze(LLActorMover::GAZE_CAST, id, false);
+                             });
+                any = true;
+            }
+        }
+        if (!any)
+        {
+            addPlaceholder(near_menu, str("GhostCloneMenuNobodyNearby"));
+        }
+    }
+    if (gaze)
+    {
+        gaze->arrange();
+    }
+}
+
 // Rebuilds every dynamic list for the clone the menu is opening on.
 void populateDynamicMenus()
 {
@@ -876,6 +1306,8 @@ void populateDynamicMenus()
     const std::vector<NearbyEntry> people = nearbyPeople();       // one scan per open, shared by both lists
     populateNearbyMenu(subMenu(subMenu(look_turn, "Look At"), "Look Nearby"), false, people);
     populateNearbyMenu(subMenu(subMenu(look_turn, "Turn To Face"), "Turn Nearby"), true, people);
+    populateGazeMenus(people);
+    refreshSpeedInfo();
     populateRecentMenu(subMenu(sMenu, "Animation"));
     populateSwapMenu(subMenu(subMenu(sMenu, "Appearance"), "Swap Source"));
 }
@@ -887,7 +1319,7 @@ void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
     // Play / Pause: two items, one visible at a time, so the label is XML text.
     enable.add("GhostClone.VisiblePause", [](LLUICtrl*, const LLSD&)
     {
-        return !Logic::allOf(sAgg.mPaused, sAgg.mEntities);
+        return Logic::entityItemsVisible(sAgg.mEntities) && !Logic::allOf(sAgg.mPaused, sAgg.mEntities);
     });
     enable.add("GhostClone.VisiblePlay", [](LLUICtrl*, const LLSD&)
     {
@@ -961,6 +1393,38 @@ void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
         }
         return state(ctrl, sAgg.mLive > 0, "GhostCloneMenuNotReady");
     });
+    enable.add("GhostClone.EnableGaze", [](LLUICtrl* ctrl, const LLSD&)
+    {
+        if (sAgg.mEntities > 0 && sAgg.mExpandedMember)
+        {
+            return state(ctrl, false, "GhostCloneMenuWholeGroup");
+        }
+        return state(ctrl, sAgg.mGazeBodies > 0, "GhostCloneMenuNotReady");
+    });
+    enable.add("GhostClone.EnableSpeed", [](LLUICtrl* ctrl, const LLSD& param)
+    {
+        const std::string kind = param.asString();
+        if (sAgg.mEntities == 0)
+        {
+            return state(ctrl, false, "GhostCloneMenuNotReady");
+        }
+        if (sAgg.mExpandedMember)
+        {
+            return state(ctrl, false, "GhostCloneMenuWholeGroup");
+        }
+        if (kind == "faster")
+        {
+            return state(ctrl, sAgg.mAtFastest < sAgg.mEntities, "GhostCloneMenuSpeedAtMax");
+        }
+        if (kind == "slower")
+        {
+            return state(ctrl, sAgg.mAtSlowest < sAgg.mEntities, "GhostCloneMenuSpeedAtMin");
+        }
+        return state(ctrl, sAgg.mAtNormal < sAgg.mEntities, "GhostCloneMenuSpeedAtOne");
+    });
+    commit.add("GhostClone.Speed", [](LLUICtrl*, const LLSD& param) { actSpeed(param.asString()); });
+    enable.add("GhostClone.CheckGaze", [](LLUICtrl*, const LLSD& param) { return gazeChecked(param.asString()); });
+    commit.add("GhostClone.Gaze", [](LLUICtrl*, const LLSD& param) { actGazeParam(param); });
     commit.add("GhostClone.Look", [](LLUICtrl*, const LLSD& param) { actFaceParam(false, param); });
     commit.add("GhostClone.Turn", [](LLUICtrl*, const LLSD& param) { actFaceParam(true, param); });
     enable.add("GhostClone.EnableEntities", [](LLUICtrl* ctrl, const LLSD&)
@@ -988,6 +1452,38 @@ void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
                      fade_out ? "GhostCloneMenuAlreadyFaded" : "GhostCloneMenuNotFaded");
     });
     commit.add("GhostClone.Fade", [](LLUICtrl*, const LLSD& param) { actFade(param.asString() == "out"); });
+
+    // [OverlayMenu] Style: the overlay clones among the targets (the same setter and path as the
+    // avatar menus' GhostOverlay.Style); entity clones keep their look.
+    enable.add("GhostClone.EnableStyle", [](LLUICtrl* ctrl, const LLSD&)
+    {
+        return state(ctrl, sAgg.mOverlays > 0, "GhostCloneMenuNotReady");
+    });
+    enable.add("GhostClone.CheckStyle", [](LLUICtrl*, const LLSD& param)
+    {
+        return sAgg.mOverlayStyle == param.asInteger();
+    });
+    commit.add("GhostClone.Style", [](LLUICtrl*, const LLSD& param)
+    {
+        const std::vector<LLUUID> overlays = liveOverlayTargets();
+        if (overlays.empty())
+        {
+            tip(str("GhostCloneMenuNotReady"));
+        }
+        else
+        {
+            Actions::setOverlayStyle(overlays, param.asInteger());
+        }
+        sAgg = computeAggregate();
+    });
+
+    // [OverlayMenu] Back to live: every entity target not on the live mirror goes back to it.
+    enable.add("GhostClone.EnableBackToLive", [](LLUICtrl* ctrl, const LLSD&)
+    {
+        return state(ctrl, sAgg.mNotLive > 0,
+                     sAgg.mEntities > 0 ? "GhostCloneMenuAlreadyLive" : "GhostCloneMenuNotReady");
+    });
+    commit.add("GhostClone.BackToLive", [](LLUICtrl*, const LLSD&) { actBackToLive(); });
 
     commit.add("GhostClone.FreezePose", [](LLUICtrl*, const LLSD&) { actFreezePose(); });
 
@@ -1163,6 +1659,77 @@ bool gestureContextValid()
            LLModalDialog::activeCount() == 0 && !gDisconnected;
 }
 
+// [OverlayMenu] The menu adapts to the kinds of its targets every time it is presented. Items that
+// only entity clones support are HIDDEN (not just disabled) when every target is an overlay clone;
+// Style (overlay looks) shows whenever an overlay is a target. Entity-only targets: today's layout,
+// Style hidden. Mixed: the entity layout plus Style. Separators never double up or lead / trail.
+const char* const ENTITY_ONLY_ITEMS[] = { "Pause", "Play", "Mirror", "Look Turn", "Gaze", "Animation",
+                                          "Appearance", "Clear animations" };
+
+void tidySeparators(LLContextMenu* menu)
+{
+    bool real_since_separator = false;
+    LLMenuItemGL* last_shown_separator = nullptr;
+    const U32 count = menu->getItemCount();
+    for (U32 i = 0; i < count; ++i)
+    {
+        LLMenuItemGL* item = menu->getItem((S32)i);
+        if (!item)
+        {
+            continue;
+        }
+        if (dynamic_cast<LLMenuItemSeparatorGL*>(item))
+        {
+            item->setVisible(real_since_separator);
+            last_shown_separator = real_since_separator ? item : last_shown_separator;
+            real_since_separator = false;
+        }
+        else if (item->getVisible())
+        {
+            real_since_separator = true;
+            last_shown_separator = nullptr;
+        }
+    }
+    if (last_shown_separator)
+    {
+        last_shown_separator->setVisible(false);    // nothing visible after it
+    }
+}
+
+void applyKindLayout(const Aggregate& agg)
+{
+    const bool entity_items = Logic::entityItemsVisible(agg.mEntities);
+    for (const char* name : ENTITY_ONLY_ITEMS)
+    {
+        if (LLMenuItemGL* item = sMenu->getItem(std::string(name)))
+        {
+            item->setVisible(entity_items);
+        }
+    }
+    if (!entity_items)
+    {
+        if (LLMenuItemGL* stagger = sMenu->getItem(std::string("Stagger")))
+        {
+            stagger->setVisible(false);     // an overlay group has no start offsets to stagger
+        }
+    }
+    // Appearance > Look is hidden for everyone: the render looks are not built yet, so the item
+    // would move a check mark and change nothing (the Clones page combo is untouched).
+    if (LLContextMenu* appearance = subMenu(sMenu, "Appearance"))
+    {
+        if (LLMenuItemGL* look = appearance->getItem(std::string("Entity Look")))
+        {
+            look->setVisible(false);
+        }
+    }
+    if (LLMenuItemGL* style = sMenu->getItem(std::string("Clone Style")))
+    {
+        style->setVisible(Logic::styleVisible(agg.mOverlays));
+    }
+    tidySeparators(sMenu);
+    sMenu->arrange();
+}
+
 // Fixes what the menu shows about sRows / sPicked and pops it. A world click opens it AFTER the
 // release (its spawn point is then disarmed); a Clones list row opens it on the press, where the
 // holder's armed spawn point is what keeps the release from clicking an item.
@@ -1176,6 +1743,7 @@ void presentEntityMenu(S32 x, S32 y, bool opened_on_press)
         stagger->setVisible(Logic::staggerVisible(unit_is_group));
     }
     sStaggerCurrent = unit_is_group ? Actions::staggerCurrent(sPicked) : 0;
+    applyKindLayout(sAgg);
     populateDynamicMenus();
     sMenu->show(x, y);
     if (!opened_on_press)

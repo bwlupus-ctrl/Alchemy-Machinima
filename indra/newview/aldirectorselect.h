@@ -33,7 +33,10 @@ extern const char* const CLONES_PAGE;
 
 // The visible entity clone a world pick means: a hit on the clone's body or
 // one of its attachments, else the screen-space foot / mid-body pick when that
-// clone is nearer the camera than whatever the real pick hit. Null otherwise.
+// clone is nearer the camera than whatever the real pick hit. With no entity
+// clone there, a free-standing overlay clone is picked by the same probe and
+// nearer-than rule, unless the real hit is that overlay's own source avatar.
+// Null otherwise.
 LLUUID cloneAtPick(const LLPickInfo& pick);
 
 // The selectable real avatar (or animesh / attachment wearer) under a pick,

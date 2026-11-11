@@ -173,6 +173,44 @@ const std::vector<RecentAnimation>& recentAnimations();
 // Forget an entry (its item is gone from the inventory).
 void removeRecentAnimation(const LLUUID& asset_id);
 
+// ---- Head gaze (the Clones page Motion > Head gaze controls and the clone menu Gaze submenu) --
+// Entity ids (LLActorMover actors) of the live entity clones the rows stand for.
+std::vector<LLUUID> gazeEntities(const std::vector<LLUUID>& rows);
+// What the page Head gaze target combo / Gaze toggle write: the target MODE (LLActorMover
+// GAZE_*; negative leaves it as it is), the cast target when `cast_target` is not null (GAZE_CAST), and the enabled flag.
+// Order and calls are the page's onLensGazeToggle / onClickLensGazeSelection bodies.
+void applyGazeTarget(const std::vector<LLUUID>& entity_ids, S32 mode, const LLUUID& cast_target, bool enabled);
+// Undo / redo support for the menu: each row's gaze before / after.
+struct GazeBefore
+{
+    LLUUID mId;             // the clone instance (its entity id may change on a respawn)
+    bool mEnabled = false;
+    S32 mMode = 0;
+    LLUUID mCast;
+};
+std::vector<GazeBefore> snapshotGaze(const std::vector<LLUUID>& rows);
+// Rewrite a target clone's retired id in saved snapshots (new_id null = deleted: the mode falls
+// back to travel direction, like the mover's own rewrite).
+void rewriteGazeReferences(std::vector<GazeBefore>& state, const LLUUID& old_id, const LLUUID& new_id);
+// False (changing nothing) when no saved clone survives.
+bool restoreGaze(const std::vector<GazeBefore>& state);
+
+// ---- Animation speed (the Clones page Anim speed spinner and the clone menu Speed submenu) ----
+// The spinner's commit body: the speed (clamped 0.05..4) on every entity clone of the rows
+// (ALGhostStudio::setInstanceAnimSpeed).
+void setAnimSpeed(const std::vector<LLUUID>& rows, F32 speed);
+// Faster (direction > 0) / Slower (< 0): every entity target moves to the next rung of
+// ALGhostCloneMenuLogic::steppedAnimSpeed relative to its OWN current speed.
+void stepAnimSpeed(const std::vector<LLUUID>& rows, int direction);
+struct SpeedBefore
+{
+    LLUUID mId;
+    F32 mSpeed = 1.f;
+};
+std::vector<SpeedBefore> snapshotAnimSpeed(const std::vector<LLUUID>& rows);
+// False (changing nothing) when no saved clone survives.
+bool restoreAnimSpeed(const std::vector<SpeedBefore>& state);
+
 // ---- Appearance --------------------------------------------------------------
 // Swap source button: swap every entity / overlay clone of the rows to `source` (null =
 // You). Returns the status text the page shows (empty on success). Body of the page handler.

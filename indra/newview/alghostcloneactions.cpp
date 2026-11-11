@@ -18,6 +18,7 @@
 #include "alghostanimdrop.h"
 #include "alghostclonemenulogic.h"
 #include "alghostgroupmodel.h"
+#include "llactormover.h"
 #include "llviewercontrol.h"
 
 #include <limits>
@@ -764,6 +765,153 @@ std::vector<FadeBefore> fadeRows(const std::vector<LLUUID>& rows, bool fade_out)
         }
     }
     return before;
+}
+
+void setAnimSpeed(const std::vector<LLUUID>& rows, F32 speed)
+{
+    speed = llclamp(speed, 0.05f, 4.f);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : instances(rows))
+    {
+        studio.setInstanceAnimSpeed(id, speed);
+    }
+}
+
+void stepAnimSpeed(const std::vector<LLUUID>& rows, int direction)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : instances(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            setAnimSpeed(std::vector<LLUUID>{ id }, ALGhostCloneMenuLogic::steppedAnimSpeed(inst->mAnimSpeed, direction));
+        }
+    }
+}
+
+std::vector<SpeedBefore> snapshotAnimSpeed(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<SpeedBefore> state;
+    for (const LLUUID& id : instances(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            SpeedBefore saved;
+            saved.mId = id;
+            saved.mSpeed = inst->mAnimSpeed;
+            state.push_back(saved);
+        }
+    }
+    return state;
+}
+
+bool restoreAnimSpeed(const std::vector<SpeedBefore>& state)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool any = false;
+    for (const SpeedBefore& saved : state)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(saved.mId);
+        if (inst && !inst->mDeleting)
+        {
+            any = studio.setInstanceAnimSpeed(saved.mId, saved.mSpeed) || any;
+        }
+    }
+    return any;
+}
+
+std::vector<LLUUID> gazeEntities(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    std::vector<LLUUID> ids;
+    for (const LLUUID& id : instances(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && inst->mEntityId.notNull())
+        {
+            ids.push_back(inst->mEntityId);
+        }
+    }
+    return ids;
+}
+
+void applyGazeTarget(const std::vector<LLUUID>& entity_ids, S32 mode, const LLUUID& cast_target, bool enabled)
+{
+    LLActorMover& mover = LLActorMover::instance();
+    for (const LLUUID& entity : entity_ids)
+    {
+        if (mode >= 0)
+        {
+            mover.setGazeTargetMode(entity, mode);
+        }
+        if (cast_target.notNull())
+        {
+            mover.setGazeCastTarget(entity, cast_target);
+        }
+        mover.setGazeEnabled(entity, enabled);
+    }
+}
+
+std::vector<GazeBefore> snapshotGaze(const std::vector<LLUUID>& rows)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    std::vector<GazeBefore> state;
+    for (const LLUUID& id : instances(rows))
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && inst->mEntityId.notNull())
+        {
+            GazeBefore saved;
+            saved.mId = id;
+            saved.mEnabled = mover.isGazeEnabled(inst->mEntityId);
+            saved.mMode = mover.getGazeTargetMode(inst->mEntityId);
+            saved.mCast = mover.getGazeCastTarget(inst->mEntityId);
+            state.push_back(saved);
+        }
+    }
+    return state;
+}
+
+void rewriteGazeReferences(std::vector<GazeBefore>& state, const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id)
+    {
+        return;
+    }
+    for (GazeBefore& saved : state)
+    {
+        if (saved.mCast == old_id)
+        {
+            saved.mCast = new_id;
+            if (new_id.isNull() && saved.mMode == LLActorMover::GAZE_CAST)
+            {
+                saved.mMode = LLActorMover::GAZE_TANGENT;
+            }
+        }
+    }
+}
+
+bool restoreGaze(const std::vector<GazeBefore>& state)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    LLActorMover& mover = LLActorMover::instance();
+    bool any = false;
+    for (const GazeBefore& saved : state)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(saved.mId);
+        if (inst && !inst->mDeleting && inst->mEntityId.notNull())
+        {
+            mover.setGazeTargetMode(inst->mEntityId, saved.mMode);
+            mover.setGazeCastTarget(inst->mEntityId, saved.mCast);
+            mover.setGazeEnabled(inst->mEntityId, saved.mEnabled);
+            any = true;
+        }
+    }
+    return any;
 }
 
 bool restoreFade(const std::vector<FadeBefore>& before, bool redo, bool fade_out)

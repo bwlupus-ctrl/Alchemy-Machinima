@@ -3033,13 +3033,8 @@ void ALPanelGhostStudio::onScaleCommit()
 
 void ALPanelGhostStudio::onAnimSpeedCommit()
 {
-    const F32 speed =
-        llclamp((F32)mAnimSpeedSpin->getValue().asReal(), 0.05f, 4.f);
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        studio.setInstanceAnimSpeed(id, speed);
-    }
+    // [OverlayMenu] the shared write (also the clone menu Speed submenu): clamps 0.05..4
+    ALGhostCloneActions::setAnimSpeed(selectedInstances(), (F32)mAnimSpeedSpin->getValue().asReal());
 }
 
 void ALPanelGhostStudio::onPhysicsCommit()
@@ -3668,37 +3663,17 @@ void ALPanelGhostStudio::onClickAnimSync()
 
 void ALPanelGhostStudio::onLensGazeToggle()
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    LLActorMover& mover = LLActorMover::instance();
-    const S32 mode = mLensGazeTargetMode->getValue().asInteger();
-    for (const LLUUID& id : selectedInstances())
-    {
-        const ALGhostStudio::Instance* inst = studio.getInstance(id);
-        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
-            inst->mEntityId.notNull())
-        {
-            mover.setGazeTargetMode(inst->mEntityId, mode);
-            mover.setGazeEnabled(inst->mEntityId, mLensGazeCheck->get());
-        }
-    }
+    // [OverlayMenu] the shared write (also the clone menu Gaze submenu)
+    ALGhostCloneActions::applyGazeTarget(
+        ALGhostCloneActions::gazeEntities(selectedInstances()),
+        mLensGazeTargetMode->getValue().asInteger(), LLUUID::null, mLensGazeCheck->get());
 }
 
 void ALPanelGhostStudio::onClickLensGazeSelection()
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    LLActorMover& mover = LLActorMover::instance();
-    for (const LLUUID& id : selectedInstances())
-    {
-        const ALGhostStudio::Instance* inst = studio.getInstance(id);
-        if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
-            inst->mEntityId.isNull())
-        {
-            continue;
-        }
-        mover.setGazeTargetMode(inst->mEntityId,
-            mLensGazeTargetMode->getValue().asInteger());
-        mover.setGazeEnabled(inst->mEntityId, true);
-    }
+    ALGhostCloneActions::applyGazeTarget(
+        ALGhostCloneActions::gazeEntities(selectedInstances()),
+        mLensGazeTargetMode->getValue().asInteger(), LLUUID::null, true);
 }
 
 void ALPanelGhostStudio::onLensGazeSettingsCommit()
