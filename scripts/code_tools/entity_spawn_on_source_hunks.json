@@ -1,0 +1,12 @@
+{
+  "base": "71c47fd21fe",
+  "description": "Entity clone spawn: a new entity clone spawns on its source's feet (like an overlay clone) instead of 2.5 m along the agent's facing. Newest layer on alghoststudio.cpp.",
+  "files": {
+    "alghoststudio.cpp": [
+      {
+        "before": "    LLVector3 horizontal_offset = gAgent.getAtAxis() * 2.5f;\n    horizontal_offset.mV[VZ] = 0.f;\n    record.mFootGlobal =\n        gAgent.getPosGlobalFromAgent(source_foot + horizontal_offset);\n",
+        "after": "    // [SpawnOnSource] Spawn on the source's feet, like an overlay clone; the\n    // user moves it with the box. The old 2.5 m offset followed the agent's\n    // facing, not the source's or the camera's, so clones landed out of view.\n    record.mFootGlobal = gAgent.getPosGlobalFromAgent(source_foot);\n"
+      }
+    ]
+  }
+}

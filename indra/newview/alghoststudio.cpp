@@ -831,10 +831,10 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
             << "entity spawn: source foot unavailable" << LL_ENDL;
         return nullptr;
     }
-    LLVector3 horizontal_offset = gAgent.getAtAxis() * 2.5f;
-    horizontal_offset.mV[VZ] = 0.f;
-    record.mFootGlobal =
-        gAgent.getPosGlobalFromAgent(source_foot + horizontal_offset);
+    // [SpawnOnSource] Spawn on the source's feet, like an overlay clone; the
+    // user moves it with the box. The old 2.5 m offset followed the agent's
+    // facing, not the source's or the camera's, so clones landed out of view.
+    record.mFootGlobal = gAgent.getPosGlobalFromAgent(source_foot);
     record.mRotation = source->getRotation();
     mIndicesDirty = true;
     mInstances.push_back(record);
