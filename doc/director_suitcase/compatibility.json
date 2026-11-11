@@ -2685,6 +2685,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.cpp",
+    "dependency": "indra/newview/alghostclonemenulogic.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.cpp",
     "dependency": "indra/newview/alcinelightrigmanager.h",
     "excluded": false,
     "origin": "fork-added",
@@ -6952,6 +6961,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/altoolghostedit.cpp",
     "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolghostedit.cpp",
+    "dependency": "indra/newview/aldirectorselect.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

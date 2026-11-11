@@ -171,6 +171,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/altooldirectorpick.h`
 - `indra/newview/altoolfocuspick.cpp`
 - `indra/newview/altoolfocuspick.h`
+- `indra/newview/altoolghostedit.cpp`
 - `indra/newview/altoolpathedit.cpp`
 - `indra/newview/altron.cpp`
 - `indra/newview/altron.h`
@@ -947,6 +948,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1399, "text": "altooldirectorpick.h", "source": "indra/newview/altooldirectorpick.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 411, "text": "altoolfocuspick.cpp", "source": "indra/newview/altoolfocuspick.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1400, "text": "altoolfocuspick.h", "source": "indra/newview/altoolfocuspick.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 412, "text": "altoolghostedit.cpp", "source": "indra/newview/altoolghostedit.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 414, "text": "altoolpathedit.cpp", "source": "indra/newview/altoolpathedit.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 362, "text": "altron.cpp", "source": "indra/newview/altron.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1444, "text": "altron.h", "source": "indra/newview/altron.h"}

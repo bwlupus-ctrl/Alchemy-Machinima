@@ -13,6 +13,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alcineflycamhandover.h`
 - `indra/newview/aldanceball.cpp`
 - `indra/newview/aldanceball.h`
+- `indra/newview/aldirectorselect.cpp`
 - `indra/newview/alformationsolver.cpp`
 - `indra/newview/alformationsolver.h`
 - `indra/newview/algazemotor.h`
@@ -135,6 +136,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1215, "text": "alcineflycamhandover.h", "source": "indra/newview/alcineflycamhandover.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 190, "text": "aldanceball.cpp", "source": "indra/newview/aldanceball.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1148, "text": "aldanceball.h", "source": "indra/newview/aldanceball.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 406, "text": "aldirectorselect.cpp # [CloneMenu] Select in Director helper", "source": "indra/newview/aldirectorselect.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 348, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2879, "text": "alformationsolver.cpp", "source": "indra/newview/alformationsolver.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1317, "text": "alformationsolver.h", "source": "indra/newview/alformationsolver.h"}

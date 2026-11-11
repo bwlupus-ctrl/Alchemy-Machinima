@@ -8,7 +8,7 @@
       "GENERATED": 736,
       "HOOK": 543,
       "OWNED": 932,
-      "TOOLING": 462
+      "TOOLING": 463
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "570f7f4e3f0b15831af653314ec10be55b169541",
+    "head_source_tree": "a55c08c0689aa5494ca9a8fd18ba654e31746871",
     "hook_files": 543,
     "hunks": 3404,
-    "input_sha256": "d32bb874a910a4a0ae48e928b03bcc36c33e7d802a2ed33e8a122a5d8fe46f07",
+    "input_sha256": "de61464a820892fe5133908406882bf93a0b84d4ee76f93627687a8034b59000",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -14027,6 +14027,7 @@
       "features": [
         "actor-bar",
         "clones",
+        "crowd",
         "director-shell"
       ],
       "git_status": "A",
@@ -19334,10 +19335,11 @@
       ],
       "features": [
         "clones",
-        "crowd"
+        "crowd",
+        "director-shell"
       ],
       "git_status": "A",
-      "layer": 4,
+      "layer": 2,
       "path": "indra/newview/altoolghostedit.cpp",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -41510,6 +41512,21 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/clone_rest_frame_shader_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_select_pick_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
