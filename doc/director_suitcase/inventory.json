@@ -8,7 +8,7 @@
       "GENERATED": 736,
       "HOOK": 543,
       "OWNED": 932,
-      "TOOLING": 463
+      "TOOLING": 464
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "a3cf8b198e827d3017fb8340cf5843cdab661f66",
+    "head_source_tree": "0617dc9e7956ac9d2330a8a09bb013608b1338db",
     "hook_files": 543,
     "hunks": 3413,
-    "input_sha256": "fa2df98f7650d68e12f7a357e4939b5c601d723ddd0cf51a826f815bb1bd1426",
+    "input_sha256": "bb9cf4d215cd76843eb09594ebd6ce0edefd9fd0dc454b6636f34d028ad67326",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -42906,6 +42906,19 @@
       "git_status": "A",
       "layer": 2,
       "path": "scripts/code_tools/director_wiring_table.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/entity_spawn_on_source_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

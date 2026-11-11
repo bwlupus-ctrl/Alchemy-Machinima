@@ -2500,6 +2500,7 @@ scripts/code_tools/director_suitcase.py,A,TOOLING,"[""director-shell""]",2,gener
 scripts/code_tools/director_tag_highlight_check.py,A,TOOLING,"[""director-shell""]",2,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/director_theme_check.py,A,TOOLING,"[""director-shell""]",2,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/director_wiring_table.py,A,TOOLING,"[""director-shell""]",2,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
+scripts/code_tools/entity_spawn_on_source_hunks.json,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/env_ev_math_check.py,A,TOOLING,"[""unknown""]",99,generator/check/fixture/build tooling; carry validation separately,[],[],False
 scripts/code_tools/env_only_check.py,A,TOOLING,"[""sensor""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/env_only_gl_check.py,A,TOOLING,"[""sensor""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False

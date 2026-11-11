@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2757 classified paths.
+`inventory.csv` / `inventory.json` contain 2758 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file

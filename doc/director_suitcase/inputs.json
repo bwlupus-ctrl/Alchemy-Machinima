@@ -8,7 +8,7 @@
       "GENERATED": 736,
       "HOOK": 543,
       "OWNED": 932,
-      "TOOLING": 463
+      "TOOLING": 464
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2301
     },
-    "head_source_tree": "a3cf8b198e827d3017fb8340cf5843cdab661f66",
+    "head_source_tree": "0617dc9e7956ac9d2330a8a09bb013608b1338db",
     "hook_files": 543,
     "hunks": 3413,
-    "input_sha256": "fa2df98f7650d68e12f7a357e4939b5c601d723ddd0cf51a826f815bb1bd1426",
+    "input_sha256": "bb9cf4d215cd76843eb09594ebd6ce0edefd9fd0dc454b6636f34d028ad67326",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -2059,7 +2059,7 @@
     "indra/newview/alcameradispatch.h": "07ae6b2696cc1d1835909514f28ce28123d58600043beebdc876af49d501956c",
     "indra/newview/alchatbar.cpp": "6c88691738bb60388a2dbf422d7b67c80d3950db91b27669b8fed4190e745e20",
     "indra/newview/alchatbar.h": "283f83606616d2dc75c8cb64d0f96ab2b92aa1d05ccde27bf6bf588f0d19819f",
-    "indra/newview/alchatcommand.cpp": "3fed94ba0d7783d8c280321b5242666b3fe60c8bebd45e330d836fdaaadc16c8",
+    "indra/newview/alchatcommand.cpp": "4de8214b15a54732cd7d3195f09644fc6db9b716a8d6bbcaa513c495d2c68771",
     "indra/newview/alchatcommand.h": "1b4b71f15040b5115e6a4799702cb4c9d7e6578b5b767617c86fd63b0a7ca0e3",
     "indra/newview/alcheatcodes.cpp": "37178003b84be0b309d113e696b71893ef7bde631b9e49d5e7171d9c3907cf5a",
     "indra/newview/alcinecammodes.cpp": "d27c866702fd464da0290aca9517bf6fe5f5f1362d8e15f30f27ab1d7278a2e9",
@@ -2237,7 +2237,7 @@
     "indra/newview/alghostrotation.h": "5b13afec3d5371a1086f54f2e95a9bdb4645d5423fb9c2b3dcd0d4b61d8ec1e5",
     "indra/newview/alghostspawnengine.cpp": "65fc294b34c4f8a0d2345006ddb9b793501612018f4d3b7986a615a2654e2672",
     "indra/newview/alghostspawnengine.h": "3680a5f658c0f57f1c6773d8083fcc5e20ec8ff897cdb6a8db1d30a7ccef6246",
-    "indra/newview/alghoststudio.cpp": "dd763724da7e91eba905ac90c5530be3e04952b100d293d1b3f51c4a53d9fe1b",
+    "indra/newview/alghoststudio.cpp": "a71e54b8cc9040877dedf9432f68f977fa8647db2d2cea18708c69de7897a04f",
     "indra/newview/alghoststudio.h": "fc3455022c444a3ca2a3c329f8c27d3eb30de075143e2c22bdef1c7de7498e97",
     "indra/newview/alhidecursor.h": "cfeacbdc4edf89a253e7c254c00eb3f89dd0e3b69cad1dc8705c5ad770636067",
     "indra/newview/alkitbar.cpp": "051e977942bc463207bdc0bbb28b182f86ff553cb221735d63712355760341e3",
@@ -12419,7 +12419,7 @@
     "scripts/code_tools/colorchart_check.py": "d0178a2241afa1aa6ec5d5b3d24c1510619e9b981c6292642831e9712506a421",
     "scripts/code_tools/colorchart_gen.py": "1c2d280a680f9523a1d336282e234f941cc5469036ce3e207730a54a4bcd0eb9",
     "scripts/code_tools/colorchart_policy_check.py": "f81b73cae2d849a3480bc75f24000568e9891315b419fe8ed305a67943b8ffb0",
-    "scripts/code_tools/director_actor_bar_check.py": "3e1acce381138babbe454d16f10bc909543c98eff49f4b8fc1b431e5172b162e",
+    "scripts/code_tools/director_actor_bar_check.py": "38a2d002402f3ae7edf6d8e4b202b0e2f103f1f894e94b312acb5556daa2e365",
     "scripts/code_tools/director_all_off_check.py": "35fe1c981d2014819c5f66f75b4ca595bebd8bf608ad74258cdcc8ad9bb7f5b3",
     "scripts/code_tools/director_clone_clear_check.py": "b96e61c42514b7530389e3ff1650fc72913bf515ba9302ec303e315a3dcb334e",
     "scripts/code_tools/director_clone_menu_check.py": "c35b69aa0288ab2579061cf733133c813fc2d8e39aff6c643a0fdf07327c1373",
@@ -12508,6 +12508,7 @@
     "scripts/code_tools/director_tag_highlight_check.py": "59b74d6d600452712280c133eafff504374905aea5c3543825991b6689629e3a",
     "scripts/code_tools/director_theme_check.py": "de05a80d935b4feb05b590beecb2f1985c25a1239f4c5515d311f4d5f2391bba",
     "scripts/code_tools/director_wiring_table.py": "7000b3cf31f4c9d7512b3c6b95a1c7c8da1209a5cd40d2e2ba717da1a37780f9",
+    "scripts/code_tools/entity_spawn_on_source_hunks.json": "63ce56881cbc42b08045b590eb39c0bcd7018d19795efc5c79a18bca39217068",
     "scripts/code_tools/env_ev_math_check.py": "9908e0f3c6ad34ae4cc2ffd19be687a3f5ad5741ea3db873078e1cf0af06f715",
     "scripts/code_tools/env_only_check.py": "f86c69d0c39e86af923c87aa59851c23a8ebca9ef2c07403989dee4257451a82",
     "scripts/code_tools/env_only_gl_check.py": "eb03b12ddfbb29e5df4c6a888a7026356fe29c939d38476a7e2d9d837fcb8c31",
