@@ -769,12 +769,38 @@ void LLHUDNameTag::updateSize()
     mHeight = height;
 }
 
+// static
+void LLHUDNameTag::releaseSourcelessTags()
+{
+    std::vector<LLPointer<LLHUDNameTag> > sourceless;
+    for (const LLPointer<LLHUDNameTag>& tag : sTextObjects)
+    {
+        if (tag.notNull() && tag->mSourceObject.isNull())
+        {
+            sourceless.push_back(tag);
+        }
+    }
+    // markDead() erases from sTextObjects, so it runs outside the iteration.
+    for (LLPointer<LLHUDNameTag>& tag : sourceless)
+    {
+        tag->markDead();
+    }
+    LL_INFOS() << "[QuitCrash] released " << sourceless.size() << " name tag(s) with no source object" << LL_ENDL;
+}
+
 void LLHUDNameTag::updateAll()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     // iterate over all text objects, calculate their restoration forces,
     // and add them to the visible set if they are on screen and close enough
     sVisibleTextObjects.clear();
+
+    // [QuitCrash] LLAppViewer::cleanup deletes the camera before its final HUD update;
+    // a name tag with no source object would still reach updateScreenPos and read it.
+    if (!LLViewerCamera::instanceExists())
+    {
+        return;
+    }
 
     TextObjectIterator text_it;
     for (text_it = sTextObjects.begin(); text_it != sTextObjects.end(); ++text_it)
