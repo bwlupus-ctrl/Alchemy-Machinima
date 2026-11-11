@@ -19,6 +19,7 @@
 #define AL_ALDIRECTORSELECT_H
 
 #include "lluuid.h"
+#include "v3math.h"
 
 #include <string>
 #include <vector>
@@ -63,6 +64,16 @@ bool openCloneInDirector(const LLUUID& instance_id);
 
 // The Director is open and visible.
 bool directorVisible();
+
+// A clone that is already part of the clone multi-selection (directly or through a selected group header)
+// has its selected row promoted to the primary row (the one the detail panel, the tags and the shared
+// selection follow). Every selected row stays selected; nothing is toggled, added, raised or undone.
+void makePrimaryInSelection(const LLUUID& instance_id);
+
+// The foreground rule for a world click on a clone: the clone (its click depth point, the out_probe_agent
+// of ALGhostStudio::pickInstanceAtScreen) may claim the click only when it is nearer the camera than what the
+// real pick hit; a HUD hit or a HUD icon always keeps the click.
+bool cloneInFrontOfPick(const LLPickInfo& pick, const LLVector3& clone_probe_agent);
 
 // Clones list ROW values (instance ids and group header ids) selected in the
 // host the user last worked in while it is on screen; empty when there is none.

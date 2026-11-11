@@ -135,11 +135,29 @@ def reverse_feature_allowance(source, name, filename, digest, label):
     return source
 
 
+CLONE_SELECT_PICK_DIGEST = "6cc20778f4d8f6908c39f607ed4e5b6acf6b3e8b854b3d05fb0d337a737f4f86"
+
+
+def reverse_clone_select_pick(source, name):
+    """Peel the clone world-pick layer (the newest layer on alghoststudio.cpp: the body-box pick). Idempotent:
+    skipped when its hunks are already gone; the pinned digest is checked every time."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "clone_select_pick_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == CLONE_SELECT_PICK_DIGEST, ("reviewed clone world pick", "allowance pin")
+    allowed = json.loads(raw)
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "clone_select_pick_hunks.json", CLONE_SELECT_PICK_DIGEST, "reviewed clone world pick")
+
+
 def reverse_clone_menu_fade(source, name):
     """Peel the clone menu's reviewed fade layer (the newest layer on alghoststudio.cpp, lldirectorcast.cpp and
     lldirectorcast.h). Idempotent: skipped when its hunks are already gone; the pinned digest is checked every time."""
     import hashlib
     import json
+    source = reverse_clone_select_pick(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "clone_menu_fade_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == CLONE_MENU_FADE_DIGEST, ("reviewed clone menu fade", "allowance pin")

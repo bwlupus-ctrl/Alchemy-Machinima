@@ -1079,6 +1079,18 @@ void LLGhostAvatar::initInstance()
     mInitFlags |= 1 << 3;
 }
 
+bool LLGhostAvatar::getRenderedBounds(LLVector3& center, LLVector3& size) const
+{
+    ALGhostBounds::Point c, s;
+    const LLVector3* ext = getLastAnimExtents();
+    if (!isBuilt() || !ALGhostBounds::centerAndSize(
+            {ext[0][0], ext[0][1], ext[0][2]},
+            {ext[1][0], ext[1][1], ext[1][2]}, c, s)) return false;
+    center.setVec(c[0], c[1], c[2]);
+    size.setVec(s[0], s[1], s[2]);
+    return true;
+}
+
 bool LLGhostAvatar::getVisualBounds(LLVector3& center, LLVector3& size) const
 {
     ALGhostBounds::Point c, s;

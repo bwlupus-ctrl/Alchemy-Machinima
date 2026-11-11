@@ -44,6 +44,7 @@ AVATAR_MENUS = ("menu_avatar_other.xml", "menu_avatar_self.xml",
 
 NATIVE = r'''
 #include "alghostclonemenulogic.h"
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -93,6 +94,212 @@ struct BadGestureEndpointOnly
     void move(int, int) {}
     bool release(int x, int y) { bool o = a && (x - px) * (x - px) + (y - py) * (y - py) <= 16; a = false; return o; }
 };
+
+// [ClonePick] Which clone a world click means: the WORLD ray under the cursor against each body box, ranked by
+// ENTRY distance. The fixture builds candidates through BuildFn so planted mutants can break each rule.
+typedef std::vector<PickCandidate<int>> Cands;
+struct PBox { int mId; BodyBox mBox; float mProbeD2; };
+struct Scene { float mEye[3]; float mDir[3]; float mForward[3] = { 0.f, 1.f, 0.f }; float mNear = .1f; std::vector<PBox> mBoxes; };
+struct Picked { int mId; float mPoint[3]; };
+typedef Picked (*PickFn)(const Scene&);
+
+BodyBox mkBox(float cx, float cy, float cz, float hx, float hy, float hz)
+{
+    BodyBox b; b.mCenter[0] = cx; b.mCenter[1] = cy; b.mCenter[2] = cz; b.mHalf[0] = hx; b.mHalf[1] = hy; b.mHalf[2] = hz; return b;
+}
+float dist3(const float* a, const float* b) { return std::sqrt((a[0]-b[0])*(a[0]-b[0]) + (a[1]-b[1])*(a[1]-b[1]) + (a[2]-b[2])*(a[2]-b[2])); }
+void entryPoint(const Scene& sc, float t, float* out) { for (int i = 0; i < 3; ++i) out[i] = sc.mEye[i] + sc.mDir[i] * t; }
+
+Picked pickReal(const Scene& sc)
+{
+    Cands c;
+    float near_t = 0.f;
+    const bool near_ok = rayNearDistance(sc.mNear, sc.mDir, sc.mForward, near_t);
+    for (const PBox& b : sc.mBoxes)
+    {
+        PickCandidate<int> k; k.mId = b.mId; k.mProbeD2 = b.mProbeD2; float t = 0.f;
+        if (near_ok && rayBoxEntry(sc.mEye, sc.mDir, b.mBox, near_t, t)) { k.mHasBox = true; k.mEntryT = t; }
+        c.push_back(k);
+    }
+    bool from_box = false;
+    Picked r; r.mId = choosePickedClone<int>(c, 0, &from_box);
+    r.mPoint[0] = r.mPoint[1] = r.mPoint[2] = 0.f;
+    for (size_t i = 0; i < c.size(); ++i)
+        if (c[i].mId == r.mId)
+        {
+            if (from_box) entryPoint(sc, c[i].mEntryT, r.mPoint);
+            else for (const PBox& b : sc.mBoxes) if (b.mId == r.mId) for (int a = 0; a < 3; ++a) r.mPoint[a] = b.mBox.mCenter[a];
+        }
+    return r;
+}
+// mutant: rank by the distance to the box CENTRE instead of the ray's entry
+Picked pickCentreRank(const Scene& sc)
+{
+    Cands c;
+    for (const PBox& b : sc.mBoxes)
+    {
+        PickCandidate<int> k; k.mId = b.mId; k.mProbeD2 = b.mProbeD2; float t = 0.f;
+        if (rayBoxEntry(sc.mEye, sc.mDir, b.mBox, sc.mNear, t)) { k.mHasBox = true; k.mEntryT = dist3(sc.mEye, b.mBox.mCenter); }
+        c.push_back(k);
+    }
+    Picked r = pickReal(sc);
+    r.mId = choosePickedClone<int>(c, 0);
+    return r;
+}
+// mutant: the eye inside a box still counts as a hit (entry distance 0)
+Picked pickEyeInside(const Scene& sc)
+{
+    Cands c;
+    for (const PBox& b : sc.mBoxes)
+    {
+        PickCandidate<int> k; k.mId = b.mId; k.mProbeD2 = b.mProbeD2; float t = 0.f;
+        bool inside = true;
+        for (int a = 0; a < 3; ++a) if (std::fabs(sc.mEye[a] - b.mBox.mCenter[a]) > b.mBox.mHalf[a]) inside = false;
+        if (inside) { k.mHasBox = true; k.mEntryT = 0.f; }
+        else if (rayBoxEntry(sc.mEye, sc.mDir, b.mBox, sc.mNear, t)) { k.mHasBox = true; k.mEntryT = t; }
+        c.push_back(k);
+    }
+    Picked r = pickReal(sc);
+    r.mId = choosePickedClone<int>(c, 0);
+    return r;
+}
+// mutant: the reported depth point is the box centre, not the ray's entry point
+Picked pickCentrePoint(const Scene& sc)
+{
+    Picked r = pickReal(sc);
+    for (const PBox& b : sc.mBoxes) if (b.mId == r.mId) for (int a = 0; a < 3; ++a) r.mPoint[a] = b.mBox.mCenter[a];
+    return r;
+}
+// mutant: a box with any corner off screen (pinhole 90 degree view) is dropped, like a projected-rectangle test
+Picked pickScreenRect(const Scene& sc)
+{
+    Scene kept = sc; kept.mBoxes.clear();
+    for (const PBox& b : sc.mBoxes)
+    {
+        bool on = true;
+        for (int corner = 0; corner < 8; ++corner)
+        {
+            float p[3] = { b.mBox.mCenter[0] + ((corner & 1) ? b.mBox.mHalf[0] : -b.mBox.mHalf[0]),
+                           b.mBox.mCenter[1] + ((corner & 2) ? b.mBox.mHalf[1] : -b.mBox.mHalf[1]),
+                           b.mBox.mCenter[2] + ((corner & 4) ? b.mBox.mHalf[2] : -b.mBox.mHalf[2]) };
+            const float fwd = p[1] - sc.mEye[1];
+            if (fwd <= 0.1f || std::fabs(p[0] - sc.mEye[0]) > fwd || std::fabs(p[2] - sc.mEye[2]) > fwd) on = false;
+        }
+        PBox moved = b;
+        if (!on) moved.mBox = mkBox(0, -1000, 0, 1, 1, 1);       // no box hit; the probe candidate stays
+        kept.mBoxes.push_back(moved);
+    }
+    return pickReal(kept);
+}
+// mutant: the near plane's forward depth is compared with the ray distance (no 1 / cos)
+Picked pickRawNear(const Scene& sc)
+{
+    Cands c;
+    for (const PBox& b : sc.mBoxes)
+    {
+        PickCandidate<int> k; k.mId = b.mId; k.mProbeD2 = b.mProbeD2; float t = 0.f;
+        if (rayBoxEntry(sc.mEye, sc.mDir, b.mBox, sc.mNear, t)) { k.mHasBox = true; k.mEntryT = t; }
+        c.push_back(k);
+    }
+    Picked r = pickReal(sc);
+    r.mId = choosePickedClone<int>(c, 0);
+    float near_t = 0.f, t = 0.f; (void)near_t;
+    for (const PBox& b : sc.mBoxes) if (b.mId == r.mId && rayBoxEntry(sc.mEye, sc.mDir, b.mBox, sc.mNear, t)) entryPoint(sc, t, r.mPoint);
+    return r;
+}
+// mutant: nearest probe only
+Picked pickProbeOnly(const Scene& sc)
+{
+    Picked r; r.mId = 0; r.mPoint[0] = r.mPoint[1] = r.mPoint[2] = 0.f; float best = -1.f;
+    for (const PBox& b : sc.mBoxes) if (b.mProbeD2 >= 0.f && (best < 0.f || b.mProbeD2 < best)) { best = b.mProbeD2; r.mId = b.mId; }
+    return r;
+}
+// mutant: no probe fallback when no box is hit
+Picked pickNoFallback(const Scene& sc)
+{
+    Picked r = pickReal(sc);
+    float t = 0.f; bool any = false;
+    for (const PBox& b : sc.mBoxes) any = any || rayBoxEntry(sc.mEye, sc.mDir, b.mBox, sc.mNear, t);
+    if (!any) r.mId = 0;
+    return r;
+}
+
+bool near3(const float* a, const float* b) { return dist3(a, b) < .01f; }
+bool pickOk(PickFn pick)
+{
+    // Camera at the origin looking along +Y (unit direction straight ahead, or tilted by the scene).
+    Scene sc; sc.mEye[0] = sc.mEye[1] = sc.mEye[2] = 0.f; sc.mDir[0] = 0.f; sc.mDir[1] = 1.f; sc.mDir[2] = 0.f;
+    // (1) A neighbour's probe is nearer the cursor, but the ray only enters A: A.
+    sc.mBoxes = { { 1, mkBox(0, 10, 0, .4f, .4f, 1), 400.f }, { 2, mkBox(3, 10, 0, .4f, .4f, 1), 25.f } };
+    if (pick(sc).mId != 1) return false;
+    // (2) Ranking is by ENTRY depth: a big clone entered at t = 5 (centre at 9) beats a small one entered at t = 7.5
+    // whose centre (8) is nearer the eye; the reported point is the ENTRY point on the big clone.
+    sc.mBoxes = { { 1, mkBox(0, 9, 0, 2, 4, 2), 900.f }, { 2, mkBox(0, 8, 0, .5f, .5f, .5f), 25.f } };
+    { const Picked r = pick(sc); const float entry[3] = { 0, 5, 0 }; if (r.mId != 1 || !near3(r.mPoint, entry)) return false; }
+    // (3) The eye inside a box: that box is not a candidate; the other clone is picked, never the one we stand in.
+    sc.mBoxes = { { 1, mkBox(0, 0, 0, 3, 3, 3), 900.f }, { 2, mkBox(0, 10, 0, .4f, .4f, 1), 25.f } };
+    if (pick(sc).mId != 2) return false;
+    // (3b) Standing inside the only box: no box hit, so the probe rule answers (here a probe within the radius).
+    sc.mBoxes = { { 1, mkBox(0, 0, 0, 3, 3, 3), 49.f } };
+    if (pick(sc).mId != 1) return false;
+    // (4) A box crossing the top screen edge (90 degree view: |z| <= y) is still picked by the ray through its lower part.
+    sc.mBoxes = { { 1, mkBox(0, 5, 0, 1, 1, 8), -1.f } };
+    if (pick(sc).mId != 1) return false;
+    // (5) Occlusion depth: the reported point is the entry on the clone, in front of a wall hit 6 m away.
+    sc.mBoxes = { { 1, mkBox(0, 4.5f, 0, 1, 0.5f, 1), -1.f } };
+    { const Picked r = pick(sc); const float entry[3] = { 0, 4, 0 }; if (r.mId != 1 || !near3(r.mPoint, entry) || !(r.mPoint[1] < 6.f)) return false; }
+    // (6) Outside every box: the nearest probe in the radius still catches the click; none in the radius: no pick.
+    sc.mBoxes = { { 1, mkBox(5, 10, 0, .4f, .4f, 1), 144.f }, { 2, mkBox(9, 10, 0, .4f, .4f, 1), 900.f } };
+    if (pick(sc).mId != 1) return false;
+    sc.mBoxes = { { 1, mkBox(5, 10, 0, .4f, .4f, 1), -1.f } };
+    if (pick(sc).mId != 0) return false;
+    // (7) Behind the eye: not a hit.
+    sc.mBoxes = { { 1, mkBox(0, -10, 0, 1, 1, 1), -1.f } };
+    if (pick(sc).mId != 0) return false;
+    // (8) Near plane off axis: forward +Y, ray (0.8, 0.6, 0), near 0.1 -> the plane is at ray distance 0.1667. A small
+    // box spanning X [0.09, 0.11], Y [0.06, 0.08] (ray distance 0.1125 .. 0.1333) is wholly nearer: NOT a hit.
+    sc.mDir[0] = .8f; sc.mDir[1] = .6f; sc.mDir[2] = 0.f;
+    sc.mBoxes = { { 1, mkBox(.1f, .07f, 0, .01f, .01f, .01f), -1.f } };
+    if (pick(sc).mId != 0) return false;
+    // (9) The near plane cuts a box: it is a hit, entered AT the near plane's ray distance (0.1667), not before.
+    sc.mBoxes = { { 1, mkBox(.2f, .15f, 0, .1f, .1f, .1f), -1.f } };
+    { const Picked r = pick(sc); float want[3]; entryPoint(sc, .1f / .6f, want); if (r.mId != 1 || !near3(r.mPoint, want)) return false; }
+    // (10) A ray parallel to the near plane (cos <= 0) never hits a box.
+    sc.mDir[0] = 1.f; sc.mDir[1] = 0.f; sc.mDir[2] = 0.f;
+    sc.mBoxes = { { 1, mkBox(5, 0, 0, 1, 1, 1), -1.f } };
+    return pick(sc).mId == 0;
+}
+
+// Resized clones: the box is the clone's scaled body (BoxFn); the ray runs through the DRAWN body and through the
+// region the unscaled body would have covered.
+typedef BodyBox (*BoxFn)(const float*, float);
+BodyBox boxScaled(const float* foot, float scale) { return scaledBodyBox(foot, scale); }
+BodyBox boxUnscaled(const float* foot, float) { return scaledBodyBox(foot, 1.f); }   // mutant: ignores the clone's size
+BodyBox boxRendered(const float* foot, float scale)                                   // rendered extents of a 0.35 x 1 x 2 m body
+{
+    float lo[3] = { foot[0] - .35f, foot[1] - .35f, foot[2] }, hi[3] = { foot[0] + .35f, foot[1] + .35f, foot[2] + 2.f };
+    scaleExtentsAboutPivot(lo, hi, foot, scale);
+    BodyBox b;
+    for (int a = 0; a < 3; ++a) { b.mCenter[a] = .5f * (lo[a] + hi[a]); b.mHalf[a] = .5f * (hi[a] - lo[a]); }
+    return b;
+}
+int resizedPick(BoxFn box, float scale, float height)
+{
+    const float foot[3] = { 0.f, 10.f, 0.f };
+    Scene sc; sc.mEye[0] = sc.mEye[1] = 0.f; sc.mEye[2] = 0.f;          // eye at foot height, ray aimed at (0, 10, height)
+    const float len = std::sqrt(100.f + height * height);
+    sc.mDir[0] = 0.f; sc.mDir[1] = 10.f / len; sc.mDir[2] = height / len;
+    sc.mBoxes = { { 1, box(foot, scale), -1.f } };
+    return pickReal(sc).mId;
+}
+bool resizedPickOk(BoxFn box)
+{
+    // 0.5x: the drawn body is 1 m tall: its head (0.9 m) is picked, the unscaled region (1.7 m up) is not.
+    if (resizedPick(box, .5f, .9f) != 1 || resizedPick(box, .5f, 1.7f) != 0) return false;
+    // 2x: the drawn body is 4 m tall: its head (3.8 m) is picked, 4.6 m above is not.
+    if (resizedPick(box, 2.f, 3.8f) != 1 || resizedPick(box, 2.f, 4.6f) != 0) return false;
+    return resizedPick(box, 1.f, 1.9f) == 1 && resizedPick(box, 1.f, 2.6f) == 0;
+}
 
 typedef std::vector<int> Ids;
 // A menu action is acceptable only when what it touched stays inside the plan.
@@ -636,8 +843,20 @@ int main()
     expect(!formationCopyOk(copyAlwaysJumps), "REJECT: array / crowd copies losing their creation fade-in (visible-prototype copy jumps)");
     expect(!formationCopyOk(copyHiddenPops), "REJECT: a copy of a hidden prototype popping in instead of fading in");
 
+    expect(pickOk(pickReal), "the cursor's world ray picks the clone it enters first, reports the entry point, skips the box the eye is in, and falls back to the nearest probe");
+    expect(!pickOk(pickProbeOnly), "REJECT: nearest-probe pick (a neighbour or the clone picked last wins over the clone under the cursor)");
+    expect(!pickOk(pickCentreRank), "REJECT: overlapping clones ranked by centre distance instead of ray entry depth");
+    expect(!pickOk(pickEyeInside), "REJECT: standing inside a clone's box still picks it");
+    expect(!pickOk(pickCentrePoint), "REJECT: the reported click depth is the box centre, not the ray entry point");
+    expect(!pickOk(pickRawNear), "REJECT: the near plane's forward depth compared with the ray distance (off-axis clipping wrong)");
+    expect(!pickOk(pickScreenRect), "REJECT: a box crossing the screen edge is dropped (projected-rectangle pick)");
+    expect(!pickOk(pickNoFallback), "REJECT: no probe fallback outside every box");
+    expect(resizedPickOk(boxScaled), "the click region follows a resized clone (0.5x, 1x, 2x): the drawn body picks, the unscaled region does not");
+    expect(resizedPickOk(boxRendered), "rendered extents scaled about the foot pivot give the same region as the scaled body box");
+    expect(!resizedPickOk(boxUnscaled), "REJECT: a click region that ignores the clone's size");
+
     if (failures) return 1;
-    std::printf("PASS: clone menu logic, 53 planted negatives rejected\n");
+    std::printf("PASS: clone menu logic, 61 planted negatives rejected\n");
     return 0;
 }
 '''
@@ -654,7 +873,7 @@ def load_sources() -> dict[str, str]:
              "altoolghostedit.cpp", "alghoststudio.h", "alpanelghoststudio.h", "CMakeLists.txt",
              "alghostcloneactions.cpp", "alghostcloneactions.h", "alpanelghoststudio.cpp",
              "lltoolmgr.cpp", "llagentcamera.cpp", "lltooldraganddrop.cpp", "alghoststudio.cpp",
-             "lldirectorcast.cpp", "lldirectorcast.h"]
+             "lldirectorcast.cpp", "lldirectorcast.h", "llghostavatar.cpp"]
     sources = {name: read(NV / name) for name in names}
     for name in AVATAR_MENUS + ("menu_ghost_clone.xml", "panel_ghost_studio.xml", "strings.xml",
                                 "floater_director_v2.xml", "director_kit_index.xml"):
@@ -1772,6 +1991,61 @@ def findings(src: dict[str, str]) -> list[str]:
     if not re.search(r"if \(plan\.mSelectPickedFirst\)\s*\{[^{}]*sRows = std::vector<LLUUID>\{ Actions::rowFor\(clone\) \};"
                      r"[^{}]*studio\.setSelected\(sRows\.front\(\)\);\s*\}\s*else\s*\{[^{}]*sRows = host_rows;[^{}]*\}\s*sPicked = clone;", show):
         out.append("showEntityMenu: sRows must come from the plan (picked unit when not selected, else the page's rows) before sPicked is set")
+    # [ClonePick] right-click in a deliberate multi-selection makes the clicked clone the primary row.
+    if not re.search(r"if \(!plan\.mSelectPickedFirst\)\s*\{\s*"
+                     r"ALDirectorSelect::makePrimaryInSelection\(clone\);\s*\}\s*presentEntityMenu\(x, y, false\);", show):
+        out.append("showEntityMenu: a clone right-clicked inside the multi-selection must become the primary row (the highlight follows the click)")
+    select_cpp = strip_comments(src["aldirectorselect.cpp"])
+    if "ALGhostCloneMenuAccess::promotePrimary(instance_id);" not in function_body(select_cpp, "void makePrimaryInSelection"):
+        out.append("aldirectorselect.cpp: makePrimaryInSelection must promote the primary row through promotePrimary")
+    promote = function_body(select_cpp, "void ALGhostCloneMenuAccess::promotePrimary")
+    for needle in ("host->mPrimaryRow = row;", "studio.setSelected(row);", "row = group->mId;", "ALGhostCloneActions::rowFor(studio.getSelected())",
+                   "if (current == row)", "host->mObservedSelectionRevision = studio.getSelectionRevision();"):
+        if needle not in promote:
+            out.append(f"promotePrimary must keep the selection and promote one existing row (header for a group member, idempotent): missing {needle}")
+    for forbidden in ("selectMultiple", "selectByID", "deselect", "raiseDirector", "ensureBuilt", "selectInHosts", "refreshList"):
+        if forbidden in promote:
+            out.append(f"promotePrimary must not toggle, add, raise or rebuild: found {forbidden}")
+    if "void makePrimaryInSelection(const LLUUID& instance_id);" not in src["aldirectorselect.h"]:
+        out.append("aldirectorselect.h: makePrimaryInSelection is the right-click primary entry point")
+    studio_cpp = strip_comments(src["alghoststudio.cpp"])
+    pick_fn = function_body(studio_cpp, "LLUUID ALGhostStudio::pickInstanceAtScreen")
+    if "ALGhostCloneMenuLogic::choosePickedClone<LLUUID>(" not in pick_fn or "gViewerWindow->mouseDirectionGlobal(x, y)" not in pick_fn or \
+            "ALGhostCloneMenuLogic::rayBoxEntry(eye.mV, ray_dir.mV, box, near_t, entry_t)" not in pick_fn or \
+            "eye + ray_dir * candidate.mEntryT" not in pick_fn or "cam->getNear()" not in pick_fn or \
+            "candidates.reserve(mInstances.size())" not in pick_fn or "alghostclonemenulogic.h" not in src["alghoststudio.cpp"]:
+        out.append("alghoststudio.cpp: pickInstanceAtScreen must rank world-ray box entries (choosePickedClone), report the entry point and reserve its storage")
+    if "ALGhostCloneMenuLogic::rayNearDistance(cam->getNear(), ray_dir.mV, cam->getAtAxis().mV, near_t)" not in pick_fn or \
+            "ray_ok && has_body_box &&" not in pick_fn or "box, near_t, entry_t)" not in pick_fn:
+        out.append("alghoststudio.cpp: the near plane is a forward depth: rank/clamp boxes at near / cos(angle to the view axis) (rayNearDistance), never the raw getNear()")
+    if "has_body_box = ghost && !ghost->isDead() && ghost->mDrawable.notNull() && !ghost->mDrawable->isDead();" not in pick_fn:
+        out.append("alghoststudio.cpp: an entity clone with no live drawable body gets no pick box (probes only), as before the box pick")
+    if "mCameraDist" in pick_fn or "dist_vec(box_center" in pick_fn:
+        out.append("alghoststudio.cpp: pickInstanceAtScreen must not rank boxes by centre distance")
+    if "ghost->getRenderedBounds(center, size)" not in pick_fn or "ALGhostCloneMenuLogic::scaledBodyBox(foot.mV, inst.mScale)" not in pick_fn or \
+            "getVisualBounds" in pick_fn:
+        out.append("alghoststudio.cpp: the pick region must follow the clone's rendered (scaled) extents, or a body box scaled with the clone, never the selection-box-only bounds")
+    rendered = function_body(strip_comments(src["llghostavatar.cpp"]), "bool LLGhostAvatar::getRenderedBounds") \
+        if "bool LLGhostAvatar::getRenderedBounds" in src["llghostavatar.cpp"] else ""
+    if "mUseVisualBounds" in rendered or "getLastAnimExtents()" not in rendered or "!isBuilt()" not in rendered or \
+            "ALGhostBounds::centerAndSize(" not in rendered or "center.setVec(" not in rendered or "return true;" not in rendered or \
+            0 <= rendered.find("return false;") < rendered.find("getLastAnimExtents()"):
+        out.append("llghostavatar.cpp: getRenderedBounds returns the rendered (outer-scale) extents from the anim extents (false before they are valid, never a stub)")
+    if "best_d2" in pick_fn:
+        out.append("alghoststudio.cpp: pickInstanceAtScreen must not go back to a nearest-probe-only loop")
+    edit_stock = function_body(strip_comments(src["altoolghostedit.cpp"]), "bool ALToolGhostEdit::handleStockPick")
+    if "ALDirectorSelect::cloneInFrontOfPick(pick_info, probe_agent)" not in edit_stock or "pickInstanceAtScreen(" not in edit_stock or \
+            "&probe_agent" not in edit_stock:
+        out.append("altoolghostedit.cpp: the Edit-clones stock pick must apply the foreground rule (cloneInFrontOfPick with the entry point) before taking a clone")
+    if "pickInstanceAtScreen(x, y, GHOST_PICK_PX)" not in function_body(strip_comments(src["altoolghostedit.cpp"]), "LLUUID ALToolGhostEdit::pickInstance"):
+        out.append("altoolghostedit.cpp: the Edit tool's click pick goes through the shared ALGhostStudio::pickInstanceAtScreen")
+    dsel_cpp = strip_comments(src["aldirectorselect.cpp"])
+    if "return cloneInFrontOfPick(pick, probe_agent) ? nearby : LLUUID::null;" not in function_body(dsel_cpp, "LLUUID cloneAtPick") or             "ALGhostAnimDrop::cloneInFront(real_pick, hud_pick" not in function_body(dsel_cpp, "bool cloneInFrontOfPick") or             "ALGhostAnimDrop::cloneInFront(real_pick, hud_pick" not in strip_comments(src["lltooldraganddrop.cpp"]):
+        out.append("every clone pick caller applies the foreground rule: cloneAtPick and the Edit tool via cloneInFrontOfPick, the 3D drop via ALGhostAnimDrop::cloneInFront")
+    for name, needle in (("aldirectorselect.cpp", "pickInstanceAtScreen("), ("altoolghostedit.cpp", "pickInstanceAtScreen("),
+                         ("lltooldraganddrop.cpp", "pickInstanceAtScreen(")):
+        if needle not in src[name]:
+            out.append(f"{name}: clone picking goes through the shared ALGhostStudio::pickInstanceAtScreen")
     if "{ sPicked }" in cpp or "{sPicked}" in cpp:
         out.append("actions must not be pointed at the previous menu's clone")
     if "ALDirectorSelect::hostRows()" not in show or "Actions::instances(host_rows)" not in show:
@@ -1801,9 +2075,9 @@ def findings(src: dict[str, str]) -> list[str]:
     if press_body.find("getCurrentTool()") > press_body.find("sGesture.press(x, y);") >= 0:
         out.append("pressRight must read the tool before arming the gesture (a tool change cancels it)")
     dsel = strip_comments(src["aldirectorselect.cpp"])
-    rows_fn = function_body(dsel, "std::vector<LLUUID> ALGhostCloneMenuAccess::hostRows")
+    rows_fn = function_body(dsel, "ALPanelGhostStudio* ALGhostCloneMenuAccess::menuHost")
     if "hidden->mObservedSelectionRevision == ALGhostStudio::instance().getSelectionRevision()" not in rows_fn or \
-            "ensureBuilt" in rows_fn or "findHostBelow(lazy)" not in rows_fn:
+            "ensureBuilt" in rows_fn or "findHostBelow(lazy)" not in rows_fn or "menuHost()" not in function_body(dsel, "std::vector<LLUUID> ALGhostCloneMenuAccess::hostRows"):
         out.append("hostRows: with no visible host read the already-built Director host (never build it), only when it mirrors the shared selection")
     sel_hosts = function_body(strip_comments(src["aldirectorselect.cpp"]), "void ALGhostCloneMenuAccess::selectInHosts")
     if not re.search(r"std::find\(now_selected\.begin\(\), now_selected\.end\(\), row\) == now_selected\.end\(\)\)\s*\{[^{}]*studio\.setSelected\(row\);\s*return;\s*\}\s*host->mPrimaryRow = row;", sel_hosts):
@@ -2503,6 +2777,49 @@ def selftest() -> int:
     mutations = [
         ("avatar menu shown without prepareAvatarMenu",
          swap(src, "lltoolpie.cpp", "ALGhostCloneMenu::prepareAvatarMenu(gMenuAvatarOther, avatar);", "")),
+        ("right-click inside the multi-selection leaves the old primary highlighted",
+         swap(src, "alghostclonemenu.cpp", "ALDirectorSelect::makePrimaryInSelection(clone);", "")),
+        ("right-click primary change always rewrites the shared selection",
+         swap(src, "aldirectorselect.cpp", "    if (current == row)\n    {\n        return;\n    }\n", "")),
+        ("makePrimaryInSelection toggles through the additive path",
+         swap(src, "aldirectorselect.cpp", "ALGhostCloneMenuAccess::promotePrimary(instance_id);", "ALGhostCloneMenuAccess::selectInHosts(instance_id, true);")),
+        ("promotion adds a child row of a selected group header",
+         swap(src, "aldirectorselect.cpp", "        row = group->mId;\n", "        row = instance_id;\n")),
+        ("promotion compares the raw selection (collapsed group churn)",
+         swap(src, "aldirectorselect.cpp", "ALGhostCloneActions::rowFor(studio.getSelected())", "studio.getSelected()")),
+        ("makePrimaryInSelection no longer primes the host list",
+         swap(src, "aldirectorselect.cpp", "ALGhostCloneMenuAccess::promotePrimary(instance_id);\n}", "(void)instance_id;\n}")),
+        ("clone pick back to the nearest probe only",
+         swap(src, "alghoststudio.cpp", "ALGhostCloneMenuLogic::choosePickedClone<LLUUID>(", "pickNearestProbeOnly<LLUUID>(")),
+        ("clone pick no longer uses the world ray",
+         swap(src, "alghoststudio.cpp", "gViewerWindow->mouseDirectionGlobal(x, y)", "cam->getAtAxis()")),
+        ("clone pick reports the box centre instead of the entry point",
+         swap(src, "alghoststudio.cpp", "eye + ray_dir * candidate.mEntryT", "LLVector3(box.mCenter)")),
+        ("clone pick ignores the near clip",
+         swap(src, "alghoststudio.cpp", "box, near_t, entry_t)", "box, 0.f, entry_t)")),
+        ("clone pick compares the raw forward near depth with the ray distance",
+         swap(src, "alghoststudio.cpp", "ALGhostCloneMenuLogic::rayNearDistance(cam->getNear(), ray_dir.mV, cam->getAtAxis().mV, near_t)", "(near_t = cam->getNear()) > 0.f")),
+        ("clone pick gives a bodiless entity clone a fallback box",
+         swap(src, "alghoststudio.cpp", "has_body_box = ghost && !ghost->isDead() && ghost->mDrawable.notNull() && !ghost->mDrawable->isDead();", "has_body_box = true;")),
+        ("Edit tool stock pick ignores the foreground rule",
+         swap(src, "altoolghostedit.cpp", "ALDirectorSelect::cloneInFrontOfPick(pick_info, probe_agent)", "true")),
+        ("menu pick ignores the foreground rule",
+         swap(src, "aldirectorselect.cpp", "return cloneInFrontOfPick(pick, probe_agent) ? nearby : LLUUID::null;", "return nearby;")),
+        ("clone pick stops reserving candidate storage",
+         swap(src, "alghoststudio.cpp", "    candidates.reserve(mInstances.size());\n", "")),
+        ("getRenderedBounds stubbed to false",
+         swap(src, "llghostavatar.cpp", "bool LLGhostAvatar::getRenderedBounds(LLVector3& center, LLVector3& size) const\n{\n",
+              "bool LLGhostAvatar::getRenderedBounds(LLVector3& center, LLVector3& size) const\n{\n    return false;\n")),
+        ("clone pick drops the shared include",
+         swap(src, "alghoststudio.cpp", '#include "alghostclonemenulogic.h" // [ClonePick] which clone is under the cursor\n', "")),
+        ("clone pick region back to the selection-box-only bounds",
+         swap(src, "alghoststudio.cpp", "ghost->getRenderedBounds(center, size)", "ghost->getVisualBounds(center, size)")),
+        ("clone pick fallback box ignores the clone size",
+         swap(src, "alghoststudio.cpp", "ALGhostCloneMenuLogic::scaledBodyBox(foot.mV, inst.mScale)", "ALGhostCloneMenuLogic::scaledBodyBox(foot.mV, 1.f)")),
+        ("rendered bounds gated on the selection-box mode",
+         swap(src, "llghostavatar.cpp", "if (!isBuilt() || !ALGhostBounds::centerAndSize(", "if (!mUseVisualBounds || !isBuilt() || !ALGhostBounds::centerAndSize(")),
+        ("Edit clones tool stops using the shared pick",
+         swap(src, "altoolghostedit.cpp", "pickInstanceAtScreen(x, y, GHOST_PICK_PX)", "pickInstanceNearest(x, y, GHOST_PICK_PX)")),
         ("self menu shown without prepareAvatarMenu",
          swap(src, "lltoolpie.cpp", "ALGhostCloneMenu::prepareAvatarMenu(gMenuAvatarSelf,", "(void)(gMenuAvatarSelf,")),
         ("overlay submenu always visible",

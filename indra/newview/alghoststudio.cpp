@@ -11,6 +11,7 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "alghoststudio.h"
+#include "alghostclonemenulogic.h" // [ClonePick] which clone is under the cursor
 #include "alcinelightrigmanager.h"
 #include "aldirectortagtargets.h" // Director tag highlight + group label
 #include "alreflectmath.h"
@@ -1567,8 +1568,23 @@ LLUUID ALGhostStudio::pickInstanceAtScreen(S32 x, S32 y, F32 radius_px,
     // draws, not scene objects, so project each enabled instance's FOOT and a
     // MID-BODY point (foot + 1 m, easier to grab) and take the nearest in radius
     LLViewerCamera* cam = LLViewerCamera::getInstance();
-    LLUUID best;
-    F32 best_d2 = radius_px * radius_px;
+    // [ClonePick] The cursor's WORLD ray (the same direction the viewer's own picks use) against each
+    // clone's body box in agent space: the clone the ray enters first is the one under the cursor
+    // (ALGhostCloneMenuLogic::choosePickedClone); only a click that hits no box falls back to the nearest
+    // projected probe in the radius. Off-screen corners do not matter, and the click depth is the real
+    // entry point. Callers: right-press and Director pick (one call per click), the Edit-clones tool (per
+    // click) and the inventory-drop hover (per hover while dragging an animation, so storage is reserved
+    // and no heap work is done per clone).
+    std::vector<ALGhostCloneMenuLogic::PickCandidate<LLUUID>> candidates;
+    std::vector<LLVector3> candidate_probe;     // the nearest probe point inside the radius
+    candidates.reserve(mInstances.size());
+    candidate_probe.reserve(mInstances.size());
+    const LLVector3 eye = cam->getOrigin();
+    const LLVector3 ray_dir = gViewerWindow->mouseDirectionGlobal(x, y);
+    // The near plane is a forward depth: along an off-axis cursor ray it lies at near / cos(angle).
+    F32 near_t = 0.f;
+    const bool ray_ok = ALGhostCloneMenuLogic::rayNearDistance(cam->getNear(), ray_dir.mV, cam->getAtAxis().mV, near_t);
+    const F32 radius_d2 = radius_px * radius_px;
     for (const Instance& inst : mInstances)
     {
         if (!isVisible(inst) || inst.mDeleting)
@@ -1582,32 +1598,71 @@ LLUUID ALGhostStudio::pickInstanceAtScreen(S32 x, S32 y, F32 radius_px,
         const LLVector3 foot = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
         LLVector3 probes[2] = { foot, foot };
         probes[1].mV[VZ] += 1.f * inst.mScale;      // mid-body, scale-aware
+        // The body box: the extents an entity clone is RENDERED with (they contain its size, so the click
+        // region follows a resized clone). An entity clone with no live drawable body (parked / recoverable,
+        // or being respawned) has NO box and keeps only its old probes; a live body still awaiting valid
+        // extents (getRenderedBounds is false before the first extent update) and an overlay draw use a
+        // person-sized box on the foot scaled with the clone.
+        ALGhostCloneMenuLogic::BodyBox box = ALGhostCloneMenuLogic::scaledBodyBox(foot.mV, inst.mScale);
+        bool has_body_box = true;
         if (inst.mKind == BACKING_ENTITY_CLONE)
         {
+            const LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
+            has_body_box = ghost && !ghost->isDead() && ghost->mDrawable.notNull() && !ghost->mDrawable->isDead();
             LLVector3 center, size;
-            if (const LLGhostAvatar* ghost = resolveEntityClone(inst.mId);
-                ghost && ghost->getVisualBounds(center, size))
+            if (has_body_box && ghost->getRenderedBounds(center, size))
             {
                 probes[0] = probes[1] = center;
                 probes[0].mV[VZ] -= .5f * size[VZ];
+                for (S32 axis = 0; axis < 3; ++axis)
+                {
+                    box.mCenter[axis] = center[axis];
+                    box.mHalf[axis] = .5f * size[axis];
+                }
             }
         }
+        ALGhostCloneMenuLogic::PickCandidate<LLUUID> candidate;
+        candidate.mId = inst.mId;
+        F32 entry_t = 0.f;
+        if (ray_ok && has_body_box &&
+            ALGhostCloneMenuLogic::rayBoxEntry(eye.mV, ray_dir.mV, box, near_t, entry_t))
+        {
+            candidate.mHasBox = true;
+            candidate.mEntryT = entry_t;
+        }
+        F32 best_probe_d2 = radius_d2;
+        LLVector3 probe_here = probes[1];
         for (const LLVector3& p : probes)
         {
             LLCoordGL screen;
             if (!cam->projectPosAgentToScreen(p, screen, false))
             {
-                continue;   // behind the camera
+                continue;   // behind the camera (or off screen)
             }
             const F32 dx = (F32)(screen.mX - x);
             const F32 dy = (F32)(screen.mY - y);
             const F32 d2 = dx * dx + dy * dy;
-            if (d2 < best_d2)
+            if (d2 < best_probe_d2)
             {
-                best_d2 = d2;
-                best = inst.mId;
-                best_probe = p;
+                best_probe_d2 = d2;
+                candidate.mProbeD2 = d2;
+                probe_here = p;
             }
+        }
+        if (candidate.mHasBox || candidate.mProbeD2 >= 0.f)
+        {
+            candidates.push_back(candidate);
+            candidate_probe.push_back(candidate.mHasBox ? eye + ray_dir * candidate.mEntryT : probe_here);
+        }
+    }
+    const LLUUID best = ALGhostCloneMenuLogic::choosePickedClone<LLUUID>(candidates, LLUUID::null);
+    for (size_t i = 0; i < candidates.size() && best.notNull(); ++i)
+    {
+        if (candidates[i].mId == best)
+        {
+            // A box hit reports the ray's ENTRY point (the clicked depth); a probe pick its probe point.
+            best_probe = candidate_probe[i];
+            break;
         }
     }
     if (out_probe_agent)

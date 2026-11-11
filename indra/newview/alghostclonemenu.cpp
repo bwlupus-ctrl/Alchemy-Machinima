@@ -1775,6 +1775,12 @@ void showEntityMenu(const LLUUID& clone, S32 x, S32 y)
         sRows = host_rows;      // the page's rows, group headers kept
     }
     sPicked = clone;
+    // [ClonePick] The right-clicked clone is part of a deliberate multi-selection: the selection stays,
+    // but the clone becomes its primary row so the highlight does not stay on the clone clicked before.
+    if (!plan.mSelectPickedFirst)
+    {
+        ALDirectorSelect::makePrimaryInSelection(clone);
+    }
     presentEntityMenu(x, y, /*opened_on_press=*/false);
 }
 } // namespace
