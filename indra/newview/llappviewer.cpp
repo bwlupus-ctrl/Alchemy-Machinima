@@ -2041,21 +2041,34 @@ bool LLAppViewer::cleanup()
 
     // shut down mesh streamer
     gMeshRepo.shutdown();
+    // [ShutdownTrace] each step up to "Global stuff deleted" is logged so a quit that
+    // dies or stalls in this range shows exactly where (11/11: the log ended after the
+    // decomposition shutdown line, with no settings save).
+    LL_INFOS() << "[ShutdownTrace] mesh repository shut down" << LL_ENDL;
 
     // shut down Havok
     LLPhysicsExtensions::quitSystem();
+    LL_INFOS() << "[ShutdownTrace] physics extensions quit" << LL_ENDL;
 
     // Must clean up texture references before viewer window is destroyed.
     if(LLHUDManager::instanceExists())
     {
         LLHUDManager::getInstance()->updateEffects();
+        LL_INFOS() << "[ShutdownTrace] HUD effects updated" << LL_ENDL;
         LLHUDObject::updateAll();
+        LL_INFOS() << "[ShutdownTrace] HUD objects updated" << LL_ENDL;
         LLHUDManager::getInstance()->cleanupEffects();
+        LL_INFOS() << "[ShutdownTrace] HUD effects cleaned up" << LL_ENDL;
         LLHUDObject::cleanupHUDObjects();
         LL_INFOS() << "HUD Objects cleaned up" << LL_ENDL;
     }
+    else
+    {
+        LL_INFOS() << "[ShutdownTrace] no HUD manager" << LL_ENDL;
+    }
 
     LLKeyframeDataCache::clear();
+    LL_INFOS() << "[ShutdownTrace] keyframe cache cleared" << LL_ENDL;
 
     // End TransferManager before deleting systems it depends on (Audio, AssetStorage)
 #if 0 // this seems to get us stuck in an infinite loop...
@@ -2068,23 +2081,29 @@ bool LLAppViewer::cleanup()
     if(LLHUDManager::instanceExists())
     {
         LLHUDManager::getInstance()->shutdownClass();
+        LL_INFOS() << "[ShutdownTrace] HUD manager shut down" << LL_ENDL;
     }
 
     delete gAssetStorage;
     gAssetStorage = NULL;
+    LL_INFOS() << "[ShutdownTrace] asset storage deleted" << LL_ENDL;
 
     LLPolyMesh::freeAllMeshes();
+    LL_INFOS() << "[ShutdownTrace] poly meshes freed" << LL_ENDL;
 
     LLStartUp::cleanupNameCache();
+    LL_INFOS() << "[ShutdownTrace] name cache cleaned up" << LL_ENDL;
 
     // Note: this is where gLocalSpeakerMgr and gActiveSpeakerMgr used to be deleted.
 
     if (LLWorldMap::instanceExists())
     {
         LLWorldMap::getInstance()->reset(); // release any images
+        LL_INFOS() << "[ShutdownTrace] world map reset" << LL_ENDL;
     }
 
     LLCalc::cleanUp();
+    LL_INFOS() << "[ShutdownTrace] calculator cleaned up" << LL_ENDL;
 
     LL_INFOS() << "Global stuff deleted" << LL_ENDL;
 

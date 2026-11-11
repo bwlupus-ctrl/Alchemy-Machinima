@@ -4341,12 +4341,16 @@ void LLMeshRepository::shutdown()
 
     if (mDecompThread)
     {
+        // [ShutdownTrace] each step is logged so a quit that dies or stalls here shows where.
         mDecompThread->shutdown();
+        LL_INFOS(LOG_MESH) << "[ShutdownTrace] decomposition thread stopped" << LL_ENDL;
         delete mDecompThread;
         mDecompThread = NULL;
+        LL_INFOS(LOG_MESH) << "[ShutdownTrace] decomposition thread deleted" << LL_ENDL;
     }
 
     LLConvexDecomposition::quitSystem();
+    LL_INFOS(LOG_MESH) << "[ShutdownTrace] convex decomposition quit" << LL_ENDL;
 }
 
 //called in the main thread.
@@ -5731,9 +5735,17 @@ void LLPhysicsDecomp::shutdown()
         // There is only one wait(), but just in case 'broadcast'
         mSignal->broadcast();
 
+        // [ShutdownTrace] a stalled join reports itself every 2 s instead of hanging silently.
+        U32 waited_ms = 0;
         while (!isStopped())
         {
             ms_sleep(10);
+            waited_ms += 10;
+            if (waited_ms % 2000 == 0)
+            {
+                LL_WARNS("Mesh") << "[ShutdownTrace] still waiting for the decomposition thread to stop ("
+                                 << waited_ms / 1000 << " s)" << LL_ENDL;
+            }
         }
     }
 }
