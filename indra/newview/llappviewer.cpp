@@ -220,6 +220,7 @@
 #include "llkeyframemotion.h"
 #include "llworldmap.h"
 #include "llhudmanager.h"
+#include "llhudnametag.h"
 #include "lltoolmgr.h"
 #include "llassetstorage.h"
 #include "llpolymesh.h"
@@ -2022,6 +2023,11 @@ bool LLAppViewer::cleanup()
     LLPluginProcessParent::shutdown();
 
     disconnectViewer();
+    // [QuitCrash] Name tags with no source object (the Clone Studio nameplates) are never
+    // removed by killAllObjects(); release them while the camera still exists (the final
+    // LLHUDObject::updateAll() below otherwise reads the deleted camera and crashes,
+    // skipping the settings save).
+    LLHUDNameTag::releaseSourcelessTags();
     LLViewerCamera::deleteSingleton();
 
     LL_INFOS() << "Viewer disconnected" << LL_ENDL;

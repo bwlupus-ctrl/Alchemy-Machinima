@@ -146,6 +146,9 @@ public:
 
     static void shiftAll(const LLVector3& offset);
     static void addPickable(std::set<LLViewerObject*> &pick_list);
+    // [QuitCrash] Viewer shutdown: mark dead every tag that has no source object (they
+    // are never removed by killAllObjects) before the camera is deleted.
+    static void releaseSourcelessTags();
     static void reshape();
     static void setDisplayText(bool flag) { sDisplayText = flag ; }
 
