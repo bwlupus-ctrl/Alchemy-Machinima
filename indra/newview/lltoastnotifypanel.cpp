@@ -180,9 +180,13 @@ void LLToastNotifyPanel::updateButtonsLayout(const std::vector<index_button_pair
             // looks like we need to add button to the next row
             left = 0;
             bottom_offset += (BTN_HEIGHT + VPAD);
-            // [OfferBlockAway] A Block ("Mute") button that wraps on an offer toast goes to the far
-            // right of its row, so it never sits directly above Keep/Show at the left edge.
-            if (!mIsScriptDialog && btn->getName() == "Mute")
+            // [OfferBlockAway] On the two inventory offer toasts, a Block ("Mute") button that wraps
+            // goes to the far right of its row, so it never sits directly above Keep/Show at the
+            // left edge. Only when it is the last button, so no later button is pushed to a row the
+            // caller's height calculation did not count.
+            if (!mIsScriptDialog && btn->getName() == "Mute" && std::next(it) == buttons.end() &&
+                mNotification && (mNotification->getName() == "ObjectGiveItem" ||
+                                  mNotification->getName() == "UserGiveItem"))
             {
                 left = llmax(0, max_width - btn_rect.getWidth());
             }
