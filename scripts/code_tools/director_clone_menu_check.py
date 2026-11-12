@@ -1597,6 +1597,7 @@ def overlay_menu_findings(src: dict[str, str], cpp: str) -> list[str]:
                 "ALGhostCloneActions::gazeEntities(selectedInstances())" not in function_body(panel, fn):
             out.append(f"{fn} must write through the shared applyGazeTarget (the page and the menu cannot drift)")
     out += speed_findings(src, cpp, clone_root, agg_fn)
+    out += flip_findings(src, cpp, clone_root, agg_fn)
     return out
 
 
@@ -1716,6 +1717,81 @@ def speed_findings(src, cpp, clone_root, agg_fn) -> list[str]:
     panel = strip_comments(src["alpanelghoststudio.cpp"])
     if "ALGhostCloneActions::setAnimSpeed(selectedInstances()," not in function_body(panel, "void ALPanelGhostStudio::onAnimSpeedCommit"):
         out.append("onAnimSpeedCommit must write through the shared setAnimSpeed (the page and the menu cannot drift)")
+    return out
+
+
+def flip_findings(src, cpp, clone_root, agg_fn) -> list[str]:
+    """Animation > Flip left/right: the Director's Flip pose L/R row's state, through ONE shared writer."""
+    out: list[str] = []
+    animation = clone_root.find("context_menu[@name='Animation']")
+    item = None
+    if animation is not None:
+        for child in animation:
+            if child.get("name") == "Flip left right":
+                item = child
+    if item is None or item.tag != "menu_item_check" or item.get("label") != "Flip left/right":
+        return ["menu_ghost_clone.xml: Animation > Flip left/right check item is missing"]
+    calls = {e.tag.split(".")[-1]: e.get("function") for e in item}
+    if calls != {"on_click": "GhostClone.FlipLR", "on_check": "GhostClone.CheckFlipLR", "on_enable": "GhostClone.EnableFlipLR"}:
+        out.append(f"menu_ghost_clone.xml: Flip left/right callbacks are {calls}")
+    if "Flip pose L/R" not in (item.get("tool_tip") or ""):
+        out.append("menu_ghost_clone.xml: the Flip left/right tooltip must name the Director's Flip pose L/R row")
+    kids = [c.get("label") for c in animation]
+    if "Restart animation" not in kids or kids.index("Flip left/right") != kids.index("Restart animation") + 1:
+        out.append("menu_ghost_clone.xml: Flip left/right must follow Restart animation")
+    act = function_body(cpp, "void actFlipLR")
+    for needle in ("Actions::snapshotDirectedMirror(sRows)", "const bool changed = Actions::setDirectedMirror(sRows, !all_on);", "all_on = all_on && saved.mOn;",
+                   "if (changed)", 'recordCustom(shell, "clone_flip_lr"', "Actions::restoreDirectedMirror(redo ? history->mAfter : history->mBefore)",
+                   "Actions::directedMirrorReplayable(redo ? history->mAfter : history->mBefore)", "if (before.empty())", "false,\n"):
+        if needle not in act:
+            out.append(f"actFlipLR: missing {needle}")
+    if act.count("Actions::snapshotDirectedMirror(sRows)") != 2:
+        out.append("actFlipLR must snapshot before and after: a click that changes nothing records no history step")
+    if act.find("if (changed)") > act.find("recordCustom") or act.find("recordCustom") < 0:
+        out.append("actFlipLR: history is recorded only inside if (changed)")
+    for bad in ("setInstanceDirectedMirror", "mDirectedMirror ="):
+        if bad in cpp:
+            out.append(f"alghostclonemenu.cpp: {bad} belongs to the shared setDirectedMirror, not the menu")
+    reg = function_body(cpp, "void registerEntityCallbacks")
+    enable = reg[reg.find('"GhostClone.EnableFlipLR"'):reg.find('commit.add("GhostClone.FlipLR"')] if '"GhostClone.EnableFlipLR"' in reg else ""
+    for needle in ('state(ctrl, false, "GhostCloneMenuMirrorEntityOnly")', 'state(ctrl, sAgg.mFlipEligible > 0, "GhostCloneMenuFlipNotActive")',
+                   "sAgg.mEntities == 0", "return sAgg.mFlipEligible > 0 && sAgg.mFlipOn == sAgg.mFlipEligible;"):
+        if needle not in enable:
+            out.append(f"GhostClone.EnableFlipLR / CheckFlipLR: missing {needle}")
+    if 'commit.add("GhostClone.FlipLR", [](LLUICtrl*, const LLSD&) { actFlipLR(); });' not in reg:
+        out.append("registerEntityCallbacks: GhostClone.FlipLR must call actFlipLR")
+    if "if (Actions::directedMirrorEligible(id))" not in agg_fn or "++agg.mFlipEligible;" not in agg_fn or \
+            "agg.mFlipOn += inst->mDirectedMirror ? 1 : 0;" not in agg_fn:
+        out.append("computeAggregate: Flip counts eligible and flipped entity targets through directedMirrorEligible")
+    if 'name="GhostCloneMenuFlipNotActive"' not in src["strings.xml"]:
+        out.append("strings.xml: GhostCloneMenuFlipNotActive is missing")
+    acts = strip_comments(src["alghostcloneactions.cpp"])
+    elig = function_body(acts, "bool directedMirrorEligible")
+    for needle in ("inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE", "!inst->mDeleting",
+                   "ALGhostAnimMirrorMath::directedMirrorActive(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true)"):
+        if needle not in elig:
+            out.append(f"directedMirrorEligible: missing {needle} (the Director row's enable rule)")
+    setter = function_body(acts, "bool setDirectedMirror")
+    if "if (!directedMirrorEligible(id))" not in setter or "continue;" not in setter or \
+            setter.find("continue;") > setter.find("setInstanceDirectedMirror(id, enabled)") or "setInstanceDirectedMirror(id, enabled)" not in setter:
+        out.append("setDirectedMirror: ineligible clones are skipped (never written), eligible ones go through setInstanceDirectedMirror")
+    replay = function_body(acts, "bool directedMirrorReplayable")
+    if "if (directedMirrorEligible(saved.mId))" not in replay or "getInstance" in replay:
+        out.append("directedMirrorReplayable: the history preflight must use the SAME directedMirrorEligible predicate as replay "
+                   "(an existing-but-ineligible clone is not replayable)")
+    if not replay.lstrip("{").strip().startswith("for (const FlipBefore& saved : state)"):
+        out.append("directedMirrorReplayable: must start with the per-saved-clone loop (no early accept)")
+    snap = function_body(acts, "std::vector<FlipBefore> snapshotDirectedMirror")
+    if "if (directedMirrorEligible(id))" not in snap:
+        out.append("snapshotDirectedMirror: eligible clones only")
+    if "if (directedMirrorEligible(saved.mId))" not in function_body(acts, "bool restoreDirectedMirror"):
+        out.append("restoreDirectedMirror: eligible clones only")
+    panel = strip_comments(src["alpanelghoststudio.cpp"])
+    commit = function_body(panel, "void ALPanelGhostStudio::onDirectedMirrorCommit")
+    if "ALGhostCloneActions::setDirectedMirror(selectedInstances(), enabled);" not in commit or "setInstanceDirectedMirror" in commit:
+        out.append("onDirectedMirrorCommit must write through the shared setDirectedMirror (the page and the menu cannot drift)")
+    if "ALGhostAnimMirrorMath::directedMirrorActive(\n        inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true)" not in panel:
+        out.append("the page's Flip pose L/R enable rule changed: keep directedMirrorEligible identical to it")
     return out
 
 
@@ -2383,9 +2459,9 @@ def look_turn_findings(src: dict[str, str], cpp: str) -> list[str]:
         if sub(sub(look_turn, "Look At"), "Look Nearby") is None or sub(sub(look_turn, "Turn To Face"), "Turn Nearby") is None:
             out.append("menu_ghost_clone.xml: the Nearby people submenus are named Look Nearby / Turn Nearby (the code fills them)")
     animation = sub(root, "Animation")
-    if animation is None or [c.get("label") for c in animation] != ["Back to live", "Restart animation", "Speed", "Recent"] or \
+    if animation is None or [c.get("label") for c in animation] != ["Back to live", "Restart animation", "Flip left/right", "Speed", "Recent"] or \
             sub(animation, "Recent Animations") is None:
-        out.append("menu_ghost_clone.xml: Animation must hold Back to live, Restart animation, Speed and Recent")
+        out.append("menu_ghost_clone.xml: Animation must hold Back to live, Restart animation, Flip left/right, Speed and Recent")
     appearance = sub(root, "Appearance")
     if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Look", "Fade out", "Fade in"] or \
             sub(appearance, "Swap Source") is None:
@@ -3477,6 +3553,40 @@ def selftest() -> int:
         ("Recent replay bypasses the page's Directed rule",
          swap(src, "alghostclonemenu.cpp", "ALPanelGhostStudio::applyInventoryAnimationTo(selected, asset, name, /*director_fallback=*/true);",
               "ALPanelGhostStudio::playAnimationOnClonesRecorded(liveEntityTargets(), asset, name, true);")),
+        ("Flip menu path writes the studio directly, not the shared helper",
+         swap(src, "alghostclonemenu.cpp", "const bool changed = Actions::setDirectedMirror(sRows, !all_on);",
+              "for (const LLUUID& id : sRows) ALGhostStudio::instance().setInstanceDirectedMirror(id, !all_on); const bool changed = true;")),
+        ("Flip page commit writes the studio directly, not the shared helper",
+         swap(src, "alpanelghoststudio.cpp", "ALGhostCloneActions::setDirectedMirror(selectedInstances(), enabled);",
+              "for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().setInstanceDirectedMirror(id, enabled);")),
+        ("Flip eligibility accepts overlay clones",
+         swap(src, "alghostcloneactions.cpp", "inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&\n        ALGhostAnimMirrorMath::directedMirrorActive",
+              "ALGhostAnimMirrorMath::directedMirrorActive")),
+        ("Flip item enabled for overlay-only targets",
+         swap(src, "alghostclonemenu.cpp", "        if (sAgg.mEntities == 0)\n        {\n            return state(ctrl, false, \"GhostCloneMenuMirrorEntityOnly\");     // an overlay has no pose to flip",
+              "        if (false)\n        {\n            return state(ctrl, false, \"GhostCloneMenuMirrorEntityOnly\");     // an overlay has no pose to flip")),
+        ("Flip writes ineligible clones",
+         swap(src, "alghostcloneactions.cpp", "        if (!directedMirrorEligible(id))\n        {\n            continue;\n        }\n        changed = changed",
+              "        changed = changed")),
+        ("Flip eligibility drops the Director row's drive rule",
+         swap(src, "alghostcloneactions.cpp", "ALGhostAnimMirrorMath::directedMirrorActive(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true)", "true")),
+        ("Flip no-op click still records a history step",
+         swap(src, "alghostclonemenu.cpp", "    if (changed)\n    {\n        LLFloater* director = LLFloaterReg::getInstance(\"director\");\n        ALKitShell* shell = director ? director->findChild<ALKitShell>(\"director_shell\") : nullptr;\n        if (shell)\n        {\n            struct History\n            {\n                std::vector<Actions::FlipBefore>",
+              "    if (true)\n    {\n        LLFloater* director = LLFloaterReg::getInstance(\"director\");\n        ALKitShell* shell = director ? director->findChild<ALKitShell>(\"director_shell\") : nullptr;\n        if (shell)\n        {\n            struct History\n            {\n                std::vector<Actions::FlipBefore>")),
+        ("Flip preflight accepts an ineligible-only step (instance exists but replay would skip it)",
+         swap(src, "alghostcloneactions.cpp", "        if (directedMirrorEligible(saved.mId))\n        {\n            return true;\n        }",
+              "        if (ALGhostStudio::instance().getInstance(saved.mId))\n        {\n            return true;\n        }")),
+        ("Flip preflight accepts a step whose eligible targets were deleted",
+         swap(src, "alghostcloneactions.cpp", "bool directedMirrorReplayable(const std::vector<FlipBefore>& state)\n{\n",
+              "bool directedMirrorReplayable(const std::vector<FlipBefore>& state)\n{\n    return true;\n")),
+        ("Flip history has no preflight validator",
+         swap(src, "alghostclonemenu.cpp", "Actions::directedMirrorReplayable(redo ? history->mAfter : history->mBefore)", "true")),
+        ("Flip checked when only some eligible clones are flipped",
+         swap(src, "alghostclonemenu.cpp", "sAgg.mFlipOn == sAgg.mFlipEligible;", "sAgg.mFlipOn > 0;")),
+        ("Flip item callbacks mis-wired",
+         swap(src, "menu_ghost_clone.xml", '<menu_item_check.on_click function="GhostClone.FlipLR" />', '<menu_item_check.on_click function="GhostClone.RestartAnim" />')),
+        ("Flip item moved before Restart animation",
+         swap(src, "menu_ghost_clone.xml", 'label="Restart animation"', 'label="Restart animationx"')),
         ("Look is applied while a look outside the range is allowed",
          swap(src, "alghostclonemenu.cpp", "look < ALGhostStudio::LOOK_NORMAL || look > ALGhostStudio::LOOK_SILHOUETTE ||\n        ", "")),
     ]
