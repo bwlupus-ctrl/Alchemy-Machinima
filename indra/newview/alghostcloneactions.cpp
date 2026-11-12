@@ -14,6 +14,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alghostcloneactions.h"
+#include "alghostanimmirrormath.h"
 
 #include "alghostanimdrop.h"
 #include "alghostclonemenulogic.h"
@@ -925,6 +926,70 @@ bool restoreFade(const std::vector<FadeBefore>& before, bool redo, bool fade_out
         {
             any = (redo ? studio.fadeInstance(saved.mId, fade_out, true)
                         : studio.fadeInstance(saved.mId, saved.mHidden, false)) || any;
+        }
+    }
+    return any;
+}
+bool directedMirrorEligible(const LLUUID& instance_id)
+{
+    const ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(instance_id);
+    return inst && !inst->mDeleting && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+        ALGhostAnimMirrorMath::directedMirrorActive(inst->mDriveMode, inst->mDirectedMirrorFreezeDrive, true);
+}
+
+std::vector<FlipBefore> snapshotDirectedMirror(const std::vector<LLUUID>& rows)
+{
+    std::vector<FlipBefore> state;
+    for (const LLUUID& id : instances(rows))
+    {
+        if (directedMirrorEligible(id))
+        {
+            FlipBefore saved;
+            saved.mId = id;
+            saved.mOn = ALGhostStudio::instance().getInstance(id)->mDirectedMirror;
+            state.push_back(saved);
+        }
+    }
+    return state;
+}
+
+bool setDirectedMirror(const std::vector<LLUUID>& rows, bool enabled)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    bool changed = false;
+    for (const LLUUID& id : instances(rows))
+    {
+        if (!directedMirrorEligible(id))
+        {
+            continue;
+        }
+        changed = changed || studio.getInstance(id)->mDirectedMirror != enabled;
+        studio.setInstanceDirectedMirror(id, enabled);
+    }
+    return changed;
+}
+
+bool directedMirrorReplayable(const std::vector<FlipBefore>& state)
+{
+    for (const FlipBefore& saved : state)
+    {
+        if (directedMirrorEligible(saved.mId))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool restoreDirectedMirror(const std::vector<FlipBefore>& state)
+{
+    bool any = false;
+    for (const FlipBefore& saved : state)
+    {
+        if (directedMirrorEligible(saved.mId))
+        {
+            ALGhostStudio::instance().setInstanceDirectedMirror(saved.mId, saved.mOn);
+            any = true;
         }
     }
     return any;

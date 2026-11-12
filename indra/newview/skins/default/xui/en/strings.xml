@@ -4581,6 +4581,7 @@ and report the problem.
     <string name="GhostCloneMenuNoCrowd">needs one crowd</string>
     <string name="GhostCloneMenuPausedMirror">paused: press Play first</string>
     <string name="GhostCloneMenuAlreadyLive">already live</string>
+    <string name="GhostCloneMenuFlipNotActive">needs Mirror, True mirror or a chosen animation</string>
     <string name="GhostCloneMenuCastGone">That cast member is no longer available</string>
     <string name="GhostCloneMenuSpeedInfo">Speed [SPEED]x</string>
     <string name="GhostCloneMenuSpeedMixed">Speed mixed</string>

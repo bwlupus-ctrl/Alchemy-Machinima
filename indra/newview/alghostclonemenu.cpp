@@ -117,6 +117,8 @@ struct Aggregate
     S32 mLook = -1;             // the entity targets' common EGhostLook, -1 when they differ
     size_t mFadeOutable = 0;    // entity targets Fade out can still hide (not user-hidden)
     size_t mFadeInable = 0;     // entity targets Fade in can still show (user-hidden)
+    size_t mFlipEligible = 0;   // entity targets the Director's Flip pose L/R row is enabled for
+    size_t mFlipOn = 0;         // ... of those, the ones with the flip on
     bool mExpandedMember = false;   // a target is one member of an EXPANDED group (look / turn refuse it)
 };
 Aggregate                   sAgg;
@@ -288,6 +290,11 @@ Aggregate computeAggregate()
             agg.mAtNormal += std::fabs(speed - 1.f) <= Logic::ANIM_SPEED_EPSILON ? 1 : 0;
         }
         agg.mNotLive += inst->mDriveMode != ALGhostStudio::DRIVE_MIRROR ? 1 : 0;
+        if (Actions::directedMirrorEligible(id))
+        {
+            ++agg.mFlipEligible;
+            agg.mFlipOn += inst->mDirectedMirror ? 1 : 0;
+        }
         agg.mFadeOutable += Logic::fadeEligible(true, inst->mUserHidden) ? 1 : 0;
         agg.mFadeInable += Logic::fadeEligible(false, inst->mUserHidden) ? 1 : 0;
         if (agg.mEntities == 1)
@@ -1039,6 +1046,65 @@ void actSpeed(const std::string& kind)
     sAgg = computeAggregate();
 }
 
+// ---- Animation > Flip left/right: the Director's Cast > Clones "Flip pose L/R" row, through the shared
+// Actions::setDirectedMirror (the page commit uses the same writer). Eligible clones only; checked when every
+// eligible target has it on, a click sets them all to the opposite (mixed -> on). One Director history step per
+// real change, keyed to the clone instances; a click that changes nothing records nothing.
+void actFlipLR()
+{
+    const std::vector<Actions::FlipBefore> before = Actions::snapshotDirectedMirror(sRows);
+    if (before.empty())
+    {
+        tip(str(sAgg.mEntities == 0 ? "GhostCloneMenuMirrorEntityOnly" : "GhostCloneMenuFlipNotActive"));
+        sAgg = computeAggregate();
+        return;
+    }
+    bool all_on = true;
+    for (const Actions::FlipBefore& saved : before)
+    {
+        all_on = all_on && saved.mOn;
+    }
+    // The writer's own verdict decides whether history is recorded (one source of truth for "changed").
+    const bool changed = Actions::setDirectedMirror(sRows, !all_on);
+    const std::vector<Actions::FlipBefore> after = Actions::snapshotDirectedMirror(sRows);
+    if (changed)
+    {
+        LLFloater* director = LLFloaterReg::getInstance("director");
+        ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+        if (shell)
+        {
+            struct History
+            {
+                std::vector<Actions::FlipBefore> mBefore, mAfter;
+            };
+            auto history = std::make_shared<History>();
+            history->mBefore = before;
+            history->mAfter = after;
+            shell->history().recordCustom(shell, "clone_flip_lr", "Flip clone animation left/right",
+                [history](bool redo, std::string& reason)
+                {
+                    if (!Actions::restoreDirectedMirror(redo ? history->mAfter : history->mBefore))
+                    {
+                        reason = "Those clones are no longer available";
+                        return false;
+                    }
+                    return true;
+                },
+                false,
+                [history](bool redo, std::string& reason)
+                {
+                    if (!Actions::directedMirrorReplayable(redo ? history->mAfter : history->mBefore))
+                    {
+                        reason = "Those clones are no longer available";
+                        return false;
+                    }
+                    return true;
+                });
+        }
+    }
+    sAgg = computeAggregate();
+}
+
 void refreshSpeedInfo()
 {
     LLContextMenu* speed = subMenu(subMenu(sMenu, "Animation"), "Anim Speed");
@@ -1434,6 +1500,19 @@ void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
         return state(ctrl, sAgg.mEntities > 0, "GhostCloneMenuNotReady");
     });
     commit.add("GhostClone.RestartAnim", [](LLUICtrl*, const LLSD&) { actRestartAnimation(); });
+    enable.add("GhostClone.EnableFlipLR", [](LLUICtrl* ctrl, const LLSD&)
+    {
+        if (sAgg.mEntities == 0)
+        {
+            return state(ctrl, false, "GhostCloneMenuMirrorEntityOnly");     // an overlay has no pose to flip
+        }
+        return state(ctrl, sAgg.mFlipEligible > 0, "GhostCloneMenuFlipNotActive");
+    });
+    enable.add("GhostClone.CheckFlipLR", [](LLUICtrl*, const LLSD&)
+    {
+        return sAgg.mFlipEligible > 0 && sAgg.mFlipOn == sAgg.mFlipEligible;
+    });
+    commit.add("GhostClone.FlipLR", [](LLUICtrl*, const LLSD&) { actFlipLR(); });
     enable.add("GhostClone.CheckEntityLook", [](LLUICtrl*, const LLSD& param)
     {
         return sAgg.mLook == param.asInteger();
