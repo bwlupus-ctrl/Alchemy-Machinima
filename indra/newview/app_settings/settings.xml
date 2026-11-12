@@ -8190,7 +8190,7 @@
     <key>DirectorBackgroundOpacity</key>
     <map>
       <key>Comment</key>
-      <string>Opacity of a solid backing layer drawn behind the whole Director window in the theme's window colour. 1 = fully solid.</string>
+      <string>How solid the Director's backgrounds are. 100% = solid; lower lets the world show through. Text and controls stay solid.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

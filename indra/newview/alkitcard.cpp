@@ -1400,14 +1400,14 @@ void ALKitCard::draw()
     }
     if (mOuterImage && mInnerImage)
     {
-        mOuterImage->draw(0, 0, getRect().getWidth(), getRect().getHeight(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get());
+        mOuterImage->draw(0, 0, getRect().getWidth(), getRect().getHeight(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get() % ALKitStyle::backgroundAlpha(this));
         mInnerImage->draw(1, 1, llmax(1, getRect().getWidth() - 2), llmax(1, getRect().getHeight() - 2),
-                          ALKitStyle::color(ALKitStyle::CARD_BG).get());
+                          ALKitStyle::color(ALKitStyle::CARD_BG).get() % ALKitStyle::backgroundAlpha(this));
     }
     else
     {
-        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get(), true);
-        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get(), false);
+        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get() % ALKitStyle::backgroundAlpha(this), true);
+        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get() % ALKitStyle::backgroundAlpha(this), false);
     }
     if (mBodyOpen)
     {

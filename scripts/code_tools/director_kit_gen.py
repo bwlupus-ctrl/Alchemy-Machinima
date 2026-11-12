@@ -29,6 +29,7 @@ import director_list_select_check as list_select_check  # noqa: E402  (multi-sel
 import director_clone_clear_check as clone_clear_check  # noqa: E402  (Clear animations wiring)
 import director_clone_menu_check as clone_menu_check  # noqa: E402  (clone right-click menus, Select in Director)
 import avatar_gaze_menu_check  # noqa: E402  (avatar Director > Gaze)
+import director_fade_check  # noqa: E402  (background-only Director opacity)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -2799,7 +2800,7 @@ def main(argv: list[str] | None = None) -> int:
         shader_load_check.native_check(ROOT)
         # Source gates with no runner of their own: prebuild_guard reaches them through
         # this --check. Each runs its check and its planted-negative selftest.
-        for gate in (list_select_check, clone_clear_check, clone_menu_check, avatar_gaze_menu_check):
+        for gate in (director_fade_check, list_select_check, clone_clear_check, clone_menu_check, avatar_gaze_menu_check):
             with contextlib.redirect_stdout(io.StringIO()) as gate_out:
                 gate_failed = gate.run_check() or gate.selftest()
             if gate_failed:

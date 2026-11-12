@@ -62,7 +62,7 @@ static const S32 LINE_HEIGHT = 15;
 S32     LLView::sDepth = 0;
 U32     LLView::sDrawnViewCount = 0;
 U32     LLView::sClipCulledViewCount = 0;
-U32     LLView::sTreeGeneration = 0;
+U64     LLView::sTreeGeneration = 0;
 U32     LLView::sFindChildCallCount = 0;
 U32     LLView::sFindChildVisitedCount = 0;
 bool    LLView::sDebugRects = false;
@@ -178,6 +178,8 @@ LLView::LLView(const LLView::Params& p)
 
 LLView::~LLView()
 {
+    // Invalidate cached owners before any destruction callbacks can draw children.
+    ++sTreeGeneration;
     dirtyRect();
     //LL_INFOS() << "Deleting view " << mName << ":" << (void*) this << LL_ENDL;
     if (LLView::sIsDrawing)
@@ -208,6 +210,51 @@ LLView::~LLView()
     }
 
     delete mToolTipMsg;
+}
+
+F32 LLView::getBackgroundOpacity() const
+{
+    if (!mBackgroundOpacityResolved || mBackgroundOpacityGeneration != sTreeGeneration)
+    {
+        const LLView* owner = this;
+        while (owner)
+        {
+            // Owners resolve to themselves, including when their parent has a cache.
+            if (owner->ownsBackgroundOpacity())
+            {
+                break;
+            }
+            if (owner != this && owner->mBackgroundOpacityResolved &&
+                owner->mBackgroundOpacityGeneration == sTreeGeneration)
+            {
+                mBackgroundOpacityOwner = owner->mBackgroundOpacityOwner;
+                break;
+            }
+            owner = owner->mParentView;
+        }
+        if (!owner || owner->ownsBackgroundOpacity())
+        {
+            mBackgroundOpacityOwner = owner ? owner->getHandle() : LLHandle<LLView>();
+        }
+        // Compress the entire stale path, including containers that never draw.
+        // A second walk avoids allocating storage for the ancestor chain.
+        const LLView* ancestor = this;
+        while (ancestor && (!ancestor->mBackgroundOpacityResolved ||
+                            ancestor->mBackgroundOpacityGeneration != sTreeGeneration))
+        {
+            ancestor->mBackgroundOpacityOwner = mBackgroundOpacityOwner;
+            ancestor->mBackgroundOpacityGeneration = sTreeGeneration;
+            ancestor->mBackgroundOpacityResolved = true;
+            // Never propagate an owner's handle above that owner.
+            if (ancestor == owner)
+            {
+                break;
+            }
+            ancestor = ancestor->mParentView;
+        }
+    }
+    const LLView* owner = mBackgroundOpacityOwner.get();
+    return owner ? owner->getOwnBackgroundOpacity() : 1.f;
 }
 
 // virtual
@@ -396,6 +443,7 @@ void LLView::removeChild(LLView* child)
         llassert(!child->mInDraw);
         mChildList.remove( child );
         child->mParentView = NULL;
+        ++sTreeGeneration;
         child_tab_order_t::iterator found = mTabOrder.find(child);
         if (found != mTabOrder.end())
         {
@@ -636,6 +684,7 @@ void LLView::deleteAllChildren()
     {
         LLView* viewp = mChildList.front();
         viewp->mParentView = NULL;
+        ++sTreeGeneration;
         delete viewp;
         mChildList.pop_front();
     }

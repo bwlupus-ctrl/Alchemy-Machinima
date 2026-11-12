@@ -1701,6 +1701,7 @@ void LLScrollListCtrl::drawItems()
 
     LLGLSUIDefault gls_ui;
 
+    // Local alpha excludes background opacity: stripes/disabled rows are pre-multiplied once.
     F32 alpha = getDrawContext().mAlpha;
 
     {
@@ -1789,13 +1790,13 @@ void LLScrollListCtrl::drawItems()
                 {
                     if (mDrawStripes && (line % 2 == 0) && (max_columns > 1))
                     {
-                        hover_color = mBgStripeColor.get();
+                        hover_color = mBgStripeColor.get() % getBackgroundOpacity();
                     }
                 }
 
                 if (!item->getEnabled())
                 {
-                    hover_color = mBgReadOnlyColor.get();
+                    hover_color = mBgReadOnlyColor.get() % getBackgroundOpacity();
                 }
 
                 item->draw(item_rect, fg_color % alpha, hover_color% alpha, select_color% alpha, highlight_color % alpha, mColumnPadding, getSelectedBarGutter());
@@ -1831,7 +1832,7 @@ void LLScrollListCtrl::draw()
     // Draw background
     if (mBackgroundVisible)
     {
-        F32 alpha = getCurrentTransparency();
+        F32 alpha = getBackgroundTransparency();
         gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
         gl_rect_2d(background, getEnabled() ? mBgWriteableColor.get() % alpha : mBgReadOnlyColor.get() % alpha );
     }

@@ -1634,8 +1634,8 @@ void ALKitRow::draw()
     }
     if (mMeta.kind == "dial" || mMeta.kind == "arc")
     {
-        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get(), true);
-        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get(), false);
+        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BG).get() % ALKitStyle::backgroundAlpha(this), true);
+        gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::CARD_BORDER).get() % ALKitStyle::backgroundAlpha(this), false);
     }
     if (mHovered && !(mFillWidth && mMeta.kind == "custom" && dynamic_cast<ALFlowGridItem*>(mControl)))
         gl_rect_2d(getLocalRect(), ALKitStyle::color(ALKitStyle::ROW_HOVER).get(), true);

@@ -204,7 +204,7 @@ void LLPanel::draw()
     // draw background
     if( mBgVisible )
     {
-        F32 alpha = getCurrentTransparency();
+        F32 alpha = getBackgroundTransparency();
 
         LLRect local_rect = getLocalRect();
         if (mBgOpaque )
