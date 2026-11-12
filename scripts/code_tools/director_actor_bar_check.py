@@ -156,6 +156,24 @@ def reverse_feature_allowance(source, name, filename, digest, label):
     return source
 
 
+SHAFT_SLOT_MERGE_DIGEST = "899d39e572e8a7718d6cb35f8bb40c7d6f2d6a472b8a999774210d92102f6ba6"
+
+
+def reverse_shaft_slot_merge(source, name):
+    """Peel the newest pipeline layer; preserve all older full-file pins."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "shaft_slot_merge_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SHAFT_SLOT_MERGE_DIGEST, ("reviewed shaft slot merge", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "8c350a71b4e", "shaft slot merge base"
+    if name not in allowed["files"] or not any(h["after"] in source for h in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "shaft_slot_merge_hunks.json",
+                                     SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
+
+
 ENTITY_SPAWN_ON_SOURCE_DIGEST = "63ce56881cbc42b08045b590eb39c0bcd7018d19795efc5c79a18bca39217068"
 
 
@@ -323,7 +341,7 @@ def main():
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
         # The Director tag highlight's exact renderer-selection hooks sit on top of main fc5f3e5a78f.
-        tagged = reverse_feature_allowance((nv / path).read_text(encoding="utf-8").replace("\r\n", "\n"), path,
+        tagged = reverse_feature_allowance(reverse_shaft_slot_merge((nv / path).read_text(encoding="utf-8"), path), path,
             "tag_highlight_pipeline_hunks.json", TAG_HIGHLIGHT_PIPELINE_DIGEST, "reviewed Director tag highlight renderer hooks")
         guarded = reverse_post_chroma_main(tagged, path)
         guarded = actor_key_baseline(guarded, path)

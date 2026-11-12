@@ -1,6 +1,8 @@
 #include "llviewerprecompiledheaders.h"
 #include "alpresetlook.h"
 #include "alkitpage.h"
+#include "alpanelprojectorshafts.h"
+#include "alshaftselftest.h"
 #include "alsettingsundohistory.h"
 #include "alflowgrid.h"
 #include "alkitcard.h"
@@ -900,6 +902,12 @@ bool ALKitPage::postBuild()
         ALExposureSettingsHistory::initialize();
         mPageUndo = findChild<LLButton>("exp_undo");
         mPageRedo = findChild<LLButton>("exp_redo");
+    }
+    if (mPage == "light_group/projector_shafts_tab")
+    {
+        mShaftStatus = findChild<LLTextBox>("shaft_status_text");
+        getChild<LLButton>("shaft_test_button")->setCommitCallback(
+            [this](LLUICtrl*, const LLSD&) { ALShaftSelfTest::start(this); });
     }
     struct ComboSpec
     {
@@ -2252,9 +2260,21 @@ void ALKitPage::restoreState()
     mRestoringState = false;
 }
 
+void ALKitPage::onVisibilityChange(bool visible)
+{
+    LLPanel::onVisibilityChange(visible);
+    if (visible) mShaftStatusClock.forceDue();
+}
+
 void ALKitPage::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
+    if (mShaftStatus && isWidgetOnScreen(mShaftStatus))
+    {
+        ALShaftStatus::markDrawn(gFrameCount);
+        if (mShaftStatusClock.due())
+            setTextIfChanged(mShaftStatus, alSelectedProjectorShaftStatus());
+    }
     const U64 subject_revision = LLDirectorCast::instance().getActorChoiceRevision();
     if (subject_revision != mSubjectComboRevision)
     {

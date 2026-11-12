@@ -47,6 +47,9 @@
 #include "allenslooks.h"
 
 #include "pipeline.h"
+#include "alshaftdecision.h"
+#include "alshaftselftest.h"
+#include "alshaftstatusconsumer.h"
 #include "alsensormodel.h"
 #include "alsensorsettings.h"
 #include "alvcamautovol.h"
@@ -2676,6 +2679,7 @@ void applySunShadowSamplerState(LLRenderTarget& target, LLTexUnit::eTextureFilte
 
 bool LLPipeline::allocateShadowBuffer(U32 resX, U32 resY)
 {
+    ALShaftSelfTest::cancel("shader reload, resize or render-target reallocation");
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DISPLAY;
     S32 shadow_detail = RenderShadowDetail;
 
@@ -3063,6 +3067,7 @@ void LLPipeline::refreshCachedSettings()
 
 void LLPipeline::releaseGLBuffers()
 {
+    ALShaftSelfTest::cancel("shader reload, resize or render-target reallocation");
     assertInitialized();
     releaseWorldShadowTargets();
 
@@ -3212,6 +3217,7 @@ void LLPipeline::releaseShadowBuffers()
 
 void LLPipeline::releaseScreenBuffers()
 {
+    ALShaftSelfTest::cancel("shader reload, resize or render-target reallocation");
     ALPOVBlink::releaseGL();
     releaseSensorTargets();
     mSensorFailed = false;
@@ -25012,6 +25018,7 @@ namespace
 std::map<LLUUID, ALVCamAutoVol::EnableOverride> sVCamVolumetricOverrides;
 ALVCamAutoVol::EnableOverride sVCamVolumetricMaster;
 boost::signals2::scoped_connection sVCamVolumetricMasterConnection;
+boost::signals2::scoped_connection sVCamVolumetricMasterWriteConnection;
 bool sWritingVCamVolumetricMaster = false;
 
 void setVCamVolumetricMaster(bool enabled)
@@ -25024,6 +25031,21 @@ void setVCamVolumetricMaster(bool enabled)
 
 } // anonymous namespace
 
+// Share VCam's counted master hold and user-edit observer. The diagnostic's ID
+// is already flagged, so this never auto-owns/promotes its per-light shaft flag.
+// Explicit Test shafts may temporarily enable even a previously declined master;
+// keep that preference, and let the LAST holder release the temporary enable.
+void LLPipeline::acquireShaftTestMaster(const LLUUID& id)
+{
+    if (id.isNull()) return;
+    acquireVCamVolumetrics(id, false);
+    if (!gSavedSettings.getBOOL("BDMergeProjectorVolumetrics"))
+    {
+        sVCamVolumetricMaster.mAutoEnabled = true;
+        setVCamVolumetricMaster(true);
+    }
+}
+
 void LLPipeline::noteVolumetricShaftEdit(const LLUUID& id, bool enabled)
 {
     auto found = sVCamVolumetricOverrides.find(id);
@@ -25034,6 +25056,20 @@ void LLPipeline::noteVolumetricShaftEdit(const LLUUID& id, bool enabled)
 bool LLPipeline::acquireVCamVolumetrics(const LLUUID& id, bool allow_light)
 {
     if (id.isNull()) return false;
+    if (!sVCamVolumetricMasterWriteConnection.connected())
+    {
+        // A Director/preset/user can save ON while our runtime overlay is
+        // already ON. Such an accepted same-value write has no change signal.
+        // Observe intent before the write; the change observer below handles
+        // a new value once committed. Automatic writes suppress both observers.
+        sVCamVolumetricMasterWriteConnection = gSavedSettings.getControl(
+            "BDMergeProjectorVolumetrics")->getWriteSignal()->connect(
+                [](LLControlVariable* control)
+                {
+                    if (!sWritingVCamVolumetricMaster)
+                        sVCamVolumetricMaster.changed(control->getValue().asBoolean());
+                });
+    }
     if (!sVCamVolumetricMasterConnection.connected())
     {
         sVCamVolumetricMasterConnection = gSavedSettings.getControl(
@@ -25098,6 +25134,131 @@ void LLPipeline::toggleVolumetricShaft(const LLUUID& id, bool user_edit)
 bool LLPipeline::isVolumetricShaftEnabled(const LLUUID& id)
 {
     return !sVolumetricShaftObjects.empty() && sVolumetricShaftObjects.count(id) != 0;
+}
+
+// [Shaft slot priority] True for a WORLD projector the user flagged for Volumetric Shaft
+// (own id, then root-edit id - the match the shaft loops use). spotShadowTier() ranks such
+// a light above unflagged world projectors and below cine rig emitters in the native
+// shadow-slot auction: a shaft cannot draw without a slot. Never promoted: a Cast Shadows
+// opt-out (it holds no slot at all) and a flag that is only a VCam auto-enable (not a user
+// choice). Set/map lookups only, nothing allocated.
+bool LLPipeline::isUserShaftSlotPromoted(LLVOVolume* volume)
+{
+    if (!volume || sVolumetricShaftObjects.empty())
+        return false;
+    LLViewerObject* root = volume->getRootEdit();
+    return ALShaftDecision::promoted(isVolumetricShaftEnabled(volume->getID()),
+        isVCamVolumetricAutoEnabled(volume->getID()),
+        root && isVolumetricShaftEnabled(root->getID()),
+        root && isVCamVolumetricAutoEnabled(root->getID()), isProjectorShadowSuppressed(volume));
+}
+
+bool LLPipeline::hasProjectorShaftShadowSlot(LLVOVolume* light, bool current_frame)
+{
+    if (!light || light->isDead()) return false;
+    for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+    {
+        LLRenderTarget* target = getSpotShadowTarget(i);
+        if (mShadowSpotLight[i] == light->mDrawable && target && target->getWidth() &&
+            gFrameCount - mSpotShadowFrame[i] <= (current_frame ? 0u : 1u)) return true;
+    }
+    return false;
+}
+
+// Observe the completed main-view pass without instrumenting either frozen engine.
+// Drawing means an eligible slot owner participated in this pass. The explicit
+// self-test independently proves pixels with an isolated frozen aux dispatch.
+void LLPipeline::observeProjectorShafts(LLRenderTarget* target)
+{
+    if (!ALShaftDecision::observe(ALShaftStatus::recentlyDrawn(gFrameCount), ALShaftSelfTest::active)) return;
+    if (!BDMergeProjectorVolumetrics || RenderShadowDetail <= 1 || gCubeSnapshot ||
+        sPrismPreviewRender || sVolumetricShaftObjects.empty()) return;
+    const bool classic = BDMergeProjectorVolumetricsEngine == 0;
+    auto& shader = classic ? gDeferredProjectorVolumetricClassicProgram : gDeferredProjectorVolumetricProgram;
+    if (!ALShaftDecision::shaderReady(shader.isComplete(), shader.mShaderLevel,
+        !classic && mProjVolVariantFailed)) return;
+    for (U32 i = 0; i < bdmergeMaxSpotShadows(); ++i)
+    {
+        LLDrawable* owner = mShadowSpotLight[i];
+        LLVOVolume* light = owner ? owner->getVOVolume() : nullptr;
+        if (!light || light->isDead() || !hasProjectorShaftShadowSlot(light, true)) continue;
+        LLUUID matched;
+        if (isVolumetricShaftEnabled(light->getID())) matched = light->getID();
+        else if (LLViewerObject* root = light->getRootEdit())
+            if (isVolumetricShaftEnabled(root->getID())) matched = root->getID();
+        ALShaftDecision::Status status;
+        status.projector = status.master = status.deferred = status.shadows = status.shader = true;
+        status.flagged = matched.notNull();
+        status.actorOnly = ALCineLightRigManager::anyActorOnly() &&
+            ALCineLightRigManager::instance().actorOnlyBits(light->getID());
+        status.suppressed = isProjectorShadowSuppressed(light);
+        status.light = light->getLightIntensity() >= .001f && light->getLightRadius() >= .001f;
+        VolumetricShaftOverride ov;
+        const bool overridden = getVolumetricShaftOverride(matched, ov);
+        status.shaft = (overridden ? ov.multiplier : BDMergeProjectorVolumetricsMultiplier) > 0.f &&
+            (overridden ? ov.density : BDMergeProjectorVolumetricsDensity) > 0.f;
+        status.froxel = BDMergeFroxelVolumetrics && BDMergeFroxelLights &&
+            mFroxelInjectedProjectors.count(matched) != 0;
+        status.drawn = true;
+        if (ALShaftDecision::reason(status) != ALShaftDecision::Reason::Drawing) continue;
+        mShaftDrawId[i] = light->getID();
+        mShaftDrawFrame[i] = gFrameCount;
+        mShaftDrawClassic[i] = classic;
+        if (ALShaftSelfTest::active) ALShaftSelfTest::submitted(light, shader, *target);
+    }
+}
+
+// Throttled by each visible page, never cached across selections. Counts only.
+std::string LLPipeline::projectorShaftStatus(LLVOVolume* light)
+{
+    using namespace ALShaftDecision;
+    Status s;
+    LLVector3 params;
+    s.projector = light && !light->isDead() && LLPrismLens::projectorRenderParams(light, params);
+    if (!s.projector) return text(reason(s));
+    LLUUID matched;
+    if (isVolumetricShaftEnabled(light->getID())) matched = light->getID();
+    else if (LLViewerObject* root = light->getRootEdit())
+        if (isVolumetricShaftEnabled(root->getID())) matched = root->getID();
+    s.flagged = matched.notNull();
+    s.master = gPipeline.BDMergeProjectorVolumetrics;
+    s.deferred = sRenderDeferred;
+    s.shadows = gPipeline.RenderShadowDetail > 1;
+    const bool classic = gSavedSettings.getS32("BDMergeProjectorVolumetricsEngine") == 0;
+    auto& shader = classic ? gDeferredProjectorVolumetricClassicProgram : gDeferredProjectorVolumetricProgram;
+    s.shader = shaderReady(shader.isComplete(), shader.mShaderLevel, !classic && gPipeline.mProjVolVariantFailed);
+    s.actorOnly = ALCineLightRigManager::anyActorOnly() && ALCineLightRigManager::instance().actorOnlyBits(light->getID());
+    s.suppressed = isProjectorShadowSuppressed(light);
+    s.light = light->getLightIntensity() >= 0.001f && light->getLightRadius() >= 0.001f;
+    VolumetricShaftOverride ov;
+    const bool overridden = getVolumetricShaftOverride(matched, ov);
+    s.shaft = (overridden ? ov.multiplier : gPipeline.BDMergeProjectorVolumetricsMultiplier) > 0.f &&
+        (overridden ? ov.density : gPipeline.BDMergeProjectorVolumetricsDensity) > 0.f;
+    s.froxel = gPipeline.BDMergeFroxelVolumetrics && gPipeline.BDMergeFroxelLights &&
+        gPipeline.mFroxelInjectedProjectors.count(matched) != 0;
+    const U32 count = bdmergeMaxSpotShadows();
+    U32 blockers = 0, slot = 0;
+    for (U32 i = 0; i < count; ++i)
+    {
+        LLDrawable* owner = gPipeline.mShadowSpotLight[i];
+        const bool own = owner && owner->getVOVolume() == light;
+        LLRenderTarget* target = gPipeline.getSpotShadowTarget(i);
+        s.drawn |= own && target && target->getWidth() &&
+            gPipeline.mShaftDrawId[i] == light->getID() &&
+            gFrameCount - gPipeline.mShaftDrawFrame[i] <= 1u &&
+            gPipeline.mShaftDrawClassic[i] == classic;
+        if (own) slot = i + 1;
+        s.waiting |= own;
+        LLDrawable* requested = gPipeline.mTargetShadowSpotLight[i];
+        LLVOVolume* other = requested ? requested->getVOVolume() : nullptr;
+        s.waiting |= other == light;
+        if (other && other != light && gPipeline.spotShadowTier(other) >= gPipeline.spotShadowTier(light)) ++blockers;
+    }
+    s.occupied = blockers >= count;
+    const Reason r = reason(s);
+    if (r == Reason::Drawing) return llformat("Drawing (slot %u of %u)", slot, count);
+    if (r == Reason::Occupied) return llformat("No shadow slot - %u other lights have priority (raise Projector shadow slots)", blockers);
+    return text(r);
 }
 
 // [World Shadow pick] The session pick set. Every change that really alters the set bumps the revision; a no-op write does not.
@@ -25254,10 +25415,12 @@ U32 LLPipeline::actorOnlyVolumetricLightCount()
 
 void LLPipeline::clearVolumetricShafts()
 {
+    ALShaftSelfTest::cancel("logout or scene reset");
     while (!sVCamVolumetricOverrides.empty())
         releaseVCamVolumetrics(sVCamVolumetricOverrides.begin()->first);
     sVCamVolumetricMaster = ALVCamAutoVol::EnableOverride();
     sVCamVolumetricMasterConnection.disconnect();
+    sVCamVolumetricMasterWriteConnection.disconnect();
     sVolumetricShaftObjects.clear();
     if (!sRigWorldShadowPicks.empty())
     {
@@ -27011,6 +27174,7 @@ void LLPipeline::renderFinalizeScene(bool hdr, const FinalizeGuides& guides)
     renderFroxelVolumetrics(&mRT->screen);
 
     renderProjectorVolumetric(&mRT->screen);
+    observeProjectorShafts(&mRT->screen);
 
     // [BDMerge G3.3 Phase 3 item 4] Optional, controlled soft-glow halo: feed a
     // scaled, blurred copy of the just-marched half-res shaft into the HDR bloom
@@ -33911,10 +34075,8 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
             const S32 potential_tier = spotShadowTier(potential_volume);
             // Null ranks below actors. Keep the rig/world comparison against
             // null verbatim; equal real tiers keep the baseline numeric tie-break.
-            const bool outranks = !incumbent_volume
-                ? (potential_tier == 0 ? true : (potential_is_rig ? true : m_pri > 0))
-                : (potential_tier != spotShadowTier(incumbent_volume)
-                    ? potential_tier > spotShadowTier(incumbent_volume) : m_pri > pri);
+            const bool outranks = ALShaftDecision::outranks(incumbent_volume != nullptr,
+                potential_tier, potential_is_rig, m_pri, spotShadowTier(incumbent_volume), pri);
             if (outranks)
             {
                 LLDrawable* temp = mTargetShadowSpotLight[i];
@@ -33946,8 +34108,9 @@ S32 LLPipeline::spotShadowTier(LLVOVolume* volume) const
         !(mActorMaskTestMode == ActorMaskTestMode::F3 &&
           mActorMaskView == ActorMaskView::MASK && mActorMaskValid &&
           mRT == &mMainRT && !gCubeSnapshot && !sPrismLensRender);
-    return volume && volume->isCineRigEmitter() ? (actor_tiers &&
-        ALCineLightRigManager::instance().actorOnlyBits(volume->getID()) ? 0 : 2) : 1;
+    return ALShaftDecision::tier(volume && volume->isCineRigEmitter(),
+        volume && actor_tiers && ALCineLightRigManager::instance().actorOnlyBits(volume->getID()),
+        isUserShaftSlotPromoted(volume));
 }
 
 void LLPipeline::snapshotSpotShadowAuction()

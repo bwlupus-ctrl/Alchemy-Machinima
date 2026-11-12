@@ -629,6 +629,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         "switchboard_tab": "ALPanelDirectorAnimSwitcher::postBuild",
         "light_cues_tab": "ALPanelLightCues::postBuild",
         "practicals_tab": "ALPanelPracticals::postBuild",
+        "projector_shafts_tab": "ALKitPage::postBuild",
         "gaze_cues_tab": "ALPanelGazeCues::postBuild",
         "exposure_tab": "ALPanelExposurePage::postBuild",
         "props_tab": "ALPanelPropMover::postBuild",

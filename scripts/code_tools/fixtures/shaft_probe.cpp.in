@@ -1,0 +1,306 @@
+// Strict native fixture boundary. Production probe/menu/retention/fade/GL guard
+// bodies are inserted verbatim by shaft_probe_check.py; no viewer/server required.
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+#include "alshaftdecision.h"
+#include "alvcamautovol.h"
+#include "alshadowslotmath.h"
+using U32=unsigned; using S32=int; using F32=float; using F64=double;
+using GLint=int; using GLenum=unsigned; using GLboolean=bool; using GLsizei=int; using GLfloat=float;
+enum : GLenum { GL_DRAW_FRAMEBUFFER_BINDING=1, GL_READ_FRAMEBUFFER_BINDING,
+ GL_READ_BUFFER, GL_MAX_DRAW_BUFFERS, GL_VIEWPORT, GL_SCISSOR_BOX, GL_SCISSOR_TEST,
+ GL_COLOR_WRITEMASK, GL_PIXEL_PACK_BUFFER_BINDING, GL_PACK_ALIGNMENT, GL_PACK_ROW_LENGTH,
+ GL_PACK_SKIP_ROWS, GL_PACK_SKIP_PIXELS, GL_PACK_SWAP_BYTES, GL_DRAW_FRAMEBUFFER,
+ GL_READ_FRAMEBUFFER, GL_FRAMEBUFFER, GL_BACK, GL_PIXEL_PACK_BUFFER, GL_RGBA16F,
+ GL_COLOR, GL_RGBA, GL_FLOAT, GL_FRONT, GL_DRAW_BUFFER, GL_DRAW_BUFFER0=100, GL_COLOR_ATTACHMENT0=200 };
+constexpr GLenum GL_NO_ERROR=0; constexpr bool GL_FALSE=false;
+struct GLState {
+ int draw=0, read=0, readBuffer=GL_BACK, viewport[4]={3,7,640,480}, scissor[4]={9,11,31,43};
+ int pack=17, alignment=8, row=97, rows=3, pixels=5, swap=1;
+ bool enabled=true, mask[4]={true,false,true,false};
+ std::map<int,std::array<GLenum,8>> buffers;
+ GLState() { buffers[0]={GL_BACK}; buffers[4]={GL_COLOR_ATTACHMENT0+2,0,GL_COLOR_ATTACHMENT0,0}; }
+ bool operator==(const GLState& b) const {
+  auto relevant=[](const GLState& s) { return std::array<int,20>{s.draw,s.read,s.readBuffer,
+   s.viewport[0],s.viewport[1],s.viewport[2],s.viewport[3],s.scissor[0],s.scissor[1],s.scissor[2],s.scissor[3],
+   s.pack,s.alignment,s.row,s.rows,s.pixels,s.swap,s.enabled,s.mask[0]+2*s.mask[1]+4*s.mask[2]+8*s.mask[3],0}; };
+  return relevant(*this)==relevant(b) && buffers.at(draw)==b.buffers.at(b.draw);
+ }
+} gl;
+std::vector<GLenum> errors; int readbacks=0; bool failAllocation=false, blackPixels=false, readError=false;
+void glGetIntegerv(GLenum key, GLint* v) {
+ if(key>=GL_DRAW_BUFFER0 && key<GL_DRAW_BUFFER0+8) { *v=gl.buffers[gl.draw][key-GL_DRAW_BUFFER0];return; }
+ switch(key) {
+ case GL_DRAW_FRAMEBUFFER_BINDING:*v=gl.draw;break; case GL_READ_FRAMEBUFFER_BINDING:*v=gl.read;break;
+ case GL_READ_BUFFER:*v=gl.readBuffer;break;case GL_DRAW_BUFFER:*v=gl.buffers[gl.draw][0];break;case GL_MAX_DRAW_BUFFERS:*v=8;break;
+ case GL_VIEWPORT:std::copy_n(gl.viewport,4,v);break;case GL_SCISSOR_BOX:std::copy_n(gl.scissor,4,v);break;
+ case GL_PIXEL_PACK_BUFFER_BINDING:*v=gl.pack;break;case GL_PACK_ALIGNMENT:*v=gl.alignment;break;
+ case GL_PACK_ROW_LENGTH:*v=gl.row;break;case GL_PACK_SKIP_ROWS:*v=gl.rows;break;
+ case GL_PACK_SKIP_PIXELS:*v=gl.pixels;break;case GL_PACK_SWAP_BYTES:*v=gl.swap;break;default:assert(false);
+ }
+}
+void glGetBooleanv(GLenum, GLboolean* v) {std::copy_n(gl.mask,4,v);}
+bool glIsEnabled(GLenum){return gl.enabled;}
+void glBindFramebuffer(GLenum key,int fbo){if(key!=GL_READ_FRAMEBUFFER)gl.draw=fbo;if(key!=GL_DRAW_FRAMEBUFFER)gl.read=fbo;}
+void glDrawBuffers(int n,const GLenum* values){
+ if(!gl.draw && (n!=1 || (values[0]!=GL_BACK && values[0]!=GL_FRONT))) {errors.push_back(1282);return;}
+ if(gl.draw)for(int i=0;i<n;++i)if(values[i]==GL_BACK){errors.push_back(1282);return;}
+ gl.buffers[gl.draw]={};std::copy_n(values,n,gl.buffers[gl.draw].begin());
+}
+void glDrawBuffer(GLenum value){glDrawBuffers(1,&value);}
+void glReadBuffer(GLenum value){gl.readBuffer=value;}
+void glViewport(int a,int b,int c,int d){int v[]={a,b,c,d};std::copy_n(v,4,gl.viewport);}
+void glScissor(int a,int b,int c,int d){int v[]={a,b,c,d};std::copy_n(v,4,gl.scissor);}
+void glEnable(GLenum){gl.enabled=true;} void glDisable(GLenum){gl.enabled=false;}
+void glBindBuffer(GLenum,int value){gl.pack=value;}
+void glPixelStorei(GLenum key,int value){switch(key){case GL_PACK_ALIGNMENT:gl.alignment=value;break;
+ case GL_PACK_ROW_LENGTH:gl.row=value;break;case GL_PACK_SKIP_ROWS:gl.rows=value;break;
+ case GL_PACK_SKIP_PIXELS:gl.pixels=value;break;case GL_PACK_SWAP_BYTES:gl.swap=value;break;default:assert(false);}}
+GLenum glGetError(){if(errors.empty())return 0;auto e=errors.back();errors.pop_back();return e;}
+void glClearBufferfv(GLenum,int,const float*){}
+void glReadPixels(int,int,int w,int h,GLenum,GLenum,float* out){++readbacks;
+ assert(gl.pack==0 && gl.alignment==1 && gl.row==0 && gl.rows==0 && gl.pixels==0 && gl.swap==0);
+ std::fill_n(out,w*h*4,blackPixels?0.f:.1f);if(readError)errors.push_back(1282);}
+struct LLTexUnit {enum eTextureType{TT_NONE,TT_TEXTURE};unsigned texture=3;bool mip=false;eTextureType type=TT_TEXTURE;
+ unsigned getCurrTexture(){return texture;}eTextureType getCurrType(){return type;}bool hasMipMaps(){return mip;}
+ void bindManual(eTextureType t,unsigned v,bool m){type=t;texture=v;mip=m;}void disable(){type=TT_NONE;}
+ void enable(eTextureType t){type=t;}void unbind(eTextureType){texture=0;}void setHasMipMaps(bool m){mip=m;}void activate(){} };
+struct Render {LLTexUnit unit;void flush(){}unsigned getCurrentTexUnitIndex(){return 0;}LLTexUnit* getTexUnit(unsigned){return &unit;}
+ void setColorMask(bool a,bool b){setColorMask(a,a,a,b);}void setColorMask(bool a,bool b,bool c,bool d){bool m[]={a,b,c,d};std::copy_n(m,4,gl.mask);} } gGL;
+struct LLGLDisable{bool enabled;LLGLDisable(GLenum):enabled(gl.enabled){glDisable(0);}~LLGLDisable(){gl.enabled=enabled;}};
+#define LL_WARNS(x) std::cerr
+#define LL_INFOS(x) std::cout
+#define LL_ENDL std::endl
+#define llassert(x) assert(x)
+bool assert_main_thread(){return true;}
+template<class T>T llmin(T a,T b){return std::min(a,b);}template<class T>T llmax(T a,T b){return std::max(a,b);}
+@@GL_STATE@@
+template<class T>class LLPointer{T* p=nullptr;public:LLPointer()=default;LLPointer(T* v):p(v){}LLPointer& operator=(T* v){p=v;return *this;}
+ T* get()const{return p;}T* operator->()const{return p;}operator T*()const{return p;}bool isNull()const{return !p;}bool notNull()const{return p;}};
+template<class T>class LLHandle{std::shared_ptr<T*> p;public:LLHandle()=default;LLHandle(std::shared_ptr<T*> v):p(v){}T* get()const{return p?*p:nullptr;}};
+struct LLView{std::shared_ptr<LLView*> h=std::make_shared<LLView*>(this);bool visible=true;
+ ~LLView(){*h=nullptr;}auto getHandle(){return LLHandle<LLView>(h);}bool isInVisibleChain(){return visible;}};
+struct LLUUID{int id=0;LLUUID()=default;LLUUID(int v):id(v){}bool operator<(const LLUUID& b)const{return id<b.id;}
+ bool operator==(const LLUUID&)const=default;bool isNull()const{return !id;}bool notNull()const{return id;}};
+struct LLVector3{float v[3]{};LLVector3()=default;LLVector3(float a,float b,float c):v{a,b,c}{}
+ LLVector3 operator+(const LLVector3&)const{return *this;}LLVector3 operator*(float)const{return *this;}};
+struct LLQuaternion{void shortestArc(LLVector3,LLVector3){}};
+struct LLColor3{inline static const float white=1;};
+struct LLVolumeParams{void setType(int,int){}};struct LLVolumeLODGroup{enum{NUM_LODS=4};};
+constexpr int LL_PCODE_VOLUME=1,LL_PCODE_PROFILE_SQUARE=2,LL_PCODE_PATH_LINE=3,IMG_WHITE=4;
+struct LLViewerRegion{} region;
+struct LLAgent{enum{TELEPORT_NONE,TELEPORTING};int teleport=0;LLViewerRegion* region=::std::addressof(::region);
+ LLViewerRegion* getRegion(){return region;}int getTeleportState(){return teleport;}}gAgent;
+struct LLApp{inline static bool exiting=false;static bool isExiting(){return exiting;}};
+U32 gFrameCount=0;double now=0;struct LLTimer{static double getTotalSeconds(){return now;}};
+struct LLViewerObject{virtual ~LLViewerObject()=default;LLUUID id;bool dead=false;LLViewerObject* root=nullptr;std::vector<LLPointer<LLViewerObject>> children;
+ const LLUUID& getID()const{return id;}bool isDead()const{return dead;}virtual void markDead(){dead=true;}
+ LLViewerObject* getRootEdit(){return root?root:this;}const auto& getChildren()const{return children;}};
+struct LLVOVolume;
+struct LLDrawable{enum{FORCE_INVISIBLE=1};LLVOVolume* volume;bool dead=false;
+ LLVOVolume* getVOVolume(){return volume;}bool isDead(){return dead;}void setState(int){}};
+struct LLVOVolume:LLViewerObject{bool mIsLocalOnly=false,mbCanSelect=true,enabled=false;float color=0,intensity=0,radius=10,falloff=.75;
+ LLPointer<LLDrawable> mDrawable;void setIsLight(bool v){enabled=v;}void setLightIntensity(float v){if(enabled)intensity=v;}
+ void setLightSRGBColor(float v){if(enabled)color=v;}void setLightRadius(float v){if(enabled)radius=v;}
+ void setLightFalloff(float v){if(enabled)falloff=v;}void setLOD(int){}bool setVolume(LLVolumeParams,int,bool){return true;}
+ void setPositionAgent(LLVector3,bool){}void setRotation(LLQuaternion,bool){}void setScale(LLVector3,bool){}
+ void setLightTextureID(int){}void setSpotLightParams(LLVector3){}void markDead()override{dead=true;if(mDrawable)mDrawable->dead=true;}};
+struct ObjectList{int next=100;std::vector<std::unique_ptr<LLVOVolume>> objects;bool fail=false;
+ LLViewerObject* createObjectViewer(int,LLViewerRegion*){if(fail)return nullptr;auto v=std::make_unique<LLVOVolume>();v->id=++next;
+ auto* result=v.get();objects.push_back(std::move(v));return result;}}gObjectList;
+struct LLViewerCamera{enum eCameraID{CAMERA_SPOT_SHADOW0};inline static eCameraID sCurCameraID{};
+ static LLViewerCamera* getInstance(){static LLViewerCamera c;return &c;}LLVector3 getAtAxis()const{return {};}
+ LLVector3 getOrigin()const{return {};}};
+bool expectedDeclined=false, expectedPolicyDeclined=false;
+struct LLSD{bool value=false;LLSD()=default;LLSD(bool v):value(v){}bool asBoolean()const{return value;}};
+struct LLControlVariable;
+struct Signal{std::function<void(LLControlVariable*,const LLSD&,const LLSD&)> callback;
+ template<class F> int connect(F f){callback=f;return 1;}};
+Signal masterSignal;
+struct WriteSignal{std::function<void(LLControlVariable*)> callback;template<class F> int connect(F f){callback=f;return 2;}} masterWriteSignal;
+namespace boost::signals2 {struct scoped_connection {int on=0;bool connected(){return on!=0;}
+ void disconnect(){if(on==1)masterSignal.callback={};if(on==2)masterWriteSignal.callback={};on=0;}scoped_connection& operator=(int v){on=v;return *this;}};}
+struct LLControlVariable{Signal* getSignal(){return &masterSignal;}WriteSignal* getWriteSignal(){return &masterWriteSignal;}LLSD getValue();void setValue(LLSD,bool);};
+struct Settings{bool master=false,declined=false;int engine=1,writes=0;LLControlVariable control;
+ bool getBOOL(const char*){return master;}LLControlVariable* getControl(const char*){return &control;}
+ void notify(){if(masterSignal.callback)masterSignal.callback(&control,LLSD(master),LLSD());}
+ void setBOOL(const char*,bool v){if(masterWriteSignal.callback)masterWriteSignal.callback(&control);bool changed=master!=v;master=v;declined=!v;++writes;if(changed)notify();}}gSavedSettings;
+LLSD LLControlVariable::getValue(){return LLSD(gSavedSettings.master);}
+void LLControlVariable::setValue(LLSD v,bool){if(masterWriteSignal.callback)masterWriteSignal.callback(this);bool changed=gSavedSettings.master!=v.asBoolean();gSavedSettings.master=v.asBoolean();++gSavedSettings.writes;if(changed)gSavedSettings.notify();}
+
+template<class T>struct LLCachedControl{T value;LLCachedControl(Settings&,const char*,T v):value(v){}operator T(){return value;}};
+struct LLEventTimer{inline static std::vector<LLEventTimer*> timers;LLEventTimer(float){timers.push_back(this);}
+ virtual ~LLEventTimer(){std::erase(timers,this);}virtual bool tick()=0;
+ static void updateClass(){auto snapshot=timers;for(auto* t:snapshot)if(t->tick())delete t;}};
+struct LLGLSLShader{bool isComplete(){return true;}int mShaderLevel=3;}gDeferredProjectorVolumetricClassicProgram,gDeferredProjectorVolumetricProgram;
+struct LLRenderTarget{bool allocated=false;LLRenderTarget()=default;~LLRenderTarget(){release();}
+ bool allocate(int,int,GLenum){allocated=!failAllocation;glBindFramebuffer(GL_FRAMEBUFFER,51);return allocated;}
+ void bindTarget(){glBindFramebuffer(GL_FRAMEBUFFER,51);glDrawBuffer(GL_COLOR_ATTACHMENT0);glReadBuffer(GL_COLOR_ATTACHMENT0);glViewport(0,0,800,600);}
+ void flush(){glBindFramebuffer(GL_FRAMEBUFFER,0);glDrawBuffer(GL_BACK);glViewport(0,0,800,600);}
+ void release(){if(allocated){glBindFramebuffer(GL_FRAMEBUFFER,0);allocated=false;}}
+ int getWidth(){return 800;}int getHeight(){return 600;}};
+struct ALCineLightRigManager{static bool anyActorOnly(){return false;}static ALCineLightRigManager& instance(){static ALCineLightRigManager r;return r;}
+ bool actorOnlyBits(LLUUID)const{return false;}};
+struct LLPipeline{
+ enum{MAX_SPOT_SHADOWS=2};inline static int BDMergeProjectorVolumetricsEngine=1;
+ inline static std::set<LLUUID> shafts,heroes,noShadow,overrides;
+ LLPointer<LLDrawable> mShadowSpotLight[2],mTargetShadowSpotLight[2];float mSpotLightFade[2]={1,1};
+ LLRenderTarget mSpotShadow[2];bool mProjVolHistoryValid=true,mFroxelHistoryValid=true,mProjVolVariantFailed=false;
+ std::array<ALShadowSlot::Challenge<LLUUID>,2> mSpotChallenge{};
+ struct Auction{LLPointer<LLDrawable> drawable;ALShadowSlot::Light<LLUUID> light;};
+ std::array<Auction,2> mSpotAuctionMain{};std::array<LLPointer<LLDrawable>,2> mSpotAuctionEligible{};
+ std::array<ALShadowSlot::Light<LLUUID>,2> mSpotAuctionOwnerScores{};U32 mSpotAuctionFrame=0;
+ void createObject(LLVOVolume* v){v->mDrawable=new LLDrawable{v};}
+ bool hasProjectorShaftShadowSlot(LLVOVolume* v,bool=false){for(auto p:mShadowSpotLight)if(v && p==v->mDrawable)return true;return false;}
+ static void acquireShaftTestMaster(const LLUUID&);
+ static bool acquireVCamVolumetrics(const LLUUID&,bool);
+ static void releaseVCamVolumetrics(const LLUUID&);
+ static bool isVolumetricShaftEnabled(LLUUID id){return shafts.count(id);}static void toggleVolumetricShaft(LLUUID id,bool=true){if(!shafts.erase(id))shafts.insert(id);}
+ static bool isHeroProjector(LLUUID id){return heroes.count(id);}static void toggleHeroProjector(LLUUID id){if(!heroes.erase(id))heroes.insert(id);}
+ static bool isProjectorNoShadow(LLUUID id){return noShadow.count(id);}static void toggleProjectorCastShadows(LLUUID id){if(!noShadow.erase(id))noShadow.insert(id);}
+ struct VolumetricShaftOverride{float multiplier=1,anisotropy=0;};
+ static void setVolumetricShaftOverride(LLUUID id,VolumetricShaftOverride){overrides.insert(id);shafts.insert(id);}
+ static void clearVolumetricShaftOverride(LLUUID id){overrides.erase(id);}
+ void renderProjectorVolumetricClassic(LLRenderTarget*,bool);void renderProjectorVolumetricNew(LLRenderTarget*,bool);
+ bool isLiveMainAreaShadowPass(){return true;}bool isProjectorShadowSuppressed(LLVOVolume* v){return noShadow.count(v->id);}
+ int spotShadowTier(LLVOVolume* v){return shafts.count(v->id)?ALShaftDecision::FlaggedWorld:ALShaftDecision::World;}
+ unsigned bdmergeMaxSpotShadows(){return 2;}
+ void retainSpotShadowOwners();void fade();
+}gPipeline;
+std::set<LLUUID>& sVolumetricShaftObjects=LLPipeline::shafts;
+@@MASTER@@
+@@PROBE@@
+@@RETENTION@@
+void LLPipeline::fade(){const U32 num_spots=2;const float fade_amt=.1f;@@FADE@@}
+std::function<void()> auxCallback;
+void LLPipeline::renderProjectorVolumetricClassic(LLRenderTarget* t,bool aux){assert(aux);t->bindTarget();glScissor(13,17,23,29);glDisable(GL_SCISSOR_TEST);if(auxCallback)auxCallback();t->flush();}
+void LLPipeline::renderProjectorVolumetricNew(LLRenderTarget* t,bool aux){renderProjectorVolumetricClassic(t,aux);}
+struct LLSelectNode{LLViewerObject* object;bool mIndividualSelection=false;LLViewerObject* getObject(){return object;}};
+struct LLObjectSelection:std::vector<LLSelectNode*>{using std::vector<LLSelectNode*>::operator=;LLViewerObject* getPrimaryObject(){return empty()?nullptr:front()->object;}} selection;
+struct LLObjectSelectionHandle{LLObjectSelection* p;bool isNull(){return !p;}LLObjectSelection* operator->(){return p;}};
+struct LLSelectMgr{static LLSelectMgr* getInstance(){static LLSelectMgr mgr;return &mgr;}auto getSelection(){return LLObjectSelectionHandle{&selection};}};
+struct LLPrismLens{static bool projectorRenderParams(LLVOVolume* v,LLVector3&){return v->enabled;}};
+@@SELECTION@@
+@@MENU@@
+void auctionFrame(LLVOVolume& a,LLVOVolume& b,LLVOVolume* test=nullptr){
+ using L=ALShadowSlot::Light<LLUUID>;std::vector<LLVOVolume*> lights{&a,&b};if(test && !test->isDead())lights.push_back(test);
+ auto score=[&](LLVOVolume* v){return v==&a?100.:v==&b?90.:1.;};
+ std::sort(lights.begin(),lights.end(),[&](auto* x,auto* y){return ALShaftDecision::outranks(true,gPipeline.spotShadowTier(x),false,score(x),gPipeline.spotShadowTier(y),score(y));});
+ ++gFrameCount;now+=1./60.;gPipeline.mSpotAuctionFrame=gFrameCount;
+ for(int i=0;i<2;++i){auto* v=lights[i];gPipeline.mSpotAuctionMain[i]={v->mDrawable,{v->id,score(v),gPipeline.spotShadowTier(v)}};
+ auto* owner=gPipeline.mShadowSpotLight[i].get();gPipeline.mSpotAuctionEligible[i]=owner;
+ auto* ov=owner?owner->volume:nullptr;gPipeline.mSpotAuctionOwnerScores[i]=ov?L{ov->id,score(ov),gPipeline.spotShadowTier(ov)}:L{};}
+ gPipeline.retainSpotShadowOwners();gPipeline.fade();
+}
+void seedWorlds(LLVOVolume& a,LLVOVolume& b){a.id=1;b.id=2;gPipeline.createObject(&a);gPipeline.createObject(&b);
+ gPipeline.mShadowSpotLight[0]=a.mDrawable;gPipeline.mShadowSpotLight[1]=b.mDrawable;gPipeline.mSpotLightFade[0]=gPipeline.mSpotLightFade[1]=1;}
+void cleanup(){LLEventTimer::updateClass();LLEventTimer::updateClass();assert(!ALShaftSelfTest::probe);assert(LLEventTimer::timers.empty());assert(!ALShaftSelfTest::active);}
+void verifyRemoved(LLVOVolume* light,bool master){assert(light->dead && !light->enabled);assert(!LLPipeline::shafts.count(light->id));
+ assert(!LLPipeline::heroes.count(light->id));assert(!LLPipeline::overrides.count(light->id));assert(!LLPipeline::noShadow.count(light->id));
+ assert(gSavedSettings.master==master);assert(gSavedSettings.declined==expectedDeclined);assert(sVCamVolumetricMaster.mDeclined==expectedPolicyDeclined);assert(!gPipeline.mProjVolHistoryValid && !gPipeline.mFroxelHistoryValid);}
+int main(){
+ {
+  bool selected=true;selection.clear();assert(!alSelectedProjector(selected) && !selected);
+  LLVOVolume root,child;child.enabled=true;root.children={&child};LLSelectNode node{&root};selection={&node};
+  assert(alSelectedProjector(selected)==&child && selected);
+  root.enabled=true;assert(alSelectedProjector(selected)==&root);
+  root.enabled=false;child.enabled=false;assert(!alSelectedProjector(selected) && selected);
+ }
+
+ for(bool enabled:{false,true})for(bool individual:{false,true})for(int bits=0;bits<16;++bits){
+  LLVOVolume root,child;root.id=71;child.id=72;child.root=&root;root.children={&child};
+  LLPipeline::shafts.clear();LLPipeline::heroes.clear();
+  if(bits&1)LLPipeline::shafts.insert(root.id);if(bits&2)LLPipeline::heroes.insert(root.id);
+  if(bits&4)LLPipeline::shafts.insert(child.id);if(bits&8)LLPipeline::heroes.insert(child.id);
+  // Force the desired click direction via the primary object's effective flag.
+  if(enabled){LLPipeline::shafts.erase(root.id);if(individual)LLPipeline::shafts.erase(child.id);}
+  else LLPipeline::shafts.insert(root.id);
+  LLSelectNode node{individual?&child:&root,individual};selection={&node};handle_object_volumetric_shaft({});
+  assert(LLPipeline::isHeroProjector(root.id)==LLPipeline::isVolumetricShaftEnabled(root.id));
+  assert(LLPipeline::isHeroProjector(child.id)==LLPipeline::isVolumetricShaftEnabled(child.id));
+  if(!enabled){assert(!LLPipeline::isVolumetricShaftEnabled(root.id));assert(!LLPipeline::isVolumetricShaftEnabled(child.id));}
+ }
+ LLPipeline::shafts.clear();LLPipeline::heroes.clear();
+ // Success, black failure, allocation failure, read error, cancellation, panel
+ // destruction, teleport, logout, reload/realloc cancellation, nested timer/restart.
+ for(int scenario=0;scenario<12;++scenario)for(int framebuffer:{0,4,5})for(bool master:{false,true}){
+  gl=GLState{};gl.draw=framebuffer==5?0:framebuffer;if(framebuffer==5)gl.buffers[0]={GL_FRONT};gl.read=9;gl.readBuffer=GL_COLOR_ATTACHMENT0+1;gl.enabled=scenario%2;
+  const GLState entry=gl;errors.clear();blackPixels=scenario==1;failAllocation=scenario==2;readError=scenario==3;
+  gSavedSettings.master=master;gSavedSettings.declined=expectedDeclined=scenario%2;sVCamVolumetricMaster={};sVCamVolumetricMaster.mDeclined=expectedDeclined;LLApp::exiting=false;gAgent.region=&region;gAgent.teleport=0;
+  LLVOVolume a,b;seedWorlds(a,b);const auto natural0=a.mDrawable.get(),natural1=b.mDrawable.get();
+  auto owner=std::make_unique<LLView>();ALShaftSelfTest::start(owner.get());auto* light=ALShaftSelfTest::probe->light.get();expectedPolicyDeclined=sVCamVolumetricMaster.mDeclined;
+  assert(light->mIsLocalOnly && !light->mbCanSelect && light->enabled);
+  assert(light->color==1 && light->intensity==1 && light->radius==12 && light->falloff==1);
+  for(int f=0;f<40;++f)auctionFrame(a,b,light);assert(gPipeline.hasProjectorShaftShadowSlot(light));
+  gPipeline.mProjVolHistoryValid=gPipeline.mFroxelHistoryValid=true; // ordinary passes wrote test content
+  int before=readbacks;
+  auxCallback={};
+  if(scenario==4)ALShaftSelfTest::cancel("page close");
+  if(scenario==5)owner.reset();
+  if(scenario==6)gAgent.teleport=LLAgent::TELEPORTING;
+  if(scenario==7)gAgent.region=nullptr;
+  if(scenario==8)ALShaftSelfTest::cancel("shader reload or target reallocation");
+  if(scenario==9)auxCallback=[&]{auto* saved=ALShaftSelfTest::probe;ALShaftSelfTest::cancel("nested event");LLEventTimer::updateClass();assert(ALShaftSelfTest::probe==saved);};
+  if(scenario==10)auxCallback=[&]{auto* saved=ALShaftSelfTest::probe;ALShaftSelfTest::start(owner.get());LLEventTimer::updateClass();assert(ALShaftSelfTest::probe==saved);};
+  if(scenario==11)LLApp::exiting=true;
+  LLRenderTarget march;LLGLSLShader shader;ALShaftSelfTest::submitted(light,shader,march);
+  assert(gl==entry);assert(errors.empty());assert(readbacks-before==((scenario==0 || scenario==1 || scenario==3 || scenario==9 || scenario==10)?1:0));
+  if(scenario==0)assert(ALShaftSelfTest::result().starts_with("PASS"));
+  if(scenario>=1 && scenario<=3)assert(ALShaftSelfTest::result().starts_with("FAIL step 4"));
+  if(scenario==10){ // queued restart cleans first, then creates a new generation
+   LLEventTimer::updateClass();verifyRemoved(light, true);
+   assert(ALShaftSelfTest::probe && ALShaftSelfTest::probe->light.get()!=light);
+   ALShaftSelfTest::cancel("stop restarted probe");
+  }
+  if (ALShaftSelfTest::probe->light) LLPipeline::noShadow.insert(ALShaftSelfTest::probe->light->id); // cleanup removes even this flag
+  cleanup();verifyRemoved(light,master);auxCallback={};
+  gAgent.region=&region;gAgent.teleport=0;LLApp::exiting=false;
+  for(int f=0;f<120;++f)auctionFrame(a,b);
+  assert(gPipeline.mShadowSpotLight[0]==natural0 && gPipeline.mShadowSpotLight[1]==natural1);
+  assert(gPipeline.mSpotLightFade[0]==1 && gPipeline.mSpotLightFade[1]==1);
+ }
+ // Actual shared VCam/master ownership, including acquisitions AFTER test start.
+ for(bool initial:{false,true})for(bool declined:{false,true})for(int event=0;event<9;++event){
+  assert(sVCamVolumetricOverrides.empty());sVCamVolumetricMaster={};sVCamVolumetricMaster.mDeclined=declined;
+  gSavedSettings.master=initial;gSavedSettings.declined=expectedDeclined=declined;gSavedSettings.writes=0;
+  LLView owner;const LLUUID vcam(900);
+  if(event==5)LLPipeline::acquireVCamVolumetrics(vcam,true); // preexisting owner
+  ALShaftSelfTest::start(&owner);auto* light=ALShaftSelfTest::probe->light.get();expectedPolicyDeclined=sVCamVolumetricMaster.mDeclined;assert(gSavedSettings.master);
+  assert(!sVCamVolumetricOverrides[light->id].mAutoEnabled); // diagnostic stays user-tier
+  if(event==1 || event==2)assert(LLPipeline::acquireVCamVolumetrics(vcam,true));
+  if(event==2)LLPipeline::releaseVCamVolumetrics(vcam); // VCam leaves first
+  if(event==3 || event==4){gSavedSettings.setBOOL("BDMergeProjectorVolumetrics",false);expectedDeclined=expectedPolicyDeclined=true;}
+  if(event==4){gSavedSettings.setBOOL("BDMergeProjectorVolumetrics",true);expectedDeclined=expectedPolicyDeclined=false;}
+  if(event==6 || event==7){ // production reset releases the diagnostic's keyed hold
+   while(!sVCamVolumetricOverrides.empty())LLPipeline::releaseVCamVolumetrics(sVCamVolumetricOverrides.begin()->first);
+   sVCamVolumetricMaster={};sVCamVolumetricMasterConnection.disconnect();sVCamVolumetricMasterWriteConnection.disconnect();expectedPolicyDeclined=false;
+   if(event==7)LLPipeline::acquireVCamVolumetrics(vcam,true); // new scene owner before old probe retires
+  }
+  if(event==8){gSavedSettings.setBOOL("BDMergeProjectorVolumetrics",true);expectedDeclined=expectedPolicyDeclined=false;} // same-value Director/preset/user ON
+  ALShaftSelfTest::cancel("ownership fixture");cleanup();
+  bool expected=event==3?false:(event==1 || event==4 || event==5 || event==7 || event==8)?true:initial;
+  verifyRemoved(light,expected);
+  if(initial && event==0)assert(gSavedSettings.writes==0); // already on is untouched
+  if(event==1 || event==5 || event==7){
+   assert(LLPipeline::isVolumetricShaftEnabled(vcam));assert(gSavedSettings.master);
+   LLPipeline::releaseVCamVolumetrics(vcam);
+   assert(gSavedSettings.master==(initial));
+  }
+  assert(sVCamVolumetricOverrides.empty());assert(sVCamVolumetricMaster.mUsers==0);
+ }
+ // Partial creation failure is also timer-owned and leaves no settings/flags.
+ gObjectList.fail=true;LLView owner;ALShaftSelfTest::start(&owner);cleanup();
+ std::cout<<"PASS probe fixture: 72 outcomes + 36 shared-master ownership cases, BACK/FRONT/FBO draw buffers, requested light values, exact GL restoration, no pending GL error, deferred cancellation/restart, cleanup/history invalidation, natural owners after 120 frames; 64 menu cases\n";
+}
+
+

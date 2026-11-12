@@ -438,6 +438,7 @@ set(viewer_SOURCE_FILES
     alpanelprojectorshafts.cpp
     alpanelcinelightrig.cpp
     alprobedirty.cpp # [ProbeOnDemand]
+    alshaftselftest.cpp
     alprojectorshaftlooks.cpp
     alprojectorshaftpresets.cpp
     alpanelcinecamparams.cpp
@@ -1367,6 +1368,11 @@ set(viewer_HEADER_FILES
     alavatarlifepolicy.h
     alghostanimnames.h
     alprobereach.h
+    alshaftdecision.h
+    alshaftselftest.h
+    alshaftglstate.h
+    alshaftselection.h
+    alshaftstatusconsumer.h
     alshadowslotmath.h
     alhidecursor.h
     alshadowdepthmath.h
@@ -3008,6 +3014,7 @@ if (BUILD_TESTING)
   # [CloneAnimDrop] pure drop-target / never-expose rules (TPV policy 2.a.i)
   LL_ADD_INTEGRATION_TEST(alghostanimdrop "alghostanimdrop.cpp" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alprobereach "" "${test_libs}" "${test_project}")
+  LL_ADD_INTEGRATION_TEST(alshaftdecision "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alshadowslotmath "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alhidecursor "" "${test_libs}" "${test_project}")
   LL_ADD_INTEGRATION_TEST(alshadowdepthmath "" "${test_libs}" "${test_project}")
