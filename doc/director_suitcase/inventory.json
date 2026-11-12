@@ -6,9 +6,9 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
-      "HOOK": 547,
-      "OWNED": 933,
-      "TOOLING": 481
+      "HOOK": 548,
+      "OWNED": 939,
+      "TOOLING": 489
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -68,14 +68,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "2699877b20c1f18f16c6de4b6f4c60e373e0133f173dce05c9ea97f025c90951",
+        "csv_sha256": "142cbd6586249270faf354f29e58891b032fc3a64e99f093706c1c4ebbf5e431",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4808,
+        "entries": 4811,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -118,9 +118,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2586,
+        "generated_kit_rows": 2588,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2176,
+        "interactive_rows": 2177,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -230,19 +230,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2310,
+        "independent_json_rows": 2312,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2310,
-        "unresolved_rows": 82
+        "rows": 2312,
+        "unresolved_rows": 83
       },
-      "wiring_rows": 2310
+      "wiring_rows": 2312
     },
-    "head_source_tree": "88899e9d0780b8e85c3508804c7f4dbbf92bb863",
-    "hook_files": 547,
-    "hunks": 3436,
-    "input_sha256": "968f0f4167b8dc7f57ea4c53ea8a66b4befb7952282b761155315abba3ed90b9",
+    "head_source_tree": "eb5eccac8afeadd827cfd51da6d0d0c4b1f833e1",
+    "hook_files": 548,
+    "hunks": 3452,
+    "input_sha256": "6df6c97ad503f7bc2cbfd7593a8ee86c16c94d79217f93df4899ee0794f740b2",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -11529,9 +11529,9 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
         "capture-sidecar",
-        "common-ui"
+        "common-ui",
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -11549,7 +11549,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
-        "common-ui"
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -11673,7 +11673,9 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "director-shell"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -11791,7 +11793,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "common-ui"
+        "common-ui",
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -11875,8 +11878,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "gaze",
-        "vcam"
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -12179,7 +12181,9 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "director-shell"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -12253,6 +12257,21 @@
     },
     {
       "candidate_features_from_subjects": [
+        "director-shell"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llui/lluictrl.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
         "camera",
         "capture-sidecar",
         "common-ui"
@@ -12292,7 +12311,9 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "director-shell"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -12312,7 +12333,9 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "director-shell"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -12518,7 +12541,8 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "gaze"
+        "gaze",
+        "shafts-volumetrics"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -16128,10 +16152,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "common-ui",
         "director-shell",
-        "sensor",
         "vcam"
       ],
       "class": "OWNED",
@@ -16213,7 +16234,6 @@
     {
       "candidate_features_from_subjects": [
         "director-shell",
-        "shafts-volumetrics",
         "vcam"
       ],
       "class": "OWNED",
@@ -16449,10 +16469,9 @@
     },
     {
       "candidate_features_from_subjects": [
-        "actor-bar",
         "clones",
         "director-shell",
-        "gaze"
+        "shafts-volumetrics"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -16480,7 +16499,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell"
+        "director-shell",
+        "shafts-volumetrics"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -18103,7 +18123,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
+        "shafts-volumetrics",
         "vcam"
       ],
       "class": "OWNED",
@@ -18115,7 +18135,8 @@
       "features": [
         "camera",
         "common-ui",
-        "shafts-volumetrics"
+        "shafts-volumetrics",
+        "vcam"
       ],
       "git_status": "A",
       "layer": 1,
@@ -18125,6 +18146,7 @@
     {
       "candidate_features_from_subjects": [
         "director-shell",
+        "shafts-volumetrics",
         "vcam"
       ],
       "class": "OWNED",
@@ -19152,6 +19174,104 @@
     },
     {
       "candidate_features_from_subjects": [
+        "shafts-volumetrics"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "shafts-volumetrics"
+      ],
+      "git_status": "A",
+      "layer": 7,
+      "path": "indra/newview/alshaftdecision.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "shafts-volumetrics"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alshaftglstate.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "shafts-volumetrics"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 9,
+      "path": "indra/newview/alshaftselection.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "shafts-volumetrics"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "rig",
+        "shafts-volumetrics",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 7,
+      "path": "indra/newview/alshaftselftest.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "shafts-volumetrics"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alshaftselftest.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "shafts-volumetrics"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alshaftstatusconsumer.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "clones",
         "director-shell",
         "gaze",
@@ -20017,7 +20137,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "shafts-volumetrics"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -32313,7 +32434,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell"
+        "director-shell",
+        "shafts-volumetrics"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -32344,7 +32466,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell"
+        "director-shell",
+        "shafts-volumetrics"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -36767,7 +36890,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
-        "sensor",
+        "shafts-volumetrics",
         "vcam"
       ],
       "class": "HOOK",
@@ -40153,6 +40276,19 @@
       "candidate_features_from_subjects": [],
       "class": "TOOLING",
       "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/tests/alshaftdecision_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
       "feature_evidence": [
         "path/prefix"
       ],
@@ -41871,6 +42007,21 @@
       ],
       "git_status": "A",
       "layer": 2,
+      "path": "scripts/code_tools/director_fade_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
       "path": "scripts/code_tools/director_functional_manifest.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -43166,6 +43317,32 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/fixtures/shaft_probe.cpp.in",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/fixtures/shaft_visibility.cpp.in",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -45055,6 +45232,58 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/shadow_slot_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shaft_probe_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shaft_slot_merge_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shaft_slot_merge_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shaft_visibility_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

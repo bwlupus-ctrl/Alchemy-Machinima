@@ -809,7 +809,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4668"
+      "indra/newview/llfloaterdirector.cpp:4679"
     ],
     "scope": "review feature ownership",
     "type": "String"
@@ -852,7 +852,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4662"
+      "indra/newview/llfloaterdirector.cpp:4673"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -874,7 +874,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4665"
+      "indra/newview/llfloaterdirector.cpp:4676"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -916,7 +916,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4663"
+      "indra/newview/llfloaterdirector.cpp:4674"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -982,7 +982,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4661"
+      "indra/newview/llfloaterdirector.cpp:4672"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1004,7 +1004,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4666"
+      "indra/newview/llfloaterdirector.cpp:4677"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1027,7 +1027,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4667"
+      "indra/newview/llfloaterdirector.cpp:4678"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1049,7 +1049,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4664"
+      "indra/newview/llfloaterdirector.cpp:4675"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1232,7 +1232,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2732",
-      "indra/newview/llfloaterdirector.cpp:4554"
+      "indra/newview/llfloaterdirector.cpp:4565"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1257,7 +1257,7 @@
       "indra/newview/llfloaterdirector.cpp:2508",
       "indra/newview/llfloaterdirector.cpp:2514",
       "indra/newview/llfloaterdirector.cpp:2522",
-      "indra/newview/llfloaterdirector.cpp:4497"
+      "indra/newview/llfloaterdirector.cpp:4508"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -1280,7 +1280,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4552"
+      "indra/newview/llfloaterdirector.cpp:4563"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1303,7 +1303,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4572"
+      "indra/newview/llfloaterdirector.cpp:4583"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1327,7 +1327,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2542",
       "indra/newview/llfloaterdirector.cpp:2551",
-      "indra/newview/llfloaterdirector.cpp:4496"
+      "indra/newview/llfloaterdirector.cpp:4507"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1349,7 +1349,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4570"
+      "indra/newview/llfloaterdirector.cpp:4581"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1371,7 +1371,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4571"
+      "indra/newview/llfloaterdirector.cpp:4582"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1393,7 +1393,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4592"
+      "indra/newview/llfloaterdirector.cpp:4603"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1415,7 +1415,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4582"
+      "indra/newview/llfloaterdirector.cpp:4593"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1437,7 +1437,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4576"
+      "indra/newview/llfloaterdirector.cpp:4587"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1459,7 +1459,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4579"
+      "indra/newview/llfloaterdirector.cpp:4590"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1481,7 +1481,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4580"
+      "indra/newview/llfloaterdirector.cpp:4591"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1503,7 +1503,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4581"
+      "indra/newview/llfloaterdirector.cpp:4592"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1538,7 +1538,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4583"
+      "indra/newview/llfloaterdirector.cpp:4594"
     ],
     "scope": "review feature ownership",
     "type": "Color3"
@@ -1560,7 +1560,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4588"
+      "indra/newview/llfloaterdirector.cpp:4599"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1582,7 +1582,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4591"
+      "indra/newview/llfloaterdirector.cpp:4602"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1606,7 +1606,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2543",
       "indra/newview/llfloaterdirector.cpp:2551",
-      "indra/newview/llfloaterdirector.cpp:4573"
+      "indra/newview/llfloaterdirector.cpp:4584"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1628,7 +1628,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4593"
+      "indra/newview/llfloaterdirector.cpp:4604"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1650,7 +1650,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4575"
+      "indra/newview/llfloaterdirector.cpp:4586"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1674,7 +1674,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2530",
       "indra/newview/llfloaterdirector.cpp:2534",
-      "indra/newview/llfloaterdirector.cpp:4578"
+      "indra/newview/llfloaterdirector.cpp:4589"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1698,7 +1698,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2531",
       "indra/newview/llfloaterdirector.cpp:2534",
-      "indra/newview/llfloaterdirector.cpp:4577"
+      "indra/newview/llfloaterdirector.cpp:4588"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1720,7 +1720,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4584"
+      "indra/newview/llfloaterdirector.cpp:4595"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1742,7 +1742,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4585"
+      "indra/newview/llfloaterdirector.cpp:4596"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -1764,7 +1764,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4574"
+      "indra/newview/llfloaterdirector.cpp:4585"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1806,7 +1806,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4586"
+      "indra/newview/llfloaterdirector.cpp:4597"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1828,7 +1828,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4587"
+      "indra/newview/llfloaterdirector.cpp:4598"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1850,7 +1850,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4519"
+      "indra/newview/llfloaterdirector.cpp:4530"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -1892,7 +1892,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4589"
+      "indra/newview/llfloaterdirector.cpp:4600"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1914,7 +1914,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4590"
+      "indra/newview/llfloaterdirector.cpp:4601"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -1939,7 +1939,7 @@
       "indra/newview/llfloaterdirector.cpp:2507",
       "indra/newview/llfloaterdirector.cpp:2515",
       "indra/newview/llfloaterdirector.cpp:2523",
-      "indra/newview/llfloaterdirector.cpp:4498"
+      "indra/newview/llfloaterdirector.cpp:4509"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1961,7 +1961,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4567"
+      "indra/newview/llfloaterdirector.cpp:4578"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -1983,7 +1983,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4569"
+      "indra/newview/llfloaterdirector.cpp:4580"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2005,7 +2005,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4568"
+      "indra/newview/llfloaterdirector.cpp:4579"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2030,7 +2030,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2659",
       "indra/newview/llfloaterdirector.cpp:2669",
-      "indra/newview/llfloaterdirector.cpp:4546"
+      "indra/newview/llfloaterdirector.cpp:4557"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2057,7 +2057,7 @@
       "indra/newview/llfloaterdirector.cpp:2524",
       "indra/newview/llfloaterdirector.cpp:2597",
       "indra/newview/llfloaterdirector.cpp:2612",
-      "indra/newview/llfloaterdirector.cpp:4501"
+      "indra/newview/llfloaterdirector.cpp:4512"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2079,7 +2079,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4509"
+      "indra/newview/llfloaterdirector.cpp:4520"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2101,7 +2101,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4508"
+      "indra/newview/llfloaterdirector.cpp:4519"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2125,7 +2125,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2693",
       "indra/newview/llfloaterdirector.cpp:2698",
-      "indra/newview/llfloaterdirector.cpp:4507"
+      "indra/newview/llfloaterdirector.cpp:4518"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2148,7 +2148,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4549"
+      "indra/newview/llfloaterdirector.cpp:4560"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2173,7 +2173,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2660",
       "indra/newview/llfloaterdirector.cpp:2669",
-      "indra/newview/llfloaterdirector.cpp:4547"
+      "indra/newview/llfloaterdirector.cpp:4558"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2208,7 +2208,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4539"
+      "indra/newview/llfloaterdirector.cpp:4550"
     ],
     "scope": "review feature ownership",
     "type": "Color3"
@@ -2230,7 +2230,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4522"
+      "indra/newview/llfloaterdirector.cpp:4533"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2252,7 +2252,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4520"
+      "indra/newview/llfloaterdirector.cpp:4531"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2274,7 +2274,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4523"
+      "indra/newview/llfloaterdirector.cpp:4534"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2296,7 +2296,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4530"
+      "indra/newview/llfloaterdirector.cpp:4541"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2318,7 +2318,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4521"
+      "indra/newview/llfloaterdirector.cpp:4532"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2340,7 +2340,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4527"
+      "indra/newview/llfloaterdirector.cpp:4538"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2362,7 +2362,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4524"
+      "indra/newview/llfloaterdirector.cpp:4535"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2384,7 +2384,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4529"
+      "indra/newview/llfloaterdirector.cpp:4540"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2406,7 +2406,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4533"
+      "indra/newview/llfloaterdirector.cpp:4544"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2428,7 +2428,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4536"
+      "indra/newview/llfloaterdirector.cpp:4547"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2470,7 +2470,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4535"
+      "indra/newview/llfloaterdirector.cpp:4546"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2492,7 +2492,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4534"
+      "indra/newview/llfloaterdirector.cpp:4545"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2514,7 +2514,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4537"
+      "indra/newview/llfloaterdirector.cpp:4548"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2538,7 +2538,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2598",
       "indra/newview/llfloaterdirector.cpp:2608",
-      "indra/newview/llfloaterdirector.cpp:4499"
+      "indra/newview/llfloaterdirector.cpp:4510"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2560,7 +2560,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4526"
+      "indra/newview/llfloaterdirector.cpp:4537"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2582,7 +2582,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4525"
+      "indra/newview/llfloaterdirector.cpp:4536"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2606,7 +2606,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4528"
+      "indra/newview/llfloaterdirector.cpp:4539"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2629,7 +2629,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4550"
+      "indra/newview/llfloaterdirector.cpp:4561"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2656,7 +2656,7 @@
       "indra/newview/llfloaterdirector.cpp:2577",
       "indra/newview/llfloaterdirector.cpp:2581",
       "indra/newview/llfloaterdirector.cpp:2585",
-      "indra/newview/llfloaterdirector.cpp:4517"
+      "indra/newview/llfloaterdirector.cpp:4528"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2678,7 +2678,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4561"
+      "indra/newview/llfloaterdirector.cpp:4572"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2720,7 +2720,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4531"
+      "indra/newview/llfloaterdirector.cpp:4542"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2742,7 +2742,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4558"
+      "indra/newview/llfloaterdirector.cpp:4569"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2764,7 +2764,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4556"
+      "indra/newview/llfloaterdirector.cpp:4567"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2786,7 +2786,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4532"
+      "indra/newview/llfloaterdirector.cpp:4543"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2808,7 +2808,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4557"
+      "indra/newview/llfloaterdirector.cpp:4568"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2830,7 +2830,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4555"
+      "indra/newview/llfloaterdirector.cpp:4566"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2852,7 +2852,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4562"
+      "indra/newview/llfloaterdirector.cpp:4573"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2874,7 +2874,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4559"
+      "indra/newview/llfloaterdirector.cpp:4570"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2896,7 +2896,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4560"
+      "indra/newview/llfloaterdirector.cpp:4571"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -2922,7 +2922,7 @@
       "indra/newview/llfloaterdirector.cpp:2524",
       "indra/newview/llfloaterdirector.cpp:2692",
       "indra/newview/llfloaterdirector.cpp:2698",
-      "indra/newview/llfloaterdirector.cpp:4500"
+      "indra/newview/llfloaterdirector.cpp:4511"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -2944,7 +2944,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4504"
+      "indra/newview/llfloaterdirector.cpp:4515"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2966,7 +2966,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4503"
+      "indra/newview/llfloaterdirector.cpp:4514"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -2988,7 +2988,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4506"
+      "indra/newview/llfloaterdirector.cpp:4517"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -3010,7 +3010,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4505"
+      "indra/newview/llfloaterdirector.cpp:4516"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3034,7 +3034,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2598",
       "indra/newview/llfloaterdirector.cpp:2610",
-      "indra/newview/llfloaterdirector.cpp:4502"
+      "indra/newview/llfloaterdirector.cpp:4513"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3056,7 +3056,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4541"
+      "indra/newview/llfloaterdirector.cpp:4552"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3078,7 +3078,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4540"
+      "indra/newview/llfloaterdirector.cpp:4551"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -3100,7 +3100,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4543"
+      "indra/newview/llfloaterdirector.cpp:4554"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3122,7 +3122,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4545"
+      "indra/newview/llfloaterdirector.cpp:4556"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3144,7 +3144,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4542"
+      "indra/newview/llfloaterdirector.cpp:4553"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3166,7 +3166,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4544"
+      "indra/newview/llfloaterdirector.cpp:4555"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3189,7 +3189,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4553"
+      "indra/newview/llfloaterdirector.cpp:4564"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3211,7 +3211,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4518"
+      "indra/newview/llfloaterdirector.cpp:4529"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3234,7 +3234,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4564"
+      "indra/newview/llfloaterdirector.cpp:4575"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3257,7 +3257,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4563"
+      "indra/newview/llfloaterdirector.cpp:4574"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -3279,7 +3279,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4516"
+      "indra/newview/llfloaterdirector.cpp:4527"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3302,7 +3302,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4548"
+      "indra/newview/llfloaterdirector.cpp:4559"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3325,7 +3325,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4551"
+      "indra/newview/llfloaterdirector.cpp:4562"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3347,7 +3347,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4565"
+      "indra/newview/llfloaterdirector.cpp:4576"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -3369,7 +3369,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4566"
+      "indra/newview/llfloaterdirector.cpp:4577"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3391,7 +3391,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4515"
+      "indra/newview/llfloaterdirector.cpp:4526"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3413,7 +3413,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4511"
+      "indra/newview/llfloaterdirector.cpp:4522"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3435,7 +3435,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4514"
+      "indra/newview/llfloaterdirector.cpp:4525"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3457,7 +3457,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4538"
+      "indra/newview/llfloaterdirector.cpp:4549"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3479,7 +3479,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4510"
+      "indra/newview/llfloaterdirector.cpp:4521"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -3501,7 +3501,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4512"
+      "indra/newview/llfloaterdirector.cpp:4523"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -3523,7 +3523,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4513"
+      "indra/newview/llfloaterdirector.cpp:4524"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -5825,7 +5825,7 @@
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:511",
       "indra/newview/alkitpresets.cpp:681",
-      "indra/newview/llfloaterdirector.cpp:4815"
+      "indra/newview/llfloaterdirector.cpp:4826"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -6207,7 +6207,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4815"
+      "indra/newview/llfloaterdirector.cpp:4826"
     ],
     "scope": "review feature ownership",
     "type": "String"
@@ -11468,7 +11468,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1587",
-      "indra/newview/llfloaterdirector.cpp:4735"
+      "indra/newview/llfloaterdirector.cpp:4746"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -11514,7 +11514,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1583",
-      "indra/newview/llfloaterdirector.cpp:4734"
+      "indra/newview/llfloaterdirector.cpp:4745"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -11713,7 +11713,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1591",
-      "indra/newview/llfloaterdirector.cpp:4736"
+      "indra/newview/llfloaterdirector.cpp:4747"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -11758,7 +11758,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1575",
-      "indra/newview/llfloaterdirector.cpp:4732"
+      "indra/newview/llfloaterdirector.cpp:4743"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -11781,7 +11781,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1632",
-      "indra/newview/llfloaterdirector.cpp:4737"
+      "indra/newview/llfloaterdirector.cpp:4748"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -11804,7 +11804,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1567",
-      "indra/newview/llfloaterdirector.cpp:4731"
+      "indra/newview/llfloaterdirector.cpp:4742"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -11827,7 +11827,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1579",
-      "indra/newview/llfloaterdirector.cpp:4733"
+      "indra/newview/llfloaterdirector.cpp:4744"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -11960,7 +11960,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1563",
-      "indra/newview/llfloaterdirector.cpp:4730"
+      "indra/newview/llfloaterdirector.cpp:4741"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -11984,7 +11984,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1639",
       "indra/newview/alkitpresets.cpp:137",
-      "indra/newview/llfloaterdirector.cpp:4693"
+      "indra/newview/llfloaterdirector.cpp:4704"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -12031,7 +12031,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1637",
       "indra/newview/alkitpresets.cpp:138",
-      "indra/newview/llfloaterdirector.cpp:4694"
+      "indra/newview/llfloaterdirector.cpp:4705"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12171,7 +12171,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2543",
       "indra/newview/alkitpresets.cpp:140",
-      "indra/newview/llfloaterdirector.cpp:4698"
+      "indra/newview/llfloaterdirector.cpp:4709"
     ],
     "scope": "review feature ownership",
     "type": "String"
@@ -12194,7 +12194,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2535",
-      "indra/newview/llfloaterdirector.cpp:4696"
+      "indra/newview/llfloaterdirector.cpp:4707"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12262,7 +12262,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2529",
       "indra/newview/alcinelightrig.cpp:3446",
-      "indra/newview/llfloaterdirector.cpp:4686"
+      "indra/newview/llfloaterdirector.cpp:4697"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -12290,8 +12290,8 @@
       "indra/newview/alcinelightrig.cpp:4187",
       "indra/newview/alcinelightrig.cpp:4628",
       "indra/newview/alcinelightrig.cpp:4791",
-      "indra/newview/llfloaterdirector.cpp:4703",
-      "indra/newview/llfloaterdirector.cpp:5140"
+      "indra/newview/llfloaterdirector.cpp:4714",
+      "indra/newview/llfloaterdirector.cpp:5151"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -12338,7 +12338,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1585",
-      "indra/newview/llfloaterdirector.cpp:4719"
+      "indra/newview/llfloaterdirector.cpp:4730"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -12384,7 +12384,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1581",
-      "indra/newview/llfloaterdirector.cpp:4718"
+      "indra/newview/llfloaterdirector.cpp:4729"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12583,7 +12583,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1589",
-      "indra/newview/llfloaterdirector.cpp:4720"
+      "indra/newview/llfloaterdirector.cpp:4731"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -12628,7 +12628,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1571",
-      "indra/newview/llfloaterdirector.cpp:4716"
+      "indra/newview/llfloaterdirector.cpp:4727"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12651,7 +12651,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1630",
-      "indra/newview/llfloaterdirector.cpp:4721"
+      "indra/newview/llfloaterdirector.cpp:4732"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -12674,7 +12674,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1565",
-      "indra/newview/llfloaterdirector.cpp:4715"
+      "indra/newview/llfloaterdirector.cpp:4726"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12697,7 +12697,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1577",
-      "indra/newview/llfloaterdirector.cpp:4717"
+      "indra/newview/llfloaterdirector.cpp:4728"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -12830,7 +12830,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1561",
-      "indra/newview/llfloaterdirector.cpp:4714"
+      "indra/newview/llfloaterdirector.cpp:4725"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12853,7 +12853,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:3439",
-      "indra/newview/llfloaterdirector.cpp:4705"
+      "indra/newview/llfloaterdirector.cpp:4716"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -12878,7 +12878,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1636",
       "indra/newview/alkitpresets.cpp:137",
-      "indra/newview/llfloaterdirector.cpp:4692"
+      "indra/newview/llfloaterdirector.cpp:4703"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -12945,7 +12945,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1584",
-      "indra/newview/llfloaterdirector.cpp:4711"
+      "indra/newview/llfloaterdirector.cpp:4722"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -12991,7 +12991,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1580",
-      "indra/newview/llfloaterdirector.cpp:4710"
+      "indra/newview/llfloaterdirector.cpp:4721"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -13190,7 +13190,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1588",
-      "indra/newview/llfloaterdirector.cpp:4712"
+      "indra/newview/llfloaterdirector.cpp:4723"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -13235,7 +13235,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1569",
-      "indra/newview/llfloaterdirector.cpp:4708"
+      "indra/newview/llfloaterdirector.cpp:4719"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -13258,7 +13258,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1629",
-      "indra/newview/llfloaterdirector.cpp:4713"
+      "indra/newview/llfloaterdirector.cpp:4724"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -13281,7 +13281,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1564",
-      "indra/newview/llfloaterdirector.cpp:4707"
+      "indra/newview/llfloaterdirector.cpp:4718"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -13304,7 +13304,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1576",
-      "indra/newview/llfloaterdirector.cpp:4709"
+      "indra/newview/llfloaterdirector.cpp:4720"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -13437,7 +13437,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1560",
-      "indra/newview/llfloaterdirector.cpp:4706"
+      "indra/newview/llfloaterdirector.cpp:4717"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -13804,7 +13804,7 @@
       "indra/newview/alcinelightrig.cpp:797",
       "indra/newview/alcinelightrig.cpp:1633",
       "indra/newview/alkitpresets.cpp:136",
-      "indra/newview/llfloaterdirector.cpp:4689"
+      "indra/newview/llfloaterdirector.cpp:4700"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -13829,7 +13829,7 @@
       "indra/newview/alcinelightrig.cpp:802",
       "indra/newview/alcinelightrig.cpp:1635",
       "indra/newview/alkitpresets.cpp:137",
-      "indra/newview/llfloaterdirector.cpp:4690"
+      "indra/newview/llfloaterdirector.cpp:4701"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -13854,7 +13854,7 @@
       "indra/newview/alcinelightrig.cpp:1642",
       "indra/newview/alcinelightrig.cpp:4731",
       "indra/newview/alkitpresets.cpp:138",
-      "indra/newview/llfloaterdirector.cpp:4700"
+      "indra/newview/llfloaterdirector.cpp:4711"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -14136,7 +14136,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2533",
-      "indra/newview/llfloaterdirector.cpp:4691"
+      "indra/newview/llfloaterdirector.cpp:4702"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14160,7 +14160,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1644",
       "indra/newview/alcinelightrig.cpp:4740",
-      "indra/newview/llfloaterdirector.cpp:4702"
+      "indra/newview/llfloaterdirector.cpp:4713"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14184,7 +14184,7 @@
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1643",
       "indra/newview/alcinelightrig.cpp:4735",
-      "indra/newview/llfloaterdirector.cpp:4701"
+      "indra/newview/llfloaterdirector.cpp:4712"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14231,7 +14231,7 @@
       "indra/newview/alcinelightrig.cpp:1559",
       "indra/newview/alcinelightrig.cpp:1791",
       "indra/newview/alkitpresets.cpp:136",
-      "indra/newview/llfloaterdirector.cpp:4688"
+      "indra/newview/llfloaterdirector.cpp:4699"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14367,7 +14367,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1586",
-      "indra/newview/llfloaterdirector.cpp:4727"
+      "indra/newview/llfloaterdirector.cpp:4738"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -14413,7 +14413,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1582",
-      "indra/newview/llfloaterdirector.cpp:4726"
+      "indra/newview/llfloaterdirector.cpp:4737"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14612,7 +14612,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1590",
-      "indra/newview/llfloaterdirector.cpp:4728"
+      "indra/newview/llfloaterdirector.cpp:4739"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -14657,7 +14657,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1573",
-      "indra/newview/llfloaterdirector.cpp:4724"
+      "indra/newview/llfloaterdirector.cpp:4735"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14680,7 +14680,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1631",
-      "indra/newview/llfloaterdirector.cpp:4729"
+      "indra/newview/llfloaterdirector.cpp:4740"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -14703,7 +14703,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1566",
-      "indra/newview/llfloaterdirector.cpp:4723"
+      "indra/newview/llfloaterdirector.cpp:4734"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14726,7 +14726,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1578",
-      "indra/newview/llfloaterdirector.cpp:4725"
+      "indra/newview/llfloaterdirector.cpp:4736"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -14859,7 +14859,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1562",
-      "indra/newview/llfloaterdirector.cpp:4722"
+      "indra/newview/llfloaterdirector.cpp:4733"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -14882,7 +14882,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2539",
-      "indra/newview/llfloaterdirector.cpp:4687"
+      "indra/newview/llfloaterdirector.cpp:4698"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -14907,7 +14907,7 @@
       "indra/newview/alcinelightrig.cpp:1641",
       "indra/newview/alcinelightrig.cpp:4632",
       "indra/newview/alcinelightrig.cpp:4785",
-      "indra/newview/llfloaterdirector.cpp:4699"
+      "indra/newview/llfloaterdirector.cpp:4710"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -14933,7 +14933,7 @@
       "indra/newview/alcinelightrig.cpp:4024",
       "indra/newview/alcinelightrig.cpp:4026",
       "indra/newview/alkitpresets.cpp:139",
-      "indra/newview/llfloaterdirector.cpp:4704"
+      "indra/newview/llfloaterdirector.cpp:4715"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -14956,7 +14956,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2537",
-      "indra/newview/llfloaterdirector.cpp:4697"
+      "indra/newview/llfloaterdirector.cpp:4708"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -14979,7 +14979,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:1638",
-      "indra/newview/llfloaterdirector.cpp:4695"
+      "indra/newview/llfloaterdirector.cpp:4706"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -15310,8 +15310,8 @@
     "saved_in_scenes": "yes: appended kAllSettings (with scene exclusions) in alrotoink.cpp",
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:85",
-      "indra/newview/llfloaterdirector.cpp:5489",
-      "indra/newview/llfloaterdirector.cpp:5493"
+      "indra/newview/llfloaterdirector.cpp:5500",
+      "indra/newview/llfloaterdirector.cpp:5504"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -16620,8 +16620,8 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:78",
-      "indra/newview/llfloaterdirector.cpp:4780",
-      "indra/newview/llfloaterdirector.cpp:5478"
+      "indra/newview/llfloaterdirector.cpp:4791",
+      "indra/newview/llfloaterdirector.cpp:5489"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -16643,7 +16643,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4780"
+      "indra/newview/llfloaterdirector.cpp:4791"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -16665,8 +16665,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4777",
-      "indra/newview/llfloaterdirector.cpp:5476"
+      "indra/newview/llfloaterdirector.cpp:4788",
+      "indra/newview/llfloaterdirector.cpp:5487"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16688,7 +16688,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4770"
+      "indra/newview/llfloaterdirector.cpp:4781"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16711,7 +16711,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2599",
-      "indra/newview/llfloaterdirector.cpp:4801"
+      "indra/newview/llfloaterdirector.cpp:4812"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16734,7 +16734,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2593",
-      "indra/newview/llfloaterdirector.cpp:4798"
+      "indra/newview/llfloaterdirector.cpp:4809"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16757,7 +16757,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2595",
-      "indra/newview/llfloaterdirector.cpp:4799"
+      "indra/newview/llfloaterdirector.cpp:4810"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16780,7 +16780,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2597",
-      "indra/newview/llfloaterdirector.cpp:4800"
+      "indra/newview/llfloaterdirector.cpp:4811"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16843,9 +16843,9 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:78",
-      "indra/newview/llfloaterdirector.cpp:4767",
-      "indra/newview/llfloaterdirector.cpp:5443",
-      "indra/newview/llfloaterdirector.cpp:5451"
+      "indra/newview/llfloaterdirector.cpp:4778",
+      "indra/newview/llfloaterdirector.cpp:5454",
+      "indra/newview/llfloaterdirector.cpp:5462"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -16868,7 +16868,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2583",
-      "indra/newview/llfloaterdirector.cpp:4793"
+      "indra/newview/llfloaterdirector.cpp:4804"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16891,7 +16891,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2577",
-      "indra/newview/llfloaterdirector.cpp:4790"
+      "indra/newview/llfloaterdirector.cpp:4801"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16914,7 +16914,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2579",
-      "indra/newview/llfloaterdirector.cpp:4791"
+      "indra/newview/llfloaterdirector.cpp:4802"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16937,7 +16937,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2581",
-      "indra/newview/llfloaterdirector.cpp:4792"
+      "indra/newview/llfloaterdirector.cpp:4803"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -16959,7 +16959,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4773"
+      "indra/newview/llfloaterdirector.cpp:4784"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -16981,7 +16981,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4775"
+      "indra/newview/llfloaterdirector.cpp:4786"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -17004,7 +17004,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:78",
-      "indra/newview/llfloaterdirector.cpp:4774"
+      "indra/newview/llfloaterdirector.cpp:4785"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -17027,7 +17027,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2575",
-      "indra/newview/llfloaterdirector.cpp:4789"
+      "indra/newview/llfloaterdirector.cpp:4800"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17050,7 +17050,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2569",
-      "indra/newview/llfloaterdirector.cpp:4786"
+      "indra/newview/llfloaterdirector.cpp:4797"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17073,7 +17073,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2571",
-      "indra/newview/llfloaterdirector.cpp:4787"
+      "indra/newview/llfloaterdirector.cpp:4798"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17096,7 +17096,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2573",
-      "indra/newview/llfloaterdirector.cpp:4788"
+      "indra/newview/llfloaterdirector.cpp:4799"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17118,7 +17118,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4768"
+      "indra/newview/llfloaterdirector.cpp:4779"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17141,7 +17141,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2591",
-      "indra/newview/llfloaterdirector.cpp:4797"
+      "indra/newview/llfloaterdirector.cpp:4808"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17164,7 +17164,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2585",
-      "indra/newview/llfloaterdirector.cpp:4794"
+      "indra/newview/llfloaterdirector.cpp:4805"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17187,7 +17187,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2587",
-      "indra/newview/llfloaterdirector.cpp:4795"
+      "indra/newview/llfloaterdirector.cpp:4806"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17210,7 +17210,7 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/alcinelightrig.cpp:2589",
-      "indra/newview/llfloaterdirector.cpp:4796"
+      "indra/newview/llfloaterdirector.cpp:4807"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17232,7 +17232,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4769"
+      "indra/newview/llfloaterdirector.cpp:4780"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17254,7 +17254,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4772"
+      "indra/newview/llfloaterdirector.cpp:4783"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17276,8 +17276,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4777",
-      "indra/newview/llfloaterdirector.cpp:5477"
+      "indra/newview/llfloaterdirector.cpp:4788",
+      "indra/newview/llfloaterdirector.cpp:5488"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17299,7 +17299,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4779"
+      "indra/newview/llfloaterdirector.cpp:4790"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17321,7 +17321,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4779"
+      "indra/newview/llfloaterdirector.cpp:4790"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17343,7 +17343,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4779"
+      "indra/newview/llfloaterdirector.cpp:4790"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17365,7 +17365,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4778"
+      "indra/newview/llfloaterdirector.cpp:4789"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17387,7 +17387,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4778"
+      "indra/newview/llfloaterdirector.cpp:4789"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -17409,7 +17409,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4778"
+      "indra/newview/llfloaterdirector.cpp:4789"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17431,8 +17431,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4776",
-      "indra/newview/llfloaterdirector.cpp:5474"
+      "indra/newview/llfloaterdirector.cpp:4787",
+      "indra/newview/llfloaterdirector.cpp:5485"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17454,8 +17454,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4776",
-      "indra/newview/llfloaterdirector.cpp:5473"
+      "indra/newview/llfloaterdirector.cpp:4787",
+      "indra/newview/llfloaterdirector.cpp:5484"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17477,8 +17477,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4776",
-      "indra/newview/llfloaterdirector.cpp:5475"
+      "indra/newview/llfloaterdirector.cpp:4787",
+      "indra/newview/llfloaterdirector.cpp:5486"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17500,7 +17500,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4771"
+      "indra/newview/llfloaterdirector.cpp:4782"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17592,7 +17592,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4781"
+      "indra/newview/llfloaterdirector.cpp:4792"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17614,7 +17614,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4782"
+      "indra/newview/llfloaterdirector.cpp:4793"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17636,7 +17636,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4780"
+      "indra/newview/llfloaterdirector.cpp:4791"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -17658,7 +17658,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4782"
+      "indra/newview/llfloaterdirector.cpp:4793"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17680,7 +17680,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4781"
+      "indra/newview/llfloaterdirector.cpp:4792"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17702,7 +17702,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4781"
+      "indra/newview/llfloaterdirector.cpp:4792"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17724,7 +17724,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4650"
+      "indra/newview/llfloaterdirector.cpp:4661"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17746,7 +17746,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4651"
+      "indra/newview/llfloaterdirector.cpp:4662"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -17771,7 +17771,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:3435",
       "indra/newview/llfloaterdirector.cpp:3458",
-      "indra/newview/llfloaterdirector.cpp:4648"
+      "indra/newview/llfloaterdirector.cpp:4659"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -17793,7 +17793,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4649"
+      "indra/newview/llfloaterdirector.cpp:4660"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -18062,7 +18062,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8404"
+      "indra/newview/llfloaterdirector.cpp:8415"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -18084,7 +18084,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8402"
+      "indra/newview/llfloaterdirector.cpp:8413"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -18106,7 +18106,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8401"
+      "indra/newview/llfloaterdirector.cpp:8412"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -18168,7 +18168,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8403"
+      "indra/newview/llfloaterdirector.cpp:8414"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -19710,7 +19710,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8637"
+      "indra/newview/llfloaterdirector.cpp:8648"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -20012,7 +20012,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4652"
+      "indra/newview/llfloaterdirector.cpp:4663"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -20414,10 +20414,10 @@
     "previous_default": null,
     "saved_in_scenes": "yes: separate cinecam_mode scene field",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:5152",
-      "indra/newview/llfloaterdirector.cpp:5613",
-      "indra/newview/llfloaterdirector.cpp:5704",
-      "indra/newview/llfloaterdirector.cpp:8638"
+      "indra/newview/llfloaterdirector.cpp:5163",
+      "indra/newview/llfloaterdirector.cpp:5624",
+      "indra/newview/llfloaterdirector.cpp:5715",
+      "indra/newview/llfloaterdirector.cpp:8649"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -20599,7 +20599,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4633"
+      "indra/newview/llfloaterdirector.cpp:4644"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -20621,7 +20621,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4632"
+      "indra/newview/llfloaterdirector.cpp:4643"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -20643,7 +20643,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4635"
+      "indra/newview/llfloaterdirector.cpp:4646"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -20665,7 +20665,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4636"
+      "indra/newview/llfloaterdirector.cpp:4647"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -20687,7 +20687,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4634"
+      "indra/newview/llfloaterdirector.cpp:4645"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -20709,7 +20709,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4628"
+      "indra/newview/llfloaterdirector.cpp:4639"
     ],
     "scope": "review feature ownership",
     "type": "String"
@@ -20731,7 +20731,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4629"
+      "indra/newview/llfloaterdirector.cpp:4640"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -20753,7 +20753,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4630"
+      "indra/newview/llfloaterdirector.cpp:4641"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -20775,7 +20775,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4631"
+      "indra/newview/llfloaterdirector.cpp:4642"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -20797,7 +20797,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4637"
+      "indra/newview/llfloaterdirector.cpp:4648"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23359,7 +23359,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8665"
+      "indra/newview/llfloaterdirector.cpp:8676"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -23381,7 +23381,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8380"
+      "indra/newview/llfloaterdirector.cpp:8391"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -23423,8 +23423,8 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8376",
-      "indra/newview/llfloaterdirector.cpp:8383"
+      "indra/newview/llfloaterdirector.cpp:8387",
+      "indra/newview/llfloaterdirector.cpp:8394"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23446,7 +23446,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8385"
+      "indra/newview/llfloaterdirector.cpp:8396"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -23508,8 +23508,8 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8375",
-      "indra/newview/llfloaterdirector.cpp:8381"
+      "indra/newview/llfloaterdirector.cpp:8386",
+      "indra/newview/llfloaterdirector.cpp:8392"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23633,7 +23633,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:3392",
       "indra/newview/llfloaterdirector.cpp:3419",
-      "indra/newview/llfloaterdirector.cpp:4653"
+      "indra/newview/llfloaterdirector.cpp:4664"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23655,7 +23655,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4654"
+      "indra/newview/llfloaterdirector.cpp:4665"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23677,7 +23677,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4655"
+      "indra/newview/llfloaterdirector.cpp:4666"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23699,7 +23699,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4656"
+      "indra/newview/llfloaterdirector.cpp:4667"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -23721,7 +23721,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4657"
+      "indra/newview/llfloaterdirector.cpp:4668"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23743,7 +23743,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4658"
+      "indra/newview/llfloaterdirector.cpp:4669"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -23765,7 +23765,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4659"
+      "indra/newview/llfloaterdirector.cpp:4670"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -23848,7 +23848,7 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:1884",
-      "indra/newview/llfloaterdirector.cpp:4156"
+      "indra/newview/llfloaterdirector.cpp:4167"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -23871,8 +23871,8 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2042",
-      "indra/newview/llfloaterdirector.cpp:4278",
-      "indra/newview/llfloaterdirector.cpp:4607"
+      "indra/newview/llfloaterdirector.cpp:4289",
+      "indra/newview/llfloaterdirector.cpp:4618"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -23914,7 +23914,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:7745"
+      "indra/newview/llfloaterdirector.cpp:7756"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -24086,8 +24086,8 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2041",
-      "indra/newview/llfloaterdirector.cpp:4275",
-      "indra/newview/llfloaterdirector.cpp:4604"
+      "indra/newview/llfloaterdirector.cpp:4286",
+      "indra/newview/llfloaterdirector.cpp:4615"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -24111,8 +24111,8 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2041",
-      "indra/newview/llfloaterdirector.cpp:4274",
-      "indra/newview/llfloaterdirector.cpp:4603"
+      "indra/newview/llfloaterdirector.cpp:4285",
+      "indra/newview/llfloaterdirector.cpp:4614"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -24136,8 +24136,8 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2042",
-      "indra/newview/llfloaterdirector.cpp:4277",
-      "indra/newview/llfloaterdirector.cpp:4606"
+      "indra/newview/llfloaterdirector.cpp:4288",
+      "indra/newview/llfloaterdirector.cpp:4617"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -24161,8 +24161,8 @@
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2041",
-      "indra/newview/llfloaterdirector.cpp:4276",
-      "indra/newview/llfloaterdirector.cpp:4605"
+      "indra/newview/llfloaterdirector.cpp:4287",
+      "indra/newview/llfloaterdirector.cpp:4616"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -24184,14 +24184,14 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:5767"
+      "indra/newview/llfloaterdirector.cpp:5778"
     ],
     "scope": "review feature ownership",
     "type": "S32"
   },
   {
     "change": "added",
-    "comment": "Opacity of a solid backing layer drawn behind the whole Director window in the theme's window colour. 1 = fully solid.",
+    "comment": "How solid the Director's backgrounds are. 100% = solid; lower lets the world show through. Text and controls stay solid.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
     "default": "1.0",
@@ -24209,7 +24209,7 @@
       "indra/newview/llfloaterdirector.cpp:2170",
       "indra/newview/llfloaterdirector.cpp:2177",
       "indra/newview/llfloaterdirector.cpp:2181",
-      "indra/newview/llfloaterdirector.cpp:3953"
+      "indra/newview/llfloaterdirector.cpp:3969"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -25755,7 +25755,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4616"
+      "indra/newview/llfloaterdirector.cpp:4627"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -25777,7 +25777,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4609"
+      "indra/newview/llfloaterdirector.cpp:4620"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -25800,7 +25800,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4612"
+      "indra/newview/llfloaterdirector.cpp:4623"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -25823,7 +25823,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4610"
+      "indra/newview/llfloaterdirector.cpp:4621"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -25846,7 +25846,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4615"
+      "indra/newview/llfloaterdirector.cpp:4626"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -25869,7 +25869,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4611"
+      "indra/newview/llfloaterdirector.cpp:4622"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -25892,7 +25892,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4613"
+      "indra/newview/llfloaterdirector.cpp:4624"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -25915,7 +25915,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4614"
+      "indra/newview/llfloaterdirector.cpp:4625"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -25938,9 +25938,9 @@
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:2212",
-      "indra/newview/llfloaterdirector.cpp:5712",
-      "indra/newview/llfloaterdirector.cpp:6245",
-      "indra/newview/llfloaterdirector.cpp:6308"
+      "indra/newview/llfloaterdirector.cpp:5723",
+      "indra/newview/llfloaterdirector.cpp:6256",
+      "indra/newview/llfloaterdirector.cpp:6319"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -25963,7 +25963,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:5387"
+      "indra/newview/llfloaterdirector.cpp:5398"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -25986,7 +25986,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4619"
+      "indra/newview/llfloaterdirector.cpp:4630"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -26280,7 +26280,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4620"
+      "indra/newview/llfloaterdirector.cpp:4631"
     ],
     "scope": "review feature ownership",
     "type": "LLSD"
@@ -26408,7 +26408,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4621"
+      "indra/newview/llfloaterdirector.cpp:4632"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -26473,7 +26473,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4622"
+      "indra/newview/llfloaterdirector.cpp:4633"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -26643,7 +26643,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4623"
+      "indra/newview/llfloaterdirector.cpp:4634"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -26666,7 +26666,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4624"
+      "indra/newview/llfloaterdirector.cpp:4635"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -26710,7 +26710,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4625"
+      "indra/newview/llfloaterdirector.cpp:4636"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -26733,7 +26733,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4626"
+      "indra/newview/llfloaterdirector.cpp:4637"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -29182,8 +29182,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4639",
-      "indra/newview/llfloaterdirector.cpp:8639"
+      "indra/newview/llfloaterdirector.cpp:4650",
+      "indra/newview/llfloaterdirector.cpp:8650"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -29205,7 +29205,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4640"
+      "indra/newview/llfloaterdirector.cpp:4651"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -29227,7 +29227,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4642"
+      "indra/newview/llfloaterdirector.cpp:4653"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29249,7 +29249,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4641"
+      "indra/newview/llfloaterdirector.cpp:4652"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29271,7 +29271,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4644"
+      "indra/newview/llfloaterdirector.cpp:4655"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29293,7 +29293,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4643"
+      "indra/newview/llfloaterdirector.cpp:4654"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29315,7 +29315,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4646"
+      "indra/newview/llfloaterdirector.cpp:4657"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29337,7 +29337,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4645"
+      "indra/newview/llfloaterdirector.cpp:4656"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -29419,7 +29419,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4364"
+      "indra/newview/llfloaterdirector.cpp:4375"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -31330,7 +31330,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8627"
+      "indra/newview/llfloaterdirector.cpp:8638"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -31353,7 +31353,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:8626"
+      "indra/newview/llfloaterdirector.cpp:8637"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -31767,7 +31767,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4682"
+      "indra/newview/llfloaterdirector.cpp:4693"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32214,8 +32214,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4761",
-      "indra/newview/llfloaterdirector.cpp:5421"
+      "indra/newview/llfloaterdirector.cpp:4772",
+      "indra/newview/llfloaterdirector.cpp:5432"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32237,7 +32237,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4752"
+      "indra/newview/llfloaterdirector.cpp:4763"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -32261,7 +32261,7 @@
     "scene_evidence": [
       "indra/newview/llfloaterdirector.cpp:3767",
       "indra/newview/llfloaterdirector.cpp:3789",
-      "indra/newview/llfloaterdirector.cpp:4751"
+      "indra/newview/llfloaterdirector.cpp:4762"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -32324,9 +32324,9 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4762",
-      "indra/newview/llfloaterdirector.cpp:5432",
-      "indra/newview/llfloaterdirector.cpp:5433"
+      "indra/newview/llfloaterdirector.cpp:4773",
+      "indra/newview/llfloaterdirector.cpp:5443",
+      "indra/newview/llfloaterdirector.cpp:5444"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32349,7 +32349,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4756"
+      "indra/newview/llfloaterdirector.cpp:4767"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -32372,7 +32372,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4755"
+      "indra/newview/llfloaterdirector.cpp:4766"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32414,7 +32414,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4758"
+      "indra/newview/llfloaterdirector.cpp:4769"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32436,7 +32436,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4750"
+      "indra/newview/llfloaterdirector.cpp:4761"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -32458,7 +32458,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4753"
+      "indra/newview/llfloaterdirector.cpp:4764"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32480,7 +32480,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4754"
+      "indra/newview/llfloaterdirector.cpp:4765"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32543,8 +32543,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4765",
-      "indra/newview/llfloaterdirector.cpp:5422"
+      "indra/newview/llfloaterdirector.cpp:4776",
+      "indra/newview/llfloaterdirector.cpp:5433"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32587,8 +32587,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4760",
-      "indra/newview/llfloaterdirector.cpp:5421"
+      "indra/newview/llfloaterdirector.cpp:4771",
+      "indra/newview/llfloaterdirector.cpp:5432"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32610,7 +32610,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4757"
+      "indra/newview/llfloaterdirector.cpp:4768"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32632,7 +32632,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4749"
+      "indra/newview/llfloaterdirector.cpp:4760"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -32655,8 +32655,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4764",
-      "indra/newview/llfloaterdirector.cpp:5422"
+      "indra/newview/llfloaterdirector.cpp:4775",
+      "indra/newview/llfloaterdirector.cpp:5433"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32719,8 +32719,8 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4763",
-      "indra/newview/llfloaterdirector.cpp:5422"
+      "indra/newview/llfloaterdirector.cpp:4774",
+      "indra/newview/llfloaterdirector.cpp:5433"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -32745,7 +32745,7 @@
       "indra/newview/llfloaterdirector.cpp:3760",
       "indra/newview/llfloaterdirector.cpp:3780",
       "indra/newview/llfloaterdirector.cpp:3789",
-      "indra/newview/llfloaterdirector.cpp:4748"
+      "indra/newview/llfloaterdirector.cpp:4759"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -32953,7 +32953,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4741"
+      "indra/newview/llfloaterdirector.cpp:4752"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -32977,7 +32977,7 @@
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:75",
       "indra/newview/llfloaterdirector.cpp:2073",
-      "indra/newview/llfloaterdirector.cpp:4743"
+      "indra/newview/llfloaterdirector.cpp:4754"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -33001,9 +33001,9 @@
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:75",
       "indra/newview/llfloaterdirector.cpp:2074",
-      "indra/newview/llfloaterdirector.cpp:4744",
-      "indra/newview/llfloaterdirector.cpp:5437",
-      "indra/newview/llfloaterdirector.cpp:5439"
+      "indra/newview/llfloaterdirector.cpp:4755",
+      "indra/newview/llfloaterdirector.cpp:5448",
+      "indra/newview/llfloaterdirector.cpp:5450"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -33025,7 +33025,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4746"
+      "indra/newview/llfloaterdirector.cpp:4757"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -33047,7 +33047,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4742"
+      "indra/newview/llfloaterdirector.cpp:4753"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -33069,7 +33069,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4747"
+      "indra/newview/llfloaterdirector.cpp:4758"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -33091,7 +33091,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4745"
+      "indra/newview/llfloaterdirector.cpp:4756"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -35623,7 +35623,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4675"
+      "indra/newview/llfloaterdirector.cpp:4686"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -35645,7 +35645,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4679"
+      "indra/newview/llfloaterdirector.cpp:4690"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -35667,7 +35667,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4676"
+      "indra/newview/llfloaterdirector.cpp:4687"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -35689,7 +35689,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4678"
+      "indra/newview/llfloaterdirector.cpp:4689"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -35711,14 +35711,14 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4677"
+      "indra/newview/llfloaterdirector.cpp:4688"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
   },
   {
     "change": "added",
-    "comment": "[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.",
+    "comment": "[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md. Session only: every login starts Live (scenes still store it).",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
     "default": "0",
@@ -35729,11 +35729,11 @@
     "file": "indra/newview/app_settings/settings.xml",
     "head_declarations": [],
     "name": "TemporalMode",
-    "persisted": "1",
+    "persisted": "0",
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4672"
+      "indra/newview/llfloaterdirector.cpp:4683"
     ],
     "scope": "review feature ownership",
     "type": "S32"
@@ -35755,14 +35755,14 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4674"
+      "indra/newview/llfloaterdirector.cpp:4685"
     ],
     "scope": "review feature ownership",
     "type": "F32"
   },
   {
     "change": "added",
-    "comment": "[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real.",
+    "comment": "[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real. Session only: every login starts at 1 (scenes still store it).",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
     "default": "1.0",
@@ -35773,11 +35773,11 @@
     "file": "indra/newview/app_settings/settings.xml",
     "head_declarations": [],
     "name": "TemporalWorldScale",
-    "persisted": "1",
+    "persisted": "0",
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4673"
+      "indra/newview/llfloaterdirector.cpp:4684"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -36024,8 +36024,8 @@
     "saved_in_scenes": "yes: appended kAllSettings (with scene exclusions) in altron.cpp",
     "scene_evidence": [
       "indra/newview/alkitpresets.cpp:89",
-      "indra/newview/llfloaterdirector.cpp:5530",
-      "indra/newview/llfloaterdirector.cpp:5534"
+      "indra/newview/llfloaterdirector.cpp:5541",
+      "indra/newview/llfloaterdirector.cpp:5545"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -38550,7 +38550,7 @@
     "previous_default": null,
     "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:5844"
+      "indra/newview/llfloaterdirector.cpp:5855"
     ],
     "scope": "review feature ownership",
     "type": "String"
@@ -40459,7 +40459,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4595"
+      "indra/newview/llfloaterdirector.cpp:4606"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -40482,7 +40482,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4596"
+      "indra/newview/llfloaterdirector.cpp:4607"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40505,7 +40505,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4597"
+      "indra/newview/llfloaterdirector.cpp:4608"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40528,7 +40528,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4600"
+      "indra/newview/llfloaterdirector.cpp:4611"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40551,7 +40551,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4599"
+      "indra/newview/llfloaterdirector.cpp:4610"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40574,7 +40574,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4600"
+      "indra/newview/llfloaterdirector.cpp:4611"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40597,7 +40597,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4600"
+      "indra/newview/llfloaterdirector.cpp:4611"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40620,7 +40620,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4601"
+      "indra/newview/llfloaterdirector.cpp:4612"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40643,7 +40643,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4597"
+      "indra/newview/llfloaterdirector.cpp:4608"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40666,7 +40666,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4598"
+      "indra/newview/llfloaterdirector.cpp:4609"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40689,7 +40689,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4598"
+      "indra/newview/llfloaterdirector.cpp:4609"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40712,7 +40712,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4599"
+      "indra/newview/llfloaterdirector.cpp:4610"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40735,7 +40735,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4598"
+      "indra/newview/llfloaterdirector.cpp:4609"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40758,7 +40758,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4599"
+      "indra/newview/llfloaterdirector.cpp:4610"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40781,7 +40781,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4597"
+      "indra/newview/llfloaterdirector.cpp:4608"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40804,7 +40804,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4595"
+      "indra/newview/llfloaterdirector.cpp:4606"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -40827,7 +40827,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4595"
+      "indra/newview/llfloaterdirector.cpp:4606"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40850,7 +40850,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4596"
+      "indra/newview/llfloaterdirector.cpp:4607"
     ],
     "scope": "review feature ownership",
     "type": "F32"
@@ -40873,7 +40873,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4596"
+      "indra/newview/llfloaterdirector.cpp:4607"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"
@@ -40917,7 +40917,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4595"
+      "indra/newview/llfloaterdirector.cpp:4606"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -40940,7 +40940,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4596"
+      "indra/newview/llfloaterdirector.cpp:4607"
     ],
     "scope": "review feature ownership",
     "type": "U32"
@@ -40963,7 +40963,7 @@
     "previous_default": null,
     "saved_in_scenes": "yes: explicit sceneSettingsList -> captureSceneData settings map",
     "scene_evidence": [
-      "indra/newview/llfloaterdirector.cpp:4596"
+      "indra/newview/llfloaterdirector.cpp:4607"
     ],
     "scope": "review feature ownership",
     "type": "Boolean"

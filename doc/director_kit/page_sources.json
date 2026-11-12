@@ -4,12 +4,12 @@
   "classification_rule": "pure-setting iff >=90% rows are setting-bound and no row widget is referenced in C++; otherwise code-driven",
   "summary": {
     "pages": 40,
-    "rows": 2310,
+    "rows": 2312,
     "owner_roots": 37,
-    "unresolved_rows": 82,
+    "unresolved_rows": 83,
     "ambiguous_rows": 0,
     "multi_page_settings": 21,
-    "independent_json_rows": 2310
+    "independent_json_rows": 2312
   },
   "setting_conflicts": [
     {
@@ -6791,7 +6791,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 154,
+          "line": 160,
           "widget": "ps_BDMergeFroxelWindAzimuth_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -6841,7 +6841,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 157,
+          "line": 163,
           "widget": "ps_BDMergeFroxelWindElevation_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -6891,7 +6891,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 160,
+          "line": 166,
           "widget": "ps_BDMergeFroxelWindInverted_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -6969,7 +6969,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 232,
+          "line": 238,
           "widget": "gobo_anisotropic_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7075,7 +7075,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 205,
+          "line": 211,
           "widget": "projector_volumetrics_adaptive_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7103,7 +7103,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 240,
+          "line": 246,
           "widget": "projector_volumetrics_airborne_tap_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7142,7 +7142,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 30,
+          "line": 36,
           "widget": "ps_BDMergeProjectorVolumetricsAnisotropy_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7181,7 +7181,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 276,
+          "line": 282,
           "widget": "ps_BDMergeProjectorVolumetricsBeamShadows",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7220,7 +7220,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 266,
+          "line": 272,
           "widget": "ps_BDMergeProjectorVolumetricsBigConeCap",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7270,7 +7270,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 43,
+          "line": 49,
           "widget": "ps_BDMergeProjectorVolumetricsBloomFeed_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7320,7 +7320,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 48,
+          "line": 54,
           "widget": "ps_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7348,7 +7348,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 243,
+          "line": 249,
           "widget": "projector_volumetrics_cookie_footprint_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7376,7 +7376,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 251,
+          "line": 257,
           "widget": "ps_BDMergeProjectorVolumetricsDefinition",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7415,7 +7415,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 25,
+          "line": 31,
           "widget": "ps_BDMergeProjectorVolumetricsDensity_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7454,7 +7454,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 224,
+          "line": 230,
           "widget": "ps_BDMergeProjectorVolumetricsDither_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7493,7 +7493,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 112,
+          "line": 118,
           "widget": "ps_BDMergeProjectorVolumetricsDust_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7521,7 +7521,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 125,
+          "line": 131,
           "widget": "ps_BDMergeProjectorVolumetricsDustDrift_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7549,7 +7549,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 115,
+          "line": 121,
           "widget": "ps_BDMergeProjectorVolumetricsDustIntensity_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7577,7 +7577,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 120,
+          "line": 126,
           "widget": "ps_BDMergeProjectorVolumetricsDustScale_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7605,7 +7605,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 12,
+          "line": 18,
           "widget": "ps_shaft_engine",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7644,7 +7644,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 237,
+          "line": 243,
           "widget": "projector_volumetrics_equiangular_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7673,7 +7673,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 65,
+          "line": 71,
           "widget": "ps_BDMergeProjectorVolumetricsFeather_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7712,7 +7712,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 147,
+          "line": 153,
           "widget": "ps_BDMergeProjectorVolumetricsFogBase_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7751,7 +7751,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 142,
+          "line": 148,
           "widget": "ps_BDMergeProjectorVolumetricsFogFalloff_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7790,7 +7790,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 137,
+          "line": 143,
           "widget": "ps_BDMergeProjectorVolumetricsFogGroundDensity_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7829,7 +7829,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 132,
+          "line": 138,
           "widget": "ps_BDMergeProjectorVolumetricsFogStrength_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7868,7 +7868,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 271,
+          "line": 277,
           "widget": "ps_BDMergeProjectorVolumetricsFrameBudget",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7907,7 +7907,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 289,
+          "line": 295,
           "widget": "projector_volumetrics_half_res_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7958,7 +7958,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 60,
+          "line": 66,
           "widget": "ps_BDMergeProjectorVolumetricsMaxDistance_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -7997,7 +7997,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 53,
+          "line": 59,
           "widget": "ps_BDMergeProjectorVolumetricsMaxLuminance_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8036,7 +8036,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 261,
+          "line": 267,
           "widget": "ps_BDMergeProjectorVolumetricsMaxSteps",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8075,7 +8075,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 219,
+          "line": 225,
           "widget": "ps_BDMergeProjectorVolumetricsMinResolution_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8125,7 +8125,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 20,
+          "line": 26,
           "widget": "ps_BDMergeProjectorVolumetricsMultiplier_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8164,7 +8164,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 102,
+          "line": 108,
           "widget": "ps_BDMergeProjectorVolumetricsNoiseScale_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8203,7 +8203,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 107,
+          "line": 113,
           "widget": "ps_BDMergeProjectorVolumetricsNoiseSpeed_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8242,7 +8242,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 97,
+          "line": 103,
           "widget": "ps_BDMergeProjectorVolumetricsNoiseStrength_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8281,7 +8281,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 246,
+          "line": 252,
           "widget": "projector_volumetrics_pyramid_scissor_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8320,7 +8320,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 192,
+          "line": 198,
           "widget": "ps_BDMergeProjectorVolumetricsResolution_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8370,7 +8370,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 75,
+          "line": 81,
           "widget": "ps_BDMergeProjectorVolumetricsRimPower_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8409,7 +8409,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 85,
+          "line": 91,
           "widget": "ps_BDMergeProjectorVolumetricsRimSoftness_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8448,7 +8448,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 70,
+          "line": 76,
           "widget": "ps_BDMergeProjectorVolumetricsRimStrength_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8487,7 +8487,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 90,
+          "line": 96,
           "widget": "ps_BDMergeProjectorVolumetricsRimThreshold_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8526,7 +8526,7 @@
         },
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 80,
+          "line": 86,
           "widget": "ps_BDMergeProjectorVolumetricsRimWrap_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8554,7 +8554,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 216,
+          "line": 222,
           "widget": "projector_volumetrics_scissor_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8582,7 +8582,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 284,
+          "line": 290,
           "widget": "ps_BDMergeProjectorVolumetricsShadowSamples_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8621,7 +8621,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 165,
+          "line": 171,
           "widget": "ps_BDMergeProjectorVolumetricsShadowTint_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8660,7 +8660,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 197,
+          "line": 203,
           "widget": "projector_volumetrics_temporal_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8688,7 +8688,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 213,
+          "line": 219,
           "widget": "projector_volumetrics_temporal_beam_depth_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8716,7 +8716,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 200,
+          "line": 206,
           "widget": "ps_BDMergeProjectorVolumetricsTemporalBlend_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8755,7 +8755,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 229,
+          "line": 235,
           "widget": "projector_volumetrics_temporal_dither_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8783,7 +8783,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 208,
+          "line": 214,
           "widget": "ps_BDMergeProjectorVolumetricsTemporalReject_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8822,7 +8822,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 35,
+          "line": 41,
           "widget": "ps_tint_swatch",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -8861,7 +8861,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 38,
+          "line": 44,
           "widget": "ps_BDMergeProjectorVolumetricsTintStrength_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -9056,7 +9056,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 182,
+          "line": 188,
           "widget": "ps_BDMergeSoftShadowFill_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -9095,7 +9095,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 177,
+          "line": 183,
           "widget": "ps_BDMergeSoftShadowMaxPenumbra_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -9134,7 +9134,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 172,
+          "line": 178,
           "widget": "ps_BDMergeSoftShadowSoftness_slider",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -9173,7 +9173,7 @@
       "xui_writers": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-          "line": 187,
+          "line": 193,
           "widget": "soft_shadow_sun_check",
           "root": {
             "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -54501,7 +54501,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 6971,
+              "line": 6982,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -55073,7 +55073,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 1868,
+              "line": 1876,
               "class": "ALKitPage",
               "function": "refreshWhoHint",
               "wired_class": "ALKitPage",
@@ -55086,7 +55086,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 1888,
+              "line": 1896,
               "class": "ALKitPage",
               "function": "refreshWhoHint",
               "wired_class": "ALKitPage",
@@ -74611,7 +74611,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74701,7 +74701,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74791,7 +74791,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74867,7 +74867,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -74943,7 +74943,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75019,7 +75019,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75095,7 +75095,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75174,7 +75174,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75253,7 +75253,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75343,7 +75343,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75422,7 +75422,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75518,7 +75518,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -75755,7 +75755,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76127,7 +76127,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76206,7 +76206,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76289,7 +76289,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76372,7 +76372,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -76538,7 +76538,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78446,7 +78446,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78525,7 +78525,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78604,7 +78604,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78683,7 +78683,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78773,7 +78773,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5387,
+              "line": 5386,
               "class": "ALKitBindingRegistry",
               "function": "add",
               "wired_class": "ALPanelGhostStudio",
@@ -78784,7 +78784,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -78874,7 +78874,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5065,
+              "line": 5064,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -78964,7 +78964,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5065,
+              "line": 5064,
               "class": "ALPanelGhostStudio",
               "function": "onClickStartStrip",
               "wired_class": "ALPanelGhostStudio",
@@ -79284,7 +79284,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 5096,
+              "line": 5095,
               "class": "ALPanelGhostStudio",
               "function": "onMotionCommit",
               "wired_class": "ALPanelGhostStudio",
@@ -79374,7 +79374,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -79464,7 +79464,7 @@
             },
             {
               "file": "indra/newview/alpanelghoststudio.cpp",
-              "line": 4657,
+              "line": 4656,
               "class": "ALPanelGhostStudio",
               "function": "updateOwnedCrowdPlacement",
               "wired_class": "ALPanelGhostStudio",
@@ -81368,7 +81368,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 919,
+              "line": 927,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -85964,7 +85964,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 920,
+              "line": 928,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -86602,7 +86602,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 922,
+              "line": 930,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -87628,7 +87628,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7932,
+              "line": 7943,
               "class": "LLFloaterDirector",
               "function": "refreshAnimateTab",
               "wired_class": "LLFloaterDirector",
@@ -88272,7 +88272,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7642,
+              "line": 7653,
               "class": "LLFloaterDirector",
               "function": "pasteAnimId",
               "wired_class": "LLFloaterDirector",
@@ -88857,7 +88857,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7814,
+              "line": 7825,
               "class": "LLFloaterDirector",
               "function": "onLocomotionMetadataCommit",
               "wired_class": "LLFloaterDirector",
@@ -88947,7 +88947,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7814,
+              "line": 7825,
               "class": "LLFloaterDirector",
               "function": "onLocomotionMetadataCommit",
               "wired_class": "LLFloaterDirector",
@@ -89037,7 +89037,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7814,
+              "line": 7825,
               "class": "LLFloaterDirector",
               "function": "onLocomotionMetadataCommit",
               "wired_class": "LLFloaterDirector",
@@ -106095,7 +106095,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8185,
+              "line": 8196,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -110817,7 +110817,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8186,
+              "line": 8197,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -113842,7 +113842,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8187,
+              "line": 8198,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -129781,7 +129781,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4629,
+              "line": 4640,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129885,7 +129885,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4630,
+              "line": 4641,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -129989,7 +129989,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4631,
+              "line": 4642,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -130093,7 +130093,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4632,
+              "line": 4643,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -130197,7 +130197,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4633,
+              "line": 4644,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -130301,7 +130301,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4634,
+              "line": 4645,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -130405,7 +130405,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4635,
+              "line": 4646,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -130509,7 +130509,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4636,
+              "line": 4647,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -130613,7 +130613,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4637,
+              "line": 4648,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -137194,7 +137194,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8189,
+              "line": 8200,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -137650,7 +137650,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8188,
+              "line": 8199,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -140415,7 +140415,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4652,
+              "line": 4663,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147218,7 +147218,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4640,
+              "line": 4651,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147309,7 +147309,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4645,
+              "line": 4656,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147400,7 +147400,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4642,
+              "line": 4653,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147491,7 +147491,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4646,
+              "line": 4657,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147582,7 +147582,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4643,
+              "line": 4654,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147673,7 +147673,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4641,
+              "line": 4652,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -147764,7 +147764,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 4644,
+              "line": 4655,
               "class": null,
               "function": null,
               "wired_class": null,
@@ -157024,7 +157024,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 65,
+              "line": 71,
               "widget": "ps_BDMergeProjectorVolumetricsFeather_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -157144,7 +157144,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 60,
+              "line": 66,
               "widget": "ps_BDMergeProjectorVolumetricsMaxDistance_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -158006,7 +158006,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 916,
+              "line": 924,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -171434,7 +171434,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 917,
+              "line": 925,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -172977,7 +172977,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 918,
+              "line": 926,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -177719,7 +177719,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 30594,
+              "line": 30758,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -177786,7 +177786,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25169,
+              "line": 25330,
               "class": "LLPipeline",
               "function": "clearWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -177853,7 +177853,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 25181,
+              "line": 25342,
               "class": "LLPipeline",
               "function": "clearAwayWorldShadowPicks",
               "wired_class": "LLFloaterDirector",
@@ -182237,7 +182237,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 901,
+              "line": 903,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -182364,7 +182364,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 902,
+              "line": 904,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -184758,7 +184758,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8781,
+              "line": 8792,
               "class": "LLFloaterDirector",
               "function": "showProjectorTrack",
               "wired_class": "LLFloaterDirector",
@@ -186444,7 +186444,7 @@
       "label": "Projector Shafts",
       "group": "light_group",
       "group_label": "Light",
-      "row_count": 58,
+      "row_count": 60,
       "owner_roots": [
         {
           "file": "indra/newview/skins/default/xui/en/panel_projector_shafts.xml",
@@ -186458,17 +186458,17 @@
       "owner_classes": [
         {
           "class": "ALPanelProjectorShafts",
-          "reference_count": 1
+          "reference_count": 2
         }
       ],
       "classification": {
         "logic_class": "code-driven",
         "setting_bound_rows": 57,
-        "setting_coverage": 0.982759,
-        "cpp_referenced_rows": 1,
+        "setting_coverage": 0.95,
+        "cpp_referenced_rows": 2,
         "rule": "pure-setting iff >=90% rows have declared settings and zero rows have C++ references"
       },
-      "unresolved_row_count": 0,
+      "unresolved_row_count": 1,
       "rows": [
         {
           "card": "shaft_look",
@@ -186476,6 +186476,130 @@
           "option_index": null,
           "option_label": null,
           "index": 0,
+          "label": "Shaft status",
+          "kind": "readout",
+          "widget": "shaft_status_text",
+          "matched_widget": "shaft_status_text",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [
+            {
+              "file": "indra/newview/alpanelprojectorshafts.cpp",
+              "line": 43,
+              "class": "ALPanelProjectorShafts",
+              "function": "postBuild",
+              "wired_class": "ALPanelProjectorShafts",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mShaftStatus = findChild<LLTextBox>(\"shaft_status_text\");"
+            }
+          ],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+              "line": 12,
+              "tag": "text",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+                "tag": "panel",
+                "name": "projector_shafts_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alkitpage.cpp",
+              "line": 908,
+              "class": "ALKitPage",
+              "function": "postBuild",
+              "wired_class": "ALKitPage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": true,
+              "text": "mShaftStatus = findChild<LLTextBox>(\"shaft_status_text\");"
+            }
+          ],
+          "unresolved": [],
+          "other_writers": []
+        },
+        {
+          "card": "shaft_look",
+          "card_title": "Look",
+          "option_index": null,
+          "option_label": null,
+          "index": 1,
+          "label": "Test shafts",
+          "kind": "button",
+          "widget": "shaft_test_button",
+          "matched_widget": "shaft_test_button",
+          "declared_setting": null,
+          "resolved_setting": null,
+          "setting_candidates": [],
+          "setting_declarations": [],
+          "items": [],
+          "xui": [],
+          "cpp": [],
+          "callback_handlers": [],
+          "callbacks": [],
+          "kit_action": null,
+          "resolution_notes": [],
+          "ambiguous": [],
+          "rejected_candidates": [
+            {
+              "kind": "xui",
+              "reason": "same widget name outside the page owner roots",
+              "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+              "line": 15,
+              "tag": "button",
+              "control_name": null,
+              "callbacks": [],
+              "root": {
+                "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+                "tag": "panel",
+                "name": "projector_shafts_tab_logic",
+                "line": 3
+              }
+            },
+            {
+              "kind": "cpp",
+              "reason": "reference is not in a class that owns/builds this page's XUI",
+              "file": "indra/newview/alkitpage.cpp",
+              "line": 909,
+              "class": "ALShaftSelfTest",
+              "function": "start",
+              "wired_class": "ALKitPage",
+              "wired_function": "postBuild",
+              "pattern": null,
+              "wiring_only": false,
+              "text": "getChild<LLButton>(\"shaft_test_button\")->setCommitCallback("
+            }
+          ],
+          "unresolved": [
+            "UNRESOLVED: no scoped owner callback, setting, model binding, or kit action"
+          ],
+          "other_writers": []
+        },
+        {
+          "card": "shaft_look",
+          "card_title": "Look",
+          "option_index": null,
+          "option_label": null,
+          "index": 2,
           "label": "Shaft engine",
           "kind": "combo",
           "widget": "ps_shaft_engine",
@@ -186523,7 +186647,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 12,
+              "line": 18,
               "tag": "combo_box",
               "control_name": "BDMergeProjectorVolumetricsEngine",
               "callbacks": [],
@@ -186540,7 +186664,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 12,
+              "line": 18,
               "widget": "ps_shaft_engine",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -186556,7 +186680,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 1,
+          "index": 3,
           "label": "Brightness",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsMultiplier_slider",
@@ -186601,7 +186725,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 20,
+              "line": 26,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMultiplier",
               "callbacks": [],
@@ -186630,7 +186754,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 20,
+              "line": 26,
               "widget": "ps_BDMergeProjectorVolumetricsMultiplier_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -186646,7 +186770,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 2,
+          "index": 4,
           "label": "Haziness",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsDensity_slider",
@@ -186691,7 +186815,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 25,
+              "line": 31,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsDensity",
               "callbacks": [],
@@ -186708,7 +186832,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 25,
+              "line": 31,
               "widget": "ps_BDMergeProjectorVolumetricsDensity_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -186724,7 +186848,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 3,
+          "index": 5,
           "label": "Forward glow",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsAnisotropy_slider",
@@ -186769,7 +186893,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 30,
+              "line": 36,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsAnisotropy",
               "callbacks": [],
@@ -186798,7 +186922,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 30,
+              "line": 36,
               "widget": "ps_BDMergeProjectorVolumetricsAnisotropy_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -186814,7 +186938,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 4,
+          "index": 6,
           "label": "Tint",
           "kind": "color",
           "widget": "ps_tint_swatch",
@@ -186859,7 +186983,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 35,
+              "line": 41,
               "tag": "color_swatch",
               "control_name": "BDMergeProjectorVolumetricsTint",
               "callbacks": [],
@@ -186876,7 +187000,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 35,
+              "line": 41,
               "widget": "ps_tint_swatch",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -186892,7 +187016,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 5,
+          "index": 7,
           "label": "Tint amount",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsTintStrength_slider",
@@ -186937,7 +187061,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 38,
+              "line": 44,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsTintStrength",
               "callbacks": [],
@@ -186954,7 +187078,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 38,
+              "line": 44,
               "widget": "ps_BDMergeProjectorVolumetricsTintStrength_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -186970,7 +187094,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 6,
+          "index": 8,
           "label": "Glow halo",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsBloomFeed_slider",
@@ -187015,7 +187139,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 43,
+              "line": 49,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsBloomFeed",
               "callbacks": [],
@@ -187044,7 +187168,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 43,
+              "line": 49,
               "widget": "ps_BDMergeProjectorVolumetricsBloomFeed_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187060,7 +187184,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 7,
+          "index": 9,
           "label": "Halo stretch",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider",
@@ -187091,7 +187215,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 48,
+              "line": 54,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsBloomFeedAnamorphic",
               "callbacks": [],
@@ -187120,7 +187244,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 48,
+              "line": 54,
               "widget": "ps_BDMergeProjectorVolumetricsBloomFeedAnamorphic_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187136,7 +187260,7 @@
           "card_title": "Look",
           "option_index": null,
           "option_label": null,
-          "index": 8,
+          "index": 10,
           "label": "Peak limit",
           "kind": "slider",
           "widget": "ps_BDMergeProjectorVolumetricsMaxLuminance_slider",
@@ -187181,7 +187305,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 53,
+              "line": 59,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMaxLuminance",
               "callbacks": [],
@@ -187198,7 +187322,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 53,
+              "line": 59,
               "widget": "ps_BDMergeProjectorVolumetricsMaxLuminance_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187259,7 +187383,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 60,
+              "line": 66,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMaxDistance",
               "callbacks": [],
@@ -187304,7 +187428,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 60,
+              "line": 66,
               "widget": "ps_BDMergeProjectorVolumetricsMaxDistance_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187365,7 +187489,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 65,
+              "line": 71,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsFeather",
               "callbacks": [],
@@ -187386,7 +187510,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 65,
+              "line": 71,
               "widget": "ps_BDMergeProjectorVolumetricsFeather_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187433,7 +187557,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 70,
+              "line": 76,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsRimStrength",
               "callbacks": [],
@@ -187462,7 +187586,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 70,
+              "line": 76,
               "widget": "ps_BDMergeProjectorVolumetricsRimStrength_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187509,7 +187633,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 75,
+              "line": 81,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsRimPower",
               "callbacks": [],
@@ -187538,7 +187662,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 75,
+              "line": 81,
               "widget": "ps_BDMergeProjectorVolumetricsRimPower_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187585,7 +187709,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 80,
+              "line": 86,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsRimWrap",
               "callbacks": [],
@@ -187614,7 +187738,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 80,
+              "line": 86,
               "widget": "ps_BDMergeProjectorVolumetricsRimWrap_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187661,7 +187785,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 85,
+              "line": 91,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsRimSoftness",
               "callbacks": [],
@@ -187690,7 +187814,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 85,
+              "line": 91,
               "widget": "ps_BDMergeProjectorVolumetricsRimSoftness_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187737,7 +187861,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 90,
+              "line": 96,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsRimThreshold",
               "callbacks": [],
@@ -187766,7 +187890,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 90,
+              "line": 96,
               "widget": "ps_BDMergeProjectorVolumetricsRimThreshold_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187827,7 +187951,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 97,
+              "line": 103,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsNoiseStrength",
               "callbacks": [],
@@ -187844,7 +187968,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 97,
+              "line": 103,
               "widget": "ps_BDMergeProjectorVolumetricsNoiseStrength_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187905,7 +188029,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 102,
+              "line": 108,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsNoiseScale",
               "callbacks": [],
@@ -187922,7 +188046,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 102,
+              "line": 108,
               "widget": "ps_BDMergeProjectorVolumetricsNoiseScale_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -187983,7 +188107,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 107,
+              "line": 113,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsNoiseSpeed",
               "callbacks": [],
@@ -188000,7 +188124,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 107,
+              "line": 113,
               "widget": "ps_BDMergeProjectorVolumetricsNoiseSpeed_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188047,7 +188171,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 112,
+              "line": 118,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsDust",
               "callbacks": [],
@@ -188064,7 +188188,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 112,
+              "line": 118,
               "widget": "ps_BDMergeProjectorVolumetricsDust_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188111,7 +188235,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 115,
+              "line": 121,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsDustIntensity",
               "callbacks": [],
@@ -188128,7 +188252,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 115,
+              "line": 121,
               "widget": "ps_BDMergeProjectorVolumetricsDustIntensity_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188175,7 +188299,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 120,
+              "line": 126,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsDustScale",
               "callbacks": [],
@@ -188192,7 +188316,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 120,
+              "line": 126,
               "widget": "ps_BDMergeProjectorVolumetricsDustScale_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188239,7 +188363,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 125,
+              "line": 131,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsDustDrift",
               "callbacks": [],
@@ -188256,7 +188380,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 125,
+              "line": 131,
               "widget": "ps_BDMergeProjectorVolumetricsDustDrift_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188317,7 +188441,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 132,
+              "line": 138,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsFogStrength",
               "callbacks": [],
@@ -188334,7 +188458,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 132,
+              "line": 138,
               "widget": "ps_BDMergeProjectorVolumetricsFogStrength_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188395,7 +188519,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 137,
+              "line": 143,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsFogGroundDensity",
               "callbacks": [],
@@ -188412,7 +188536,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 137,
+              "line": 143,
               "widget": "ps_BDMergeProjectorVolumetricsFogGroundDensity_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188473,7 +188597,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 142,
+              "line": 148,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsFogFalloff",
               "callbacks": [],
@@ -188490,7 +188614,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 142,
+              "line": 148,
               "widget": "ps_BDMergeProjectorVolumetricsFogFalloff_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188551,7 +188675,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 147,
+              "line": 153,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsFogBase",
               "callbacks": [],
@@ -188568,7 +188692,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 147,
+              "line": 153,
               "widget": "ps_BDMergeProjectorVolumetricsFogBase_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188629,7 +188753,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 154,
+              "line": 160,
               "tag": "compass_dial",
               "control_name": "BDMergeFroxelWindAzimuth",
               "callbacks": [],
@@ -188658,7 +188782,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 154,
+              "line": 160,
               "widget": "ps_BDMergeFroxelWindAzimuth_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188719,7 +188843,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 157,
+              "line": 163,
               "tag": "compass_dial",
               "control_name": "BDMergeFroxelWindElevation",
               "callbacks": [],
@@ -188748,7 +188872,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 157,
+              "line": 163,
               "widget": "ps_BDMergeFroxelWindElevation_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188809,7 +188933,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 160,
+              "line": 166,
               "tag": "kit_switch",
               "control_name": "BDMergeFroxelWindInverted",
               "callbacks": [],
@@ -188838,7 +188962,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 160,
+              "line": 166,
               "widget": "ps_BDMergeFroxelWindInverted_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188899,7 +189023,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 165,
+              "line": 171,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsShadowTint",
               "callbacks": [],
@@ -188916,7 +189040,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 165,
+              "line": 171,
               "widget": "ps_BDMergeProjectorVolumetricsShadowTint_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -188977,7 +189101,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 172,
+              "line": 178,
               "tag": "slider",
               "control_name": "BDMergeSoftShadowSoftness",
               "callbacks": [],
@@ -188994,7 +189118,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 172,
+              "line": 178,
               "widget": "ps_BDMergeSoftShadowSoftness_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189055,7 +189179,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 177,
+              "line": 183,
               "tag": "slider",
               "control_name": "BDMergeSoftShadowMaxPenumbra",
               "callbacks": [],
@@ -189072,7 +189196,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 177,
+              "line": 183,
               "widget": "ps_BDMergeSoftShadowMaxPenumbra_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189133,7 +189257,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 182,
+              "line": 188,
               "tag": "slider",
               "control_name": "BDMergeSoftShadowFill",
               "callbacks": [],
@@ -189150,7 +189274,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 182,
+              "line": 188,
               "widget": "ps_BDMergeSoftShadowFill_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189197,7 +189321,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 187,
+              "line": 193,
               "tag": "kit_switch",
               "control_name": "BDMergeSoftShadowSun",
               "callbacks": [],
@@ -189214,7 +189338,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 187,
+              "line": 193,
               "widget": "soft_shadow_sun_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189275,7 +189399,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 192,
+              "line": 198,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsResolution",
               "callbacks": [],
@@ -189304,7 +189428,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 192,
+              "line": 198,
               "widget": "ps_BDMergeProjectorVolumetricsResolution_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189351,7 +189475,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 197,
+              "line": 203,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsTemporal",
               "callbacks": [],
@@ -189368,7 +189492,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 197,
+              "line": 203,
               "widget": "projector_volumetrics_temporal_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189429,7 +189553,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 200,
+              "line": 206,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsTemporalBlend",
               "callbacks": [],
@@ -189446,7 +189570,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 200,
+              "line": 206,
               "widget": "ps_BDMergeProjectorVolumetricsTemporalBlend_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189493,7 +189617,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 205,
+              "line": 211,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsAdaptive",
               "callbacks": [],
@@ -189510,7 +189634,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 205,
+              "line": 211,
               "widget": "projector_volumetrics_adaptive_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189571,7 +189695,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 208,
+              "line": 214,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsTemporalReject",
               "callbacks": [],
@@ -189588,7 +189712,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 208,
+              "line": 214,
               "widget": "ps_BDMergeProjectorVolumetricsTemporalReject_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189635,7 +189759,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 213,
+              "line": 219,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsTemporalBeamDepth",
               "callbacks": [],
@@ -189652,7 +189776,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 213,
+              "line": 219,
               "widget": "projector_volumetrics_temporal_beam_depth_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189699,7 +189823,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 216,
+              "line": 222,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsScissor",
               "callbacks": [],
@@ -189716,7 +189840,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 216,
+              "line": 222,
               "widget": "projector_volumetrics_scissor_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189777,7 +189901,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 219,
+              "line": 225,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMinResolution",
               "callbacks": [],
@@ -189794,7 +189918,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 219,
+              "line": 225,
               "widget": "ps_BDMergeProjectorVolumetricsMinResolution_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189855,7 +189979,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 224,
+              "line": 230,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsDither",
               "callbacks": [],
@@ -189872,7 +189996,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 224,
+              "line": 230,
               "widget": "ps_BDMergeProjectorVolumetricsDither_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189919,7 +190043,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 229,
+              "line": 235,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsTemporalDither",
               "callbacks": [],
@@ -189936,7 +190060,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 229,
+              "line": 235,
               "widget": "projector_volumetrics_temporal_dither_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -189983,7 +190107,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 232,
+              "line": 238,
               "tag": "kit_switch",
               "control_name": "BDMergeGoboAnisotropic",
               "callbacks": [],
@@ -190000,7 +190124,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 232,
+              "line": 238,
               "widget": "gobo_anisotropic_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190047,7 +190171,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 237,
+              "line": 243,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsEquiangular",
               "callbacks": [],
@@ -190064,7 +190188,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 237,
+              "line": 243,
               "widget": "projector_volumetrics_equiangular_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190111,7 +190235,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 240,
+              "line": 246,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsAirborneTap",
               "callbacks": [],
@@ -190128,7 +190252,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 240,
+              "line": 246,
               "widget": "projector_volumetrics_airborne_tap_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190175,7 +190299,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 243,
+              "line": 249,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsCookieFootprint",
               "callbacks": [],
@@ -190192,7 +190316,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 243,
+              "line": 249,
               "widget": "projector_volumetrics_cookie_footprint_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190239,7 +190363,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 246,
+              "line": 252,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsPyramidScissor",
               "callbacks": [],
@@ -190256,7 +190380,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 246,
+              "line": 252,
               "widget": "projector_volumetrics_pyramid_scissor_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190322,7 +190446,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 251,
+              "line": 257,
               "tag": "combo_box",
               "control_name": "BDMergeProjectorVolumetricsDefinition",
               "callbacks": [],
@@ -190339,7 +190463,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 251,
+              "line": 257,
               "widget": "ps_BDMergeProjectorVolumetricsDefinition",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190400,7 +190524,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 261,
+              "line": 267,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsMaxSteps",
               "callbacks": [],
@@ -190417,7 +190541,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 261,
+              "line": 267,
               "widget": "ps_BDMergeProjectorVolumetricsMaxSteps",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190478,7 +190602,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 266,
+              "line": 272,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsBigConeCap",
               "callbacks": [],
@@ -190495,7 +190619,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 266,
+              "line": 272,
               "widget": "ps_BDMergeProjectorVolumetricsBigConeCap",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190556,7 +190680,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 271,
+              "line": 277,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsFrameBudget",
               "callbacks": [],
@@ -190573,7 +190697,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 271,
+              "line": 277,
               "widget": "ps_BDMergeProjectorVolumetricsFrameBudget",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190637,7 +190761,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 276,
+              "line": 282,
               "tag": "combo_box",
               "control_name": "BDMergeProjectorVolumetricsBeamShadows",
               "callbacks": [],
@@ -190654,7 +190778,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 276,
+              "line": 282,
               "widget": "ps_BDMergeProjectorVolumetricsBeamShadows",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190715,7 +190839,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 284,
+              "line": 290,
               "tag": "slider",
               "control_name": "BDMergeProjectorVolumetricsShadowSamples",
               "callbacks": [],
@@ -190732,7 +190856,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 284,
+              "line": 290,
               "widget": "ps_BDMergeProjectorVolumetricsShadowSamples_slider",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190779,7 +190903,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 289,
+              "line": 295,
               "tag": "kit_switch",
               "control_name": "BDMergeProjectorVolumetricsHalfRes",
               "callbacks": [],
@@ -190796,7 +190920,7 @@
             {
               "kind": "xui",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 289,
+              "line": 295,
               "widget": "projector_volumetrics_half_res_check",
               "root": {
                 "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
@@ -190840,7 +190964,7 @@
           "cpp": [
             {
               "file": "indra/newview/alpanelprojectorshafts.cpp",
-              "line": 25,
+              "line": 41,
               "class": "ALPanelProjectorShafts",
               "function": "postBuild",
               "wired_class": "ALPanelProjectorShafts",
@@ -190860,7 +190984,7 @@
               "kind": "xui",
               "reason": "same widget name outside the page owner roots",
               "file": "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
-              "line": 292,
+              "line": 298,
               "tag": "text",
               "control_name": null,
               "callbacks": [],
@@ -204025,7 +204149,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 914,
+              "line": 922,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -218880,7 +219004,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 915,
+              "line": 923,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
@@ -223834,7 +223958,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -223946,7 +224070,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224040,7 +224164,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224169,7 +224293,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224262,7 +224386,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224352,7 +224476,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224442,7 +224566,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224596,7 +224720,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224686,7 +224810,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224776,7 +224900,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224866,7 +224990,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -224956,7 +225080,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -225046,7 +225170,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -225136,7 +225260,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -225236,7 +225360,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -225326,7 +225450,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -225416,7 +225540,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7332,
+              "line": 7343,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -227849,7 +227973,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21098,
+              "line": 21104,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -227940,7 +228064,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21115,
+              "line": 21121,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228187,7 +228311,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21117,
+              "line": 21123,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228356,7 +228480,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21120,
+              "line": 21126,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228447,7 +228571,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21121,
+              "line": 21127,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228538,7 +228662,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21122,
+              "line": 21128,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228629,7 +228753,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21123,
+              "line": 21129,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228720,7 +228844,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21124,
+              "line": 21130,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228811,7 +228935,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21125,
+              "line": 21131,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -228902,7 +229026,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21126,
+              "line": 21132,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -229071,7 +229195,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21133,
+              "line": 21139,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -229162,7 +229286,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21135,
+              "line": 21141,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -229565,7 +229689,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21587,
+              "line": 21593,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -229913,7 +230037,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21588,
+              "line": 21594,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -230004,7 +230128,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21586,
+              "line": 21592,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -230361,7 +230485,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21582,
+              "line": 21588,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -230764,7 +230888,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21598,
+              "line": 21604,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -231089,7 +231213,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/pipeline.cpp",
-              "line": 21605,
+              "line": 21611,
               "class": "LLPipeline",
               "function": "renderWeather",
               "wired_class": "LLPipeline",
@@ -237578,7 +237702,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alkitpage.cpp",
-              "line": 913,
+              "line": 921,
               "class": "ALKitPage",
               "function": "postBuild",
               "wired_class": "ALKitPage",
