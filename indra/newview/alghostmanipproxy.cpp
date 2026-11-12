@@ -443,8 +443,10 @@ void ALGhostManipProxy::pullProxyToInstance()
     {
         return;
     }
-    // Write fields DIRECTLY (no mTransformRevision bump) -- a bump would make the
-    // next non-drag tick push straight back to the proxy, fighting the drag.
+    // Ungrouped overlays write fields DIRECTLY (no mTransformRevision bump).
+    // Entity clones and group members go through transformUnit/transformGroup,
+    // which bump the revision; that is safe because tick() never pushes to the
+    // proxy while mDragging, and endDrag re-syncs mSeenRevision.
     if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
     {
         inst->mChaosHasBase = false;
@@ -461,10 +463,6 @@ void ALGhostManipProxy::pullProxyToInstance()
     // (never writes the proxy mid-drag), so it doesn't fight LLManipScale.
     if (LLToolMgr::getInstance()->getCurrentTool() == LLToolCompScale::getInstance())
     {
-        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && !group)
-        {
-            return; // entity scale remains exclusively on the outer transform
-        }
         const F32 requested_scale = uniformScaleFromProxy(
             mProxy->getScale(), mDragLocalDimensions, mDragStartScale);
         if (whole_group)
@@ -475,7 +473,10 @@ void ALGhostManipProxy::pullProxyToInstance()
             return;
         }
         const F32 s = llclamp(requested_scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
-        if (group)
+        // [CloneStretch] Entity clones scale on their outer transform; transformUnit
+        // is the path that applies it (setEntityScale + applyEntityTransform), the
+        // same one grouped members and the numeric scale control already use.
+        if (group || inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
         {
             studio.transformUnit(
                 mInstanceId, mDragStartFoot, mDragStartRotation, s);
