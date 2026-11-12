@@ -14,7 +14,11 @@
 #include "alghoststudio.h"
 #include "altoolghostedit.h"
 
+#include "alkithistory.h"           // [CloneEditUndo]
+#include "alkitshell.h"             // [CloneEditUndo]
 #include "llagent.h"
+#include "llfloaterreg.h"           // [CloneEditUndo]
+#include "llnotificationsutil.h"    // [CloneEditUndo]
 #include "lldrawable.h"
 #include "llghostavatar.h"
 #include "llprimitive.h"            // FLAGS_OBJECT_*, LL_PCODE_* profile/path
@@ -167,6 +171,14 @@ F32 uniformScaleFromProxy(const LLVector3& proxy_dimensions,
     return result;
 }
 
+// [CloneEditUndo] One committed Edit-box drag = one Director history step.
+// The code between the BEGIN/END markers is compiled and executed against
+// doubles by scripts/code_tools/clone_edit_undo_check.py; keep it free of
+// viewer-only dependencies (it may use only the studio/history calls below).
+void cloneEditHistoryBegin();   // cancel any live drag before a replay mutates the clone
+void cloneEditHistoryEnd();     // resync the proxy after a replay
+
+// [CloneEditUndo-BEGIN]
 ALGhostStudio::Instance* backingInstanceForUnit(
     ALGhostStudio& studio, const LLUUID& unit_id)
 {
@@ -182,7 +194,602 @@ ALGhostStudio::Instance* backingInstanceForUnit(
     }
     return studio.getInstance(group->mMembers.front().mInstanceId);
 }
+
+struct UnitXform
+{
+    LLVector3d   mFoot;
+    LLQuaternion mRotation;
+    F32          mScale = 1.f;
+};
+
+// What the drag edited: an ungrouped clone, one member of a group with member
+// editing on, or a whole group (keyed by the GROUP id, never a member id).
+struct EditContext
+{
+    LLUUID mUnitId;             // whole group: group id; otherwise the clone id
+    LLUUID mGroupId;            // null = ungrouped clone
+    bool   mWholeGroup = false;
+    bool   mPinKnown = false;   // member-only edit inside a group
+    bool   mPinnedBefore = false;
+    bool   mPinnedAfter = false;
+};
+
+bool unitXformChanged(const UnitXform& a, const UnitXform& b)
+{
+    F32 quat_delta = 0.f;
+    for (S32 i = 0; i < 4; ++i)
+    {
+        quat_delta = llmax(quat_delta, fabsf(a.mRotation.mQ[i] - b.mRotation.mQ[i]));
+    }
+    return dist_vec(a.mFoot, b.mFoot) > 0.0005 ||
+           quat_delta > 0.00001f ||
+           fabsf(a.mScale - b.mScale) > 0.00001f;
+}
+
+bool editMemberPinned(ALGhostStudio& studio, const LLUUID& unit_id, bool& pinned)
+{
+    const ALGhostGroupModel::Group* group = studio.groupForMember(unit_id);
+    if (!group)
+    {
+        return false;
+    }
+    for (const ALGhostGroupModel::Member& member : group->mMembers)
+    {
+        if (member.mInstanceId == unit_id)
+        {
+            pinned = member.mPinned;
+            return true;
+        }
+    }
+    return false;
+}
+
+EditContext captureEditContext(ALGhostStudio& studio, const LLUUID& unit_id)
+{
+    EditContext ctx;
+    ctx.mUnitId = unit_id;
+    const ALGhostGroupModel::Group* group = studio.groupForMember(unit_id);
+    if (group)
+    {
+        ctx.mGroupId = group->mId;
+        ctx.mWholeGroup = unit_id == group->mId || !group->mEditMembers;
+        if (ctx.mWholeGroup)
+        {
+            ctx.mUnitId = group->mId;
+        }
+    }
+    return ctx;
+}
+
+// Existence + context check, with no mutation. Used by the history validator
+// (so a dead step is discarded and never blocks older steps) and by replay.
+bool editContextValid(ALGhostStudio& studio, const EditContext& ctx, std::string& reason)
+{
+    const ALGhostGroupModel::Group* group = studio.groupForMember(ctx.mUnitId);
+    if (ctx.mWholeGroup)
+    {
+        if (!group || group->mId != ctx.mGroupId)
+        {
+            reason = "That clone is no longer available";
+            return false;
+        }
+        if (group->mEditMembers)
+        {
+            reason = "That group is being edited per member";
+            return false;
+        }
+        return true;
+    }
+    if (!studio.getInstance(ctx.mUnitId))
+    {
+        reason = "That clone is no longer available";
+        return false;
+    }
+    if (ctx.mGroupId.isNull())
+    {
+        if (group)
+        {
+            reason = "That clone has since joined a group";
+            return false;
+        }
+        return true;
+    }
+    if (!group || group->mId != ctx.mGroupId || !group->mEditMembers)
+    {
+        reason = "That clone is no longer edited as a group member";
+        return false;
+    }
+    return true;
+}
+
+// Any condition under which the replay could return false is checked HERE, in
+// the validator (prepare phase): history discards an invalid step, whereas a
+// failed replay stays on the stack and would block every older step.
+// Mirrors every public-state rejection of applyGroupTransforms(): transformGroup
+// and a member transformUnit (member editing) both apply the ENTIRE group, and
+// reject if any member is gone / ungrouped / driven by motion or chaos, or if
+// an entity member has no live runtime (region teardown, parked clone).
+bool groupApplyFeasible(ALGhostStudio& studio, const ALGhostGroupModel::Group& group,
+                        std::string& reason)
+{
+    for (const ALGhostGroupModel::Member& member : group.mMembers)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(member.mInstanceId);
+        if (!inst || inst->mGroupId != group.mId ||
+            inst->mMotion != ALGhostStudio::MOTION_OFF || inst->mMotionHasBase ||
+            inst->mChaosEnabled || inst->mChaosHasBase)
+        {
+            reason = "A clone in that group cannot be moved right now";
+            return false;
+        }
+        if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            !studio.resolveEntityClone(member.mInstanceId))
+        {
+            reason = "A clone in that group is not loaded right now";
+            return false;
+        }
+    }
+    return true;
+}
+
+bool editStepFeasible(ALGhostStudio& studio, const EditContext& ctx,
+                      const UnitXform& target, std::string& reason)
+{
+    if (ctx.mWholeGroup || !ctx.mGroupId.isNull())
+    {
+        const ALGhostGroupModel::Group* group = studio.groupForMember(ctx.mUnitId);
+        if (!group || !groupApplyFeasible(studio, *group, reason))
+        {
+            if (!group)
+            {
+                reason = "That clone is no longer available";
+            }
+            return false;
+        }
+    }
+    if (ctx.mWholeGroup)
+    {
+        F32 minimum = 0.f;
+        F32 maximum = 0.f;
+        if (!studio.getGroupScaleLimits(ctx.mUnitId, minimum, maximum) ||
+            target.mScale < minimum || target.mScale > maximum)
+        {
+            reason = "That group can no longer be scaled to that size";
+            return false;
+        }
+        return true;
+    }
+    if (target.mScale < GHOST_SCALE_MIN || target.mScale > GHOST_SCALE_MAX)
+    {
+        reason = "That clone can no longer be scaled to that size";
+        return false;
+    }
+    return true;
+}
+
+bool editStepValid(ALGhostStudio& studio, const EditContext& ctx,
+                   const UnitXform& before, const UnitXform& after,
+                   bool redo, std::string& reason)
+{
+    return editContextValid(studio, ctx, reason) &&
+           editStepFeasible(studio, ctx, redo ? after : before, reason);
+}
+
+// Restore a member pin bit WITHOUT replacing its just-restored transform.
+// setGroupMemberPinned(false) resets the member to its authored slot, which
+// would undo e.g. an aimed facing; a transform already pinned the member, so
+// only the bit is flipped (setGroupMemberPinned(true) keeps the list rows fresh).
+void restoreMemberPin(ALGhostStudio& studio, const LLUUID& unit_id, bool pinned)
+{
+    studio.setGroupMemberPinned(unit_id, true);
+    if (pinned)
+    {
+        return;
+    }
+    if (ALGhostGroupModel::Group* group = studio.groupForMember(unit_id))
+    {
+        for (ALGhostGroupModel::Member& member : group->mMembers)
+        {
+            if (member.mInstanceId == unit_id)
+            {
+                member.mPinned = false;
+                ++group->mRevision;
+            }
+        }
+    }
+}
+
+// Same rule as a committed endDrag: a Reflect clone (Fixed plane + Mirror
+// position) must not be pulled back by the next Reflect pass.
+void invalidateEditReflect(ALGhostStudio& studio, const EditContext& ctx)
+{
+    const ALGhostGroupModel::Group* group = studio.groupForMember(ctx.mUnitId);
+    if (ctx.mWholeGroup && group)
+    {
+        for (const ALGhostGroupModel::Member& member : group->mMembers)
+        {
+            studio.invalidateReflectPlane(member.mInstanceId);
+        }
+    }
+    else
+    {
+        studio.invalidateReflectPlane(ctx.mUnitId);
+    }
+}
+
+bool applyEditStep(const EditContext& ctx, const UnitXform& before,
+                   const UnitXform& after, bool redo, std::string& reason)
+{
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    cloneEditHistoryBegin();
+    bool ok = editStepValid(studio, ctx, before, after, redo, reason);
+    if (ok)
+    {
+        const UnitXform& target = redo ? after : before;
+        ok = ctx.mWholeGroup
+            ? studio.transformGroup(ctx.mUnitId, target.mFoot, target.mRotation, target.mScale)
+            : studio.transformUnit(ctx.mUnitId, target.mFoot, target.mRotation, target.mScale);
+        if (ok && ctx.mPinKnown)
+        {
+            restoreMemberPin(studio, ctx.mUnitId,
+                             redo ? ctx.mPinnedAfter : ctx.mPinnedBefore);
+        }
+        else if (!ok)
+        {
+            reason = "That clone is no longer available";
+        }
+        if (ok)
+        {
+            invalidateEditReflect(studio, ctx);
+        }
+    }
+    cloneEditHistoryEnd();
+    return ok;
+}
+
+// Called from endDrag(true) AFTER the final transform was committed.
+// Returns true when a step was recorded.
+bool recordCommittedDrag(ALGhostStudio& studio, ALKitShell* shell,
+                         const LLUUID& drag_unit_id, S32 kind,
+                         const UnitXform& before,
+                         bool pin_known, bool pin_before)
+{
+    UnitXform after;
+    if (!shell || !studio.getUnitTransform(
+            drag_unit_id, after.mFoot, after.mRotation, after.mScale))
+    {
+        return false;
+    }
+    if (!unitXformChanged(before, after))
+    {
+        return false;
+    }
+    EditContext ctx = captureEditContext(studio, drag_unit_id);
+    std::string name;
+    if (ctx.mWholeGroup)
+    {
+        if (const ALGhostGroupModel::Group* group = studio.groupForMember(ctx.mUnitId))
+        {
+            name = group->mName;
+        }
+        if (name.empty())
+        {
+            name = "group";
+        }
+    }
+    else
+    {
+        name = studio.cloneDisplayName(ctx.mUnitId);
+        if (!ctx.mGroupId.isNull() && pin_known)
+        {
+            ctx.mPinKnown = true;
+            ctx.mPinnedBefore = pin_before;
+            ctx.mPinnedAfter = pin_before;
+            editMemberPinned(studio, ctx.mUnitId, ctx.mPinnedAfter);
+        }
+    }
+    const char* verb = kind == 2 ? "Scale " : kind == 1 ? "Rotate " : "Move ";
+    shell->history().recordCustom(shell, "clone_edit_transform", std::string(verb) + name,
+        [ctx, before, after](bool redo, std::string& reason)
+        {
+            return applyEditStep(ctx, before, after, redo, reason);
+        },
+        false,
+        [ctx, before, after](bool redo, std::string& reason)
+        {
+            return editStepValid(ALGhostStudio::instance(), ctx, before, after, redo, reason);
+        });
+    return true;
+}
+
+// Pre-drag snapshot: what a cancel restores and what an undo returns to.
+struct DragSnapshot
+{
+    LLVector3d   mFoot;
+    LLQuaternion mRotation;
+    F32          mScale = 1.f;
+    S32          mKind = 0;         // 0 move, 1 rotate, 2 scale
+    bool         mPinKnown = false;
+    bool         mPinned = false;
+};
+
+bool dragBegin(DragSnapshot& snap, ALGhostStudio& studio,
+               const LLUUID& unit_id, S32 kind)
+{
+    snap = DragSnapshot();
+    snap.mKind = kind;
+    const ALGhostStudio::Instance* inst = backingInstanceForUnit(studio, unit_id);
+    if (!inst)
+    {
+        return false;
+    }
+    if (!studio.getUnitTransform(
+            unit_id, snap.mFoot, snap.mRotation, snap.mScale))
+    {
+        snap.mFoot = inst->mFootGlobal;
+        snap.mRotation = inst->mRotation;
+        snap.mScale = inst->mScale;
+    }
+    if (const ALGhostGroupModel::Group* group = studio.groupForMember(unit_id);
+        group && group->mEditMembers && unit_id != group->mId)
+    {
+        for (const ALGhostGroupModel::Member& member : group->mMembers)
+        {
+            if (member.mInstanceId == inst->mId)
+            {
+                snap.mPinKnown = true;
+                snap.mPinned = member.mPinned;
+                break;
+            }
+        }
+    }
+    return true;
+}
+
+// Drag end. commit: record ONE step (if changed). Cancel: restore the snapshot
+// and record nothing. Returns true when a step was recorded.
+bool dragFinish(const DragSnapshot& snap, ALGhostStudio& studio, ALKitShell* shell,
+                const LLUUID& unit_id, bool commit)
+{
+    UnitXform before;
+    before.mFoot = snap.mFoot;
+    before.mRotation = snap.mRotation;
+    before.mScale = snap.mScale;
+    if (commit)
+    {
+        return recordCommittedDrag(studio, shell, unit_id, snap.mKind,
+                                   before, snap.mPinKnown, snap.mPinned);
+    }
+    if (!backingInstanceForUnit(studio, unit_id))
+    {
+        return false;
+    }
+    const ALGhostGroupModel::Group* group = studio.groupForMember(unit_id);
+    const bool whole_group =
+        group && (unit_id == group->mId || !group->mEditMembers);
+    if (whole_group)
+    {
+        studio.transformGroup(unit_id, before.mFoot, before.mRotation, before.mScale);
+    }
+    else
+    {
+        studio.transformUnit(unit_id, before.mFoot, before.mRotation, before.mScale);
+    }
+    if (snap.mPinKnown)
+    {
+        // transformUnit() pins a member as soon as it is edited; a cancelled
+        // drag must be neutral, and must keep the restored (possibly aimed) pose.
+        restoreMemberPin(studio, unit_id, snap.mPinned);
+    }
+    return false;
+}
+
+// Wrapper-facing forms: production beginDrag/endDrag only forward their
+// members to these, so the handoff itself is exercised too.
+S32 dragKindForTool(bool scale_tool, bool rotate_tool)
+{
+    return scale_tool ? 2 : rotate_tool ? 1 : 0;
+}
+
+void dragBeginInto(ALGhostStudio& studio, const LLUUID& unit_id, S32 kind,
+                   LLVector3d& foot, LLQuaternion& rotation, F32& scale,
+                   S32& kind_out, bool& pin_known, bool& pinned)
+{
+    DragSnapshot snap;
+    const bool have = dragBegin(snap, studio, unit_id, kind);
+    kind_out = snap.mKind;
+    pin_known = snap.mPinKnown;
+    pinned = snap.mPinned;
+    if (have)
+    {
+        foot = snap.mFoot;
+        rotation = snap.mRotation;
+        scale = snap.mScale;
+    }
+}
+
+bool dragFinishFrom(const LLVector3d& foot, const LLQuaternion& rotation, F32 scale,
+                    S32 kind, bool pin_known, bool pinned,
+                    ALGhostStudio& studio, ALKitShell* shell,
+                    const LLUUID& unit_id, bool commit)
+{
+    DragSnapshot snap;
+    snap.mFoot = foot;
+    snap.mRotation = rotation;
+    snap.mScale = scale;
+    snap.mKind = kind;
+    snap.mPinKnown = pin_known;
+    snap.mPinned = pinned;
+    return dragFinish(snap, studio, shell, unit_id, commit);
+}
+
+// Stock Undo/Redo routing: only while clone Edit mode is active AND the stock
+// selection is the proxy does Undo/Redo go to the Director shell history.
+ALGhostManipProxy::EUndoRoute cloneUndoRouteImpl(bool edit_active, bool owns_selection, bool redo)
+{
+    if (!edit_active || !owns_selection)
+    {
+        return ALGhostManipProxy::ROUTE_STOCK;
+    }
+    return redo ? ALGhostManipProxy::ROUTE_REDO : ALGhostManipProxy::ROUTE_UNDO;
+}
+
+// Replay support against an abstract edit host (the proxy in production).
+struct EditHost
+{
+    virtual ~EditHost() = default;
+    virtual bool editing() = 0;
+    virtual void releaseManip() = 0;
+    virtual bool dragging() = 0;
+    virtual void cancelDrag() = 0;
+    virtual bool hasProxy() = 0;
+    virtual void pushProxy() = 0;
+    virtual void syncRevision() = 0;
+};
+
+void historyBeginImpl(EditHost& host)
+{
+    if (!host.editing())
+    {
+        return;
+    }
+    host.releaseManip();
+    if (host.dragging())
+    {
+        host.cancelDrag();
+    }
+}
+
+void historyEndImpl(EditHost& host)
+{
+    if (!host.editing() || !host.hasProxy())
+    {
+        return;
+    }
+    host.pushProxy();
+    host.syncRevision();
+}
+// [CloneEditUndo-END]
+
+ALKitShell* directorShell()
+{
+    if (LLFloater* director = LLFloaterReg::getInstance("director"))
+    {
+        return director->findChild<ALKitShell>("director_shell");
+    }
+    return nullptr;
+}
+
+void cloneEditHistoryBegin()
+{
+    ALToolGhostEdit::getInstance()->getManipProxy().historyBegin();
+}
+
+void cloneEditHistoryEnd()
+{
+    ALToolGhostEdit::getInstance()->getManipProxy().historyEnd();
+}
 } // anonymous namespace
+
+// [CloneEditUndo] Replay support: a live gizmo drag would overwrite the replayed
+// transform on the next tick, so cancel it first, then resync the proxy.
+void ALGhostManipProxy::historyBegin()
+{
+    struct Host : EditHost
+    {
+        ALGhostManipProxy& p;
+        explicit Host(ALGhostManipProxy& proxy) : p(proxy) {}
+        bool editing() override { return p.mEditMode; }
+        void releaseManip() override
+        {
+            if (LLToolComposite* comp = dynamic_cast<LLToolComposite*>(
+                    LLToolMgr::getInstance()->getCurrentTool()))
+            {
+                comp->releaseManip();
+            }
+        }
+        bool dragging() override { return p.mDragging; }
+        void cancelDrag() override { p.endDrag(false); }
+        bool hasProxy() override { return p.mProxy.notNull(); }
+        void pushProxy() override { p.pushInstanceToProxy(); }
+        void syncRevision() override
+        {
+            if (ALGhostStudio::Instance* inst = backingInstanceForUnit(
+                    ALGhostStudio::instance(), p.mInstanceId))
+            {
+                p.mSeenRevision = inst->mTransformRevision;
+            }
+        }
+    } host(*this);
+    historyBeginImpl(host);
+}
+
+void ALGhostManipProxy::historyEnd()
+{
+    struct Host : EditHost
+    {
+        ALGhostManipProxy& p;
+        explicit Host(ALGhostManipProxy& proxy) : p(proxy) {}
+        bool editing() override { return p.mEditMode; }
+        void releaseManip() override {}
+        bool dragging() override { return p.mDragging; }
+        void cancelDrag() override {}
+        bool hasProxy() override { return p.mProxy.notNull(); }
+        void pushProxy() override { p.pushInstanceToProxy(); }
+        void syncRevision() override
+        {
+            if (ALGhostStudio::Instance* inst = backingInstanceForUnit(
+                    ALGhostStudio::instance(), p.mInstanceId))
+            {
+                p.mSeenRevision = inst->mTransformRevision;
+            }
+        }
+    } host(*this);
+    historyEndImpl(host);
+}
+
+// [CloneEditUndo] Redirect stock Undo/Redo to the Director shell history while
+// clone Edit mode owns the selection (see LLSelectMgr::canUndo/undo/canRedo/redo).
+ALGhostManipProxy::EUndoRoute ALGhostManipProxy::undoRoute(
+    bool edit_active, bool owns_selection, bool redo)
+{
+    return cloneUndoRouteImpl(edit_active, owns_selection, redo);
+}
+
+bool ALGhostManipProxy::historyCan(bool redo)
+{
+    ALKitShell* shell = directorShell();
+    return shell && shell->history().stepSequence("chrome", redo) != 0;
+}
+
+bool ALGhostManipProxy::historyRun(bool redo)
+{
+    ALKitShell* shell = directorShell();
+    if (!shell)
+    {
+        return false;
+    }
+    shell->history().finishGesture();
+    if (!shell->history().stepSequence("chrome", redo))
+    {
+        return true;    // nothing to replay; still swallow the stock sim undo
+    }
+    std::string reason;
+    if (!shell->history().prepareReplay("chrome", redo, reason))
+    {
+        shell->history().discardStep("chrome", redo);
+        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", reason));
+    }
+    else if (redo)
+    {
+        shell->history().redo("chrome");
+    }
+    else
+    {
+        shell->history().undo("chrome");
+    }
+    return true;
+}
 
 ALGhostManipProxy::ALGhostManipProxy() = default;
 
@@ -577,37 +1184,13 @@ void ALGhostManipProxy::beginDrag()
     mDragLocalCenter = mProxyLocalCenter;
     mDragLocalDimensions = mProxyLocalDimensions;
     mDragRootOffset = mProxyRootOffset;
-    mDragStartMemberPinKnown = false;
-    mDragStartMemberPinned = false;
+    const LLTool* tool = LLToolMgr::getInstance()->getCurrentTool();
     // Snapshot the pre-drag transform so a cancelled drag can restore it.
-    ALGhostStudio& studio = ALGhostStudio::instance();
-    if (const ALGhostStudio::Instance* inst =
-            backingInstanceForUnit(studio, mInstanceId))
-    {
-        if (!studio.getUnitTransform(
-                mInstanceId, mDragStartFoot,
-                mDragStartRotation, mDragStartScale))
-        {
-            mDragStartFoot = inst->mFootGlobal;
-            mDragStartRotation = inst->mRotation;
-            mDragStartScale = inst->mScale;
-        }
-        if (const ALGhostGroupModel::Group* group =
-                studio.groupForMember(mInstanceId);
-            group && group->mEditMembers &&
-            mInstanceId != group->mId)
-        {
-            for (const ALGhostGroupModel::Member& member : group->mMembers)
-            {
-                if (member.mInstanceId == inst->mId)
-                {
-                    mDragStartMemberPinKnown = true;
-                    mDragStartMemberPinned = member.mPinned;
-                    break;
-                }
-            }
-        }
-    }
+    dragBeginInto(ALGhostStudio::instance(), mInstanceId,
+                  dragKindForTool(tool == LLToolCompScale::getInstance(),
+                                  tool == LLToolCompRotate::getInstance()),
+                  mDragStartFoot, mDragStartRotation, mDragStartScale,
+                  mDragKind, mDragStartMemberPinKnown, mDragStartMemberPinned);
 }
 
 void ALGhostManipProxy::endDrag(bool commit)
@@ -652,6 +1235,12 @@ void ALGhostManipProxy::endDrag(bool commit)
                     inst->mRotation, inst->mScale);
             }
             mSeenRevision = inst->mTransformRevision;
+            // [CloneEditUndo] One committed drag = one history step; unchanged
+            // drags record nothing (cancelled drags never reach this branch).
+            dragFinishFrom(mDragStartFoot, mDragStartRotation, mDragStartScale,
+                           mDragKind, mDragStartMemberPinKnown,
+                           mDragStartMemberPinned, studio, directorShell(),
+                           mInstanceId, true);
         }
         const auto& studio_reflect = ALGhostStudio::instance();
         const auto* reflect_group = studio_reflect.groupForMember(mInstanceId);
@@ -665,41 +1254,12 @@ void ALGhostManipProxy::endDrag(bool commit)
     }
     else
     {
-        ALGhostStudio& studio = ALGhostStudio::instance();
-        ALGhostStudio::Instance* inst =
-            backingInstanceForUnit(studio, mInstanceId);
-        if (!inst)
-        {
-            mDragStartMemberPinKnown = false;
-            return;
-        }
-        // Cancel: restore the pre-drag transform + scale (setTransform bumps the
-        // revision, so the next tick pushes it all back onto the proxy).
-        const ALGhostGroupModel::Group* group =
-            studio.groupForMember(mInstanceId);
-        const bool whole_group =
-            group && (mInstanceId == group->mId ||
-                      !group->mEditMembers);
-        if (whole_group)
-        {
-            studio.transformGroup(
-                mInstanceId, mDragStartFoot,
-                mDragStartRotation, mDragStartScale);
-        }
-        else
-        {
-            studio.transformUnit(
-                mInstanceId, mDragStartFoot,
-                mDragStartRotation, mDragStartScale);
-        }
-        if (mDragStartMemberPinKnown)
-        {
-            // transformUnit() deliberately pins a member as soon as it is
-            // edited. A cancelled drag must be observationally neutral, so
-            // restore the pin bit that existed before the first live update.
-            studio.setGroupMemberPinned(
-                mInstanceId, mDragStartMemberPinned);
-        }
+        // Cancel: restore the pre-drag transform + scale + member pin (the
+        // revision bump makes the next tick push it back onto the proxy).
+        dragFinishFrom(mDragStartFoot, mDragStartRotation, mDragStartScale,
+                       mDragKind, mDragStartMemberPinKnown,
+                       mDragStartMemberPinned, ALGhostStudio::instance(),
+                       nullptr, mInstanceId, false);
     }
     mDragStartMemberPinKnown = false;
 }
