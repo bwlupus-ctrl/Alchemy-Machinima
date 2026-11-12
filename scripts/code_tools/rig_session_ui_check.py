@@ -332,26 +332,35 @@ struct ALCineLightRigManager {
     Rig rigs[5];
     static ALCineLightRigManager& instance() { static ALCineLightRigManager manager; return manager; }
     const Rig& at(Slot slot) const { return rigs[static_cast<int>(slot)]; }
+    LLUUID groupSlotActor(Slot slot) const {return static_cast<int>(slot)==0?LLUUID{"self"}:slotActor(slot);}
+    LLUUID slotActor(Slot slot) const {
+        int i=static_cast<int>(slot);
+        return rigs[i].anchor.notNull()?rigs[i].anchor:i==0?LLUUID{"self"}:LLUUID{"subject-"+std::string(1,'A'+i-1)};
+    }
 };
-struct ALPanelCineLightRig { static std::string rigTargetDescription(S32); };
+struct ALPanelCineLightRig { std::string rigTargetDescription(S32,const char* area="anchors");std::string rigActorName(const LLUUID&,const char*); };
 ''')
+    lines.append('std::string ALPanelCineLightRig::rigActorName(const LLUUID& id,const char*) { if(LLDirectorCast::isSelf(id))return "You";auto* m=LLDirectorCast::instance().getMember(id);return m&&!m->mLastName.empty()?m->mLastName:"Actor"; }')
     panel_source = (root / 'indra/newview/alpanelcinelightrig.cpp').read_text(encoding='utf8')
     lines.append(function(panel_source, 'std::string ALPanelCineLightRig::rigTargetDescription('))
     lines.append(r'''
 void test() {
     auto& rig=ALCineLightRigManager::instance().rigs[0];
     auto& cast=LLDirectorCast::instance();
-    assert(ALPanelCineLightRig::rigTargetDescription(0)=="You");
+    ALPanelCineLightRig panel;
+    assert(panel.rigTargetDescription(0)=="You");
     rig.anchor={"subject-A"}; cast.members["subject-A"].mLastName="Alice";
-    assert(ALPanelCineLightRig::rigTargetDescription(0)=="Alice");
+    assert(panel.rigTargetDescription(0)=="Alice");
     rig.anchor={"legacy-other-avatar"};
-    assert(ALPanelCineLightRig::rigTargetDescription(0)=="legacy-other-avatar");
-    rig.anchor={"self"}; assert(ALPanelCineLightRig::rigTargetDescription(0)=="You");
-    rig.lit_group="guards"; assert(ALPanelCineLightRig::rigTargetDescription(0)=="group guards");
+    assert(panel.rigTargetDescription(0)=="Actor");
+    rig.anchor={"self"}; assert(panel.rigTargetDescription(0)=="You");
+    rig.lit_group="guards"; assert(panel.rigTargetDescription(0)=="group guards");
     rig.lit_group.clear();
     rig.anchor={"legacy-other-avatar"}; rig.group=true;
-    assert(ALPanelCineLightRig::rigTargetDescription(0)=="group: You");
-    std::cout << "PASS: production target description resolves legacy SELF anchors by cast name/UUID and preserves Who's lit semantics\n";
+    assert(panel.rigTargetDescription(0)=="group: You");
+    cast.members["legacy-other-avatar"].mLastName="Borrowed name";
+    assert(panel.rigTargetDescription(0)=="group: You");
+    std::cout << "PASS: production target description resolves legacy SELF anchors by cast name/neutral fallback and preserves Who's lit semantics\n";
 }
 } // namespace RigTargetUI
 ''')
@@ -372,7 +381,8 @@ def check_ui_contract(root: Path, source: str, page) -> None:
     assert valid(source + xml + kit), 'obsolete rig-group instruction in UI'
     assert not valid(kit + '<button label="Create rig group"/>'), 'negative UI string escaped'
     assert 'isRigGroup()' not in function(source, 'void ALPanelCineLightRig::updateAnchorList(')
-    assert 'setWhoUnavailable(' not in function(source, 'bool ALPanelCineLightRig::postBuild()')
+    from rig_borrow_check import check_contract
+    check_contract(root, source)
     easy = next(mode for mode in page.findall('kit_page.mode') if mode.get('name') == 'Easy')
     cards = easy.get('cards').split(',')
     assert cards[cards.index('easy') + 1] == 'light_group'
@@ -434,7 +444,7 @@ struct KitPage {
     ALKitRow* findRow(const std::string& key) { return &rows[key]; }
 };
 struct LLDirectorCast {
-    struct Member { std::string mLastName, mGroup; };
+    struct Member { std::string mLastName, mGroup; LLUUID mId; };
     ALDirectorGroups::GroupSnapshot captureGroups() const {
         ALDirectorGroups::GroupSnapshot result;
         for(const auto& m:members)result.tags[LLUUID{m.first}]=m.second.mGroup;
@@ -451,6 +461,9 @@ struct LLDirectorCast {
     mutable S32 group_scans=0;
     std::vector<std::string> getGroupNames() const { ++group_scans;std::vector<std::string> names; for(const auto& g:groups) names.push_back(g.first); return names; }
     uuid_vec_t membersInGroup(const std::string& n) const { auto it=groups.find(n); return it==groups.end()?uuid_vec_t():it->second; }
+    bool contains(const LLUUID& id) const { return members.count(id.value)!=0; }
+    std::vector<Member> getCast() const {std::vector<Member> rows;for(const auto& entry:members){auto m=entry.second;m.mId={entry.first};rows.push_back(m);}return rows;}
+    void addToGroup(const uuid_vec_t& ids,const std::string& name){for(const auto& id:ids){members[id.value].mGroup=name;auto& group=groups[name];if(std::find(group.begin(),group.end(),id)==group.end())group.push_back(id);}}
     void add(const LLUUID&) {}
     std::string makeGroup(const uuid_vec_t& ids) { std::string name="Group 1";for(int i=2;groups.count(name);++i)name="Group "+std::to_string(i);for(const auto& id:ids)members[id.value].mGroup=name;groups[name]=ids;return name; }
     LLUUID subjects[4]={{"alice"},{"bob"},{},{}};
@@ -486,11 +499,22 @@ struct ALCineLightRig {
     U32 getGroupSlots() const { return slots; }
     U32 lastResolvedGroupSlots() const { return slots; }
     const LLUUID& getObjectTarget() const { return object; }
+    void setObjectTarget(const LLUUID& id) { object=id; }
     void setGroupSlots(U32 v) { slots=v; }
     void setGroupEnabled(bool v) { enabled=v; }
 };
 struct ALCineLightRigManager {
     using Slot=S32;
+    static constexpr S32 SLOT_COUNT=5;
+    static constexpr Slot SLOT_A=1, SLOT_B=2, SLOT_C=3, SLOT_D=4;
+    LLUUID resolveRigActorIdentity(const LLUUID& id)const{return LLDirectorCast::canonicalActorId(id);}
+    LLUUID resolveBorrowActor(const LLUUID& id,bool=false)const{return id;}
+    LLUUID groupSlotActor(Slot slot) const {return static_cast<int>(slot)==0?LLUUID{"self"}:slotActor(slot);}
+    LLUUID slotActor(Slot slot) const {
+        const auto& c=LLDirectorCast::instance();
+        return slot==0?(rig.anchor.notNull()?rig.anchor:LLUUID{"self"}):
+            other.anchor.notNull()?other.anchor:slot==1?c.getSubjectA():slot==2?c.getSubjectB():slot==3?c.getSubjectC():c.getSubjectD();
+    }
     bool power=true;
     bool isSlotEnabled(Slot) const { return power; }
     void setLitGroup(Slot slot,const std::string& name){at(slot).setLitGroup(name);}
@@ -501,6 +525,8 @@ struct ALCineLightRigManager {
     bool actorOnlyOverflow() const { return overflow; }
     S32 actorOnlyUnlit(const uuid_vec_t& ids) const { return ids.size()>6 ? static_cast<S32>(ids.size()-6) : 0; }
     S32 selectedSlot() const { return editing; }
+    void setSelectedSlot(Slot slot){editing=slot;}
+    void touchSlot(Slot){}
     ALCineLightRig& at(S32 slot) { return slot == 0 ? rig : other; }
     static ALCineLightRigManager& instance() { static ALCineLightRigManager m; return m; }
     ALCineLightRig& selected() { return at(editing); }
@@ -517,8 +543,16 @@ struct ALPanelCineLightRig : LLView {
     U32 mLitComboSlots=~0u; bool mLitComboLegacy=false,mLitTargetForceRefresh=true;
     bool mCastListInitialized=false;
     void updateAnchorList() {}
-    static std::string rigTargetDescription(S32) { return "You"; }
+    std::string rigTargetDescription(S32,const char* area="anchors") { return "You"; }
+    static std::string rigLabel(S32 slot,const char* area="anchors") { return slot==0?"You":"Rig "+std::to_string(slot+1); }
+    static std::string rigLabelBase(S32 slot) { return rigLabel(slot); }
+    void clearRigLabels(const char*){}
+    void showRigNotice(const std::string&){}
+    std::string rigActorName(const LLUUID& id,const char*){if(LLDirectorCast::isSelf(id))return "You";auto* m=LLDirectorCast::instance().getMember(id);return m?m->mLastName:"Actor";}
     void onLitTargetCommit();
+    void shareRig(const LLUUID&,S32);void shareRigMissingFallback(const LLUUID&,S32);void shareRigStaleObjectSetting(const LLUUID&,S32);
+    void ensureRigActorInCast(const LLUUID& id){LLDirectorCast::instance().members[id.value];}
+    void finishRigAction(S32){}
     void installHistoryValidator();
     static bool validateLitTarget(const LLSD&, std::string&);
     Check controls[5], enable, status;
@@ -539,6 +573,12 @@ struct ALPanelCineLightRig : LLView {
                       'void ALPanelCineLightRig::onLitTargetCommit()',
                       'void ALPanelCineLightRig::syncGroupControls()'):
         lines.append(function(source, signature))
+    share = function(source, 'void ALPanelCineLightRig::shareRig(')
+    lines.append(share)
+    lines.append(share.replace('::shareRig(', '::shareRigMissingFallback(', 1).replace(
+        'group.empty() || cast.membersInGroup(group).empty()', 'group.empty()', 1))
+    lines.append(share.replace('::shareRig(', '::shareRigStaleObjectSetting(', 1).replace(
+        'gSavedSettings.setString("CineLightRigObjectTarget", "");', '', 1))
     start = source.index('[handle](const std::string& widget, const LLSD& value, std::string& reason)')
     brace = source.index('{', start)
     depth, end = 1, brace + 1
@@ -554,6 +594,10 @@ struct ALPanelCineLightRig : LLView {
     start = groups.index('struct GroupSnapshot')
     # Full namespace uses only standard containers and UUID/LLSD services.
     lines[0] = lines[0].replace('HISTORY_SUPPORT', history_fixture(root) + '\nnamespace ALDirectorGroups {\n' + groups[start:groups.index('} // namespace ALDirectorGroups')] + '\n}\n')
+    lines[0] = lines[0].replace('struct HistorySettings {',
+        'struct HistorySettings { std::map<std::string,LLSD> writes; '
+        'void setString(const std::string& key,const std::string& value){writes[key]=value;} '
+        'void setBOOL(const std::string& key,bool value){writes[key]=value;}')
     lines.append(r"""
 void test() {
     auto& manager=ALCineLightRigManager::instance();
@@ -669,6 +713,35 @@ void test() {
     history.undo(page);assert(rig.group=="earlier");
     history.undo(page);assert(rig.group.empty() && history.mUndo.empty());
     std::cout<<"PASS: production Lights combo/readouts/chips, Make a group, normal widget undo/redo and missing-group fallback replay\n";
+    auto shareOracle=[&](S32 fault){
+        cast.groups.clear();cast.members.clear();
+        gSavedSettings.writes["CineLightRigObjectTarget"]="old-object";
+        gSavedSettings.writes["CineLightRigEnabled"]=false;
+        manager.other.anchor={"original"};manager.other.group="missing-saved-group";
+        manager.other.object={"old-object"};cast.members["original"].mLastName="Original";
+        if(fault==1)panel.shareRigMissingFallback({"new"},1);
+        else if(fault==2)panel.shareRigStaleObjectSetting({"new"},1);
+        else panel.shareRig({"new"},1);
+        const auto ids=cast.membersInGroup(manager.other.group);
+        return manager.other.group!="missing-saved-group" && std::find(ids.begin(),ids.end(),LLUUID{"original"})!=ids.end() &&
+            std::find(ids.begin(),ids.end(),LLUUID{"new"})!=ids.end() && manager.other.object.isNull() &&
+            gSavedSettings.writes["CineLightRigEnabled"].asBoolean() && gSavedSettings.writes["CineLightRigObjectTarget"].asString().empty();
+    };
+    assert(shareOracle(0));assert(!shareOracle(1));assert(!shareOracle(2));
+    cast.groups["away-group"]={{"away"}};cast.members["away"].mGroup="away-group";
+    manager.other.anchor={"Bob"};manager.other.object={};manager.other.resolved={{"Bob"}};
+    manager.other.group="away-group";panel.shareRig({"next"},1);
+    const auto shared=cast.membersInGroup("away-group");
+    assert(std::find(shared.begin(),shared.end(),LLUUID{"Bob"})!=shared.end());
+    assert(manager.other.group=="away-group" && std::find(shared.begin(),shared.end(),LLUUID{"away"})!=shared.end() && std::find(shared.begin(),shared.end(),LLUUID{"next"})!=shared.end());
+    // Standalone legacy checkboxes have no kit row. They still receive the
+    // same current actor caption rather than retaining a stale Subject label.
+    manager.editing=1;manager.other.group.clear();manager.other.object={};manager.other.anchor={"Bob"};
+    cast.members["Bob"].mLastName="Bob";panel.mRigKitPage=nullptr;panel.mLitTarget=nullptr;panel.mDisplayedGroupSlots=~0u;
+    manager.other.enabled=true;manager.other.slots=2;
+    panel.syncGroupControls();assert(panel.controls[1].label=="Rig 2 - Bob");panel.mRigKitPage=&panel.page;panel.mLitTarget=&panel.target;
+    std::cout<<"PASS: production Share rebuilds a missing saved group with both actors, retains away groups; planted lost-original-actor bug rejected\n";
+
 }
 } // namespace RigLightingUI
 """)
@@ -751,7 +824,7 @@ struct LLControlVariable {
 """)
     history = history.replace('struct LLTimer { static F64 getTotalSeconds() { return 1.; } };',
         'struct LLTimer { static inline F64 now=1.; static F64 getTotalSeconds() { return now; } };')
-    history = history.replace('std::string setting, label;', 'std::string setting, label, kind;')
+    history = history.replace('std::string setting, label, page_key;', 'std::string setting, label, page_key, kind;')
     history = history.replace('    LLSD mLastValue;', r"""
     LLSD mLastValue, mShownValue;
     LLUICtrl* mControl=nullptr;

@@ -11,10 +11,12 @@
 #include <string>
 
 class LLComboBox;
+class LLUUID;
 
 namespace ALDirectorCastUI
 {
 using ValueProvider = std::function<LLSD()>;
+using ActorLabelProvider = std::function<std::string(const LLUUID&)>;
 
 // Pure stored-value -> presentation-value mapping. A subject slot occupied by
 // self is displayed through the canonical self row, without changing storage.
@@ -48,11 +50,13 @@ void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
 // model-backed controls must supply value_provider. Non-subject items are kept.
 void mergeSubjectCombo(LLComboBox* combo, S32 self_value, S32 subject_a_value,
                        S32 subject_count = 4,
-                       const ValueProvider& value_provider = ValueProvider());
+                       const ValueProvider& value_provider = ValueProvider(),
+                       const ActorLabelProvider& actor_label = ActorLabelProvider());
 void mergeSubjectCombo(LLComboBox* combo,
                        const std::array<LLSD, 5>& slot_values,
                        S32 subject_count = 4,
-                       const ValueProvider& value_provider = ValueProvider());
+                       const ValueProvider& value_provider = ValueProvider(),
+                       const ActorLabelProvider& actor_label = ActorLabelProvider());
 
 // Merge a static self/actor picker without changing the model value. The self
 // row keeps self_value even when the agent is also stored as an actor.

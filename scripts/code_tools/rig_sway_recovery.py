@@ -63,6 +63,9 @@ public:
     U32 mEmitters = 0;
     std::string mLoadedSetupName;
     LLUUID mAnchor, mObjectTarget;
+    uuid_vec_t mLastResolvedMembers, mLastResolvedStoredMembers;
+    const uuid_vec_t& lastResolvedMembers() const { return mLastResolvedMembers; }
+    const uuid_vec_t& lastResolvedStoredMembers() const { return mLastResolvedStoredMembers; }
     std::string mLitGroup;
     const std::string& getLitGroup() const { return mLitGroup; }
     void setLitGroup(const std::string& name) { mLitGroup = name; }
@@ -74,6 +77,7 @@ public:
     void tickFromBlob(const ALCineLightRigParamBlob&, F64, bool);
     void setLiveProbeBounceScale(F32) {}
     F64 mCueFXEpoch = 0, mCueGoTime = 0;
+    const LLUUID& getAnchor() const { return mAnchor; }
     void setAnchor(const LLUUID& id) { mAnchor = id; }
     void setObjectTarget(const LLUUID& id) { mObjectTarget = id; }
     void setGroupEnabled(bool value) { mGroupEnabled = value; }
@@ -104,6 +108,7 @@ constexpr S32 INSTANCE_STORE_VERSION = 1;
 constexpr char INSTANCE_SETTING[] = "CineLightRigInstances";
 class ALCineLightRigManager {
 public:
+    using Slot = ALCineLightRigSlot;
     using ParamBlob = ALCineLightRigParamBlob;
     static constexpr S32 SLOT_COUNT = 5;
     static constexpr Slot SLOT_SELF = Slot::SELF;
@@ -117,6 +122,19 @@ public:
     ALCineLightRigManagerModel::RigSession mRigSession;
     bool mWritingSelectedSettings = false;
     U64 mConfigurationRevision = 1;
+    U64 mUseClock = 0; std::array<U64,4> mLastUsed{};
+    std::array<LLUUID,4> mEnrolledAnchors{};
+    std::map<LLUUID,LLUUID> mBorrowRekeys;std::map<LLUUID,std::weak_ptr<const LLUUID>> mBorrowPicks;U64 mBorrowCastRevision=~U64(0);bool mBorrowAnchorsDirty=true;void refreshBorrowAnchors();
+    std::array<U64,5> mHistoryEpoch{};
+    void touchSlot(Slot); void pruneRemovedAnchors();
+    void rewriteActorReferences(const LLUUID&,const LLUUID&);
+    void removeMirror(const LLUUID&) {}
+    LLUUID slotActor(Slot) const; Slot actorSlot(const LLUUID&) const;
+    Slot borrowSlot(const LLUUID&) const; Slot leastRecentlyUsedSlot() const;
+    void giveActorRig(Slot,const LLUUID&); void removeBorrowedRig(Slot);
+    ALCineLightRig& at(Slot s) { return mInstances[static_cast<S32>(s)]; }
+    const ALCineLightRig& at(Slot s) const { return mInstances[static_cast<S32>(s)]; }
+    bool isSlotEnabled(Slot s) const { return enabledMask() & (1u<<static_cast<S32>(s)); }
     std::map<S32, std::unique_ptr<ALCineLightRig>> mMirrors;
     struct { Slot mFocus, mChallenger; S32 mChallengeTicks; } mFocusState{};
     static bool validSlot(Slot);
@@ -396,6 +414,45 @@ void testRecovery(const LLSD& authored) {
         assert(group_manager.restore(scene,false));
         for(const auto& rig:group_manager.mInstances)assert(rig.getLitGroup().empty());
     }
+    {
+        ALCineLightRigManager borrowed;
+        auto& cast=LLDirectorCast::instance();
+        const LLUUID actor{"borrowed-clone"}; cast.members.insert(actor);
+        borrowed.mBlobs[0]=ParamBlob::fromSettings(nullptr);
+        borrowed.writeSelectedSettings();
+        borrowed.giveActorRig(Slot::B,actor);
+        assert(borrowed.slotActor(Slot::SELF)==gAgentID);
+        assert(borrowed.slotActor(Slot::B)==actor && borrowed.mBlobs[2].mEnabled);
+        borrowed.subjectRigOff(Slot::B); assert(borrowed.mBlobs[2].mEnabled);
+        cast.members.erase(actor);cast.members.insert(LLUUID{"new-clone-body"});
+        borrowed.rewriteActorReferences(actor,LLUUID{"new-clone-body"});
+        assert(borrowed.slotActor(Slot::B)==LLUUID{"new-clone-body"} && borrowed.mBlobs[2].mEnabled);
+        cast.members.erase(LLUUID{"new-clone-body"});
+        borrowed.rewriteActorReferences(LLUUID{"new-clone-body"},LLUUID::null);
+        assert(borrowed.mInstances[2].mAnchor.isNull() && !borrowed.mBlobs[2].mEnabled);
+        cast.members.insert(actor);borrowed.giveActorRig(Slot::B,actor);
+        borrowed.persist();
+        LLSD scene=gSavedSettings.values["CineLightRigInstances"]; scene["version"]=1;
+        borrowed.mBorrowRekeys[LLUUID{"old-scene-alias"}]=actor;
+        borrowed.applySceneData(scene);
+        assert(borrowed.mBorrowRekeys.empty());
+        assert(borrowed.slotActor(Slot::B)==actor && borrowed.mBlobs[2].mEnabled);
+        cast.members.erase(actor); borrowed.pruneRemovedAnchors();
+        assert(borrowed.mInstances[2].mAnchor.isNull() && !borrowed.mBlobs[2].mEnabled);
+        assert(borrowed.restore(scene,true));
+        borrowed.subjectRigsOff(); assert(borrowed.enabledMask()==0);
+        assert(borrowed.mInstances[2].mAnchor==actor); // Off retains the borrowed identity
+        assert(borrowed.restore(scene,true));
+        borrowed.allOff(); assert(borrowed.enabledMask()==0);
+        assert(borrowed.mInstances[2].mAnchor==actor);
+        assert(borrowed.restore(scene,true));
+        borrowed.removeBorrowedRig(Slot::B);
+        assert(borrowed.mBlobs[2].mAnchor.isNull() && borrowed.mInstances[2].mAnchor.isNull());
+        assert(!borrowed.mBlobs[2].mEnabled);
+        borrowed.mBorrowRekeys[LLUUID{"legacy-scene-alias"}]=actor;
+        borrowed.applySceneData(LLSD());assert(borrowed.mBorrowRekeys.empty());
+        std::cout<<"PASS: borrowed anchor scene round trip, Subject-change immunity, removal, Subject rigs off and All off (borrowed rigs included)\n";
+    }
     RigLitGroupModel::test();
     RigSessionUI::test();
     RigTargetUI::test();
@@ -481,6 +538,21 @@ def caller_fixtures(root: Path, controller: str):
                  function(header, 'struct RigSession') + ';\n' +
                  function(header, 'enum class TickPath') + ';\n' +
                  function(header, 'inline void clearActorOnlyForLegacyMigration(') + '\n}')
+    lines.append(r'''
+#include <set>
+struct ALKitHistory {static inline int depth=0;struct ScopedSuspend {ScopedSuspend(){++depth;}~ScopedSuspend(){--depth;}};};
+S32 slotIndex(ALCineLightRigSlot);
+const LLUUID gAgentID{"self"};
+struct LLDirectorCast {
+    LLUUID subjects[4]={{"subject-A"},{"subject-B"},{"subject-C"},{"subject-D"}};
+    std::set<LLUUID> members;
+    static LLDirectorCast& instance(){static LLDirectorCast cast;return cast;}
+    static LLUUID canonicalActorId(const LLUUID& id){return id;}
+    LLUUID getSubjectA() const{return subjects[0];} LLUUID getSubjectB() const{return subjects[1];}
+    LLUUID getSubjectC() const{return subjects[2];} LLUUID getSubjectD() const{return subjects[3];}
+    U64 getCastRevision()const{return 1;}bool contains(const LLUUID& id) const{return members.count(id)!=0;}
+};
+''')
     lines.append(MANAGER)
     lines.append(r'''
 namespace ALCineLightRigManagerModel {struct LiveProbeConfig {};bool liveProbeConfigFromLLSD(const LLSD&,LiveProbeConfig&){return true;}}
@@ -492,7 +564,18 @@ static ALGhostStudio& instance(){static ALGhostStudio s;return s;}std::vector<In
                       'inline ALCineLightRigSlot lowestEnabled(',
                       'inline ALCineLightRigSlot normalizeSelected(', 'inline TickPath pathFor('):
         lines.append(function(header, signature))
-    for signature in ('bool validSlotValue(', 'S32 slotIndex(', 'bool blobMapWellFormed(',
+    lines.append((root / 'indra/newview/alriggroupsubject.h').read_text(encoding='utf8').replace('#include "lluuid.h"', ''))
+    for signature in ('LLUUID legacyAnchorForSlot(',
+                      'LLUUID ALCineLightRigManager::slotActor(',
+                      'ALCineLightRigManager::Slot ALCineLightRigManager::actorSlot(',
+                      'ALCineLightRigManager::Slot ALCineLightRigManager::borrowSlot(',
+                      'ALCineLightRigManager::Slot ALCineLightRigManager::leastRecentlyUsedSlot(',
+                      'void ALCineLightRigManager::touchSlot(',
+                      'void ALCineLightRigManager::giveActorRig(',
+                      'void ALCineLightRigManager::removeBorrowedRig(',
+                      'void ALCineLightRigManager::pruneRemovedAnchors(', 'void ALCineLightRigManager::refreshBorrowAnchors(',
+                      'void ALCineLightRigManager::rewriteActorReferences(',
+                      'bool validSlotValue(', 'S32 slotIndex(', 'bool blobMapWellFormed(',
                       'ALCineLightRigParamBlob ALCineLightRigParamBlob::fromSettings(',
                       'void ALCineLightRigParamBlob::captureRigState(',
                       'void ALCineLightRigParamBlob::applyRigState(',

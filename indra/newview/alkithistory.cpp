@@ -273,18 +273,41 @@ void ALKitHistory::recordCustom(LLView* owner, const std::string& key, const std
         : input ? input->pageKey() : rowPage(owner);
     if (page.empty())
         return;
-    if (join_gesture && mOpen && mOpen->page == page)
+    const bool joined = join_gesture && mOpen && mOpen->page == page;
+    if (!joined)
     {
-        mOpen->custom.push_back({ key, std::move(fn), std::move(validate), std::move(rewrite_actor) });
-        mOpen->sequence = alNextUndoSequence();
+        // A list command is one complete action, including keyboard Add.
+        finishGesture();
+        beginGesture(KEY, page, label);
+    }
+    // Cache provenance for this gesture's recording source. A Quick gesture
+    // may move between rows from different pages; only a changed source needs
+    // another walk. Context providers alone never opt custom entries in.
+    LLView* source = sKitBindingSource.get() ? sKitBindingSource.get() : owner;
+    if (!mOpen->custom_source_resolved || mOpen->custom_source.get() != source)
+    {
+        mOpen->custom_source = source ? source->getHandle() : LLHandle<LLView>();
+        mOpen->custom_source_resolved = true;
+        mOpen->custom_binding_page = page == "chrome" ? page : rowPage(owner);
+        if (page != "chrome" && !mCustomContextPages.empty())
+            for (LLView* view = sKitBindingSource.get(); view; view = view->getParent())
+                if (ALKitRow* row = dynamic_cast<ALKitRow*>(view))
+                {
+                    ALKitRow* original = row->sourceRow();
+                    mOpen->custom_binding_page = (original ? original : row)->meta().page_key;
+                    break;
+                }
+    }
+    const std::string binding_page = mCustomContextPages.count(mOpen->custom_binding_page)
+        ? mOpen->custom_binding_page : std::string();
+    const std::string context = binding_page.empty() ? std::string() : currentContext(binding_page, key);
+    mOpen->custom.push_back({ key, std::move(fn), std::move(validate), std::move(rewrite_actor), binding_page, context });
+    mOpen->sequence = alNextUndoSequence();
+    if (joined)
+    {
         ++mRevision;
         return;
     }
-    // A list command is one complete action, including a keyboard Add with no open gesture.
-    finishGesture();
-    beginGesture(KEY, page, label);
-    mOpen->custom.push_back({ key, std::move(fn), std::move(validate), std::move(rewrite_actor) });
-    mOpen->sequence = alNextUndoSequence();
     if (mOpen->label.empty())
         mOpen->label = label;
     finishGesture();
@@ -499,7 +522,7 @@ bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string
             !validator->second(entry.key, redo ? entry.newv : entry.oldv, reason)) return false;
         if (!entry.contextMatches(currentContext(entry.binding_page, entry.key)))
         {
-            reason = "Skipped a change made on " + entry.context + ".";
+            reason = "Skipped a change made in a different editing context.";
             return false;
         }
         if (check_values && !entryMatches(entry, redo))
@@ -509,7 +532,14 @@ bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string
         }
     }
     for (CustomEntry& entry : it->custom)
+    {
+        if (!entry.context.empty() && entry.context != currentContext(entry.binding_page, entry.key))
+        {
+            reason = "Skipped a change made in a different editing context.";
+            return false;
+        }
         if (entry.validate && !entry.validate(redo, reason)) return false;
+    }
     return true;
 }
 
@@ -701,5 +731,10 @@ void ALKitHistory::redo(const std::string& page)
     ++mRevision;
 }
 
-void ALKitHistory::registerContext(const std::string& key, std::function<std::string(const std::string&)> context)
-{ mContexts[key] = std::move(context); }
+void ALKitHistory::registerContext(const std::string& key, std::function<std::string(const std::string&)> context,
+                                   bool custom_entries)
+{
+    mContexts[key] = std::move(context);
+    if (custom_entries) mCustomContextPages.insert(key);
+    else mCustomContextPages.erase(key);
+}

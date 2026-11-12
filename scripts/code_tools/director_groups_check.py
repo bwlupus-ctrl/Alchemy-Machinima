@@ -344,7 +344,8 @@ struct LLView : LLHandleProvider<LLView> {
 };
 struct LLUICtrl : LLView {bool enabled=true,focused=false;void setValue(const LLSD&){} void onCommit(){} void setFocus(bool v){focused=v;}bool hasFocus()const{return focused;}};
 struct ALKitRow : LLUICtrl {
- struct Meta{std::string setting;} value;const Meta& meta(){return value;}
+ struct Meta{std::string setting,page_key;} value;const Meta& meta(){return value;}
+ ALKitRow* sourceRow(){return nullptr;}
  void replayBoundValue(const LLSD&){} bool resettable(){return false;}void reset(){}
 };
 struct LLControlVariable{void set(const LLSD&){}};
@@ -465,6 +466,7 @@ struct LLFloaterDirector : LLFloater {
 class ALKitHistory::GestureTimer {public:explicit GestureTimer(ALKitHistory*){}};
 std::unordered_set<ALKitHistory*>& actorReferenceHistories(){static std::unordered_set<ALKitHistory*> histories;return histories;}
 static S32 sKitHistorySuspend=0,sKitHistoryReplay=0;static bool sKitInputSourceSet=false;
+static LLHandle<LLView> sKitBindingSource;
 std::string rowPage(LLView* v){auto* page=dynamic_cast<ALKitPage*>(v);return page?page->mPage:"";}
 LLView* ALKitHistory::inputPage(){return nullptr;}
 std::string ALKitHistory::currentContext(const std::string&,const std::string&)const{return {};}

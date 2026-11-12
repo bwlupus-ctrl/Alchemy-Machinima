@@ -24,7 +24,38 @@ def vcvars64():
     return script
 
 
+def crash_dialog_startup(directory):
+    """Link into every fixture so assertion/crash negatives never need a click."""
+    path = directory / 'native_fixture_startup.cpp'
+    path.write_text(r'''
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#include <stdlib.h>
+#include <crtdbg.h>
+#include <initializer_list>
+namespace {
+struct SilentFixtureStartup {
+    SilentFixtureStartup() {
+        SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOGPFAULTERRORBOX | SEM_NOOPENFILEERRORBOX);
+        _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+#ifdef _DEBUG
+        for (int kind : {_CRT_WARN, _CRT_ERROR, _CRT_ASSERT}) {
+            _CrtSetReportMode(kind, _CRTDBG_MODE_FILE);
+            _CrtSetReportFile(kind, _CRTDBG_FILE_STDERR);
+        }
+#endif
+    }
+} silentFixtureStartup;
+}
+''', encoding='utf-8')
+    return path
+
+
 def compile_run(directory, source, name='test', flags=(), libraries=(), run=True):
+    startup = crash_dialog_startup(directory)
+    startup_obj = directory / (name + '_startup.obj')
     path = directory / (name + '.cpp')
     path.write_text(source, encoding='utf-8')
     exe = directory / (name + '.exe')
@@ -32,8 +63,10 @@ def compile_run(directory, source, name='test', flags=(), libraries=(), run=True
     response = directory / (name + '.rsp')
     response.write_text('/nologo /std:c++20 /EHsc ' + ' '.join(flags)
         + ' /Fo"' + str(directory / (name + '.obj')) + '" /Fe"' + str(exe)
-        + '" "' + str(path) + '" ' + ' '.join(libraries), encoding='utf-8')
+        + '" "' + str(path) + '" "' + str(startup_obj) + '" ' + ' '.join(libraries), encoding='utf-8')
     command.write_text('@echo off\ncall "' + str(vcvars64()) + '" >nul\n'
+        + 'cl /nologo /std:c++20 /EHsc ' + ' '.join(flags) + ' /c "' + str(startup)
+        + '" /Fo"' + str(startup_obj) + '"\nif errorlevel 1 exit /b %ERRORLEVEL%\n'
         + 'cl @"' + str(response) + '"\nexit /b %ERRORLEVEL%\n', encoding='utf-8')
     result = subprocess.run(['cmd', '/d', '/c', str(command)], cwd=ROOT, capture_output=True, text=True)
     if result.returncode:

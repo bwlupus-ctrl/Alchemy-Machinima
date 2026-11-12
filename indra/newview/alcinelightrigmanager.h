@@ -1426,6 +1426,7 @@ public:
     const ALCineLightRig& selected() const;
     Slot selectedSlot() const { return mSelected; }
     void setSelectedSlot(Slot slot);
+    void restoreSelfAnchor();
     void resetAllToSelf();
     bool isRigGroup() const { return mRigSession.mGroup; }
     // Manual Subject replacement retires its power, retaining authored settings.
@@ -1437,6 +1438,23 @@ public:
 
     ALCineLightRig& at(Slot slot);
     const ALCineLightRig& at(Slot slot) const;
+    // Anchor wins over the legacy Subject assignment. Empty extras stay empty.
+    LLUUID slotActor(Slot slot) const;
+    // Custom Lights membership: SELF always means You, even with a legacy anchor.
+    LLUUID groupSlotActor(Slot slot) const;
+    // Resolve snapshot identities through anchor rekeys/retirement, even away.
+    LLUUID resolveRigActorIdentity(const LLUUID& actor) const;
+    // Menu identities survive runtime re-key, but never final retirement.
+    LLUUID resolveBorrowActor(const LLUUID& actor, bool was_cast = false) const;
+    U64 historyEpoch(Slot slot) const { return mHistoryEpoch[static_cast<S32>(slot)]; }
+    Slot actorSlot(const LLUUID& actor) const;
+    Slot borrowSlot(const LLUUID& actor) const;
+    Slot leastRecentlyUsedSlot() const;
+    void giveActorRig(Slot slot, const LLUUID& actor);
+    void removeBorrowedRig(Slot slot);
+    // Keep only redirects needed by outstanding UI picks across clone rekeys.
+    std::shared_ptr<const LLUUID> retainBorrowActor(const LLUUID& actor);
+    void touchSlot(Slot slot);
     bool isSlotEnabled(Slot slot) const;
     bool isSlotLit(Slot slot) const;
     // [RigRim] true + params when `id` is a projector (or, with
@@ -1512,6 +1530,17 @@ private:
     boost::signals2::scoped_connection mEnabledConnection;
     bool mWritingSelectedSettings = false;
     U64 mConfigurationRevision = 1;
+    U64 mUseClock = 0;
+    std::array<U64, 4> mLastUsed{};
+    std::map<LLUUID, LLUUID> mBorrowRekeys;
+    std::map<LLUUID, std::weak_ptr<const LLUUID>> mBorrowPicks;
+    U64 mBorrowCastRevision = ~U64(0);
+    bool mBorrowAnchorsDirty = true;
+    std::array<U64, SLOT_COUNT> mHistoryEpoch{};
+    boost::signals2::scoped_connection mCastConnection;
+    std::array<LLUUID, 4> mEnrolledAnchors{};
+    void pruneRemovedAnchors();
+    void refreshBorrowAnchors();
     ALCineLightRigManagerModel::FocusFilterState mFocusState;
     ALCineLightRigManagerModel::AutoShadowSlotState mAutoShadowSlotState;
     U32 mLastAutoShadowRequest = 0;

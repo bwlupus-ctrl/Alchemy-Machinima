@@ -142,6 +142,7 @@ namespace ALGazeHot {
  bool rewrite(Slots&,const LLUUID&,const LLUUID&);
 }
 struct ALKitHistory {
+ struct ScopedSuspend {ScopedSuspend(){}~ScopedSuspend(){}};
  struct CustomEntry{std::function<void(const LLUUID&,const LLUUID&)> rewrite_actor;};
  struct Step{std::vector<CustomEntry> custom;};
  std::vector<Step> mUndo,mRedo;std::unique_ptr<Step> mOpen;U64 mRevision=0;
@@ -192,9 +193,15 @@ struct ALGhostStudio {
  void rewriteActorReferences(const LLUUID&,const LLUUID&);
 };
 struct ALCineLightRigManager {
+ std::map<LLUUID,LLUUID> mBorrowRekeys;
+ // Revision-gated cleanup is exercised by rig_borrow_round4; this fixture
+ // isolates the cross-store rewrite transaction and supplies its lifecycle hook.
+ bool mBorrowAnchorsDirty=false;void refreshBorrowAnchors(){}
+ std::array<U64,5> mHistoryEpoch{};
+ std::array<LLUUID,4> mEnrolledAnchors{};
  static constexpr int SLOT_COUNT=5;
  struct ParamBlob{LLUUID mAnchor;bool mEnabled=true;};
- struct Rig{LLUUID anchor;LLUUID getAnchor(){return anchor;}void setAnchor(LLUUID id){anchor=id;}};
+ struct Rig{LLUUID anchor;uuid_vec_t mLastResolvedMembers,mLastResolvedStoredMembers;LLUUID getAnchor(){return anchor;}void setAnchor(LLUUID id){anchor=id;}};
  ParamBlob mBlobs[SLOT_COUNT];Rig mInstances[SLOT_COUNT];int mSelected=0;U64 mConfigurationRevision=0;
  std::set<int> shutdown;int writes=0,saves=0;
  int slotIndex(int slot){return slot;}ParamBlob captureSelected(){return mBlobs[mSelected];}

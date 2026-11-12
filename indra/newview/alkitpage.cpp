@@ -529,7 +529,39 @@ bool ALKitPage::postBuild()
         sp.name = mMasterWidget;
         sp.rect = LLRect(0, ALKitStyle::SWITCH_H, ALKitStyle::SWITCH_W, 0);
         mMaster = LLUICtrlFactory::create<ALKitSwitch>(sp);
-        mMaster->setControlName(mMasterSetting, this);
+        if (mWhoAdapter == "cine_rig_slot")
+        {
+            // Keep the switch unbound: an actor without a rig must never power
+            // the previously edited rig before the borrowing action is resolved.
+            mMaster->setValue(gSavedSettings.getBOOL(mMasterSetting));
+            if (LLControlVariable* control = gSavedSettings.getControl(mMasterSetting).get())
+                mConnections.emplace_back(control->getSignal()->connect(
+                [this](LLControlVariable*, const LLSD& value, const LLSD&)
+                { mMaster->setValue(mWhoUnavailableTarget.isNull() && value.asBoolean()); }));
+            mMaster->setCommitCallback([this](LLUICtrl*, const LLSD&)
+            {
+                if (mWhoUnavailableTarget.notNull())
+                {
+                    mMaster->setValue(false);
+                    activateWhoUnavailable();
+                    return;
+                }
+                auto& rigs = ALCineLightRigManager::instance();
+                const LLUUID target = LLDirectorCast::canonicalActorId(actorTarget());
+                if (LLDirectorCast::canonicalActorId(rigs.slotActor(rigs.selectedSlot())) != target)
+                {
+                    // Refuse this write even if resolution succeeds. A later
+                    // click can power only the newly verified target's rig.
+                    mWhoUnavailableTarget = target;
+                    mMaster->setValue(false);
+                    refreshWhoUnavailable();
+                    return;
+                }
+                gSavedSettings.setBOOL(mMasterSetting, mMaster->isOn());
+            });
+        }
+        else
+            mMaster->setControlName(mMasterSetting, this);
         mMaster->setToolTip(mMasterTooltip);
         mMasterBox->addChild(mMaster);
         mConnections.emplace_back(mMaster->setFlipCallback([this](bool) { reshape(getRect().getWidth(), getRect().getHeight(), true); }));
@@ -610,7 +642,8 @@ bool ALKitPage::postBuild()
         {
             if (mMaster)
             {
-                mMaster->writeBoundValue(true);
+                if (mWhoUnavailableTarget.notNull() && activateWhoUnavailable()) return;
+                if (mWhoAdapter != "cine_rig_slot") mMaster->writeBoundValue(true);
                 mMaster->setValue(true);
                 mMaster->onCommit();
             }
@@ -1124,24 +1157,60 @@ void ALKitPage::revealPersistentCard()
     revealCard(findCard(mPersistentCard), true);
 }
 
+void ALKitPage::restoreRigMaster()
+{
+    if (mWhoAdapter == "cine_rig_slot" && mMaster)
+    {
+        mMaster->setValue(gSavedSettings.getBOOL(mMasterSetting));
+        updateMaster();
+    }
+}
+
+void ALKitPage::cancelWhoUnavailable()
+{
+    if (mRigPanel) mRigPanel->clearPendingBorrowPick();
+    mWhoUnavailableTarget.setNull();
+    mWhoError = false;
+    if (mWhoAdapter == "cine_rig_slot")
+    {
+        auto& rigs = ALCineLightRigManager::instance();
+        mActorTarget = rigs.slotActor(rigs.selectedSlot());
+    }
+    restoreRigMaster();
+    refreshWhoUnavailable();
+}
+
 void ALKitPage::refreshWhoUnavailable()
 {
-    if (mWhoUnavailableTarget.notNull() && mWhoUnavailableLabel &&
-        mWhoUnavailableLabel(mWhoUnavailableTarget).empty())
-    {
-        mWhoUnavailableTarget.setNull();
-        mWhoError = false;
+    if (mWhoAdapter == "cine_rig_slot" && mWhoUnavailableTarget.isNull() && mWhoCombo && !mWhoError)
         setWhoChipLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast()));
+    if (mWhoUnavailableTarget.notNull() && mWhoUnavailableLabel)
+    {
+        const std::string label = mWhoUnavailableLabel(mWhoUnavailableTarget);
+        if (!label.empty())
+        {
+            if (mWhoAdapter == "cine_rig_slot") setWhoChipLabel(label);
+        }
+        else if (mWhoAdapter != "cine_rig_slot" ||
+                 (mRigPanel && mRigPanel->selectActorRig(mWhoUnavailableTarget)))
+        {
+            if (mRigPanel) mRigPanel->clearPendingBorrowPick();
+            mWhoUnavailableTarget.setNull();
+            mWhoError = false;
+            restoreRigMaster();
+            setWhoChipLabel(whoChipLabel(mWhoLabel, mWhoCombo, !mWhoPinned && canFollowCast()));
+        }
     }
+    if (mWhoAdapter == "cine_rig_slot") refreshWhoHint();
 }
 
 bool ALKitPage::activateWhoUnavailable()
 {
+    if (mWhoUnavailableTarget.isNull() && mWhoAvailableAction && mWhoAvailableAction()) return true;
     if (mWhoUnavailableTarget.isNull() || !mWhoUnavailableLabel || !mWhoUnavailableAction ||
         mWhoUnavailableLabel(mWhoUnavailableTarget).empty())
         return false;
     const LLUUID target = mWhoUnavailableTarget;
-    mWhoUnavailableTarget.setNull();
     mWhoUnavailableAction(target);
     return true;
 }
@@ -1794,30 +1863,29 @@ void ALKitPage::refreshWhoHint()
         setWhoHint(following ? "Follows the Cast selection; pick one to lock." : "Pick a subject to lock.");
         return;
     }
+    ALPanelCineLightRig* panel = mRigPanel;
+    if (!panel) return;
+    panel->clearRigLabels("hint");
+    if (mWhoUnavailableTarget.isNull()) panel->clearRigLabels("chip");
     const auto& manager = ALCineLightRigManager::instance();
     const S32 selected = static_cast<S32>(manager.selectedSlot());
     U32 mask = 0;
     for (S32 slot = 0; slot < ALCineLightRigManager::SLOT_COUNT; ++slot)
         if (slot != selected && manager.isSlotEnabled(static_cast<ALCineLightRigManager::Slot>(slot)))
             mask |= 1u << slot;
-    const auto& cast = LLDirectorCast::instance();
-    const bool has_subjects = cast.getSubjectA().notNull() || cast.getSubjectB().notNull() ||
-                              cast.getSubjectC().notNull() || cast.getSubjectD().notNull();
-    std::string hint = !has_subjects ? "Add someone to Cast to light them" :
-                       (following ? "Follows cast." : "Pick a rig to edit.");
+    std::string hint = following ? "Follows cast. Pick an actor to give them a rig." : "Pick a rig to edit.";
     if (mask)
     {
         hint += " Also on: ";
-        static const char* const labels[] = { "You", "Subject A", "Subject B", "Subject C", "Subject D" };
         bool first = true;
         for (S32 slot = 0; slot < ALCineLightRigManager::SLOT_COUNT; ++slot)
             if (mask & (1u << slot))
             {
                 if (!first) hint += ", ";
-                hint += labels[slot];
+                hint += ALPanelCineLightRig::rigLabelBase(slot);
                 if (slot != 0 || manager.at(static_cast<ALCineLightRigManager::Slot>(slot)).isGroupEnabled() ||
                     manager.at(static_cast<ALCineLightRigManager::Slot>(slot)).getObjectTarget().notNull())
-                    hint += " (-> " + ALPanelCineLightRig::rigTargetDescription(slot) + ")";
+                    hint += " (-> " + panel->rigTargetDescription(slot, "hint") + ")";
                 first = false;
             }
     }
@@ -1834,8 +1902,13 @@ bool ALKitPage::selectWhoValue(const LLSD& value)
         if (item && item->getEnabled() && item->getValue().asString() == value.asString())
         {
             mWhoCombo->setValue(value);
+            if (mWhoAdapter == "cine_rig_slot")
+                mActorTarget = ALCineLightRigManager::instance().slotActor(
+                    static_cast<ALCineLightRigManager::Slot>(value.asInteger()));
+            if (mWhoAdapter == "cine_rig_slot" && mRigPanel) mRigPanel->clearPendingBorrowPick();
             mWhoUnavailableTarget.setNull();
             mWhoError = false;
+            restoreRigMaster();
             return mWhoCombo->getCurrentIndex() >= 0 &&
                 mWhoCombo->getValue().asString() == value.asString();
         }
@@ -1844,9 +1917,17 @@ bool ALKitPage::selectWhoValue(const LLSD& value)
 
 void ALKitPage::applyCastSelection(const uuid_vec_t& ids)
 {
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+    ALKitHistory::ScopedSuspend suspend;
+    if (mRigPanel) mRigPanel->clearPendingBorrowPick();
     mWhoUnavailableTarget.setNull();
-    if (mWhoPinned || !canFollowCast())
-        return;
+    restoreRigMaster();
+    if (mWhoPinned || !canFollowCast()) return;
+    if (mWhoAdapter == "cine_rig_slot")
+    {
+        auto& rigs = ALCineLightRigManager::instance();
+        mActorTarget = ids.empty() ? rigs.slotActor(rigs.selectedSlot()) : ids.front();
+    }
     if (mActorTargetPage && !mWhoCombo)
     {
         mActorTarget = ids.empty() ? LLUUID::null : ids.front();
@@ -1857,9 +1938,24 @@ void ALKitPage::applyCastSelection(const uuid_vec_t& ids)
     if (ids.empty())
     {
         mWhoError = false;
+        refreshWhoUnavailable();
         return;
     }
-    if (!ids.empty())
+    if (mWhoAdapter == "cine_rig_slot")
+    {
+        // The hidden combo is only a cached presentation of manager state.
+        if (mRigPanel && mRigPanel->selectActorRig(ids.front()))
+        {
+            mWhoError = false;
+            refreshWhoUnavailable();
+            return;
+        }
+        // Failure must keep the unbound master intercepted even when the
+        // label is empty (the actor may already own a rig).
+        mWhoUnavailableTarget = ids.front();
+        if (mMaster) mMaster->setValue(false);
+    }
+    else if (!ids.empty())
         if (ALKitWhoAdapters::Adapter adapter = ALKitWhoAdapters::get(mWhoAdapter))
         {
             LLSD value = adapter(ids.front());
@@ -1892,11 +1988,20 @@ void ALKitPage::applyCastSelection(const uuid_vec_t& ids)
         if (!label.empty())
         {
             mWhoUnavailableTarget = ids.front();
+            if (mWhoAdapter == "cine_rig_slot" && mMaster) mMaster->setValue(false);
             setWhoChipLabel(label);
             return;
         }
     }
     setWhoChipLabel("That subject isn't selectable here");
+}
+
+void ALKitPage::applyActiveRigActor()
+{
+    if (mWhoAdapter != "cine_rig_slot" || mWhoPinned) return;
+    const LLUUID id = LLDirectorCast::instance().getActiveActorId();
+    applyCastSelection(id.isNull() ? uuid_vec_t() : uuid_vec_t{ id });
+    refreshWhoUnavailable();
 }
 
 void ALKitPage::connectWho(ALKitShell& shell)
@@ -1905,8 +2010,14 @@ void ALKitPage::connectWho(ALKitShell& shell)
         return;
     mWhoConnection = shell.setCastSelectionCallback(
         [this](const uuid_vec_t& ids) { applyCastSelection(ids); });
+    // Only the rig adapter follows Actor-bar changes; other pages retain their
+    // existing Cast-list selection behavior. The scoped connection owns lifetime.
+    if (mWhoAdapter == "cine_rig_slot")
+        mRigActorConnection = LLDirectorCast::instance().addActiveActorChangedCallback(
+            [this]() { applyActiveRigActor(); });
     // The owner panel has now populated its combo and installed its commit
     // handler. Restoring here also invokes that handler, not just the chip UI.
+    shell.history().finishGesture();
     ALKitHistory::ScopedSuspend suspend;
     if (mWhoPinned && mWhoCombo)
     {
@@ -1920,6 +2031,8 @@ void ALKitPage::connectWho(ALKitShell& shell)
             saveState();
         }
     }
+    else if (mWhoAdapter == "cine_rig_slot" && LLDirectorCast::instance().getActiveActorId().notNull())
+        applyActiveRigActor();
     else
         applyCastSelection(shell.castSelection());
     if (mWhoPinned && mPage == "cast_group/move_tab")
@@ -1930,6 +2043,8 @@ void ALKitPage::connectWho(ALKitShell& shell)
 bool ALKitPage::setWhoPin(const LLSD& value)
 {
     if (!mWhoChip) return false; // single-actor pages use the shell, including old saved pins
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+    ALKitHistory::ScopedSuspend suspend;
     const bool pinned = value.isDefined() && !value.asString().empty();
     if (pinned && mWhoCombo && !selectWhoValue(value))
         return false;
@@ -1944,6 +2059,8 @@ bool ALKitPage::setWhoPin(const LLSD& value)
         if (mWhoCombo)
             mWhoCombo->onCommit();
     }
+    else if (mWhoAdapter == "cine_rig_slot")
+        applyActiveRigActor();
     else if (ALKitShell* shell = ALKitShell::find(this))
         applyCastSelection(shell->castSelection());
     if (mWhoChip && mWhoCombo && !mWhoError)
@@ -1954,8 +2071,24 @@ bool ALKitPage::setWhoPin(const LLSD& value)
     return true;
 }
 
+void ALKitPage::syncRigTarget()
+{
+    if (mWhoAdapter == "cine_rig_slot" && mWhoUnavailableTarget.isNull())
+    {
+        auto& rigs = ALCineLightRigManager::instance();
+        mActorTarget = rigs.slotActor(rigs.selectedSlot());
+    }
+}
+
 LLUUID ALKitPage::actorTarget() const
 {
+    if (mWhoCombo && mWhoAdapter == "cine_rig_slot")
+    {
+        if (mWhoUnavailableTarget.notNull()) return mWhoUnavailableTarget;
+        if (mActorTarget.notNull()) return mActorTarget;
+        return ALCineLightRigManager::instance().slotActor(
+            static_cast<ALCineLightRigManager::Slot>(mWhoCombo->getValue().asInteger()));
+    }
     if (mWhoCombo && mWhoAdapter == "gaze_slot")
     {
         const S32 slot = mWhoCombo->getValue().asInteger();
@@ -2173,6 +2306,16 @@ void ALKitPage::draw()
 
 void ALKitPage::refreshSubjectCombos()
 {
+    ALDirectorCastUI::ActorLabelProvider actor_label;
+    if (mWhoAdapter == "cine_rig_slot")
+    {
+        ALPanelCineLightRig* panel = mRigPanel;
+        // During child construction the owning panel may not be attached yet.
+        // Its first updateAnchorList rebuilds these combos before display.
+        if (!panel) return;
+        panel->clearRigLabels("subjects");
+        actor_label = [panel](const LLUUID& id) { return panel->rigActorName(id, "subjects"); };
+    }
     for (const SubjectCombo& spec : mSubjectCombos)
     {
         ALDirectorCastUI::ValueProvider provider;
@@ -2204,6 +2347,6 @@ void ALKitPage::refreshSubjectCombos()
         }
         ALDirectorCastUI::mergeSubjectCombo(
             spec.mCombo, spec.mSelfValue, spec.mSubjectAValue,
-            spec.mSubjectCount, provider);
+            spec.mSubjectCount, provider, actor_label);
     }
 }

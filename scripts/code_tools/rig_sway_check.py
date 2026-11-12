@@ -154,13 +154,17 @@ def main():
     ''')
     source = out / 'sway.cpp'
     source.write_text('\n'.join(lines), encoding='utf-8')
+    from native_check_tools import crash_dialog_startup
+    startup = crash_dialog_startup(out)
     vcvars = r'C:\Program Files\Microsoft Visual Studio\18\Community\VC\Auxiliary\Build\vcvars64.bat'
     from native_check_tools import viewer_native_flags
     boost_includes = ' '.join(f for f in viewer_native_flags()[0] if f.startswith('/I') and 'vcpkg' in f)
     build = out / 'build.cmd'
     build.write_text(f'@echo off\ncall "{vcvars}" >nul\n'
+                     f'cl /nologo /std:c++20 /EHsc /c "{startup}" /Fo:"{out / "startup.obj"}"\n'
+                     'if errorlevel 1 exit /b %ERRORLEVEL%\n'
                      f'cl /nologo /std:c++20 /utf-8 /EHsc /O2 /Ob3 /arch:AVX2 /fp:fast /W3 /WX /I"{out}" '
-                     f'/I"{ROOT / "indra/newview"}" {boost_includes} "{source}" '
+                     f'/I"{ROOT / "indra/newview"}" {boost_includes} "{source}" "{out / "startup.obj"}" '
                      f'/Fe:"{out / "sway.exe"}" /Fo:"{out / "sway.obj"}"\nexit /b %ERRORLEVEL%\n')
     result = subprocess.run(['cmd', '/d', '/c', str(build)], cwd=out,
                             capture_output=True, text=True, timeout=120)
@@ -177,7 +181,7 @@ def main():
     negatives = {
         'open_combo_baseline': ('combo && combo->isListVisible()', 'combo && false'),
         'make_coalesced': ('history.normalizeWidgetValue(mLitTarget, LLSD("make"), baseline);', '/* planted coalesced baseline */'),
-        'make_left_open': ('            history.finishGesture();\n        }\n        std::string moved;', '        }\n        std::string moved;'),
+        'make_left_open': ('            history.finishGesture();\n        }\n        clearRigLabels("notice");\n        std::string moved;', '        }\n        clearRigLabels("notice");\n        std::string moved;'),
         'runtime_no_retry': ('&& retry)', '&& false && retry)'),
         'runtime_unthrottled': ('const bool retry_members = member_now >= mLitMemberRetryAt;', 'const bool retry_members = true;'),
         'open_combo_selection': ('if (!mLitTarget->isListVisible())\n            setValueIfChanged(mLitTarget,', 'if (true)\n            setValueIfChanged(mLitTarget,'),
@@ -189,6 +193,10 @@ def main():
         'names_per_tick': ('auto* object = gObjectList.findObject(runtime[index]);', 'auto* object = LLDirectorCast::instance().resolve(runtime[index]);'),
         'shutdown_stale': (shutdown, shutdown.replace('    mLastResolvedMembers.clear();', '')),
         'representative_snap': ('if (group_members[i]->getID() == mGroupRepresentative)', 'if (group_members[i]->getID().isNull())'),
+        'subject_off_skips_borrowed': ('mRigSession.subjectRigsOff(mBlobs, [this](S32 index) { shutdownSlot(index); });',
+            'for(S32 i=1;i<SLOT_COUNT;++i)subjectRigOff(static_cast<Slot>(i));'),
+        'all_off_skips_borrowed': ('mRigSession.allOff(mBlobs, [this](S32 index) { shutdownSlot(index); });',
+            'mBlobs[0].mEnabled=false;shutdownSlot(0);for(S32 i=1;i<SLOT_COUNT;++i)subjectRigOff(static_cast<Slot>(i));'),
     }
     for name, (before, after) in negatives.items():
         assert before in generated, name

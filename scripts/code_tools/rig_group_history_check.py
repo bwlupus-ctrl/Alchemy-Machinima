@@ -20,6 +20,7 @@ struct LLView {
     virtual ~LLView()=default;
     LLView* parent=nullptr;
     LLView* getParent() const { return parent; }
+    LLHandle<LLView> getHandle() { return {this}; }
 };
 struct LLUICtrl : LLView {
     using commit_signal_t = boost::signals2::signal<void (LLUICtrl*, const LLSD&)>;
@@ -50,17 +51,19 @@ struct ALKitRow : LLView {
     LLSD mLastValue;
     void setDisplayLabel(const std::string& text) { label=text; }
     template<class C> static void setControlVisible(C* c, bool v) { c->visible=v; }
-    struct Meta { std::string setting, label; };
+    struct Meta { std::string setting, label, page_key; };
     Meta mMeta;
+    ALKitRow* original=nullptr;ALKitRow* sourceRow(){return original;}
     void bindingChanged() {}
     void connectHistory(LLUICtrl*);
-    Meta meta() const { return {}; }
+    Meta meta() const { return mMeta; }
     LLUICtrl* bound=nullptr;
     LLUICtrl* control() { return bound; }
     void replayBoundValue(const LLSD& v) { assert(bound); bound->setValue(v); bound->onCommit(); }
 };
 struct ALKitPage : LLView {
-    std::string pageKey() const { return "light_group/cine_light_rig_tab"; }
+    std::string key="light_group/cine_light_rig_tab";
+    std::string pageKey() const { return key; }
     ALKitRow* findRowBySetting(const std::string&) { return nullptr; }
     void historyEdited(bool) {}
 };
@@ -71,6 +74,7 @@ inline void add(const char*, const LLSD&) {}
 }
 static int sKitHistorySuspend=0, sKitHistoryReplay=0;
 static bool sKitInputSourceSet=false;
+static LLHandle<LLView> sKitBindingSource;
 inline std::string rowPage(LLView*) { return "light_group/cine_light_rig_tab"; }
 '''
     cls = function(header, 'class ALKitHistory\n').replace('private:', 'public:')
@@ -88,7 +92,8 @@ struct ALKitShell : LLView {
 };
 ALKitHistory::ALKitHistory()=default;
 ALKitHistory::~ALKitHistory()=default;
-LLView* ALKitHistory::inputPage() { return nullptr; }
+static LLView* fixtureInput=nullptr;
+LLView* ALKitHistory::inputPage() { return fixtureInput; }
 ''']
     ui = (root / 'indra/llui/lluictrl.cpp').read_text(encoding='utf8')
     lines.append(function(ui, 'boost::signals2::connection LLUICtrl::setCommitCallback( const commit_signal_t::slot_type& cb )'))
@@ -108,6 +113,7 @@ LLView* ALKitHistory::inputPage() { return nullptr; }
             'ALKitHistory::ScopedReplay::ScopedReplay()',
             'ALKitHistory::ScopedReplay::~ScopedReplay()',
             'bool ALKitHistory::replaying()',
+            'void ALKitHistory::registerContext(',
             'void ALKitHistory::beginGesture(',
             'void ALKitHistory::recordWidget(',
             'void ALKitHistory::addEntry(',
