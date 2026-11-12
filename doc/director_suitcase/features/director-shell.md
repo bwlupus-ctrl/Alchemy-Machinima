@@ -56,6 +56,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alfloatertemporalcapture.h`
 - `indra/newview/alfloaterultimatediopter.cpp`
 - `indra/newview/alfloaterultimatediopter.h`
+- `indra/newview/algazeactor.h`
 - `indra/newview/algazeblink.h`
 - `indra/newview/algazehotslots.h`
 - `indra/newview/algazemotor.h`
@@ -394,10 +395,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@182,41"]}
 - {"path": "indra/newview/skins/default/xui/en/fonts.xml", "hunks": ["indra/newview/skins/default/xui/en/fonts.xml@322,14", "indra/newview/skins/default/xui/en/fonts.xml@663,26"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743", "indra/newview/skins/default/xui/en/menu_attachment_other.xml@1047,45"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733", "indra/newview/skins/default/xui/en/menu_attachment_self.xml@1149,45"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549", "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,209", "indra/newview/skins/default/xui/en/menu_avatar_other.xml@1035,45"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549", "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,193", "indra/newview/skins/default/xui/en/menu_avatar_self.xml@1051,45"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779", "indra/newview/skins/default/xui/en/menu_attachment_other.xml@1083,45"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769", "indra/newview/skins/default/xui/en/menu_attachment_self.xml@1185,45"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549", "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245", "indra/newview/skins/default/xui/en/menu_avatar_other.xml@1071,45"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549", "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229", "indra/newview/skins/default/xui/en/menu_avatar_self.xml@1087,45"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@22,249", "indra/newview/skins/default/xui/en/menu_object.xml@281,81"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
 - {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13599,368"]}

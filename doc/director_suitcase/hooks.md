@@ -1200,20 +1200,21 @@ HEAD coordinates; guards/features are candidate evidence
 | 4686–4692 (n=7) | LLViewerWindow::updateUI | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 4754–4770 (n=17) | LLViewerWindow::updateLayout | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Arm once per frame after tools choose their cursor. Win32 checks live client bounds/focus on its window thread, including captured motion; cached viewer mouse/focus events could otherwise flash on client re-entry. |
 | 5006–5020 (n=15) | LLViewerWindow::renderSelections | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge HideUI] Selection indicators (silhouettes + manipulator tools) are interface: skip them entirely while the interface is hidden so a shot never carries "something is selected" tells. GL picking must keep working (it renders into the pick buffer, not the screen), so that p |
-| 5230–5240 (n=11) | LLViewerWindow::pickAsync | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): no world pick is scheduled (tool dispatch is dropped too). |
-| 5300–5310 (n=11) | LLViewerWindow::pickImmediate | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): world picks return nothing. |
-| 5760–5774 (n=15) | bdmerge_max_snapshot_image_size | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] runtime max snapshot side length (see llviewerwindow.h); 12288 with the gated high-res override on, stock 7680 otherwise |
-| 5835–5855 (n=21) | LLViewerWindow::saveImageLocal | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] toggleable date/time in snapshot filenames (donor: Black Dragon 16143bb98b). Stock (gate off or toggle on) keeps the timestamp; with the gate on and the toggle off, fall back to plain sequential numbering like BD. |
-| 5998–6008 (n=11) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey, LLSnapshotModel |
-| 6161–6167 (n=7) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 6169–6175 (n=7) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 6183–6196 (n=14) | LLViewerWindow::rawSnapshot | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Use exactly the dimensions/offsets of the readback below, even when the UI window and world-view rectangle differ. |
-| 6201–6214 (n=14) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey, LLSnapshotModel |
-| 6322–6334 (n=13) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6362–6374 (n=13) | LLViewerWindow::rawSnapshot, LLViewerWindow::simpleSnapshot | actor-path | creative-candidate | unknown; no local conditional evidence | Edits LLActorMover, ALActorChromaKey |
-| 6471–6477 (n=7) | LLViewerWindow::simpleSnapshot | actor-path | creative-candidate | unknown; no local conditional evidence | Edits LLActorMover |
-| 6518–6524 (n=7) | LLViewerWindow::cubeSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [PerfB1] No default-framebuffer clear: cube rendering clears its capture targets in display_cube_face(). |
-| 7242–7255 (n=14) | LLViewerWindow::getIndicatorsVisible | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge HideUI] Indicator overlays follow the interface: hidden under either hide-UI mechanism (see header). Used by renderSelections, the selection-beam effects, beacon lines and face highlights. |
+| 5228–5241 (n=14) | LLViewerWindow::pickAsync | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): no world pick is scheduled (tool dispatch is dropped too). |
+| 5245–5251 (n=7) | LLViewerWindow::pickAsync | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 5302–5312 (n=11) | LLViewerWindow::pickImmediate | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): world picks return nothing. |
+| 5762–5776 (n=15) | bdmerge_max_snapshot_image_size | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] runtime max snapshot side length (see llviewerwindow.h); 12288 with the gated high-res override on, stock 7680 otherwise |
+| 5837–5857 (n=21) | LLViewerWindow::saveImageLocal | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge C6] toggleable date/time in snapshot filenames (donor: Black Dragon 16143bb98b). Stock (gate off or toggle on) keeps the timestamp; with the gate on and the toggle off, fall back to plain sequential numbering like BD. |
+| 6000–6010 (n=11) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey, LLSnapshotModel |
+| 6163–6169 (n=7) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 6171–6177 (n=7) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 6185–6198 (n=14) | LLViewerWindow::rawSnapshot | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Use exactly the dimensions/offsets of the readback below, even when the UI window and world-view rectangle differ. |
+| 6203–6216 (n=14) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits ALActorChromaKey, LLSnapshotModel |
+| 6324–6336 (n=13) | LLViewerWindow::rawSnapshot | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6364–6376 (n=13) | LLViewerWindow::rawSnapshot, LLViewerWindow::simpleSnapshot | actor-path | creative-candidate | unknown; no local conditional evidence | Edits LLActorMover, ALActorChromaKey |
+| 6473–6479 (n=7) | LLViewerWindow::simpleSnapshot | actor-path | creative-candidate | unknown; no local conditional evidence | Edits LLActorMover |
+| 6520–6526 (n=7) | LLViewerWindow::cubeSnapshot | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [PerfB1] No default-framebuffer clear: cube rendering clears its capture targets in display_cube_face(). |
+| 7244–7257 (n=14) | LLViewerWindow::getIndicatorsVisible | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge HideUI] Indicator overlays follow the interface: hidden under either hide-UI mechanism (see header). Used by renderSelections, the selection-beam effects, beacon lines and face highlights. |
 
 ## Slice 2: `indra/newview/llvoavatar.cpp`
 
@@ -1722,9 +1723,9 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 3–745 (n=743) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, clones, director-shell, gaze, looks, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneOverlay] Studio overlay clones on this avatar. The whole submenu [Director] Machinima tools, consolidated. The cast / subject / mover / |
-| 932–955 (n=24) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1047–1091 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3–781 (n=779) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, clones, director-shell, gaze, looks, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneOverlay] Studio overlay clones on this avatar. The whole submenu [Director] Machinima tools, consolidated. The cast / subject / mover / |
+| 968–991 (n=24) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1083–1127 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/skins/default/xui/en/menu_attachment_self.xml`
 
@@ -1732,8 +1733,8 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 2–734 (n=733) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, clones, director-shell, gaze, looks, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneOverlay] Studio overlay clones on this avatar. The whole submenu [Director] Machinima tools, consolidated. The cast / subject / mover / |
-| 1149–1193 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2–770 (n=769) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, clones, director-shell, gaze, looks, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneOverlay] Studio overlay clones on this avatar. The whole submenu [Director] Machinima tools, consolidated. The cast / subject / mover / |
+| 1185–1229 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/skins/default/xui/en/menu_avatar_other.xml`
 
@@ -1742,9 +1743,9 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 3–551 (n=549) | unknown/non-function (declaration, XML, build list or global scope) | clones, director-shell, gaze, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneOverlay] Studio overlay clones on this avatar. The whole submenu |
-| 654–862 (n=209) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, director-shell, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Director] Machinima tools, consolidated. Every item resolves the clicked |
-| 943–966 (n=24) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1035–1079 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 654–898 (n=245) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, director-shell, gaze, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Director] Machinima tools, consolidated. Every item resolves the clicked |
+| 979–1002 (n=24) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1071–1115 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/skins/default/xui/en/menu_avatar_self.xml`
 
@@ -1753,8 +1754,8 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 2–550 (n=549) | unknown/non-function (declaration, XML, build list or global scope) | clones, director-shell, gaze, vcam, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneOverlay] Studio overlay clones on this avatar. The whole submenu |
-| 838–1030 (n=193) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, director-shell, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Director] Machinima tools for my own avatar, consolidated. Every item |
-| 1051–1095 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 838–1066 (n=229) | unknown/non-function (declaration, XML, build list or global scope) | actor-path, camera, director-shell, gaze, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Director] Machinima tools for my own avatar, consolidated. Every item |
+| 1087–1131 (n=45) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/skins/default/xui/en/menu_object.xml`
 
@@ -2271,6 +2272,30 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 32–38 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1057–1065 (n=9) | LLSurfacePatch::updateVisibility | composition, rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] LT: a camera-distance terrain stride change is LOD churn; real edits (dirty(), dirtyPatch(), composition) stay events. |
+
+## Slice 3: `indra/newview/lltoolobjpicker.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 43–50 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 67–79 (n=13) | LLToolObjPicker::handleMouseDown | unknown | unknown-review | unknown; conditional evidence present | Edits gViewerWindow |
+| 96–114 (n=19) | LLToolObjPicker::pickCallback | gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: A legacy result must not supply a target to an opt-in session either. |
+| 123–149 (n=27) | LLEventTimer::run_after, LLToolObjPicker::handleMouseUp | gaze | creative-candidate | unknown; conditional evidence present | Edits LLTool, LLEventTimer, LLToolObjPicker, LLSD, LLNotificationsUtil |
+| 176–187 (n=12) | LLToolObjPicker::onMouseCaptureLost | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 195–210 (n=16) | LLToolObjPicker::setExitCallback | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A new owner must finish the old owner's exit path before replacing it. Capture loss runs legacy callbacks too (particle editor and reporter). |
+| 212–223 (n=12) | LLToolObjPicker::handleSelect | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 225–232 (n=8) | LLToolObjPicker::handleDeselect | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 236–282 (n=47) | LLToolObjPicker::cancelPick, LLToolObjPicker::completeGazePick, LLToolObjPicker::finishSession, LLToolObjPicker::handleKey | gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: Mark ended and detach the callback before invoking owner cleanup: it can reenter the tool manager or clear/replace the callback. Capture may already be absent. |
+
+## Slice 3: `indra/newview/lltoolobjpicker.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 42–74 (n=33) | cancelOnToolChange, completedPick | gaze | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/newview/llviewerjoystick.h`
 
@@ -3033,7 +3058,10 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 56–62 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 228–234 (n=7) | LLToolMgr::getCurrentTool | clones | creative-candidate | unknown; no local conditional evidence | Edits ALGhostCloneMenu |
+| 186–195 (n=10) | LLToolMgr::setCurrentTool | unknown | unknown-review | unknown; conditional evidence present | Edits LLToolObjPicker |
+| 232–238 (n=7) | LLToolMgr::getCurrentTool | clones | creative-candidate | unknown; no local conditional evidence | Edits ALGhostCloneMenu |
+| 430–439 (n=10) | LLToolMgr::setTransientTool | unknown | unknown-review | unknown; conditional evidence present | Edits LLToolObjPicker |
+| 455–467 (n=13) | LLToolMgr::clearTransientTool | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Opt-in one-shot picks must release capture before tool status is recomputed. Clear the transient first: the exit callback may itself restore the base tool. |
 
 ## Slice 4: `indra/newview/lltoolpie.cpp`
 
@@ -6692,6 +6720,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 30–36 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 95–102 (n=8) | LLViewerJoint::render | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Repeated transparent draws reuse the palette and never split bakes. |
 
+## Slice 99: `indra/newview/llviewermenu.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 38–47 (n=10) | unknown/non-function (class LLParcelSelection;) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Resolve a current avatar or attachment wearer through the world-menu resolver. |
+
 ## Slice 99: `indra/newview/llvieweroctree.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6745,10 +6781,12 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 151–162 (n=12) | unknown/non-function (struct MainPanel : public LLPanel) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] runtime max snapshot side length: 12288 when the high-res override (BDMergeSnapshotExtras + BDMergeSnapshotResolutionUnlock) is on, otherwise stock MAX_SNAPSHOT_IMAGE_SIZE. donor: Black Dragon b4cfc2cb83-era constant raise (12228 in llviewerwindow.h), made a gated ru |
-| 193–213 (n=21) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge HideUI] True when in-world INDICATOR overlays (selection outlines + manipulators, selection/edit particle beams, beacon lines, face highlights) should draw. False when the interface is hidden by EITHER mechanism: the HideUIControls / mouselook path (mUIVisible) or the Ad |
-| 516–522 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 601–610 (n=10) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Active Frame format rectangle inside a width x height view (any units, same origin); false when the format is Off / Native. Defined in llviewerwindow.cpp. |
+| 114–120 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 152–163 (n=12) | unknown/non-function (struct MainPanel : public LLPanel) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] runtime max snapshot side length: 12288 when the high-res override (BDMergeSnapshotExtras + BDMergeSnapshotResolutionUnlock) is on, otherwise stock MAX_SNAPSHOT_IMAGE_SIZE. donor: Black Dragon b4cfc2cb83-era constant raise (12228 in llviewerwindow.h), made a gated ru |
+| 194–214 (n=21) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge HideUI] True when in-world INDICATOR overlays (selection outlines + manipulators, selection/edit particle beams, beacon lines, face highlights) should draw. False when the interface is hidden by EITHER mechanism: the HideUIControls / mouselook path (mUIVisible) or the Ad |
+| 447–454 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 518–524 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 603–612 (n=10) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Active Frame format rectangle inside a width x height view (any units, same origin); false when the format is Off / Native. Defined in llviewerwindow.cpp. |
 
 ## Slice 99: `indra/newview/llvoavatarself.h`
 

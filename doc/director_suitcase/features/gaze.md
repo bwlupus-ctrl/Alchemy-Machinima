@@ -13,6 +13,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alfloateractorgaze.h`
 - `indra/newview/alfloatergazecues.cpp`
 - `indra/newview/alfloatergazecues.h`
+- `indra/newview/algazeactor.h`
 - `indra/newview/algazeblink.h`
 - `indra/newview/algazehot.h`
 - `indra/newview/algazehotslots.h`
@@ -87,10 +88,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerinput.h", "hunks": ["indra/newview/llviewerinput.h@29,9"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@1502,43", "indra/newview/llviewerjoystick.cpp@1887,2171", "indra/newview/llviewerjoystick.cpp@4332,243"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@5274,596", "indra/newview/llvoavatar.cpp@5970,45"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549", "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549", "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
 - {"path": "indra/llcharacter/llheadrotmotion.cpp", "hunks": ["indra/llcharacter/llheadrotmotion.cpp@24,12", "indra/llcharacter/llheadrotmotion.cpp@69,22", "indra/llcharacter/llheadrotmotion.cpp@198,21", "indra/llcharacter/llheadrotmotion.cpp@262,7", "indra/llcharacter/llheadrotmotion.cpp@395,7", "indra/llcharacter/llheadrotmotion.cpp@431,7", "indra/llcharacter/llheadrotmotion.cpp@492,45", "indra/llcharacter/llheadrotmotion.cpp@547,9", "indra/llcharacter/llheadrotmotion.cpp@563,15", "indra/llcharacter/llheadrotmotion.cpp@585,12"]}
 - {"path": "indra/llcharacter/llheadrotmotion.h", "hunks": ["indra/llcharacter/llheadrotmotion.h@31,7", "indra/llcharacter/llheadrotmotion.h@102,12", "indra/llcharacter/llheadrotmotion.h@124,9", "indra/llcharacter/llheadrotmotion.h@196,12", "indra/llcharacter/llheadrotmotion.h@214,11", "indra/llcharacter/llheadrotmotion.h@228,12"]}
@@ -100,6 +101,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/llcharacter/llpose.cpp", "hunks": ["indra/llcharacter/llpose.cpp@235,15", "indra/llcharacter/llpose.cpp@294,17", "indra/llcharacter/llpose.cpp@413,15", "indra/llcharacter/llpose.cpp@547,14", "indra/llcharacter/llpose.cpp@566,9"]}
 - {"path": "indra/llcharacter/llpose.h", "hunks": ["indra/llcharacter/llpose.h@88,18", "indra/llcharacter/llpose.h@121,12", "indra/llcharacter/llpose.h@148,13"]}
 - {"path": "indra/llcharacter/lltargetingmotion.cpp", "hunks": ["indra/llcharacter/lltargetingmotion.cpp@28,7", "indra/llcharacter/lltargetingmotion.cpp@105,13"]}
+- {"path": "indra/newview/lltoolobjpicker.cpp", "hunks": ["indra/newview/lltoolobjpicker.cpp@96,19", "indra/newview/lltoolobjpicker.cpp@123,27", "indra/newview/lltoolobjpicker.cpp@236,47"]}
+- {"path": "indra/newview/lltoolobjpicker.h", "hunks": ["indra/newview/lltoolobjpicker.h@42,33"]}
 - {"path": "indra/newview/llviewerjoystick.h", "hunks": ["indra/newview/llviewerjoystick.h@172,83"]}
 - {"path": "indra/newview/llviewerpartsim.cpp", "hunks": ["indra/newview/llviewerpartsim.cpp@1114,60"]}
 - {"path": "indra/newview/llviewerpartsim.h", "hunks": ["indra/newview/llviewerpartsim.h@157,11"]}
@@ -311,6 +314,7 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 418, "text": "llfloaterdirector.cpp", "source": "indra/newview/llfloaterdirector.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1410, "text": "llfloaterdirector.h", "source": "indra/newview/llfloaterdirector.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 626, "text": "llfloaterpreference.cpp", "source": "indra/newview/llfloaterpreference.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 634, "text": "llfloaterreporter.cpp", "source": "indra/newview/llfloaterreporter.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 674, "text": "llghostavatar.cpp", "source": "indra/newview/llghostavatar.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1700, "text": "llghostavatar.h", "source": "indra/newview/llghostavatar.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 916, "text": "llheroprobemanager.cpp", "source": "indra/newview/llheroprobemanager.cpp"}
@@ -319,6 +323,8 @@ None identified by local evidence; not a claim that none is needed.
 - {"file": "indra/newview/CMakeLists.txt", "line": 424, "text": "llpresentationtime.cpp", "source": "indra/newview/llpresentationtime.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 922, "text": "llscenemonitor.cpp", "source": "indra/newview/llscenemonitor.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 956, "text": "llstartup.cpp", "source": "indra/newview/llstartup.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 997, "text": "lltoolobjpicker.cpp", "source": "indra/newview/lltoolobjpicker.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 2014, "text": "lltoolobjpicker.h", "source": "indra/newview/lltoolobjpicker.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1034, "text": "llviewerfloaterreg.cpp", "source": "indra/newview/llviewerfloaterreg.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1046, "text": "llviewerinput.cpp", "source": "indra/newview/llviewerinput.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 2064, "text": "llviewerinput.h", "source": "indra/newview/llviewerinput.h"}
@@ -339,6 +345,7 @@ None identified by local evidence; not a claim that none is needed.
 
 ## checks
 
+- `scripts/code_tools/avatar_gaze_menu_check.py`
 - `scripts/code_tools/director_gaze_hot_check.py`
 - `scripts/code_tools/director_gaze_nearby_check.py`
 

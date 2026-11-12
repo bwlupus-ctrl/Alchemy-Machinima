@@ -6,9 +6,9 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
-      "HOOK": 544,
-      "OWNED": 932,
-      "TOOLING": 480
+      "HOOK": 547,
+      "OWNED": 933,
+      "TOOLING": 481
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -68,7 +68,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "0e3cef1460b43274a5791e322192ecdaf2f42ceaae51a13fdbf71b1d0080894c",
+        "csv_sha256": "2699877b20c1f18f16c6de4b6f4c60e373e0133f173dce05c9ea97f025c90951",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -239,10 +239,10 @@
       },
       "wiring_rows": 2310
     },
-    "head_source_tree": "707ca1ef20622e9c207954769ce5e617ab283d82",
-    "hook_files": 544,
-    "hunks": 3419,
-    "input_sha256": "e6467f579e6477e6f0997c04865bab69192e2f7f2cc0dc78c978b1d550c372f8",
+    "head_source_tree": "88899e9d0780b8e85c3508804c7f4dbbf92bb863",
+    "hook_files": 547,
+    "hunks": 3436,
+    "input_sha256": "968f0f4167b8dc7f57ea4c53ea8a66b4befb7952282b761155315abba3ed90b9",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -15110,6 +15110,28 @@
     },
     {
       "candidate_features_from_subjects": [
+        "director-shell",
+        "gaze"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "actor-path",
+        "director-shell",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/algazeactor.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
         "gaze"
       ],
       "class": "OWNED",
@@ -15601,6 +15623,7 @@
         "actor-bar",
         "actor-path",
         "clones",
+        "composition",
         "crowd",
         "director-shell",
         "gaze",
@@ -29125,12 +29148,13 @@
       "features": [
         "capture-sidecar",
         "clones",
+        "gaze",
         "looks",
         "rig",
         "vcam"
       ],
       "git_status": "M",
-      "layer": 4,
+      "layer": 3,
       "path": "indra/newview/llfloaterreporter.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
@@ -31137,7 +31161,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31151,6 +31176,42 @@
       "git_status": "M",
       "layer": 3,
       "path": "indra/newview/lltoolmgr.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "director-shell",
+        "gaze"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/lltoolobjpicker.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "director-shell",
+        "gaze"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/lltoolobjpicker.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -31578,6 +31639,22 @@
     {
       "candidate_features_from_subjects": [
         "director-shell",
+        "gaze"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/llviewermenu.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "director-shell",
         "weather"
       ],
       "class": "HOOK",
@@ -31950,8 +32027,8 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "composition",
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31974,7 +32051,9 @@
     },
     {
       "candidate_features_from_subjects": [
-        "composition"
+        "composition",
+        "director-shell",
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -36397,7 +36476,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "looks",
+        "gaze",
         "sensor"
       ],
       "class": "HOOK",
@@ -36424,6 +36503,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
+        "gaze",
         "looks"
       ],
       "class": "HOOK",
@@ -36450,7 +36530,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "sensor"
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -36476,6 +36556,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
+        "gaze",
         "looks"
       ],
       "class": "HOOK",
@@ -41177,6 +41258,21 @@
       "git_status": "A",
       "layer": 3,
       "path": "scripts/code_tools/avatar_anim_speed_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "scripts/code_tools/avatar_gaze_menu_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

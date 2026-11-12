@@ -236,8 +236,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,45", "indra/newview/pipeline.cpp@125,11", "indra/newview/pipeline.cpp@141,14", "indra/newview/pipeline.cpp@161,12", "indra/newview/pipeline.cpp@1701,30063", "indra/newview/pipeline.cpp@32705,721", "indra/newview/pipeline.cpp@33561,222", "indra/newview/pipeline.cpp@34366,979", "indra/newview/pipeline.cpp@35621,344", "indra/newview/pipeline.cpp@39659,153"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@709,90", "indra/newview/pipeline.h@802,100", "indra/newview/pipeline.h@1174,67"]}
 - {"path": "indra/newview/skins/default/colors.xml", "hunks": ["indra/newview/skins/default/colors.xml@2,153"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243", "indra/newview/skins/default/xui/en/menu_viewer.xml@1249,19"]}
@@ -292,7 +292,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/lltoolcomp.cpp", "hunks": ["indra/newview/lltoolcomp.cpp@54,36", "indra/newview/lltoolcomp.cpp@304,12", "indra/newview/lltoolcomp.cpp@436,12", "indra/newview/lltoolcomp.cpp@653,12"]}
 - {"path": "indra/newview/lltoolcomp.h", "hunks": ["indra/newview/lltoolcomp.h@81,16"]}
 - {"path": "indra/newview/lltooldraganddrop.h", "hunks": ["indra/newview/lltooldraganddrop.h@108,8", "indra/newview/lltooldraganddrop.h@152,7", "indra/newview/lltooldraganddrop.h@175,15", "indra/newview/lltooldraganddrop.h@317,8"]}
-- {"path": "indra/newview/lltoolmgr.cpp", "hunks": ["indra/newview/lltoolmgr.cpp@56,7", "indra/newview/lltoolmgr.cpp@228,7"]}
+- {"path": "indra/newview/lltoolmgr.cpp", "hunks": ["indra/newview/lltoolmgr.cpp@56,7", "indra/newview/lltoolmgr.cpp@232,7"]}
 - {"path": "indra/newview/lltoolpie.cpp", "hunks": ["indra/newview/lltoolpie.cpp@65,7", "indra/newview/lltoolpie.cpp@202,12", "indra/newview/lltoolpie.cpp@2140,7", "indra/newview/lltoolpie.cpp@2184,13", "indra/newview/lltoolpie.cpp@2203,8"]}
 - {"path": "indra/newview/llviewercamera.cpp", "hunks": ["indra/newview/llviewercamera.cpp@377,15"]}
 - {"path": "indra/newview/llviewerjointmesh.cpp", "hunks": ["indra/newview/llviewerjointmesh.cpp@217,47"]}

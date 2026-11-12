@@ -37,6 +37,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/aldirectortagtargets.h`
 - `indra/newview/alfloatergazecues.cpp`
 - `indra/newview/alfloatergazecues.h`
+- `indra/newview/algazeactor.h`
 - `indra/newview/algazehotslots.h`
 - `indra/newview/alghostcloneactions.h`
 - `indra/newview/alghostclonemenu.cpp`

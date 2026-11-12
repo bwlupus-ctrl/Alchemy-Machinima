@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "0e3cef1460b43274a5791e322192ecdaf2f42ceaae51a13fdbf71b1d0080894c",
+  "csv_sha256": "2699877b20c1f18f16c6de4b6f4c60e373e0133f173dce05c9ea97f025c90951",
   "interactive_rows": 2176,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -23129,7 +23129,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:650 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:651 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -23180,7 +23180,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:651 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:652 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -23231,7 +23231,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:652 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:653 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -23282,7 +23282,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:653 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:654 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -23333,7 +23333,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:654 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:655 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -23388,7 +23388,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2960 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2959 ALPanelLensGaze::buildHotControls",
    "options": [
     {
      "label": "Slot 1",
@@ -23461,7 +23461,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2962 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2961 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23516,7 +23516,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2962 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2961 ALPanelLensGaze::buildHotControls",
    "options": [
     {
      "label": "Choose target",
@@ -23593,7 +23593,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2963 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2962 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23645,7 +23645,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2968 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2967 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23700,7 +23700,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2969 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2968 ALPanelLensGaze::buildHotControls",
    "options": [
     {
      "label": "Centre",
@@ -23762,7 +23762,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2970 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2969 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23813,7 +23813,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2970 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2969 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23864,7 +23864,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2970 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2969 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23915,7 +23915,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2978 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2977 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -23961,7 +23961,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2988 ALPanelLensGaze::buildHotControls"
+   "evidence": "cpp alpanellensgaze.cpp:2987 ALPanelLensGaze::buildHotControls"
   },
   {
    "page": "gaze_tab",
@@ -24011,7 +24011,7 @@
    "increment": 0.01,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2964 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2963 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24062,7 +24062,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2966 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2965 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24113,7 +24113,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2966 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2965 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24164,7 +24164,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2967 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2966 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24215,7 +24215,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2963 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2962 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24266,7 +24266,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2965 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2964 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24317,7 +24317,7 @@
    "increment": 0.1,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2965 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2964 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24372,7 +24372,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2964 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2963 ALPanelLensGaze::buildHotControls",
    "options": [
     {
      "label": "Auto",
@@ -24438,7 +24438,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2998 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2997 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24489,7 +24489,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::buildHotControls",
-   "evidence": "cpp alpanellensgaze.cpp:2994 ALPanelLensGaze::buildHotControls",
+   "evidence": "cpp alpanellensgaze.cpp:2993 ALPanelLensGaze::buildHotControls",
    "enable_when": "actor selected"
   },
   {
@@ -24594,7 +24594,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:657 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:658 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Where it's going",
@@ -24672,7 +24672,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:658 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:659 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Follow head",
@@ -24758,7 +24758,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:663 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:664 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Head",
@@ -24823,7 +24823,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:664 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:665 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -24874,7 +24874,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:665 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:666 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -24926,7 +24926,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:666 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:667 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -24972,7 +24972,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:667 ALPanelLensGaze::postBuild"
+   "evidence": "cpp alpanellensgaze.cpp:668 ALPanelLensGaze::postBuild"
   },
   {
    "page": "gaze_tab",
@@ -25023,7 +25023,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:815 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:816 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25075,7 +25075,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:821 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:822 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25126,7 +25126,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:670 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:671 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25177,7 +25177,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:668 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:669 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25228,7 +25228,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:669 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:670 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25279,7 +25279,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:701 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:702 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25330,7 +25330,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:673 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:674 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25381,7 +25381,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:674 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:675 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25427,7 +25427,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:675 ALPanelLensGaze::postBuild"
+   "evidence": "cpp alpanellensgaze.cpp:676 ALPanelLensGaze::postBuild"
   },
   {
    "page": "gaze_tab",
@@ -25477,7 +25477,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:859 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:860 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25528,7 +25528,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:847 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:848 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25579,7 +25579,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:853 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:854 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25630,7 +25630,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:865 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:866 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25684,7 +25684,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:713 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:714 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -25735,7 +25735,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:827 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:828 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26061,7 +26061,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:809 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:810 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26112,7 +26112,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:720 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:721 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26158,7 +26158,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:719 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:720 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Gaze (head/eyes)",
@@ -26518,7 +26518,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:955 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:956 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26569,7 +26569,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:711 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:712 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26620,7 +26620,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:712 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:713 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26671,7 +26671,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:717 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:718 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26722,7 +26722,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:709 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:710 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26775,7 +26775,7 @@
    "increment": 5.0,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "setting BDMergeGazeBehindAngle (settings.xml); cpp alpanellensgaze.cpp:710 ALPanelLensGaze::postBuild"
+   "evidence": "setting BDMergeGazeBehindAngle (settings.xml); cpp alpanellensgaze.cpp:711 ALPanelLensGaze::postBuild"
   },
   {
    "page": "gaze_tab",
@@ -26825,7 +26825,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:871 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:872 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26876,7 +26876,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:877 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:878 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26927,7 +26927,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:943 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:944 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -26978,7 +26978,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:706 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:707 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27029,7 +27029,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:707 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:708 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27080,7 +27080,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:708 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:709 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27131,7 +27131,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:904 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:905 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27182,7 +27182,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:910 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:911 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27233,7 +27233,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:916 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:917 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27288,7 +27288,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:659 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:660 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Legacy blend",
@@ -27362,7 +27362,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:662 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:663 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Choose lean...",
@@ -27460,7 +27460,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:660 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:661 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Legacy final (always apply)",
@@ -27550,7 +27550,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:671 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:672 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Replace (current)",
@@ -27616,7 +27616,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:676 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:677 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27667,7 +27667,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:672 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:673 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27718,7 +27718,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:922 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:923 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27769,7 +27769,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:941 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:942 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27820,7 +27820,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:928 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:929 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27871,7 +27871,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:965 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:966 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27922,7 +27922,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:971 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:972 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -27973,7 +27973,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:977 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:978 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28028,7 +28028,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:661 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:662 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Choose range...",
@@ -28118,7 +28118,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:677 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:678 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Inherit",
@@ -28184,7 +28184,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:718 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:719 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28235,7 +28235,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:939 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:940 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28286,7 +28286,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:983 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:984 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28337,7 +28337,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:949 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:950 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28392,7 +28392,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:697 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:698 ALPanelLensGaze::postBuild",
    "options": [
     {
      "label": "Legacy fill",
@@ -28454,7 +28454,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:698 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:699 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28505,7 +28505,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:699 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:700 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28556,7 +28556,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:700 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:701 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28657,7 +28657,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:999 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:1000 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28708,7 +28708,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:1005 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:1006 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28759,7 +28759,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:1011 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:1012 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28810,7 +28810,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:1017 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:1018 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28861,7 +28861,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:678 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:679 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28912,7 +28912,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:681 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:682 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -28963,7 +28963,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:684 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:685 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29014,7 +29014,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:687 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:688 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29065,7 +29065,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:690 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:691 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29116,7 +29116,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:679 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:680 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29167,7 +29167,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:680 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:681 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29218,7 +29218,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:682 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:683 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29269,7 +29269,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:683 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:684 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29320,7 +29320,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:685 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:686 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29371,7 +29371,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:686 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:687 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29422,7 +29422,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:688 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:689 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29473,7 +29473,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:689 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:690 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29524,7 +29524,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:691 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:692 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29575,7 +29575,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:692 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:693 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29626,7 +29626,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:696 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:697 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29677,7 +29677,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:693 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:694 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29728,7 +29728,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:694 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:695 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29779,7 +29779,7 @@
    "increment": 0.5,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:695 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:696 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29830,7 +29830,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:989 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:990 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29881,7 +29881,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:714 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:715 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29932,7 +29932,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:715 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:716 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -29983,7 +29983,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:716 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:717 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30034,7 +30034,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:829 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:830 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30085,7 +30085,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:835 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:836 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30136,7 +30136,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:841 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:842 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30187,7 +30187,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:702 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:703 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30238,7 +30238,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:703 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:704 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30289,7 +30289,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:704 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:705 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30340,7 +30340,7 @@
    "increment": 0.05,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:705 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:706 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30491,7 +30491,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:886 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:887 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30542,7 +30542,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:892 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:893 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {
@@ -30593,7 +30593,7 @@
    "increment": null,
    "callbacks": null,
    "owner": "ALPanelLensGaze::postBuild",
-   "evidence": "cpp alpanellensgaze.cpp:898 ALPanelLensGaze::postBuild",
+   "evidence": "cpp alpanellensgaze.cpp:899 ALPanelLensGaze::postBuild",
    "enable_when": "actor selected"
   },
   {

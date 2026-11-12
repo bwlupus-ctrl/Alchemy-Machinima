@@ -21,6 +21,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/algazeblink.h`
 - `indra/newview/algazemath.h`
 - `indra/newview/algazemotor.h`
+- `indra/newview/alghostclonemenu.cpp`
 - `indra/newview/alghoststudio.cpp`
 - `indra/newview/allocalfogmanager.cpp`
 - `indra/newview/alpanelactorkey.cpp`
@@ -141,6 +142,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 1456, "text": "algazeblink.h", "source": "indra/newview/algazeblink.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1451, "text": "algazemath.h", "source": "indra/newview/algazemath.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1463, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu", "source": "indra/newview/alghostclonemenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 396, "text": "alghoststudio.cpp", "source": "indra/newview/alghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 194, "text": "allocalfogmanager.cpp", "source": "indra/newview/allocalfogmanager.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 433, "text": "alpanelactorkey.cpp", "source": "indra/newview/alpanelactorkey.cpp"}

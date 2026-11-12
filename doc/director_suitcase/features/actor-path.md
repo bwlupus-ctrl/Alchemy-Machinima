@@ -27,6 +27,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alfloatergazecues.h`
 - `indra/newview/alformationsolver.cpp`
 - `indra/newview/alformationsolver.h`
+- `indra/newview/algazeactor.h`
 - `indra/newview/algazeblink.h`
 - `indra/newview/algazehot.h`
 - `indra/newview/algazehotslots.h`
@@ -129,15 +130,15 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@25,27", "indra/newview/llviewerdisplay.cpp@909,14", "indra/newview/llviewerdisplay.cpp@997,17", "indra/newview/llviewerdisplay.cpp@1122,36", "indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1886,34", "indra/newview/llviewerdisplay.cpp@2083,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@30,46", "indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@538,266", "indra/newview/llviewerfloaterreg.cpp@878,7"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,24", "indra/newview/llviewerjoystick.cpp@1887,2171"]}
-- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,23", "indra/newview/llviewerwindow.cpp@6362,13", "indra/newview/llviewerwindow.cpp@6471,7"]}
+- {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,23", "indra/newview/llviewerwindow.cpp@6364,13", "indra/newview/llviewerwindow.cpp@6473,7"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@50,24", "indra/newview/llvoavatar.cpp@863,7", "indra/newview/llvoavatar.cpp@900,37", "indra/newview/llvoavatar.cpp@2441,14", "indra/newview/llvoavatar.cpp@2890,19", "indra/newview/llvoavatar.cpp@4254,14", "indra/newview/llvoavatar.cpp@4881,20", "indra/newview/llvoavatar.cpp@5200,25", "indra/newview/llvoavatar.cpp@5274,596", "indra/newview/llvoavatar.cpp@5970,45", "indra/newview/llvoavatar.cpp@8792,106", "indra/newview/llvoavatar.cpp@12883,163"]}
 - {"path": "indra/newview/llvoavatar.h", "hunks": ["indra/newview/llvoavatar.h@56,8", "indra/newview/llvoavatar.h@552,45", "indra/newview/llvoavatar.h@1191,10", "indra/newview/llvoavatar.h@1209,11", "indra/newview/llvoavatar.h@1261,17"]}
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@161,12", "indra/newview/pipeline.cpp@1701,30063", "indra/newview/pipeline.cpp@32705,721"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@1174,67"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,209"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,193"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@22,249"]}
 - {"path": "indra/llcharacter/llkeyframemotion.cpp", "hunks": ["indra/llcharacter/llkeyframemotion.cpp@50,38", "indra/llcharacter/llkeyframemotion.cpp@457,17", "indra/llcharacter/llkeyframemotion.cpp@736,33", "indra/llcharacter/llkeyframemotion.cpp@772,20", "indra/llcharacter/llkeyframemotion.cpp@886,468", "indra/llcharacter/llkeyframemotion.cpp@2964,17", "indra/llcharacter/llkeyframemotion.cpp@3006,13", "indra/llcharacter/llkeyframemotion.cpp@3043,13"]}
 - {"path": "indra/llcharacter/llkeyframemotion.h", "hunks": ["indra/llcharacter/llkeyframemotion.h@226,21", "indra/llcharacter/llkeyframemotion.h@318,49", "indra/llcharacter/llkeyframemotion.h@530,40"]}

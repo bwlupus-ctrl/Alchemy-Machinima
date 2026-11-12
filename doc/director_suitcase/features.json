@@ -741,6 +741,7 @@
       "indra/newview/aldirectortagtargets.h",
       "indra/newview/alfloatergazecues.cpp",
       "indra/newview/alfloatergazecues.h",
+      "indra/newview/algazeactor.h",
       "indra/newview/algazehotslots.h",
       "indra/newview/alghostcloneactions.h",
       "indra/newview/alghostclonemenu.cpp",
@@ -2206,6 +2207,23 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/algazeactor.h": {
+        "includes": [
+          "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llvoavatar.h"
+        ],
+        "qualified_call_candidates": [
+          "ALAvatarSubjectPicker::fromObject",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLSelectMgr::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/algazehotslots.h": {
         "includes": [
           "indra/llmath/llsdutil_math.h",
@@ -2242,6 +2260,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -2267,6 +2286,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -2286,7 +2306,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -2301,12 +2325,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -4084,6 +4110,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -4108,6 +4135,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -11747,8 +11777,8 @@
       {
         "hunks": [
           "indra/newview/llviewerwindow.cpp@24,23",
-          "indra/newview/llviewerwindow.cpp@6362,13",
-          "indra/newview/llviewerwindow.cpp@6471,7"
+          "indra/newview/llviewerwindow.cpp@6364,13",
+          "indra/newview/llviewerwindow.cpp@6473,7"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -11795,25 +11825,25 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,209"
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,193"
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml"
       },
@@ -11950,6 +11980,7 @@
       "indra/newview/alfloatergazecues.h",
       "indra/newview/alformationsolver.cpp",
       "indra/newview/alformationsolver.h",
+      "indra/newview/algazeactor.h",
       "indra/newview/algazeblink.h",
       "indra/newview/algazehot.h",
       "indra/newview/algazehotslots.h",
@@ -13138,6 +13169,23 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/algazeactor.h": {
+        "includes": [
+          "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llvoavatar.h"
+        ],
+        "qualified_call_candidates": [
+          "ALAvatarSubjectPicker::fromObject",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLSelectMgr::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/algazeblink.h": {
         "includes": [
           "indra/llmath/llmath.h"
@@ -13293,6 +13341,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -13318,6 +13367,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -13337,7 +13387,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -13352,12 +13406,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -14676,6 +14732,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -14700,6 +14757,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -24145,25 +24205,25 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,209"
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,193"
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml"
       },
@@ -26148,6 +26208,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -26172,6 +26233,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -31061,6 +31125,8 @@
           "LLToolMgr::toggleMarketplace",
           "LLToolMgr::updateToolStatus",
           "LLToolMgr::usingTransientTool",
+          "LLToolObjPicker::getInstance",
+          "LLToolObjPicker::instanceExists",
           "LLToolPie::getInstance",
           "LLToolset::addTool",
           "LLToolset::isToolSelected",
@@ -47894,13 +47960,13 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
@@ -48331,7 +48397,7 @@
       {
         "hunks": [
           "indra/newview/lltoolmgr.cpp@56,7",
-          "indra/newview/lltoolmgr.cpp@228,7"
+          "indra/newview/lltoolmgr.cpp@232,7"
         ],
         "path": "indra/newview/lltoolmgr.cpp"
       },
@@ -52813,6 +52879,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -52838,6 +52905,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -52857,7 +52925,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -52872,12 +52944,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -54721,6 +54795,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -54745,6 +54820,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -64624,6 +64702,8 @@
           "LLToolMgr::toggleMarketplace",
           "LLToolMgr::updateToolStatus",
           "LLToolMgr::usingTransientTool",
+          "LLToolObjPicker::getInstance",
+          "LLToolObjPicker::instanceExists",
           "LLToolPie::getInstance",
           "LLToolset::addTool",
           "LLToolset::isToolSelected",
@@ -78811,6 +78891,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 405,
+        "source": "indra/newview/alghostclonemenu.cpp",
+        "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 396,
         "source": "indra/newview/alghoststudio.cpp",
         "text": "alghoststudio.cpp"
@@ -79386,6 +79472,7 @@
       "indra/newview/algazeblink.h",
       "indra/newview/algazemath.h",
       "indra/newview/algazemotor.h",
+      "indra/newview/alghostclonemenu.cpp",
       "indra/newview/alghoststudio.cpp",
       "indra/newview/allocalfogmanager.cpp",
       "indra/newview/alpanelactorkey.cpp",
@@ -79999,6 +80086,101 @@
           "ALTrajectory::solveScalar",
           "ALTrajectory::unwrapNear",
           "ALTrajectory::wrapToPi"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alghostclonemenu.cpp": {
+        "includes": [
+          "indra/llmessage/llavatarname.h",
+          "indra/llmessage/llavatarnamecache.h",
+          "indra/llui/llfloater.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llfocusmgr.h",
+          "indra/llui/llmenugl.h",
+          "indra/llui/llmodaldialog.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/lltrans.h",
+          "indra/llui/lluicolortable.h",
+          "indra/llui/lluictrl.h",
+          "indra/llui/lluictrlfactory.h",
+          "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
+          "indra/newview/algazenearby.h",
+          "indra/newview/algazenearbyname.h",
+          "indra/newview/alghostanimassetindex.h",
+          "indra/newview/alghostanimdrop.h",
+          "indra/newview/alghostclearanim.h",
+          "indra/newview/alghostcloneactions.h",
+          "indra/newview/alghostclonemenu.h",
+          "indra/newview/alghostclonemenulogic.h",
+          "indra/newview/alghoststudio.h",
+          "indra/newview/alkithistory.h",
+          "indra/newview/alkitshell.h",
+          "indra/newview/alpanelghoststudio.h",
+          "indra/newview/altoolghostedit.h",
+          "indra/newview/altoolghostplace.h",
+          "indra/newview/llactormover.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llghostavatar.h",
+          "indra/newview/llinventoryfunctions.h",
+          "indra/newview/llinventorymodel.h",
+          "indra/newview/llinventorymodelbackgroundfetch.h",
+          "indra/newview/lltool.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewerinventory.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatar.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/rlvactions.h"
+        ],
+        "qualified_call_candidates": [
+          "ALAvatarSubjectPicker::valid",
+          "ALDirectorSelect::avatarRefusal",
+          "ALDirectorSelect::cloneAtPick",
+          "ALDirectorSelect::cloneRefusal",
+          "ALDirectorSelect::hostRows",
+          "ALDirectorSelect::makePrimaryInSelection",
+          "ALDirectorSelect::openCloneInDirector",
+          "ALDirectorSelect::selectAvatar",
+          "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
+          "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
+          "ALGhostClearAnim::canClear",
+          "ALGhostClearAnim::clearedToast",
+          "ALGhostStudio::instance",
+          "ALPanelGhostStudio::applyInventoryAnimationTo",
+          "ALPanelGhostStudio::clearAnimationsOnClonesRecorded",
+          "ALPanelGhostStudio::sourceName",
+          "ALToolGhostEdit::getInstance",
+          "ALToolGhostEdit::instanceExists",
+          "ALToolGhostPlace::getInstance",
+          "ALToolGhostPlace::instanceExists",
+          "LLActorMover::instance",
+          "LLAvatarNameCache::get",
+          "LLDirectorCast::instance",
+          "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
+          "LLFloaterReg::getInstance",
+          "LLGhostAvatar::isGhostId",
+          "LLInventoryModelBackgroundFetch::instance",
+          "LLModalDialog::activeCount",
+          "LLNotificationsUtil::add",
+          "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
+          "LLTrans::getString",
+          "LLUIColorTable::instance",
+          "LLViewerCamera::getInstance"
         ],
         "unresolved_includes": []
       },
@@ -80650,6 +80832,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -80674,6 +80857,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -88218,6 +88404,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -88243,6 +88430,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -88262,7 +88450,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -88277,12 +88469,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -93929,31 +94123,31 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743",
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@1047,45"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779",
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@1083,45"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733",
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@1149,45"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769",
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@1185,45"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
       {
         "hunks": [
           "indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549",
-          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,209",
-          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@1035,45"
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245",
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@1071,45"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml"
       },
       {
         "hunks": [
           "indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549",
-          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,193",
-          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@1051,45"
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229",
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@1087,45"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml"
       },
@@ -94097,6 +94291,7 @@
       "indra/newview/alfloatertemporalcapture.h",
       "indra/newview/alfloaterultimatediopter.cpp",
       "indra/newview/alfloaterultimatediopter.h",
+      "indra/newview/algazeactor.h",
       "indra/newview/algazeblink.h",
       "indra/newview/algazehotslots.h",
       "indra/newview/algazemotor.h",
@@ -96605,6 +96800,23 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/algazeactor.h": {
+        "includes": [
+          "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llvoavatar.h"
+        ],
+        "qualified_call_candidates": [
+          "ALAvatarSubjectPicker::fromObject",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLSelectMgr::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/algazeblink.h": {
         "includes": [
           "indra/llmath/llmath.h"
@@ -96725,6 +96937,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -96750,6 +96963,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -96769,7 +96983,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -96784,12 +97002,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -100011,6 +100231,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -100035,6 +100256,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -116202,6 +116426,7 @@
   "gaze": {
     "checkpoint": "Actor and group targeting, blink, lens tracking; disable restores ordinary head motion.",
     "checks": [
+      "scripts/code_tools/avatar_gaze_menu_check.py",
       "scripts/code_tools/director_gaze_hot_check.py",
       "scripts/code_tools/director_gaze_nearby_check.py"
     ],
@@ -116628,6 +116853,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 634,
+        "source": "indra/newview/llfloaterreporter.cpp",
+        "text": "llfloaterreporter.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 674,
         "source": "indra/newview/llghostavatar.cpp",
         "text": "llghostavatar.cpp"
@@ -116673,6 +116904,18 @@
         "line": 956,
         "source": "indra/newview/llstartup.cpp",
         "text": "llstartup.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 997,
+        "source": "indra/newview/lltoolobjpicker.cpp",
+        "text": "lltoolobjpicker.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 2014,
+        "source": "indra/newview/lltoolobjpicker.h",
+        "text": "lltoolobjpicker.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -116843,25 +117086,27 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549"
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549",
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549"
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549",
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml"
       },
@@ -116942,6 +117187,20 @@
       },
       {
         "hunks": [
+          "indra/newview/lltoolobjpicker.cpp@96,19",
+          "indra/newview/lltoolobjpicker.cpp@123,27",
+          "indra/newview/lltoolobjpicker.cpp@236,47"
+        ],
+        "path": "indra/newview/lltoolobjpicker.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/lltoolobjpicker.h@42,33"
+        ],
+        "path": "indra/newview/lltoolobjpicker.h"
+      },
+      {
+        "hunks": [
           "indra/newview/llviewerjoystick.h@172,83"
         ],
         "path": "indra/newview/llviewerjoystick.h"
@@ -116974,6 +117233,7 @@
       "indra/newview/alfloateractorgaze.h",
       "indra/newview/alfloatergazecues.cpp",
       "indra/newview/alfloatergazecues.h",
+      "indra/newview/algazeactor.h",
       "indra/newview/algazeblink.h",
       "indra/newview/algazehot.h",
       "indra/newview/algazehotslots.h",
@@ -117602,6 +117862,23 @@
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
+      "indra/newview/algazeactor.h": {
+        "includes": [
+          "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/lldirectorcast.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llvoavatar.h"
+        ],
+        "qualified_call_candidates": [
+          "ALAvatarSubjectPicker::fromObject",
+          "LLActorMover::instance",
+          "LLDirectorCast::instance",
+          "LLSelectMgr::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/algazeblink.h": {
         "includes": [
           "indra/llmath/llmath.h"
@@ -117801,6 +118078,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -117826,6 +118104,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -117845,7 +118124,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -117860,12 +118143,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -119066,6 +119351,7 @@
           "indra/llui/llspinctrl.h",
           "indra/llui/lltextbox.h",
           "indra/newview/alavatarsubjectpicker.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazemath.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghoststudio.h",
@@ -119090,6 +119376,9 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeActor::cardSelectedObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeHot::loadGeneration",
           "ALGazeHot::manualMode",
           "ALGazeHot::manualRevision",
@@ -121813,6 +122102,128 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llfloaterreporter.cpp": {
+        "includes": [
+          "indra/llcommon/llcallbacklist.h",
+          "indra/llcommon/llstring.h",
+          "indra/llcommon/llsys.h",
+          "indra/llfilesystem/lldir.h",
+          "indra/llfilesystem/llfilesystem.h",
+          "indra/llimage/llimagej2c.h",
+          "indra/llimage/llimagepng.h",
+          "indra/llinventory/llinventory.h",
+          "indra/llmath/v3math.h",
+          "indra/llmessage/llassetstorage.h",
+          "indra/llmessage/llavatarnamecache.h",
+          "indra/llmessage/llcachename.h",
+          "indra/llmessage/llcorehttputil.h",
+          "indra/llmessage/lldispatcher.h",
+          "indra/llmessage/llexperiencecache.h",
+          "indra/llmessage/mean_collision_data.h",
+          "indra/llmessage/message.h",
+          "indra/llrender/llfontgl.h",
+          "indra/llui/llbutton.h",
+          "indra/llui/llcheckboxctrl.h",
+          "indra/llui/llcombobox.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llscrolllistctrl.h",
+          "indra/llui/lltexteditor.h",
+          "indra/llui/lltrans.h",
+          "indra/llui/lluictrlfactory.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentui.h",
+          "indra/newview/llcallingcard.h",
+          "indra/newview/llfilepicker.h",
+          "indra/newview/llfloateravatarpicker.h",
+          "indra/newview/llfloaterreporter.h",
+          "indra/newview/llresourcedata.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/lltexturectrl.h",
+          "indra/newview/lltooldraganddrop.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
+          "indra/newview/lluiconstants.h",
+          "indra/newview/lluploaddialog.h",
+          "indra/newview/llversioninfo.h",
+          "indra/newview/llviewerassetupload.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewernetwork.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llworldmap.h"
+        ],
+        "qualified_call_candidates": [
+          "LLARScreenShotUploader::LLARScreenShotUploader",
+          "LLARScreenShotUploader::finishUpload",
+          "LLARScreenShotUploader::generatePostBody",
+          "LLARScreenShotUploader::prepareUpload",
+          "LLAgentUI::buildSLURL",
+          "LLAssetStorage::getErrorString",
+          "LLAssetType::lookup",
+          "LLAvatarNameCache::get",
+          "LLCoros::instance",
+          "LLExperienceCache::instance",
+          "LLFloaterAvatarPicker::show",
+          "LLFloaterReporter::LLFloaterReporter",
+          "LLFloaterReporter::callbackAvatarID",
+          "LLFloaterReporter::closePickTool",
+          "LLFloaterReporter::enableControls",
+          "LLFloaterReporter::finishedARPost",
+          "LLFloaterReporter::gatherReport",
+          "LLFloaterReporter::getExperienceInfo",
+          "LLFloaterReporter::getObjectInfo",
+          "LLFloaterReporter::onAvatarNameCache",
+          "LLFloaterReporter::onClickCancel",
+          "LLFloaterReporter::onClickObjPicker",
+          "LLFloaterReporter::onClickSelectAbuser",
+          "LLFloaterReporter::onClickSend",
+          "LLFloaterReporter::onClose",
+          "LLFloaterReporter::onIdle",
+          "LLFloaterReporter::onLoadScreenshotDialog",
+          "LLFloaterReporter::onOpen",
+          "LLFloaterReporter::postBuild",
+          "LLFloaterReporter::requestAbuseCategoriesCoro",
+          "LLFloaterReporter::sendReportViaCaps",
+          "LLFloaterReporter::sendReportViaLegacy",
+          "LLFloaterReporter::setFromAvatarID",
+          "LLFloaterReporter::setPickedObjectProperties",
+          "LLFloaterReporter::setPosBox",
+          "LLFloaterReporter::show",
+          "LLFloaterReporter::showFromAvatar",
+          "LLFloaterReporter::showFromChat",
+          "LLFloaterReporter::showFromExperience",
+          "LLFloaterReporter::showFromMenu",
+          "LLFloaterReporter::showFromObject",
+          "LLFloaterReporter::takeNewSnapshot",
+          "LLFloaterReporter::takeScreenshot",
+          "LLFloaterReporter::uploadDoneCallback",
+          "LLFloaterReporter::uploadImage",
+          "LLFloaterReporter::validateReport",
+          "LLFolderType::EType",
+          "LLGridManager::getInstance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLSD::Boolean",
+          "LLSD::emptyMap",
+          "LLStringUtil::toLower",
+          "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
+          "LLTrans::getString",
+          "LLUploadDialog::modalUploadDialog",
+          "LLUploadDialog::modalUploadFinished",
+          "LLVersionInfo::instance",
+          "LLViewerAssetUpload::EnqueueInventoryUpload",
+          "LLViewerTextureList::convertToUploadFile",
+          "LLViewerTextureManager::getFetchedTexture"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llghostavatar.cpp": {
         "includes": [
           "indra/llappearance/llpolyskeletaldistortion.h",
@@ -122596,6 +123007,61 @@
           "LLWorld::getInstance",
           "LLXMLNode::parseFile"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/lltoolobjpicker.cpp": {
+        "includes": [
+          "indra/llcommon/lleventtimer.h",
+          "indra/llui/llmenugl.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/newview/llagent.h",
+          "indra/newview/lldrawable.h",
+          "indra/newview/llrootview.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llworld.h"
+        ],
+        "qualified_call_candidates": [
+          "LLEventTimer::run_after",
+          "LLNotificationsUtil::add",
+          "LLTool::handleDeselect",
+          "LLTool::handleKey",
+          "LLTool::handleMouseDown",
+          "LLTool::handleMouseUp",
+          "LLTool::handleSelect",
+          "LLToolMgr::getInstance",
+          "LLToolObjPicker::LLToolObjPicker",
+          "LLToolObjPicker::cancelPick",
+          "LLToolObjPicker::completeGazePick",
+          "LLToolObjPicker::finishSession",
+          "LLToolObjPicker::getInstance",
+          "LLToolObjPicker::handleDeselect",
+          "LLToolObjPicker::handleHover",
+          "LLToolObjPicker::handleKey",
+          "LLToolObjPicker::handleMouseDown",
+          "LLToolObjPicker::handleMouseUp",
+          "LLToolObjPicker::handleSelect",
+          "LLToolObjPicker::onMouseCaptureLost",
+          "LLToolObjPicker::pickCallback",
+          "LLToolObjPicker::setExitCallback"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/lltoolobjpicker.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llmath/v3math.h",
+          "indra/newview/lltool.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/llviewerfloaterreg.cpp": {
@@ -125122,7 +125588,7 @@
       {
         "hunks": [
           "indra/newview/llviewerwindow.cpp@24,23",
-          "indra/newview/llviewerwindow.cpp@6183,14"
+          "indra/newview/llviewerwindow.cpp@6185,14"
         ],
         "path": "indra/newview/llviewerwindow.cpp"
       },
@@ -125210,25 +125676,25 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,209"
+          "indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,245"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,193"
+          "indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,229"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml"
       },
@@ -188196,6 +188662,7 @@
           "indra/llui/lluictrlfactory.h",
           "indra/newview/alavatarsubjectpicker.h",
           "indra/newview/aldirectorselect.h",
+          "indra/newview/algazeactor.h",
           "indra/newview/algazenearby.h",
           "indra/newview/algazenearbyname.h",
           "indra/newview/alghostanimassetindex.h",
@@ -188221,6 +188688,7 @@
           "indra/newview/llinventorymodelbackgroundfetch.h",
           "indra/newview/lltool.h",
           "indra/newview/lltoolmgr.h",
+          "indra/newview/lltoolobjpicker.h",
           "indra/newview/llviewercamera.h",
           "indra/newview/llviewerinventory.h",
           "indra/newview/llviewermenu.h",
@@ -188240,7 +188708,11 @@
           "ALDirectorSelect::openCloneInDirector",
           "ALDirectorSelect::selectAvatar",
           "ALDirectorSelect::selectClone",
+          "ALGazeActor::menuObjectTarget",
+          "ALGazeActor::setEnabled",
+          "ALGazeActor::setTarget",
           "ALGazeNearby::nearbyAllowed",
+          "ALGazeNearby::personDisplayName",
           "ALGhostClearAnim::canClear",
           "ALGhostClearAnim::clearedToast",
           "ALGhostStudio::instance",
@@ -188255,12 +188727,14 @@
           "LLAvatarNameCache::get",
           "LLDirectorCast::instance",
           "LLDirectorCast::isSelf",
+          "LLFloaterReg::findInstance",
           "LLFloaterReg::getInstance",
           "LLGhostAvatar::isGhostId",
           "LLInventoryModelBackgroundFetch::instance",
           "LLModalDialog::activeCount",
           "LLNotificationsUtil::add",
           "LLToolMgr::getInstance",
+          "LLToolObjPicker::getInstance",
           "LLTrans::getString",
           "LLUIColorTable::instance",
           "LLViewerCamera::getInstance"
@@ -199776,13 +200250,13 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },
@@ -213142,13 +213616,13 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"
+          "indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"
+          "indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml"
       },

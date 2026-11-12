@@ -80,8 +80,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,45", "indra/newview/pipeline.cpp@222,16", "indra/newview/pipeline.cpp@1211,16", "indra/newview/pipeline.cpp@1701,30063", "indra/newview/pipeline.cpp@34366,979"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@226,345", "indra/newview/pipeline.h@911,100", "indra/newview/pipeline.h@1419,31", "indra/newview/pipeline.h@1557,409"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,743"]}
-- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,733"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,779"]}
+- {"path": "indra/newview/skins/default/xui/en/menu_attachment_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,769"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_avatar_other.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_avatar_self.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549"]}
 - {"path": "indra/newview/skins/default/xui/en/notifications.xml", "hunks": ["indra/newview/skins/default/xui/en/notifications.xml@13599,368"]}

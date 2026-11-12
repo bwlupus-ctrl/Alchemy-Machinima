@@ -2144,6 +2144,24 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/algazeactor.h",
+    "dependency": "indra/newview/alavatarsubjectpicker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/algazeactor.h",
+    "dependency": "indra/newview/lldirectorcast.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/algazehot.h",
     "dependency": "indra/newview/algazemath.h",
     "excluded": false,
@@ -2434,6 +2452,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghostclonemenu.cpp",
     "dependency": "indra/newview/algazenearbyname.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostclonemenu.cpp",
+    "dependency": "indra/newview/algazeactor.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -5683,6 +5710,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanellensgaze.cpp",
     "dependency": "indra/newview/alpanellensgaze.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanellensgaze.cpp",
+    "dependency": "indra/newview/algazeactor.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
