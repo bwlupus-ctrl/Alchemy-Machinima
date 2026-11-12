@@ -31,6 +31,8 @@ class LLTextBox;
 // callback list. Call once at viewer startup (post-settings) so cycling runs
 // independent of whether the gaze floater is ever opened.
 void al_gaze_register_random_perf_idle();
+// Shared Fire/key/gamepad dispatch synchronizes the Auto latches synchronously.
+void al_gaze_hot_note_manual(S32 slot);
 
 class ALPanelLensGaze final : public LLPanel
 {
@@ -54,6 +56,23 @@ public:
     static void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
 private:
+    void buildQuickControls();
+    void refreshQuickControls(bool force = false);
+    void commitQuickControl(LLUICtrl* source);
+    void showQuickNotice(const LLUUID& actor);
+    LLUUID quickActor() const;
+    LLTextBox *mQuickName = nullptr, *mQuickNotice = nullptr;
+    LLCheckBoxCtrl *mQuickEnable = nullptr, *mQuickCamera = nullptr;
+    LLComboBox *mQuickTarget = nullptr, *mQuickCast = nullptr;
+    LLButton* mQuickPick = nullptr;
+    LLSliderCtrl* mQuickStrength = nullptr;
+    LLUUID mQuickNoticeActor;
+    U64 mQuickNoticeGeneration = 0;
+    bool mQuickActorIsClone = false;
+    std::vector<ALGazeNearby::Entry> mQuickPeopleShown;
+    LLUUID mQuickNamedActor;
+    U64 mQuickNamePoll = U64(-1), mQuickNameRevision = U64(-1);
+    std::string mQuickActorName;
     LLUUID slotActor(S32 slot_index) const;
     LLUUID activeSlotActor() const;
     LLUUID displayActor() const;
@@ -79,6 +98,9 @@ private:
         F32 mFar = -1.f;
         std::vector<ALGazeNearby::Entry> mList;
     };
+    NearbyProjection mQuickProjection;
+    std::vector<ALGazeNearby::Entry> mQuickNearbyShown;
+    ALRevisionGate mQuickChoices;
     void nearbyFor(NearbyProjection& proj, const LLUUID& actor, const LLUUID& keep) const;
     // RLV now hides a name the Gaze combo still shows: a Nearby row OR the saved "(away)" row.
     bool castNamesRevoked() const;

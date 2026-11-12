@@ -86,13 +86,14 @@ struct LLActorMover {struct GazeTarget {
 };};
 namespace ALGazeHot {
 '''
-    code += block((ROOT / 'indra/newview/algazehotslots.h').read_text(encoding='utf-8'), 'struct Slot\n') + ';\n}\n'
+    code += block((ROOT / 'indra/newview/algazehotslots.h').read_text(encoding='utf-8'), 'struct Slot\n') + ';\ninline bool manual=false; inline U64 manualRev=0,loadGen=0; inline U64 manualRevision(){return manualRev;} inline U64 loadGeneration(){return loadGen;} inline bool manualMode(S32){return manual;}\n}\n'
     code += r'''
 struct LLDirectorCast {
  U64 revision=1; std::array<ALGazeHot::Slot,4> slots;
  struct Actor {LLUUID mId;std::string mLastName;};std::vector<Actor> actors{{LLUUID("actor"),"Actor"}};
  std::vector<std::string> groups{"Group"};
  static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
+ U64 getGazeConfigRevision(){return 0;}U64 getGazeCueRevision(){return 0;}U64 getActorChoiceRevision(){return 0;}U64 getHotGazeRevision(){return 0;}
  U64 getCastRevision(){return revision;}const auto& getCast(){return actors;}
  const auto& getGroupNames(){return groups;}const auto& getHotGazeSlots(){return slots;}
  void setHotGazeSlot(int i,const ALGazeHot::Slot& slot){slots[i]=slot;}
@@ -103,6 +104,9 @@ struct ALGhostStudio {
  static ALGhostStudio& instance(){static ALGhostStudio s;return s;}
  U64 getInstanceRevision(){return revision;}const auto& getInstances(){return clones;}
 };
+// Slot-layer adapter: this fixture exercises UI/model validation; Auto runtime is covered by
+// hot_slots_auto_fixture.py with the production controller and persistence functions.
+void setHotSlot(S32,const ALGazeHot::Slot&);
 void cancelHotGazePick(void*){}
 constexpr int ADD_BOTTOM=0;
 namespace ALGazeNearby{struct Entry{LLUUID mId;std::string mName;};
@@ -110,12 +114,15 @@ namespace ALGazeNearby{struct Entry{LLUUID mId;std::string mName;};
  inline bool sameMembers(const std::vector<Entry>& a,const std::vector<Entry>& b){if(a.size()!=b.size())return false;for(size_t i=0;i<a.size();++i)if(a[i].mId!=b[i].mId||a[i].mName!=b[i].mName)return false;return true;}}
 std::vector<ALGazeNearby::Entry> nearby_double; // the projection nearbyFor() hands the production hot rebuild
 bool rlv_hides_names=false;                     // RLV adapter for liveNearbyName
+struct AutoRuntime{void edited(S32){}void rewriteActorReferences(const LLUUID&,const LLUUID&){}};
+AutoRuntime& hotAutoSlots(){static AutoRuntime r;return r;}
 struct ALPanelLensGaze;
 std::set<ALPanelLensGaze*>& actorGazePanels(){static std::set<ALPanelLensGaze*> panels;return panels;}
 struct ALPanelLensGaze {
  LLComboBox* mCast=nullptr;std::vector<LLUUID> mSelected;LLUUID mCastComboActor,mCastComboSelection;
  U64 mSelectionRevision=0,mCastComboRevision=0;void refreshCastCombo(bool){}
- int mHotSlotIndex=0;ALRevisionGate mHotChoiceGate;
+ LLComboBox* mQuickCast=nullptr;ALRevisionGate mQuickChoices;void refreshQuickControls(bool){}
+ int mHotSlotIndex=0;ALRevisionGate mHotChoiceGate,mStructureGate;U64 mSettingsRevision=0;bool structureChanged();
  std::vector<LLUUID> mHotNearbyOffered;std::vector<ALGazeNearby::Entry> mHotNearbyShown; // production members; selection rules live in algazenearby.h
  struct NearbyProjection{std::vector<ALGazeNearby::Entry> mList;};NearbyProjection mHotProjection;bool mHotRestore=false;
  void nearbyFor(NearbyProjection& proj,const LLUUID&,const LLUUID&)const{proj.mList=nearby_double;}
@@ -125,18 +132,24 @@ struct ALPanelLensGaze {
  LLComboBox *mHotSlot=&slot,*mHotWho=&who,*mHotTarget=&target,*mHotActor=&actor,*mHotSpot=&spot,*mHotMode=&mode;
  LLUICtrl after,snap,dwell,ret,head,eyes,torso,name,pick,x,y,z;
  LLUICtrl *mHotAfter=&after,*mHotSnap=&snap,*mHotDwell=&dwell,*mHotReturn=&ret,*mHotHead=&head,*mHotEyes=&eyes,*mHotTorso=&torso,*mHotName=&name,*mHotPick=&pick,*mHotX=&x,*mHotY=&y,*mHotZ=&z;
- ALPanelLensGaze(){actorGazePanels().insert(this);for(int i=0;i<5;++i)target.add("Mode",i);for(int i=0;i<4;++i)slot.add("Slot",i);spot.add("Origin",0);spot.add("Spot",1);mode.add("Tap",0);mode.add("Hold",1);}
+ ALPanelLensGaze(){actorGazePanels().insert(this);for(int i=0;i<5;++i)target.add("Mode",i);for(int i=0;i<4;++i)slot.add("Slot",i);spot.add("Origin",0);spot.add("Spot",1);mode.add("Auto",2);mode.add("Tap",0);mode.add("Hold",1);}
  ~ALPanelLensGaze(){actorGazePanels().erase(this);}
  static void rewriteActorReferences(const LLUUID& old_id,const LLUUID& new_id);
  void refreshHotControls(bool force_choices=false);void commitHotControls(LLUICtrl* source);
 };
 '''
+    code += 'void updateHotAuto(bool){}\n' + block(ui, 'void setHotSlot(') + '\n'
     code += block(ui, 'LLUUID comboValueId(') + '\n'
     code += block(ui, 'bool hotActorAvailable(') + '\n'
     code += block(ui, 'bool hotWhoAvailable(') + '\n'
     code += block(ui, 'void ALPanelLensGaze::rewriteActorReferences(') + '\n'
     code += block(ui, 'void ALPanelLensGaze::appendHotNearbyChoices(') + '\n'
     code += block(ui, 'bool ALPanelLensGaze::hotNearbyOffered(') + '\n'
+    draw = block(ui, 'void ALPanelLensGaze::draw()')
+    begin = draw.index('mStructureGate.changed(')
+    end = draw.index('}))', begin) + 2
+    # Execute the exact production revision expression; all unrelated model revisions stay fixed.
+    code += 'bool ALPanelLensGaze::structureChanged(){auto& cast=LLDirectorCast::instance(); struct{U64 getGazeRevision(){return 0;}}mover;return ' + draw[begin:end] + ';}\n'
     code += block(ui, 'void ALPanelLensGaze::refreshHotControls(') + '\n'
     code += block(ui, 'void ALPanelLensGaze::commitHotControls(') + '\n'
     code += r'''
@@ -321,6 +334,22 @@ void gate_test(int index){
 }
 int main(int argc,char** argv){
  std::string test=argc>1?argv[1]:"all";
+ if(test=="all"||test=="status_revision"){
+  reset_models();ALPanelLensGaze p;p.refreshHotControls();require(p.structureChanged(),"initial status revision missing");
+  require(!p.structureChanged(),"unchanged status revision refreshed");ALGazeHot::manual=true;++ALGazeHot::manualRev;
+  require(p.structureChanged(),"manual takeover did not dirty status before timer");p.refreshHotControls();require(p.name.text=="Manual control until you edit the slot","manual readout late");
+  require(!p.structureChanged(),"manual revision kept refreshing");ALGazeHot::manual=false;++ALGazeHot::loadGen;
+  require(p.structureChanged(),"load did not dirty status before timer");p.refreshHotControls();require(p.name.text=="Actor","load readout late");require(!p.structureChanged(),"load revision kept refreshing");
+ }
+ if(test=="all"||test=="manual_status"){reset_models();ALPanelLensGaze p;ALGazeHot::manual=true;p.refreshHotControls();require(p.name.text=="Manual control until you edit the slot","manual status missing");ALGazeHot::manual=false;p.refreshHotControls();require(p.name.text=="Actor","manual status stuck");}
+ if(test=="all"||test=="key_mode"){
+  reset_models();ALPanelLensGaze p;p.refreshHotControls();
+  require(p.mode.getValue().asInteger()==2,"New Auto slot not shown as Auto");
+  auto& s=LLDirectorCast::instance().slots[0];
+  p.mode.setValue(0);p.commitHotControls(&p.mode);require(!s.mAuto&&!s.mHold,"Tap changed semantics");
+  p.mode.setValue(1);p.commitHotControls(&p.mode);require(!s.mAuto&&s.mHold,"Hold changed semantics");
+  p.mode.setValue(2);p.commitHotControls(&p.mode);require(s.mAuto&&!s.mHold,"Auto must clear Hold");
+ }
  if(test=="all"||test=="timer")timer_test();if(test=="all"||test=="pending")pending_test();if(test=="all"||test=="commit")commit_test();
  if(test=="all"||test=="rekey")rewrite_test(false);if(test=="all"||test=="retire")rewrite_test(true);
  if(test=="all"||test=="removal")removal_test();
@@ -346,6 +375,10 @@ def main():
     print(result.stdout, end='')
     if args.negative_check:
         mutations = {
+            'manual_revision':('                                 ALGazeHot::manualRevision(),', '', ['status_revision']),
+            'load_status_revision':('                                 ALGazeHot::loadGeneration(),', '', ['status_revision']),
+            'manual_status': ('slot.mAuto && ALGazeHot::manualMode(mHotSlotIndex)', 'false', ['manual_status']),
+            'auto_mode': ('slot.mAuto = mHotMode->getValue().asInteger() == 2;', 'slot.mAuto = false;', ['key_mode']),
             'timer': ('!mHotChoiceGate.lastWasFallback()', 'true', ['timer']),
             'focus': ('!alIsBeingEdited(mHotWho) && !alIsBeingEdited(mHotActor)', 'true', ['pending']),
             'commit': ('source == mHotActor && mHotActor->getCurrentIndex() >= 0 &&', 'true &&', ['commit', 'deferred_actor']),

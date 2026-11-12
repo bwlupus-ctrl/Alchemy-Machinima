@@ -4564,6 +4564,7 @@ void LLViewerJoystick::handleHotGazeInput()
         const bool was = (mHotGazeButtons & masks[i]) != 0;
         const bool down = (buttons & masks[i]) != 0;
         // Primed samples deliberately have no press edge (no firing on focus return).
+        if (down != was && down && (mXIEdges & masks[i])) al_gaze_hot_note_manual(i);
         if (down != was && (!down || (mXIEdges & masks[i])))
             LLDirectorCast::instance().hotGazeInput(i, down);
     }

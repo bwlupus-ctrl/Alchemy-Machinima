@@ -371,8 +371,9 @@ def validate_data(data: dict) -> None:
     # Independent rigs + Director Groups 1a/1b: 40/2506; Lights combo + readouts in 1c: 40/2507.
     # Clones "Clear animations" button + Director background opacity slider: 2507 -> 2509.
     # Director tag highlight toggle: 2509 -> 2510.
-    if len(pages) != 40 or row_count != 2510:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2510")
+    # Quick Gaze: eight independent This actor rows, 2510 -> 2518 (11/11).
+    if len(pages) != 40 or row_count != 2518:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2518")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

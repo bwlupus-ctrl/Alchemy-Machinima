@@ -660,6 +660,16 @@ public:
     void restoreHotGazes();
     void applyHotGazes();
     bool hasHotGazePose(const LLVOAvatar* avatar) const;
+    enum class HotGazeSlotState { NONE, ACTIVE, RETURNING, FINISHED };
+    struct HotGazeSlotInfo
+    {
+        HotGazeSlotState state = HotGazeSlotState::NONE;
+        F64 start = -1.0, release = -1.0;
+        U32 serial = 0;
+    };
+    // Own running/parked reaction only (no inherited copies); runtime avatar ID, slot -1 means any.
+    // Identity/timing come from the existing envelope and paint generation; no state is advanced.
+    HotGazeSlotInfo hotGazeSlotState(const LLUUID& actor, S32 slot) const;
     void captureHotGazeCopy(LLVOAvatar* source, LLVOAvatar* clone, bool delayed = false);
     void restoreHotGazeCopy(LLVOAvatar* clone);
     static bool hotGazeCopiesJoint(const std::string& name);

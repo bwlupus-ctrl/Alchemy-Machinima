@@ -55,7 +55,7 @@ void hotGazeContract()
     slots[0].mTarget.mPickedSpot = true; slots[0].mTarget.mObjectOffset = LLVector3(.1f, .2f, .3f);
     slots[0].mTarget.mObjectJoint = "mWristLeft";
     slots[0].mHasTarget = true; slots[0].mSnap = .3f; slots[0].mEyes = .7f; slots[0].mStay = false;
-    slots[1].mGroup = "Fighters"; slots[1].mHold = true; slots[1].mStay = true;
+    slots[1].mGroup = "Fighters"; slots[1].mAuto = false; slots[1].mHold = true; slots[1].mStay = true;
     slots[1].mTarget.mMode = LLActorMover::GazeTarget::FIXED_POINT;
     slots[1].mTarget.mPointNudge = LLVector3(-.2f, .3f, .4f);
     slots[1].mTarget.mFixedPoint = LLVector3d(4, 5, 6); slots[1].mHasTarget = true;
