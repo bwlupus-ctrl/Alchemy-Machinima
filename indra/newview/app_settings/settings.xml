@@ -10173,9 +10173,9 @@
     <key>TemporalMode</key>
     <map>
       <key>Comment</key>
-      <string>[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.</string>
+      <string>[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md. Session only: every login starts Live (scenes still store it).</string>
       <key>Persist</key>
-      <integer>1</integer>
+      <integer>0</integer>
       <key>Type</key>
       <string>S32</string>
       <key>Value</key>
@@ -10184,9 +10184,9 @@
     <key>TemporalWorldScale</key>
     <map>
       <key>Comment</key>
-      <string>[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real.</string>
+      <string>[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real. Session only: every login starts at 1 (scenes still store it).</string>
       <key>Persist</key>
-      <integer>1</integer>
+      <integer>0</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
