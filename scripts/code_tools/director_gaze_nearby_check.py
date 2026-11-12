@@ -115,6 +115,10 @@ def check(gaze, mover, cast, header, cmake, hot_slots, cues, name_header, cues_p
         'hotappend': 'void ALPanelLensGaze::appendHotNearbyChoices(',
         'hotrefresh': 'void ALPanelLensGaze::refreshHotControls(',
         'hotcommit': 'void ALPanelLensGaze::commitHotControls(',
+        'quickrefresh': 'void ALPanelLensGaze::refreshQuickControls(',
+        'quicklabel': 'std::string quickPersonLabel(',
+        'quickclone': 'const ALGhostStudio::Instance* quickClone(',
+        'quickcommit': 'void ALPanelLensGaze::commitQuickControl(',
         'live': 'void ALPanelLensGaze::refreshLiveControls(',
         'controls': 'void ALPanelLensGaze::refreshControls(',
         'collect': 'void collectNearbyPeople(',
@@ -325,8 +329,9 @@ def check(gaze, mover, cast, header, cmake, hot_slots, cues, name_header, cues_p
     # R5: no per-frame name lookup, avatar walk or allocation.
     allowed = ('    if (mNearbyClock.due())\n    {\n        pollNearby();\n'
                '        refreshCastCombo(castNamesRevoked());\n'
-               '        refreshHotControls(nearbyNamesRevoked(mHotNearbyShown));\n    }')
-    need(allowed in f['draw'], 'R5', 'draw() does not poll nearby people (and refresh both pickers) on the 2 s clock tick')
+               '        refreshHotControls(nearbyNamesRevoked(mHotNearbyShown));\n'
+               '        refreshQuickControls();\n    }')
+    need(allowed in f['draw'], 'R5', 'draw() does not poll nearby people (and refresh all three pickers) on the 2 s clock tick')
     stripped = f['draw'].replace(allowed, '')
     for token in NAME_WORK + ('pollNearby(', 'nearbyFor(', 'nearbyNamesRevoked(', 'castNamesRevoked(', 'actorName(',
                               'RlvActions'):
@@ -342,14 +347,31 @@ def check(gaze, mover, cast, header, cmake, hot_slots, cues, name_header, cues_p
     need(f['nearbyfor'].count('RlvActions::canShowName') == 2, 'R5',
          'a cached or fresh projection may still list a name RLV hides')
     need('++mPollGeneration;' in f['poll'], 'R5', 'a poll no longer invalidates the cached projections')
-    for name in ('live', 'controls', 'hotrefresh', 'hotappend', 'castcombo', 'hotcommit', 'castcommit', 'nearbyfor'):
+    for name in ('live', 'controls', 'hotrefresh', 'hotappend', 'castcombo', 'hotcommit', 'castcommit', 'nearbyfor', 'quickrefresh', 'quickcommit'):
         for token in ('LLAvatarNameCache', 'getFullname', 'sInstances', 'collectNearbyPeople(', 'pollNearby('):
             need(token not in re.sub(r'//[^\n]*', '', f[name]), 'R5', name + ' reaches ' + token)
     need(len(re.findall(r'collectNearbyPeople\(', gaze)) == 2, 'R5',
          'collectNearbyPeople must be defined once and called only from pollNearby')
     need(len(re.findall(r'\bpollNearby\(\)', gaze)) == 2, 'R5',
          'pollNearby must be defined once and called only from the clock-gated draw()')
-    need(len(re.findall(r'\bnearbyNamesRevoked\(', gaze)) == 3, 'R5', 'nearbyNamesRevoked has an unexpected caller')
+    need(len(re.findall(r'\bnearbyNamesRevoked\(', gaze)) == 5, 'R5', 'nearbyNamesRevoked has an unexpected caller')
+    need('ALGazeNearby::nonCastTargetName(id)' in f['quicklabel'] and
+         'quickClone(id)' in f['quicklabel'] and 'BACKING_ENTITY_CLONE' in f['quickclone'] and
+         'return name.empty() ? "Unknown person" : name;' in f['quicklabel'] and
+         'if (cast_label && name.empty() && LLDirectorCast::instance().getMember(id) &&' in f['quicklabel'] and
+         'RlvActions::canShowName(RlvActions::SNC_DEFAULT, id)' in f['quicklabel'] and
+         'name = actorName(id);' in f['quicklabel'] and
+         not any(t in f['quicklabel'] for t in ('getFullname', 'getCompleteName', 'asString')) and
+         'mQuickActorName = quickPersonLabel(actor, true);' in f['quickrefresh'] and
+         'if (!mQuickActorIsClone && !LLDirectorCast::isSelf(actor)' in f['quickrefresh'] and
+         'const std::string label = quickPersonLabel(member.mId);' in f['quickrefresh'] and
+         'nearbyNamesRevoked(mQuickPeopleShown)' in f['quickrefresh'] and
+         'mQuickCast->add(person.mName, person.mId)' in f['quickrefresh'] and
+         'nearbyNamesRevoked(mQuickNearbyShown)' in f['quickrefresh'], 'R1',
+         'This actor must use the nearby display-name/privacy rules')
+    need('!liveNearbyName(picked_actor, name)' in f['quickcommit'] and
+         'value == ALGazeNearby::HEADER_VALUE' in f['quickcommit'], 'R2',
+         'This actor must refuse stale/hidden nearby targets and the header sentinel')
     need('ALLiveReadoutClock mNearbyClock{0.5f};' in read('alpanellensgaze.h'), 'R5',
          'the nearby poll clock is no longer 0.5 Hz')
     # personName/knownPersonName are reached only from rebuild paths and the poll
@@ -570,6 +592,26 @@ def mutations(gaze, mover, cast, header, cues, name_header, cues_panel, cues_h, 
     out.append(('scene_save_drops_non_cast', 'R4', dict(cast=sub(cast,
         '            gaze_sd["cast_ref"] = saved_id(m.mGazeTarget.mCastRef);',
         '            gaze_sd["cast_ref"] = contains(m.mGazeTarget.mCastRef) ? saved_id(m.mGazeTarget.mCastRef) : LLUUID::null;'))))
+    out.append(('quick_unknown_label', 'R1', dict(gaze=sub(gaze,
+        'return name.empty() ? "Unknown person" : name;', 'return name.empty() ? id.asString() : name;'))))
+    out.append(('quick_disappearance_legacy', 'R1', dict(gaze=sub(gaze,
+        'mQuickActorName = quickPersonLabel(actor, true);', 'mQuickActorName = real_avatar ? quickPersonLabel(actor) : actorName(actor);'))))
+    out.append(('quick_unresolved_privacy', 'R1', dict(gaze=sub(gaze,
+        'if (!mQuickActorIsClone && !LLDirectorCast::isSelf(actor)', 'if (real_avatar && !LLDirectorCast::isSelf(actor)'))))
+    out.append(('quick_cast_without_privacy', 'R1', dict(gaze=sub(gaze,
+        'RlvActions::canShowName(RlvActions::SNC_DEFAULT, id))\n    {\n        name = actorName(id);',
+        'true)\n    {\n        name = actorName(id);'))))
+    out.append(('quick_noncast_legacy_fallback', 'R1', dict(gaze=sub(gaze,
+        'if (cast_label && name.empty() && LLDirectorCast::instance().getMember(id) &&',
+        'if (name.empty() &&'))))
+    out.append(('quick_hidden_cast_row', 'R1', dict(gaze=sub(gaze,
+        'const std::string label = quickPersonLabel(member.mId);', 'const std::string label = actorName(member.mId);'))))
+    out.append(('quick_cast_revocation', 'R1', dict(gaze=sub(gaze,
+        ' || nearbyNamesRevoked(mQuickPeopleShown)', ''))))
+    out.append(('quick_uuid_name', 'R1', dict(gaze=sub(gaze,
+        'mQuickCast->add(person.mName, person.mId)', 'mQuickCast->add(person.mId.asString(), person.mId)'))))
+    out.append(('quick_hidden_target', 'R2', dict(gaze=sub(gaze,
+        '!liveNearbyName(picked_actor, name)', 'false'))))
     out.append(('per_frame_poll', 'R5', dict(gaze=sub(gaze,
         '    if (mNearbyClock.due())\n    {\n        pollNearby();', '    if (true)\n    {\n        pollNearby();'))))
     out.append(('draw_looks_up_names', 'R5', dict(gaze=sub(gaze,

@@ -185,6 +185,13 @@ namespace ALGhostClearAnim
         std::size_t size() const { return mEntries.size(); }
         template <typename Fn>
         void forEach(Fn&& fn) { for (auto& entry : mEntries) fn(entry.second.mState); }
+        // Inspect snapshots without taking their tokens or exposing another owner's state.
+        template <typename Fn>
+        void forOwner(const Owner& owner, Fn&& fn) const
+        {
+            for (const auto& entry : mEntries)
+                if (entry.second.mOwner == owner) fn(entry.second.mState);
+        }
     private:
         struct Entry { Owner mOwner; State mState; };
         std::map<unsigned, Entry> mEntries;

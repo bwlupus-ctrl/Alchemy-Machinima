@@ -29,6 +29,9 @@
 
 #include "llkeyboard.h" // For EKeystate
 
+// Record a manual slot press without changing dispatch or mover state.
+void al_gaze_hot_note_manual(S32 slot);
+
 const S32 MAX_KEY_BINDINGS = 128; // was 60
 const S32 keybindings_xml_version = 1;
 const std::string script_mouse_handler_name = "script_trigger_lbutton";

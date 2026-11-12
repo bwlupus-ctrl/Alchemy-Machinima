@@ -1,0 +1,18 @@
+{
+  "base": "f2b73c3d416",
+  "description": "Sanctioned pure own running/parked Hot Gaze phase/identity/timing query using existing state only; no existing mover method changes.",
+  "files": {
+    "llactormover.h": [
+      {
+        "before": "    bool hasHotGazePose(const LLVOAvatar* avatar) const;\n",
+        "after": "    bool hasHotGazePose(const LLVOAvatar* avatar) const;\n    enum class HotGazeSlotState { NONE, ACTIVE, RETURNING, FINISHED };\n    struct HotGazeSlotInfo\n    {\n        HotGazeSlotState state = HotGazeSlotState::NONE;\n        F64 start = -1.0, release = -1.0;\n        U32 serial = 0;\n    };\n    // Own running/parked reaction only (no inherited copies); runtime avatar ID, slot -1 means any.\n    // Identity/timing come from the existing envelope and paint generation; no state is advanced.\n    HotGazeSlotInfo hotGazeSlotState(const LLUUID& actor, S32 slot) const;\n"
+      }
+    ],
+    "llactormover.cpp": [
+      {
+        "before": "bool LLActorMover::hasHotGazePose(const LLVOAvatar* avatar) const\n",
+        "after": "LLActorMover::HotGazeSlotInfo LLActorMover::hotGazeSlotState(const LLUUID& actor, S32 slot) const\n{\n    const F64 now = LLPresentationTime::currentFrame().presentation_time;\n    const auto describe = [&](const HotGaze& hot) -> HotGazeSlotInfo\n    {\n        const auto& state = hot.mState;\n        if (state.mSlot < 0 || (slot != -1 && state.mSlot != slot)) return {};\n        const auto phase = state.finished(now) ? HotGazeSlotState::FINISHED\n            : (state.returning(now) ? HotGazeSlotState::RETURNING : HotGazeSlotState::ACTIVE);\n        return {phase, state.mStart, state.mRelease, hot.mPaint.mGaze.mHotGeneration};\n    };\n    const auto live = [](const HotGazeSlotInfo& info)\n    { return info.state == HotGazeSlotState::ACTIVE || info.state == HotGazeSlotState::RETURNING; };\n    HotGazeSlotInfo result;\n    const auto it = mHotGazes.find(actor);\n    if (it != mHotGazes.end()) result = describe(it->second);\n    // The running entry for this slot is authoritative, including completion.\n    if (result.state != HotGazeSlotState::NONE) return result;\n    // Without a running entry, prefer live snapshots, then the latest start.\n    mParkedHotGazes.forOwner(actor, [&](const HotGaze& hot)\n    {\n        const auto info = describe(hot);\n        if (info.state != HotGazeSlotState::NONE &&\n            (result.state == HotGazeSlotState::NONE || (live(info) && !live(result)) ||\n             (live(info) == live(result) && (info.start > result.start ||\n              (info.start == result.start && info.serial > result.serial))))) result = info;\n    });\n    return result;\n}\n\nbool LLActorMover::hasHotGazePose(const LLVOAvatar* avatar) const\n"
+      }
+    ]
+  }
+}

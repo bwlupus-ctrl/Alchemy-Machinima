@@ -573,7 +573,7 @@
    ],
    "root_class": "panel_lens_gaze",
    "root_name": "gaze_tab_logic",
-   "row_overrides": {},
+   "row_overrides": {"gaze_quick_enable": {"no_widget_history": true}, "gaze_quick_camera": {"no_widget_history": true}, "gaze_quick_target": {"no_widget_history": true}, "gaze_quick_cast": {"no_widget_history": true}, "gaze_quick_pick": {"no_widget_history": true}, "gaze_quick_strength": {"no_widget_history": true}},
    "label_names": {}
   },
   "cast_group/dance_tab": {
