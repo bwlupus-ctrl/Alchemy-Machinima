@@ -18,12 +18,32 @@ CLEAR_ANIM_DIGEST = "4bed3598af86a7f82bd07b9a00f6cf83f056e157914cd4d12e9603b3690
 GAZE_NEARBY_DIGEST = "6c575e2bd500ef4f4ff972d267a0e6363eec5e035f7455b5681ffb5c1a051856"
 
 
+HOT_GAZE_QUERY_DIGEST = "408b82b9c15d87a42abd5ad31ceeb23e3d6f1c8f61c0ef2276bbf7e01ad2d1b0"
+
+
+def reverse_hot_gaze_query_mover(source, name):
+    """Peel the newest sanctioned query layer first; idempotent, exact full-file base."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    filename = "hot_gaze_query_mover_hunks.json"
+    raw = (Path(__file__).parent / filename).read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == HOT_GAZE_QUERY_DIGEST, "hot gaze query allowance pin"
+    allowed = json.loads(raw)
+    assert allowed["base"] == "f2b73c3d416", "hot gaze query base"
+    if name not in allowed["files"] or not any(h["after"] in source for h in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, filename, HOT_GAZE_QUERY_DIGEST,
+                                     "reviewed owned hot gaze query")
+
+
 def reverse_gaze_nearby_mover(source, name):
     """Peel the reviewed Gaze Nearby hunks (the newest layer, on top of Clear animations).
 
     Skipped when the hunks are already gone; the older layers below still demand the exact
     older source, so nothing unreviewed is accepted. The layer is the gaze status line only.
     """
+    source = reverse_hot_gaze_query_mover(source, name)
     if name != "llactormover.cpp":
         return source
     import json
@@ -44,6 +64,7 @@ def reverse_clear_anim_mover(source, name):
     if name not in ("llactormover.cpp", "llactormover.h"):
         return source
     source = source.replace("\r\n", "\n")
+    source = reverse_hot_gaze_query_mover(source, name)
     source = reverse_gaze_nearby_mover(source, name)
     import json
     allowed = json.loads((Path(__file__).parent / "clear_anim_studio_hunks.json").read_bytes().replace(b"\r\n", b"\n"))
@@ -208,6 +229,7 @@ TAG_HIGHLIGHT_PIPELINE_DIGEST = "b7907a9921708e57910c4b9b778caf08e683674a7a32a7d
 
 
 def reverse_clone_anim_drop(source, name):
+    source = reverse_hot_gaze_query_mover(source, name)
     # The clone menu's hidden-only fade sits on top of main 831f6cd3ebb; peel it first (newest layer).
     source = reverse_clone_menu_fade(source, name)
     # The Director tag highlight sits on top of main fc5f3e5a78f; peel it next.

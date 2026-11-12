@@ -2,9 +2,9 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3413 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3415 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
-## Unknown product-path features (181)
+## Unknown product-path features (182)
 
 - `indra/llappearance/llavatarappearance.h` (HOOK)
 - `indra/llappearance/llpolyskeletaldistortion.cpp` (HOOK)
@@ -109,6 +109,7 @@ All 3413 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llphysicsmotion.cpp` (HOOK)
 - `indra/newview/llpresetsmanager.h` (HOOK)
 - `indra/newview/llpreviewanim.h` (HOOK)
+- `indra/newview/lltoastnotifypanel.cpp` (HOOK)
 - `indra/newview/lltoastpanel.cpp` (HOOK)
 - `indra/newview/lltoolgrab.h` (HOOK)
 - `indra/newview/llvelopack.cpp` (HOOK)
@@ -188,7 +189,7 @@ All 3413 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1817)
+## Unknown hunk features (1818)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -511,13 +512,13 @@ All 3413 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerfloaterreg.cpp@900,7`
 - `indra/newview/llviewerfloaterreg.cpp@912,7`
 - `indra/newview/llviewerinput.cpp@29,7`
-- `indra/newview/llviewerinput.cpp@1348,7`
-- `indra/newview/llviewerinput.cpp@1412,10`
-- `indra/newview/llviewerinput.cpp@1429,10`
-- `indra/newview/llviewerinput.cpp@2006,7`
-- `indra/newview/llviewerinput.h@75,20`
-- `indra/newview/llviewerinput.h@201,7`
-- `indra/newview/llviewerinput.h@228,15`
+- `indra/newview/llviewerinput.cpp@1352,7`
+- `indra/newview/llviewerinput.cpp@1416,10`
+- `indra/newview/llviewerinput.cpp@1433,10`
+- `indra/newview/llviewerinput.cpp@2010,7`
+- `indra/newview/llviewerinput.h@78,20`
+- `indra/newview/llviewerinput.h@204,7`
+- `indra/newview/llviewerinput.h@231,15`
 - `indra/newview/llviewermenu.cpp@63,7`
 - `indra/newview/llviewermenu.cpp@77,7`
 - `indra/newview/llviewermenu.cpp@405,7`
@@ -1885,6 +1886,7 @@ All 3413 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/lltextureview.cpp@671,13`
 - `indra/newview/lltextureview.cpp@791,8`
 - `indra/newview/lltextureview.cpp@1177,3`
+- `indra/newview/lltoastnotifypanel.cpp@180,16`
 - `indra/newview/lltoastpanel.cpp@198,8`
 - `indra/newview/lltoolgrab.h@41,7`
 - `indra/newview/lltoolgrab.h@86,10`
@@ -2008,7 +2010,7 @@ All 3413 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14`
 
-## Unknown/non-function contexts (1248)
+## Unknown/non-function contexts (1249)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -2299,8 +2301,9 @@ All 3413 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewerfloaterreg.cpp@115,17`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerinput.cpp@29,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerinput.cpp@37,18`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llviewerinput.cpp@1222,28`: unknown/non-function (REGISTER_KEYBOARD_ACTION(script_mouse_handler_name, script_trigger_lbutton);)
-- `indra/newview/llviewerinput.h@201,7`: unknown/non-function (private:)
+- `indra/newview/llviewerinput.cpp@1226,28`: unknown/non-function (REGISTER_KEYBOARD_ACTION(script_mouse_handler_name, script_trigger_lbutton);)
+- `indra/newview/llviewerinput.h@29,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llviewerinput.h@204,7`: unknown/non-function (private:)
 - `indra/newview/llviewerjoystick.cpp@27,24`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerjoystick.cpp@53,22`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerjoystick.cpp@82,8`: unknown/non-function (declaration, XML, build list or global scope)

@@ -94,6 +94,7 @@ int currentGazePriority(){return 0;}
 bool gazeCameraSafe(LLVOAvatar*,bool){return true;}
 bool gaze_suppressed_by_clear(LLVOAvatar*){return false;} // [ClearAnim] fixture clones are never cleared
 struct LLActorMover {
+ enum class HotGazeSlotState { NONE, ACTIVE, RETURNING, FINISHED };
 struct{void migrate(const LLUUID&,const LLUUID&){} void clear(){} template<class F>void forEach(F&&){}} mParkedHotGazes; // [ClearAnim] store stand-in (rules: alghostclearanim_test)
 '''
     source += method(NV/'llactormover.h', '    struct GazeTarget\n') + ';\n'
@@ -227,7 +228,28 @@ int main(){try{
 '''
     return source
 
+def slot_edit_release_check(source):
+    setter = method_text_slot_setter(source)
+    assert 'LLActorMover::instance().releaseHotGazeSlot(index);' in setter, 'slot edits must release before synchronous Auto fire'
+    assert setter.index('releaseHotGazeSlot(index)') < setter.index('mHotGazeSlots[index] = slot'), 'slot release must precede publication'
+
+
+def method_text_slot_setter(source):
+    from hot_combo_refresh_fixture import block
+    return block(source, 'void LLDirectorCast::setHotGazeSlot(')
+
+
 def check():
+    cast = (NV/'lldirectorcast.cpp').read_text(encoding='utf-8')
+    slot_edit_release_check(cast)
+    for broken in (cast.replace('LLActorMover::instance().releaseHotGazeSlot(index);', ''),
+                   cast.replace('LLActorMover::instance().releaseHotGazeSlot(index);', 'LLActorMover::instance().releaseHotGazeSlot(0);')):
+        try:
+            slot_edit_release_check(broken)
+        except AssertionError:
+            print('PASS: slot setter release source negative rejected', flush=True)
+        else:
+            raise AssertionError('slot setter release source negative survived')
     paint = method(NV/'llactormover.cpp','void LLActorMover::gazePaint(')
     assert 'ALGazeHot::stepMotor(g.mGazeMotor, in, g.mHotFixated, g.mSmoothDir, pose)' in paint
     assert 'eye_world_gaze, headWorld, comfort_yaw_deg' in paint

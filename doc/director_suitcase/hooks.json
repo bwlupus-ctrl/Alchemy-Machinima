@@ -37476,6 +37476,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
             },
@@ -37490,10 +37494,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -37532,6 +37532,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
             },
@@ -37546,10 +37550,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -37597,9 +37597,13 @@
             "if (KEYSTATE_DOWN == s)",
             "if (!gFocusMgr.getAppHasFocus() || gViewerInput.worldInputSuspended() ||",
             "if (sHotGazeKeys.empty()) gIdleCallbacks.deleteFunction(releaseHotGazeKeys);",
+            "if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(0);",
             "if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)",
+            "if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(1);",
             "if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)",
+            "if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(2);",
             "if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)",
+            "if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(3);",
             "if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)",
             "if (KEYSTATE_DOWN != s) return true;",
             "!gSavedSettings.getBOOL(\"DirectorLookAtCameraEnabled\"));",
@@ -37615,14 +37619,18 @@
             "bool actor_look_at_camera_5(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(4); }"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 115,
-          "head_end": 620,
+          "head_count": 119,
+          "head_end": 624,
           "head_start": 506,
-          "id": "indra/newview/llviewerinput.cpp@506,115",
-          "patch": "     return true;\n }\n \n+// [Machinima] World clock and Actor Gaze toggles share their panels' actions.\n+// Regular (non-global) actions debounce OS auto-repeat upstream: fire once\n+// on key down, and ignore the KEYSTATE_UP/level edges so a hold cannot toggle.\n+bool world_wind_down(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN == s)\n+    {\n+        LLPresentationTime::instance().toggleWorldWindDown();\n+    }\n+    return true;\n+}\n+\n+namespace\n+{\n+std::map<KEY, LLKeyFunc> sHotGazeKeys;\n+void releaseHotGazeKeys(void*)\n+{\n+    for (auto it = sHotGazeKeys.begin(); it != sHotGazeKeys.end();)\n+    {\n+        if (!gFocusMgr.getAppHasFocus() || gViewerInput.worldInputSuspended() ||\n+            !gKeyboard->getKeyDown(it->first))\n+        { it->second(KEYSTATE_UP); it = sHotGazeKeys.erase(it); }\n+        else ++it;\n+    }\n+    if (sHotGazeKeys.empty()) gIdleCallbacks.deleteFunction(releaseHotGazeKeys);\n+}\n+}\n+\n+bool director_hot_gaze_1(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(0, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_hot_gaze_2(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(1, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_hot_gaze_3(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(2, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_hot_gaze_4(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(3, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_look_at_camera(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN != s) return true;\n+    gSavedSettings.setBOOL(\"DirectorLookAtCameraEnabled\",\n+                           !gSavedSettings.getBOOL(\"DirectorLookAtCameraEnabled\"));\n+    return true;\n+}\n+\n+// [Machinima] Toggle the selected Cinematic Light Rig's single Enable master.\n+// Shipped unbound; operators can assign it in Preferences > Controls. The\n+// registered action ID retains its historical \"power\" name so existing user\n+// keybindings continue to work, but it never touches the deprecated Power gate.\n+bool toggle_colour_chart(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN == s)\n+        gSavedSettings.setBOOL(\"AlchemyColorChartShow\", !gSavedSettings.getBOOL(\"AlchemyColorChartShow\"));\n+    return true;\n+}\n+\n+bool cine_light_rig_enable(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN != s) return true;\n+    gSavedSettings.setBOOL(\"CineLightRigEnabled\",\n+                           !gSavedSettings.getBOOL(\"CineLightRigEnabled\"));\n+    return true;\n+}\n+\n+// Toggle look-at-camera for one cast slot: 0 = You (agent), 1..4 = Subject A..D.\n+// No-op on an empty slot, mirroring the panel (which disables empty slot rows).\n+static bool toggle_actor_look_at_camera(S32 slot)\n+{\n+    LLDirectorCast& cast = LLDirectorCast::instance();\n+    LLUUID id;\n+    switch (slot)\n+    {\n+    case 0: id = isAgentAvatarValid() ? gAgentAvatarp->getID() : LLUUID::null; break;\n+    case 1: id = cast.getSubjectA(); break;\n+    case 2: id = cast.getSubjectB(); break;\n+    case 3: id = cast.getSubjectC(); break;\n+    case 4: id = cast.getSubjectD(); break;\n+    default: break;\n+    }\n+    if (id.isNull()) return true; // empty slot -> no-op\n+    cast.setLookAtCamera(id, !cast.isLookAtCamera(id));\n+    return true;\n+}\n+\n+bool actor_look_at_camera_1(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(0); }\n+bool actor_look_at_camera_2(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(1); }\n+bool actor_look_at_camera_3(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(2); }\n+bool actor_look_at_camera_4(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(3); }\n+bool actor_look_at_camera_5(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(4); }\n+\n bool camera_move_forward( EKeystate s )\n {\n     if( KEYSTATE_UP == s  ) return true;\n",
+          "id": "indra/newview/llviewerinput.cpp@506,119",
+          "patch": "     return true;\n }\n \n+// [Machinima] World clock and Actor Gaze toggles share their panels' actions.\n+// Regular (non-global) actions debounce OS auto-repeat upstream: fire once\n+// on key down, and ignore the KEYSTATE_UP/level edges so a hold cannot toggle.\n+bool world_wind_down(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN == s)\n+    {\n+        LLPresentationTime::instance().toggleWorldWindDown();\n+    }\n+    return true;\n+}\n+\n+namespace\n+{\n+std::map<KEY, LLKeyFunc> sHotGazeKeys;\n+void releaseHotGazeKeys(void*)\n+{\n+    for (auto it = sHotGazeKeys.begin(); it != sHotGazeKeys.end();)\n+    {\n+        if (!gFocusMgr.getAppHasFocus() || gViewerInput.worldInputSuspended() ||\n+            !gKeyboard->getKeyDown(it->first))\n+        { it->second(KEYSTATE_UP); it = sHotGazeKeys.erase(it); }\n+        else ++it;\n+    }\n+    if (sHotGazeKeys.empty()) gIdleCallbacks.deleteFunction(releaseHotGazeKeys);\n+}\n+}\n+\n+bool director_hot_gaze_1(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(0);\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(0, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_hot_gaze_2(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(1);\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(1, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_hot_gaze_3(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(2);\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(2, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_hot_gaze_4(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(3);\n+    if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)\n+        LLDirectorCast::instance().hotGazeInput(3, s == KEYSTATE_DOWN);\n+    return true;\n+}\n+\n+bool director_look_at_camera(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN != s) return true;\n+    gSavedSettings.setBOOL(\"DirectorLookAtCameraEnabled\",\n+                           !gSavedSettings.getBOOL(\"DirectorLookAtCameraEnabled\"));\n+    return true;\n+}\n+\n+// [Machinima] Toggle the selected Cinematic Light Rig's single Enable master.\n+// Shipped unbound; operators can assign it in Preferences > Controls. The\n+// registered action ID retains its historical \"power\" name so existing user\n+// keybindings continue to work, but it never touches the deprecated Power gate.\n+bool toggle_colour_chart(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN == s)\n+        gSavedSettings.setBOOL(\"AlchemyColorChartShow\", !gSavedSettings.getBOOL(\"AlchemyColorChartShow\"));\n+    return true;\n+}\n+\n+bool cine_light_rig_enable(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN != s) return true;\n+    gSavedSettings.setBOOL(\"CineLightRigEnabled\",\n+                           !gSavedSettings.getBOOL(\"CineLightRigEnabled\"));\n+    return true;\n+}\n+\n+// Toggle look-at-camera for one cast slot: 0 = You (agent), 1..4 = Subject A..D.\n+// No-op on an empty slot, mirroring the panel (which disables empty slot rows).\n+static bool toggle_actor_look_at_camera(S32 slot)\n+{\n+    LLDirectorCast& cast = LLDirectorCast::instance();\n+    LLUUID id;\n+    switch (slot)\n+    {\n+    case 0: id = isAgentAvatarValid() ? gAgentAvatarp->getID() : LLUUID::null; break;\n+    case 1: id = cast.getSubjectA(); break;\n+    case 2: id = cast.getSubjectB(); break;\n+    case 3: id = cast.getSubjectC(); break;\n+    case 4: id = cast.getSubjectD(); break;\n+    default: break;\n+    }\n+    if (id.isNull()) return true; // empty slot -> no-op\n+    cast.setLookAtCamera(id, !cast.isLookAtCamera(id));\n+    return true;\n+}\n+\n+bool actor_look_at_camera_1(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(0); }\n+bool actor_look_at_camera_2(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(1); }\n+bool actor_look_at_camera_3(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(2); }\n+bool actor_look_at_camera_4(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(3); }\n+bool actor_look_at_camera_5(EKeystate s) { if (KEYSTATE_DOWN != s) return true; return toggle_actor_look_at_camera(4); }\n+\n bool camera_move_forward( EKeystate s )\n {\n     if( KEYSTATE_UP == s  ) return true;\n",
           "purpose": "Comment evidence: [Machinima] World clock and Actor Gaze toggles share their panels' actions. Regular (non-global) actions debounce OS auto-repeat upstream: fire once on key down, and ignore the KEYSTATE_UP/level edges so a hold cannot toggle. [Machinima] Toggle the selected Cinematic Light Rig's ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37638,10 +37646,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -37682,13 +37686,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 27,
-          "head_end": 1051,
-          "head_start": 1025,
-          "id": "indra/newview/llviewerinput.cpp@1025,27",
+          "head_end": 1055,
+          "head_start": 1029,
+          "id": "indra/newview/llviewerinput.cpp@1029,27",
           "patch": "     return true;\n }\n \n+bool pov_eye_blink(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN) ALPOVBlink::blink();\n+    return true;\n+}\n+\n+bool toggle_actor_key(EKeystate s)\n+{\n+    if (s == KEYSTATE_DOWN)\n+        gSavedSettings.setBOOL(\"ActorKeyEnabled\", !gSavedSettings.getBOOL(\"ActorKeyEnabled\"));\n+    return true;\n+}\n+\n+bool toggle_viewfinder(EKeystate s)\n+{\n+    if (KEYSTATE_DOWN != s) return true;\n+    gSavedSettings.setBOOL(\"CinematicViewfinderEnabled\",\n+                          !gSavedSettings.getBOOL(\"CinematicViewfinderEnabled\"));\n+    return true;\n+}\n+\n bool toggle_pause_media(EKeystate s) // analogue of play/pause button in top bar\n {\n     if (KEYSTATE_DOWN != s) return true;\n",
           "purpose": "Edits ALPOVBlink, gSavedSettings",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37704,10 +37712,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -37741,13 +37745,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 28,
-          "head_end": 1249,
-          "head_start": 1222,
-          "id": "indra/newview/llviewerinput.cpp@1222,28",
+          "head_end": 1253,
+          "head_start": 1226,
+          "id": "indra/newview/llviewerinput.cpp@1226,28",
           "patch": " REGISTER_KEYBOARD_ACTION(\"roll_left\", camera_roll_left);\n REGISTER_KEYBOARD_ACTION(\"roll_right\", camera_roll_right);\n REGISTER_KEYBOARD_ACTION(\"roll_reset\", camera_roll_reset);\n+REGISTER_KEYBOARD_ACTION(\"toggle_viewfinder\", toggle_viewfinder);\n+REGISTER_KEYBOARD_ACTION(\"toggle_actor_key\", toggle_actor_key);\n+REGISTER_KEYBOARD_ACTION(\"pov_eye_blink\", pov_eye_blink);\n+// [Machinima] Actor Gaze look-at-camera toggles. Regular (NOT global) actions:\n+// the regular key path debounces OS auto-repeat via gKeyboard->getKeyRepeated so\n+// a held key toggles exactly once, whereas the global-binds path fires\n+// KEYSTATE_DOWN on every repeat and would chatter-toggle. They fire while the 3D\n+// view has keyboard focus (the normal filming state). Shipped unbound -- present\n+// in the Controls panel for the operator to assign.\n+REGISTER_KEYBOARD_ACTION(\"director_look_at_camera\", director_look_at_camera);\n+REGISTER_KEYBOARD_ACTION(\"director_hot_gaze_1\", director_hot_gaze_1);\n+REGISTER_KEYBOARD_ACTION(\"director_hot_gaze_2\", director_hot_gaze_2);\n+REGISTER_KEYBOARD_ACTION(\"director_hot_gaze_3\", director_hot_gaze_3);\n+REGISTER_KEYBOARD_ACTION(\"director_hot_gaze_4\", director_hot_gaze_4);\n+REGISTER_KEYBOARD_ACTION(\"world_wind_down\", world_wind_down);\n+REGISTER_KEYBOARD_ACTION(\"cine_light_rig_power\", cine_light_rig_enable);\n+REGISTER_KEYBOARD_ACTION(\"toggle_colour_chart\", toggle_colour_chart);\n+REGISTER_KEYBOARD_ACTION(\"actor_look_at_camera_1\", actor_look_at_camera_1);\n+REGISTER_KEYBOARD_ACTION(\"actor_look_at_camera_2\", actor_look_at_camera_2);\n+REGISTER_KEYBOARD_ACTION(\"actor_look_at_camera_3\", actor_look_at_camera_3);\n+REGISTER_KEYBOARD_ACTION(\"actor_look_at_camera_4\", actor_look_at_camera_4);\n+REGISTER_KEYBOARD_ACTION(\"actor_look_at_camera_5\", actor_look_at_camera_5);\n #undef REGISTER_KEYBOARD_ACTION\n \n LLViewerInput::LLViewerInput()\n",
           "purpose": "Comment evidence: [Machinima] Actor Gaze look-at-camera toggles. Regular (NOT global) actions: the regular key path debounces OS auto-repeat via gKeyboard->getKeyRepeated so a held key toggles exactly once, whereas the global-binds path fires KEYSTATE_DOWN on every repeat and would chatter-toggle.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37763,10 +37771,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -37811,13 +37815,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 1354,
-          "head_start": 1348,
-          "id": "indra/newview/llviewerinput.cpp@1348,7",
+          "head_end": 1358,
+          "head_start": 1352,
+          "id": "indra/newview/llviewerinput.cpp@1352,7",
           "patch": " \n bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool repeated)\n {\n+    if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     // check for re-map\n     EKeyboardMode mode = gViewerInput.getMode();\n     U32 keyidx = (translated_mask<<16) | translated_key;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37833,10 +37841,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -37869,13 +37873,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 19,
-          "head_end": 1405,
-          "head_start": 1387,
-          "id": "indra/newview/llviewerinput.cpp@1387,19",
+          "head_end": 1409,
+          "head_start": 1391,
+          "id": "indra/newview/llviewerinput.cpp@1391,19",
           "patch": " \n bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)\n {\n+    if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n+    const auto hot = sHotGazeKeys.find(translated_key);\n+    if (hot != sHotGazeKeys.end())\n+    { hot->second(KEYSTATE_UP); sHotGazeKeys.erase(hot); }\n     return gViewerWindow->handleKeyUp(translated_key, translated_mask);\n }\n \n bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)\n {\n+    if (mGlobalBindsSuspended)\n+    {\n+        return false; // functional self-test: no user binding may run\n+    }\n     if (LLSetKeyBindDialog::isRecording())\n     {\n         // handleGlobalBindsKeyDown happens before view handling, so can't\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37891,10 +37899,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -37922,13 +37926,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 10,
-          "head_end": 1421,
-          "head_start": 1412,
-          "id": "indra/newview/llviewerinput.cpp@1412,10",
+          "head_end": 1425,
+          "head_start": 1416,
+          "id": "indra/newview/llviewerinput.cpp@1416,10",
           "patch": " \n bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)\n {\n+    if (mGlobalBindsSuspended)\n+    {\n+        return false; // functional self-test: no user binding may run\n+    }\n     if (LLSetKeyBindDialog::isRecording())\n     {\n         // handleGlobalBindsKeyUp happens before view handling, so can't\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37944,10 +37952,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -37975,13 +37979,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 10,
-          "head_end": 1438,
-          "head_start": 1429,
-          "id": "indra/newview/llviewerinput.cpp@1429,10",
+          "head_end": 1442,
+          "head_start": 1433,
+          "id": "indra/newview/llviewerinput.cpp@1433,10",
           "patch": " \n bool LLViewerInput::handleGlobalBindsMouse(EMouseClickType clicktype, MASK mask, bool down)\n {\n+    if (mGlobalBindsSuspended)\n+    {\n+        return false; // functional self-test: no user binding may run\n+    }\n     if (LLSetKeyBindDialog::isRecording())\n     {\n         // handleGlobalBindsMouse happens before view handling, so can't\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -37997,10 +38005,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -38049,13 +38053,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 84,
-          "head_end": 1739,
-          "head_start": 1656,
-          "id": "indra/newview/llviewerinput.cpp@1656,84",
+          "head_end": 1743,
+          "head_start": 1660,
+          "id": "indra/newview/llviewerinput.cpp@1660,84",
           "patch": "     }\n }\n \n+namespace\n+{\n+// The marker is a viewer setting, independent of the key file's format version.\n+void migrateBindingMode(LLViewerInput::KeyMode& user, const LLViewerInput::KeyMode& defaults, S32 migration_version, S32 binding_count,\n+    LLViewerInput::KeyMode* additions = nullptr)\n+{\n+    if (binding_count == 0 || migration_version >= 5) return;\n+    static const struct\n+    {\n+        S32 version;\n+        const char* command;\n+    } introduced[] = {{2, \"toggle_viewfinder\"}, {3, \"pov_eye_blink\"}, {4, \"director_hot_gaze_1\"},\n+        {4, \"director_hot_gaze_2\"}, {4, \"director_hot_gaze_3\"}, {4, \"director_hot_gaze_4\"}, {5, \"toggle_actor_key\"}};\n+\n+    for (const auto& binding : defaults.bindings)\n+    {\n+        const bool eligible = std::any_of(std::begin(introduced), std::end(introduced),\n+            [&](const auto& entry) { return migration_version < entry.version && binding.command.getValue() == entry.command; });\n+        if (!eligible) continue;\n+\n+        KEY key = KEY_NONE;\n+        MASK mask = MASK_NONE;\n+        if (!LLKeyboard::keyFromString(binding.key, &key) || key == KEY_NONE\n+            || !LLKeyboard::maskFromString(binding.mask, &mask)) continue;\n+\n+        const bool occupied = std::any_of(user.bindings.begin(), user.bindings.end(),\n+            [&](const LLViewerInput::KeyBinding& existing)\n+            {\n+                // Includes explicitly cleared or custom bindings for this command.\n+                if (existing.command.getValue() == binding.command.getValue()) return true;\n+                KEY existing_key = KEY_NONE;\n+                // Any binding on this key blocks insertion, regardless of mask.\n+                return LLKeyboard::keyFromString(existing.key, &existing_key)\n+                    && existing_key == key;\n+            });\n+        if (!occupied)\n+        {\n+            user.bindings.add(binding);\n+            if (additions) additions->bindings.add(binding);\n+        }\n+    }\n+}\n+}\n+\n+void LLViewerInput::migrateKeysXML(const std::string& filename, Keys& keys, S32 binding_count, Keys* additions)\n+{\n+    const S32 migration_version = gSavedSettings.getS32(\"KeyBindingsMigrationVersion\");\n+    if (binding_count == 0 || migration_version >= 5) return;\n+\n+    const std::string defaults_filename = gDirUtilp->getExpandedFilename(LL_PATH_APP_SETTINGS, \"key_bindings.xml\");\n+    if (filename == defaults_filename) return;\n+\n+    Keys defaults;\n+    LLSimpleXUIParser defaults_parser;\n+    if (!defaults_parser.readXUI(defaults_filename, defaults) || !defaults.validateBlock()) return;\n+\n+    // Introduced key defaults; omitted modes and all file-version semantics stay intact.\n+    if (keys.first_person.isProvided()) migrateBindingMode(keys.first_person, defaults.first_person, migration_version, binding_count, additions ? &additions->first_person : nullptr);\n+    if (keys.third_person.isProvided()) migrateBindingMode(keys.third_person, defaults.third_person, migration_version, binding_count, additions ? &additions->third_person : nullptr);\n+    if (keys.sitting.isProvided()) migrateBindingMode(keys.sitting, defaults.sitting, migration_version, binding_count, additions ? &additions->sitting : nullptr);\n+    if (keys.edit_avatar.isProvided()) migrateBindingMode(keys.edit_avatar, defaults.edit_avatar, migration_version, binding_count, additions ? &additions->edit_avatar : nullptr);\n+}\n+\n+bool LLViewerInput::loadKeysXML(const std::string& filename, Keys& keys)\n+{\n+    LLSimpleXUIParser parser;\n+    if (!parser.readXUI(filename, keys) || !keys.validateBlock()) return false;\n+\n+    // Use the runtime loader's exact counting rules before considering migration.\n+    LLViewerInput input;\n+    const S32 binding_count = input.loadBindingMode(keys.first_person, MODE_FIRST_PERSON)\n+        + input.loadBindingMode(keys.third_person, MODE_THIRD_PERSON)\n+        + input.loadBindingMode(keys.sitting, MODE_SITTING)\n+        + input.loadBindingMode(keys.edit_avatar, MODE_EDIT_AVATAR);\n+    migrateKeysXML(filename, keys, binding_count);\n+    return true;\n+}\n+\n S32 LLViewerInput::loadBindingsXML(const std::string& filename)\n {\n     resetBindings();\n",
           "purpose": "Comment evidence: The marker is a viewer setting, independent of the key file's format version. Includes explicitly cleared or custom bindings for this command. Any binding on this key blocks insertion, regardless of mask. Introduced key defaults; omitted modes and all file-version semantics stay ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -38071,10 +38079,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -38111,13 +38115,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 14,
-          "head_end": 1822,
-          "head_start": 1809,
-          "id": "indra/newview/llviewerinput.cpp@1809,14",
+          "head_end": 1826,
+          "head_start": 1813,
+          "id": "indra/newview/llviewerinput.cpp@1813,14",
           "patch": "             }\n         }\n     }\n+    // HEAD's fallback decision and legacy LMB upgrade above use only the original\n+    // file. Add Viewfinder afterward so the migration is never written by that upgrade.\n+    Keys additions;\n+    migrateKeysXML(filename, keys, binding_count, &additions);\n+    loadBindingMode(additions.first_person, MODE_FIRST_PERSON);\n+    loadBindingMode(additions.third_person, MODE_THIRD_PERSON);\n+    loadBindingMode(additions.sitting, MODE_SITTING);\n+    loadBindingMode(additions.edit_avatar, MODE_EDIT_AVATAR);\n     return binding_count;\n }\n \n",
           "purpose": "Comment evidence: HEAD's fallback decision and legacy LMB upgrade above use only the original file. Add Viewfinder afterward so the migration is never written by that upgrade.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -38133,10 +38141,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -38170,13 +38174,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 19,
-          "head_end": 1955,
-          "head_start": 1937,
-          "id": "indra/newview/llviewerinput.cpp@1937,19",
+          "head_end": 1959,
+          "head_start": 1941,
+          "id": "indra/newview/llviewerinput.cpp@1941,19",
           "patch": "     {\n         if (binding[i].mKey == key)\n         {\n-            if ((binding[i].mMask & mask) == binding[i].mMask)\n+            const bool hot_gaze = binding[i].mFunctionName.compare(0, 18, \"director_hot_gaze_\") == 0;\n+            if (hot_gaze ? binding[i].mMask == mask : (binding[i].mMask & mask) == binding[i].mMask)\n             {\n                 bool res = false;\n                 if (key_down && !repeat)\n                 {\n                     // ...key went down this frame, call function\n+                    if (binding[i].mFunctionName.compare(0, 18, \"director_hot_gaze_\") == 0)\n+                    {\n+                        sHotGazeKeys[key] = binding[i].mFunction;\n+                        if (!gIdleCallbacks.containsFunction(releaseHotGazeKeys))\n+                            gIdleCallbacks.addFunction(releaseHotGazeKeys);\n+                    }\n                     res = binding[i].mFunction( KEYSTATE_DOWN );\n                     return true;\n                 }\n",
           "purpose": "Edits gIdleCallbacks",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -38192,10 +38200,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -38227,13 +38231,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 13,
-          "head_end": 1992,
-          "head_start": 1980,
-          "id": "indra/newview/llviewerinput.cpp@1980,13",
+          "head_end": 1996,
+          "head_start": 1984,
+          "id": "indra/newview/llviewerinput.cpp@1984,13",
           "patch": "         return false;\n     }\n \n+    // A release belongs to the action chosen on DOWN, even if modifiers,\n+    // keyboard mode or UI focus changed while held.\n+    const auto hot = sHotGazeKeys.find(key);\n+    if (hot != sHotGazeKeys.end() && key_up)\n+    {\n+        hot->second(KEYSTATE_UP); sHotGazeKeys.erase(hot); return true;\n+    }\n     S32 mode = getMode();\n     // Consider keyboard scanning as NOT mouse event. JC\n     MASK mask = gKeyboard->currentMask(false);\n",
           "purpose": "Comment evidence: A release belongs to the action chosen on DOWN, even if modifiers, keyboard mode or UI focus changed while held.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -38249,10 +38257,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "creative-candidate",
@@ -38280,13 +38284,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 2012,
-          "head_start": 2006,
-          "id": "indra/newview/llviewerinput.cpp@2006,7",
+          "head_end": 2016,
+          "head_start": 2010,
+          "id": "indra/newview/llviewerinput.cpp@2010,7",
           "patch": " \n bool LLViewerInput::handleMouse(LLWindow *window_impl, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down)\n {\n+    if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored\n     bool is_toolmgr_action = false;\n     bool handled = gViewerWindow->handleAnyMouseClick(window_impl, pos, mask, clicktype, down, is_toolmgr_action);\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "3b92963ada4",
               "subject": "Actor chroma key WP5: Director Capture > Key page, Quick tile, Ctrl+Alt+K, notification, badge, user guide"
@@ -38302,10 +38310,6 @@
             {
               "commit": "66d5e39fcd9",
               "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
-            },
-            {
-              "commit": "9894c90e43b",
-              "subject": "World wind-down: record-stop hotkey that ramps the world clock to a pause and back"
             }
           ],
           "scope": "unknown-review",
@@ -38319,14 +38323,69 @@
     },
     {
       "features": [
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "hunks": [
         {
           "base_count": 6,
+          "base_start": 29,
+          "candidate_features_from_subjects": [
+            "composition",
+            "gaze"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "gaze"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "unknown/non-function (declaration, XML, build list or global scope)"
+          ],
+          "git_context": "",
+          "guard_evidence": [],
+          "guarded": "unknown; no local conditional evidence",
+          "head_count": 9,
+          "head_end": 37,
+          "head_start": 29,
+          "id": "indra/newview/llviewerinput.h@29,9",
+          "patch": " \n #include \"llkeyboard.h\" // For EKeystate\n \n+// Record a manual slot press without changing dispatch or mover state.\n+void al_gaze_hot_note_manual(S32 slot);\n+\n const S32 MAX_KEY_BINDINGS = 128; // was 60\n const S32 keybindings_xml_version = 1;\n const std::string script_mouse_handler_name = \"script_trigger_lbutton\";\n",
+          "purpose": "Comment evidence: Record a manual slot press without changing dispatch or mover state.",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
+              "commit": "78622248230",
+              "subject": "Viewfinder: Toggle Viewfinder hotkey (Ctrl+Alt+V, rebindable)"
+            },
+            {
+              "commit": "d4e86084d0e",
+              "subject": "Functional self-test safety: AFK suppressed through teardown/logout; restore only the settings files the harness changes (account: settings*.xml overwrite-only, never delete) with -ListRestoreSet dry run; native OS input dropped while suspended (only marked synthetic move/left-click pass; no right/double-click, no drag-drop); grab state reset without sending"
+            },
+            {
+              "commit": "45593daead8",
+              "subject": "Functional self-test safety: world hover suspended through teardown/logout (no hover-object property requests) with the mouse parked on UI; harness keys delivered straight to the focused widget, menu accelerators/gestures/hotkeys/auto-chat skipped while suspended; R6 KNOWN_GAP/version-filter SKIP; timing row honest"
+            },
+            {
+              "commit": "0fad1b72447",
+              "subject": "Functional self-test safety: global mouse/key bindings suspended for the run, AFK never cleared (refuse/stop when away, AFKTimeout off), rule-phase clicks gated by the in-world allow-list/hazards/exclusions; page-only navigateTo returns true; R5/R6/legacy-pin/R4 correctness; 30 min in-world watchdog with measured rule-phase timing"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 3
+        },
+        {
+          "base_count": 6,
           "base_start": 75,
           "candidate_features_from_subjects": [
-            "composition"
+            "composition",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -38342,13 +38401,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 20,
-          "head_end": 94,
-          "head_start": 75,
-          "id": "indra/newview/llviewerinput.h@75,20",
+          "head_end": 97,
+          "head_start": 78,
+          "id": "indra/newview/llviewerinput.h@78,20",
           "patch": "     MODE_COUNT\n } EKeyboardMode;\n \n+// RAII marker: the functional self-test wraps each synthetic event it delivers in one of these.\n+// Process-local depth counter; it cannot stick (destructor).  Not copyable.\n+class LLSyntheticInputScope\n+{\n+public:\n+    LLSyntheticInputScope() { ++sDepth; }\n+    ~LLSyntheticInputScope() { --sDepth; }\n+    LLSyntheticInputScope(const LLSyntheticInputScope&) = delete;\n+    LLSyntheticInputScope& operator=(const LLSyntheticInputScope&) = delete;\n+    static bool active() { return sDepth > 0; }\n+private:\n+    static inline S32 sDepth = 0;\n+};\n+\n class LLViewerInput : public LLKeyBindingToStringHandler\n {\n public:\n",
           "purpose": "Comment evidence: RAII marker: the functional self-test wraps each synthetic event it delivers in one of these. Process-local depth counter; it cannot stick (destructor).  Not copyable.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "78622248230",
               "subject": "Viewfinder: Toggle Viewfinder hotkey (Ctrl+Alt+V, rebindable)"
@@ -38374,7 +38437,8 @@
           "base_count": 8,
           "base_start": 117,
           "candidate_features_from_subjects": [
-            "composition"
+            "composition",
+            "gaze"
           ],
           "feature_evidence": [
             "filename/changed-code regex"
@@ -38393,13 +38457,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 30,
-          "head_end": 160,
-          "head_start": 131,
-          "id": "indra/newview/llviewerinput.h@131,30",
+          "head_end": 163,
+          "head_start": 134,
+          "id": "indra/newview/llviewerinput.h@134,30",
           "patch": "     bool            handleGlobalBindsKeyDown(KEY key, MASK mask);\n     bool            handleGlobalBindsKeyUp(KEY key, MASK mask);\n     bool            handleGlobalBindsMouse(EMouseClickType clicktype, MASK mask, bool down);\n+    // Functional self-test safety (aluiperfselftest.cpp, in-world run): while set,\n+    // the three handleGlobalBinds* entry points above run NOTHING, so a synthetic\n+    // click or key can never reach a user binding such as toggle_voice (an open\n+    // microphone is a server-visible effect). In-process flag only; nothing is\n+    // persisted, and the self-test clears it on every teardown path.\n+    void            setGlobalBindsSuspended(bool suspended) { mGlobalBindsSuspended = suspended; }\n+    bool            globalBindsSuspended() const { return mGlobalBindsSuspended; }\n+    // Functional self-test safety, second flag (set and cleared together with the one above):\n+    // while set, WORLD INTERACTION is dead.  No hover pick / hover object / hover tip / media\n+    // hover (LLViewerWindow::updateUI, LLToolPie::handleHover/handleToolTip,\n+    // LLSelectMgr::setHoverObject, which would send RequestObjectPropertiesFamily), and\n+    // LLViewerWindow::handleKey/handleKeyUp run NO menu accelerator, tool key, gesture trigger,\n+    // Director hotkey or auto-chat after the keyboard-focus dispatch.  Process-local; set only by an\n+    // in-world functional self-test launch, so a normal session never has it.\n+    void            setWorldInputSuspended(bool suspended) { mWorldInputSuspended = suspended; }\n+    bool            worldInputSuspended() const { return mWorldInputSuspended; }\n+    // While world input is suspended, EVERY native (OS) mouse / wheel / key / char / drop /\n+    // focus / activation event is ignored; only events delivered inside an\n+    // LLSyntheticInputScope (the harness own, UI-only injections) are processed.\n+    bool            dropsNativeInput() const;\n \n     S32             loadBindingsXML(const std::string& filename);                                       // returns number bound, 0 on error\n+    // Controls loader; shares runtime migration gated by the viewer setting and original binding count.\n+    static bool     loadKeysXML(const std::string& filename, Keys& keys);\n     EKeyboardMode   getMode() const;\n \n     static bool     modeFromString(const std::string& string, S32 *mode);           // False on failure\n",
           "purpose": "Comment evidence: Functional self-test safety (aluiperfselftest.cpp, in-world run): while set, the three handleGlobalBinds* entry points above run NOTHING, so a synthetic click or key can never reach a user binding such as toggle_voice (an open microphone is a server-visible effect). In-process fl",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "78622248230",
               "subject": "Viewfinder: Toggle Viewfinder hotkey (Ctrl+Alt+V, rebindable)"
@@ -38425,7 +38493,8 @@
           "base_count": 6,
           "base_start": 165,
           "candidate_features_from_subjects": [
-            "composition"
+            "composition",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -38439,13 +38508,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 207,
-          "head_start": 201,
-          "id": "indra/newview/llviewerinput.h@201,7",
+          "head_end": 210,
+          "head_start": 204,
+          "id": "indra/newview/llviewerinput.h@204,7",
           "patch": "                           EMouseState state,\n                           bool ignore_additional_masks) const;\n \n+    static void     migrateKeysXML(const std::string& filename, Keys& keys, S32 binding_count, Keys* additions = nullptr);\n     S32             loadBindingMode(const LLViewerInput::KeyMode& keymode, S32 mode);\n     bool            bindKey(const S32 mode, const KEY key, const MASK mask, const std::string& function_name);\n     bool            bindMouse(const S32 mode, const EMouseClickType mouse, const MASK mask, const std::string& function_name);\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "78622248230",
               "subject": "Viewfinder: Toggle Viewfinder hotkey (Ctrl+Alt+V, rebindable)"
@@ -38471,7 +38544,8 @@
           "base_count": 8,
           "base_start": 191,
           "candidate_features_from_subjects": [
-            "composition"
+            "composition",
+            "gaze"
           ],
           "feature_evidence": [],
           "features": [
@@ -38485,13 +38559,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 15,
-          "head_end": 242,
-          "head_start": 228,
-          "id": "indra/newview/llviewerinput.h@228,15",
+          "head_end": 245,
+          "head_start": 231,
+          "id": "indra/newview/llviewerinput.h@231,15",
           "patch": "     // This is indentical to what llkeyboard does (mKeyRepeated, mKeyLevel, mKeyDown e t c),\n     // just instead of remembering individually as bools,  we record state as enum\n     EMouseState     mMouseLevel[CLICK_COUNT];   // records of key state\n+    bool            mGlobalBindsSuspended = false;  // self-test: global key/mouse binds disabled\n+    bool            mWorldInputSuspended = false;   // self-test: world hover + menu/gesture key routing disabled\n };\n \n+inline bool LLViewerInput::dropsNativeInput() const\n+{\n+    return mWorldInputSuspended && !LLSyntheticInputScope::active();\n+}\n+\n extern LLViewerInput gViewerInput;\n \n #endif // LL_LLVIEWERINPUT_H\n",
           "purpose": "Edits LLViewerInput, LLSyntheticInputScope",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "78622248230",
               "subject": "Viewfinder: Toggle Viewfinder hotkey (Ctrl+Alt+V, rebindable)"
@@ -38567,6 +38645,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -38581,10 +38663,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -38620,6 +38698,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -38634,10 +38716,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -38673,6 +38751,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -38687,10 +38769,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -38804,6 +38882,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -38818,10 +38900,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -38937,6 +39015,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -38951,10 +39033,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -38996,6 +39074,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39010,10 +39092,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39049,6 +39127,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39063,10 +39145,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39102,6 +39180,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39116,10 +39198,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39155,6 +39233,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39169,10 +39251,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39213,6 +39291,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39227,10 +39309,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39268,6 +39346,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39282,10 +39364,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39321,6 +39399,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39335,10 +39417,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39374,6 +39452,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39388,10 +39470,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39514,6 +39592,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39528,10 +39610,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39666,6 +39744,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39680,10 +39762,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39724,6 +39802,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39738,10 +39820,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39780,6 +39858,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39794,10 +39876,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39839,6 +39917,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39853,10 +39935,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -39965,6 +40043,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -39979,10 +40061,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40087,6 +40165,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40101,10 +40183,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40140,6 +40218,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40154,10 +40236,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40193,6 +40271,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40207,10 +40289,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40246,6 +40324,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40260,10 +40342,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40299,6 +40377,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40313,10 +40395,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40355,6 +40433,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40369,10 +40451,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40416,6 +40494,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40430,10 +40512,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40478,6 +40556,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40492,10 +40574,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40546,6 +40624,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40560,10 +40642,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40604,6 +40682,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40618,10 +40700,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40663,6 +40741,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40677,10 +40759,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40718,6 +40796,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40732,10 +40814,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40812,6 +40890,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40826,10 +40908,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40889,6 +40967,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40903,10 +40985,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -40951,6 +41029,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -40965,10 +41047,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41397,6 +41475,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -41411,10 +41493,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41557,6 +41635,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -41571,10 +41653,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41613,6 +41691,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -41627,10 +41709,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41666,6 +41744,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -41680,10 +41762,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41719,6 +41797,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -41733,10 +41815,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41774,6 +41852,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
+            {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
             },
@@ -41788,10 +41870,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -41859,18 +41937,23 @@
             "#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS",
             "static LLCachedControl<bool> enabled(gSavedSettings, \"DirectorHotGazeGamepad\", false);",
             "if (!enabled && !mHotGazeButtons) return;",
+            "if (down != was && down && (mXIEdges & masks[i])) al_gaze_hot_note_manual(i);",
             "if (down != was && (!down || (mXIEdges & masks[i])))",
             "if (enabled) mXIEdges = 0;"
           ],
           "guarded": "unknown; conditional evidence present",
-          "head_count": 242,
-          "head_end": 4573,
+          "head_count": 243,
+          "head_end": 4574,
           "head_start": 4332,
-          "id": "indra/newview/llviewerjoystick.cpp@4332,242",
-          "patch": "     gSavedSettings.setF32(\"BuildFeathering\", 12.f);\n     gSavedSettings.setF32(\"FlycamFeathering\", 5.f);\n }\n+\n+//BD - Xbox360 Controller Support\n+void LLViewerJoystick::setXboxDefaults()\n+{\n+    LL_INFOS() << \"restoring Xbox Controller defaults...\" << LL_ENDL;\n+    gSavedSettings.setBOOL(\"BlackDragonControls\", TRUE);\n+\n+    gSavedSettings.setS32(\"JoystickAxis0\", 1);  // Z\n+    gSavedSettings.setS32(\"JoystickAxis1\", 0);  // X\n+    gSavedSettings.setS32(\"JoystickAxis2\", -1); // Y\n+    gSavedSettings.setS32(\"JoystickAxis3\", 2);  // Roll\n+    gSavedSettings.setS32(\"JoystickAxis4\", 4);  // Pitch\n+    gSavedSettings.setS32(\"JoystickAxis5\", 3);  // Yaw\n+    gSavedSettings.setS32(\"JoystickAxis6\", -1); // Zoom\n+\n+    // [fork] Personalized defaults: values below marked [user] come from the\n+    // owner's proven AlchemyBeta 7.1.9.2516 config (Desktop settings.xml\n+    // snapshot, 2026-07-16) so \"Xbox Defaults\" restores THAT setup, not stock.\n+    gSavedSettings.setS32(\"JoystickButtonJump\", 1);     // [user] (stock 0)\n+    gSavedSettings.setS32(\"JoystickButtonCrouch\", 0);   // [user] (stock 1)\n+    gSavedSettings.setS32(\"JoystickButtonFly\", 2);\n+    gSavedSettings.setS32(\"JoystickButtonRunToggle\", 6);  // [user] (stock 8)\n+    gSavedSettings.setS32(\"JoystickButtonMouselook\", 9);\n+    gSavedSettings.setS32(\"JoystickButtonZoomDefault\", 7); // [user] (stock 6)\n+    gSavedSettings.setS32(\"JoystickButtonFlycam\", 7);\n+    gSavedSettings.setS32(\"JoystickButtonZoomOut\", 5);\n+    gSavedSettings.setS32(\"JoystickButtonZoomIn\", 4);\n+    gSavedSettings.setS32(\"JoystickButtonRollLeft\", -1);\n+    gSavedSettings.setS32(\"JoystickButtonRollRight\", -1);\n+    gSavedSettings.setS32(\"JoystickButtonRollDefault\", -1);\n+\n+    const ALXInput::DpadSettings dpad = ALXInput::fillDroneDpadDefaults({\n+        gSavedSettings.getS32(\"JoystickXInputDpadUp\"),\n+        gSavedSettings.getS32(\"JoystickXInputDpadLeft\"),\n+        gSavedSettings.getS32(\"JoystickXInputDpadRight\"),\n+        gSavedSettings.getS32(\"JoystickXInputDpadMigrationVersion\")});\n+    gSavedSettings.setS32(\"JoystickXInputDpadUp\", dpad.up);\n+    gSavedSettings.setS32(\"JoystickXInputDpadLeft\", dpad.left);\n+    gSavedSettings.setS32(\"JoystickXInputDpadRight\", dpad.right);\n+\n+    gSavedSettings.setBOOL(\"Cursor3D\", false); // Xbox Gamepad, not 3D Mouse\n+    gSavedSettings.setBOOL(\"AutoLeveling\", false);\n+    gSavedSettings.setBOOL(\"ZoomDirect\", false);\n+    gSavedSettings.setBOOL(\"JoystickInvertPitch\", false);\n+\n+    gSavedSettings.setF32(\"AvatarAxisScale0\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale2\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale1\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale4\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale5\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale3\", 1.f);\n+    gSavedSettings.setF32(\"BuildAxisScale0\", 1.25f);\n+    gSavedSettings.setF32(\"BuildAxisScale2\", 1.25f);\n+    gSavedSettings.setF32(\"BuildAxisScale1\", 1.25f);\n+    gSavedSettings.setF32(\"BuildAxisScale4\", 1.f);\n+    gSavedSettings.setF32(\"BuildAxisScale5\", 1.f);\n+    gSavedSettings.setF32(\"BuildAxisScale3\", 1.f);\n+    // [user] flycam scales: slow, machinima-tuned; scale4 negative = inverted pitch\n+    gSavedSettings.setF32(\"FlycamAxisScale0\", 0.6f);    // [user] (stock 5.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale2\", 0.03f);   // [user] (stock 5.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale1\", 0.4f);    // [user] (stock 5.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale4\", -0.75f);  // [user] (stock 2.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale5\", 0.66f);   // [user] (stock 2.5)\n+    gSavedSettings.setF32(\"FlycamAxisScale3\", 0.2f);    // [user] (stock 2.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale6\", 0.03f);   // [user] (stock 1.0)\n+\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone0\", .6f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone2\", .3f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone1\", .6f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone3\", .3f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone4\", .3f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone5\", .3f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone0\", .34f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"BuildAxisDeadZone2\", .25f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone1\", .25f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone3\", .3f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone4\", .3f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone5\", .1f);\n+    // [user] flycam deadzones: tight (precise SpaceNav-style input on gamepad)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone0\", .1f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone2\", .1f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone1\", .1f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone3\", .02f); // [user] (stock .1)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone4\", .1f);  // [user] (stock .3)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone5\", .1f);  // [user] (stock .3)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone6\", 0.f);  // [user] (stock .1)\n+\n+    gSavedSettings.setF32(\"AvatarFeathering\", 20.0f);\n+    gSavedSettings.setF32(\"BuildFeathering\", 3.f);\n+    gSavedSettings.setF32(\"FlycamFeathering\", 1.0f);\n+}\n+\n+bool LLViewerJoystick::applyWeightedPreset(S32 preset)\n+{\n+    if (preset < 0 || preset >= 4 || ALPresetLook::replaying())\n+        return false;\n+\n+    ALPresetLook::Load load;\n+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::WEIGHTED));\n+    gSavedSettings.setS32(\"FlycamWeightedPreset\", preset);\n+    gSavedSettings.setF32(\"FlycamWeightedWeight\",\n+        ALFlycamWeighted::presetWeight(preset));\n+    return true;\n+}\n+\n+void LLViewerJoystick::resetWeightedSettings()\n+{\n+    gSavedSettings.setS32(\"FlycamWeightedPreset\", 1);\n+    gSavedSettings.setF32(\"FlycamWeightedWeight\", 50.f);\n+    gSavedSettings.setF32(\"FlycamWeightedRotationShare\", .6f);\n+    gSavedSettings.setF32(\"FlycamWeightedTauMax\", 1.f);\n+    gSavedSettings.setF32(\"FlycamWeightedCurve\", 20.f);\n+}\n+\n+ALFlycamWeighted::Tuning LLViewerJoystick::getWeightedTuning() const\n+{\n+    const FlycamWeightedSettings& settings = weightedSettings();\n+    return ALFlycamWeighted::tuningForWeight(settings.weight, settings.tauMax,\n+        settings.curve, settings.rotationShare);\n+}\n+\n+bool LLViewerJoystick::applyDronePreset(S32 preset)\n+{\n+    if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT) ||\n+        ALPresetLook::replaying())\n+        return false;\n+\n+    ALPresetLook::Load load;\n+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::DRONE));\n+    DronePresetProvenance& provenance = dronePresetProvenance();\n+    provenance.source = preset;\n+    provenance.custom = false;\n+    ++provenance.revision;\n+\n+    const LLFlycamDrone::HumanParams& p =\n+        LLFlycamDrone::presets()[static_cast<std::size_t>(preset)].human;\n+    gSavedSettings.setS32(\"FlycamDronePreset\", preset);\n+    gSavedSettings.setF32(\"FlycamDroneCruise\", p.cruise);\n+    gSavedSettings.setF32(\"FlycamDroneTop\", p.top);\n+    gSavedSettings.setF32(\"FlycamDroneTimeToTop\", p.timeToTop);\n+    gSavedSettings.setF32(\"FlycamDroneStopDistance\", p.stopDistance);\n+    gSavedSettings.setF32(\"FlycamDroneHoldTime\", p.holdTime);\n+    gSavedSettings.setF32(\"FlycamDroneCoastTime\", p.coastTime);\n+    gSavedSettings.setF32(\"FlycamDroneHighSpeedFloat\", p.highSpeedFloat);\n+    gSavedSettings.setF32(\"FlycamDroneOnset\", p.onset);\n+    gSavedSettings.setF32(\"FlycamDroneGrip\", p.grip);\n+    gSavedSettings.setF32(\"FlycamDroneTurnRate\", p.turnRateDegrees);\n+    gSavedSettings.setF32(\"FlycamDroneTurnWeight\", p.turnWeight);\n+    gSavedSettings.setF32(\"FlycamDroneTiltRate\", p.tiltRateDegrees);\n+    gSavedSettings.setF32(\"FlycamDroneClimb\", p.climb);\n+    gSavedSettings.setF32(\"FlycamDroneClimbTime\", p.climbTime);\n+    gSavedSettings.setS32(\"FlycamDroneRelease\",\n+        p.release == LLFlycamDrone::ReleaseMode::DRIFT ? 1 : 0);\n+    gSavedSettings.setS32(\"FlycamDroneThrottleMode\",\n+        p.throttleMode == LLFlycamDrone::ThrottleMode::PURE_THROTTLE ? 1 : 0);\n+    gSavedSettings.setBOOL(\"FlycamDroneFreeFly\", p.freeFly);\n+    return true;\n+}\n+\n+LLFlycamDrone::CompiledValues LLViewerJoystick::getDroneCompiledValues() const\n+{\n+    return cachedDroneCompiledValues();\n+}\n+\n+LLFlycamDrone::HumanParams LLViewerJoystick::getDroneAcceptedValues() const\n+{\n+    return droneCompilePreviewCache().accepted;\n+}\n+\n+F32 LLViewerJoystick::getDroneCompiledTick() const\n+{\n+    return droneCompilePreviewCache().params.tick;\n+}\n+\n+void LLViewerJoystick::markDronePresetCustom()\n+{\n+    DronePresetProvenance& provenance = dronePresetProvenance();\n+    const S32 current = gSavedSettings.getS32(\"FlycamDronePreset\");\n+    if (current >= 0 && current < static_cast<S32>(LLFlycamDrone::PresetId::COUNT))\n+    {\n+        provenance.source = current;\n+    }\n+    provenance.custom = true;\n+    gSavedSettings.setS32(\"FlycamDronePreset\", 5);\n+    ++provenance.revision;\n+}\n+\n+S32 LLViewerJoystick::getDronePresetProvenance() const\n+{\n+    return dronePresetProvenance().source;\n+}\n+\n+bool LLViewerJoystick::isDronePresetCustom() const\n+{\n+    return dronePresetProvenance().custom;\n+}\n+\n+U64 LLViewerJoystick::getDronePresetProvenanceRevision() const\n+{\n+    return dronePresetProvenance().revision;\n+}\n+\n+void LLViewerJoystick::resetDroneSettings()\n+{\n+    applyDronePreset(static_cast<S32>(LLFlycamDrone::PresetId::NORMAL));\n+    gSavedSettings.setS32(\"FlycamDroneThrottleMode\", 0);\n+    gSavedSettings.setF32(\"FlycamDroneSimulationHz\", 120.f);\n+    gSavedSettings.setF32(\"FlycamDroneMoveDeadzone\", .10f);\n+    gSavedSettings.setF32(\"FlycamDroneLookDeadzone\", .12f);\n+    gSavedSettings.setF32(\"FlycamDroneSaturation\", .05f);\n+    gSavedSettings.setF32(\"FlycamDroneExpoMove\", .35f);\n+    gSavedSettings.setF32(\"FlycamDroneExpoYaw\", .45f);\n+    gSavedSettings.setF32(\"FlycamDroneExpoGimbal\", .45f);\n+    gSavedSettings.setS32(\"FlycamDroneResumeMomentum\", 0);\n+}\n+\n+void LLViewerJoystick::handleHotGazeInput()\n+{\n+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS\n+    static LLCachedControl<bool> enabled(gSavedSettings, \"DirectorHotGazeGamepad\", false);\n+    if (!enabled && !mHotGazeButtons) return;\n+    const bool ready = enabled && mDriverState == JDS_INITIALIZED && mJoystickEnabled &&\n+        !gViewerInput.worldInputSuspended() && xInputAssociated() &&\n+        ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(), mXISampleGeneration, mXILoopGeneration);\n+    const U16 buttons = ready ? mXIPrevRaw : 0;\n+    const U16 masks[] = {XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_RIGHT,\n+                         XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT};\n+    for (S32 i = 0; i < 4; ++i)\n+    {\n+        const bool was = (mHotGazeButtons & masks[i]) != 0;\n+        const bool down = (buttons & masks[i]) != 0;\n+        // Primed samples deliberately have no press edge (no firing on focus return).\n+        if (down != was && (!down || (mXIEdges & masks[i])))\n+            LLDirectorCast::instance().hotGazeInput(i, down);\n+    }\n+    mHotGazeButtons = buttons;\n+    if (enabled) mXIEdges = 0;\n+#endif\n+}\n",
+          "id": "indra/newview/llviewerjoystick.cpp@4332,243",
+          "patch": "     gSavedSettings.setF32(\"BuildFeathering\", 12.f);\n     gSavedSettings.setF32(\"FlycamFeathering\", 5.f);\n }\n+\n+//BD - Xbox360 Controller Support\n+void LLViewerJoystick::setXboxDefaults()\n+{\n+    LL_INFOS() << \"restoring Xbox Controller defaults...\" << LL_ENDL;\n+    gSavedSettings.setBOOL(\"BlackDragonControls\", TRUE);\n+\n+    gSavedSettings.setS32(\"JoystickAxis0\", 1);  // Z\n+    gSavedSettings.setS32(\"JoystickAxis1\", 0);  // X\n+    gSavedSettings.setS32(\"JoystickAxis2\", -1); // Y\n+    gSavedSettings.setS32(\"JoystickAxis3\", 2);  // Roll\n+    gSavedSettings.setS32(\"JoystickAxis4\", 4);  // Pitch\n+    gSavedSettings.setS32(\"JoystickAxis5\", 3);  // Yaw\n+    gSavedSettings.setS32(\"JoystickAxis6\", -1); // Zoom\n+\n+    // [fork] Personalized defaults: values below marked [user] come from the\n+    // owner's proven AlchemyBeta 7.1.9.2516 config (Desktop settings.xml\n+    // snapshot, 2026-07-16) so \"Xbox Defaults\" restores THAT setup, not stock.\n+    gSavedSettings.setS32(\"JoystickButtonJump\", 1);     // [user] (stock 0)\n+    gSavedSettings.setS32(\"JoystickButtonCrouch\", 0);   // [user] (stock 1)\n+    gSavedSettings.setS32(\"JoystickButtonFly\", 2);\n+    gSavedSettings.setS32(\"JoystickButtonRunToggle\", 6);  // [user] (stock 8)\n+    gSavedSettings.setS32(\"JoystickButtonMouselook\", 9);\n+    gSavedSettings.setS32(\"JoystickButtonZoomDefault\", 7); // [user] (stock 6)\n+    gSavedSettings.setS32(\"JoystickButtonFlycam\", 7);\n+    gSavedSettings.setS32(\"JoystickButtonZoomOut\", 5);\n+    gSavedSettings.setS32(\"JoystickButtonZoomIn\", 4);\n+    gSavedSettings.setS32(\"JoystickButtonRollLeft\", -1);\n+    gSavedSettings.setS32(\"JoystickButtonRollRight\", -1);\n+    gSavedSettings.setS32(\"JoystickButtonRollDefault\", -1);\n+\n+    const ALXInput::DpadSettings dpad = ALXInput::fillDroneDpadDefaults({\n+        gSavedSettings.getS32(\"JoystickXInputDpadUp\"),\n+        gSavedSettings.getS32(\"JoystickXInputDpadLeft\"),\n+        gSavedSettings.getS32(\"JoystickXInputDpadRight\"),\n+        gSavedSettings.getS32(\"JoystickXInputDpadMigrationVersion\")});\n+    gSavedSettings.setS32(\"JoystickXInputDpadUp\", dpad.up);\n+    gSavedSettings.setS32(\"JoystickXInputDpadLeft\", dpad.left);\n+    gSavedSettings.setS32(\"JoystickXInputDpadRight\", dpad.right);\n+\n+    gSavedSettings.setBOOL(\"Cursor3D\", false); // Xbox Gamepad, not 3D Mouse\n+    gSavedSettings.setBOOL(\"AutoLeveling\", false);\n+    gSavedSettings.setBOOL(\"ZoomDirect\", false);\n+    gSavedSettings.setBOOL(\"JoystickInvertPitch\", false);\n+\n+    gSavedSettings.setF32(\"AvatarAxisScale0\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale2\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale1\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale4\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale5\", 1.f);\n+    gSavedSettings.setF32(\"AvatarAxisScale3\", 1.f);\n+    gSavedSettings.setF32(\"BuildAxisScale0\", 1.25f);\n+    gSavedSettings.setF32(\"BuildAxisScale2\", 1.25f);\n+    gSavedSettings.setF32(\"BuildAxisScale1\", 1.25f);\n+    gSavedSettings.setF32(\"BuildAxisScale4\", 1.f);\n+    gSavedSettings.setF32(\"BuildAxisScale5\", 1.f);\n+    gSavedSettings.setF32(\"BuildAxisScale3\", 1.f);\n+    // [user] flycam scales: slow, machinima-tuned; scale4 negative = inverted pitch\n+    gSavedSettings.setF32(\"FlycamAxisScale0\", 0.6f);    // [user] (stock 5.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale2\", 0.03f);   // [user] (stock 5.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale1\", 0.4f);    // [user] (stock 5.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale4\", -0.75f);  // [user] (stock 2.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale5\", 0.66f);   // [user] (stock 2.5)\n+    gSavedSettings.setF32(\"FlycamAxisScale3\", 0.2f);    // [user] (stock 2.0)\n+    gSavedSettings.setF32(\"FlycamAxisScale6\", 0.03f);   // [user] (stock 1.0)\n+\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone0\", .6f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone2\", .3f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone1\", .6f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone3\", .3f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone4\", .3f);\n+    gSavedSettings.setF32(\"AvatarAxisDeadZone5\", .3f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone0\", .34f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"BuildAxisDeadZone2\", .25f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone1\", .25f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone3\", .3f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone4\", .3f);\n+    gSavedSettings.setF32(\"BuildAxisDeadZone5\", .1f);\n+    // [user] flycam deadzones: tight (precise SpaceNav-style input on gamepad)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone0\", .1f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone2\", .1f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone1\", .1f);  // [user] (stock .25)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone3\", .02f); // [user] (stock .1)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone4\", .1f);  // [user] (stock .3)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone5\", .1f);  // [user] (stock .3)\n+    gSavedSettings.setF32(\"FlycamAxisDeadZone6\", 0.f);  // [user] (stock .1)\n+\n+    gSavedSettings.setF32(\"AvatarFeathering\", 20.0f);\n+    gSavedSettings.setF32(\"BuildFeathering\", 3.f);\n+    gSavedSettings.setF32(\"FlycamFeathering\", 1.0f);\n+}\n+\n+bool LLViewerJoystick::applyWeightedPreset(S32 preset)\n+{\n+    if (preset < 0 || preset >= 4 || ALPresetLook::replaying())\n+        return false;\n+\n+    ALPresetLook::Load load;\n+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::WEIGHTED));\n+    gSavedSettings.setS32(\"FlycamWeightedPreset\", preset);\n+    gSavedSettings.setF32(\"FlycamWeightedWeight\",\n+        ALFlycamWeighted::presetWeight(preset));\n+    return true;\n+}\n+\n+void LLViewerJoystick::resetWeightedSettings()\n+{\n+    gSavedSettings.setS32(\"FlycamWeightedPreset\", 1);\n+    gSavedSettings.setF32(\"FlycamWeightedWeight\", 50.f);\n+    gSavedSettings.setF32(\"FlycamWeightedRotationShare\", .6f);\n+    gSavedSettings.setF32(\"FlycamWeightedTauMax\", 1.f);\n+    gSavedSettings.setF32(\"FlycamWeightedCurve\", 20.f);\n+}\n+\n+ALFlycamWeighted::Tuning LLViewerJoystick::getWeightedTuning() const\n+{\n+    const FlycamWeightedSettings& settings = weightedSettings();\n+    return ALFlycamWeighted::tuningForWeight(settings.weight, settings.tauMax,\n+        settings.curve, settings.rotationShare);\n+}\n+\n+bool LLViewerJoystick::applyDronePreset(S32 preset)\n+{\n+    if (preset < 0 || preset >= static_cast<S32>(LLFlycamDrone::PresetId::COUNT) ||\n+        ALPresetLook::replaying())\n+        return false;\n+\n+    ALPresetLook::Load load;\n+    ALPresetLook::reset(ALPresetLook::owned(ALPresetLook::DRONE));\n+    DronePresetProvenance& provenance = dronePresetProvenance();\n+    provenance.source = preset;\n+    provenance.custom = false;\n+    ++provenance.revision;\n+\n+    const LLFlycamDrone::HumanParams& p =\n+        LLFlycamDrone::presets()[static_cast<std::size_t>(preset)].human;\n+    gSavedSettings.setS32(\"FlycamDronePreset\", preset);\n+    gSavedSettings.setF32(\"FlycamDroneCruise\", p.cruise);\n+    gSavedSettings.setF32(\"FlycamDroneTop\", p.top);\n+    gSavedSettings.setF32(\"FlycamDroneTimeToTop\", p.timeToTop);\n+    gSavedSettings.setF32(\"FlycamDroneStopDistance\", p.stopDistance);\n+    gSavedSettings.setF32(\"FlycamDroneHoldTime\", p.holdTime);\n+    gSavedSettings.setF32(\"FlycamDroneCoastTime\", p.coastTime);\n+    gSavedSettings.setF32(\"FlycamDroneHighSpeedFloat\", p.highSpeedFloat);\n+    gSavedSettings.setF32(\"FlycamDroneOnset\", p.onset);\n+    gSavedSettings.setF32(\"FlycamDroneGrip\", p.grip);\n+    gSavedSettings.setF32(\"FlycamDroneTurnRate\", p.turnRateDegrees);\n+    gSavedSettings.setF32(\"FlycamDroneTurnWeight\", p.turnWeight);\n+    gSavedSettings.setF32(\"FlycamDroneTiltRate\", p.tiltRateDegrees);\n+    gSavedSettings.setF32(\"FlycamDroneClimb\", p.climb);\n+    gSavedSettings.setF32(\"FlycamDroneClimbTime\", p.climbTime);\n+    gSavedSettings.setS32(\"FlycamDroneRelease\",\n+        p.release == LLFlycamDrone::ReleaseMode::DRIFT ? 1 : 0);\n+    gSavedSettings.setS32(\"FlycamDroneThrottleMode\",\n+        p.throttleMode == LLFlycamDrone::ThrottleMode::PURE_THROTTLE ? 1 : 0);\n+    gSavedSettings.setBOOL(\"FlycamDroneFreeFly\", p.freeFly);\n+    return true;\n+}\n+\n+LLFlycamDrone::CompiledValues LLViewerJoystick::getDroneCompiledValues() const\n+{\n+    return cachedDroneCompiledValues();\n+}\n+\n+LLFlycamDrone::HumanParams LLViewerJoystick::getDroneAcceptedValues() const\n+{\n+    return droneCompilePreviewCache().accepted;\n+}\n+\n+F32 LLViewerJoystick::getDroneCompiledTick() const\n+{\n+    return droneCompilePreviewCache().params.tick;\n+}\n+\n+void LLViewerJoystick::markDronePresetCustom()\n+{\n+    DronePresetProvenance& provenance = dronePresetProvenance();\n+    const S32 current = gSavedSettings.getS32(\"FlycamDronePreset\");\n+    if (current >= 0 && current < static_cast<S32>(LLFlycamDrone::PresetId::COUNT))\n+    {\n+        provenance.source = current;\n+    }\n+    provenance.custom = true;\n+    gSavedSettings.setS32(\"FlycamDronePreset\", 5);\n+    ++provenance.revision;\n+}\n+\n+S32 LLViewerJoystick::getDronePresetProvenance() const\n+{\n+    return dronePresetProvenance().source;\n+}\n+\n+bool LLViewerJoystick::isDronePresetCustom() const\n+{\n+    return dronePresetProvenance().custom;\n+}\n+\n+U64 LLViewerJoystick::getDronePresetProvenanceRevision() const\n+{\n+    return dronePresetProvenance().revision;\n+}\n+\n+void LLViewerJoystick::resetDroneSettings()\n+{\n+    applyDronePreset(static_cast<S32>(LLFlycamDrone::PresetId::NORMAL));\n+    gSavedSettings.setS32(\"FlycamDroneThrottleMode\", 0);\n+    gSavedSettings.setF32(\"FlycamDroneSimulationHz\", 120.f);\n+    gSavedSettings.setF32(\"FlycamDroneMoveDeadzone\", .10f);\n+    gSavedSettings.setF32(\"FlycamDroneLookDeadzone\", .12f);\n+    gSavedSettings.setF32(\"FlycamDroneSaturation\", .05f);\n+    gSavedSettings.setF32(\"FlycamDroneExpoMove\", .35f);\n+    gSavedSettings.setF32(\"FlycamDroneExpoYaw\", .45f);\n+    gSavedSettings.setF32(\"FlycamDroneExpoGimbal\", .45f);\n+    gSavedSettings.setS32(\"FlycamDroneResumeMomentum\", 0);\n+}\n+\n+void LLViewerJoystick::handleHotGazeInput()\n+{\n+#if LIB_NDOF && LL_WINDOWS && !LL_MESA_HEADLESS\n+    static LLCachedControl<bool> enabled(gSavedSettings, \"DirectorHotGazeGamepad\", false);\n+    if (!enabled && !mHotGazeButtons) return;\n+    const bool ready = enabled && mDriverState == JDS_INITIALIZED && mJoystickEnabled &&\n+        !gViewerInput.worldInputSuspended() && xInputAssociated() &&\n+        ALXInput::fresh(mXISampleValid, gFocusMgr.getAppHasFocus(), mXISampleGeneration, mXILoopGeneration);\n+    const U16 buttons = ready ? mXIPrevRaw : 0;\n+    const U16 masks[] = {XINPUT_GAMEPAD_DPAD_UP, XINPUT_GAMEPAD_DPAD_RIGHT,\n+                         XINPUT_GAMEPAD_DPAD_DOWN, XINPUT_GAMEPAD_DPAD_LEFT};\n+    for (S32 i = 0; i < 4; ++i)\n+    {\n+        const bool was = (mHotGazeButtons & masks[i]) != 0;\n+        const bool down = (buttons & masks[i]) != 0;\n+        // Primed samples deliberately have no press edge (no firing on focus return).\n+        if (down != was && down && (mXIEdges & masks[i])) al_gaze_hot_note_manual(i);\n+        if (down != was && (!down || (mXIEdges & masks[i])))\n+            LLDirectorCast::instance().hotGazeInput(i, down);\n+    }\n+    mHotGazeButtons = buttons;\n+    if (enabled) mXIEdges = 0;\n+#endif\n+}\n",
           "purpose": "Comment evidence: BD - Xbox360 Controller Support [fork] Personalized defaults: values below marked [user] come from the owner's proven AlchemyBeta 7.1.9.2516 config (Desktop settings.xml snapshot, 2026-07-16) so \"Xbox Defaults\" restores THAT setup, not stock. [user] flycam scales: slow, machinima",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "95f54a99f0c",
+              "subject": "Gaze: quick \"This actor\" card and Hot targets Auto mode"
+            },
             {
               "commit": "a95c7cb9494",
               "subject": "Camera: flycam during Bone Lock orbits the same actor and joint"
@@ -41886,10 +41969,6 @@
             {
               "commit": "bee8c3bbf40",
               "subject": "Gaze hot targets: live hotkey/gamepad look-at reactions in four scene slots"
-            },
-            {
-              "commit": "66d5e39fcd9",
-              "subject": "POV eye blink: live-window eyelid effect with hotkey, gamepad and auto blink"
             }
           ],
           "scope": "creative-candidate",
@@ -181098,7 +181177,8 @@
     },
     {
       "features": [
-        "director-shell"
+        "director-shell",
+        "gaze"
       ],
       "hunks": [
         {
@@ -184162,6 +184242,58 @@
       ],
       "note": "HEAD coordinates; guards/features are candidate evidence",
       "path": "indra/newview/lltextureview.cpp",
+      "slice": 99
+    },
+    {
+      "features": [
+        "unknown"
+      ],
+      "hunks": [
+        {
+          "base_count": 6,
+          "base_start": 180,
+          "candidate_features_from_subjects": [],
+          "feature_evidence": [],
+          "features": [
+            "unknown"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLToastNotifyPanel::updateButtonsLayout"
+          ],
+          "git_context": "void LLToastNotifyPanel::updateButtonsLayout(const std::vector<index_button_pair",
+          "guard_evidence": [
+            "if (!mIsScriptDialog && btn->getName() == \"Mute\" && std::next(it) == buttons.end() &&"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 16,
+          "head_end": 195,
+          "head_start": 180,
+          "id": "indra/newview/lltoastnotifypanel.cpp@180,16",
+          "patch": "             // looks like we need to add button to the next row\n             left = 0;\n             bottom_offset += (BTN_HEIGHT + VPAD);\n+            // [OfferBlockAway] On the two inventory offer toasts, a Block (\"Mute\") button that wraps\n+            // goes to the far right of its row, so it never sits directly above Keep/Show at the\n+            // left edge. Only when it is the last button, so no later button is pushed to a row the\n+            // caller's height calculation did not count.\n+            if (!mIsScriptDialog && btn->getName() == \"Mute\" && std::next(it) == buttons.end() &&\n+                mNotification && (mNotification->getName() == \"ObjectGiveItem\" ||\n+                                  mNotification->getName() == \"UserGiveItem\"))\n+            {\n+                left = llmax(0, max_width - btn_rect.getWidth());\n+            }\n         }\n         //we arrange buttons from bottom to top for backward support of old script\n         btn_rect.setOriginAndSize(left, bottom_offset, btn_rect.getWidth(), btn_rect.getHeight());\n",
+          "purpose": "Comment evidence: [OfferBlockAway] On the two inventory offer toasts, a Block (\"Mute\") button that wraps goes to the far right of its row, so it never sits directly above Keep/Show at the left edge. Only when it is the last button, so no later button is pushed to a row the caller's height calculat",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "9853df0f4af",
+              "subject": "Inventory offers: limit the Block move to the two offer toasts"
+            },
+            {
+              "commit": "557d05a8143",
+              "subject": "Inventory offers: keep the Block button away from Keep"
+            }
+          ],
+          "scope": "unknown-review",
+          "settings_references": [
+            "Mute",
+            "ObjectGiveItem",
+            "UserGiveItem"
+          ],
+          "slice": 99
+        }
+      ],
+      "note": "HEAD coordinates; guards/features are candidate evidence",
+      "path": "indra/newview/lltoastnotifypanel.cpp",
       "slice": 99
     },
     {

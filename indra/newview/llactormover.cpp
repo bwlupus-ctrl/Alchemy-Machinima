@@ -20289,6 +20289,36 @@ void LLActorMover::releaseHotGazeSlot(S32 slot)
     { if (parked.mState.mSlot == slot) parked.mState.release(now); });
 }
 
+LLActorMover::HotGazeSlotInfo LLActorMover::hotGazeSlotState(const LLUUID& actor, S32 slot) const
+{
+    const F64 now = LLPresentationTime::currentFrame().presentation_time;
+    const auto describe = [&](const HotGaze& hot) -> HotGazeSlotInfo
+    {
+        const auto& state = hot.mState;
+        if (state.mSlot < 0 || (slot != -1 && state.mSlot != slot)) return {};
+        const auto phase = state.finished(now) ? HotGazeSlotState::FINISHED
+            : (state.returning(now) ? HotGazeSlotState::RETURNING : HotGazeSlotState::ACTIVE);
+        return {phase, state.mStart, state.mRelease, hot.mPaint.mGaze.mHotGeneration};
+    };
+    const auto live = [](const HotGazeSlotInfo& info)
+    { return info.state == HotGazeSlotState::ACTIVE || info.state == HotGazeSlotState::RETURNING; };
+    HotGazeSlotInfo result;
+    const auto it = mHotGazes.find(actor);
+    if (it != mHotGazes.end()) result = describe(it->second);
+    // The running entry for this slot is authoritative, including completion.
+    if (result.state != HotGazeSlotState::NONE) return result;
+    // Without a running entry, prefer live snapshots, then the latest start.
+    mParkedHotGazes.forOwner(actor, [&](const HotGaze& hot)
+    {
+        const auto info = describe(hot);
+        if (info.state != HotGazeSlotState::NONE &&
+            (result.state == HotGazeSlotState::NONE || (live(info) && !live(result)) ||
+             (live(info) == live(result) && (info.start > result.start ||
+              (info.start == result.start && info.serial > result.serial))))) result = info;
+    });
+    return result;
+}
+
 bool LLActorMover::hasHotGazePose(const LLVOAvatar* avatar) const
 {
     if (!avatar || (mHotGazes.empty() && mHotGazeCopies.empty())) return false;

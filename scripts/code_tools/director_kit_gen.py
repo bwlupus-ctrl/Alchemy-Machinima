@@ -370,13 +370,15 @@ def validate_data(data: dict) -> None:
     # Group chat Snooze: two settings rows, 2499 -> 2501.
     # Independent rigs + Director Groups 1a/1b: 40/2506; Lights combo + readouts in 1c: 40/2507.
     # Clones "Clear animations" button + Director background opacity slider: 2507 -> 2509.
-    # Borrowed rig removal adds one searchable action: 2510 -> 2511.
+    # Director tag highlight toggle: 2509 -> 2510.
+    # Quick Gaze: eight independent This actor rows, 2510 -> 2518 (11/11).
+    # Borrowed rig removal adds one searchable action: 2518 -> 2519 (11/12).
     rig_page = next(p for _, p in pages if p['name'] == 'cine_light_rig_tab')
     removes = [(c['id'], r) for c in rig_page['cards'] for r in c['rows'] if r.get('w') == 'cine_remove_borrowed_rig']
     if len(removes) != 1 or removes[0][0] != 'rig_status' or removes[0][1].get('btn') != 'Remove rig' or not removes[0][1].get('no_widget_history'):
         raise GenError("borrowed rig removal must be one searchable rig-status action with structural history")
-    if len(pages) != 40 or row_count != 2511:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2511")
+    if len(pages) != 40 or row_count != 2519:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2519")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

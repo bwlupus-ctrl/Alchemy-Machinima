@@ -536,6 +536,7 @@ void releaseHotGazeKeys(void*)
 
 bool director_hot_gaze_1(EKeystate s)
 {
+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(0);
     if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)
         LLDirectorCast::instance().hotGazeInput(0, s == KEYSTATE_DOWN);
     return true;
@@ -543,6 +544,7 @@ bool director_hot_gaze_1(EKeystate s)
 
 bool director_hot_gaze_2(EKeystate s)
 {
+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(1);
     if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)
         LLDirectorCast::instance().hotGazeInput(1, s == KEYSTATE_DOWN);
     return true;
@@ -550,6 +552,7 @@ bool director_hot_gaze_2(EKeystate s)
 
 bool director_hot_gaze_3(EKeystate s)
 {
+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(2);
     if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)
         LLDirectorCast::instance().hotGazeInput(2, s == KEYSTATE_DOWN);
     return true;
@@ -557,6 +560,7 @@ bool director_hot_gaze_3(EKeystate s)
 
 bool director_hot_gaze_4(EKeystate s)
 {
+    if (s == KEYSTATE_DOWN) al_gaze_hot_note_manual(3);
     if (s == KEYSTATE_DOWN || s == KEYSTATE_UP)
         LLDirectorCast::instance().hotGazeInput(3, s == KEYSTATE_DOWN);
     return true;
