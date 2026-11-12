@@ -43,6 +43,8 @@
 #include "llviewerwindow.h"
 #include "lldrawable.h"
 #include "llrootview.h"
+#include "lleventtimer.h"
+#include "llnotificationsutil.h"
 
 
 LLToolObjPicker::LLToolObjPicker()
@@ -65,7 +67,13 @@ bool LLToolObjPicker::handleMouseDown(S32 x, S32 y, MASK mask)
     if (! handled)
     {
         // didn't click in any UI object, so must have clicked in the world
-        gViewerWindow->pickAsync(x, y, mask, pickCallback);
+        if (mCancelOnEscape)
+        {
+            if (mPickPending || mMouseReleased) return true;
+            mPickPending = true;
+            gViewerWindow->pickAsync(x, y, mask, pickCallback, false, false, false, false, mPickGeneration);
+        }
+        else gViewerWindow->pickAsync(x, y, mask, pickCallback);
         handled = true;
     }
     else
@@ -88,6 +96,19 @@ bool LLToolObjPicker::handleMouseDown(S32 x, S32 y, MASK mask)
 
 void LLToolObjPicker::pickCallback(const LLPickInfo& pick_info)
 {
+    auto* picker = LLToolObjPicker::getInstance();
+    if (pick_info.mPickGeneration != 0)
+    {
+        if (!picker->mSessionLive || !picker->mCancelOnEscape ||
+            pick_info.mPickGeneration != picker->mPickGeneration) return;
+        picker->mPickPending = false;
+        picker->mHitObjectID = pick_info.mObjectID;
+        picker->mPicked = pick_info.mObjectID.notNull();
+        if (picker->mMouseReleased) picker->completeGazePick();
+        return;
+    }
+    // A legacy result must not supply a target to an opt-in session either.
+    if (picker->mCancelOnEscape) return;
     LLToolObjPicker::getInstance()->mHitObjectID = pick_info.mObjectID;
     LLToolObjPicker::getInstance()->mPicked = pick_info.mObjectID.notNull();
 }
@@ -102,6 +123,27 @@ bool LLToolObjPicker::handleMouseUp(S32 x, S32 y, MASK mask)
         // let UI handle this
     }
 
+    if (mCancelOnEscape && mSessionLive)
+    {
+        LLTool::handleMouseUp(x, y, mask);
+        mMouseReleased = true;
+        if (mPickPending)
+        {
+            const U64 generation = mPickGeneration;
+            LLEventTimer::run_after(1.f, [generation]()
+            {
+                auto* picker = LLToolObjPicker::getInstance();
+                if (!picker->mSessionLive || picker->mPickGeneration != generation || !picker->mPickPending) return;
+                LLSD args;
+                args["MESSAGE"] = "Object pick timed out; try again";
+                LLNotificationsUtil::add("GenericTip", args);
+                picker->cancelPick();
+            });
+        }
+        else completeGazePick();
+        return handled;
+    }
+    mCompletedPick = hasMouseCapture() && mHitObjectID.notNull();
     LLTool::handleMouseUp(x, y, mask);
     if (hasMouseCapture())
     {
@@ -134,6 +176,12 @@ bool LLToolObjPicker::handleHover(S32 x, S32 y, MASK mask)
 
 void LLToolObjPicker::onMouseCaptureLost()
 {
+    if (mCancelOnEscape)
+    {
+        finishSession();
+        return;
+    }
+    mSessionLive = false;
     if (mExitCallback)
     {
         mExitCallback(mExitCallbackData);
@@ -147,8 +195,16 @@ void LLToolObjPicker::onMouseCaptureLost()
 }
 
 // virtual
-void LLToolObjPicker::setExitCallback(void (*callback)(void *), void *callback_data)
+void LLToolObjPicker::setExitCallback(void (*callback)(void *), void *callback_data, bool cancel_on_escape)
 {
+    // A new owner must finish the old owner's exit path before replacing it.
+    // Capture loss runs legacy callbacks too (particle editor and reporter).
+    if (mSessionLive)
+    {
+        cancelPick();
+        LLToolMgr::getInstance()->clearTransientTool();
+    }
+    mCancelOnEscape = cancel_on_escape;
     mExitCallback = callback;
     mExitCallbackData = callback_data;
 }
@@ -156,6 +212,12 @@ void LLToolObjPicker::setExitCallback(void (*callback)(void *), void *callback_d
 // virtual
 void LLToolObjPicker::handleSelect()
 {
+    ++mPickGeneration;
+    mPickPending = false;
+    mMouseReleased = false;
+    mSessionLive = true;
+    mCompletedPick = false;
+    mHitObjectID.setNull();
     LLTool::handleSelect();
     setMouseCapture(true);
 }
@@ -163,6 +225,8 @@ void LLToolObjPicker::handleSelect()
 // virtual
 void LLToolObjPicker::handleDeselect()
 {
+    mCompletedPick = false;
+    if (mCancelOnEscape && mSessionLive) cancelPick();
     if (hasMouseCapture())
     {
         LLTool::handleDeselect();
@@ -172,3 +236,47 @@ void LLToolObjPicker::handleDeselect()
 
 
 
+
+bool LLToolObjPicker::handleKey(KEY key, MASK mask)
+{
+    if (mCancelOnEscape && key == KEY_ESCAPE)
+    {
+        mCompletedPick = false;
+        LLToolMgr::getInstance()->clearTransientTool();
+        return true;
+    }
+    return LLTool::handleKey(key, mask);
+}
+
+void LLToolObjPicker::cancelPick()
+{
+    mCompletedPick = false;
+    mHitObjectID.setNull();
+    if (mCancelOnEscape) ++mPickGeneration;
+    if (hasMouseCapture()) setMouseCapture(false);
+    if (mCancelOnEscape && mSessionLive) finishSession();
+}
+
+// Mark ended and detach the callback before invoking owner cleanup: it can reenter
+// the tool manager or clear/replace the callback. Capture may already be absent.
+void LLToolObjPicker::finishSession()
+{
+    if (!mSessionLive) return;
+    mSessionLive = false;
+    ++mPickGeneration;
+    mPickPending = false;
+    auto callback = mExitCallback;
+    void* data = mExitCallbackData;
+    mExitCallback = nullptr;
+    mExitCallbackData = nullptr;
+    if (callback) callback(data);
+    mPicked = false;
+    mHitObjectID.setNull();
+}
+
+void LLToolObjPicker::completeGazePick()
+{
+    mCompletedPick = hasMouseCapture() && mHitObjectID.notNull();
+    if (hasMouseCapture()) setMouseCapture(false);
+    if (mSessionLive) finishSession();
+}

@@ -10,6 +10,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanellensgaze.h"
+#include "algazeactor.h"
 #include "alavatarsubjectpicker.h"
 #include "algazenearbyname.h"
 #include "alghoststudio.h"
@@ -1755,10 +1756,8 @@ void ALPanelLensGaze::commitQuickControl(LLUICtrl* source)
         target.mMode != LLActorMover::GazeTarget::FIXED_POINT) return;
     if (source == mQuickPick && target.mMode == LLActorMover::GazeTarget::OBJECT)
     {
-        LLViewerObject* object = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
-        if (!object) object = LLSelectMgr::getInstance()->getSelection()->getFirstRootObject();
-        if (!object) return;
-        picked_object = object->getRootEdit() ? object->getRootEdit()->getID() : object->getID();
+        picked_object = ALGazeActor::cardSelectedObjectTarget();
+        if (picked_object.isNull()) return;
     }
     if (!cast.contains(actor))
     {
@@ -1766,7 +1765,7 @@ void ALPanelLensGaze::commitQuickControl(LLUICtrl* source)
         if (!cast.contains(actor)) return;
         showQuickNotice(actor);
     }
-    if (source == mQuickEnable) LLActorMover::instance().setGazeEnabled(actor, mQuickEnable->get());
+    if (source == mQuickEnable) ALGazeActor::setEnabled(actor, mQuickEnable->get());
     else if (source == mQuickCamera) cast.setLookAtCamera(actor, mQuickCamera->get());
     else
     {
@@ -1780,7 +1779,7 @@ void ALPanelLensGaze::commitQuickControl(LLUICtrl* source)
                 target.mFixedPoint = gAgent.getPosGlobalFromAgent(LLViewerCamera::getInstance()->getOrigin());
             else if (target.mMode == LLActorMover::GazeTarget::OBJECT) target.mObjectRef = picked_object;
         }
-        cast.setGazeTarget(actor, target);
+        ALGazeActor::setTarget(actor, target);
     }
     refreshQuickControls();
 }

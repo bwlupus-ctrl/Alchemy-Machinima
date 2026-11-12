@@ -114,6 +114,7 @@ public:
     MASK            mKeyMask;
     void            (*mPickCallback)(const LLPickInfo& pick_info);
 
+    U64             mPickGeneration = 0; // Opt-in picker session identity; zero for legacy callers.
     EPickType       mPickType;
     LLCoordGL       mPickPt;
     LLVector3d      mPosGlobal;
@@ -446,7 +447,8 @@ public:
                                 bool pick_transparent = false,
                                 bool pick_rigged = false,
                                 bool pick_unselectable = false,
-                                bool pick_reflection_probes = false);
+                                bool pick_reflection_probes = false,
+                                U64 pick_generation = 0);
     LLPickInfo      pickImmediate(S32 x, S32 y, bool pick_transparent, bool pick_rigged = false, bool pick_particle = false, bool pick_unselectable = true, bool pick_reflection_probe = false);
     LLHUDIcon* cursorIntersectIcon(S32 mouse_x, S32 mouse_y, F32 depth,
                                            LLVector4a* intersection);

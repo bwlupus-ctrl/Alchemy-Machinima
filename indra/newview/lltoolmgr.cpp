@@ -186,6 +186,10 @@ LLToolset* LLToolMgr::getCurrentToolset()
 
 void LLToolMgr::setCurrentTool( LLTool* tool )
 {
+    if (mTransientTool && LLToolObjPicker::instanceExists() &&
+        mTransientTool == LLToolObjPicker::getInstance() &&
+        LLToolObjPicker::getInstance()->cancelOnToolChange())
+        clearTransientTool();
     if (mTransientTool)
     {
         mTransientTool = NULL;
@@ -426,6 +430,10 @@ void LLToolMgr::toggleMarketplace(const LLSD& sdname)
 
 void LLToolMgr::setTransientTool(LLTool* tool)
 {
+    if (mTransientTool && mTransientTool != tool && LLToolObjPicker::instanceExists() &&
+        mTransientTool == LLToolObjPicker::getInstance() &&
+        LLToolObjPicker::getInstance()->cancelOnToolChange())
+        clearTransientTool();
     if (!tool)
     {
         clearTransientTool();
@@ -447,7 +455,13 @@ void LLToolMgr::clearTransientTool()
 {
     if (mTransientTool)
     {
+        LLTool* previous = mTransientTool;
         mTransientTool = NULL;
+        // Opt-in one-shot picks must release capture before tool status is recomputed.
+        // Clear the transient first: the exit callback may itself restore the base tool.
+        if (LLToolObjPicker::instanceExists() && previous == LLToolObjPicker::getInstance() &&
+            LLToolObjPicker::getInstance()->cancelOnToolChange())
+            LLToolObjPicker::getInstance()->cancelPick();
         if (!mBaseTool)
         {
             LL_WARNS() << "mBaseTool is NULL" << LL_ENDL;
