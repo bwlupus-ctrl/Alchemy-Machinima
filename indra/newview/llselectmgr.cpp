@@ -107,6 +107,8 @@
 #include "llinventoryobserver.h"
 #include "lllocalmesh.h"
 #include "alghoststudio.h"          // [GhostStudio] Delete routes to the selected ghost
+#include "alghostmanipproxy.h"      // [CloneEditUndo]
+#include "altoolghostedit.h"          // [CloneEditUndo]
 
 LLViewerObject* getSelectedParentObject(LLViewerObject *object) ;
 
@@ -8126,11 +8128,24 @@ LLBBox LLSelectMgr::getBBoxOfSelection() const
 }
 
 
+// [CloneEditUndo] Route decision (see ALGhostManipProxy::undoRoute).
+static ALGhostManipProxy::EUndoRoute cloneUndoRoute(LLSelectMgr* mgr, bool redo)
+{
+    ALToolGhostEdit* tool = ALToolGhostEdit::getInstance();
+    return ALGhostManipProxy::undoRoute(
+        tool->isEditModeActive(),
+        tool->getManipProxy().owns(mgr->getSelection()->getFirstObject()), redo);
+}
+
 //-----------------------------------------------------------------------------
 // canUndo()
 //-----------------------------------------------------------------------------
 bool LLSelectMgr::canUndo() const
 {
+    if (const ALGhostManipProxy::EUndoRoute route =
+            cloneUndoRoute(const_cast<LLSelectMgr*>(this), false);
+        route != ALGhostManipProxy::ROUTE_STOCK)
+        return ALGhostManipProxy::historyCan(route == ALGhostManipProxy::ROUTE_REDO);
     // Can edit or can move
     return const_cast<LLSelectMgr*>(this)->mSelectedObjects->getFirstUndoEnabledObject() != NULL; // HACK: casting away constness - MG;
 }
@@ -8140,6 +8155,12 @@ bool LLSelectMgr::canUndo() const
 //-----------------------------------------------------------------------------
 void LLSelectMgr::undo()
 {
+    if (const ALGhostManipProxy::EUndoRoute route = cloneUndoRoute(this, false);
+        route != ALGhostManipProxy::ROUTE_STOCK)
+    {
+        ALGhostManipProxy::historyRun(route == ALGhostManipProxy::ROUTE_REDO);
+        return;
+    }
     bool select_linked_set = !gSavedSettings.getBOOL("EditLinkedParts");
     LLUUID group_id(gAgent.getGroupID());
     sendListToRegions("Undo", packAgentAndSessionAndGroupID, packObjectID, logNoOp, &group_id, select_linked_set ? SEND_ONLY_ROOTS : SEND_CHILDREN_FIRST);
@@ -8150,6 +8171,10 @@ void LLSelectMgr::undo()
 //-----------------------------------------------------------------------------
 bool LLSelectMgr::canRedo() const
 {
+    if (const ALGhostManipProxy::EUndoRoute route =
+            cloneUndoRoute(const_cast<LLSelectMgr*>(this), true);
+        route != ALGhostManipProxy::ROUTE_STOCK)
+        return ALGhostManipProxy::historyCan(route == ALGhostManipProxy::ROUTE_REDO);
     return const_cast<LLSelectMgr*>(this)->mSelectedObjects->getFirstEditableObject() != NULL; // HACK: casting away constness - MG
 }
 
@@ -8158,6 +8183,12 @@ bool LLSelectMgr::canRedo() const
 //-----------------------------------------------------------------------------
 void LLSelectMgr::redo()
 {
+    if (const ALGhostManipProxy::EUndoRoute route = cloneUndoRoute(this, true);
+        route != ALGhostManipProxy::ROUTE_STOCK)
+    {
+        ALGhostManipProxy::historyRun(route == ALGhostManipProxy::ROUTE_REDO);
+        return;
+    }
     bool select_linked_set = !gSavedSettings.getBOOL("EditLinkedParts");
     LLUUID group_id(gAgent.getGroupID());
     sendListToRegions("Redo", packAgentAndSessionAndGroupID, packObjectID, logNoOp, &group_id, select_linked_set ? SEND_ONLY_ROOTS : SEND_CHILDREN_FIRST);

@@ -76,6 +76,18 @@ public:
     bool usesBodyPivot(const LLViewerObject* object) const
     { return mProxyUsesBodyPivot && owns(object); }
 
+    // [CloneEditUndo] While clone Edit mode owns the selection, stock Undo/Redo
+    // (Ctrl+Z / Ctrl+Y / Edit menu) is redirected to the Director shell history,
+    // because the client-only proxy is invisible to the sim undo path.
+    // historyCan: a step is available; historyRun: replay it (true = handled).
+    // Replay hooks: cancel a live drag before, resync the proxy after.
+    void historyBegin();
+    void historyEnd();
+    enum EUndoRoute { ROUTE_STOCK, ROUTE_UNDO, ROUTE_REDO };
+    static EUndoRoute undoRoute(bool edit_active, bool owns_selection, bool redo);
+    static bool historyCan(bool redo);
+    static bool historyRun(bool redo);
+
 private:
     // Canonical avatar-sized manipulation bounds (world metres). The proxy volume
     // is a UNIT cube; object scale gives it these dimensions.
@@ -128,6 +140,8 @@ private:
     LLVector3     mDragLocalCenter{0.f, 0.f, 0.5f * PROXY_HEIGHT};
     LLVector3     mDragLocalDimensions{
         PROXY_WIDTH, PROXY_DEPTH, PROXY_HEIGHT};
+    // [CloneEditUndo] Which stock tool drove this drag: 0 move, 1 rotate, 2 scale.
+    S32           mDragKind = 0;
     bool          mDragStartMemberPinKnown = false;
     bool          mDragStartMemberPinned = false;
 };
