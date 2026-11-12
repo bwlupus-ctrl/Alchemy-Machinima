@@ -2220,7 +2220,9 @@ void LLFloater::draw()
     // draw background
     if( isBackgroundVisible() )
     {
-        const F32 alpha = getCurrentTransparency();
+        const F32 background_alpha = getBackgroundTransparency();
+
+        drawBackgroundUnderlay();
 
         drawShadow(this);
 
@@ -2249,12 +2251,12 @@ void LLFloater::draw()
         if (image)
         {
             // We're using images for this floater's backgrounds
-            image->draw(getLocalRect(), overlay_color % alpha);
+            image->draw(getLocalRect(), overlay_color % background_alpha);
         }
         else
         {
             // We're not using images, use old-school flat colors
-            gl_rect_2d( left, top, right, bottom, color % alpha );
+            gl_rect_2d( left, top, right, bottom, color % background_alpha );
 
             // draw highlight on title bar to indicate focus.  RDW
             if(hasFocus()
@@ -2266,7 +2268,7 @@ void LLFloater::draw()
                 const LLFontGL* font = LLFontGL::getFontSansSerif();
                 LLRect r = getRect();
                 gl_rect_2d_offset_local(0, r.getHeight(), r.getWidth(), r.getHeight() - font->getLineHeight() - 1,
-                    titlebar_focus_color % alpha, 0, true);
+                    titlebar_focus_color % background_alpha, 0, true);
             }
         }
     }
@@ -2316,7 +2318,7 @@ void    LLFloater::drawShadow(LLPanel* panel)
         shadow_color.mV[VALPHA] *= 0.5f;
     }
     gl_drop_shadow(left, top, right, bottom,
-        shadow_color % getCurrentTransparency(),
+        shadow_color % getBackgroundTransparency(),
         ll_round(shadow_offset));
 }
 

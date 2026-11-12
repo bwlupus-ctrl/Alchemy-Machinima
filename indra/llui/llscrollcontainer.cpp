@@ -555,7 +555,7 @@ void LLScrollContainer::draw()
         // Draw background
         if( mIsOpaque )
         {
-            F32 alpha = getCurrentTransparency();
+            F32 alpha = getBackgroundTransparency();
 
             gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
             gl_rect_2d(mInnerRect, mBackgroundColor.get() % alpha);

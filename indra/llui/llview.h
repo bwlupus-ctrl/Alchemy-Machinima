@@ -342,6 +342,12 @@ public:
 
     LLView*     getRootView();
     LLView*     getParent() const               { return mParentView; }
+
+    // Background fills only: descendants inherit their owner's multiplier, including
+    // dynamically built children. Text, control faces and highlights do not use this.
+    F32 getBackgroundOpacity() const;
+    virtual bool ownsBackgroundOpacity() const { return false; }
+    virtual F32 getOwnBackgroundOpacity() const { return 1.f; }
     LLView*     getFirstChild() const           { return (mChildList.empty()) ? NULL : *(mChildList.begin()); }
     LLView*     findPrevSibling(LLView* child);
     LLView*     findNextSibling(LLView* child);
@@ -598,6 +604,10 @@ private:
         return handleUnicodeChar(uni_char, from_parent);
     }
 
+    // Cache ownership, never the live scalar. A dead weak handle resolves to identity.
+    mutable LLHandle<LLView> mBackgroundOpacityOwner;
+    mutable U64 mBackgroundOpacityGeneration = 0;
+    mutable bool mBackgroundOpacityResolved = false;
     LLView*     mParentView;
     child_list_t mChildList;
     U8          mPendingTransparency = 0;
@@ -682,7 +692,8 @@ public:
     // Per-frame UI draw counters, reset after LLViewerWindow draws the tree.
     static U32  sDrawnViewCount;
     static U32  sClipCulledViewCount;
-    static U32  sTreeGeneration;
+    // UI thread only; 64-bit stamps avoid generation aliasing during UI churn.
+    static U64  sTreeGeneration;
 
     // Per-frame outer findChildView call and visited-node counters.
     static U32  sFindChildCallCount;

@@ -47,6 +47,11 @@ const LLUIColor& color(EColor value)
     return colors[llclamp((S32)value, 0, (S32)COLOR_COUNT - 1)];
 }
 
+F32 backgroundAlpha(const LLView* view)
+{
+    return view ? view->getBackgroundOpacity() : 1.f;
+}
+
 const LLFontGL* sansFont(const std::string& size, bool bold)
 {
     const LLFontGL* font = LLFontGL::getFont(LLFontDescriptor("IBMPlexSans", size, bold ? LLFontGL::BOLD : 0));

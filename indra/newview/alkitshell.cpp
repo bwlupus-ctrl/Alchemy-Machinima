@@ -1140,7 +1140,7 @@ void ALKitShell::draw()
     {
         LLRect rect;
         if (panel && panel->getVisible() && panel->localRectToOtherView(panel->getLocalRect(), &rect, this))
-            gl_rect_2d(rect, color.get(), true);
+            gl_rect_2d(rect, color.get() % ALKitStyle::backgroundAlpha(this), true);
     };
     fill_panel(mRail, ALKitStyle::color(ALKitStyle::RAIL_BG));
     fill_panel(mTabStrip, ALKitStyle::color(ALKitStyle::RAIL_BG));

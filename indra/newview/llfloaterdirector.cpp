@@ -3928,6 +3928,23 @@ void LLFloaterDirector::refreshTagHighlight()
     targets.publish(this, ids, ALKitStyle::color(ALKitStyle::ACCENT).get());
 }
 
+F32 LLFloaterDirector::getOwnBackgroundOpacity() const
+{
+    return mIsV2 ? mBackgroundOpacity : 1.f;
+}
+
+void LLFloaterDirector::drawBackgroundUnderlay()
+{
+    if (!mIsV2)
+        return;
+    // Preserve the base backing's full-rect coverage and paint order (before
+    // shadow/chrome/children). Its alpha was explicitly 1 at the default,
+    // independent of theme alpha and native inactive-floater transparency.
+    LLColor4 backing = ALKitStyle::color(ALKitStyle::WINDOW_BG).get();
+    backing.mV[VALPHA] = getBackgroundOpacity();
+    gl_rect_2d(getLocalRect(), backing, true);
+}
+
 void LLFloaterDirector::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
@@ -3948,15 +3965,9 @@ void LLFloaterDirector::draw()
     refreshLauncherCards();
     refreshStatusStrip();
     refreshTagHighlight();
-    if (mIsV2 && isBackgroundVisible())
-    {
-        static LLCachedControl<F32> background_opacity(gSavedSettings, "DirectorBackgroundOpacity", 1.f);
-        // Keep this independent of floater/child transparency. The live theme reference
-        // follows Theme and Invert; the local rect follows docking and resizing.
-        LLColor4 backing = ALKitStyle::color(ALKitStyle::WINDOW_BG).get();
-        backing.mV[VALPHA] = llclamp(background_opacity(), 0.f, 1.f);
-        gl_rect_2d(getLocalRect(), backing, true);
-    }
+    // One cached control read per frame; only background paint consults this scalar.
+    static LLCachedControl<F32> background_opacity(gSavedSettings, "DirectorBackgroundOpacity", 1.f);
+    mBackgroundOpacity = llclamp(background_opacity(), 0.f, 1.f);
     LLFloater::draw();
     // the embedded ALPanelAnimPreview blits + spins its own dummy in its draw()
 }

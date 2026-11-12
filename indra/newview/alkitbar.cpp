@@ -82,13 +82,13 @@ void ALKitBar::draw()
         {
             if (mRecording)
             {
-                pill->draw(rect, ALKitStyle::color(ALKitStyle::RECORD).get());
+                pill->draw(rect, ALKitStyle::color(ALKitStyle::RECORD).get() % ALKitStyle::backgroundAlpha(this));
             }
             else
             {
-                pill->draw(rect, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get());
+                pill->draw(rect, ALKitStyle::color(ALKitStyle::INPUT_BORDER).get() % ALKitStyle::backgroundAlpha(this));
                 LLRect inner(rect.mLeft + 1, rect.mTop - 1, rect.mRight - 1, rect.mBottom + 1);
-                pill->draw(inner, ALKitStyle::color(ALKitStyle::RAIL_BG).get());
+                pill->draw(inner, ALKitStyle::color(ALKitStyle::RAIL_BG).get() % ALKitStyle::backgroundAlpha(this));
             }
             gGL.color4fv((mRecording ? LLColor4::white : ALKitStyle::color(ALKitStyle::FAINT).get()).mV);
             gl_circle_2d((F32)rect.mLeft + 9.f, (F32)(rect.mBottom + rect.mTop) * .5f, 3.f, 12, true);
@@ -104,9 +104,9 @@ void ALKitBar::draw()
         }
         else if (name == "transport_toast" && pill)
         {
-            pill->draw(rect, ALKitStyle::color(ALKitStyle::ACCENT).get());
+            pill->draw(rect, ALKitStyle::color(ALKitStyle::ACCENT).get() % ALKitStyle::backgroundAlpha(this));
             LLRect inner(rect.mLeft + 1, rect.mTop - 1, rect.mRight - 1, rect.mBottom + 1);
-            pill->draw(inner, ALKitStyle::color(ALKitStyle::CONTROL_BG).get());
+            pill->draw(inner, ALKitStyle::color(ALKitStyle::CONTROL_BG).get() % ALKitStyle::backgroundAlpha(this));
         }
     }
     LLPanel::draw();
