@@ -1,0 +1,108 @@
+// Production lazy construction, on-screen predicate, status draw blocks and
+// observer gate; only UI factory/window/geometry boundaries are mocked.
+#include <cassert>
+#include <iostream>
+#include <string>
+#include <vector>
+#include "alshaftdecision.h"
+@@HEARTBEAT@@
+unsigned gFrameCount=0;
+namespace ALShaftSelfTest { bool active=false; }
+int observations=0;
+void observe() {
+@@OBSERVER_GATE@@
+ ++observations;
+}
+struct LLRect { bool valid=true,overlap=true;bool isValid()const{return valid;}
+ bool overlaps(const LLRect& r)const{return overlap && r.overlap;} };
+struct LLView {
+ LLView* parent=nullptr;bool visible=true;LLRect rect;std::vector<LLView*> children;
+ inline static LLRect sDirtyRect;
+ virtual ~LLView()=default;
+ LLView* getParent()const{return parent;}bool getVisible()const{return visible;}
+ LLRect getRect()const{return rect;}LLRect getLocalRect()const{return rect;}
+ LLRect calcScreenRect()const{return rect;}
+ void addChild(LLView* v){children.push_back(v);v->parent=this;}
+ virtual void draw(){for(auto* c:children)if(c->visible)c->draw();}
+ std::string getName(){return "projector_shafts_tab";}
+};
+LLView root;
+struct LLUI{static LLUI* getInstance(){static LLUI ui;return &ui;}LLView* getRootView(){return &root;}};
+@@ON_SCREEN@@
+struct LLTextBox:LLView{};
+struct Clock{bool refresh=false;bool due(){return refresh;}};
+int refreshes=0;std::string alSelectedProjectorShaftStatus(){return {};}
+void setTextIfChanged(LLTextBox*,std::string){++refreshes;}
+struct LLPanel:LLView{};
+struct ALKitPage:LLPanel {
+ LLTextBox* mShaftStatus=nullptr;Clock mShaftStatusClock;LLTextBox row;bool hasRow=true;
+ template<class T>T* findChild(const char*){return hasRow?&row:nullptr;}
+ void postBuild(){@@PAGE_STATUS_INIT@@}
+ void draw()override {@@PAGE_DRAW@@}
+};
+struct ALPanelProjectorShafts:LLPanel {
+ LLTextBox row;LLTextBox* mShaftStatus=&row;Clock mStatusClock;
+ void draw()override {@@PANEL_DRAW@@}
+};
+struct Host:LLView{bool minimized=false;void draw()override{if(!minimized)LLView::draw();}};
+struct ALKitShell {
+ static ALKitShell* find(LLView*){static ALKitShell shell;return &shell;}
+ bool isReady(){return true;}ALKitShell& scrollFit(){return *this;}
+ void adoptPage(LLView*,LLView*){}void emitPageBuilt(std::string,LLView*){}
+};
+struct ALKitLazyPage:LLPanel {
+ LLPanel* mContent=nullptr;bool mBuildAttempted=false;std::string mPageFile;double mBuildMs=0;
+ LLPanel* ensureBuilt();void fitContent(){}
+};
+bool skinHasRow=true;
+struct LLDefaultChildRegistry{static int instance(){return 0;}};
+struct LLUICtrlFactory {
+ static LLUICtrlFactory* getInstance(){static LLUICtrlFactory f;return &f;}
+ template<class T>T* createFromFile(std::string,LLView* parent,int){
+  // LLPanel::initPanelXML creates children (including their postBuilds)
+  // before attaching the surrounding XML panel to the lazy-page host.
+  auto* content=new LLPanel;auto* page=new ALKitPage;page->hasRow=skinHasRow;
+  page->addChild(&page->row);content->addChild(page);
+  assert(!content->getParent());page->postBuild();
+  parent->addChild(content);return content;
+ }
+};
+struct LLTimer{double getElapsedTimeF64(){return 0;}};
+#define LL_PROFILE_ZONE_NAMED_CATEGORY_UI(x)
+#define LL_WARNS(x) std::cerr
+#define LL_INFOS(x) std::cout
+#define LL_ENDL std::endl
+@@LAZY_BUILD@@
+void frame(){++gFrameCount;root.draw();observe();}
+void idleFrames(){int before=observations;frame();frame();assert(observations==before);}
+int main(){
+ observe();assert(observations==0); // frame zero must not look drawn
+ Host host;root.addChild(&host);ALKitLazyPage lazy;host.addChild(&lazy);
+ lazy.visible=false;auto* content=lazy.ensureBuilt();assert(content && content==lazy.ensureBuilt());
+ auto* page=dynamic_cast<ALKitPage*>(content->children[0]);assert(page && page->mShaftStatus);
+ observe();assert(observations==0);idleFrames(); // Quick favorite builds hidden, never navigates
+ lazy.visible=true;frame();assert(ALShaftStatus::recentlyDrawn(gFrameCount));
+ // Heartbeat is per draw, independent of throttled text refresh.
+ int before=observations;frame();frame();frame();assert(observations==before+3 && refreshes==0);
+ for(int event=0;event<4;++event){
+  frame();assert(ALShaftStatus::recentlyDrawn(gFrameCount));
+  if(event==0)host.minimized=true;
+  if(event==1)lazy.visible=false; // tab switch
+  if(event==2)host.visible=false; // floater close, children remain locally visible
+  if(event==3)page->row.rect.overlap=false; // status row scrolled/clipped away
+  // World pass may precede UI: at most the previous frame is allowed.
+  ++gFrameCount;observe();assert(ALShaftStatus::recentlyDrawn(gFrameCount));
+  idleFrames();assert(!ALShaftStatus::recentlyDrawn(gFrameCount));
+  host.minimized=false;host.visible=lazy.visible=true;page->row.rect.overlap=true;
+ }
+ host.visible=false;idleFrames();
+ ALPanelProjectorShafts shared;root.addChild(&shared);shared.addChild(&shared.row);
+ frame();before=observations;frame();frame();assert(observations==before+2);
+ shared.row.rect.overlap=false;frame();idleFrames();
+ shared.visible=false;skinHasRow=false;ALKitLazyPage skin;host.addChild(&skin);
+ auto* skinPage=dynamic_cast<ALKitPage*>(skin.ensureBuilt()->children[0]);assert(skinPage && !skinPage->mShaftStatus);
+ host.visible=true;lazy.visible=false;idleFrames(); // optional row absent, safely inert
+ ALShaftSelfTest::active=true;before=observations;frame();assert(observations==before+1);
+ ALShaftSelfTest::active=false;
+ std::cout<<"PASS visibility: real lazy ensureBuilt, child-postBuild before final attachment, hidden Quick favorite, minimize/restore, tab switch, close/reopen, clipped row, absent skin row, unthrottled draw stamps, active-test exception\n";
+}

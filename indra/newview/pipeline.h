@@ -482,6 +482,18 @@ public:
     static void  toggleVolumetricShaft(const LLUUID& id, bool user_edit = true);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
+    // [Shaft slot priority] A WORLD projector the user flagged for Volumetric Shaft (own id
+    // or root-edit id) ranks above unflagged world projectors and below cine rig emitters in
+    // the native shadow-slot auction (spotShadowTier). False for a Cast Shadows opt-out and
+    // for a flag that is only a VCam auto-enable.
+    static bool  isUserShaftSlotPromoted(LLVOVolume* volume);
+    // [Shaft status] One short line on `light`'s shaft for the Director Projector Shafts
+    // page (first blocking reason, or its slot). Evaluated by visible pages at most once per second.
+    // Counts only - never ids or names of other objects.
+    static std::string projectorShaftStatus(LLVOVolume* light);
+    static void acquireShaftTestMaster(const LLUUID& id);
+    bool hasProjectorShaftShadowSlot(LLVOVolume* light, bool current_frame = false);
+    void observeProjectorShafts(LLRenderTarget* target);
     // [World Shadow pick] Session-only per-light opt-in for the world (cube) shadow slots: the right-click "World Shadow" check item,
     // beside "Volumetric Shaft". Keyed by the LIGHT prim's own object id (a point light or a projector, any owner or permissions; the
     // pick touches nothing on the object). Picked lights take the slots first (alworldshadowmath.h updateResidencyPicked). The set is NOT
@@ -1999,6 +2011,9 @@ public:
 
     LLPointer<LLDrawable>   mShadowSpotLight[MAX_SPOT_SHADOWS];
     F32                     mSpotLightFade[MAX_SPOT_SHADOWS];
+    std::array<LLUUID, MAX_SPOT_SHADOWS> mShaftDrawId{};
+    std::array<U32, MAX_SPOT_SHADOWS> mShaftDrawFrame{};
+    std::array<bool, MAX_SPOT_SHADOWS> mShaftDrawClassic{};
     LLPointer<LLDrawable>   mTargetShadowSpotLight[MAX_SPOT_SHADOWS];
     LLPointer<LLDrawable>   mSpotAuctionEligible[MAX_SPOT_SHADOWS];
     struct SpotAuctionEntry

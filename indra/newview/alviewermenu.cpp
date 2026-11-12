@@ -65,6 +65,7 @@
 #include "llvoavatarself.h"
 #include "llvovolume.h"
 #include "pipeline.h"
+#include "alshaftselection.h"
 #include "llprismlens.h"
 
 // llviewermenu.cpp
@@ -659,66 +660,51 @@ namespace
 // per-projector opt-in for the volumetric light-cone effect; mirrors the
 // derender selection plumbing but stores UUIDs in gPipeline's in-memory set
 // (never persisted). Toggles every root object in the current selection.
-    LLVOVolume* get_selected_projector_volume()
+    // [Shaft merge] One menu item. "Hero Beam" was only ever the froxel routing of a
+    // flagged shaft (excluded from froxel light injection, sharp per-cone shaft over the
+    // atmosphere; inert with froxel off), so the Volumetric Shaft click now carries it:
+    // flag on => hero on, flag off => hero off, for the same id. The pipeline's hero set
+    // and its API are untouched - light rigs keep writing shaft and hero independently.
+    void sync_hero_with_shaft(const LLUUID& id)
     {
-        // A spotlight projector is often a CHILD prim of a linked fixture, not the
-        // root, while the primary selected object is usually the root - so checking
-        // ONLY the primary object wrongly greyed this menu for linksets (it worked
-        // only on UNLINKED lights). Scan every selected prim AND each one's linkset
-        // children for the first spotlight. The render side already matches a flagged
-        // root id against a child light's root-edit id, so toggling the root (in
-        // handle_object_volumetric_shaft) lights the whole fixture's projectors.
-        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
-        if (hSel.isNull())
-            return nullptr;
-
-        // [BDMerge fix] Iterate the RAW selection (begin/end = object-non-null only),
-        // NOT valid_begin/valid_end. `mValid` is set only after the server's
-        // ObjectProperties reply arrives, which for a right-click selection of another
-        // person's NO-MOD object typically never comes - so valid_* was empty and this
-        // enable gate greyed the item for any light that isn't yours (reported
-        // in-world). Volumetric Shaft / Hero Beam are purely CLIENT-SIDE, session-only
-        // render toggles keyed by UUID; they touch nothing on the object and need no
-        // properties/permissions - only that it renders as a spotlight (client data
-        // available for everything you can see). Ownership/mod is irrelevant.
-        for (LLObjectSelection::iterator itObj = hSel->begin(), endObj = hSel->end();
-             itObj != endObj; ++itObj)
-        {
-            const LLSelectNode* pNode = *itObj;
-            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
-            if (!pObj)
-                continue;
-
-            LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
-            // Real spotlights and viewer-local VCam projectors alike.
-            LLVector3 spot_params;
-            if (pVol && LLPrismLens::projectorRenderParams(pVol, spot_params))
-                return pVol;
-
-            // Children too, in case only the root node is in the selection.
-            for (const LLPointer<LLViewerObject>& pChildPtr : pObj->getChildren())
-            {
-                LLVOVolume* pChildVol = dynamic_cast<LLVOVolume*>(pChildPtr.get());
-                if (pChildVol && LLPrismLens::projectorRenderParams(pChildVol, spot_params))
-                    return pChildVol;
-            }
-        }
-        return nullptr;
+        if (LLPipeline::isHeroProjector(id) != LLPipeline::isVolumetricShaftEnabled(id))
+            LLPipeline::toggleHeroProjector(id);
     }
 
+    bool check_object_volumetric_shaft();
     void handle_object_volumetric_shaft(const LLSD& /*sdParam*/)
     {
-        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
-        if (hSel.isNull())
-            return;
-
-        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
-             itObj != endObj; ++itObj)
+        LLObjectSelectionHandle selection = LLSelectMgr::getInstance()->getSelection();
+        if (selection.isNull()) return;
+        const bool enabled = !check_object_volumetric_shaft();
+        const auto set = [enabled](LLViewerObject* object)
         {
-            const LLSelectNode* pNode = *itObj;
-            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
-            if (pObj && pObj->getID().notNull())
-                LLPipeline::toggleVolumetricShaft(pObj->getID());
+            if (!object || object->getID().isNull()) return;
+            const LLUUID& id = object->getID();
+            if (LLPipeline::isVolumetricShaftEnabled(id) != enabled) LLPipeline::toggleVolumetricShaft(id);
+            sync_hero_with_shaft(id);
+        };
+        for (auto it = selection->begin(); it != selection->end(); ++it)
+        {
+            LLSelectNode* node = *it;
+            LLViewerObject* object = node ? node->getObject() : nullptr;
+            if (!object) continue;
+            // Every inspected ID (selected prim/root and its children) leaves
+            // hero == shaft, including previously orphaned hero flags. Untick
+            // clears all effective inherited and child flags so the shaft is off.
+            LLViewerObject* root = object->getRootEdit();
+            if (root)
+            {
+                if (!enabled && LLPipeline::isVolumetricShaftEnabled(root->getID())) set(root);
+                else sync_hero_with_shaft(root->getID());
+            }
+            if (!node->mIndividualSelection && root) object = root;
+            set(object);
+            for (const LLPointer<LLViewerObject>& child : object->getChildren())
+            {
+                if (!enabled) set(child.get());
+                else sync_hero_with_shaft(child->getID());
+            }
         }
     }
 
@@ -726,13 +712,20 @@ namespace
     {
         // Only meaningful on spotlight projectors (the only lights that can cast
         // the shadow slots the effect marches). No-op harmlessly otherwise.
-        return get_selected_projector_volume() != nullptr;
+        bool selected;
+        return alSelectedProjector(selected) != nullptr;
     }
 
     bool check_object_volumetric_shaft()
     {
         LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
-        return pObj && LLPipeline::isVolumetricShaftEnabled(pObj->getID());
+        if (!pObj)
+            return false;
+        // Own id, then root-edit id: the match the render path (and the old Hero check) uses.
+        if (LLPipeline::isVolumetricShaftEnabled(pObj->getID()))
+            return true;
+        LLViewerObject* pRoot = pObj->getRootEdit();
+        return pRoot && LLPipeline::isVolumetricShaftEnabled(pRoot->getID());
     }
 
     // [World Shadow pick] Right-click "World Shadow" check item, beside "Volumetric Shaft". Session-only, client-side only, any owner and any
@@ -839,7 +832,8 @@ namespace
     {
         // Only meaningful on spotlight projectors (the only lights that cast
         // shadow slots). No-op harmlessly otherwise.
-        return get_selected_projector_volume() != nullptr;
+        bool selected;
+        return alSelectedProjector(selected) != nullptr;
     }
 
     bool check_object_cast_shadows()
@@ -848,55 +842,6 @@ namespace
         // set), so the default state shows as ticked.
         LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
         return pObj && !LLPipeline::isProjectorNoShadow(pObj->getID());
-    }
-
-    // [BDMerge F4] Right-click "Hero Beam" toggle. Session-only per-projector flag:
-    // a hero projector is excluded from froxel light injection and marches its sharp
-    // per-cone shaft on top of the froxel atmosphere (film key-light-sharp/air-soft
-    // split). With froxel OFF the flag is inert. Toggles every root in the selection,
-    // mirroring the Volumetric Shaft / Cast Shadows toggles.
-    void handle_object_hero_beam(const LLSD& /*sdParam*/)
-    {
-        LLObjectSelectionHandle hSel = LLSelectMgr::getInstance()->getSelection();
-        if (hSel.isNull())
-            return;
-
-        for (LLObjectSelection::root_iterator itObj = hSel->root_begin(), endObj = hSel->root_end();
-             itObj != endObj; ++itObj)
-        {
-            const LLSelectNode* pNode = *itObj;
-            LLViewerObject* pObj = (pNode) ? pNode->getObject() : nullptr;
-            if (pObj && pObj->getID().notNull())
-            {
-                LLPipeline::toggleHeroProjector(pObj->getID());
-                // [F4 debug] Decisive breadcrumb for "Hero Beam does nothing" reports:
-                // confirms the click reached the handler and which id carries the flag.
-                LL_INFOS("HeroBeam") << "toggled " << pObj->getID() << " -> "
-                                     << (LLPipeline::isHeroProjector(pObj->getID()) ? "ON" : "OFF") << LL_ENDL;
-            }
-        }
-    }
-
-    bool enable_object_hero_beam()
-    {
-        // Only meaningful on spotlight projectors (the shaft the hero beam marches).
-        // Same enable condition as the Volumetric Shaft item. No-op harmlessly
-        // otherwise, and inert unless the shaft is also flagged + froxel is on.
-        return get_selected_projector_volume() != nullptr;
-    }
-
-    bool check_object_hero_beam()
-    {
-        // [F4 fix] Reflect the flag whether it was set on this prim or its root
-        // (the toggle iterates selection roots; Edit Linked makes a child its own
-        // selection root, so both ids are legitimate carriers of the flag).
-        LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
-        if (!pObj)
-            return false;
-        if (LLPipeline::isHeroProjector(pObj->getID()))
-            return true;
-        LLViewerObject* pRoot = pObj->getRootEdit();
-        return pRoot && LLPipeline::isHeroProjector(pRoot->getID());
     }
 
     // [BDMerge G3.3 Batch 1 C] Snapshot the current global shaft sliders into a
@@ -1490,10 +1435,6 @@ void ALViewerMenu::initialize_menus()
     commit.add("Object.CastShadows", boost::bind(&handle_object_cast_shadows, _2));
     enable.add("Object.EnableCastShadows", boost::bind(&enable_object_cast_shadows));
     enable.add("Object.CheckCastShadows", boost::bind(&check_object_cast_shadows));
-// [BDMerge F4] session-only per-projector Hero Beam toggle (per-cone march over froxel)
-    commit.add("Object.HeroBeam", boost::bind(&handle_object_hero_beam, _2));
-    enable.add("Object.EnableHeroBeam", boost::bind(&enable_object_hero_beam));
-    enable.add("Object.CheckHeroBeam", boost::bind(&check_object_hero_beam));
 // [BDMerge G3.3 Batch 1 C] per-projector volumetric override capture/clear
     commit.add("Object.ShaftCaptureOverride", boost::bind(&handle_object_shaft_capture, _2));
     enable.add("Object.EnableShaftCaptureOverride", boost::bind(&enable_object_volumetric_shaft));

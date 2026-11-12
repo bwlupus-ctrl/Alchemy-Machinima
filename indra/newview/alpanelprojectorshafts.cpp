@@ -9,9 +9,25 @@
 #include "llprofiler.h"
 #include "lltextbox.h"
 #include "pipeline.h"
+#include "alshaftselftest.h"
+#include "alshaftselection.h"
 #include "lluictrlfactory.h"
+#include "llprismlens.h"
+#include "llselectmgr.h"
+#include "llviewerobject.h"
+#include "llvovolume.h"
 
 static LLPanelInjector<ALPanelProjectorShafts> t_panel_projector_shafts("panel_projector_shafts");
+
+std::string alSelectedProjectorShaftStatus()
+{
+    bool selected = false;
+    LLVOVolume* light = alSelectedProjector(selected);
+    const std::string status = selected ? LLPipeline::projectorShaftStatus(light)
+        : "Select a projector light to see its shaft status";
+    const std::string result = ALShaftSelfTest::result();
+    return result.empty() ? status : result + "\n" + status;
+}
 
 ALPanelProjectorShafts::ALPanelProjectorShafts()
 :   LLPanel()
@@ -23,6 +39,8 @@ bool ALPanelProjectorShafts::postBuild()
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALPanelProjectorShafts postBuild");
     mShaftCost = getChild<LLTextBox>("ps_shaft_cost");
+    // Optional row (added by the kit XUI): absent => nullptr and the status path is skipped.
+    mShaftStatus = findChild<LLTextBox>("shaft_status_text");
     mFlowGrid = getChildView("ps_flow_grid");
     reshape(getRect().getWidth(),getRect().getHeight());
     mPreset = getChild<LLComboBox>("ps_preset");
@@ -58,7 +76,7 @@ void ALPanelProjectorShafts::refreshPresets()
 void ALPanelProjectorShafts::onVisibilityChange(bool visible)
 {
     LLPanel::onVisibilityChange(visible);
-    if (visible) mCostClock.forceDue();
+    if (visible) { mCostClock.forceDue(); mStatusClock.forceDue(); }
 }
 
 void ALPanelProjectorShafts::draw()
@@ -66,6 +84,12 @@ void ALPanelProjectorShafts::draw()
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ALPanelProjectorShafts draw");
     if (isWidgetOnScreen(mShaftCost) && mCostClock.due())
         setTextIfChanged(mShaftCost,gPipeline.projectorShaftCostReadout());
+    if (mShaftStatus && isWidgetOnScreen(mShaftStatus))
+    {
+        ALShaftStatus::markDrawn(gFrameCount);
+        if (mStatusClock.due())
+            setTextIfChanged(mShaftStatus, alSelectedProjectorShaftStatus());
+    }
     LLPanel::draw();
 }
 
