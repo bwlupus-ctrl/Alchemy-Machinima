@@ -42,19 +42,33 @@ public:
     virtual bool        handleMouseUp(S32 x, S32 y, MASK mask) override;
     virtual bool        handleHover(S32 x, S32 y, MASK mask) override;
 
+    virtual bool        handleKey(KEY key, MASK mask) override;
+
     virtual void        handleSelect() override;
     virtual void        handleDeselect() override;
 
     virtual void        onMouseCaptureLost() override;
 
-    void        setExitCallback(void (*callback)(void *), void *callback_data);
+    void        setExitCallback(void (*callback)(void *), void *callback_data, bool cancel_on_escape = false);
 
     LLUUID              getObjectID() const { return mHitObjectID; }
+
+    bool                cancelOnToolChange() const { return mCancelOnEscape; }
+    void                cancelPick();
+    bool                completedPick() const { return mCompletedPick; }
 
     static void         pickCallback(const LLPickInfo& pick_info);
 
 protected:
+    void finishSession();
+    void completeGazePick();
+    U64 mPickGeneration = 0;
+    bool mPickPending = false;
+    bool mMouseReleased = false;
+    bool                mSessionLive = false;
     bool                mPicked;
+    bool                mCompletedPick = false;
+    bool                mCancelOnEscape = false;
     LLUUID              mHitObjectID;
     void                (*mExitCallback)(void *callback_data);
     void                *mExitCallbackData;

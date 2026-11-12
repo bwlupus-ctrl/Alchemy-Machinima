@@ -5228,7 +5228,8 @@ void LLViewerWindow::pickAsync( S32 x,
                                 bool pick_transparent,
                                 bool pick_rigged,
                                 bool pick_unselectable,
-                                bool pick_reflection_probes)
+                                bool pick_reflection_probes,
+                                U64 pick_generation)
 {
     // Functional self-test (in-world): no world pick is scheduled (tool dispatch is dropped too).
     if (gViewerInput.worldInputSuspended())
@@ -5244,6 +5245,7 @@ void LLViewerWindow::pickAsync( S32 x,
     }
 
     LLPickInfo pick_info(LLCoordGL(x, y_from_bot), mask, pick_transparent, pick_rigged, false, pick_reflection_probes, true, pick_unselectable, callback);
+    pick_info.mPickGeneration = pick_generation;
     schedulePick(pick_info);
 }
 

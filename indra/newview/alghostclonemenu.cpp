@@ -23,6 +23,7 @@
 #include "alghostclonemenulogic.h"
 #include "algazenearby.h"
 #include "algazenearbyname.h"
+#include "algazeactor.h"
 #include "alghoststudio.h"
 #include "alkithistory.h"
 #include "alkitshell.h"
@@ -47,6 +48,7 @@
 #include "llnotificationsutil.h"
 #include "lltool.h"
 #include "lltoolmgr.h"
+#include "lltoolobjpicker.h"
 #include "lltrans.h"
 #include "lluicolortable.h"
 #include "lluictrl.h"
@@ -1606,6 +1608,313 @@ void registerOverlayCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enabl
     });
 }
 
+// The open menu remembers the picked identity, never an Actor bar or Subject slot.
+// Resolve that identity again on every click, including attachment wearer menus.
+LLVOAvatar* avatarGazeActor()
+{
+    LLVOAvatar* avatar = find_avatar_from_object(sMenuAvatar);
+    return !sMenuHud && avatar && avatar->getID() == sMenuAvatar &&
+        ALAvatarSubjectPicker::valid(avatar, false, false) ? avatar : nullptr;
+}
+
+std::string avatarGazeLabel(const LLUUID& id)
+{
+    if (LLDirectorCast::isSelf(id)) return "You";
+    if (nameHiddenByRlva(id)) return "Unknown";
+    const auto* member = LLDirectorCast::instance().getMember(id);
+    std::string name = member ? member->mLastName : std::string();
+    if (name.empty() || Logic::containsUuidText(name)) name = ALGazeNearby::personDisplayName(id);
+    return name.empty() || Logic::containsUuidText(name) ? "Unknown" : name;
+}
+
+bool avatarGazeCastCurrent(const LLUUID& id, const LLUUID& actor)
+{
+    return id != actor && id != gAgentID && LLDirectorCast::instance().contains(id) &&
+        !ALGhostStudio::instance().isDeleting(id);
+}
+
+// This list is built only when an avatar menu opens, or a stale pick is validated.
+// No name lookup/avatar walk is installed on idle or draw.
+std::vector<ALGazeNearby::Entry> avatarGazeNearby(const LLUUID& actor)
+{
+    std::vector<ALGazeNearby::Entry> people;
+    if (!ALGazeNearby::nearbyAllowed()) return people;
+    const LLVector3d camera = gAgent.getPosGlobalFromAgent(LLViewerCamera::getInstance()->getOrigin());
+    const F32 range = LLViewerCamera::getInstance()->getFar();
+    for (LLCharacter* character : LLCharacter::sInstances)
+    {
+        LLVOAvatar* avatar = dynamic_cast<LLVOAvatar*>(character);
+        if (!ALAvatarSubjectPicker::valid(avatar, false, false) || avatar->getID() == actor ||
+            avatar->getID() == gAgentID || LLDirectorCast::instance().contains(avatar->getID()) ||
+            dist_vec(avatar->getPositionGlobal(), camera) > range) continue;
+        const std::string name = ALGazeNearby::personDisplayName(avatar->getID());
+        if (name.empty() || Logic::containsUuidText(name)) continue;
+        ALGazeNearby::Entry entry;
+        entry.mId = avatar->getID();
+        entry.mName = name;
+        people.push_back(entry);
+    }
+    std::sort(people.begin(), people.end(), [](const auto& a, const auto& b) {
+        return a.mName != b.mName ? a.mName < b.mName : a.mId < b.mId;
+    });
+    return people;
+}
+
+bool avatarGazeNearbyCurrent(const LLUUID& id, const LLUUID& actor)
+{
+    const auto people = avatarGazeNearby(actor);
+    return std::any_of(people.begin(), people.end(), [&id](const auto& person) { return person.mId == id; });
+}
+
+bool avatarGazeChecked(const std::string& kind, const LLUUID& id = LLUUID::null)
+{
+    if (!avatarGazeActor()) return false;
+    const auto& mover = LLActorMover::instance();
+    const bool on = mover.isGazeEnabled(sMenuAvatar);
+    if (kind == "on" || !on) return on;
+    const auto target = mover.getGazeTargetConfig(sMenuAvatar);
+    return kind == "camera" ? target.mMode == LLActorMover::GazeTarget::CAMERA
+        : kind == "travel" ? target.mMode == LLActorMover::GazeTarget::MOTION
+        : kind == "object" ? target.mMode == LLActorMover::GazeTarget::OBJECT
+        : (kind == "me" || kind == "person") && target.mMode == LLActorMover::GazeTarget::CAST_MEMBER &&
+            target.mCastRef == (kind == "me" ? gAgentID : id);
+}
+
+bool ensureAvatarGazeCast(const LLUUID& actor)
+{
+    auto& cast = LLDirectorCast::instance();
+    if (cast.contains(actor)) return true;
+    cast.add(actor);
+    if (!cast.contains(actor))
+    {
+        tip("Could not add this avatar to Cast");
+        return false;
+    }
+    tip("Added " + avatarGazeLabel(actor) + " to Cast");
+    return true;
+}
+
+bool avatarGazeTargetsEqual(const LLActorMover::GazeTarget& a, const LLActorMover::GazeTarget& b)
+{
+    return a.mMode == b.mMode &&
+           a.mCastRef == b.mCastRef &&
+           a.mFixedPoint == b.mFixedPoint &&
+           a.mObjectRef == b.mObjectRef &&
+           a.mPickedSpot == b.mPickedSpot &&
+           a.mObjectOffset == b.mObjectOffset &&
+           a.mObjectJoint == b.mObjectJoint &&
+           a.mPointNudge == b.mPointNudge &&
+           a.mPersonaDominance == b.mPersonaDominance &&
+           a.mPersonaAffection == b.mPersonaAffection &&
+           a.mPersonaAnxiety == b.mPersonaAnxiety &&
+           a.mPersonaOverride == b.mPersonaOverride &&
+           a.mHeadEyeBlendOverride == b.mHeadEyeBlendOverride &&
+           a.mTorsoAmountOverride == b.mTorsoAmountOverride &&
+           a.mIntensityOverride == b.mIntensityOverride &&
+           a.mSmoothingOverride == b.mSmoothingOverride &&
+           a.mEyelineOverride == b.mEyelineOverride &&
+           a.mEyelineYawDegOverride == b.mEyelineYawDegOverride &&
+           a.mEyelinePitchDegOverride == b.mEyelinePitchDegOverride &&
+           a.mMicroLifeOverride == b.mMicroLifeOverride &&
+           a.mBlinksOverride == b.mBlinksOverride &&
+           a.mVariationOverride == b.mVariationOverride &&
+           a.mBreakFrequencyOverride == b.mBreakFrequencyOverride &&
+           a.mEaseAcquireOverride == b.mEaseAcquireOverride &&
+           a.mEaseReleaseOverride == b.mEaseReleaseOverride &&
+           a.mDeadZoneDegOverride == b.mDeadZoneDegOverride &&
+           a.mBlinkRateScale == b.mBlinkRateScale &&
+           a.mVergenceScale == b.mVergenceScale &&
+           a.mCameraRollOverride == b.mCameraRollOverride &&
+           a.mExaggerateOverride == b.mExaggerateOverride &&
+           a.mGazePriorityOverride == b.mGazePriorityOverride &&
+           a.mAnimPriorityOverride == b.mAnimPriorityOverride &&
+           a.mCameraModeOverride == b.mCameraModeOverride &&
+           a.mCompositionOverride == b.mCompositionOverride &&
+           a.mCompositionMixOverride == b.mCompositionMixOverride &&
+           a.mChestShareOverride == b.mChestShareOverride &&
+           a.mLimitProfileModeOverride == b.mLimitProfileModeOverride &&
+           a.mLeanCurveOverride == b.mLeanCurveOverride &&
+           a.mLeanThresholdDegOverride == b.mLeanThresholdDegOverride &&
+           a.mLeanSoftnessDegOverride == b.mLeanSoftnessDegOverride &&
+           a.mLeanMaxDegOverride == b.mLeanMaxDegOverride &&
+           a.mLimitProfile.mEyeYawDeg == b.mLimitProfile.mEyeYawDeg &&
+           a.mLimitProfile.mEyePitchDeg == b.mLimitProfile.mEyePitchDeg &&
+           a.mLimitProfile.mHeadYawDeg == b.mLimitProfile.mHeadYawDeg &&
+           a.mLimitProfile.mHeadPitchDeg == b.mLimitProfile.mHeadPitchDeg &&
+           a.mLimitProfile.mNeckYawDeg == b.mLimitProfile.mNeckYawDeg &&
+           a.mLimitProfile.mNeckPitchDeg == b.mLimitProfile.mNeckPitchDeg &&
+           a.mLimitProfile.mSpineYawDeg == b.mLimitProfile.mSpineYawDeg &&
+           a.mLimitProfile.mSpinePitchDeg == b.mLimitProfile.mSpinePitchDeg &&
+           a.mLimitProfile.mHipsYawDeg == b.mLimitProfile.mHipsYawDeg &&
+           a.mLimitProfile.mHipsPitchDeg == b.mLimitProfile.mHipsPitchDeg &&
+           a.mLimitProfile.mEyeApplyYawDeg == b.mLimitProfile.mEyeApplyYawDeg &&
+           a.mLimitProfile.mEyeApplyPitchDeg == b.mLimitProfile.mEyeApplyPitchDeg &&
+           a.mLimitProfile.mEyeRadialDeg == b.mLimitProfile.mEyeRadialDeg &&
+           a.mLimitProfile.mEyePitchUpDeg == b.mLimitProfile.mEyePitchUpDeg &&
+           a.mLimitProfile.mHeadPitchUpDeg == b.mLimitProfile.mHeadPitchUpDeg &&
+           a.mLimitProfile.mNeckPitchUpDeg == b.mLimitProfile.mNeckPitchUpDeg &&
+           a.mLimitProfile.mSpinePitchUpDeg == b.mLimitProfile.mSpinePitchUpDeg &&
+           a.mLimitProfile.mHipsPitchUpDeg == b.mLimitProfile.mHipsPitchUpDeg &&
+           a.mLimitProfile.mEyeApplyPitchUpDeg == b.mLimitProfile.mEyeApplyPitchUpDeg;
+}
+
+void recordAvatarGazeHistory(const LLUUID& actor, const LLActorMover::GazeTarget& before, bool before_on,
+                            const LLActorMover::GazeTarget& after, bool after_on)
+{
+    // An unchanged edit must not truncate unrelated redo history. Compare every config field.
+    if (before_on == after_on && avatarGazeTargetsEqual(before, after)) return;
+    LLFloater* director = LLFloaterReg::findInstance("director");
+    ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+    if (shell)
+    {
+        const auto valid = [actor, before, after](bool redo, std::string& reason)
+        {
+            auto& cast = LLDirectorCast::instance();
+            LLVOAvatar* body = find_avatar_from_object(actor);
+            if (!body || body->getID() != actor || !ALAvatarSubjectPicker::valid(body, false, false) ||
+                !cast.contains(actor))
+            { reason = "This avatar is no longer available"; return false; }
+            const auto& saved = redo ? after : before;
+            if (saved.mMode == LLActorMover::GazeTarget::CAST_MEMBER && (ALGhostStudio::instance().isDeleting(saved.mCastRef) ||
+                ALGhostStudio::instance().isPrivateOverlayRuntime(saved.mCastRef) ||
+                !ALAvatarSubjectPicker::valid(cast.resolve(saved.mCastRef, false), true, true)))
+            { reason = "That gaze target is no longer available"; return false; }
+            if (saved.mMode == LLActorMover::GazeTarget::OBJECT)
+            {
+                // Replay restores card targets too; menu eligibility only applies to new picks.
+                LLViewerObject* object = gObjectList.findObject(saved.mObjectRef);
+                if (!object || object->isDead())
+                { reason = "That object is no longer available"; return false; }
+            }
+            return true;
+        };
+        shell->history().recordCustom(shell, "avatar_gaze", "Avatar gaze",
+            [actor, before, before_on, after, after_on, valid](bool redo, std::string& reason)
+            {
+                if (!valid(redo, reason)) return false; // Defensive replay check as well as preflight.
+                const auto& saved = redo ? after : before;
+                ALGazeActor::setTarget(actor, saved);
+                ALGazeActor::setEnabled(actor, redo ? after_on : before_on);
+                return true;
+            }, false, valid);
+    }
+}
+
+void actAvatarGaze(const std::string& kind, const LLUUID& person = LLUUID::null,
+                   const LLUUID& captured_actor = LLUUID::null)
+{
+    LLVOAvatar* avatar = captured_actor.isNull() ? avatarGazeActor() : find_avatar_from_object(captured_actor);
+    if (captured_actor.notNull() && (!avatar || avatar->getID() != captured_actor ||
+        !ALAvatarSubjectPicker::valid(avatar, false, false)))
+    { tip("This avatar is no longer available"); return; }
+    if (!avatar) { tip("This avatar is no longer available"); return; }
+    const LLUUID actor = avatar->getID();
+    auto& mover = LLActorMover::instance();
+    const bool before_on = mover.isGazeEnabled(actor);
+    const auto before = mover.getGazeTargetConfig(actor);
+    auto target = before;
+    if (kind == "cast" || kind == "nearby")
+    {
+        if (!(kind == "cast" ? avatarGazeCastCurrent(person, actor) : avatarGazeNearbyCurrent(person, actor)))
+        { tip("That gaze target is no longer available"); return; }
+        target.mMode = LLActorMover::GazeTarget::CAST_MEMBER;
+        target.mCastRef = person;
+    }
+    else if (kind == "me")
+    {
+        if (actor == gAgentID) return;
+        target.mMode = LLActorMover::GazeTarget::CAST_MEMBER;
+        target.mCastRef = gAgentID;
+    }
+    else if (kind == "camera") target.mMode = LLActorMover::GazeTarget::CAMERA;
+    else if (kind == "travel") target.mMode = LLActorMover::GazeTarget::MOTION;
+    else if (kind == "object")
+    {
+        LLViewerObject* picked = gObjectList.findObject(person);
+        const LLUUID object = picked && !picked->isAvatar() ? ALGazeActor::menuObjectTarget(actor, picked) : LLUUID::null;
+        if (object.isNull()) { tip("Pick an in-world object other than this avatar or its attachments"); return; }
+        target.mMode = LLActorMover::GazeTarget::OBJECT;
+        target.mObjectRef = object;
+    }
+    else if (kind != "on") return;
+    if (!ensureAvatarGazeCast(actor)) return;
+    // A toggle leaves even a disabled actor's target intact. Every target pick enables gaze.
+    if (kind == "on")
+    {
+        ALGazeActor::setTarget(actor, before); // Seed a newly added Cast member with the current target.
+        ALGazeActor::setEnabled(actor, !before_on);
+    }
+    else ALGazeActor::setTarget(actor, target, true);
+    const auto after = mover.getGazeTargetConfig(actor);
+    const bool after_on = mover.isGazeEnabled(actor);
+    recordAvatarGazeHistory(actor, before, before_on, after, after_on);
+}
+
+// Only the armed actor identity survives menu/selection changes. No idle callback.
+LLUUID sAvatarGazePickActor;
+
+void finishAvatarGazePick(void*)
+{
+    auto* picker = LLToolObjPicker::getInstance();
+    const LLUUID actor = sAvatarGazePickActor;
+    sAvatarGazePickActor.setNull();
+    const LLUUID object = picker->completedPick() ? picker->getObjectID() : LLUUID::null;
+    picker->setExitCallback(nullptr, nullptr);
+    // On a tool change the manager has already selected the replacement tool.
+    // Otherwise clearing this transient restores the previous base tool.
+    if (LLToolMgr::getInstance()->getCurrentTool() == picker)
+        LLToolMgr::getInstance()->clearTransientTool();
+    if (actor.isNull() || object.isNull()) return; // Cancellation never edits or records history.
+    actAvatarGaze("object", object, actor);
+}
+
+void armAvatarGazePick()
+{
+    LLVOAvatar* avatar = avatarGazeActor();
+    if (!avatar) { tip("This avatar is no longer available"); return; }
+    const LLUUID actor = avatar->getID();
+    auto* picker = LLToolObjPicker::getInstance();
+    picker->setExitCallback(finishAvatarGazePick, nullptr, true);
+    // setExitCallback finishes ANY previous owner before we publish the new actor.
+    sAvatarGazePickActor = actor;
+    LLToolMgr::getInstance()->setTransientTool(picker);
+    tip("Click an object for " + avatarGazeLabel(actor) + " to look at (Esc cancels)");
+}
+
+void populateAvatarGazeMenus(LLContextMenu* menu)
+{
+    LLContextMenu* gaze = subMenu(subMenu(menu, "Director"), "Avatar Gaze");
+    LLContextMenu* cast_menu = subMenu(gaze, "Avatar Gaze Cast");
+    LLContextMenu* near_menu = subMenu(gaze, "Avatar Gaze Nearby");
+    if (cast_menu)
+    {
+        cast_menu->empty();
+        bool any = false;
+        for (const auto& member : LLDirectorCast::instance().getCast())
+        {
+            const LLUUID id = member.mId;
+            if (!avatarGazeCastCurrent(id, sMenuAvatar)) continue;
+            addCheckItem(cast_menu, avatarGazeLabel(id), []() { return avatarGazeActor() != nullptr; },
+                [id]() { return avatarGazeChecked("person", id); }, [id]() { actAvatarGaze("cast", id); });
+            any = true;
+        }
+        if (!any) addPlaceholder(cast_menu, "No cast members");
+    }
+    if (near_menu)
+    {
+        near_menu->empty();
+        const auto people = avatarGazeNearby(sMenuAvatar);
+        for (const auto& person : people)
+        {
+            const LLUUID id = person.mId;
+            addCheckItem(near_menu, person.mName, []() { return avatarGazeActor() != nullptr; },
+                [id]() { return avatarGazeChecked("person", id); }, [id]() { actAvatarGaze("nearby", id); });
+        }
+        if (people.empty()) addPlaceholder(near_menu, "No one nearby");
+    }
+    if (gaze) gaze->arrange();
+}
+
 void registerAvatarCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable,
                              LLUICtrl::CommitCallbackRegistry::Registrar& commit)
 {
@@ -1619,6 +1928,19 @@ void registerAvatarCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
     commit.add("Avatar.SelectInDirector", [](LLUICtrl*, const LLSD&)
     {
         ALDirectorSelect::selectAvatar(sMenuAvatar, false);
+    });
+    enable.add("Avatar.EnableGaze", [](LLUICtrl*, const LLSD&) { return avatarGazeActor() != nullptr; });
+    commit.add("Avatar.PickGazeObject", [](LLUICtrl*, const LLSD&) { armAvatarGazePick(); });
+    enable.add("Avatar.VisibleGazeMe", [](LLUICtrl*, const LLSD&) { return sMenuAvatar != gAgentID; });
+    enable.add("Avatar.CheckGaze", [](LLUICtrl*, const LLSD& param) { return avatarGazeChecked(param.asString()); });
+    commit.add("Avatar.Gaze", [](LLUICtrl*, const LLSD& param) { actAvatarGaze(param.asString()); });
+    commit.add("Avatar.OpenGaze", [](LLUICtrl*, const LLSD&)
+    {
+        if (!avatarGazeActor()) { tip("This avatar is no longer available"); return; }
+        if (!ensureAvatarGazeCast(sMenuAvatar) || !ALDirectorSelect::selectAvatar(sMenuAvatar, false)) return;
+        LLFloater* director = LLFloaterReg::findInstance("director");
+        if (ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr)
+            shell->navigateTo("performance_group/gaze_tab");
     });
 }
 
@@ -1970,6 +2292,7 @@ void prepareAvatarMenu(LLContextMenu* menu, LLVOAvatar* avatar, bool hud_attachm
     {
         return;
     }
+    populateAvatarGazeMenus(menu);
     const bool visible = Logic::overlaySubmenuVisible(sOverlays.size());
     LLContextMenuBranch* branch = dynamic_cast<LLContextMenuBranch*>(menu->getItem(std::string("Clone Overlay")));
     if (!branch)

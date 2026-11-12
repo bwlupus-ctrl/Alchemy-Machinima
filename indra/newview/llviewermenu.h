@@ -38,6 +38,10 @@ class LLParcelSelection;
 class LLObjectSelection;
 class LLSelectNode;
 class LLControlAvatar;
+class LLVOAvatar;
+
+// Resolve a current avatar or attachment wearer through the world-menu resolver.
+LLVOAvatar* find_avatar_from_object(const LLUUID& object_id);
 
 // [RLVa:KB] - Checked: RLVa-2.0.0
 void set_use_wireframe(bool useWireframe);
