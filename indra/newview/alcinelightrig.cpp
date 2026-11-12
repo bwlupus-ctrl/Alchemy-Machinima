@@ -178,18 +178,13 @@ S32 gatherGroupMembers(U32 slots,
                        U32& out_slots)
 {
     LLDirectorCast& cast = LLDirectorCast::instance();
-    LLVOAvatar* candidates[GROUP_MAX_MEMBERS] = {
-        (slots & ALCineLightRig::GROUP_SLOT_SELF)
-            ? cast.resolve(LLUUID::null, false) : nullptr,
-        (slots & ALCineLightRig::GROUP_SLOT_A)
-            ? (cast.getSubjectA().notNull() ? cast.resolve(cast.getSubjectA(), false) : nullptr) : nullptr,
-        (slots & ALCineLightRig::GROUP_SLOT_B)
-            ? (cast.getSubjectB().notNull() ? cast.resolve(cast.getSubjectB(), false) : nullptr) : nullptr,
-        (slots & ALCineLightRig::GROUP_SLOT_C)
-            ? (cast.getSubjectC().notNull() ? cast.resolve(cast.getSubjectC(), false) : nullptr) : nullptr,
-        (slots & ALCineLightRig::GROUP_SLOT_D)
-            ? (cast.getSubjectD().notNull() ? cast.resolve(cast.getSubjectD(), false) : nullptr) : nullptr,
-    };
+    LLVOAvatar* candidates[GROUP_MAX_MEMBERS] = {};
+    auto& manager = ALCineLightRigManager::instance();
+    for (S32 i = 0; i < GROUP_MAX_MEMBERS; ++i)
+    {
+        const LLUUID actor = manager.groupSlotActor(static_cast<ALCineLightRigSlot>(i));
+        if ((slots & (1u << i)) && actor.notNull()) candidates[i] = cast.resolve(actor, false);
+    }
     const U32 slot_bits[GROUP_MAX_MEMBERS] = {
         ALCineLightRig::GROUP_SLOT_SELF,
         ALCineLightRig::GROUP_SLOT_A,
@@ -1267,19 +1262,12 @@ void ALCineLightRig::setGroupSlots(U32 mask)
 
 LLVOAvatar* ALCineLightRig::resolveSlotAvatar() const
 {
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    switch (mSlot)
-    {
-        case ALCineLightRigSlot::A: return (cast.getSubjectA().notNull() ? cast.resolve(cast.getSubjectA(), false) : nullptr);
-        case ALCineLightRigSlot::B: return (cast.getSubjectB().notNull() ? cast.resolve(cast.getSubjectB(), false) : nullptr);
-        case ALCineLightRigSlot::C: return (cast.getSubjectC().notNull() ? cast.resolve(cast.getSubjectC(), false) : nullptr);
-        case ALCineLightRigSlot::D: return (cast.getSubjectD().notNull() ? cast.resolve(cast.getSubjectD(), false) : nullptr);
-        case ALCineLightRigSlot::SELF:
-        default:
-            // Legacy single-rig scenes retain their avatar anchor on SELF.
-            // Normal SELF operation is resolve(null).
-            return cast.resolve(mAnchor.notNull() ? mAnchor : LLUUID::null, false);
-    }
+    // Derived SELF copies have their own anchor; extra instances use the same
+    // manager resolver as menus, masks and legacy group members.
+    const LLUUID actor = mSlot == ALCineLightRigSlot::SELF
+        ? (mAnchor.notNull() ? mAnchor : gAgentID)
+        : ALCineLightRigManager::instance().slotActor(mSlot);
+    return actor.notNull() ? LLDirectorCast::instance().resolve(actor, false) : nullptr;
 }
 
 // [ActorMask] Updated only when a rig requests linking (or clears its request).
@@ -2853,9 +2841,9 @@ void ALCineLightRig::tickShared(
     if (target == LitTarget::SUBJECT && avatar)
     {
         mLastResolvedMembers.push_back(avatar->getID());
-        const LLUUID subjects[] = { mAnchor.isNull() ? gAgentID : mAnchor,
-            cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
-        mLastResolvedStoredMembers.push_back(subjects[static_cast<S32>(mSlot)]);
+        mLastResolvedStoredMembers.push_back(mSlot == ALCineLightRigSlot::SELF
+            ? (mAnchor.notNull() ? mAnchor : gAgentID)
+            : ALCineLightRigManager::instance().slotActor(mSlot));
     }
     if (!object_targeted && !avatar)
     {

@@ -18,6 +18,7 @@ class ALKitSwitch;
 class ALKitShell;
 class ALKitPresetStrip;
 class ALKitPopover;
+class ALPanelCineLightRig;
 class LLButton;
 class LLComboBox;
 class LLCheckBoxCtrl;
@@ -132,8 +133,11 @@ public:
     void setWhoUnavailable(std::function<std::string(const LLUUID&)> label,
                            std::function<void(const LLUUID&)> action)
          { mWhoUnavailableLabel = std::move(label); mWhoUnavailableAction = std::move(action); }
+    void setWhoAvailableAction(std::function<bool()> action) { mWhoAvailableAction = std::move(action); }
     bool               activateWhoUnavailable();
     void               refreshWhoUnavailable();
+    void               cancelWhoUnavailable();
+    void setRigPanel(ALPanelCineLightRig* panel) { mRigPanel = panel; }
     bool               cycleChip(S32);
     S32                chipIndex() const { return mChipIndex; }
     bool               setChipIndex(S32);
@@ -178,6 +182,7 @@ public:
     bool               canFollowCast() const;
     void               setWhoHint(const std::string& text);
     LLUUID             actorTarget() const;
+    void               syncRigTarget();
     void               undoOnPage(bool redo);
     bool               canUndoOnPage(bool redo);
     void               setOwnedHistory(std::function<U64(bool)> sequence, std::function<void(bool)> replay,
@@ -229,13 +234,18 @@ private:
     std::function<std::string(const LLUUID&)> mWhoUnavailableLabel;
     std::function<void(const LLUUID&)> mWhoUnavailableAction;
     LLUUID mWhoUnavailableTarget;
+    std::function<bool()> mWhoAvailableAction;
     bool mLegacy = false, mActorTargetPage = false, mActorTargetSynthetic = false, mActorTargetAway = false, mLayoutPending = false, mSearching = false, mWhoError = false, mWhoPinned = false, mRestoringState = true,
          mUpdatingModeSwitch = false;
     LLUUID mActorTarget;
     LLSD mSavedWhoPin;
     boost::signals2::scoped_connection mWhoConnection;
+    boost::signals2::scoped_connection mRigActorConnection;
+    void applyActiveRigActor();
+    void restoreRigMaster();
     S32  mModeIndex = 0, mChipIndex = 0, mBarLeftEnd = 0;
     U64  mHistoryRevision = ~U64(0);
+    ALPanelCineLightRig* mRigPanel = nullptr; // Owning panel outlives this child.
     U64  mSubjectComboRevision = ~U64(0);
     enum class SubjectValueSource
     {

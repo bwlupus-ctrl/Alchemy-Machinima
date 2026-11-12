@@ -70,18 +70,20 @@ void showStoredValue(LLComboBox* combo, const LLSD& stored_value,
 }
 
 void mergeSubjectCombo(LLComboBox* combo, S32 self_value, S32 subject_a_value,
-                       S32 subject_count, const ValueProvider& value_provider)
+                       S32 subject_count, const ValueProvider& value_provider,
+                       const ActorLabelProvider& actor_label)
 {
     std::array<LLSD, 5> values;
     values[0] = self_value;
     for (S32 slot = 1; slot <= 4; ++slot)
         values[slot] = subject_a_value + slot - 1;
-    mergeSubjectCombo(combo, values, subject_count, value_provider);
+    mergeSubjectCombo(combo, values, subject_count, value_provider, actor_label);
 }
 
 void mergeSubjectCombo(LLComboBox* combo,
                        const std::array<LLSD, 5>& slot_values,
-                       S32 subject_count, const ValueProvider& value_provider)
+                       S32 subject_count, const ValueProvider& value_provider,
+                       const ActorLabelProvider& actor_label)
 {
     if (!combo)
     {
@@ -133,7 +135,7 @@ void mergeSubjectCombo(LLComboBox* combo,
             break;
         }
     }
-    combo->add(self_choice ? self_choice->mLabel : std::string("You"), slot_values[0]);
+    combo->add(actor_label ? actor_label(gAgentID) : self_choice ? self_choice->mLabel : std::string("You"), slot_values[0]);
 
     for (S32 slot = 1; slot <= subject_count; ++slot)
     {
@@ -158,9 +160,14 @@ void mergeSubjectCombo(LLComboBox* combo,
         }
         else
         {
-            const LLDirectorCast::CastMember* member = cast.getMember(subject_choice->mId);
-            label += member && !member->mLastName.empty()
-                ? member->mLastName : subject_choice->mId.asString();
+            if (actor_label)
+                label += actor_label(subject_choice->mId);
+            else
+            {
+                const LLDirectorCast::CastMember* member = cast.getMember(subject_choice->mId);
+                label += member && !member->mLastName.empty()
+                    ? member->mLastName : subject_choice->mId.asString();
+            }
         }
         combo->add(label, slot_values[slot]);
     }

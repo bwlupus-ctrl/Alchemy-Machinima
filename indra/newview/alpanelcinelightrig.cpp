@@ -25,6 +25,8 @@
 #include "alkitstyle.h"
 #include "alkitmenu.h"
 #include "alriggroupsubject.h"
+#include "algazenearbyname.h"
+#include "llcallbacklist.h"
 #include "llmenugl.h"
 #include "llviewermenu.h"
 #include "aluirefresh.h" // [UIPerfC1] widget-aware value compare
@@ -39,6 +41,7 @@
 #include "lliconctrl.h"
 #include "lllineeditor.h"
 #include "llnotificationsutil.h"
+#include "llnotifications.h"
 #include "llscrolllistcell.h"
 #include "llscrolllistitem.h"
 #include "llselectmgr.h"
@@ -82,6 +85,143 @@ const char* const ROLE_ON_SETTINGS[ALCineLightRigModel::LIGHT_COUNT] = {
     "CineLightRigRimOn", "CineLightRigBgOn"
 };
 std::vector<ALPanelCineLightRig*> LIVE_PANELS;
+
+// History follows the five-slot storage schema, not preset ownership. Probe,
+// night mask, renderer/Rig Rim globals and manager preferences are global even
+// when their names start with CineLightRig or cine_. Unknown widgets stay global.
+S32 rigSlotHistoryKind(const std::string& widget)
+{
+    // Custom snapshots use the same lifetime context as registered entries.
+    if (widget == "Light rig shafts") return 1;
+    static const std::vector<std::string> slot_settings = {
+        "CineLightRigEnabled",
+        "CineLightRigScaleAware",
+        "CineLightRigPower",
+        "CineLightRigRadius",
+        "CineLightRigMasterEV",
+        "CineLightRigMasterTempMired",
+        "CineLightRigOffsetZ",
+        "CineLightRigHeadroomStops",
+        "CineLightRigBounceEnabled",
+        "CineLightRigBounceRatio",
+        "CineLightRigTransitionSec",
+        "CineLightRigDamping",
+        "CineLightRigTrackMode",
+        "CineLightRigObjectTarget",
+        "CineLightRigCookieUUID",
+        "CineLightRigSeed",
+        "CineLightRigMirror",
+        "CineLightRigOrbitYaw",
+        "CineLightRigOrbitPitch",
+        "CineLightRigFX",
+        "CineLightRigShadowMode",
+        "CineLightRigGizmo",
+        "CineLightRigRatioLock",
+        "CineLightRigRatio",
+        "CineLightRigCatchlight",
+        "CineLightRigCatchlightEV",
+        "CineLightRigCatchlightSize",
+        "CineLightRigCatchlightAngle",
+        "CineLightRigBounceLightsSet",
+        "CineLightRigCatchlightActorOnly",
+        "CineLightRigActorOnlyAll",
+    };
+    if (std::find(slot_settings.begin(), slot_settings.end(), widget) != slot_settings.end()) return 1;
+    for (const char* role : { "Key", "Fill", "Rim", "Bg" })
+    {
+        for (const char* suffix : { "Yaw", "Pitch", "OffsetZ", "Profile", "EV", "Beam", "Gobo", "Gel", "ShadowSoft", "On", "Flicker", "FlickerAmount", "SwayAmount", "SwayPeriod", "FixtureMode", "Kelvin", "SourceSizeM", "FixturePreset", "DetailShadows", "WorldShadowPick", "ActorOnly" })
+            if (widget == std::string("CineLightRig") + role + suffix) return 1;
+        for (S32 gel = 0; gel < 3; ++gel)
+            if (widget == std::string("CineLightRig") + role + "GelSlot" + std::to_string(gel)) return 1;
+        for (const char* suffix : { "Gain", "Sharpness", "Wrap", "BackBias" })
+            if (widget == std::string("CineRigRim") + role + suffix) return 1;
+    }
+    // Keep widget suffixes separate from the cine_ prefix: the kit generator
+    // treats complete widget literals as typed C++ control references.
+    if (widget.compare(0, 5, "cine_") != 0) return 0;
+    const std::string control = widget.substr(5);
+    static const std::vector<std::string> slot_widgets = {
+        "actor_only_all",
+        "aim_pitch_minus",
+        "aim_pitch_plus",
+        "aim_reset",
+        "aim_yaw_minus",
+        "aim_yaw_plus",
+        "bounce",
+        "bounce_lights_set",
+        "bounce_ratio",
+        "catchlight_actor_only",
+        "catchlight_angle",
+        "catchlight_ev",
+        "catchlight_size",
+        "cookie",
+        "damping",
+        "easy_bg",
+        "easy_brightness",
+        "easy_cone_width",
+        "easy_drama",
+        "easy_rim",
+        "easy_warmth",
+        "enabled",
+        "fx_combo",
+        "fx_stop",
+        "gizmo",
+        "group_state",
+        "group_enable",
+        "group_self", "group_a", "group_b", "group_c", "group_d",
+        "light_map",
+        "headroom",
+        "lit_target",
+        "master_ev",
+        "master_temp",
+        "mirror",
+        "offset_z",
+        "radius",
+        "ratio",
+        "ratio_lock",
+        "seed",
+        "seed_randomize",
+        "shadow_mode",
+        "track_mode",
+        "transition",
+    };
+    if (std::find(slot_widgets.begin(), slot_widgets.end(), control) != slot_widgets.end()) return 1;
+    static const std::vector<std::string> fixture_widgets = {
+        "fixture_mode",
+        "fixture_preset",
+        "fixture_kelvin",
+        "fixture_source_size",
+        "fixture_gel_0",
+        "fixture_gel_1",
+        "fixture_gel_2",
+        "gobo_library",
+        "gobo_preview",
+    };
+    if (std::find(fixture_widgets.begin(), fixture_widgets.end(), control) != fixture_widgets.end()) return 2;
+    // Code-built per-light rows mirror these exact per-slot fields.
+    for (const char* role : { "key", "fill", "rim", "bg" })
+        for (const char* suffix : { "on", "yaw", "pitch", "offset_z", "profile", "ev", "beam", "gobo", "gel", "shadow_soft", "flicker", "flicker_amount", "sway_amount", "sway_period", "detail_shadows", "world_shadow", "actor_only", "shaft", "hero", "cone_width", "projector_feed" })
+            if (widget == std::string("cine_") + role + "_" + suffix) return 1;
+    return 0;
+}
+
+bool rigNameVisible(const LLUUID& id)
+{
+    return LLDirectorCast::isSelf(id) ||
+        (RlvActions::canShowName(RlvActions::SNC_DEFAULT, id) &&
+         (LLDirectorCast::instance().contains(id) || ALGazeNearby::nearbyAllowed()));
+}
+
+void retireRigMenu(LLHandle<LLContextMenu>& handle)
+{
+    auto* menu = handle.get();
+    if (!menu) return;
+    menu->hide();
+    // A stale callback can open another menu while this one's click is on stack.
+    // The holder may also destroy it before idle, so retain only its weak handle.
+    doOnIdleOneTime([handle]() { if (auto* menu = handle.get()) delete menu; });
+    handle = LLHandle<LLContextMenu>();
+}
 
 void clearKitComboSelection(LLComboBox* combo)
 {
@@ -481,11 +621,9 @@ ALPanelCineLightRig::ALPanelCineLightRig()
 
 ALPanelCineLightRig::~ALPanelCineLightRig()
 {
-    if (LLContextMenu* menu = mRigGroupMenu.get())
-    {
-        menu->hide();
-        delete menu;
-    }
+    retireRigMenu(mRigGroupMenu);
+    for (const auto& id : mRigNotices)
+        if (auto notice = LLNotificationsUtil::find(id)) LLNotificationsUtil::cancel(notice);
     LIVE_PANELS.erase(
         std::remove(LIVE_PANELS.begin(), LIVE_PANELS.end(), this),
         LIVE_PANELS.end());
@@ -689,10 +827,20 @@ bool ALPanelCineLightRig::postBuild()
 {
     mAnchorCombo = getChild<LLComboBox>("cine_anchor");
     mAllRigsOff = findChild<LLButton>("cine_all_rigs_off");
+    mRemoveBorrowedRig = findChild<LLButton>("cine_remove_borrowed_rig");
+    if (mRemoveBorrowedRig) mRemoveBorrowedRig->setCommitCallback([this](LLUICtrl*, const LLSD&)
+    {
+        auto& manager = ALCineLightRigManager::instance();
+        if (manager.selectedSlot() == ALCineLightRigManager::SLOT_SELF || manager.selected().getAnchor().isNull()) return;
+        ALKitHistory::ScopedSuspend suspend;
+        manager.removeBorrowedRig(manager.selectedSlot());
+        finishRigAction(0);
+    });
     mRigGroupStatus = findChild<LLTextBox>("cine_rig_group_status");
     mRigKitPage = findChild<ALKitPage>("cine_light_rig_kit");
     if (mRigKitPage)
     {
+        mRigKitPage->setRigPanel(this);
         mRigKitPage->setPersistentMenu(
             [this](LLUICtrl* anchor) { showRigGroupMenu(anchor, false); },
             "Give an avatar their own rig, turn Subject rigs off or turn all rigs off.");
@@ -1057,27 +1205,24 @@ bool ALPanelCineLightRig::postBuild()
     syncFixtureControls(true);
     syncGoboLibrary(true);
     updateDerivedStatus();
+    const auto handle=getDerivedHandle<ALPanelCineLightRig>();
     if(ALKitShell* shell=ALKitShell::find(this))
     {
-        LLHandle<ALPanelCineLightRig> handle=getDerivedHandle<ALPanelCineLightRig>();
         shell->history().registerContext("light_group/cine_light_rig_tab",[handle](const std::string& widget)
         {
             if(!handle.get())return std::string();
             static const char* const slots[] = { "Self", "A", "B", "C", "D" };
             const S32 slot = std::clamp((S32)ALCineLightRigManager::instance().selectedSlot(), 0, 4);
+            const std::string rig_context = std::string(slots[slot]) + " rig #" +
+                std::to_string(ALCineLightRigManager::instance().historyEpoch(static_cast<ALCineLightRigManager::Slot>(slot))) +
+                " actor " + LLDirectorCast::canonicalActorId(ALCineLightRigManager::instance().slotActor(
+                    static_cast<ALCineLightRigManager::Slot>(slot))).asString();
             const S32 fixture = std::clamp(handle.get()->mFixtureRoleIndex, 0, ALCineLightRigModel::LIGHT_COUNT - 1);
-            const auto& look_settings = ALPresetLook::owned(ALPresetLook::LIGHT_RIG);
-            if (std::find(look_settings.begin(), look_settings.end(), widget) != look_settings.end())
-                return std::string(slots[slot]) + " rig";
-            if (widget == "cine_lit_target") return std::string(slots[slot]) + " rig";
-            // Global rig widgets and saved settings do not follow light selection.
-            if (widget.find("cine_fixture_") == 0 || widget == "cine_gobo_library" || widget == "cine_gobo_preview")
-                return std::string(slots[slot]) + " rig, " + ROLE_NAMES[fixture] + " fixture";
-            for (const char* role : { "key", "fill", "rim", "bg" })
-                if (widget.find(std::string("cine_") + role + "_") == 0)
-                    return std::string(slots[slot]) + " rig";
+            const S32 kind = rigSlotHistoryKind(widget);
+            if (kind == 2) return rig_context + ", " + ROLE_NAMES[fixture] + " fixture";
+            if (kind == 1) return rig_context;
             return std::string();
-        });
+        }, true);
         shell->history().registerWidgetValidator("light_group/cine_light_rig_tab",
             [handle](const std::string& widget, const LLSD& value, std::string& reason)
             {
@@ -1125,13 +1270,36 @@ bool ALPanelCineLightRig::postBuild()
         ALKitWhoAdapters::add("cine_rig_slot",[](const LLUUID& id)
         {
             if(id.isNull()||id==gAgentID)return LLSD(0);
-            const LLDirectorCast& cast=LLDirectorCast::instance();
-            if(id==cast.getSubjectA())return LLSD(1);
-            if(id==cast.getSubjectB())return LLSD(2);
-            if(id==cast.getSubjectC())return LLSD(3);
-            if(id==cast.getSubjectD())return LLSD(4);
+            const auto slot = ALCineLightRigManager::instance().actorSlot(id);
+            if (slot != ALCineLightRigManager::Slot::COUNT) return LLSD(static_cast<S32>(slot));
             return LLSD();
         });
+        if (mRigKitPage)
+        {
+            mRigKitPage->setWhoUnavailable(
+                [handle](const LLUUID& id)
+                {
+                    auto* panel = handle.get();
+                    if (!panel) return std::string();
+                    return panel->pendingBorrowLabel(id);
+                }, [handle](const LLUUID& id)
+                {
+                    if (auto* panel = handle.get(); panel && !panel->addAvatarToRigGroup(id))
+                    {
+                        panel->mRigKitPage->cancelWhoUnavailable();
+                        panel->showRigNotice("Actor unavailable");
+                    }
+                });
+            mRigKitPage->setWhoAvailableAction([handle]()
+            {
+                auto* panel = handle.get();
+                if (!panel) return false;
+                const auto& manager = ALCineLightRigManager::instance();
+                if (manager.selectedSlot() == ALCineLightRigManager::SLOT_SELF || manager.selected().getAnchor().isNull()) return false;
+                panel->showBorrowMenu(manager.selected().getAnchor(), true);
+                return true;
+            });
+        }
         if(LLControlVariable* easy=gSavedSettings.getControl("CineLightRigEasyMode").get())
         {
             mEasyModeConnection=easy->getSignal()->connect([handle](LLControlVariable*,const LLSD& value,const LLSD&)
@@ -1631,7 +1799,42 @@ void ALPanelCineLightRig::onGoboLibraryCommit()
     syncGoboLibrary(true);
 }
 
-std::string ALPanelCineLightRig::rigTargetDescription(S32 slot)
+void ALPanelCineLightRig::clearRigLabels(const char* area)
+{
+    if (std::string(area) == "chip") mPendingBorrowLabelValid = false;
+    mRigDisplayedLabels.erase(area);
+}
+
+std::string ALPanelCineLightRig::rigActorName(const LLUUID& id, const char* area)
+{
+    const bool visible = rigNameVisible(id);
+    if (id.notNull()) mRigDisplayedLabels[area][id] = visible;
+    if (id.isNull()) return "not set";
+    if (LLDirectorCast::isSelf(id)) return "You";
+    if (!visible) return "Actor";
+    if (const auto* member = LLDirectorCast::instance().getMember(id); member && !member->mLastName.empty())
+        return member->mLastName;
+    const std::string name = ALGazeNearby::nonCastTargetName(id);
+    return name.empty() ? "Actor" : name;
+}
+
+std::string ALPanelCineLightRig::rigLabel(S32 slot, const char* area)
+{
+    const auto& manager = ALCineLightRigManager::instance();
+    const auto which = static_cast<ALCineLightRigManager::Slot>(slot);
+    return slot == 0 ? rigActorName(gAgentID, area) : manager.at(which).getAnchor().notNull()
+        ? llformat("Rig %d: ", slot + 1) + rigActorName(manager.slotActor(which), area)
+        : llformat("Subject %c", 'A' + slot - 1);
+}
+
+std::string ALPanelCineLightRig::rigLabelBase(S32 slot)
+{
+    if (slot == 0) return "You";
+    return ALCineLightRigManager::instance().at(static_cast<ALCineLightRigManager::Slot>(slot)).getAnchor().notNull()
+        ? llformat("Rig %d", slot + 1) : llformat("Subject %c", 'A' + slot - 1);
+}
+
+std::string ALPanelCineLightRig::rigTargetDescription(S32 slot, const char* area)
 {
     const auto& rig = ALCineLightRigManager::instance().at(
         static_cast<ALCineLightRigManager::Slot>(slot));
@@ -1640,18 +1843,11 @@ std::string ALPanelCineLightRig::rigTargetDescription(S32 slot)
     if (rig.getObjectTarget().notNull())
         return rig.getObjectTarget().asString().substr(0, 8) + " (object)";
 
-    const auto& cast = LLDirectorCast::instance();
-    const std::array<LLUUID, 5> ids = {
-        rig.isGroupEnabled() ? LLUUID::null : rig.getAnchor(), cast.getSubjectA(),
-        cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
-    const auto name = [&cast, &ids](S32 value) -> std::string
+    const auto name = [this, &rig, area](S32 value) -> std::string
     {
-        const LLUUID& id = ids[value];
-        if (id.isNull()) return value == 0 ? "You" : "not set";
-        if (LLDirectorCast::isSelf(id)) return "You";
-        if (const auto* member = cast.getMember(id); member && !member->mLastName.empty())
-            return member->mLastName;
-        return id.asString();
+        auto& manager = ALCineLightRigManager::instance();
+        const auto slot = static_cast<ALCineLightRigManager::Slot>(value);
+        return rigActorName(rig.isGroupEnabled() ? manager.groupSlotActor(slot) : manager.slotActor(slot), area);
     };
     if (!rig.isGroupEnabled()) return name(slot);
 
@@ -1667,8 +1863,56 @@ std::string ALPanelCineLightRig::rigTargetDescription(S32 slot)
     return "group: " + (members.empty() ? std::string("nobody") : members);
 }
 
+std::string ALPanelCineLightRig::pendingBorrowLabel(const LLUUID& id)
+{
+    auto& manager = ALCineLightRigManager::instance();
+    const U64 revision = LLDirectorCast::instance().getActorChoiceRevision();
+    const S32 slot = static_cast<S32>(manager.actorSlot(id));
+    const bool visible = rigNameVisible(id);
+    const bool nearby = ALGazeNearby::nearbyAllowed();
+    // Non-Cast display-name arrivals do not advance the Cast revision.
+    const std::string nearby_name = visible && !LLDirectorCast::isSelf(id) &&
+        !LLDirectorCast::instance().contains(id) ? ALGazeNearby::nonCastTargetName(id) : std::string();
+    if (mPendingBorrowLabelValid && mPendingBorrowLabelActor == id &&
+        mPendingBorrowLabelRevision == revision && mPendingBorrowLabelSlot == slot &&
+        mPendingBorrowLabelVisible == visible && mPendingBorrowLabelNearby == nearby &&
+        mPendingBorrowLabelNearbyName == nearby_name)
+        return mPendingBorrowLabel;
+    if (!mPendingBorrowPick || *mPendingBorrowPick != id)
+        mPendingBorrowPick = manager.retainBorrowActor(id);
+    clearRigLabels("chip");
+    mPendingBorrowLabel = slot == static_cast<S32>(ALCineLightRigManager::Slot::COUNT)
+        ? "Give " + rigActorName(id, "chip") + " a rig" : std::string();
+    mPendingBorrowLabelActor = id;
+    mPendingBorrowLabelRevision = revision;
+    mPendingBorrowLabelSlot = slot;
+    mPendingBorrowLabelVisible = visible;
+    mPendingBorrowLabelNearby = nearby;
+    mPendingBorrowLabelNearbyName = nearby_name;
+    mPendingBorrowLabelValid = true;
+    return mPendingBorrowLabel;
+}
+
+bool ALPanelCineLightRig::selectActorRig(const LLUUID& id)
+{
+    auto& manager = ALCineLightRigManager::instance();
+    const auto slot = manager.actorSlot(id);
+    if (slot == ALCineLightRigManager::Slot::COUNT || !mAnchorCombo) return false;
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+    ALKitHistory::ScopedSuspend suspend;
+    // An explicit You pick restores legacy SELF to its normal self anchor.
+    if (LLDirectorCast::canonicalActorId(id) == gAgentID) manager.restoreSelfAnchor();
+    mAnchorCombo->hideList();
+    mCastListInitialized = false;
+    updateAnchorList(false);
+    mAnchorCombo->setValue(LLSD(static_cast<S32>(slot)));
+    onAnchorSelected();
+    updateAnchorList(false); // Publish caches for the completed selection.
+    return manager.selectedSlot() == slot;
+}
+
 // ui-draw-lint: allow-function(raw-write) anchor combo rebuild is identity-revision or explicit model-mutation gated
-void ALPanelCineLightRig::updateAnchorList()
+void ALPanelCineLightRig::updateAnchorList(bool refresh_who)
 {
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("LightRig updateAnchorList");
     LLDirectorCast& cast = LLDirectorCast::instance();
@@ -1682,21 +1926,21 @@ void ALPanelCineLightRig::updateAnchorList()
     if (subject_revision != mSubjectChoiceRevision)
     {
         mSubjectChoiceRevision = subject_revision;
+        clearRigLabels("subjects");
         for (LLComboBox* combo : mSubjectTargetCombos)
         {
             if (combo)
             {
-                ALDirectorCastUI::mergeSubjectCombo(combo, 0, 1);
+                ALDirectorCastUI::mergeSubjectCombo(combo, 0, 1, 4, {},
+                    [this](const LLUUID& id) { return rigActorName(id, "subjects"); });
             }
         }
         mCastListInitialized = false;
         mDisplayedGroupSlots = ~0u;
     }
     const S32 selected_slot = static_cast<S32>(manager.selectedSlot());
-    const std::array<LLUUID, 5> anchor_ids = {
-        manager.at(ALCineLightRigManager::SLOT_SELF).getAnchor(), cast.getSubjectA(), cast.getSubjectB(),
-        cast.getSubjectC(), cast.getSubjectD()
-    };
+    std::array<LLUUID, 5> anchor_ids{};
+    for (S32 i = 0; i < 5; ++i) anchor_ids[i] = manager.slotActor(static_cast<ALCineLightRigManager::Slot>(i));
     std::array<U32, 5> group_states{};
     std::array<LLUUID, 5> object_targets{};
     U32 enabled_slots = 0;
@@ -1727,9 +1971,12 @@ void ALPanelCineLightRig::updateAnchorList()
     if (mCastListInitialized)
     {
         syncAnchorSelection();
+        if (refresh_who && mRigKitPage) mRigKitPage->refreshWhoUnavailable();
         return;
     }
+    clearRigLabels("roster");
     setEnabledIfChanged(mAllRigsOff, enabled_slots != 0);
+    setEnabledIfChanged(mRemoveBorrowedRig, selected_slot != 0 && manager.selected().getAnchor().notNull());
     const S32 count = manager.enabledCount();
     setTextIfChanged(mRigGroupStatus, llformat("%d %s on", count, count == 1 ? "rig" : "rigs"));
     if (mRigKitPage)
@@ -1742,13 +1989,29 @@ void ALPanelCineLightRig::updateAnchorList()
         setLabelIfChanged(mRigEnabled, "This rig");
     for (S32 value = 0; value < 5; ++value)
     {
-        const std::string label = value == 0 ? "You" : llformat("Subject %c", 'A' + value - 1);
+        const std::string label = rigLabelBase(value);
+        if (mRigKitPage)
+            if (ALKitRow* row = mRigKitPage->findRow(mRigRoster[value]->getName())) row->setDisplayLabel(label);
         const std::string text = label + ((enabled_slots & (1u << value)) ? ": on - " : ": off - ") +
-            rigTargetDescription(value);
+            rigTargetDescription(value, "roster");
         setTextIfChanged(mRigRoster[value], text);
         setToolTipIfChanged(mRigRoster[value], text);
         ALKitRow::setControlVisible(mRigRoster[value], value == 0 || anchor_ids[value].notNull());
     }
+    // Only the combo's rows are immutable while its list is open. Other rig
+    // status, roster, enable states and chip must continue to track the model.
+    if (mAnchorCombo->isListVisible())
+    {
+        if (refresh_who && mRigKitPage) mRigKitPage->refreshWhoUnavailable();
+        return;
+    }
+    const auto anchor_labels = [this]()
+    {
+        const auto found = mRigDisplayedLabels.find("anchors");
+        return found == mRigDisplayedLabels.end() ? std::map<LLUUID, bool>() : found->second;
+    };
+    const auto old_anchor_labels = anchor_labels();
+    clearRigLabels("anchors");
     std::vector<LLUUID> ids;
     std::vector<std::string> labels;
     std::vector<S32> values;
@@ -1763,8 +2026,9 @@ void ALPanelCineLightRig::updateAnchorList()
         if (value != 0 && id.isNull())
             continue;
         const auto& rig = manager.at(slot);
-        std::string label = value == 0 ? "You" : llformat("Subject %c", 'A' + value - 1);
-        if (value != 0 || rig.getAnchor().notNull() || rig.isGroupEnabled() || !rig.getLitGroup().empty() || rig.getObjectTarget().notNull())
+        std::string label = rigLabel(value);
+        if (((value == 0 || rig.getAnchor().isNull()) && (value != 0 || rig.getAnchor().notNull())) ||
+            rig.isGroupEnabled() || !rig.getLitGroup().empty() || rig.getObjectTarget().notNull())
             label += ": " + rigTargetDescription(value);
         ids.push_back(id);
         labels.push_back(label);
@@ -1775,15 +2039,15 @@ void ALPanelCineLightRig::updateAnchorList()
     if (!changed)
     {
         syncAnchorSelection();
+        if (refresh_who && mRigKitPage) mRigKitPage->refreshWhoUnavailable();
         return;
     }
 
-    if (mAnchorCombo->hasFocus() ||
-        gFocusMgr.childHasKeyboardFocus(mAnchorCombo))
-    {
-        return;
-    }
-
+    // The shell copies the enabled anchor rows into immutable choice buttons.
+    // Forced/unchanged refreshes and unrelated ledgers do not retire them.
+    if (ids != mCastIds || labels != mCastNames || values != mCastValues ||
+        old_anchor_labels != anchor_labels())
+        if (auto* shell = ALKitShell::find(this)) shell->hidePopover();
     mCastIds = ids;
     mCastNames = labels;
     mCastValues = values;
@@ -1799,17 +2063,15 @@ void ALPanelCineLightRig::updateAnchorList()
     mCastListInitialized = true;
     mAnchorSelectionInitialized = false;
     syncAnchorSelection();
+    if (refresh_who && mRigKitPage) mRigKitPage->refreshWhoUnavailable();
 }
 
 void ALPanelCineLightRig::showRigGroupMenu(LLUICtrl* anchor, bool add_only)
 {
     if (!mRigKitPage || !anchor || !gMenuHolder)
         return;
-    if (LLContextMenu* old = mRigGroupMenu.get())
-    {
-        old->hide();
-        delete old;
-    }
+    retireRigMenu(mRigGroupMenu);
+    clearRigLabels("menu");
     LLContextMenu::Params params;
     params.name = "cine_rig_group_menu";
     params.visible = false;
@@ -1823,6 +2085,8 @@ void ALPanelCineLightRig::showRigGroupMenu(LLUICtrl* anchor, bool add_only)
         item.name = name;
         item.label = label;
         item.enabled = enabled;
+        if (name == "subject_rigs_off") item.tool_tip = "Turn off rigs 2-5, including borrowed rigs. Leave You unchanged.";
+        if (name == "all_off") item.tool_tip = "Turn off every rig, including borrowed rigs and You.";
         item.on_click.function = [action](LLUICtrl*, const LLSD&) { if (action) action(); };
         target->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(item));
     };
@@ -1835,38 +2099,53 @@ void ALPanelCineLightRig::showRigGroupMenu(LLUICtrl* anchor, bool add_only)
         menu->appendContextSubMenu(avatars);
     }
     const auto& cast = LLDirectorCast::instance();
-    const std::array<LLUUID, 4> subjects = {
-        cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
-    for (S32 slot = 0; slot < 4; ++slot)
+    std::set<LLUUID> offered;
+    for (const auto& member : cast.getCast())
     {
-        const LLUUID id = subjects[slot];
-        if (id.isNull() || id == gAgentID)
-            continue;
-        const auto* member = cast.getMember(id);
-        const std::string name = member && !member->mLastName.empty() ? member->mLastName : id.asString();
-        add(avatars, llformat("subject_%d", slot), llformat("Subject %c: ", 'A' + slot) + name,
-            true, [this, id, slot]() { addAvatarToRigGroup(id, slot); });
+        const LLUUID id = member.mId;
+        if (id == gAgentID) continue;
+        offered.insert(id);
+        add(avatars, "cast_" + id.asString(), rigActorName(id, "menu"), true,
+            [this, id, pick = ALCineLightRigManager::instance().retainBorrowActor(id)]()
+            {
+                const LLUUID actor = ALCineLightRigManager::instance().resolveBorrowActor(id, true);
+                if (actor.isNull()) { showRigNotice("Actor unavailable"); return; }
+                addAvatarToRigGroup(actor);
+            });
     }
-    // Same live-avatar source/filters as Director's rebuildAnimSpeedAvatars(),
-    // minus local Ghost clones (they carry their source's name).
-    // Read only on menu open, never on the panel's refresh/draw path.
-    S32 nearby_count = 0;
-    for (LLCharacter* character : LLCharacter::sInstances)
-        if (auto* avatar = dynamic_cast<LLVOAvatar*>(character);
-            avatar && !avatar->isDead() && !avatar->isControlAvatar() && !avatar->mIsDummy &&
-            !avatar->isGhostAvatar())
+    if (ALGazeNearby::nearbyAllowed())
+        for (LLCharacter* character : LLCharacter::sInstances)
+            if (auto* avatar = dynamic_cast<LLVOAvatar*>(character);
+                avatar && !avatar->isDead() && !avatar->isControlAvatar() && !avatar->mIsDummy && !avatar->isGhostAvatar())
+            {
+                const LLUUID id = avatar->getID();
+                if (id == gAgentID || !offered.insert(id).second) continue;
+                add(avatars, "nearby_" + id.asString(), rigActorName(id, "menu"), true,
+                    [this, id]() { addAvatarToRigGroup(id); });
+            }
+    if (offered.empty()) add(avatars, "no_actors", "No actors available", false, {});
+    auto& manager = ALCineLightRigManager::instance();
+    if (!add_only && manager.selectedSlot() != ALCineLightRigManager::SLOT_SELF && manager.selected().getAnchor().notNull())
+    {
+        const auto slot = manager.selectedSlot();
+        const LLUUID expected = manager.selected().getAnchor();
+        const bool expected_was_cast = cast.contains(expected);
+        const auto handle = getDerivedHandle<ALPanelCineLightRig>();
+        add(menu, "remove_borrowed_rig", "Remove rig", true, [handle, slot, expected, expected_was_cast, pick = manager.retainBorrowActor(expected)]()
         {
-            const LLUUID id = avatar->getID();
-            if (id == gAgentID || std::find(subjects.begin(), subjects.end(), id) != subjects.end())
-                continue;
-            const bool available = alRigGroupSubject(subjects, gAgentID, id) >= 0;
-            add(avatars, "nearby_" + id.asString(), avatar->getFullname() +
-                (available ? "" : " - All 4 Subjects in use"), available,
-                [this, id]() { addAvatarToRigGroup(id); });
-            ++nearby_count;
-        }
-    if (!nearby_count)
-        add(avatars, "no_nearby", "No avatars nearby", false, {});
+            auto* panel = handle.get();
+            auto& rigs = ALCineLightRigManager::instance();
+            if (!panel) return;
+            const LLUUID actor = rigs.resolveBorrowActor(expected, expected_was_cast);
+            if (actor.isNull())
+                { panel->showRigNotice("Actor unavailable"); return; }
+            if (LLDirectorCast::canonicalActorId(rigs.at(slot).getAnchor()) != actor) return;
+            if (auto* shell = ALKitShell::find(panel)) shell->history().finishGesture();
+            ALKitHistory::ScopedSuspend suspend;
+            rigs.removeBorrowedRig(slot);
+            panel->finishRigAction(0);
+        });
+    }
     if (!add_only)
     {
         add(menu, "subject_rigs_off", "Subject rigs off", true, [this]() { onRigGroupAction(1); });
@@ -1877,45 +2156,292 @@ void ALPanelCineLightRig::showRigGroupMenu(LLUICtrl* anchor, bool add_only)
     ALKitMenu::showContextMenu(anchor, menu, 0, 0);
 }
 
-void ALPanelCineLightRig::addAvatarToRigGroup(const LLUUID& id, S32 subject_slot)
+void ALPanelCineLightRig::ensureRigActorInCast(const LLUUID& id)
 {
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    const std::array<LLUUID, 4> subjects = {
-        cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
-    // Revalidate after opening: a newly occupied slot must never be overwritten.
-    if (subject_slot >= 0 && (subject_slot >= 4 || subjects[subject_slot] != id))
-        return;
-    const S32 subject = subject_slot >= 0 ? subject_slot : alRigGroupSubject(subjects, gAgentID, id);
-    if (subject < 0 || id.isNull() || id == gAgentID || !mRigKitPage)
-        return;
-    ALCineLightRigManager& manager = ALCineLightRigManager::instance();
+    auto& cast = LLDirectorCast::instance();
+    if (cast.contains(id)) return;
+    clearRigLabels("notice");
+    const std::string name = rigActorName(id, "notice");
+    cast.add(id);
+    showRigNotice("Added " + name + " to Cast");
+}
+
+void ALPanelCineLightRig::showRigNotice(const std::string& message)
+{
+    if (const auto notice = LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", message)))
+    {
+        mRigNotices.push_back(notice->getID());
+        const auto labels = mRigDisplayedLabels.find("notice");
+        if (labels != mRigDisplayedLabels.end() && !labels->second.empty())
+            mRigDisplayedLabels.emplace("notice:" + notice->getID().asString(), std::move(labels->second));
+        if (!mRigNoticeTimerRunning)
+        {
+            mRigNoticeTimerRunning = true;
+            const auto handle = getDerivedHandle<ALPanelCineLightRig>();
+            doOnIdleRepeating([handle]()
+            {
+                auto* panel = handle.get();
+                if (!panel) return true;
+                if (panel->mRigNoticeClock.due()) panel->refreshRigNotices(!panel->isInVisibleChain());
+                if (!panel->mRigNotices.empty()) return false;
+                panel->mRigNoticeTimerRunning = false;
+                return true;
+            });
+        }
+    }
+    clearRigLabels("notice");
+}
+
+void ALPanelCineLightRig::refreshRigNotices(bool cancel_names)
+{
+    for (auto it = mRigNotices.begin(); it != mRigNotices.end();)
+    {
+        const auto notice = LLNotificationsUtil::find(*it);
+        const std::string area = "notice:" + it->asString();
+        const auto labels = mRigDisplayedLabels.find(area);
+        bool changed = false;
+        if (labels != mRigDisplayedLabels.end())
+            for (const auto& label : labels->second)
+                changed |= cancel_names || rigNameVisible(label.first) != label.second;
+        if (changed && notice && notice->isActive()) LLNotificationsUtil::cancel(notice);
+        if (!notice || !notice->isActive())
+        {
+            mRigDisplayedLabels.erase(area);
+            it = mRigNotices.erase(it);
+        }
+        else ++it;
+    }
+}
+
+void ALPanelCineLightRig::finishRigAction(S32 slot, bool follow)
+{
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+    ALKitHistory::ScopedSuspend suspend;
     {
         ALKitHistory::ScopedSuspend suspend;
-        if (subjects[subject].isNull())
-        {
-            cast.add(id);
-            switch (subject)
-            {
-                case 0: cast.setSubjectA(id); break;
-                case 1: cast.setSubjectB(id); break;
-                case 2: cast.setSubjectC(id); break;
-                case 3: cast.setSubjectD(id); break;
-            }
-        }
-        const auto slot = static_cast<ALCineLightRigManager::Slot>(subject + 1);
-        manager.setSelectedSlot(slot);
-        if (!manager.isSlotEnabled(slot))
-            gSavedSettings.setBOOL("CineLightRigEnabled", true);
-        mCastListInitialized = false;
-        updateAnchorList();
-        // Pin the explicit choice. Its combo commit must also stay inside the
-        // suspend so widget history cannot add an undo step after the barrier.
-        mRigKitPage->setWhoPin(LLSD(subject + 1));
-        syncObjectTargetControls(true);
-        syncGroupControls();
+        ALCineLightRigManager::instance().setSelectedSlot(static_cast<ALCineLightRigManager::Slot>(slot));
     }
-    if (ALKitShell* shell = ALKitShell::find(this))
-        shell->history().barrier("rigs changed");
+    mPendingBorrowPick.reset();
+    mCastListInitialized = false;
+    mLitTargetForceRefresh = true;
+    updateAnchorList();
+    if (mRigKitPage)
+    {
+        mRigKitPage->setWhoPin(follow ? LLSD() : LLSD(slot));
+        mRigKitPage->refreshWhoUnavailable();
+    }
+    syncObjectTargetControls(true);
+    syncGroupControls();
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+}
+
+bool ALPanelCineLightRig::addAvatarToRigGroup(const LLUUID& id)
+{
+    if (id.isNull() || id == gAgentID || !mRigKitPage) return false;
+    auto& manager = ALCineLightRigManager::instance();
+    const LLUUID actor = manager.resolveBorrowActor(id);
+    if (actor.isNull()) return false;
+    if (actor != id) return addAvatarToRigGroup(actor);
+    const auto slot = manager.borrowSlot(id);
+    if (slot == ALCineLightRigManager::Slot::COUNT) { showBorrowMenu(id); return true; }
+    const bool follow = !mRigKitPage->whoPinned() &&
+        LLDirectorCast::canonicalActorId(mRigKitPage->actorTarget()) == LLDirectorCast::canonicalActorId(id);
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+    ALKitHistory::ScopedSuspend suspend;
+    ensureRigActorInCast(id);
+    if (manager.actorSlot(id) == ALCineLightRigManager::Slot::COUNT)
+        manager.giveActorRig(slot, id);
+    else
+    {
+        manager.setSelectedSlot(slot);
+        manager.touchSlot(slot);
+        gSavedSettings.setBOOL("CineLightRigEnabled", true);
+    }
+    finishRigAction(static_cast<S32>(slot), follow);
+    return true;
+}
+
+void ALPanelCineLightRig::showBorrowMenu(const LLUUID& id, bool remove)
+{
+    if (!mRigKitPage || !mRigKitPage->whoChip() || !gMenuHolder) return;
+    auto& manager = ALCineLightRigManager::instance();
+    const auto slot = remove ? manager.actorSlot(id) : manager.leastRecentlyUsedSlot();
+    if (slot == ALCineLightRigManager::Slot::COUNT) return;
+    retireRigMenu(mRigGroupMenu);
+    clearRigLabels("menu");
+    LLContextMenu::Params params;
+    params.name = "cine_borrow_rig_menu"; params.visible = false;
+    auto* menu = LLUICtrlFactory::create<LLContextMenu>(params);
+    mRigGroupMenu = menu->getHandle(); gMenuHolder->addChild(menu);
+    const auto handle = getDerivedHandle<ALPanelCineLightRig>();
+    const auto add = [menu](const std::string& name, const std::string& label, std::function<void()> action)
+    {
+        LLMenuItemCallGL::Params p; p.name = name; p.label = label;
+        p.on_click.function = [action](LLUICtrl*, const LLSD&) { action(); };
+        menu->addChild(LLUICtrlFactory::create<LLMenuItemCallGL>(p));
+    };
+    const LLUUID expected = manager.slotActor(slot);
+    const bool expected_was_cast = LLDirectorCast::instance().contains(expected);
+    const LLUUID captured = LLDirectorCast::canonicalActorId(id);
+    const bool was_cast = LLDirectorCast::instance().contains(captured);
+    const auto picked = manager.retainBorrowActor(captured);
+    const auto expected_pick = manager.retainBorrowActor(expected);
+    if (remove)
+    {
+        add("follow_cast", "Follow cast selection", [handle]()
+        { if (auto* panel = handle.get()) panel->mRigKitPage->setWhoPin(LLSD()); });
+        for (S32 i = 0; i < ALCineLightRigManager::SLOT_COUNT; ++i)
+        {
+            const auto which = static_cast<ALCineLightRigManager::Slot>(i);
+            if (i != 0 && manager.slotActor(which).isNull()) continue;
+            add("edit_rig_" + std::to_string(i), i == 0 ? "Edit your rig" : "Edit " + rigLabel(i, "menu"), [handle, i]()
+            { if (auto* panel = handle.get()) panel->finishRigAction(i); });
+        }
+        add("remove_rig", "Remove rig", [handle, captured, slot, was_cast, picked]()
+        {
+            if (auto* panel = handle.get())
+            {
+                auto& rigs = ALCineLightRigManager::instance();
+                const LLUUID actor = rigs.resolveBorrowActor(captured, was_cast);
+                if (actor.isNull())
+                    { panel->showRigNotice("Actor unavailable"); return; }
+                if (LLDirectorCast::canonicalActorId(rigs.at(slot).getAnchor()) != actor) return;
+                if (auto* shell = ALKitShell::find(panel)) shell->history().finishGesture();
+                ALKitHistory::ScopedSuspend suspend;
+                rigs.removeBorrowedRig(slot);
+                panel->finishRigAction(0);
+            }
+        });
+    }
+    else
+    {
+        // First item is the default. Never mutate until the user chooses it.
+        add("replace_rig", "Replace " + (expected.isNull() ? llformat("Rig %d", static_cast<S32>(slot) + 1) : rigActorName(expected, "menu")), [handle, captured, was_cast, slot, expected, expected_was_cast, picked, expected_pick]()
+        {
+            if (auto* panel = handle.get())
+            {
+                auto& rigs = ALCineLightRigManager::instance();
+                const LLUUID id = rigs.resolveBorrowActor(captured, was_cast);
+                if (id.isNull()) { panel->showRigNotice("Actor unavailable"); return; }
+                if (rigs.borrowSlot(id) != ALCineLightRigManager::Slot::COUNT ||
+                    rigs.leastRecentlyUsedSlot() != slot || rigs.slotActor(slot) != (expected_was_cast ? rigs.resolveBorrowActor(expected, true) : expected))
+                    { panel->addAvatarToRigGroup(id); return; }
+                const bool follow = !panel->mRigKitPage->whoPinned() &&
+                    LLDirectorCast::canonicalActorId(panel->mRigKitPage->actorTarget()) == LLDirectorCast::canonicalActorId(id);
+                if (auto* shell = ALKitShell::find(panel)) shell->history().finishGesture();
+                ALKitHistory::ScopedSuspend suspend;
+                panel->ensureRigActorInCast(id);
+                rigs.giveActorRig(slot, id);
+                panel->finishRigAction(static_cast<S32>(slot), follow);
+            }
+        });
+        add("share_rig", "Share " + (expected.isNull() ? llformat("Rig %d", static_cast<S32>(slot) + 1) : rigActorName(expected, "menu") + "'s rig"), [handle, captured, was_cast, slot, expected, expected_was_cast, picked, expected_pick]()
+        {
+            if (auto* panel = handle.get())
+            {
+                auto& rigs = ALCineLightRigManager::instance();
+                const LLUUID id = rigs.resolveBorrowActor(captured, was_cast);
+                if (id.isNull()) { panel->showRigNotice("Actor unavailable"); return; }
+                if (rigs.slotActor(slot) != (expected_was_cast ? rigs.resolveBorrowActor(expected, true) : expected) || rigs.borrowSlot(id) != ALCineLightRigManager::Slot::COUNT)
+                    { panel->addAvatarToRigGroup(id); return; }
+                panel->shareRig(id, static_cast<S32>(slot));
+            }
+        });
+    }
+    add("cancel", "Cancel", []() {});
+    // The menu now owns the captured pick. Dismissal (Escape, outside click or
+    // Cancel) must leave the master controlling the actual selected rig.
+    mRigKitPage->cancelWhoUnavailable();
+    mPendingBorrowPick.reset();
+    menu->buildDrawLabels();
+    ALKitMenu::showContextMenu(mRigKitPage->whoChip(), menu, 0, 0);
+}
+
+void ALPanelCineLightRig::shareRig(const LLUUID& captured, S32 value)
+{
+    auto& manager = ALCineLightRigManager::instance();
+    const LLUUID id = manager.resolveBorrowActor(captured);
+    if (id.isNull()) { showRigNotice("Actor unavailable"); return; }
+    if (auto* shell = ALKitShell::find(this)) shell->history().finishGesture();
+    ALKitHistory::ScopedSuspend suspend;
+    const auto slot = static_cast<ALCineLightRigManager::Slot>(value);
+    auto& rig = manager.at(slot);
+    // Snapshot the effective recipients before enrollment changes group
+    // resolution. In particular, a currently falling-back rig still lights
+    // its own actor even though its named group has only away members.
+    const auto& effective = rig.lastResolvedStoredMembers().empty()
+        ? rig.lastResolvedMembers() : rig.lastResolvedStoredMembers();
+    uuid_vec_t recipients;
+    for (const auto& member : effective)
+    {
+        // A clone may have rekeyed since this snapshot's last rig tick.
+        // Resolve retirement too, without dropping legitimate away recipients.
+        const LLUUID actor = manager.resolveRigActorIdentity(member);
+        if (actor.notNull() && std::find(recipients.begin(), recipients.end(), actor) == recipients.end()) recipients.push_back(actor);
+    }
+    if (!rig.getLitGroup().empty())
+    {
+        for (const auto& member : LLDirectorCast::instance().membersInGroup(rig.getLitGroup()))
+        {
+            const LLUUID actor = LLDirectorCast::canonicalActorId(member);
+            if (actor.notNull() && std::find(recipients.begin(), recipients.end(), actor) == recipients.end())
+                recipients.push_back(actor);
+        }
+        // A missing/empty named group uses the engine's solo fallback.
+        if (recipients.empty())
+        {
+            const LLUUID actor = LLDirectorCast::canonicalActorId(manager.slotActor(slot));
+            if (actor.notNull()) recipients.push_back(actor);
+        }
+    }
+    else if (rig.isGroupEnabled())
+    {
+        // Always union authored membership with effective recipients, including
+        // away actors. Legacy slots are Subjects, never rig anchors.
+        for (S32 i = 0; i < ALCineLightRigManager::SLOT_COUNT; ++i)
+            if (rig.getGroupSlots() & (1u << i))
+            {
+                const LLUUID actor = LLDirectorCast::canonicalActorId(
+                    manager.groupSlotActor(static_cast<ALCineLightRigManager::Slot>(i)));
+                if (actor.notNull() && std::find(recipients.begin(), recipients.end(), actor) == recipients.end())
+                    recipients.push_back(actor);
+            }
+    }
+    else if (recipients.empty())
+    {
+        const LLUUID retained = LLDirectorCast::canonicalActorId(manager.slotActor(slot));
+        if (retained.notNull()) recipients.push_back(retained);
+    }
+    for (const auto& recipient : recipients) ensureRigActorInCast(recipient);
+    ensureRigActorInCast(id);
+    if (std::find(recipients.begin(), recipients.end(), id) == recipients.end()) recipients.push_back(id);
+    auto& cast = LLDirectorCast::instance();
+    const auto before = cast.captureGroups();
+    std::string group = rig.getLitGroup();
+    if (group.empty() || cast.membersInGroup(group).empty())
+    {
+        group = cast.makeGroup(recipients);
+    }
+    else
+    {
+        cast.addToGroup(recipients, group);
+    }
+    manager.setSelectedSlot(slot);
+    manager.setLitGroup(slot, group);
+    rig.setObjectTarget(LLUUID::null);
+    gSavedSettings.setString("CineLightRigObjectTarget", "");
+    rig.setGroupEnabled(false);
+    manager.touchSlot(slot);
+    gSavedSettings.setBOOL("CineLightRigEnabled", true);
+    std::string message = "Sharing '" + group + "'. Rename in Cast > Groups";
+    for (const auto& member : cast.getCast())
+    {
+        auto old = before.tags.find(member.mId);
+        if (old != before.tags.end() && !old->second.empty() && old->second != member.mGroup)
+            message += ". Moved " + rigActorName(member.mId, "notice") + " from '" + old->second + "'";
+    }
+    showRigNotice(message);
+    finishRigAction(value);
 }
 
 void ALPanelCineLightRig::onRigGroupAction(S32 action)
@@ -1938,6 +2464,7 @@ void ALPanelCineLightRig::onRigGroupAction(S32 action)
 
 void ALPanelCineLightRig::syncAnchorSelection()
 {
+    if (mRigKitPage) mRigKitPage->syncRigTarget();
     const S32 selected = static_cast<S32>(
         ALCineLightRigManager::instance().selectedSlot());
     if ((mAnchorSelectionInitialized && selected == mDisplayedSlot) ||
@@ -1968,18 +2495,22 @@ void ALPanelCineLightRig::onAnchorSelected()
             return;
         }
         ALCineLightRigManager& manager=ALCineLightRigManager::instance();
+        if (mRigKitPage && !ALKitHistory::suspended()) mRigKitPage->cancelWhoUnavailable();
         if(value==static_cast<S32>(manager.selectedSlot()))
         {
+            if (mRigKitPage) mRigKitPage->syncRigTarget();
             syncObjectTargetControls(true);
             return;
         }
         ALKitShell* shell=ALKitShell::find(this);
+        if (shell) shell->history().finishGesture();
         {
             ALKitHistory::ScopedSuspend suspend;
             manager.setSelectedSlot(
                 static_cast<ALCineLightRigManager::Slot>(value));
         }
-        if(shell)shell->history().barrier("rig slot changed");
+        if (mRigKitPage) mRigKitPage->syncRigTarget();
+        if(shell && !ALKitHistory::suspended())shell->history().barrier("rig slot changed");
         mDisplayedSlot = value;
         mAnchorSelectionInitialized = true;
         mDisplayedGroupEnabled = false;
@@ -2108,7 +2639,7 @@ void ALPanelCineLightRig::onLitTargetCommit()
         cast.add(gAgentID);
         before = cast.captureGroups();
         uuid_vec_t ids{gAgentID};
-        for (const LLUUID& id : {cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD()})
+        for (const LLUUID& id : {ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_A), ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_B), ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_C), ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_D)})
             if (id.notNull() && std::find(ids.begin(), ids.end(), id) == ids.end()) ids.push_back(id);
         made_ids = ids;
         value = "group:" + cast.makeGroup(ids);
@@ -2154,6 +2685,7 @@ void ALPanelCineLightRig::onLitTargetCommit()
                 });
             history.finishGesture();
         }
+        clearRigLabels("notice");
         std::string moved;
         for (const auto& id : made_ids)
         {
@@ -2161,11 +2693,11 @@ void ALPanelCineLightRig::onLitTargetCommit()
             const auto* member = cast.getMember(id);
             if (!member || old == before.tags.end() || old->second.empty() || old->second == member->mGroup) continue;
             if (!moved.empty()) moved += ", ";
-            moved += (member->mLastName.empty() ? id.asString() : member->mLastName) + " from '" + old->second + "'";
+            moved += rigActorName(id, "notice") + " from '" + old->second + "'";
         }
         std::string message = llformat("Made '%s' (%d). Rename in Cast > Groups", rig.getLitGroup().c_str(), (S32)cast.membersInGroup(rig.getLitGroup()).size());
         if (!moved.empty()) message += ". Moved " + moved;
-        LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE", message));
+        showRigNotice(message);
     }
 }
 
@@ -2184,19 +2716,16 @@ void ALPanelCineLightRig::onGroupSlotsCommit()
     U32 slots = 0;
     std::set<LLUUID> people;
     const bool self_checked = mGroupSlotChecks[0]->getValue().asBoolean();
-    LLDirectorCast& cast = LLDirectorCast::instance();
-    const LLUUID subjects[] = { cast.getSubjectA(), cast.getSubjectB(),
-                                cast.getSubjectC(), cast.getSubjectD() };
-    for (S32 i = 0; i < 5; ++i)
+    const auto& manager = ALCineLightRigManager::instance();
+    for (S32 i = 0; i < ALCineLightRigManager::SLOT_COUNT; ++i)
     {
-        const bool duplicate_self = i > 0 && subjects[i - 1].notNull() &&
-                                    LLDirectorCast::isSelf(subjects[i - 1]);
-        if ((i == 0 || subjects[i - 1].notNull()) &&
+        const LLUUID actor = manager.groupSlotActor(static_cast<ALCineLightRigManager::Slot>(i));
+        const bool duplicate_self = i > 0 && LLDirectorCast::isSelf(actor);
+        if (actor.notNull() &&
             (duplicate_self ? self_checked : mGroupSlotChecks[i]->getValue().asBoolean()))
         {
             slots |= 1u << i;
-            people.insert(i == 0 || duplicate_self ? gAgentID :
-                LLDirectorCast::canonicalActorId(subjects[i - 1]));
+            people.insert(LLDirectorCast::canonicalActorId(actor));
         }
     }
     commitGroupState(slots, people.size() >= 2);
@@ -2248,21 +2777,20 @@ void ALPanelCineLightRig::syncGroupControls()
     ALCineLightRig& rig = ALCineLightRigManager::instance().selected();
     if (mLitTarget)
     {
-        const auto actorName = [&cast](const LLUUID& id) -> std::string
+        const auto actorName = [this](const LLUUID& id, const char* area) -> std::string
         {
-            if (id.isNull() || LLDirectorCast::isSelf(id)) return "You";
-            if (const auto* member = cast.getMember(id); member && !member->mLastName.empty()) return member->mLastName;
-            return id.asString();
+            return rigActorName(id.isNull() ? gAgentID : id, area);
         };
         const S32 slot = static_cast<S32>(ALCineLightRigManager::instance().selectedSlot());
-        const LLUUID ids[] = { rig.getAnchor(), cast.getSubjectA(), cast.getSubjectB(), cast.getSubjectC(), cast.getSubjectD() };
+        std::array<LLUUID, 5> ids{};
+        for (S32 i = 0; i < 5; ++i) ids[i] = ALCineLightRigManager::instance().slotActor(static_cast<ALCineLightRigManager::Slot>(i));
         const bool legacy = rig.getLitGroup().empty() && rig.isGroupEnabled();
         if (!mLitTarget->isListVisible() && (mLitTargetForceRefresh || mLitComboCastRevision != cast.getActorChoiceRevision() ||
             mLitComboGroupRevision != cast.getGroupRevision() || mLitComboSlot != slot ||
             mLitComboGroup != rig.getLitGroup() || mLitComboSlots != rig.getGroupSlots() || mLitComboLegacy != legacy))
         {
-            const std::string subject = slot == 0 ? actorName(ids[0])
-                : llformat("Subject %c, ", 'A' + slot - 1) + (ids[slot].isNull() ? "not set" : actorName(ids[slot]));
+            clearRigLabels("lights_combo");
+            const std::string subject = rig.getAnchor().notNull() && slot != 0 ? rigLabel(slot, "lights_combo") : actorName(ids[slot], "lights_combo");
             std::vector<std::string> labels{ "This rig's subject: " + subject }, values{ "subject" };
             for (const auto& name : cast.getGroupNames())
             {
@@ -2302,16 +2830,19 @@ void ALPanelCineLightRig::syncGroupControls()
         if (!mLitTarget->isListVisible())
             setValueIfChanged(mLitTarget, LLSD(!rig.getLitGroup().empty() ? "group:" + rig.getLitGroup() : legacy ? "legacy" : "subject"), true);
         setEnabledIfChanged(mLitTarget, rig.getObjectTarget().isNull());
+        clearRigLabels("lights_status");
         std::string names;
-        for (const auto& id : rig.lastResolvedStoredMembers())
-        {
-            if (!names.empty()) names += ", ";
-            names += actorName(id);
-        }
-        if (rig.getLitGroup().empty() || rig.getObjectTarget().notNull()) names = rigTargetDescription(slot);
-        else names += llformat(" (%d of %d here)", static_cast<S32>(rig.litGroupFallback() ? 0 : rig.lastResolvedMembers().size()), rig.litGroupSize());
         const bool on = ALCineLightRigManager::instance().isSlotEnabled(
             static_cast<ALCineLightRigManager::Slot>(slot));
+        if (on && !rig.getLitGroup().empty() && rig.getObjectTarget().isNull())
+        for (const auto& id : rig.lastResolvedStoredMembers())
+        {
+            if (id.isNull()) continue;
+            if (!names.empty()) names += ", ";
+            names += actorName(id, "lights_status");
+        }
+        if (on && (rig.getLitGroup().empty() || rig.getObjectTarget().notNull())) names = rigTargetDescription(slot, "lights_status");
+        else names += llformat(" (%d of %d here)", static_cast<S32>(rig.litGroupFallback() ? 0 : rig.lastResolvedMembers().size()), rig.litGroupSize());
         const bool no_subject = slot != 0 && ids[slot].isNull();
         if (!on) names = "Off";
         else if (no_subject && rig.lastResolvedMembers().empty() && rig.getObjectTarget().isNull()) names = "No subject assigned";
@@ -2340,6 +2871,7 @@ void ALPanelCineLightRig::syncGroupControls()
     ALKitRow::setControlVisible(mGroupEnable, legacy_controls);
     if (!legacy_controls)
     {
+        clearRigLabels("checks");
         for (auto* control : mGroupSlotChecks) ALKitRow::setControlVisible(control, false);
         mDisplayedGroupSlots = ~0u;
         setTextIfChanged(mGroupStatus, rig.getLitGroup().empty() ? std::string() : "Group: " + rig.getLitGroup() + " (edit in Director)");
@@ -2361,9 +2893,12 @@ void ALPanelCineLightRig::syncGroupControls()
         return;
     }
 
+    clearRigLabels("checks");
     setEnabledIfChanged(mGroupEnable, object_target.isNull() && rig.getLitGroup().empty());
-    const LLUUID subjects[] = { cast.getSubjectA(), cast.getSubjectB(),
-                                cast.getSubjectC(), cast.getSubjectD() };
+    const LLUUID subjects[] = { ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_A),
+        ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_B),
+        ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_C),
+        ALCineLightRigManager::instance().groupSlotActor(ALCineLightRigManager::SLOT_D) };
     U32 self_slot_mask = 1u;
     for (S32 i = 0; i < 4; ++i)
         if (subjects[i].notNull() && LLDirectorCast::isSelf(subjects[i]))
@@ -2390,17 +2925,20 @@ void ALPanelCineLightRig::syncGroupControls()
     }
     auto label = [this](S32 i, const std::string& text)
     {
-        // Preserve native XUI labels; only kit rows fit actor names.
         if (mRigKitPage)
             if (ALKitRow* row = mRigKitPage->findRow(mGroupSlotChecks[i]->getName()))
+            {
                 row->setDisplayLabel(text);
+                return;
+            }
+        setLabelIfChanged(mGroupSlotChecks[i], text);
     };
     for (S32 i = 0; i < 4; ++i)
     {
-        const auto* member = cast.getMember(subjects[i]);
-        const std::string name = member && !member->mLastName.empty()
-            ? member->mLastName : subjects[i].asString();
-        label(i + 1, llformat("Subject %c - ", 'A' + i) + name);
+        if (subjects[i].notNull() && !LLDirectorCast::isSelf(subjects[i]))
+            label(i + 1, rigLabelBase(i + 1) + " - " + rigActorName(subjects[i], "checks"));
+        else
+            label(i + 1, llformat("Subject %c", 'A' + i));
     }
     label(0, self_letters.empty()
         ? "You" : (self_letters.size() == 1
@@ -3609,6 +4147,44 @@ void ALPanelCineLightRig::reshape(S32 width, S32 height, bool called_from_parent
     }
 }
 
+// ui-draw-lint: allow-function(raw-write) privacy invalidation runs at 1 Hz and only rebuilds on a visibility change
+void ALPanelCineLightRig::refreshRigPrivacy()
+{
+    refreshRigNotices();
+    // Closed menus no longer display their snapshot. Do not expand this set
+    // from Cast: unrelated actors must not invalidate this page's privacy.
+    if (!mRigGroupMenu.get() || !mRigGroupMenu.get()->getVisible()) mRigDisplayedLabels.erase("menu");
+    bool changed = mRigNearbyAllowed != ALGazeNearby::nearbyAllowed();
+    for (const auto& area : mRigDisplayedLabels)
+        for (const auto& label : area.second)
+        {
+            const bool visible = rigNameVisible(label.first);
+            changed |= visible != label.second;
+        }
+    if (!changed) return;
+    mRigNearbyAllowed = ALGazeNearby::nearbyAllowed();
+    clearRigLabels("menu");
+    clearRigLabels("chip");
+    clearRigLabels("notice");
+    retireRigMenu(mRigGroupMenu);
+    // The shell's generic who picker owns independent snapshots of rig labels.
+    if (auto* shell = ALKitShell::find(this)) shell->hidePopover();
+    mCastListInitialized = false;
+    mSubjectChoiceRevision = ~U64(0);
+    mLitTargetForceRefresh = true;
+    mDisplayedGroupSlots = ~0u;
+    if (mAnchorCombo)
+    {
+        mAnchorCombo->hideList();
+        mAnchorCombo->setFocus(false);
+    }
+    if (mLitTarget) mLitTarget->hideList();
+    for (auto* combo : mSubjectTargetCombos) if (combo) combo->hideList();
+    updateAnchorList();
+    syncGroupControls();
+    if (mRigKitPage) mRigKitPage->refreshWhoUnavailable();
+}
+
 void ALPanelCineLightRig::draw()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [UIPerfC1]
@@ -3622,6 +4198,7 @@ void ALPanelCineLightRig::draw()
     applyManualLock();
     if (mPanelRefreshClock.due())
     {
+        if (mRigPrivacyClock.due()) refreshRigPrivacy();
         updateAnchorList();
         syncGroupControls();
         if (mSetupRefreshPending &&
@@ -3648,6 +4225,7 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
         syncEasyModeForSelected();
         mRim.onReveal();
         mLiveProbeClock.forceDue();
+        refreshRigPrivacy();
         updateAnchorList();
         syncObjectTargetControls(true);
         syncGroupControls();
@@ -3662,5 +4240,6 @@ void ALPanelCineLightRig::onVisibilityChange(bool new_visibility)
         // 10 Hz tick so draw cannot repeat the same work in that frame.
         (void)mPanelRefreshClock.due();
     }
+    else refreshRigNotices(true);
     LLPanel::onVisibilityChange(new_visibility);
 }

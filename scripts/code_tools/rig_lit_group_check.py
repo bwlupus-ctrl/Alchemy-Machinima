@@ -8,6 +8,14 @@ def fixture(root):
     # named gather and aggregate body below are the current worktree's code.
     support = r'''
 #include <set>
+#include <memory>
+#ifndef LL_INFOS
+#define LL_INFOS(...) std::cerr
+#endif
+#ifndef LL_WARNS
+#define LL_WARNS(...) std::cerr
+#endif
+namespace RigRegistryRound2 {void test();}
 namespace RigLitGroupModel {
 enum {VX,VY,VZ};
 const LLUUID gAgentID{"self"};
@@ -85,6 +93,23 @@ bool memberTrackPoint(LLVOAvatar* avatar,S32,F32,LLVector3& point){point.set(ava
     begin = source.index('    LLVOAvatar* group_members[LIT_GROUP_MAX] = {};')
     end = source.index('\n    if (!object_targeted)\n', source.index('    if (group_target && group_count > 0)', begin))
     body = source[begin:end]
+    support += r'''
+using LLViewerObject=LLVOAvatar;
+
+struct ALCineLightRigManager {
+    using Slot=S32;ALCineLightRig rig;bool enabled=true;
+    bool isSlotEnabled(Slot)const{return enabled;}
+    const ALCineLightRig& at(Slot)const{return rig;}
+    bool isSlotLit(Slot)const;
+    static ALCineLightRigManager& instance(){static ALCineLightRigManager m;return m;}
+    LLUUID anchors[5];
+    LLUUID groupSlotActor(ALCineLightRigSlot) const;
+    LLUUID slotActor(ALCineLightRigSlot slot) const {
+        const int i=static_cast<int>(slot);
+        return anchors[i].notNull()?anchors[i]:i==0?gAgentID:LLDirectorCast::instance().subjects[i-1];
+    }
+};
+'''
     result = [support + function(source, 'LLVOAvatar* ALCineLightRig::resolveSlotAvatar()'), function(source, 'S32 gatherGroupMembers('), function(source, 'S32 gatherMembers('),
               'void ALCineLightRig::tick(bool object_targeted){'
               'Setup setup; setup.mRadius=2.f; S32 track_mode_setting=0;'
@@ -107,25 +132,27 @@ bool memberTrackPoint(LLVOAvatar* avatar,S32,F32,LLVector3& point){point.set(ava
                'struct Record {std::string mLitGroup="guards";};'
                'void applyEvent(ALCineLightRig (&mInstances)[5], Record (&mBlobs)[5],const LLDirectorCast::GroupEvent& event){'
                'const S32 SLOT_COUNT=5;' + manager[begin:end] + '}']
-    result.append(r'''
-using LLViewerObject=LLVOAvatar;
-
-struct ALCineLightRigManager {
-    using Slot=S32;ALCineLightRig rig;bool enabled=true;
-    bool isSlotEnabled(Slot)const{return enabled;}
-    const ALCineLightRig& at(Slot)const{return rig;}
-    bool isSlotLit(Slot)const;
-};
-''')
     result.append(function(manager, 'bool ALCineLightRigManager::isSlotLit('))
-    start = manager.index('                for (const auto& id : rig.lastResolvedMembers())')
-    brace = manager.index('{', start)
-    end = manager.index('\n                }', brace) + len('\n                }')
-    result.append('uuid_vec_t recipients(const ALCineLightRig& rig){uuid_vec_t ids;'
+    result.append(function(manager, 'LLUUID ALCineLightRigManager::groupSlotActor(')
+                  .replace('Slot slot', 'ALCineLightRigSlot slot').replace('SLOT_SELF', 'ALCineLightRigSlot::SELF'))
+    result.append(function(source, 'S32 gatherGroupMembers(').replace('gatherGroupMembers(', 'gatherGroupMembersWrongSelf(', 1).replace(
+        'manager.groupSlotActor', 'manager.slotActor', 1))
+    registry = function(manager, 'void ALCineLightRigManager::rebuildActorOnlyRegistry()')
+    start = registry.index('            if (!rig.getLitGroup().empty())')
+    end = registry.index('            rigs.push_back(input);', start)
+    recipients = ('uuid_vec_t recipients(const ALCineLightRig& rig){uuid_vec_t ids;'
+                  'const S32 SLOT_COUNT=5;using Slot=ALCineLightRigSlot;'
+                  'auto& manager=ALCineLightRigManager::instance();'
+                  'auto groupSlotActor=[&](Slot slot){return manager.groupSlotActor(slot);};'
+                  'auto slotActor=[&](Slot slot){return manager.slotActor(slot);};'
                   'auto add=[&](LLVOAvatar* avatar){if(avatar)ids.push_back(avatar->getID());};'
-                  + manager[start:end] + 'return ids;}')
+                  + registry[start:end] + 'return ids;}')
+    result.append(recipients)
+    result.append(recipients.replace('recipients(', 'recipientsWrongSelf(', 1)
+                  .replace('const LLUUID actor = groupSlotActor(', 'const LLUUID actor = slotActor('))
     result.append(r'''
 void test(){
+    RigRegistryRound2::test();
     auto& cast=LLDirectorCast::instance();
     cast.avatars[gAgentID]={gAgentID,99};
     for(int i=0;i<20;++i){LLUUID id{std::to_string(i)};cast.ids.push_back(id);cast.avatars[id]={id,F32(i*2)};}
@@ -171,6 +198,17 @@ void test(){
     cast.avatars[{"1"}]={{"1"},2};cast.avatars[{"3"}]={{"3"},6};
     rig.mGroupSlots=11;rig.tick();
     assert(rig.mLastResolvedGroupSlots==11 && rig.count==3 && rig.centre==50.5f);
+    // Legacy SELF anchor affects its own rig, never the custom group's You bit.
+    auto& owner=ALCineLightRigManager::instance();owner.anchors[0]={"1"};owner.anchors[1]={"3"};
+    rig.mAnchor={"1"};rig.mGroupSlots=3;rig.tick();
+    assert(rig.mLastResolvedMembers==uuid_vec_t({gAgentID,LLUUID{"3"}}));
+    assert(rig.mLastResolvedGroupSlots==3 && rig.centre==52.5f);
+    assert(recipients(rig)==uuid_vec_t({gAgentID,LLUUID{"3"}}));
+    assert(recipientsWrongSelf(rig)!=recipients(rig));
+    auto youAndExtra=[](auto gather){LLVOAvatar* members[GROUP_MAX_MEMBERS]={};U32 mask=0;
+        return gather(3,members,mask)==2 && mask==3 && members[0]->getID()==gAgentID && members[1]->getID()==LLUUID{"3"};};
+    assert(youAndExtra(gatherGroupMembers) && !youAndExtra(gatherGroupMembersWrongSelf));
+    owner.anchors[0].setNull();owner.anchors[1].setNull();rig.mAnchor.setNull();
     rig.mLastResolvedMembers={gAgentID};rig.mLitGroupFallback=true;rig.mLitGroupWide=true;
     auto off=[](const ALCineLightRig& r){return r.mLastResolvedMembers.empty() && !r.mLitGroupFallback && !r.mLitGroupWide;};
     rig.shutdownStale();assert(!off(rig));rig.shutdown();assert(off(rig));
@@ -217,6 +255,8 @@ void test(){
 }
 } // RigLitGroupModel
 ''')
+    from rig_borrow_round2 import registry_fixture
+    result.append(registry_fixture(root))
     return '\n'.join(result)
 
 

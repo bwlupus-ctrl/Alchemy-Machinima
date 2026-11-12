@@ -10,7 +10,9 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alcinelightrigmanager.h"
+#include "alriggroupsubject.h"
 #include "alghoststudio.h"
+#include "alkithistory.h"
 #include "alreflectmath.h"
 #include "llghostavatar.h"
 #include "lljoint.h"
@@ -39,6 +41,7 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
+#include <set>
 #include <vector>
 
 namespace
@@ -433,6 +436,8 @@ ALCineLightRigManager& ALCineLightRigManager::instance()
 
 void ALCineLightRigManager::connectGroupEvents()
 {
+    if (!mCastConnection.connected())
+        mCastConnection = LLDirectorCast::instance().addChangedCallback([this]() { refreshBorrowAnchors(); });
     if (mLitGroupConnection.connected()) return;
     mLitGroupConnection = LLDirectorCast::instance().groupEvent.connect(
         [this](const LLDirectorCast::GroupEvent& event)
@@ -514,6 +519,208 @@ ALCineLightRig& ALCineLightRigManager::at(Slot slot)
 const ALCineLightRig& ALCineLightRigManager::at(Slot slot) const
 {
     return mInstances[validSlot(slot) ? slotIndex(slot) : 0];
+}
+
+LLUUID ALCineLightRigManager::slotActor(Slot slot) const
+{
+    if (!validSlot(slot)) return LLUUID::null;
+    const LLUUID& anchor = at(slot).getAnchor();
+    return anchor.notNull() ? anchor : slot == SLOT_SELF ? gAgentID : legacyAnchorForSlot(slot);
+}
+
+LLUUID ALCineLightRigManager::groupSlotActor(Slot slot) const
+{
+    return slot == SLOT_SELF ? gAgentID : slotActor(slot);
+}
+
+LLUUID ALCineLightRigManager::resolveRigActorIdentity(const LLUUID& actor) const
+{
+    LLUUID id = actor;
+    // Follow the same transaction that rewrites rig anchors, including tombstones.
+    std::set<LLUUID> visited;
+    while (id.notNull() && visited.insert(id).second)
+    {
+        const auto found = mBorrowRekeys.find(id);
+        if (found != mBorrowRekeys.end()) id = found->second;
+        else
+        {
+            const LLUUID canonical = LLDirectorCast::canonicalActorId(id);
+            if (canonical == id) break;
+            id = canonical;
+        }
+    }
+    id = LLDirectorCast::canonicalActorId(id);
+    return id.isNull() || ALGhostStudio::instance().isDeleting(id) ? LLUUID::null : id;
+}
+
+LLUUID ALCineLightRigManager::resolveBorrowActor(const LLUUID& actor, bool was_cast) const
+{
+    const LLUUID id = resolveRigActorIdentity(actor);
+    auto& cast = LLDirectorCast::instance();
+    if (id.isNull() || (was_cast && !cast.contains(id))) return LLUUID::null;
+    // Away Cast members remain valid; a non-Cast pick must still have a live body.
+    if (cast.contains(id)) return id;
+    auto* avatar = cast.resolve(id, false);
+    return avatar && !avatar->isDead() ? id : LLUUID::null;
+}
+
+ALCineLightRigManager::Slot ALCineLightRigManager::actorSlot(const LLUUID& actor) const
+{
+    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    if (id.isNull() || id == gAgentID) return SLOT_SELF;
+    // An explicit anchor wins even if the actor also holds a Subject.
+    for (S32 i = 1; i < SLOT_COUNT; ++i)
+        if (at(static_cast<Slot>(i)).getAnchor().notNull() &&
+            LLDirectorCast::canonicalActorId(at(static_cast<Slot>(i)).getAnchor()) == id)
+            return static_cast<Slot>(i);
+    for (S32 i = 1; i < SLOT_COUNT; ++i)
+        if (LLDirectorCast::canonicalActorId(slotActor(static_cast<Slot>(i))) == id)
+            return static_cast<Slot>(i);
+    return Slot::COUNT;
+}
+
+ALCineLightRigManager::Slot ALCineLightRigManager::borrowSlot(const LLUUID& actor) const
+{
+    const Slot own = actorSlot(actor);
+    if (own != Slot::COUNT) return own;
+    std::array<LLUUID, 4> subjects{}, anchors{};
+    std::array<bool, 4> enabled{};
+    for (S32 i = 0; i < 4; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i + 1);
+        subjects[i] = legacyAnchorForSlot(slot);
+        anchors[i] = at(slot).getAnchor();
+        enabled[i] = isSlotEnabled(slot);
+    }
+    const auto choice = alRigBorrowChoice(subjects, anchors, enabled, mLastUsed,
+        gAgentID, LLDirectorCast::canonicalActorId(actor));
+    return choice.mSlot < 0 ? Slot::COUNT : static_cast<Slot>(choice.mSlot + 1);
+}
+
+ALCineLightRigManager::Slot ALCineLightRigManager::leastRecentlyUsedSlot() const
+{
+    return static_cast<Slot>(1 + std::distance(mLastUsed.begin(),
+        std::min_element(mLastUsed.begin(), mLastUsed.end())));
+}
+
+void ALCineLightRigManager::touchSlot(Slot slot)
+{
+    if (validSlot(slot) && slot != SLOT_SELF) mLastUsed[slotIndex(slot) - 1] = ++mUseClock;
+}
+
+void ALCineLightRigManager::restoreSelfAnchor()
+{
+    auto& rig = at(SLOT_SELF);
+    if (rig.getAnchor().isNull()) return;
+    ALKitHistory::ScopedSuspend suspend;
+    if (mSelected == SLOT_SELF) mBlobs[0] = captureSelected();
+    rig.setAnchor(LLUUID::null);
+    mBlobs[0].captureRigState(rig);
+    ++mHistoryEpoch[0];
+    ++mConfigurationRevision;
+    persist();
+}
+
+void ALCineLightRigManager::giveActorRig(Slot slot, const LLUUID& actor)
+{
+    if (!validSlot(slot) || slot == SLOT_SELF || actor.isNull() || actor == gAgentID) return;
+    ALKitHistory::ScopedSuspend suspend;
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    auto& rig = at(slot);
+    // Replacement changes the identity served by this slot, including a legacy
+    // Subject occupant. Its previous actor's edits must never replay onto it.
+    const LLUUID next = LLDirectorCast::canonicalActorId(actor);
+    if (slotActor(slot) != next) ++mHistoryEpoch[slotIndex(slot)];
+    rig.setAnchor(next);
+    rig.setObjectTarget(LLUUID::null);
+    rig.setGroupEnabled(false);
+    rig.setLitGroup(std::string());
+    auto& blob = mBlobs[slotIndex(slot)];
+    blob.captureRigState(rig);
+    blob.mEnabled = true;
+    if (slot == mSelected) writeSelectedSettings();
+    else setSelectedSlot(slot);
+    touchSlot(slot);
+    mEnrolledAnchors[slotIndex(slot) - 1] = rig.getAnchor();
+    ++mConfigurationRevision;
+    persist();
+}
+
+void ALCineLightRigManager::removeBorrowedRig(Slot slot)
+{
+    if (!validSlot(slot) || slot == SLOT_SELF || at(slot).getAnchor().isNull()) return;
+    ALKitHistory::ScopedSuspend suspend;
+    ++mHistoryEpoch[slotIndex(slot)];
+    mBlobs[slotIndex(mSelected)] = captureSelected();
+    at(slot).setAnchor(LLUUID::null);
+    at(slot).setObjectTarget(LLUUID::null);
+    at(slot).setGroupEnabled(false);
+    at(slot).setLitGroup(std::string());
+    auto& blob = mBlobs[slotIndex(slot)];
+    blob.captureRigState(at(slot));
+    blob.mEnabled = false;
+    shutdownSlot(slotIndex(slot));
+    mEnrolledAnchors[slotIndex(slot) - 1].setNull();
+    if (slot == mSelected) writeSelectedSettings();
+    ++mConfigurationRevision;
+    persist();
+}
+
+std::shared_ptr<const LLUUID> ALCineLightRigManager::retainBorrowActor(const LLUUID& actor)
+{
+    for (auto it = mBorrowPicks.begin(); it != mBorrowPicks.end();)
+        if (it->second.expired()) it = mBorrowPicks.erase(it);
+        else ++it;
+    auto& weak = mBorrowPicks[actor];
+    auto pick = weak.lock();
+    if (!pick) weak = pick = std::make_shared<const LLUUID>(actor);
+    return pick;
+}
+
+void ALCineLightRigManager::refreshBorrowAnchors()
+{
+    const U64 revision = LLDirectorCast::instance().getCastRevision();
+    if (!mBorrowAnchorsDirty && mBorrowCastRevision == revision) return;
+    mBorrowCastRevision = revision;
+    mBorrowAnchorsDirty = false;
+    pruneRemovedAnchors();
+}
+
+void ALCineLightRigManager::pruneRemovedAnchors()
+{
+    const auto& cast = LLDirectorCast::instance();
+    for (S32 i = 1; i < SLOT_COUNT; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i);
+        const LLUUID anchor = at(slot).getAnchor();
+        // Only retire membership we have actually observed: incoming scenes can
+        // restore rig anchors before their Cast/clone identities are installed.
+        if (anchor.notNull() && cast.contains(anchor)) mEnrolledAnchors[i - 1] = anchor;
+        else if (anchor.notNull() && mEnrolledAnchors[i - 1] == anchor) removeBorrowedRig(slot);
+    }
+    // A current destination alone cannot keep every historical alias alive.
+    // Outstanding picks explicitly lease their source identity until dismissal.
+    const auto referenced = [this, &cast](const LLUUID& id)
+    {
+        if (id.isNull()) return false;
+        if (cast.contains(id)) return true;
+        for (S32 i = 0; i < SLOT_COUNT; ++i)
+        {
+            if (mBlobs[i].mAnchor == id || mInstances[i].getAnchor() == id ||
+                (i > 0 && mEnrolledAnchors[i - 1] == id)) return true;
+            const auto& members = mInstances[i].lastResolvedMembers();
+            const auto& stored = mInstances[i].lastResolvedStoredMembers();
+            if (std::find(members.begin(), members.end(), id) != members.end() ||
+                std::find(stored.begin(), stored.end(), id) != stored.end()) return true;
+        }
+        return false;
+    };
+    for (auto it = mBorrowPicks.begin(); it != mBorrowPicks.end();)
+        if (it->second.expired()) it = mBorrowPicks.erase(it);
+        else ++it;
+    for (auto it = mBorrowRekeys.begin(); it != mBorrowRekeys.end(); )
+        if (!referenced(it->first) && !mBorrowPicks.count(it->first)) it = mBorrowRekeys.erase(it);
+        else ++it;
 }
 
 F32 ALCineLightRigManager::liveProbeFade() const
@@ -783,6 +990,28 @@ ALCineLightRigManager::ParamBlob ALCineLightRigManager::captureSelected() const
 
 void ALCineLightRigManager::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
 {
+    ALKitHistory::ScopedSuspend suspend;
+    mBorrowAnchorsDirty = true;
+    if (old_id.notNull() && old_id != new_id)
+    {
+        // Parking/recovery can return to an earlier stable ID. Flatten aliases
+        // and make that ID current again rather than creating a redirect cycle.
+        for (auto& entry : mBorrowRekeys) if (entry.second == old_id) entry.second = new_id;
+        mBorrowRekeys.erase(new_id);
+        mBorrowRekeys[old_id] = new_id;
+        // Recipient snapshots belong to this identity transaction too: Share
+        // can open before the next rig tick, after unleased redirects are pruned.
+        const auto rewrite_members = [&](uuid_vec_t& members)
+        {
+            std::replace(members.begin(), members.end(), old_id, new_id);
+            members.erase(std::remove(members.begin(), members.end(), LLUUID::null), members.end());
+        };
+        for (auto& rig : mInstances)
+        {
+            rewrite_members(rig.mLastResolvedMembers);
+            rewrite_members(rig.mLastResolvedStoredMembers);
+        }
+    }
     mBlobs[slotIndex(mSelected)] = captureSelected();
     bool changed = false;
     for (S32 i = 0; i < SLOT_COUNT; ++i)
@@ -790,9 +1019,11 @@ void ALCineLightRigManager::rewriteActorReferences(const LLUUID& old_id, const L
         if (mBlobs[i].mAnchor != old_id && mInstances[i].getAnchor() != old_id) continue;
         mBlobs[i].mAnchor = new_id;
         mInstances[i].setAnchor(new_id);
+        if (i > 0 && mEnrolledAnchors[i - 1] == old_id) mEnrolledAnchors[i - 1] = new_id;
         // An explicit legacy anchor must not silently become the self rig.
         if (new_id.isNull())
         {
+            ++mHistoryEpoch[i];
             mBlobs[i].mEnabled = false;
             shutdownSlot(i);
         }
@@ -805,6 +1036,7 @@ void ALCineLightRigManager::rewriteActorReferences(const LLUUID& old_id, const L
         persist();
         ++mConfigurationRevision;
     }
+    refreshBorrowAnchors();
 }
 
 void ALCineLightRigManager::setSelectedSlot(Slot slot)
@@ -815,6 +1047,7 @@ void ALCineLightRigManager::setSelectedSlot(Slot slot)
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
     mSelected = slot;
+    touchSlot(slot);
     ++mConfigurationRevision;
     writeSelectedSettings();
     persist();
@@ -849,7 +1082,7 @@ void ALCineLightRigManager::onEnabledChanged(bool enabled)
 
 void ALCineLightRigManager::subjectRigOff(Slot slot)
 {
-    if (!validSlot(slot) || slot == SLOT_SELF) return;
+    if (!validSlot(slot) || slot == SLOT_SELF || at(slot).getAnchor().notNull()) return;
     mBlobs[slotIndex(mSelected)] = captureSelected();
     mRigSession.setEnabled(mBlobs, slot, false,
         [this](S32 index) { shutdownSlot(index); });
@@ -899,9 +1132,7 @@ void ALCineLightRigManager::restoreEnabledMask(U32 mask, Slot selected, bool gro
 void ALCineLightRigManager::logSelectedTarget()
 {
     const ALCineLightRig& rig = selected();
-    const LLUUID subject = mSelected == SLOT_SELF
-        ? (rig.getAnchor().notNull() ? rig.getAnchor() : gAgentID)
-        : legacyAnchorForSlot(mSelected);
+    const LLUUID subject = slotActor(mSelected);
     const LLVOAvatar* avatar = rig.resolveSlotAvatar();
     const LLUUID resolved = avatar ? avatar->getID() : LLUUID::null;
     const LLUUID object = rig.getObjectTarget();
@@ -1356,11 +1587,11 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
             {
                 LLDirectorCast& cast = LLDirectorCast::instance();
                 const U32 slots = rig.lastResolvedGroupSlots();
-                if (slots & ALCineLightRig::GROUP_SLOT_SELF) add(cast.resolve(LLUUID::null, false));
-                if (slots & ALCineLightRig::GROUP_SLOT_A) add((cast.getSubjectA().notNull() ? cast.resolve(cast.getSubjectA(), false) : nullptr));
-                if (slots & ALCineLightRig::GROUP_SLOT_B) add((cast.getSubjectB().notNull() ? cast.resolve(cast.getSubjectB(), false) : nullptr));
-                if (slots & ALCineLightRig::GROUP_SLOT_C) add((cast.getSubjectC().notNull() ? cast.resolve(cast.getSubjectC(), false) : nullptr));
-                if (slots & ALCineLightRig::GROUP_SLOT_D) add((cast.getSubjectD().notNull() ? cast.resolve(cast.getSubjectD(), false) : nullptr));
+                for (S32 i = 0; i < SLOT_COUNT; ++i)
+                {
+                    const LLUUID actor = groupSlotActor(static_cast<Slot>(i));
+                    if ((slots & (1u << i)) && actor.notNull()) add(cast.resolve(actor, false));
+                }
             }
             else
             {
@@ -1491,6 +1722,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
         mNeedsSessionRestore = false;
     }
     mBlobs[slotIndex(mSelected)] = captureSelected();
+    refreshBorrowAnchors();
     logSelectedTarget();
     updateAutoShadowSlots();
     updateRandomCycle(presentation_time);
@@ -2002,6 +2234,14 @@ bool ALCineLightRigManager::restore(const LLSD& data, bool scene_load)
     }
     mFocusState.mChallenger = mFocusState.mFocus;
     mFocusState.mChallengeTicks = 0;
+    if (scene_load)
+    {
+        mBorrowRekeys.clear();
+        mBorrowPicks.clear();
+        mBorrowAnchorsDirty = true;
+        mEnrolledAnchors = {};
+        pruneRemovedAnchors();
+    }
     return true;
 }
 
@@ -2050,6 +2290,9 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
     if (!data.isMap() || !data.has("version") ||
         (data["version"].isInteger() && data["version"].asInteger() == 1))
     {
+        mBorrowRekeys.clear();
+        mBorrowPicks.clear();
+        mBorrowAnchorsDirty = true;
         for (auto& entry : mMirrors) entry.second->shutdown();
         mMirrors.clear();
         for (auto& inst : ALGhostStudio::instance().getInstances())

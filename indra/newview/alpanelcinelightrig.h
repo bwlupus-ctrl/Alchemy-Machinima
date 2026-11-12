@@ -17,6 +17,8 @@
 #include "lluuid.h"
 
 #include <array>
+#include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -38,7 +40,13 @@ public:
     ~ALPanelCineLightRig() override;
 
     // Existing model data only; shared by the editing menu and its activity hint.
-    static std::string rigTargetDescription(S32 slot);
+    std::string rigTargetDescription(S32 slot, const char* area = "anchors");
+    std::string rigLabel(S32 slot, const char* area = "anchors");
+    static std::string rigLabelBase(S32 slot);
+    std::string rigActorName(const LLUUID& id, const char* area);
+    void clearRigLabels(const char* area);
+    void clearPendingBorrowPick() { mPendingBorrowPick.reset(); mPendingBorrowLabelValid = false; }
+    bool selectActorRig(const LLUUID& id);
 
     bool postBuild() override;
     void draw() override;
@@ -71,7 +79,7 @@ private:
     static const std::vector<std::string>& settings();
 
     void populateStaticCombos();
-    void updateAnchorList();
+    void updateAnchorList(bool refresh_who = true);
     void syncAnchorSelection();
     void syncObjectTargetControls(bool force = false);
     void syncGroupControls();
@@ -120,7 +128,14 @@ private:
     void onAnchorSelected();
     void onRigGroupAction(S32 action);
     void showRigGroupMenu(LLUICtrl* anchor, bool add_only);
-    void addAvatarToRigGroup(const LLUUID& id, S32 subject_slot = -1);
+    bool addAvatarToRigGroup(const LLUUID& id);
+    void showBorrowMenu(const LLUUID& id, bool remove = false);
+    void finishRigAction(S32 slot, bool follow = false);
+    void refreshRigPrivacy();
+    void shareRig(const LLUUID& id, S32 slot);
+    void ensureRigActorInCast(const LLUUID& id);
+    void showRigNotice(const std::string& message);
+    void refreshRigNotices(bool cancel_names = false);
     void onTargetObject();
     void onClearObjectTarget();
     void onGroupEnabledCommit();
@@ -154,6 +169,7 @@ private:
 
     LLComboBox* mAnchorCombo = nullptr;
     LLButton* mAllRigsOff = nullptr;
+    LLButton* mRemoveBorrowedRig = nullptr;
     LLTextBox* mRigGroupStatus = nullptr;
     ALKitPage* mRigKitPage = nullptr;
     LLHandle<LLContextMenu> mRigGroupMenu;
@@ -191,6 +207,21 @@ private:
     LLUICtrl* mEasyNightMaskDarkness = nullptr; // [NightMaskPercent]
     boost::signals2::scoped_connection mNightMaskDarknessConnection; // [NightMaskPercent]
     boost::signals2::scoped_connection mEasyModeConnection;
+    // Each rebuilt surface replaces its own labels; unchanged combo snapshots
+    // and open menus retain theirs. Poll only identities actually rendered.
+    std::map<std::string, std::map<LLUUID, bool>> mRigDisplayedLabels;
+    std::string pendingBorrowLabel(const LLUUID& id);
+    std::shared_ptr<const LLUUID> mPendingBorrowPick;
+    LLUUID mPendingBorrowLabelActor;
+    std::string mPendingBorrowLabel, mPendingBorrowLabelNearbyName;
+    U64 mPendingBorrowLabelRevision = 0;
+    S32 mPendingBorrowLabelSlot = -1;
+    bool mPendingBorrowLabelValid = false, mPendingBorrowLabelVisible = false, mPendingBorrowLabelNearby = false;
+    bool mRigNearbyAllowed = true;
+    std::vector<LLUUID> mRigNotices;
+    ALLiveReadoutClock mRigPrivacyClock{1.f};
+    ALLiveReadoutClock mRigNoticeClock{1.f};
+    bool mRigNoticeTimerRunning = false;
     LLTextBox* mNightMaskStatus = nullptr;
     LLComboBox* mSubjectTargetCombos[3] = {};
     std::array<boost::signals2::scoped_connection, 3> mSubjectTargetConnections;

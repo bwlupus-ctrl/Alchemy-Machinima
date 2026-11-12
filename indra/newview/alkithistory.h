@@ -39,6 +39,8 @@ public:
         std::function<bool(bool, std::string&)> replay;
         std::function<bool(bool, std::string&)> validate;
         std::function<void(const LLUUID&, const LLUUID&)> rewrite_actor;
+        std::string                             binding_page;
+        std::string                             context;
     };
     struct Step
     {
@@ -48,6 +50,9 @@ public:
         U64                      sequence = 0;
         std::vector<Entry>       entries;
         std::vector<CustomEntry> custom;
+        LLHandle<LLView>         custom_source;
+        bool                     custom_source_resolved = false;
+        std::string              custom_binding_page;
     };
     static constexpr size_t MAX_STEPS = 200;
 
@@ -94,7 +99,8 @@ public:
     U64         revision() const { return mRevision; }
     // Owned page histories also interrupt custom-entry coalescing.
     void        noteOwnedEdit() { ++mRevision; }
-    void        registerContext(const std::string&, std::function<std::string(const std::string&)>);
+    // Custom entries keep legacy replay semantics unless their source page opts in.
+    void        registerContext(const std::string&, std::function<std::string(const std::string&)>, bool custom_entries = false);
     using WidgetValidator = std::function<bool(const std::string&, const LLSD&, std::string&)>;
     void registerWidgetValidator(const std::string& page, WidgetValidator validate)
         { mWidgetValidators[page] = std::move(validate); }
@@ -140,5 +146,6 @@ private:
     std::unordered_map<std::string, std::set<std::string>>                          mSettingPages;
     std::unordered_map<std::string, std::function<std::string(const std::string&)>>  mContexts;
     std::unordered_map<std::string, WidgetValidator> mWidgetValidators;
+    std::set<std::string> mCustomContextPages;
 };
 #endif
