@@ -57,6 +57,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alfloaterultimatediopter.cpp`
 - `indra/newview/alfloaterultimatediopter.h`
 - `indra/newview/algazeblink.h`
+- `indra/newview/algazehotslots.h`
 - `indra/newview/algazemotor.h`
 - `indra/newview/algazenearby.h`
 - `indra/newview/algazepolicy.h`
@@ -373,9 +374,9 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/lltooldraganddrop.cpp", "hunks": ["indra/newview/lltooldraganddrop.cpp@2374,167"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@909,14", "indra/newview/llviewerdisplay.cpp@1886,34"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@115,17", "indra/newview/llviewerfloaterreg.cpp@375,11", "indra/newview/llviewerfloaterreg.cpp@538,266"]}
-- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@37,18", "indra/newview/llviewerinput.cpp@506,115", "indra/newview/llviewerinput.cpp@1222,28", "indra/newview/llviewerinput.cpp@1656,84", "indra/newview/llviewerinput.cpp@1937,19"]}
-- {"path": "indra/newview/llviewerinput.h", "hunks": ["indra/newview/llviewerinput.h@131,30"]}
-- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,24", "indra/newview/llviewerjoystick.cpp@1502,43", "indra/newview/llviewerjoystick.cpp@1887,2171", "indra/newview/llviewerjoystick.cpp@4332,242"]}
+- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@37,18", "indra/newview/llviewerinput.cpp@506,119", "indra/newview/llviewerinput.cpp@1226,28", "indra/newview/llviewerinput.cpp@1660,84", "indra/newview/llviewerinput.cpp@1941,19"]}
+- {"path": "indra/newview/llviewerinput.h", "hunks": ["indra/newview/llviewerinput.h@134,30"]}
+- {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,24", "indra/newview/llviewerjoystick.cpp@1502,43", "indra/newview/llviewerjoystick.cpp@1887,2171", "indra/newview/llviewerjoystick.cpp@4332,243"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@10942,40"]}
 - {"path": "indra/newview/llviewertexture.cpp", "hunks": ["indra/newview/llviewertexture.cpp@63,11", "indra/newview/llviewertexture.cpp@493,629"]}
 - {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@118,22"]}
@@ -835,6 +836,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 374, "text": "alfloaterultimatediopter.cpp", "source": "indra/newview/alfloaterultimatediopter.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1331, "text": "alfloaterultimatediopter.h", "source": "indra/newview/alfloaterultimatediopter.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1456, "text": "algazeblink.h", "source": "indra/newview/algazeblink.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1460, "text": "algazehotslots.h", "source": "indra/newview/algazehotslots.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1463, "text": "algazemotor.h", "source": "indra/newview/algazemotor.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1461, "text": "algazenearby.h", "source": "indra/newview/algazenearby.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1458, "text": "algazepolicy.h", "source": "indra/newview/algazepolicy.h"}

@@ -110,6 +110,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alpanelghoststudio.cpp`
 - `indra/newview/alpanelghoststudio.h`
 - `indra/newview/alpanellensgaze.cpp`
+- `indra/newview/alpanellensgaze.h`
 - `indra/newview/alpanellightcues.cpp`
 - `indra/newview/alpanelpatheditor.cpp`
 - `indra/newview/alpanelpropmover.h`
@@ -225,7 +226,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/lltooldraganddrop.cpp", "hunks": ["indra/newview/lltooldraganddrop.cpp@26,16", "indra/newview/lltooldraganddrop.cpp@199,8", "indra/newview/lltooldraganddrop.cpp@208,7", "indra/newview/lltooldraganddrop.cpp@238,14", "indra/newview/lltooldraganddrop.cpp@769,82", "indra/newview/lltooldraganddrop.cpp@2374,167"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@25,27", "indra/newview/llviewerdisplay.cpp@909,14", "indra/newview/llviewerdisplay.cpp@997,17", "indra/newview/llviewerdisplay.cpp@1122,36", "indra/newview/llviewerdisplay.cpp@1173,16", "indra/newview/llviewerdisplay.cpp@1191,82", "indra/newview/llviewerdisplay.cpp@1886,34", "indra/newview/llviewerdisplay.cpp@2083,28"]}
 - {"path": "indra/newview/llviewerfloaterreg.cpp", "hunks": ["indra/newview/llviewerfloaterreg.cpp@538,266"]}
-- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@37,18", "indra/newview/llviewerinput.cpp@506,115"]}
+- {"path": "indra/newview/llviewerinput.cpp", "hunks": ["indra/newview/llviewerinput.cpp@37,18", "indra/newview/llviewerinput.cpp@506,119"]}
 - {"path": "indra/newview/llviewerjoystick.cpp", "hunks": ["indra/newview/llviewerjoystick.cpp@27,24", "indra/newview/llviewerjoystick.cpp@1887,2171"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@46,12", "indra/newview/llviewermenu.cpp@552,8", "indra/newview/llviewermenu.cpp@3054,8"]}
 - {"path": "indra/newview/llviewerwindow.cpp", "hunks": ["indra/newview/llviewerwindow.cpp@24,23", "indra/newview/llviewerwindow.cpp@182,8", "indra/newview/llviewerwindow.cpp@1440,19", "indra/newview/llviewerwindow.cpp@1475,14", "indra/newview/llviewerwindow.cpp@1587,27", "indra/newview/llviewerwindow.cpp@2059,7", "indra/newview/llviewerwindow.cpp@2195,11", "indra/newview/llviewerwindow.cpp@3843,36", "indra/newview/llviewerwindow.cpp@4070,19"]}
@@ -625,6 +626,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 407, "text": "alpanelghoststudio.cpp", "source": "indra/newview/alpanelghoststudio.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1394, "text": "alpanelghoststudio.h", "source": "indra/newview/alpanelghoststudio.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 444, "text": "alpanellensgaze.cpp", "source": "indra/newview/alpanellensgaze.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1464, "text": "alpanellensgaze.h", "source": "indra/newview/alpanellensgaze.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 436, "text": "alpanellightcues.cpp", "source": "indra/newview/alpanellightcues.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 451, "text": "alpanelpatheditor.cpp", "source": "indra/newview/alpanelpatheditor.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1397, "text": "alpanelpropmover.h", "source": "indra/newview/alpanelpropmover.h"}

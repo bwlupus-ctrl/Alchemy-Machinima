@@ -211,6 +211,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1460,
+        "source": "indra/newview/algazehotslots.h",
+        "text": "algazehotslots.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1390,
         "source": "indra/newview/alghostcloneactions.h",
         "text": "alghostcloneactions.h"
@@ -652,14 +658,14 @@
       {
         "hunks": [
           "indra/newview/llviewerinput.cpp@37,18",
-          "indra/newview/llviewerinput.cpp@506,115"
+          "indra/newview/llviewerinput.cpp@506,119"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
       {
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
-          "indra/newview/llviewerjoystick.cpp@4332,242"
+          "indra/newview/llviewerjoystick.cpp@4332,243"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -734,6 +740,7 @@
       "indra/newview/aldirectortagtargets.h",
       "indra/newview/alfloatergazecues.cpp",
       "indra/newview/alfloatergazecues.h",
+      "indra/newview/algazehotslots.h",
       "indra/newview/alghostcloneactions.h",
       "indra/newview/alghostclonemenu.cpp",
       "indra/newview/alghostclonemenulogic.h",
@@ -2179,6 +2186,16 @@
           "indra/newview/lldirectorcast.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/algazehotslots.h": {
+        "includes": [
+          "indra/llmath/llsdutil_math.h",
+          "indra/newview/llactormover.h"
+        ],
+        "qualified_call_candidates": [
+          "LLSD::emptyArray"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/alghostcloneactions.h": {
@@ -4012,6 +4029,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -4046,6 +4064,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -4063,9 +4085,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -4122,21 +4146,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -5158,6 +5186,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -14581,6 +14610,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -14615,6 +14645,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -14632,9 +14666,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -14691,21 +14727,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -15879,6 +15919,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -23998,7 +24039,7 @@
           "indra/newview/llviewerjoystick.cpp@4250,7",
           "indra/newview/llviewerjoystick.cpp@4260,7",
           "indra/newview/llviewerjoystick.cpp@4270,23",
-          "indra/newview/llviewerjoystick.cpp@4332,242"
+          "indra/newview/llviewerjoystick.cpp@4332,243"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -26041,6 +26082,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -26075,6 +26117,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -26092,9 +26138,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -26151,21 +26199,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -27065,6 +27117,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -38372,6 +38425,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -46462,6 +46516,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1464,
+        "source": "indra/newview/alpanellensgaze.h",
+        "text": "alpanellensgaze.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 436,
         "source": "indra/newview/alpanellightcues.cpp",
         "text": "alpanellightcues.cpp"
@@ -47619,7 +47679,7 @@
       {
         "hunks": [
           "indra/newview/llviewerinput.cpp@37,18",
-          "indra/newview/llviewerinput.cpp@506,115"
+          "indra/newview/llviewerinput.cpp@506,119"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -48396,6 +48456,7 @@
       "indra/newview/alpanelghoststudio.cpp",
       "indra/newview/alpanelghoststudio.h",
       "indra/newview/alpanellensgaze.cpp",
+      "indra/newview/alpanellensgaze.h",
       "indra/newview/alpanellightcues.cpp",
       "indra/newview/alpanelpatheditor.cpp",
       "indra/newview/alpanelpropmover.h",
@@ -54523,6 +54584,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -54557,6 +54619,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -54574,9 +54640,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -54633,21 +54701,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -54663,6 +54735,16 @@
           "LLToolMgr::instanceExists",
           "LLViewerCamera::getInstance"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alpanellensgaze.h": {
+        "includes": [
+          "indra/llcommon/lluuid.h",
+          "indra/llui/llpanel.h",
+          "indra/newview/algazenearby.h",
+          "indra/newview/aluirefresh.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/alpanellightcues.cpp": {
@@ -56402,6 +56484,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -75471,6 +75554,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -79007,10 +79091,10 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@1025,27",
-          "indra/newview/llviewerinput.cpp@1222,28",
-          "indra/newview/llviewerinput.cpp@1656,84",
-          "indra/newview/llviewerinput.cpp@1809,14"
+          "indra/newview/llviewerinput.cpp@1029,27",
+          "indra/newview/llviewerinput.cpp@1226,28",
+          "indra/newview/llviewerinput.cpp@1660,84",
+          "indra/newview/llviewerinput.cpp@1813,14"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -80397,6 +80481,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -80431,6 +80516,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -80448,9 +80537,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -80507,21 +80598,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -81117,6 +81212,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -89683,6 +89779,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -91886,6 +91983,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1460,
+        "source": "indra/newview/algazehotslots.h",
+        "text": "algazehotslots.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1463,
         "source": "indra/newview/algazemotor.h",
         "text": "algazemotor.h"
@@ -93494,16 +93597,16 @@
       {
         "hunks": [
           "indra/newview/llviewerinput.cpp@37,18",
-          "indra/newview/llviewerinput.cpp@506,115",
-          "indra/newview/llviewerinput.cpp@1222,28",
-          "indra/newview/llviewerinput.cpp@1656,84",
-          "indra/newview/llviewerinput.cpp@1937,19"
+          "indra/newview/llviewerinput.cpp@506,119",
+          "indra/newview/llviewerinput.cpp@1226,28",
+          "indra/newview/llviewerinput.cpp@1660,84",
+          "indra/newview/llviewerinput.cpp@1941,19"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.h@131,30"
+          "indra/newview/llviewerinput.h@134,30"
         ],
         "path": "indra/newview/llviewerinput.h"
       },
@@ -93512,7 +93615,7 @@
           "indra/newview/llviewerjoystick.cpp@27,24",
           "indra/newview/llviewerjoystick.cpp@1502,43",
           "indra/newview/llviewerjoystick.cpp@1887,2171",
-          "indra/newview/llviewerjoystick.cpp@4332,242"
+          "indra/newview/llviewerjoystick.cpp@4332,243"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -93808,6 +93911,7 @@
       "indra/newview/alfloaterultimatediopter.cpp",
       "indra/newview/alfloaterultimatediopter.h",
       "indra/newview/algazeblink.h",
+      "indra/newview/algazehotslots.h",
       "indra/newview/algazemotor.h",
       "indra/newview/algazenearby.h",
       "indra/newview/algazepolicy.h",
@@ -96300,6 +96404,16 @@
           "indra/llmath/llmath.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/algazehotslots.h": {
+        "includes": [
+          "indra/llmath/llsdutil_math.h",
+          "indra/newview/llactormover.h"
+        ],
+        "qualified_call_candidates": [
+          "LLSD::emptyArray"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/algazemotor.h": {
@@ -99581,6 +99695,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -99615,6 +99730,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -99632,9 +99751,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -99691,21 +99812,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -101607,6 +101732,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -116221,6 +116347,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 727,
+        "source": "indra/newview/llkeyconflict.cpp",
+        "text": "llkeyconflict.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 424,
         "source": "indra/newview/llpresentationtime.cpp",
         "text": "llpresentationtime.cpp"
@@ -116248,6 +116380,12 @@
         "line": 1046,
         "source": "indra/newview/llviewerinput.cpp",
         "text": "llviewerinput.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 2064,
+        "source": "indra/newview/llviewerinput.h",
+        "text": "llviewerinput.h"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -116368,20 +116506,26 @@
       {
         "hunks": [
           "indra/newview/llviewerinput.cpp@37,18",
-          "indra/newview/llviewerinput.cpp@506,115",
-          "indra/newview/llviewerinput.cpp@1222,28",
-          "indra/newview/llviewerinput.cpp@1387,19",
-          "indra/newview/llviewerinput.cpp@1656,84",
-          "indra/newview/llviewerinput.cpp@1937,19",
-          "indra/newview/llviewerinput.cpp@1980,13"
+          "indra/newview/llviewerinput.cpp@506,119",
+          "indra/newview/llviewerinput.cpp@1226,28",
+          "indra/newview/llviewerinput.cpp@1391,19",
+          "indra/newview/llviewerinput.cpp@1660,84",
+          "indra/newview/llviewerinput.cpp@1941,19",
+          "indra/newview/llviewerinput.cpp@1984,13"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
       {
         "hunks": [
+          "indra/newview/llviewerinput.h@29,9"
+        ],
+        "path": "indra/newview/llviewerinput.h"
+      },
+      {
+        "hunks": [
           "indra/newview/llviewerjoystick.cpp@1502,43",
           "indra/newview/llviewerjoystick.cpp@1887,2171",
-          "indra/newview/llviewerjoystick.cpp@4332,242"
+          "indra/newview/llviewerjoystick.cpp@4332,243"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -118580,6 +118724,7 @@
       },
       "indra/newview/alpanellensgaze.cpp": {
         "includes": [
+          "indra/llcommon/llapp.h",
           "indra/llcommon/llcallbacklist.h",
           "indra/llmessage/llavatarnamecache.h",
           "indra/llui/llbutton.h",
@@ -118614,6 +118759,10 @@
         ],
         "qualified_call_candidates": [
           "ALAvatarSubjectPicker::valid",
+          "ALGazeHot::loadGeneration",
+          "ALGazeHot::manualMode",
+          "ALGazeHot::manualRevision",
+          "ALGazeHot::noteManual",
           "ALGazeMath::AnatomicalLimitProfile",
           "ALGazeMath::castSeedFromUUID",
           "ALGazeMath::unitHash",
@@ -118631,9 +118780,11 @@
           "ALPanelLensGaze::appendHotNearbyChoices",
           "ALPanelLensGaze::appliedGroup",
           "ALPanelLensGaze::buildHotControls",
+          "ALPanelLensGaze::buildQuickControls",
           "ALPanelLensGaze::castNamesRevoked",
           "ALPanelLensGaze::commitActors",
           "ALPanelLensGaze::commitHotControls",
+          "ALPanelLensGaze::commitQuickControl",
           "ALPanelLensGaze::displayActor",
           "ALPanelLensGaze::draw",
           "ALPanelLensGaze::editActors",
@@ -118690,21 +118841,25 @@
           "ALPanelLensGaze::onVisibilityChange",
           "ALPanelLensGaze::pollNearby",
           "ALPanelLensGaze::postBuild",
+          "ALPanelLensGaze::quickActor",
           "ALPanelLensGaze::refreshApplyGroupCombo",
           "ALPanelLensGaze::refreshCastCombo",
           "ALPanelLensGaze::refreshControls",
           "ALPanelLensGaze::refreshEditActorCombo",
           "ALPanelLensGaze::refreshHotControls",
           "ALPanelLensGaze::refreshLiveControls",
+          "ALPanelLensGaze::refreshQuickControls",
           "ALPanelLensGaze::restoreApplyGroup",
           "ALPanelLensGaze::rewriteActorReferences",
           "ALPanelLensGaze::selectedApplyGroup",
           "ALPanelLensGaze::setSelectedActors",
+          "ALPanelLensGaze::showQuickNotice",
           "ALPanelLensGaze::slotActor",
           "LLActorMover::GazeTarget",
           "LLActorMover::hotGazeJointPosition",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
+          "LLApp::isExiting",
           "LLAvatarNameCache::get",
           "LLDirectorCast::evaluateGazeInfluence",
           "LLDirectorCast::instance",
@@ -119212,6 +119367,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -121631,6 +121787,59 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llkeyconflict.cpp": {
+        "includes": [
+          "indra/llcommon/llinitparam.h",
+          "indra/llui/lltrans.h",
+          "indra/llui/llxuiparser.h",
+          "indra/llwindow/llkeyboard.h",
+          "indra/newview/llkeyconflict.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerinput.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerprecompiledheaders.h"
+        ],
+        "qualified_call_candidates": [
+          "LLFile::fopen",
+          "LLFile::remove",
+          "LLKeyConflictHandler::LLKeyConflictHandler",
+          "LLKeyConflictHandler::canAssignControl",
+          "LLKeyConflictHandler::canHandleControl",
+          "LLKeyConflictHandler::canHandleKey",
+          "LLKeyConflictHandler::canHandleMouse",
+          "LLKeyConflictHandler::clear",
+          "LLKeyConflictHandler::clearControl",
+          "LLKeyConflictHandler::clearTemporaryFile",
+          "LLKeyConflictHandler::clearUnsavedChanges",
+          "LLKeyConflictHandler::generatePlaceholders",
+          "LLKeyConflictHandler::getControl",
+          "LLKeyConflictHandler::getControlString",
+          "LLKeyConflictHandler::getDefaultControl",
+          "LLKeyConflictHandler::getStringFromKeyData",
+          "LLKeyConflictHandler::isControlEmpty",
+          "LLKeyConflictHandler::isReservedByMenu",
+          "LLKeyConflictHandler::loadFromControlSettings",
+          "LLKeyConflictHandler::loadFromSettings",
+          "LLKeyConflictHandler::registerControl",
+          "LLKeyConflictHandler::registerTemporaryControl",
+          "LLKeyConflictHandler::removeConflicts",
+          "LLKeyConflictHandler::resetKeyboardBindings",
+          "LLKeyConflictHandler::resetToDefault",
+          "LLKeyConflictHandler::resetToDefaultAndResolve",
+          "LLKeyConflictHandler::resetToDefaults",
+          "LLKeyConflictHandler::resetToDefaultsAndResolve",
+          "LLKeyConflictHandler::saveToSettings",
+          "LLKeyboard::keyFromString",
+          "LLKeyboard::maskFromString",
+          "LLKeyboard::stringFromAccelerator",
+          "LLKeyboard::stringFromKey",
+          "LLKeyboard::stringFromMouse",
+          "LLViewerInput::loadKeysXML",
+          "LLViewerInput::mouseFromString",
+          "LLXMLNode::writeHeaderToFile"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llpresentationtime.cpp": {
         "includes": [
           "indra/llcharacter/llmotioncontroller.h",
@@ -122358,6 +122567,16 @@
           "LLViewerMedia::getInstance",
           "LLVoiceClient::getInstance",
           "LLXMLNode::writeHeaderToFile"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llviewerinput.h": {
+        "includes": [
+          "indra/llwindow/llkeyboard.h"
+        ],
+        "qualified_call_candidates": [
+          "LLSyntheticInputScope::active",
+          "LLViewerInput::dropsNativeInput"
         ],
         "unresolved_includes": []
       },
@@ -124557,7 +124776,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@506,115"
+          "indra/newview/llviewerinput.cpp@506,119"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -124565,7 +124784,7 @@
         "hunks": [
           "indra/newview/llviewerjoystick.cpp@27,24",
           "indra/newview/llviewerjoystick.cpp@905,169",
-          "indra/newview/llviewerjoystick.cpp@4332,242"
+          "indra/newview/llviewerjoystick.cpp@4332,243"
         ],
         "path": "indra/newview/llviewerjoystick.cpp"
       },
@@ -130516,6 +130735,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -140574,8 +140794,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerinput.cpp@506,115",
-          "indra/newview/llviewerinput.cpp@1222,28"
+          "indra/newview/llviewerinput.cpp@506,119",
+          "indra/newview/llviewerinput.cpp@1226,28"
         ],
         "path": "indra/newview/llviewerinput.cpp"
       },
@@ -162815,6 +163035,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -188587,6 +188808,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -203833,6 +204055,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
@@ -216493,6 +216716,7 @@
           "LLActorMover::hotGazeCopiesJoint",
           "LLActorMover::hotGazeInput",
           "LLActorMover::hotGazeJointPosition",
+          "LLActorMover::hotGazeSlotState",
           "LLActorMover::insertWaypoint",
           "LLActorMover::instance",
           "LLActorMover::instanceExists",
