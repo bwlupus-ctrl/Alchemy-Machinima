@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3415 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3419 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (182)
 
@@ -880,14 +880,14 @@ All 3415 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llpreviewanim.cpp@204,9`
 - `indra/newview/llpreviewanim.cpp@223,16`
 - `indra/newview/llselectmgr.cpp@58,7`
-- `indra/newview/llselectmgr.cpp@130,10`
-- `indra/newview/llselectmgr.cpp@1288,14`
-- `indra/newview/llselectmgr.cpp@4929,7`
-- `indra/newview/llselectmgr.cpp@6193,7`
-- `indra/newview/llselectmgr.cpp@6207,7`
-- `indra/newview/llselectmgr.cpp@7239,10`
-- `indra/newview/llselectmgr.cpp@7305,10`
-- `indra/newview/llselectmgr.cpp@9381,3`
+- `indra/newview/llselectmgr.cpp@132,10`
+- `indra/newview/llselectmgr.cpp@1290,14`
+- `indra/newview/llselectmgr.cpp@4931,7`
+- `indra/newview/llselectmgr.cpp@6195,7`
+- `indra/newview/llselectmgr.cpp@6209,7`
+- `indra/newview/llselectmgr.cpp@7241,10`
+- `indra/newview/llselectmgr.cpp@7307,10`
+- `indra/newview/llselectmgr.cpp@9412,3`
 - `indra/newview/llviewermessage.cpp@45,7`
 - `indra/newview/llviewermessage.cpp@395,11`
 - `indra/newview/llviewermessage.cpp@4351,19`
@@ -2579,8 +2579,8 @@ All 3415 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llpreviewanim.cpp@27,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llselectmgr.cpp@29,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llselectmgr.cpp@58,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llselectmgr.cpp@106,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llselectmgr.cpp@9381,3`: unknown/non-function (bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas)
+- `indra/newview/llselectmgr.cpp@106,9`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llselectmgr.cpp@9412,3`: unknown/non-function (bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas)
 - `indra/newview/llsurfacepatch.cpp@32,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerjoystick.h@28,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewerjoystick.h@51,89`: unknown/non-function (typedef enum e_joystick_driver_state)

@@ -116,7 +116,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_graphics1.xml@383,19"]}
 - {"path": "indra/newview/llagentcamera.cpp", "hunks": ["indra/newview/llagentcamera.cpp@24,18", "indra/newview/llagentcamera.cpp@44,8", "indra/newview/llagentcamera.cpp@223,12", "indra/newview/llagentcamera.cpp@1295,32", "indra/newview/llagentcamera.cpp@1574,85", "indra/newview/llagentcamera.cpp@1777,97", "indra/newview/llagentcamera.cpp@2110,29"]}
 - {"path": "indra/newview/llagentcamera.h", "hunks": ["indra/newview/llagentcamera.h@127,15"]}
-- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@29,8", "indra/newview/llselectmgr.cpp@6617,7"]}
+- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@29,8", "indra/newview/llselectmgr.cpp@6619,7"]}
 - {"path": "indra/newview/llviewerjoystick.h", "hunks": ["indra/newview/llviewerjoystick.h@28,11", "indra/newview/llviewerjoystick.h@51,89", "indra/newview/llviewerjoystick.h@143,19", "indra/newview/llviewerjoystick.h@172,83", "indra/newview/llviewerjoystick.h@264,46"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_joystick.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_joystick.xml@1,787"]}
 - {"path": "indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml", "hunks": ["indra/newview/skins/default/xui/en/panel_preferences_move_mlook.xml@222,76"]}

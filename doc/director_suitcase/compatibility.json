@@ -912,7 +912,25 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alcinelightrigmanager.cpp",
+    "dependency": "indra/newview/alriggroupsubject.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alcinelightrigmanager.cpp",
     "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alcinelightrigmanager.cpp",
+    "dependency": "indra/newview/alkithistory.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -2542,6 +2560,24 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghostmanipproxy.cpp",
     "dependency": "indra/newview/altoolghostedit.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostmanipproxy.cpp",
+    "dependency": "indra/newview/alkithistory.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostmanipproxy.cpp",
+    "dependency": "indra/newview/alkitshell.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -4711,6 +4747,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelcinelightrig.cpp",
     "dependency": "indra/newview/alriggroupsubject.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelcinelightrig.cpp",
+    "dependency": "indra/newview/algazenearbyname.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -11254,6 +11299,24 @@
     "class": "OWNED",
     "consumer": "indra/newview/llselectmgr.cpp",
     "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llselectmgr.cpp",
+    "dependency": "indra/newview/alghostmanipproxy.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llselectmgr.cpp",
+    "dependency": "indra/newview/altoolghostedit.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"

@@ -114,6 +114,7 @@ None identified by local evidence; not a claim that none is needed.
 - `indra/newview/skins/default/xui/en/floater_director.xml`
 - `indra/newview/skins/default/xui/en/floater_director_v2.xml`
 - `indra/newview/skins/default/xui/en/menu_director_cast.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
 - `indra/newview/skins/default/xui/en/panel_lens_gaze.xml`
 
@@ -121,6 +122,7 @@ None identified by local evidence; not a claim that none is needed.
 
 - `indra/newview/skins/default/xui/en/director_kit_index.xml`
 - `indra/newview/skins/default/xui/en/floater_director_v2.xml`
+- `indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml`
 - `indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml`
 
 ## cmake entries

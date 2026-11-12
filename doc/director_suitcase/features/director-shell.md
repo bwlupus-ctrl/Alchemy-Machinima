@@ -67,6 +67,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/alghostclonemenu.cpp`
 - `indra/newview/alghostclonemenu.h`
 - `indra/newview/alghostclonemenulogic.h`
+- `indra/newview/alghostmanipproxy.cpp`
+- `indra/newview/alghostmanipproxy.h`
 - `indra/newview/alghostnameplates.cpp`
 - `indra/newview/alghostnameplates.h`
 - `indra/newview/alghostspawnengine.cpp`
@@ -846,6 +848,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"file": "indra/newview/CMakeLists.txt", "line": 405, "text": "alghostclonemenu.cpp # [CloneMenu] clone right-click menu", "source": "indra/newview/alghostclonemenu.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1391, "text": "alghostclonemenu.h", "source": "indra/newview/alghostclonemenu.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1392, "text": "alghostclonemenulogic.h", "source": "indra/newview/alghostclonemenulogic.h"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 390, "text": "alghostmanipproxy.cpp", "source": "indra/newview/alghostmanipproxy.cpp"}
+- {"file": "indra/newview/CMakeLists.txt", "line": 1356, "text": "alghostmanipproxy.h", "source": "indra/newview/alghostmanipproxy.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 392, "text": "alghostnameplates.cpp", "source": "indra/newview/alghostnameplates.cpp"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 1360, "text": "alghostnameplates.h", "source": "indra/newview/alghostnameplates.h"}
 - {"file": "indra/newview/CMakeLists.txt", "line": 345, "text": "alghostspawnengine.cpp", "source": "indra/newview/alghostspawnengine.cpp"}

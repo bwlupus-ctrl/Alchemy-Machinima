@@ -254,7 +254,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llagent.cpp", "hunks": ["indra/newview/llagent.cpp@3413,11", "indra/newview/llagent.cpp@3437,11"]}
 - {"path": "indra/newview/llagentcamera.cpp", "hunks": ["indra/newview/llagentcamera.cpp@63,7", "indra/newview/llagentcamera.cpp@2675,7", "indra/newview/llagentcamera.cpp@2738,7", "indra/newview/llagentcamera.cpp@2821,7", "indra/newview/llagentcamera.cpp@2883,7"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@1349,116"]}
-- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@106,7", "indra/newview/llselectmgr.cpp@141,68", "indra/newview/llselectmgr.cpp@266,13", "indra/newview/llselectmgr.cpp@4376,35", "indra/newview/llselectmgr.cpp@4559,28", "indra/newview/llselectmgr.cpp@4826,11"]}
+- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@106,9", "indra/newview/llselectmgr.cpp@143,68", "indra/newview/llselectmgr.cpp@268,13", "indra/newview/llselectmgr.cpp@4378,35", "indra/newview/llselectmgr.cpp@4561,28", "indra/newview/llselectmgr.cpp@4828,11", "indra/newview/llselectmgr.cpp@8128,24", "indra/newview/llselectmgr.cpp@8155,12", "indra/newview/llselectmgr.cpp@8171,10", "indra/newview/llselectmgr.cpp@8183,12"]}
 - {"path": "indra/newview/llviewerobject.cpp", "hunks": ["indra/newview/llviewerobject.cpp@25,13", "indra/newview/llviewerobject.cpp@79,7", "indra/newview/llviewerobject.cpp@124,27", "indra/newview/llviewerobject.cpp@241,12", "indra/newview/llviewerobject.cpp@462,10", "indra/newview/llviewerobject.cpp@1019,12", "indra/newview/llviewerobject.cpp@1053,11", "indra/newview/llviewerobject.cpp@2590,23", "indra/newview/llviewerobject.cpp@3009,10", "indra/newview/llviewerobject.cpp@4687,16", "indra/newview/llviewerobject.cpp@5226,211", "indra/newview/llviewerobject.cpp@5438,11", "indra/newview/llviewerobject.cpp@5499,14", "indra/newview/llviewerobject.cpp@5522,18", "indra/newview/llviewerobject.cpp@5598,7", "indra/newview/llviewerobject.cpp@5968,10", "indra/newview/llviewerobject.cpp@5989,10", "indra/newview/llviewerobject.cpp@6227,12", "indra/newview/llviewerobject.cpp@7905,20"]}
 - {"path": "indra/newview/llviewerpartsim.cpp", "hunks": ["indra/newview/llviewerpartsim.cpp@25,9", "indra/newview/llviewerpartsim.cpp@841,35"]}
 - {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@130,24", "indra/newview/llviewershadermgr.cpp@725,32", "indra/newview/llviewershadermgr.cpp@1774,259", "indra/newview/llviewershadermgr.cpp@4506,816", "indra/newview/llviewershadermgr.cpp@6440,8", "indra/newview/llviewershadermgr.cpp@6480,70", "indra/newview/llviewershadermgr.cpp@6570,118"]}
@@ -800,6 +800,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 
 ## checks
 
+- `scripts/code_tools/clone_edit_undo_check.py`
 - `scripts/code_tools/clone_fx_fix1_check.py`
 - `scripts/code_tools/clone_fx_fix2_check.py`
 - `scripts/code_tools/clone_fx_runtime_check.py`

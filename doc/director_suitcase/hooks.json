@@ -93996,6 +93996,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
+            {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
             },
@@ -94010,10 +94014,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94048,6 +94048,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
+            {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
             },
@@ -94062,10 +94066,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -94093,14 +94093,18 @@
           "git_context": "",
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
-          "head_count": 7,
-          "head_end": 112,
+          "head_count": 9,
+          "head_end": 114,
           "head_start": 106,
-          "id": "indra/newview/llselectmgr.cpp@106,7",
-          "patch": " #include \"llglheaders.h\"\n #include \"llinventoryobserver.h\"\n #include \"lllocalmesh.h\"\n+#include \"alghoststudio.h\"          // [GhostStudio] Delete routes to the selected ghost\n \n LLViewerObject* getSelectedParentObject(LLViewerObject *object) ;\n \n",
+          "id": "indra/newview/llselectmgr.cpp@106,9",
+          "patch": " #include \"llglheaders.h\"\n #include \"llinventoryobserver.h\"\n #include \"lllocalmesh.h\"\n+#include \"alghoststudio.h\"          // [GhostStudio] Delete routes to the selected ghost\n+#include \"alghostmanipproxy.h\"      // [CloneEditUndo]\n+#include \"altoolghostedit.h\"          // [CloneEditUndo]\n \n LLViewerObject* getSelectedParentObject(LLViewerObject *object) ;\n \n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94116,10 +94120,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94149,13 +94149,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 10,
-          "head_end": 139,
-          "head_start": 130,
-          "id": "indra/newview/llselectmgr.cpp@130,10",
+          "head_end": 141,
+          "head_start": 132,
+          "id": "indra/newview/llselectmgr.cpp@132,10",
           "patch": "     for (LLObjectSelection::iterator iter = selection->begin(); iter != selection->end(); ++iter)\n     {\n         LLViewerObject* obj = (*iter)->getObject();\n-        if (obj && !isLocalPreviewObject(obj))\n+        // A null node means the selection is NOT proven all-local -- fall back to a\n+        // normal simulator send rather than silently suppressing it (matches the\n+        // stricter selectionAllLocalMeshPreview()).\n+        if (!obj || !isLocalPreviewObject(obj))\n         {\n             return false;\n         }\n",
           "purpose": "Comment evidence: A null node means the selection is NOT proven all-local -- fall back to a normal simulator send rather than silently suppressing it (matches the stricter selectionAllLocalMeshPreview()).",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94171,10 +94175,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -94215,13 +94215,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 68,
-          "head_end": 208,
-          "head_start": 141,
-          "id": "indra/newview/llselectmgr.cpp@141,68",
+          "head_end": 210,
+          "head_start": 143,
+          "id": "indra/newview/llselectmgr.cpp@143,68",
           "patch": "     return true;\n }\n \n+// True only if the selection is non-empty and consists entirely of local MESH\n+// previews (LLLocalMeshMgr). Narrower than selectionAllLocalPreview(): a Ghost\n+// Studio manipulation proxy is client-only (isLocalOnly) but is NOT a mesh\n+// preview, so it must never be routed to the Local Mesh delete/duplicate/attach\n+// paths. Send-suppression keeps using the broader selectionAllLocalPreview().\n+static bool selectionAllLocalMeshPreview(LLObjectSelectionHandle selection)\n+{\n+    if (selection.isNull() || selection->getNumNodes() == 0)\n+    {\n+        return false;\n+    }\n+    for (LLObjectSelection::iterator iter = selection->begin(); iter != selection->end(); ++iter)\n+    {\n+        LLViewerObject* obj = (*iter)->getObject();\n+        if (!obj || !obj->isLocalMeshPreview())\n+        {\n+            return false;\n+        }\n+    }\n+    return true;\n+}\n+\n+// [GhostStudio] true if the selection contains the ghost manipulation proxy. The\n+// proxy is only an editing HANDLE, so Delete on it must remove the selected GHOST\n+// instance, not the proxy object -- and after the stock-tool handoff, the normal\n+// selection-delete path is the only place a Delete key still reaches.\n+static bool selectionHasGhostManipProxy(LLObjectSelectionHandle selection)\n+{\n+    if (selection.isNull())\n+    {\n+        return false;\n+    }\n+    for (LLObjectSelection::iterator iter = selection->begin(); iter != selection->end(); ++iter)\n+    {\n+        LLViewerObject* obj = (*iter)->getObject();\n+        if (obj && obj->isGhostManipProxy())\n+        {\n+            return true;\n+        }\n+    }\n+    return false;\n+}\n+\n // Populate a select node for a client-only preview the way the sim would via\n // processObjectProperties -- no such reply will ever arrive -- so the build\n // tools treat it as a valid, fully agent-owned, editable object.\n static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* objectp)\n {\n-    if (!nodep || !isLocalPreviewObject(objectp))\n+    if (!nodep || !isLocalPreviewObject(objectp) ||\n+        objectp->isCineRigEmitter() || objectp->isCineRigProbe() || objectp->isColorChart())\n     {\n         return;\n     }\n     nodep->mValid = true;\n     // Show the actual sub-mesh name/source instead of a generic placeholder.\n-    nodep->mName = \"(local mesh preview)\";\n+    nodep->mName = objectp->isGhostManipProxy() ? \"(ghost manipulation proxy)\"\n+                                                : \"(local mesh preview)\";\n     nodep->mDescription.clear();\n+    // Only a genuine Local Mesh preview may consult LLLocalMeshMgr. A Ghost Studio\n+    // manipulation proxy is isLocalOnly() but NOT a mesh preview, so it must never\n+    // touch that singleton/lookup (it keeps its \"(ghost manipulation proxy)\" name).\n+    if (objectp->isLocalMeshPreview())\n     {\n         std::string mesh_name, mesh_path;\n         if (LLLocalMeshMgr::getInstance()->getPreviewDisplay(objectp, mesh_name, mesh_path))\n",
           "purpose": "Comment evidence: True only if the selection is non-empty and consists entirely of local MESH previews (LLLocalMeshMgr). Narrower than selectionAllLocalPreview(): a Ghost Studio manipulation proxy is client-only (isLocalOnly) but is NOT a mesh preview, so it must never be routed to the Local Mesh ",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94237,10 +94241,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94271,13 +94271,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 13,
-          "head_end": 278,
-          "head_start": 266,
-          "id": "indra/newview/llselectmgr.cpp@266,13",
+          "head_end": 280,
+          "head_start": 268,
+          "id": "indra/newview/llselectmgr.cpp@268,13",
           "patch": " \n     for (LLPointer<LLViewerObject>& obj : objects)\n     {\n+        // Defence in depth: only actual mesh previews belong to LLLocalMeshMgr. The\n+        // dispatch already filters to all-mesh-preview selections, but a ghost manip\n+        // proxy (client-only, not a mesh preview) must never be despawned here.\n+        if (obj.isNull() || !obj->isLocalMeshPreview())\n+        {\n+            continue;\n+        }\n         // Derez the linkset (the in-world Delete key takes a local preview out of the\n         // world but keeps the loaded file in the Local Assets list). The first part of\n         // a linkset derezzes it; later parts no-op. Use the floater's Delete to unload.\n",
           "purpose": "Comment evidence: Defence in depth: only actual mesh previews belong to LLLocalMeshMgr. The dispatch already filters to all-mesh-preview selections, but a ghost manip proxy (client-only, not a mesh preview) must never be despawned here.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94293,10 +94297,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94325,13 +94325,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 14,
-          "head_end": 1301,
-          "head_start": 1288,
-          "id": "indra/newview/llselectmgr.cpp@1288,14",
+          "head_end": 1303,
+          "head_start": 1290,
+          "id": "indra/newview/llselectmgr.cpp@1290,14",
           "patch": " \n LLObjectSelectionHandle LLSelectMgr::setHoverObject(LLViewerObject *objectp, S32 face)\n {\n+    // Functional self-test (in-world): hovering must never request object properties from\n+    // the simulator (requestObjectPropertiesFamily below).\n+    if (gViewerInput.worldInputSuspended())\n+    {\n+        mHoverObjects->deleteAllNodes();\n+        return NULL;\n+    }\n+\n     if (!objectp)\n     {\n         mHoverObjects->deleteAllNodes();\n",
           "purpose": "Comment evidence: Functional self-test (in-world): hovering must never request object properties from the simulator (requestObjectPropertiesFamily below).",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94347,10 +94351,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -94387,13 +94387,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 35,
-          "head_end": 4410,
-          "head_start": 4376,
-          "id": "indra/newview/llselectmgr.cpp@4376,35",
+          "head_end": 4412,
+          "head_start": 4378,
+          "id": "indra/newview/llselectmgr.cpp@4378,35",
           "patch": "     }\n // [/RLVa:KB]\n \n-    // Client-only local mesh previews have no sim counterpart; delete them\n-    // locally instead of sending a DeRez the sim would ignore.\n-    if (selectionAllLocalPreview(mSelectedObjects))\n+    // [GhostStudio] Delete on the manip proxy removes the SELECTED GHOST instance\n+    // (the proxy is only an editing handle). After the stock-tool handoff, this\n+    // normal selection-delete path is the only place a Delete key still reaches.\n+    if (selectionHasGhostManipProxy(mSelectedObjects))\n+    {\n+        ALGhostStudio& studio = ALGhostStudio::instance();\n+        const LLUUID selected = studio.getSelected();\n+        const ALGhostGroupModel::Group* group =\n+            studio.groupForMember(selected);\n+        if (!group)\n+        {\n+            studio.requestRemoveInstance(selected);\n+        }\n+        else if (!group->mEditMembers)\n+        {\n+            studio.requestRemoveInstance(selected);\n+        }\n+        else if (selected == group->mId && !group->mMembers.empty())\n+        {\n+            studio.requestRemoveInstance(\n+                group->mMembers.front().mInstanceId);\n+        }\n+        return;\n+    }\n+\n+    // Local MESH previews have no sim counterpart; delete them locally instead of\n+    // sending a DeRez the sim would ignore. A ghost manip proxy is client-only but\n+    // not a mesh preview, so it never reaches deleteLocalPreviewSelection().\n+    if (selectionAllLocalMeshPreview(mSelectedObjects))\n     {\n         deleteLocalPreviewSelection();\n         return;\n",
           "purpose": "Comment evidence: Client-only local mesh previews have no sim counterpart; delete them locally instead of sending a DeRez the sim would ignore. [GhostStudio] Delete on the manip proxy removes the SELECTED GHOST instance (the proxy is only an editing handle). After the stock-tool handoff, this norm",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94409,10 +94413,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94449,13 +94449,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 28,
-          "head_end": 4586,
-          "head_start": 4559,
-          "id": "indra/newview/llselectmgr.cpp@4559,28",
+          "head_end": 4588,
+          "head_start": 4561,
+          "id": "indra/newview/llselectmgr.cpp@4561,28",
           "patch": " \n void LLSelectMgr::selectForceDelete()\n {\n-    if (selectionAllLocalPreview(mSelectedObjects))\n+    if (selectionHasGhostManipProxy(mSelectedObjects))\n+    {\n+        ALGhostStudio& studio = ALGhostStudio::instance();\n+        const LLUUID selected = studio.getSelected();\n+        const ALGhostGroupModel::Group* group =\n+            studio.groupForMember(selected);\n+        if (!group)\n+        {\n+            studio.requestRemoveInstance(selected);\n+        }\n+        else if (!group->mEditMembers)\n+        {\n+            studio.requestRemoveInstance(selected);\n+        }\n+        else if (selected == group->mId && !group->mMembers.empty())\n+        {\n+            studio.requestRemoveInstance(\n+                group->mMembers.front().mInstanceId);\n+        }\n+        return;\n+    }\n+    if (selectionAllLocalMeshPreview(mSelectedObjects))\n     {\n         deleteLocalPreviewSelection();\n         return;\n",
           "purpose": "Edits ALGhostStudio, LLUUID, ALGhostGroupModel",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94471,10 +94475,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94503,13 +94503,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 4810,
-          "head_start": 4803,
-          "id": "indra/newview/llselectmgr.cpp@4803,8",
+          "head_end": 4812,
+          "head_start": 4805,
+          "id": "indra/newview/llselectmgr.cpp@4805,8",
           "patch": " \n void LLSelectMgr::selectDuplicate(const LLVector3& offset, bool select_copy)\n {\n+    // Duplicate baselines are reused by later transform sends; never cache a driven pose.\n+    ALProjectorTracker::instance().pauseSelectionForEdit();\n //  if (mSelectedObjects->isAttachment())\n // [RLVa:KB] - Checked: 2010-03-24 (RLVa-1.2.0e) | Added: RLVa-1.2.0a\n     if ( (mSelectedObjects->isAttachment()) || ((rlv_handler_t::isEnabled()) && (!rlvCanDeleteOrReturn())) )\n",
           "purpose": "Comment evidence: Duplicate baselines are reused by later transform sends; never cache a driven pose.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94525,10 +94529,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94560,13 +94560,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 11,
-          "head_end": 4836,
-          "head_start": 4826,
-          "id": "indra/newview/llselectmgr.cpp@4826,11",
+          "head_end": 4838,
+          "head_start": 4828,
+          "id": "indra/newview/llselectmgr.cpp@4828,11",
           "patch": "         }\n     }\n \n-    // Client-only local previews: duplicate locally. The ObjectDuplicate send\n-    // below is swallowed for an all-local selection (sendListToRegions gate),\n-    // which would otherwise make Ctrl+D / shift-drag-copy a silent no-op.\n-    if (selectionAllLocalPreview(mSelectedObjects))\n+    // Local MESH previews: duplicate locally. The ObjectDuplicate send below is\n+    // swallowed for an all-local selection (sendListToRegions gate), which would\n+    // otherwise make Ctrl+D / shift-drag-copy a silent no-op. A ghost manip proxy\n+    // is not a mesh preview and is not duplicated here (ghosts copy via the panel).\n+    if (selectionAllLocalMeshPreview(mSelectedObjects))\n     {\n         // Snapshot the source roots first: spawning fires the manager's\n         // units-changed signal, whose listeners must not invalidate this walk.\n",
           "purpose": "Comment evidence: Client-only local previews: duplicate locally. The ObjectDuplicate send below is swallowed for an all-local selection (sendListToRegions gate), which would otherwise make Ctrl+D / shift-drag-copy a silent no-op. Local MESH previews: duplicate locally. The ObjectDuplicate send bel",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94582,10 +94586,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94614,13 +94614,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 8,
-          "head_end": 4906,
-          "head_start": 4899,
-          "id": "indra/newview/llselectmgr.cpp@4899,8",
+          "head_end": 4908,
+          "head_start": 4901,
+          "id": "indra/newview/llselectmgr.cpp@4901,8",
           "patch": " \n void LLSelectMgr::repeatDuplicate()\n {\n+    // Duplicate baselines are reused by later transform sends; never cache a driven pose.\n+    ALProjectorTracker::instance().pauseSelectionForEdit();\n     if (mSelectedObjects->isAttachment())\n     {\n         //RN: do not duplicate attachments\n",
           "purpose": "Comment evidence: Duplicate baselines are reused by later transform sends; never cache a driven pose.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94636,10 +94640,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94669,13 +94669,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 4935,
-          "head_start": 4929,
-          "id": "indra/newview/llselectmgr.cpp@4929,7",
+          "head_end": 4937,
+          "head_start": 4931,
+          "id": "indra/newview/llselectmgr.cpp@4931,7",
           "patch": "     }\n \n     // duplicate objects in place\n-    if (selectionAllLocalPreview(mSelectedObjects))\n+    if (selectionAllLocalMeshPreview(mSelectedObjects))\n     {\n         // Client-only local previews: copy each in place locally -- the gated\n         // ObjectDuplicate send below is swallowed for an all-local selection\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94691,10 +94695,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -94725,13 +94725,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 8,
-          "head_end": 5078,
-          "head_start": 5071,
-          "id": "indra/newview/llselectmgr.cpp@5071,8",
+          "head_end": 5080,
+          "head_start": 5073,
+          "id": "indra/newview/llselectmgr.cpp@5073,8",
           "patch": " void LLSelectMgr::sendMultipleUpdate(U32 type)\n {\n     if (type == UPD_NONE) return;\n+    // Last-resort barrier: an unhooked editor must never send a tracked pose.\n+    if (ALProjectorTracker::instance().selectionSendBarrier()) return;\n     // Client-only local previews are moved/rotated/scaled purely locally; never\n     // send their transforms to the sim.\n     if (selectionAllLocalPreview(mSelectedObjects)) return;\n",
           "purpose": "Comment evidence: Last-resort barrier: an unhooked editor must never send a tracked pose.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94747,10 +94751,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94781,13 +94781,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 13,
-          "head_end": 5539,
-          "head_start": 5527,
-          "id": "indra/newview/llselectmgr.cpp@5527,13",
+          "head_end": 5541,
+          "head_start": 5529,
+          "id": "indra/newview/llselectmgr.cpp@5529,13",
           "patch": "         return;\n     }\n \n+    // Also protect attachment requests using an alternate selection handle.\n+    for (auto node = selection_handle->begin(); node != selection_handle->end(); ++node)\n+    {\n+        auto* object = (*node)->getObject();\n+        ALProjectorTracker::instance().pauseObjectForEdit(object);\n+        if (!ALProjectorTracker::instance().canUseTransform(object)) return;\n+    }\n     bool build_mode = LLToolMgr::getInstance()->inEdit();\n     // Special case: Attach to default location for this object.\n     if (0 == attachment_point ||\n",
           "purpose": "Comment evidence: Also protect attachment requests using an alternate selection handle.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94803,10 +94807,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94837,13 +94837,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 10,
-          "head_end": 5812,
-          "head_start": 5803,
-          "id": "indra/newview/llselectmgr.cpp@5803,10",
+          "head_end": 5814,
+          "head_start": 5805,
+          "id": "indra/newview/llselectmgr.cpp@5805,10",
           "patch": " // also need to know to which simulator to send update message\n void LLSelectMgr::saveSelectedObjectTransform(EActionType action_type)\n {\n+    // Restore before even the PICK baseline of a click that starts a drag.\n+    ALProjectorTracker::instance().selectionChanged();\n+    if (action_type != SELECT_ACTION_TYPE_PICK)\n+        ALProjectorTracker::instance().pauseSelectionForEdit();\n     if (mSelectedObjects->isEmpty())\n     {\n         // nothing selected, so nothing to save\n",
           "purpose": "Comment evidence: Restore before even the PICK baseline of a click that starts a drag.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94859,10 +94863,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94893,13 +94893,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 8,
-          "head_end": 6036,
-          "head_start": 6029,
-          "id": "indra/newview/llselectmgr.cpp@6029,8",
+          "head_end": 6038,
+          "head_start": 6031,
+          "id": "indra/newview/llselectmgr.cpp@6031,8",
           "patch": " \n void LLSelectMgr::packObjectIDAndRotation(LLSelectNode* node, void *user_data)\n {\n+    ALProjectorTracker::instance().pauseObjectForEdit(node->getObject());\n+    if (!ALProjectorTracker::instance().canUseTransform(node->getObject())) return;\n     gMessageSystem->nextBlockFast(_PREHASH_ObjectData);\n     gMessageSystem->addU32Fast(_PREHASH_ObjectLocalID, node->getObject()->getLocalID() );\n     gMessageSystem->addQuatFast(_PREHASH_Rotation, node->getObject()->getRotation());\n",
           "purpose": "Edits ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94915,10 +94919,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -94949,13 +94949,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 6199,
-          "head_start": 6193,
-          "id": "indra/newview/llselectmgr.cpp@6193,7",
+          "head_end": 6201,
+          "head_start": 6195,
+          "id": "indra/newview/llselectmgr.cpp@6195,7",
           "patch": "         push_all(std::queue<LLSelectNode*>& n) : nodes_to_send(n) {}\n         virtual bool apply(LLSelectNode* node)\n         {\n-            if (node->getObject())\n+            if (node->getObject() && !node->getObject()->isLocalOnly())\n             {\n                 nodes_to_send.push(node);\n             }\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -94971,10 +94975,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -95005,13 +95005,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 6213,
-          "head_start": 6207,
-          "id": "indra/newview/llselectmgr.cpp@6207,7",
+          "head_end": 6215,
+          "head_start": 6209,
+          "id": "indra/newview/llselectmgr.cpp@6209,7",
           "patch": "         push_some(std::queue<LLSelectNode*>& n, bool roots) : nodes_to_send(n), mRoots(roots) {}\n         virtual bool apply(LLSelectNode* node)\n         {\n-            if (node->getObject())\n+            if (node->getObject() && !node->getObject()->isLocalOnly())\n             {\n                 bool is_root = node->getObject()->isRootEdit();\n                 if ((mRoots && is_root) || (!mRoots && !is_root))\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95027,10 +95031,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -95059,13 +95059,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 6623,
-          "head_start": 6617,
-          "id": "indra/newview/llselectmgr.cpp@6617,7",
+          "head_end": 6625,
+          "head_start": 6619,
+          "id": "indra/newview/llselectmgr.cpp@6619,7",
           "patch": "     // unpack name & desc\n     std::string name;\n     msg->getStringFast(_PREHASH_ObjectData, _PREHASH_Name, name);\n+    LLCinematicCamera::instance().onObjectLockName(id, name);\n \n     std::string desc;\n     msg->getStringFast(_PREHASH_ObjectData, _PREHASH_Description, desc);\n",
           "purpose": "Edits LLCinematicCamera",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95081,10 +95085,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -95111,13 +95111,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 7248,
-          "head_start": 7239,
-          "id": "indra/newview/llselectmgr.cpp@7239,10",
+          "head_end": 7250,
+          "head_start": 7241,
+          "id": "indra/newview/llselectmgr.cpp@7241,10",
           "patch": "     if (objectp && objectp->getPCode() == LL_PCODE_VOLUME)\n     {\n         ((LLVOVolume*)objectp)->generateSilhouette(nodep, view_point);\n+        nodep->mSilhouettePosition = objectp->getRenderPosition();\n+        nodep->mSilhouetteRotation = objectp->getRenderRotation();\n+        nodep->mSilhouetteFrame = objectp->mDrawable->isActive() ? objectp->getRenderMatrix() : LLMatrix4();\n+        nodep->mSilhouetteFrameValid = true;\n     }\n }\n \n",
           "purpose": "Edits LLMatrix4",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95133,10 +95137,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -95163,13 +95163,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 10,
-          "head_end": 7314,
-          "head_start": 7305,
-          "id": "indra/newview/llselectmgr.cpp@7305,10",
+          "head_end": 7316,
+          "head_start": 7307,
+          "id": "indra/newview/llselectmgr.cpp@7307,10",
           "patch": "     mSilhouetteVertices = nodep.mSilhouetteVertices;\n     mSilhouetteNormals = nodep.mSilhouetteNormals;\n     mSilhouetteExists = nodep.mSilhouetteExists;\n+    mSilhouettePosition = nodep.mSilhouettePosition;\n+    mSilhouetteRotation = nodep.mSilhouetteRotation;\n+    mSilhouetteFrame = nodep.mSilhouetteFrame;\n+    mSilhouetteFrameValid = nodep.mSilhouetteFrameValid;\n     mObject = nodep.mObject;\n \n     std::vector<LLColor4>::const_iterator color_iter;\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95185,10 +95189,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
@@ -95221,13 +95221,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 21,
-          "head_end": 7739,
-          "head_start": 7719,
-          "id": "indra/newview/llselectmgr.cpp@7719,21",
+          "head_end": 7741,
+          "head_start": 7721,
+          "id": "indra/newview/llselectmgr.cpp@7721,21",
           "patch": "     }\n \n \n-    if (drawable->isActive())\n+    auto& tracker = ALProjectorTracker::instance();\n+    if (mSilhouetteFrameValid && (tracker.tracked(objectp->getID()) || tracker.tracked(objectp->getRootEdit()->getID())))\n+    {\n+        // Reuse the captured contour, carrying it with the current rigid pose.\n+        // This also handles an independently driven child outside Build tools.\n+        LLMatrix4 old_pose, new_pose;\n+        old_pose.initAll(LLVector3(1,1,1), mSilhouetteRotation, mSilhouettePosition);\n+        new_pose.initAll(LLVector3(1,1,1), objectp->getRenderRotation(), objectp->getRenderPosition());\n+        old_pose.invert();\n+        LLMatrix4 frame = mSilhouetteFrame;\n+        frame *= old_pose;\n+        frame *= new_pose;\n+        gGL.multMatrix((const F32*)frame.mMatrix);\n+    }\n+    else if (drawable->isActive())\n     {\n         gGL.multMatrix((F32*) objectp->getRenderMatrix().mMatrix);\n     }\n",
           "purpose": "Comment evidence: Reuse the captured contour, carrying it with the current rigid pose. This also handles an independently driven child outside Build tools.",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95243,10 +95247,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -95275,13 +95275,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 7935,
-          "head_start": 7929,
-          "id": "indra/newview/llselectmgr.cpp@7929,7",
+          "head_end": 7937,
+          "head_start": 7931,
+          "id": "indra/newview/llselectmgr.cpp@7931,7",
           "patch": " // -----------------------------------------------------------------------------\n void LLSelectMgr::updateSelectionCenter()\n {\n+    ALProjectorTracker::instance().selectionChanged();\n     const F32 MOVE_SELECTION_THRESHOLD = 1.f;       //  Movement threshold in meters for updating selection\n                                                     //  center (tractor beam)\n \n",
           "purpose": "Edits ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95297,15 +95301,236 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
           "settings_references": [],
           "slice": 7
+        },
+        {
+          "base_count": 11,
+          "base_start": 7964,
+          "candidate_features_from_subjects": [
+            "camera",
+            "clones",
+            "vcam"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "clones"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSelectMgr::canUndo",
+            "cloneUndoRoute"
+          ],
+          "git_context": "LLBBox LLSelectMgr::getBBoxOfSelection() const",
+          "guard_evidence": [
+            "if (const ALGhostManipProxy::EUndoRoute route ="
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 24,
+          "head_end": 8151,
+          "head_start": 8128,
+          "id": "indra/newview/llselectmgr.cpp@8128,24",
+          "patch": " }\n \n \n+// [CloneEditUndo] Route decision (see ALGhostManipProxy::undoRoute).\n+static ALGhostManipProxy::EUndoRoute cloneUndoRoute(LLSelectMgr* mgr, bool redo)\n+{\n+    ALToolGhostEdit* tool = ALToolGhostEdit::getInstance();\n+    return ALGhostManipProxy::undoRoute(\n+        tool->isEditModeActive(),\n+        tool->getManipProxy().owns(mgr->getSelection()->getFirstObject()), redo);\n+}\n+\n //-----------------------------------------------------------------------------\n // canUndo()\n //-----------------------------------------------------------------------------\n bool LLSelectMgr::canUndo() const\n {\n+    if (const ALGhostManipProxy::EUndoRoute route =\n+            cloneUndoRoute(const_cast<LLSelectMgr*>(this), false);\n+        route != ALGhostManipProxy::ROUTE_STOCK)\n+        return ALGhostManipProxy::historyCan(route == ALGhostManipProxy::ROUTE_REDO);\n     // Can edit or can move\n     return const_cast<LLSelectMgr*>(this)->mSelectedObjects->getFirstUndoEnabledObject() != NULL; // HACK: casting away constness - MG;\n }\n",
+          "purpose": "Comment evidence: [CloneEditUndo] Route decision (see ALGhostManipProxy::undoRoute).",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
+            {
+              "commit": "ba9d8520cc8",
+              "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
+            },
+            {
+              "commit": "4d4908fcc84",
+              "subject": "Projector tracking fix round 1: Build-selection pause, grab/spin and pipette guards, restore-pending safety"
+            },
+            {
+              "commit": "3694fb7d97c",
+              "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
+            },
+            {
+              "commit": "21bd53103bf",
+              "subject": "CineCam Object Lock: lock the main recording camera to any object"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 4
+        },
+        {
+          "base_count": 6,
+          "base_start": 7978,
+          "candidate_features_from_subjects": [
+            "camera",
+            "clones",
+            "vcam"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "clones"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSelectMgr::undo"
+          ],
+          "git_context": "bool LLSelectMgr::canUndo() const",
+          "guard_evidence": [
+            "if (const ALGhostManipProxy::EUndoRoute route = cloneUndoRoute(this, false);"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 12,
+          "head_end": 8166,
+          "head_start": 8155,
+          "id": "indra/newview/llselectmgr.cpp@8155,12",
+          "patch": " //-----------------------------------------------------------------------------\n void LLSelectMgr::undo()\n {\n+    if (const ALGhostManipProxy::EUndoRoute route = cloneUndoRoute(this, false);\n+        route != ALGhostManipProxy::ROUTE_STOCK)\n+    {\n+        ALGhostManipProxy::historyRun(route == ALGhostManipProxy::ROUTE_REDO);\n+        return;\n+    }\n     bool select_linked_set = !gSavedSettings.getBOOL(\"EditLinkedParts\");\n     LLUUID group_id(gAgent.getGroupID());\n     sendListToRegions(\"Undo\", packAgentAndSessionAndGroupID, packObjectID, logNoOp, &group_id, select_linked_set ? SEND_ONLY_ROOTS : SEND_CHILDREN_FIRST);\n",
+          "purpose": "Edits ALGhostManipProxy",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
+            {
+              "commit": "ba9d8520cc8",
+              "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
+            },
+            {
+              "commit": "4d4908fcc84",
+              "subject": "Projector tracking fix round 1: Build-selection pause, grab/spin and pipette guards, restore-pending safety"
+            },
+            {
+              "commit": "3694fb7d97c",
+              "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
+            },
+            {
+              "commit": "21bd53103bf",
+              "subject": "CineCam Object Lock: lock the main recording camera to any object"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 4
+        },
+        {
+          "base_count": 6,
+          "base_start": 7988,
+          "candidate_features_from_subjects": [
+            "camera",
+            "clones",
+            "vcam"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "clones"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSelectMgr::canRedo"
+          ],
+          "git_context": "void LLSelectMgr::undo()",
+          "guard_evidence": [
+            "if (const ALGhostManipProxy::EUndoRoute route ="
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 10,
+          "head_end": 8180,
+          "head_start": 8171,
+          "id": "indra/newview/llselectmgr.cpp@8171,10",
+          "patch": " //-----------------------------------------------------------------------------\n bool LLSelectMgr::canRedo() const\n {\n+    if (const ALGhostManipProxy::EUndoRoute route =\n+            cloneUndoRoute(const_cast<LLSelectMgr*>(this), true);\n+        route != ALGhostManipProxy::ROUTE_STOCK)\n+        return ALGhostManipProxy::historyCan(route == ALGhostManipProxy::ROUTE_REDO);\n     return const_cast<LLSelectMgr*>(this)->mSelectedObjects->getFirstEditableObject() != NULL; // HACK: casting away constness - MG\n }\n \n",
+          "purpose": "Edits ALGhostManipProxy, LLSelectMgr",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
+            {
+              "commit": "ba9d8520cc8",
+              "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
+            },
+            {
+              "commit": "4d4908fcc84",
+              "subject": "Projector tracking fix round 1: Build-selection pause, grab/spin and pipette guards, restore-pending safety"
+            },
+            {
+              "commit": "3694fb7d97c",
+              "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
+            },
+            {
+              "commit": "21bd53103bf",
+              "subject": "CineCam Object Lock: lock the main recording camera to any object"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 4
+        },
+        {
+          "base_count": 6,
+          "base_start": 7996,
+          "candidate_features_from_subjects": [
+            "camera",
+            "clones",
+            "vcam"
+          ],
+          "feature_evidence": [
+            "filename/changed-code regex"
+          ],
+          "features": [
+            "clones"
+          ],
+          "function_method": "HEAD lexical brace/signature scan; unknowns retain git context",
+          "functions": [
+            "LLSelectMgr::redo"
+          ],
+          "git_context": "bool LLSelectMgr::canRedo() const",
+          "guard_evidence": [
+            "if (const ALGhostManipProxy::EUndoRoute route = cloneUndoRoute(this, true);"
+          ],
+          "guarded": "unknown; conditional evidence present",
+          "head_count": 12,
+          "head_end": 8194,
+          "head_start": 8183,
+          "id": "indra/newview/llselectmgr.cpp@8183,12",
+          "patch": " //-----------------------------------------------------------------------------\n void LLSelectMgr::redo()\n {\n+    if (const ALGhostManipProxy::EUndoRoute route = cloneUndoRoute(this, true);\n+        route != ALGhostManipProxy::ROUTE_STOCK)\n+    {\n+        ALGhostManipProxy::historyRun(route == ALGhostManipProxy::ROUTE_REDO);\n+        return;\n+    }\n     bool select_linked_set = !gSavedSettings.getBOOL(\"EditLinkedParts\");\n     LLUUID group_id(gAgent.getGroupID());\n     sendListToRegions(\"Redo\", packAgentAndSessionAndGroupID, packObjectID, logNoOp, &group_id, select_linked_set ? SEND_ONLY_ROOTS : SEND_CHILDREN_FIRST);\n",
+          "purpose": "Edits ALGhostManipProxy",
+          "range_note": "includes three context lines; count=0 is deletion anchor",
+          "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
+            {
+              "commit": "ba9d8520cc8",
+              "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
+            },
+            {
+              "commit": "4d4908fcc84",
+              "subject": "Projector tracking fix round 1: Build-selection pause, grab/spin and pipette guards, restore-pending safety"
+            },
+            {
+              "commit": "3694fb7d97c",
+              "subject": "Projector bone tracking: Aim/Follow joint tracking for projector prims and VCam projectors"
+            },
+            {
+              "commit": "21bd53103bf",
+              "subject": "CineCam Object Lock: lock the main recording camera to any object"
+            }
+          ],
+          "scope": "creative-candidate",
+          "settings_references": [],
+          "slice": 4
         },
         {
           "base_count": 7,
@@ -95332,13 +95557,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 8278,
-          "head_start": 8272,
-          "id": "indra/newview/llselectmgr.cpp@8272,7",
+          "head_end": 8309,
+          "head_start": 8303,
+          "id": "indra/newview/llselectmgr.cpp@8303,7",
           "patch": " bool LLSelectMgr::canSelectObject(LLViewerObject* object, bool ignore_select_owned)\n {\n     // Never select dead objects\n-    if (!object || object->isDead())\n+    if (!object || object->isDead() || object->isColorChart())\n     {\n         return false;\n     }\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95354,10 +95583,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -95386,13 +95611,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 7,
-          "head_end": 9155,
-          "head_start": 9149,
-          "id": "indra/newview/llselectmgr.cpp@9149,7",
+          "head_end": 9186,
+          "head_start": 9180,
+          "id": "indra/newview/llselectmgr.cpp@9180,7",
           "patch": "         return false;\n     }\n \n+    ALProjectorTracker::instance().pauseSelectionForEdit();\n     LLVector3 displ_global;\n     bool update_success = true;\n     bool update_position = update_type & UPD_POSITION;\n",
           "purpose": "Edits ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95408,10 +95637,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -95442,13 +95667,17 @@
           ],
           "guarded": "unknown; conditional evidence present",
           "head_count": 7,
-          "head_end": 9280,
-          "head_start": 9274,
-          "id": "indra/newview/llselectmgr.cpp@9274,7",
+          "head_end": 9311,
+          "head_start": 9305,
+          "id": "indra/newview/llselectmgr.cpp@9305,7",
           "patch": " \n void LLSelectMgr::sendSelectionMove()\n {\n+    if (ALProjectorTracker::instance().selectionSendBarrier()) return;\n     LLSelectNode *node = mSelectedObjects->getFirstRootNode();\n     if (node == NULL)\n     {\n",
           "purpose": "Edits ALProjectorTracker",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95464,10 +95693,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "creative-candidate",
@@ -95494,13 +95719,17 @@
           "guard_evidence": [],
           "guarded": "unknown; no local conditional evidence",
           "head_count": 3,
-          "head_end": 9383,
-          "head_start": 9381,
-          "id": "indra/newview/llselectmgr.cpp@9381,3",
+          "head_end": 9414,
+          "head_start": 9412,
+          "id": "indra/newview/llselectmgr.cpp@9412,3",
           "patch": "     (void)tolerance;                                                                \\\n     return a == b;                                                                  \\\n }\n-\n",
           "purpose": "Edits declarations/data/build wiring; purpose unknown",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "2d00d8e3c54",
+              "subject": "Clone edit: undo and redo for clone-box moves, rotates and scales"
+            },
             {
               "commit": "ba9d8520cc8",
               "subject": "Clone QoL fix round 1: lit fades/stagger, shared draw-only swap helpers, authored-style safety"
@@ -95516,10 +95745,6 @@
             {
               "commit": "21bd53103bf",
               "subject": "CineCam Object Lock: lock the main recording camera to any object"
-            },
-            {
-              "commit": "ddd15904eac",
-              "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
             }
           ],
           "scope": "unknown-review",
