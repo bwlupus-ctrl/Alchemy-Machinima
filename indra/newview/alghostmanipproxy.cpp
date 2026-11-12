@@ -443,8 +443,10 @@ void ALGhostManipProxy::pullProxyToInstance()
     {
         return;
     }
-    // Write fields DIRECTLY (no mTransformRevision bump) -- a bump would make the
-    // next non-drag tick push straight back to the proxy, fighting the drag.
+    // Ungrouped overlays write fields DIRECTLY (no mTransformRevision bump).
+    // Entity clones and group members go through transformUnit/transformGroup,
+    // which bump the revision; that is safe because tick() never pushes to the
+    // proxy while mDragging, and endDrag re-syncs mSeenRevision.
     if (inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
     {
         inst->mChaosHasBase = false;
