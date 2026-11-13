@@ -770,11 +770,12 @@
                  value="Planar" />
             </combo_box>
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -783,11 +784,12 @@
              top_pad="1"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -801,32 +803,33 @@
              initial_value=""
              label="Repeats per meter"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="100"
              min_val="-100"
              name="rptctrl"
              width="271" />
            <spinner
-             decimal_digits="2"
+             decimal_digits="5"
              follows="left|top"
              height="19"
              increment="1"
              initial_value="0"
              label="Rotation degrees"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="360"
              min_val="-360"
              name="TexRot"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -834,11 +837,12 @@
              name="TexOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -846,11 +850,12 @@
              name="TexOffsetV"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -859,11 +864,12 @@
              top_delta="-115"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -871,7 +877,7 @@
              name="bumpyScaleV"
              width="271" />
            <spinner
-             decimal_digits="2"
+             decimal_digits="5"
              follows="left|top"
              height="19"
              top_pad="27"
@@ -879,18 +885,19 @@
              initial_value="0"
 			 label="Rotation degrees"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="360"
              min_val="-360"
              name="bumpyRot"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -898,11 +905,12 @@
              name="bumpyOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -910,11 +918,12 @@
              name="bumpyOffsetV"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -923,11 +932,12 @@
              top_delta="-115"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -935,7 +945,7 @@
              name="shinyScaleV"
              width="271" />
            <spinner
-             decimal_digits="2"
+             decimal_digits="5"
              follows="left|top"
              height="19"
              top_pad="27"
@@ -943,18 +953,19 @@
              initial_value="0"
 			 label="Rotation degrees"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="360"
              min_val="-360"
              name="shinyRot"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -962,11 +973,12 @@
              name="shinyOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -975,11 +987,12 @@
              width="271" />
             <!-- BEGIN PBR Material texture transform parameters -->
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="1"
              label="Scale u"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -988,11 +1001,12 @@
              top_delta="-115"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="1"
              label="Scale v"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -1006,18 +1020,19 @@
              initial_value=""
              label="Repeats per meter"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="100"
              min_val="-100"
              name="gltfRptctrl"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Rotation"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-360"
@@ -1025,11 +1040,12 @@
              name="gltfTextureRotation"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Offset u"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-999"
@@ -1037,11 +1053,12 @@
              name="gltfTextureOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Offset v"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-999"
