@@ -1,5 +1,5 @@
 {
-  "base": "1d1162aaf77",
+  "base": "28c8c83af9d",
   "description": "Soft shadow fix 4 (RenderSpotShadowPenumbraModel): the per-slot metric penumbra upload after the per-slot softness upload in LLPipeline::bindDeferredShader. No other pipeline change.",
   "files": {
     "pipeline.cpp": [

@@ -1,6 +1,6 @@
 {
-  "base": "1d1162aaf77",
-  "description": "Soft shadow fix 4 (metric projector penumbra) edits of class1/deferred/shadowUtil.glsl: the spot_shadow_metric uniform and spotMetricPenumbra, and its use in pcfSpotShadowSurface. Exact hunks; reversing them must reproduce the 1d1162aaf77 file.",
+  "base": "28c8c83af9d",
+  "description": "Soft shadow fix 4 (metric projector penumbra) edits of class1/deferred/shadowUtil.glsl: the spot_shadow_metric uniform and spotMetricPenumbra, and its use in pcfSpotShadowSurface. Exact hunks; reversing them must reproduce the 28c8c83af9d file.",
   "files": {
     "shadowUtil.glsl": [
       {

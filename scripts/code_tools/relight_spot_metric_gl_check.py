@@ -48,7 +48,8 @@ import relight_spot_bias_gl_check as B
 import relight_soft_shadow_quality_gl_check as Q
 from rig_shadow_presets_check import function, settings_defaults
 
-BASE = '1d1162aaf77'
+BASE = '28c8c83af9d'   # main with the projector fade layer (RenderSpotShadowFadeModel), the next layer down
+FADE = 1                # spot_shadow_fade_model uploaded by every render below; evaluate() runs the checks under 0 and 1
 SHADER = B.SHADER
 HEADER = 'indra/newview/alrelightmath.h'
 PIPELINE = 'indra/newview/pipeline.cpp'
@@ -205,6 +206,7 @@ def render(r, pr, cam, d, n, e, run, metric, taps=32, vogel=True, noise=1, retir
         gl.ui(gl.loc(p, b'soft_shadow_fill_retire'), int(retire))
         gl.ui(gl.loc(p, b'soft_shadow_taps'), int(taps))
         r.uniform(p, 'projvol_rim_strength', float(rim))
+        gl.ui(gl.loc(p, b'spot_shadow_fade_model'), int(FADE))
         # Location -1 in BASE: GL ignores the upload, like the viewer on a program without the uniform.
         r.uniform(p, 'spot_shadow_metric[0]', *(metric if metric is not None else (0., 0., 0., 0.)))
         if extra:
@@ -489,6 +491,7 @@ def noise_check(r, host, defaults, edits=()):
             r.uniform(p, 'spot_shadow_detail[%d]' % s, 0.)
             r.gl.ui(r.gl.loc(p, b'probe_slot'), s)
             r.uniform(p, 'probe_shift', 0., 0., 0.)
+            r.gl.ui(r.gl.loc(p, b'spot_shadow_fade_model'), int(FADE))
             setup(p)
         return Q.projector(r, prog, cam, d, n, e, run, retire, noise, vogel=vogel, setup=full)
 
@@ -579,7 +582,7 @@ def shaft_check(r):
                              march_no_rim=dict(steps=24, rim=0, dither=1)).items():
         for vogel in (0, 1):
             uniforms = dict(soft_shadow_vogel=vogel, soft_shadow_taps=16, spot_shadow_bias_model=B.MODEL_ALL,
-                            soft_shadow_fill_retire=1, soft_shadow_noise_model=1)
+                            soft_shadow_fill_retire=1, soft_shadow_noise_model=1, spot_shadow_fade_model=int(FADE))
             ref = base_runner.run(fixture, uniforms=uniforms, **kwargs)[:2]
             got = current.run(fixture, uniforms=uniforms, **kwargs)[:2]
             same = all(np.array_equal(np.asarray(x), np.asarray(y)) for x, y in zip(got, ref))
@@ -760,26 +763,31 @@ def evaluate(out, do_negatives=True):
     failures += ['trim ' + k for k, ok in trims.items() if not ok]
     result.update(contracts=contracts, trim=trims)
 
+    global FADE
     base = B.link(r, G.SourceTree(BASE), 'BASE visibility')
     pr = r.visibility
-    sections = {}
-    for name, fn in (('formula', lambda: formula_check(r, pr, host, defaults)),
-                     ('sphere', lambda: sphere_check(r, pr, host, defaults)),
-                     ('hardening', lambda: hardening_check(r, pr, host, defaults)),
-                     ('resolution', lambda: resolution_check(r, pr, host, defaults)),
-                     ('cap', lambda: cap_check(r, pr, host, defaults)),
-                     ('aspect', lambda: aspect_check(r, pr, host, defaults)),
-                     ('widen', lambda: widen_check(r, host, defaults)),
-                     ('noise', lambda: noise_check(r, host, defaults)),
-                     ('shaft', lambda: shaft_check(r))):
-        rows, f = fn()
-        sections[name] = rows
-        failures += f
-        for row in rows:
-            print('[spot-metric]', name, json.dumps(row, default=str), flush=True)
-    identity = identity_check(r, base, host, defaults)
-    failures += ['identity ' + k for k, ok in identity.items() if not ok]
-    result.update(sections, identity=identity)
+    sections, identity = {}, {}
+    # Every check under both projector fade models (RenderSpotShadowFadeModel 0 legacy, 1 map-bounded = the default).
+    for FADE in (0, 1):
+        for name, fn in (('formula', lambda: formula_check(r, pr, host, defaults)),
+                         ('sphere', lambda: sphere_check(r, pr, host, defaults)),
+                         ('hardening', lambda: hardening_check(r, pr, host, defaults)),
+                         ('resolution', lambda: resolution_check(r, pr, host, defaults)),
+                         ('cap', lambda: cap_check(r, pr, host, defaults)),
+                         ('aspect', lambda: aspect_check(r, pr, host, defaults)),
+                         ('widen', lambda: widen_check(r, host, defaults)),
+                         ('noise', lambda: noise_check(r, host, defaults)),
+                         ('shaft', lambda: shaft_check(r))):
+            rows, f = fn()
+            rows = [dict(row, fade_model=FADE) for row in rows]
+            sections.setdefault(name, []).extend(rows)
+            failures += ['fade model %d: %s' % (FADE, x) for x in f]
+            for row in rows:
+                print('[spot-metric]', name, json.dumps(row, default=str), flush=True)
+        checks = identity_check(r, base, host, defaults)
+        failures += ['identity fade model %d %s' % (FADE, k) for k, ok in checks.items() if not ok]
+        identity.update({'fade%d_%s' % (FADE, k): ok for k, ok in checks.items()})
+    result.update(sections, identity=identity)   # the planted regressions below run under the default fade model (1)
 
     if do_negatives:
         rejected = {}

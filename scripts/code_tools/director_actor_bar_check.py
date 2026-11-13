@@ -193,21 +193,21 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_METRIC_DIGEST = "3674d6a474751d979587ddbd59d669e96b8b44335dd43c4bdf16e1d25fb40ec1"
+SOFTSHADOW_METRIC_DIGEST = "369bc07c686cef70a5a64afc3e34d50f27ad41acf4004daf8e41a460ead9bc8c"
 
 
 def reverse_softshadow_metric(source, name):
     """Peel the newest pipeline layer (soft shadow fix 4: the per-slot metric penumbra upload after the per-slot
-    softness upload) before the soft shadow quality layer. Idempotent: skipped when
-    its hunk is already gone; the pinned digest is checked every time. Exact: removing the one reviewed hunk must
-    reproduce the complete 1d1162aaf77 file."""
+    softness upload) before the projector fade layer (reverse_softshadow_fade calls this first). Idempotent: skipped
+    when its hunk is already gone; the pinned digest is checked every time. Exact: removing the one reviewed hunk must
+    reproduce the complete 28c8c83af9d file (main with the fade layer, which is peeled next)."""
     import hashlib
     import json
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_metric_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_METRIC_DIGEST, ("reviewed soft shadow metric", "allowance pin")
     allowed = json.loads(raw)
-    assert allowed["base"] == "1d1162aaf77", "soft shadow metric base"
+    assert allowed["base"] == "28c8c83af9d", "soft shadow metric base"
     assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 1, "soft shadow metric scope"
     if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
         return source
@@ -215,20 +215,21 @@ def reverse_softshadow_metric(source, name):
                                      SOFTSHADOW_METRIC_DIGEST, "reviewed soft shadow metric")
 
 
-SOFTSHADOW_METRIC_SHADER_DIGEST = "9ef5c721dc893072b44fa9a0f2a113887d4d1b2b3b9f79e79367044c9f237daa"
+SOFTSHADOW_METRIC_SHADER_DIGEST = "8246a0c37da5b88ec089fe8e0c82d5f86b3481d90b52d36f3b74033eb29d2811"
 
 
 def reverse_softshadow_metric_shader(source):
     """Peel the reviewed soft shadow fix 4 edits of class1/deferred/shadowUtil.glsl (metric projector penumbra) before
-    the soft shadow quality edits. Idempotent: skipped when none of its hunks is present. Exact: every pinned hunk
-    must be present once and reversing them must reproduce the 1d1162aaf77 file byte for byte."""
+    the projector fade layer (relight_spot_bias_gl_check.reverse_fade_layer calls this first). Idempotent: skipped when
+    none of its hunks is present. Exact: every pinned hunk must be present once and reversing them must reproduce the
+    28c8c83af9d file byte for byte (main with the fade layer, which is peeled next)."""
     import hashlib
     import json
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_metric_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_METRIC_SHADER_DIGEST, ("reviewed soft shadow metric shader", "allowance pin")
     allowed = json.loads(raw)
-    assert allowed["base"] == "1d1162aaf77", "soft shadow metric shader base"
+    assert allowed["base"] == "28c8c83af9d", "soft shadow metric shader base"
     assert set(allowed["files"]) == {"shadowUtil.glsl"} and len(allowed["files"]["shadowUtil.glsl"]) == 2, "soft shadow metric shader scope"
     if not any(hunk["after"] in source for hunk in allowed["files"]["shadowUtil.glsl"]):
         return source
@@ -251,7 +252,6 @@ def reverse_softshadow_quality(source, name):
     is checked every time. Exact: removing the one reviewed hunk must reproduce the complete c63f7ca1b2f file."""
     import hashlib
     import json
-    source = reverse_softshadow_metric(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_quality_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_QUALITY_DIGEST, ("reviewed soft shadow quality", "allowance pin")
@@ -273,7 +273,6 @@ def reverse_softshadow_quality_shader(source):
     byte for byte, so any other edit still fails the checks that compare against an older reference."""
     import hashlib
     import json
-    source = reverse_softshadow_metric_shader(source)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_quality_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_QUALITY_SHADER_DIGEST, ("reviewed soft shadow quality shader", "allowance pin")
@@ -287,17 +286,46 @@ def reverse_softshadow_quality_shader(source):
     return source
 
 
+SOFTSHADOW_FADE_DIGEST = "e2d360ac0c0885ce032026305d7f3378e8d90159568301ffcc1067ef26e70ad2"
+
+
+def reverse_softshadow_fade(source, name):
+    """Peel the newest pipeline layer (projector fade-model uniform + hand-over clip).
+
+    Exact and never optional for pipeline.cpp: both reviewed hunks must be present
+    once, and removing them must reproduce the complete 1d1162aaf77 file (main with
+    the soft shadow quality layer, which is peeled next), so a missing, duplicated
+    or edited hunk and any other edit still fail.
+    """
+    import hashlib
+    import json
+    # Newest first: the metric penumbra upload (built on this layer) is peeled exactly to this layer's own file.
+    source = reverse_softshadow_metric(source, name)
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_fade_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_FADE_DIGEST, ("reviewed soft shadow fade", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "1d1162aaf77", "soft shadow fade base"
+    assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 2, "soft shadow fade scope"
+    return reverse_feature_allowance(source, name, "softshadow_fade_hunks.json",
+                                     SOFTSHADOW_FADE_DIGEST, "reviewed soft shadow fade")
+
+
 SOFTSHADOW_BIAS_DIGEST = "d3eb81e27c60fed3adb00978c31ea7482c5df255462a727dc31942c543b4493b"
 
 
 def reverse_softshadow_bias(source, name):
-    """Peel the newest pipeline layer (projector bias-model uniform) before the shaft slot merge.
+    """Peel the projector bias-model uniform layer before the shaft slot merge.
 
     Exact: the one reviewed hunk must be present once, and removing it must
     reproduce the complete fb616f2519c file, so any other edit still fails.
+    The newer fade-model layer (reverse_softshadow_fade) is peeled first, here,
+    so every caller of this function gets the full chain newest-first.
     """
     import hashlib
     import json
+    # Newest first: the projector fade model (built on the soft shadow quality layer), then the quality layer.
+    source = reverse_softshadow_fade(source, name)
     source = reverse_softshadow_quality(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_bias_hunks.json").read_bytes().replace(b"\r\n", b"\n")
@@ -476,7 +504,8 @@ def main():
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
         # The Director tag highlight's exact renderer-selection hooks sit on top of main fc5f3e5a78f.
-        # Newest first: the projector bias-model uniform (pipeline.cpp only), then the shaft slot merge.
+        # Newest first: the projector fade-model layer (peeled inside reverse_softshadow_bias), the bias-model uniform
+        # (both pipeline.cpp only), then the shaft slot merge.
         tagged = reverse_feature_allowance(reverse_shaft_slot_merge(reverse_softshadow_bias((nv / path).read_text(encoding="utf-8"), path), path), path,
             "tag_highlight_pipeline_hunks.json", TAG_HIGHLIGHT_PIPELINE_DIGEST, "reviewed Director tag highlight renderer hooks")
         guarded = reverse_post_chroma_main(tagged, path)
