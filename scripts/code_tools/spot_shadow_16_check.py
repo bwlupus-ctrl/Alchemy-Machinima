@@ -186,7 +186,12 @@ for name in ('class1/deferred/shadowUtil.glsl','class3/deferred/projectorVolumet
     path=s['root']/name
     reference = '46ec4444fff' if name == 'class1/deferred/shadowUtil.glsl' else 'fb616f2519c'
     baseline=subprocess.check_output(['git','show',reference+':'+path.as_posix()],encoding='utf-8')
-    assert legacy_tokens(path.read_text(encoding='utf-8')) == legacy_tokens(baseline), name
+    text = path.read_text(encoding='utf-8')
+    if name == 'class1/deferred/shadowUtil.glsl':
+        # Newest exact layer: the soft shadow quality edits (fill step / noise hygiene), pinned hunks.
+        from director_actor_bar_check import reverse_softshadow_quality_shader
+        text = reverse_softshadow_quality_shader(text)
+    assert legacy_tokens(text) == legacy_tokens(baseline), name
 print('PASS <=10 production selection preserves reviewed bias GLSL tokens and base shaft layout',flush=True)
 
 # Compile the production dispatch itself for every supported GLSL version.

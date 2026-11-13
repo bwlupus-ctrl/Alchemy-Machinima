@@ -1,0 +1,12 @@
+{
+  "base": "c63f7ca1b2f",
+  "description": "Soft shadow quality (RenderSoftShadowFillStep, RenderSoftShadowNoiseModel, RenderSunLightProjectorDeadSamples): three uniform uploads after the soft shadow kernel uploads in LLPipeline::bindSunShadowState (Tuning stage). No other pipeline change.",
+  "files": {
+    "pipeline.cpp": [
+      {
+        "before": "    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));\n",
+        "after": "    shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));\n    // [SoftShadow quality] Fill step (RenderSoftShadowFillStep, FALSE = retired), noise\n    // hygiene (RenderSoftShadowNoiseModel) and the unused projector light-map samples\n    // (RenderSunLightProjectorDeadSamples, FALSE = not taken). Programs without the uniform\n    // ignore each upload.\n    static LLCachedControl<bool> soft_fill_step(gSavedSettings, \"RenderSoftShadowFillStep\", false);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_fill_retire\"), soft_fill_step ? 0 : 1);\n    static LLCachedControl<U32> soft_noise_model(gSavedSettings, \"RenderSoftShadowNoiseModel\", 1);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_noise_model\"), (S32)llmin((U32)soft_noise_model, 1U));\n    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, \"RenderSunLightProjectorDeadSamples\", false);\n    shader.uniform1i(LLStaticHashedString(\"sun_projector_samples_removed\"), sun_dead_samples ? 0 : 1);\n"
+      }
+    ]
+  }
+}
