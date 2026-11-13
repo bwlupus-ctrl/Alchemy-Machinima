@@ -174,6 +174,27 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
+SOFTSHADOW_BIAS_DIGEST = "d3eb81e27c60fed3adb00978c31ea7482c5df255462a727dc31942c543b4493b"
+
+
+def reverse_softshadow_bias(source, name):
+    """Peel the newest pipeline layer (projector bias-model uniform) before the shaft slot merge.
+
+    Exact: the one reviewed hunk must be present once, and removing it must
+    reproduce the complete fb616f2519c file, so any other edit still fails.
+    """
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_bias_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_BIAS_DIGEST, ("reviewed soft shadow bias", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "fb616f2519c", "soft shadow bias base"
+    assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 1, "soft shadow bias scope"
+    return reverse_feature_allowance(source, name, "softshadow_bias_hunks.json",
+                                     SOFTSHADOW_BIAS_DIGEST, "reviewed soft shadow bias")
+
+
 ENTITY_SPAWN_ON_SOURCE_DIGEST = "63ce56881cbc42b08045b590eb39c0bcd7018d19795efc5c79a18bca39217068"
 
 
@@ -341,7 +362,8 @@ def main():
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
         # The Director tag highlight's exact renderer-selection hooks sit on top of main fc5f3e5a78f.
-        tagged = reverse_feature_allowance(reverse_shaft_slot_merge((nv / path).read_text(encoding="utf-8"), path), path,
+        # Newest first: the projector bias-model uniform (pipeline.cpp only), then the shaft slot merge.
+        tagged = reverse_feature_allowance(reverse_shaft_slot_merge(reverse_softshadow_bias((nv / path).read_text(encoding="utf-8"), path), path), path,
             "tag_highlight_pipeline_hunks.json", TAG_HIGHLIGHT_PIPELINE_DIGEST, "reviewed Director tag highlight renderer hooks")
         guarded = reverse_post_chroma_main(tagged, path)
         guarded = actor_key_baseline(guarded, path)

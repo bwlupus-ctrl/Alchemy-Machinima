@@ -123,6 +123,40 @@ uniform int   soft_shadow_taps;   // Vogel tap count (clamped to SOFT_SHADOW_VOG
 uniform float spot_shadow_softness[10];
 uniform float spot_shadow_detail[10];
 
+// [SoftShadow bias] Projector receiver bias model for LIT SURFACES (a non-zero
+// receiver normal); RenderSpotShadowBiasModel.
+//   0 = legacy, byte-identical: 4 cm normal offset (spot_shadow_offset) + a constant
+//       window-depth bias; rig Detail lights use their screen-derivative receiver.
+//   1 = surface model: texel-scaled normal offset + analytic receiver-plane depth bias
+//       from the G-buffer normal (spotSurfaceReceiver). Rig lights with Detail shadows
+//       keep their own (legacy) Detail receiver.
+//   2 = surface model for every projector, rig Detail lights included.
+// The initialiser keeps a program that never receives the upload on the legacy
+// model. Zero-normal callers (volumetric shafts, froxel injection) only ever reach
+// the test of this switch: the mode below stays 0 for them and every legacy
+// statement runs unchanged.
+uniform int spot_shadow_bias_model = 0;
+// Volumetric shafts never change with this switch. The New shaft engine also samples
+// its surface rim through sampleSpotShadow with a REAL normal (projectorVolumetricF.glsl,
+// inside `if (projvol_rim_strength > 0.0)`), so the zero-normal test alone does not
+// cover it: the shaft program's own rim uniform keeps every such call on the legacy
+// model. No other program uploads it (0 here), and the Classic engine links its own
+// frozen copy of this file.
+uniform float projvol_rim_strength;
+const float SPOT_BIAS_REACH_TEXELS = 4.0;      // texels a tap of the 1-texel kernels sits from the receiver (snap + tap + bilinear)
+const float SPOT_BIAS_FLOOR        = 0.0005;   // metres: floor of the normal offset and of the depth bias
+const float SPOT_BIAS_DETAIL_FLOOR = 0.00015;  // the same floor for a rig light with Detail shadows (its legacy receiver's)
+const float SPOT_BIAS_DEPTH_TEXELS = 0.75;     // depth bias floor along the light ray, in texels of world footprint
+const float SPOT_BIAS_CAMERA_QUANTA = 2.0;     // G-buffer depth steps (24-bit) the reconstructed receiver may be off by
+const float SPOT_BIAS_DEPTH_QUANTUM = 2.0e-6;  // stc.z precision floor (float32 projection + 24-bit map), for far receivers
+const vec2  SPOT_BIAS_NORMAL_SLACK = vec2(0.98480775, 0.17364818); // cos, sin of 10 degrees: how far a shading normal may sit off the geometry
+// Per-call receiver state, written by sampleSpotShadow / spotSurfaceReceiver and read
+// by pcfSpotShadow for the same call (the 10-case slot dispatch stays untouched).
+int   g_spot_bias_mode  = 0;     // 0 = legacy statements, 1 = surface model
+float g_spot_bias_floor = 0.0005; // SPOT_BIAS_FLOOR or SPOT_BIAS_DETAIL_FLOOR for this light
+float g_spot_bias_stc   = 0.0;   // depth bias in stc.z, toward the light
+float g_spot_widen_stc  = 0.0;   // extra depth bias per texel of soft-kernel radius beyond 1
+
 // 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
 const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
     vec2( 0.0000,  0.0000),
@@ -487,9 +521,85 @@ float estimateDetailSpotBlockerGap(sampler2DShadow shadowMap, vec3 stc, float so
     return best_gap;
 }
 
+// [SoftShadow bias] The surface model's sampler: pcfSpotShadow's ordinary kernels, tap
+// for tap (blocker search, Vogel / Poisson soft disk, fill guard, snapped 5-tap hard
+// kernel), on the receiver prepared by spotSurfaceReceiver. stc is the texel-offset
+// receiver and g_spot_bias_stc its metric depth bias; spot_shadow_bias (a constant in
+// non-linear window depth) is not used. A soft kernel wider than one texel pays the
+// receiver plane's slope over the extra radius, so a slanted receiver inside a wide
+// penumbra does not shadow itself.
+float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen, float projector_softness)
+{
+#if defined(SPOT_SHADOW)
+    if (stc.w <= 1.e-4) return 1.0;   // behind the projection origin: outside the map, lit
+    stc.xyz /= stc.w;
+    // Smaller stc.z is nearer the light (the compare passes when ref <= stored), so a bias
+    // is SUBTRACTED; the legacy line adds RenderSpotShadowBias, which is negative.
+    stc.z -= g_spot_bias_stc;
+
+    if (soft_shadow_enable != 0 || projector_softness > 0.0)
+    {
+        float softness = projector_softness > 0.0
+                       ? projector_softness : soft_shadow_scale;
+        float gap_scale = clamp(estimateSpotBlockerGap(shadowMap, stc.xyz, softness), 0.0, 1.0);
+        float pr = clamp(1.0 + softness * gap_scale,
+                          1.0, max(soft_shadow_max, 1.0));
+        stc.z -= (pr - 1.0) * g_spot_widen_stc;
+        vec2 texel = pr / proj_shadow_res;
+        texel.y *= 1.5;
+        float shadow = 0.0;
+
+        if (soft_shadow_vogel != 0)
+        {
+            int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+            float inv_n = 1.0 / float(taps);
+            float phi = 6.2831853 * fract(52.9829189 *
+                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+            {
+                if (i >= taps) break;
+                float r = sqrt((float(i) + 0.5) * inv_n);
+                float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+                vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow *= inv_n;
+        }
+        else
+        {
+            float jit = fract(pos_screen.y * 0.666666666);
+            for (int i = 0; i < 12; ++i)
+            {
+                vec2 o = SOFT_SHADOW_DISK[i] * texel;
+                o.x += (jit - 0.5) * texel.x;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow /= 12.0;
+        }
+        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+            shadow = mix(soft_shadow_fill, 1.0, shadow);
+        return clamp(shadow, 0.0, 1.0);
+    }
+
+    stc.x = floor(proj_shadow_res.x * stc.x + fract(pos_screen.y*0.666666666)) / proj_shadow_res.x; // snap
+    vec2 off = 1.0/proj_shadow_res;
+    off.y *= 1.5;
+    float shadow = texture(shadowMap, stc.xyz);
+    shadow += texture(shadowMap, stc.xyz+vec3(off.x*2.0, off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(off.x, -off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(-off.x, off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(-off.x*2.0, -off.y, 0.0));
+    return shadow*0.2;
+#else
+    return 1.0;
+#endif
+}
+
 float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen, float projector_softness, bool detail)
 {
 #if defined(SPOT_SHADOW)
+    // [SoftShadow bias] surface model (never set for a zero-normal caller).
+    if (g_spot_bias_mode == 1) return pcfSpotShadowSurface(shadowMap, stc, pos_screen, projector_softness);
     if (detail && stc.w <= 1.e-4) return 1.0;
     stc.xyz /= stc.w;
     stc.z += spot_shadow_bias * bias_scale;
@@ -1080,10 +1190,84 @@ int directionalShadowCascade(vec3 pos, vec3 norm)
 #endif
 }
 
+// [SoftShadow bias] Surface-model receiver for projector slot `index`. Everything is
+// derived from the slot's own generated matrix, so optical setback, FOV, aspect and a
+// Prism / probe view's re-expressed matrix are all accounted for, and nothing depends
+// on screen derivatives (defined at silhouettes and after the caller's discard).
+//
+// With stc = (ru.p, rv.p, rz.p) / (rw.p) (matrix row r = (m[0][r], m[1][r], m[2][r])), the
+// Jacobian d(stc)/dp at the receiver has rows gu = (ru - u*rw)/w, gv = (rv - v*rw)/w,
+// gd = (rz - d*rw)/w (the sunBandC derivation). ray = cross(gu, gv) moves depth only: it
+// is the light ray through the receiver. gd.ray is the Jacobian determinant, so one metre
+// along the ray is |gd.ray|/|ray| in stc.z, and the receiver plane with G-buffer normal N
+// meets the ray at cos(a) = |N.ray|/|ray|: its depth slope is tan(a) per metre across the map.
+//
+//   texel  = world footprint of one map texel at the receiver's axial depth
+//   reach  = 4 * texel                    how far a tap of the 1-texel kernels sits from the receiver
+//   floor  = 0.5 mm (0.15 mm for a rig light with Detail shadows)
+//   camera = how far the receiver itself may be off: 2 steps of the 24-bit G-buffer depth it
+//            was reconstructed from, in metres along the view ray (grows with camera distance^2)
+//   offset = max(clamp(reach * sin(a), floor, spot_shadow_offset / 4), camera)   metres along N
+//   bias   = max(floor, 0.75 * texel, deficit * reach * tan(a + 10 deg))         metres along the ray
+//            deficit = 1 - offset / (reach * sin(a)): the share of the reach the clamped
+//            offset could not cover (0 while the offset is not clamped)
+//
+// The offset is a displacement in space: the depth it buys along the ray grows with the
+// receiver's TRUE incidence, so it stays sufficient when the G-buffer normal (a shading
+// normal: normal maps, smoothing) disagrees with the rasterised geometry, and it vanishes
+// on a receiver facing the light, where casters millimetres above the surface matter most.
+// The taps therefore do NOT follow the estimated plane (a tap that trusts a shading normal
+// acnes as soon as it is wrong). The receiver-plane slope only supplies depth bias where
+// the offset is clamped (coarse texels, grazing light), with 10 degrees of slack on the
+// normal and the slope capped at cos >= 1/8 like sunBandC.
+vec4 spotSurfaceReceiver(vec3 pos, vec3 norm, int index)
+{
+    mat4 m = shadow_matrix[4+index];
+    g_spot_bias_stc = SPOT_BIAS_DEPTH_QUANTUM;
+    g_spot_widen_stc = 0.0;
+    vec4 lp0 = m*vec4(pos,1.0);
+    if (lp0.w <= 1.e-4) return lp0;   // pcfSpotShadowSurface: outside the map, lit
+    vec3 n = normalize(norm);
+    vec3 ru = vec3(m[0].x,m[1].x,m[2].x);
+    vec3 rv = vec3(m[0].y,m[1].y,m[2].y);
+    vec3 rz = vec3(m[0].z,m[1].z,m[2].z);
+    vec3 rw = vec3(m[0].w,m[1].w,m[2].w);
+    float w0 = lp0.w;
+    vec3 st0 = lp0.xyz/w0;
+    vec3 gu = (ru-st0.x*rw)/w0;
+    vec3 gv = (rv-st0.y*rw)/w0;
+    vec3 gd = (rz-st0.z*rw)/w0;
+    vec3 ray = cross(gu,gv);
+    float ray_len = length(ray);
+    if (!(ray_len > 0.0)) return lp0; // degenerate matrix: no offset, precision floor only
+    float cos_a = min(abs(dot(n,ray))/ray_len,1.0);
+    float sin_a = sqrt(max(1.0-cos_a*cos_a,0.0));
+    // Same texel derivation as detailSpotReceiver below.
+    float texel = max(2.0*w0/(length(2.0*ru-rw)*proj_shadow_res.x),
+                      2.0*w0/(length(2.0*rv-rw)*proj_shadow_res.y));
+    float reach = SPOT_BIAS_REACH_TEXELS*texel;
+    float ceiling = max(0.25*spot_shadow_offset,g_spot_bias_floor);
+    // View depth is 1/(a*z_ndc + b) with a = inv_proj[2][3], so one 24-bit depth step (2^-23 in
+    // z_ndc) moves the reconstructed receiver |pos.z| * |pos| * |a| * 2^-23 metres along its view ray.
+    float camera = SPOT_BIAS_CAMERA_QUANTA*1.1920929e-7*abs(inv_proj[2][3]*pos.z)*length(pos);
+    float offset = max(clamp(reach*sin_a,g_spot_bias_floor,ceiling),camera);
+    vec4 lp = m*vec4(pos+n*offset,1.0);
+    if (lp.w <= 1.e-4) return lp;
+    float ray_stc = abs(dot(gd,ray))/ray_len;   // stc.z per metre along the light ray
+    float deficit = max(1.0-offset/max(reach*sin_a,1.e-9),0.0);
+    float tan_s = (sin_a*SPOT_BIAS_NORMAL_SLACK.x+cos_a*SPOT_BIAS_NORMAL_SLACK.y)/
+                  max(cos_a*SPOT_BIAS_NORMAL_SLACK.x-sin_a*SPOT_BIAS_NORMAL_SLACK.y,0.125);
+    float floor_m = max(SPOT_BIAS_DEPTH_TEXELS*texel,g_spot_bias_floor);
+    g_spot_bias_stc = max(max(floor_m,deficit*reach*tan_s)*ray_stc,SPOT_BIAS_DEPTH_QUANTUM);
+    g_spot_widen_stc = 1.5*texel*tan_s*ray_stc;
+    return lp;
+}
+
 // The actual generated projector matrix includes optical setback and FOV.
 // Its rows recover axial depth and metres/texel without guessing light range.
 vec4 detailSpotReceiver(vec3 pos, vec3 norm, int index)
 {
+    if (g_spot_bias_mode == 1) return spotSurfaceReceiver(pos,norm,index);
     mat4 m = shadow_matrix[4+index];
     vec3 axis = vec3(m[0].w,m[1].w,m[2].w);
     vec3 right = 2.0*vec3(m[0].x,m[1].x,m[2].x)-axis;
@@ -1118,6 +1302,22 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
     bool detail = spot_shadow_detail[index] > 0.5 && dot(norm,norm) > 0.0;
     vec3 original_pos = pos;
     if (!detail) pos += norm * spot_shadow_offset;
+    // [SoftShadow bias] Surface model: the map lookup comes from spotSurfaceReceiver
+    // through the receiver route of the dispatch below, which passes original_pos (the
+    // UNSHIFTED receiver), never pos. `pos` keeps the legacy shift above for an ordinary
+    // projector on purpose: it now feeds only the camera-distance fade (spos / pos.z
+    // below), which the area-shadow hand-over mirrors at that same depth
+    // (area_native_offset). The mode is reset on EVERY call, before anything can read
+    // it: pcfSpotShadow and detailSpotReceiver are reached only from this function, and
+    // the conservative samplers below never read it. A zero normal and the shaft
+    // program's rim never enter: mode 0, legacy statements only.
+    g_spot_bias_mode = 0;
+    if (spot_shadow_bias_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0 && (spot_shadow_bias_model == 2 || !detail))
+    {
+        g_spot_bias_mode = 1;
+        g_spot_bias_floor = detail ? SPOT_BIAS_DETAIL_FLOOR : SPOT_BIAS_FLOOR;
+        detail = true;
+    }
 
     vec4 spos = vec4(pos,1.0);
     if (spos.z > -shadow_clip.w)

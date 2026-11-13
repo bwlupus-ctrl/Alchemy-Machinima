@@ -28094,6 +28094,12 @@ void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const*
     shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_BIAS, RenderShadowBias);
     shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);
     shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);
+    // [SoftShadow bias] Projector receiver bias model on lit surfaces (shadowUtil.glsl
+    // sampleSpotShadow): 0 = legacy, 1 = surface model (rig Detail lights keep their
+    // own receiver), 2 = surface model for every projector. A program without the
+    // uniform ignores it.
+    static LLCachedControl<U32> spot_shadow_bias_model(gSavedSettings, "RenderSpotShadowBiasModel", 1);
+    shader.uniform1i(LLStaticHashedString("spot_shadow_bias_model"), (S32)llmin((U32)spot_shadow_bias_model, 2U));
 
     // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadow uniforms.
     // Consumed by shadowUtil.glsl (pcfSpotShadow / pcfShadow). Gate off (default)
