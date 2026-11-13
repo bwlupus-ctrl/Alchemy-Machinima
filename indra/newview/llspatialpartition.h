@@ -27,6 +27,8 @@
 #ifndef LL_LLSPATIALPARTITION_H
 #define LL_LLSPATIALPARTITION_H
 
+#include <memory>
+
 #define SG_MIN_DIST_RATIO 0.00001f
 
 #include "lldrawable.h"
@@ -101,6 +103,11 @@ public:
     const LLMatrix4* mSpecularMapMatrix = nullptr;
     const LLMatrix4* mNormalMapMatrix = nullptr;
     const LLMatrix4* mTextureMatrix = nullptr;
+    // Shares ownership of the face's live animated texture matrix so
+    // mTextureMatrix stays valid for as long as this batch exists, even after
+    // the face is destroyed or its animation is removed (port of Firestorm
+    // ae465f3fb6c). Always set together with mTextureMatrix.
+    std::shared_ptr<const LLMatrix4> mTextureMatrixOwner;
     const LLMatrix4* mModelMatrix = nullptr;
     LLPointer<LLClientOuterTransform> mOuterTransform;
     // [BDMerge A5.4-1a] Points at the owning drawable's mLastVelocityMatrix. Used

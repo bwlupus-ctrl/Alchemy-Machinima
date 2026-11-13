@@ -427,13 +427,17 @@ U32 LLVOVolume::processUpdateMessage(LLMessageSystem *mesgsys,
                         LLFace* facep = mDrawable->getFace(i);
                         if (facep && facep->mTextureMatrix)
                         {
-                            // delete or reset
-                            delete facep->mTextureMatrix;
-                            facep->mTextureMatrix = NULL;
+                            // Existing draw batches retain the matrix until rebuilt.
+                            facep->releaseTextureMatrix();
                         }
                     }
 
                     gPipeline.markTextured(mDrawable);
+                    if (LLSpatialGroup* group = mDrawable->getSpatialGroup())
+                    {
+                        group->dirtyGeom();
+                        gPipeline.markRebuild(group);
+                    }
                     mFaceMappingChanged = true;
                     mTexAnimMode = 0;
                 }
@@ -531,13 +535,17 @@ U32 LLVOVolume::processUpdateMessage(LLMessageSystem *mesgsys,
                     LLFace* facep = mDrawable->getFace(i);
                     if (facep && facep->mTextureMatrix)
                     {
-                        // delete or reset
-                        delete facep->mTextureMatrix;
-                        facep->mTextureMatrix = NULL;
+                        // Existing draw batches retain the matrix until rebuilt.
+                        facep->releaseTextureMatrix();
                     }
                 }
 
                 gPipeline.markTextured(mDrawable);
+                if (LLSpatialGroup* group = mDrawable->getSpatialGroup())
+                {
+                    group->dirtyGeom();
+                    gPipeline.markRebuild(group);
+                }
                 mFaceMappingChanged = true;
                 mTexAnimMode = 0;
             }
@@ -681,9 +689,8 @@ void LLVOVolume::animateTextures()
                     te->getScale(&scale_s, &scale_t);
                 }
 
-                if (!facep->mTextureMatrix)
+                if (facep->ensureTextureMatrix())
                 {
-                    facep->mTextureMatrix = new LLMatrix4();
                     if (facep->getVirtualSize() > MIN_TEX_ANIM_SIZE)
                     {
                         // [ProbeOnDemand] TXt: an animated-texture batch toggle is
@@ -6167,6 +6174,12 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
 
         draw_vec.push_back(draw_info);
         draw_info->mTextureMatrix = tex_mat;
+        if (tex_mat)
+        {
+            // Share ownership of the live matrix with the batch (tex_mat is
+            // facep->mTextureMatrix, the view of this owner).
+            draw_info->mTextureMatrixOwner = facep->mTextureMatrixOwner;
+        }
         draw_info->mModelMatrix = model_mat;
         draw_info->mOuterTransform = outer_transform;
         // [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD

@@ -3360,11 +3360,16 @@ namespace
                 LLFace* face = dst->mDrawable->getFace(i);
                 if (face && face->mTextureMatrix)
                 {
-                    delete face->mTextureMatrix;
-                    face->mTextureMatrix = nullptr;
+                    // Existing draw batches retain the matrix until rebuilt.
+                    face->releaseTextureMatrix();
                 }
             }
             gPipeline.markTextured(dst->mDrawable);
+            if (LLSpatialGroup* group = dst->mDrawable->getSpatialGroup())
+            {
+                group->dirtyGeom();
+                gPipeline.markRebuild(group);
+            }
         }
         dst->faceMappingChanged();
     }

@@ -27,6 +27,8 @@
 #ifndef LL_LLFACE_H
 #define LL_LLFACE_H
 
+#include <memory>
+
 #include "llstrider.h"
 #include "llrender.h"
 #include "v2math.h"
@@ -181,6 +183,13 @@ public:
                                     const LLMatrix4& mat_vert_in, bool global_volume = false);
 
     void        init(LLDrawable* drawablep, LLViewerObject* objp);
+
+    // Allocate the animated texture matrix if this face has none yet.
+    // Returns true when a new matrix was created.
+    bool        ensureTextureMatrix();
+    // Drop this face's reference to its animated texture matrix. Draw batches
+    // that still share it keep it alive until they are rebuilt.
+    void        releaseTextureMatrix();
     void        destroy();
     void        update();
 
@@ -259,7 +268,14 @@ public:
     F32         mLastUpdateTime;
     F32         mLastSkinTime;
     F32         mLastMoveTime;
+    // Animated texture matrix. mTextureMatrix is a non-owning view of
+    // mTextureMatrixOwner and is always equal to mTextureMatrixOwner.get().
+    // Draw batches (LLDrawInfo) share ownership, so removing the animation or
+    // destroying this face cannot free a matrix a pending batch still reads
+    // (port of Firestorm ae465f3fb6c). Never new/delete or assign
+    // mTextureMatrix directly: use ensureTextureMatrix()/releaseTextureMatrix().
     LLMatrix4*  mTextureMatrix;
+    std::shared_ptr<LLMatrix4> mTextureMatrixOwner;
     LLMatrix4*  mSpecMapMatrix;
     LLMatrix4*  mNormalMapMatrix;
     LLDrawInfo* mDrawInfo;
