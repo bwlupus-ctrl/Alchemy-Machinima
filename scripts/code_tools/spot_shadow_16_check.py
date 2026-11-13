@@ -186,8 +186,30 @@ for name in ('class1/deferred/shadowUtil.glsl','class3/deferred/projectorVolumet
     path=s['root']/name
     reference = '46ec4444fff' if name == 'class1/deferred/shadowUtil.glsl' else 'fb616f2519c'
     baseline=subprocess.check_output(['git','show',reference+':'+path.as_posix()],encoding='utf-8')
-    assert legacy_tokens(path.read_text(encoding='utf-8')) == legacy_tokens(baseline), name
-print('PASS <=10 production selection preserves reviewed bias GLSL tokens and base shaft layout',flush=True)
+    current=path.read_text(encoding='utf-8')
+    if name == 'class1/deferred/shadowUtil.glsl':
+        # The projector fade model (RenderSpotShadowFadeModel) is a later, separately reviewed layer inside
+        # sampleSpotShadow. Peel exactly that layer (every insertion present once), require the complete
+        # FADE_BASE file byte for byte, and only then compare tokens as before: nothing else may differ.
+        from relight_spot_bias_gl_check import reverse_fade_layer, fade_layer_negatives, FADE_BASE
+        fade_base=subprocess.check_output(['git','show',FADE_BASE+':'+path.as_posix()],encoding='utf-8')
+        def peel(text):
+            peeled=reverse_fade_layer(text)
+            assert peeled == fade_base, 'fade layer must reverse to its exact base'
+            return peeled
+        # Planted edits, including executable text inside the uniform's comment block: each must be refused.
+        survivors=fade_layer_negatives(current)
+        assert not survivors, ('fade layer allowance accepted', survivors)
+        for label,changed in (
+                ('define inside the uniform block',current.replace('uniform int spot_shadow_fade_model = 0;\n','#define shadow_bias 0.0\nuniform int spot_shadow_fade_model = 0;\n',1)),
+                ('unrelated edit beside the fade layer',current.replace('            weight += w;\n','            weight += w;\n            weight += 0.0;\n',1))):
+            assert changed != current, label
+            try: peel(changed)
+            except AssertionError: pass
+            else: raise AssertionError('fade layer allowance accepted ' + label)
+        current=peel(current)
+    assert legacy_tokens(current) == legacy_tokens(baseline), name
+print('PASS <=10 production selection preserves reviewed bias GLSL tokens (fade layer peeled exactly) and base shaft layout',flush=True)
 
 # Compile the production dispatch itself for every supported GLSL version.
 # Both dark-map and matrix-isolation probes discriminate all sixteen slots.

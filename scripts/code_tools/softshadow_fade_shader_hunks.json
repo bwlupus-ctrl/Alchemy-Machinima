@@ -1,0 +1,31 @@
+{
+ "base": "c63f7ca1b2f",
+ "description": "Projector shadow fade model (RenderSpotShadowFadeModel) in shadowUtil.glsl: the uniform with its comment block and the statements inside sampleSpotShadow (map-bounds gate, early-out, zero-weight guard, weight, ramp). Every hunk is exact text with its neighbouring base lines; reversing all of them must reproduce the base file byte for byte.",
+ "file": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
+ "hunks": [
+  {
+   "before": "uniform float projvol_rim_strength;\nconst float SPOT_BIAS_REACH_TEXELS = 4.0;      // texels a tap of the 1-texel kernels sits from the receiver (snap + tap + bilinear)\n",
+   "after": "uniform float projvol_rim_strength;\n// [SoftShadow fade] Where a projector's own shadow map stops deciding on LIT SURFACES;\n// RenderSpotShadowFadeModel.\n//   0 = legacy: the projector shadow follows the SUN cascade range (shadow_clip). It\n//       ramps to lit over the last half of [shadow_clip.z, shadow_clip.w] of camera\n//       distance and is fully lit beyond shadow_clip.w.\n//   1 = map-bounded: for a receiver INSIDE this projector's map frustum (u, v and\n//       depth, tested in sampleSpotShadow) the shadow is the map's own result at every\n//       camera distance. A receiver outside the map keeps the legacy statements (0):\n//       the map has no answer for it, only clamped edge texels.\n// The CPU keeps the area-shadow hand-over in step (LLPipeline::nativeSpotShadowClip:\n// \"valid everywhere\" with model 1), so the screen trace stays contact-only where the\n// map now persists. The initialiser keeps a program that never receives the upload\n// on the legacy fade. Zero-normal callers (volumetric shafts, froxel injection) and\n// the New shaft engine's surface rim (projvol_rim_strength > 0) never take model 1.\nuniform int spot_shadow_fade_model = 0;\nconst float SPOT_BIAS_REACH_TEXELS = 4.0;      // texels a tap of the 1-texel kernels sits from the receiver (snap + tap + bilinear)\n"
+  },
+  {
+   "before": "\n    vec4 spos = vec4(pos,1.0);\n",
+   "after": "\n    // [SoftShadow fade] Model 1, lit surfaces INSIDE this projector's map only: no sun-cascade\n    // early-out, weight or ramp; the result is the map's own (pcf * 1 + 0) / 1 at every camera\n    // distance. A receiver outside the map's frustum (u, v or depth) has no answer in the map,\n    // its taps clamp to the edge texels, so it stays on the legacy statements: unchanged inside\n    // the sun range, lit beyond it. The test is needed here: the lighting shader clips only the\n    // light's range and the projection depth, and a glossy receiver outside the cone still shows\n    // the projector's reflection. The receiver tested is the unshifted one.\n    bool map_bounded = false;\n    if (spot_shadow_fade_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0)\n    {\n        vec4 mp = shadow_matrix[4+index]*vec4(original_pos,1.0);\n        map_bounded = mp.w > 1.e-4 && all(greaterThanEqual(mp.xyz,vec3(0.0))) && all(lessThanEqual(mp.xyz,vec3(mp.w)));\n    }\n\n    vec4 spos = vec4(pos,1.0);\n"
+  },
+  {
+   "before": "    vec4 spos = vec4(pos,1.0);\n    if (spos.z > -shadow_clip.w)\n    {\n",
+   "after": "    vec4 spos = vec4(pos,1.0);\n    if (map_bounded || spos.z > -shadow_clip.w)\n    {\n"
+  },
+  {
+   "before": "        {\n            float w = 1.0;\n",
+   "after": "        {\n            // [SoftShadow fade] The legacy weight below is negative near the camera and crosses\n            // zero at view depth shadow_clip.z * (1 - shadow_split_blend), where its\n            // (pcf * w + ramp) / w was 0/0 (NaN). The ramp is zero there (it starts at the\n            // middle of [clip.z, clip.w]), so ANY non-zero weight returns the limit, the map's\n            // own result: at exactly that depth the domain is doubled and the weight becomes\n            // 0.5 (the quotient tested here is the one subtracted below). Every other depth is\n            // untouched, for every caller. The guard sits in FRONT of the weight on purpose:\n            // a select on w itself (if (w == 0.0) w = ...) changes how the compiler rounds\n            // the legacy division, by one float step, in the visibility and the shaft programs\n            // (measured; relight_spot_fade_gl_check.py and the shaft byte gates pin the bytes).\n            if (max(spos.z-far_split.z, 0.0)/transition_domain.z == 1.0) transition_domain.z *= 2.0;\n            float w = 1.0;\n"
+  },
+  {
+   "before": "            w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;\n\n",
+   "after": "            w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;\n            // [SoftShadow fade] Model 1: a weight of exactly 1, so the division below is exact.\n            if (map_bounded) w = 1.0;\n\n"
+  },
+  {
+   "before": "            weight += w;\n            shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);\n        }\n",
+   "after": "            weight += w;\n            if (!map_bounded) shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);\n        }\n"
+  }
+ ]
+}

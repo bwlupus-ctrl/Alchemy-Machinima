@@ -1,0 +1,16 @@
+{
+ "base": "c63f7ca1b2f",
+ "description": "Projector shadow fade model (RenderSpotShadowFadeModel): one uniform upload beside the existing spot shadow offset/bias uploads in LLPipeline::bindSunShadowState (Tuning stage; placed before the bias upload so the older bias-model hunk stays verbatim), and the matching 'valid everywhere' hand-over clip in LLPipeline::nativeSpotShadowClip. No other pipeline change.",
+ "files": {
+  "pipeline.cpp": [
+   {
+    "before": "    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);\n",
+    "after": "    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);\n    // [SoftShadow fade] Where a projector's own shadow map stops deciding on lit surfaces\n    // (shadowUtil.glsl sampleSpotShadow): 0 = legacy fade with the sun cascade range,\n    // 1 = map-bounded (no camera-distance fade). nativeSpotShadowClip() reads the same\n    // setting so the area-shadow hand-over follows it. A program without the uniform\n    // ignores it.\n    static LLCachedControl<U32> spot_shadow_fade_model(gSavedSettings, \"RenderSpotShadowFadeModel\", 1);\n    shader.uniform1i(LLStaticHashedString(\"spot_shadow_fade_model\"), (S32)llmin((U32)spot_shadow_fade_model, 1U));\n"
+   },
+   {
+    "before": "LLVector4 LLPipeline::nativeSpotShadowClip() const\n{\n    const RenderTargetPack& pack",
+    "after": "LLVector4 LLPipeline::nativeSpotShadowClip() const\n{\n    // [SoftShadow fade] RenderSpotShadowFadeModel 1 (map-bounded): the native projector map\n    // no longer ends with the sun cascades, so there is no hand-over depth. All zeros is the\n    // \"valid everywhere\" value of ALAreaShadow::nativeShadowStrength and of areaNativeStrength\n    // in the gather and its filter: the screen trace of a mapped light stays contact-only at\n    // every camera distance, and the light's ranking keeps its full native weight. Both\n    // callers (selection and upload) read this one function, so they change together with\n    // the sampler's uniform (bindSunShadowState).\n    static LLCachedControl<U32> spot_shadow_fade_model(gSavedSettings, \"RenderSpotShadowFadeModel\", 1);\n    if (spot_shadow_fade_model != 0) return LLVector4(0.f, 0.f, 0.f, 0.f);\n    const RenderTargetPack& pack"
+   }
+  ]
+ }
+}

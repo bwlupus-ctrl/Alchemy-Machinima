@@ -28093,6 +28093,13 @@ void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const*
     shader.uniform1f (LLShaderMgr::DEFERRED_SHADOW_OFFSET, RenderShadowOffset); //*shadow_offset_error);
     shader.uniform1f(LLShaderMgr::DEFERRED_SHADOW_BIAS, RenderShadowBias);
     shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_OFFSET, RenderSpotShadowOffset);
+    // [SoftShadow fade] Where a projector's own shadow map stops deciding on lit surfaces
+    // (shadowUtil.glsl sampleSpotShadow): 0 = legacy fade with the sun cascade range,
+    // 1 = map-bounded (no camera-distance fade). nativeSpotShadowClip() reads the same
+    // setting so the area-shadow hand-over follows it. A program without the uniform
+    // ignores it.
+    static LLCachedControl<U32> spot_shadow_fade_model(gSavedSettings, "RenderSpotShadowFadeModel", 1);
+    shader.uniform1i(LLStaticHashedString("spot_shadow_fade_model"), (S32)llmin((U32)spot_shadow_fade_model, 1U));
     shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);
     // [SoftShadow bias] Projector receiver bias model on lit surfaces (shadowUtil.glsl
     // sampleSpotShadow): 0 = legacy, 1 = surface model (rig Detail lights keep their
@@ -30508,6 +30515,15 @@ bool LLPipeline::worldShadowResidentEligible(const LLUUID& id, bool native_sampl
 // the stock upload), so the gather and sampleSpotShadow agree on where the native map ends.
 LLVector4 LLPipeline::nativeSpotShadowClip() const
 {
+    // [SoftShadow fade] RenderSpotShadowFadeModel 1 (map-bounded): the native projector map
+    // no longer ends with the sun cascades, so there is no hand-over depth. All zeros is the
+    // "valid everywhere" value of ALAreaShadow::nativeShadowStrength and of areaNativeStrength
+    // in the gather and its filter: the screen trace of a mapped light stays contact-only at
+    // every camera distance, and the light's ranking keeps its full native weight. Both
+    // callers (selection and upload) read this one function, so they change together with
+    // the sampler's uniform (bindSunShadowState).
+    static LLCachedControl<U32> spot_shadow_fade_model(gSavedSettings, "RenderSpotShadowFadeModel", 1);
+    if (spot_shadow_fade_model != 0) return LLVector4(0.f, 0.f, 0.f, 0.f);
     const RenderTargetPack& pack = (sPrismLensRender || mProbeShadowSampleMode == 1) ? mMainRT : *mRT;
     if (mShadowEngaged && pack.shadowMeta.validCascades != 0 && mProbeShadowSampleMode == 0)
         return pack.shadowMeta.clip;

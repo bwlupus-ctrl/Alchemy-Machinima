@@ -193,17 +193,42 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
+SOFTSHADOW_FADE_DIGEST = "53d210ccf61ebc8a1cee4a11b0e9b1679d98ed2247d443afd2ed94380198e990"
+
+
+def reverse_softshadow_fade(source, name):
+    """Peel the newest pipeline layer (projector fade-model uniform + hand-over clip).
+
+    Exact and never optional for pipeline.cpp: both reviewed hunks must be present
+    once, and removing them must reproduce the complete c63f7ca1b2f file, so a
+    missing, duplicated or edited hunk and any other edit still fail.
+    """
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_fade_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_FADE_DIGEST, ("reviewed soft shadow fade", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "c63f7ca1b2f", "soft shadow fade base"
+    assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 2, "soft shadow fade scope"
+    return reverse_feature_allowance(source, name, "softshadow_fade_hunks.json",
+                                     SOFTSHADOW_FADE_DIGEST, "reviewed soft shadow fade")
+
+
 SOFTSHADOW_BIAS_DIGEST = "d3eb81e27c60fed3adb00978c31ea7482c5df255462a727dc31942c543b4493b"
 
 
 def reverse_softshadow_bias(source, name):
-    """Peel the newest pipeline layer (projector bias-model uniform) before the shaft slot merge.
+    """Peel the projector bias-model uniform layer before the shaft slot merge.
 
     Exact: the one reviewed hunk must be present once, and removing it must
     reproduce the complete fb616f2519c file, so any other edit still fails.
+    The newer fade-model layer (reverse_softshadow_fade) is peeled first, here,
+    so every caller of this function gets the full chain newest-first.
     """
     import hashlib
     import json
+    source = reverse_softshadow_fade(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_bias_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_BIAS_DIGEST, ("reviewed soft shadow bias", "allowance pin")
@@ -381,7 +406,8 @@ def main():
     import subprocess
     for path in ("pipeline.cpp", "pipeline.h", "alfloaterlightbox.cpp"):
         # The Director tag highlight's exact renderer-selection hooks sit on top of main fc5f3e5a78f.
-        # Newest first: the projector bias-model uniform (pipeline.cpp only), then the shaft slot merge.
+        # Newest first: the projector fade-model layer (peeled inside reverse_softshadow_bias), the bias-model uniform
+        # (both pipeline.cpp only), then the shaft slot merge.
         tagged = reverse_feature_allowance(reverse_shaft_slot_merge(reverse_softshadow_bias((nv / path).read_text(encoding="utf-8"), path), path), path,
             "tag_highlight_pipeline_hunks.json", TAG_HIGHLIGHT_PIPELINE_DIGEST, "reviewed Director tag highlight renderer hooks")
         guarded = reverse_post_chroma_main(tagged, path)
