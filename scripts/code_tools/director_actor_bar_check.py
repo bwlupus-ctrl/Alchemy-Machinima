@@ -193,15 +193,59 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_FADE_DIGEST = "53d210ccf61ebc8a1cee4a11b0e9b1679d98ed2247d443afd2ed94380198e990"
+SOFTSHADOW_QUALITY_DIGEST = "27dc363be5445b13fcda058ff9b818a8752b6023a80a34e95547efbf4d237105"
+
+
+def reverse_softshadow_quality(source, name):
+    """Peel the newest pipeline layer (soft shadow quality uniforms: fill step, noise model, sun light-map dead
+    samples) before the projector bias layer. Idempotent: skipped when its hunk is already gone; the pinned digest
+    is checked every time. Exact: removing the one reviewed hunk must reproduce the complete c63f7ca1b2f file."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_quality_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_QUALITY_DIGEST, ("reviewed soft shadow quality", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "c63f7ca1b2f", "soft shadow quality base"
+    assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 1, "soft shadow quality scope"
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "softshadow_quality_hunks.json",
+                                     SOFTSHADOW_QUALITY_DIGEST, "reviewed soft shadow quality")
+
+
+SOFTSHADOW_QUALITY_SHADER_DIGEST = "e79590a0bcc709255adf5e2d6cd7985e91fe0630658e0ce3263b3c81f3f42715"
+
+
+def reverse_softshadow_quality_shader(source):
+    """Peel the reviewed soft shadow quality edits of class1/deferred/shadowUtil.glsl (fill step retired, noise
+    hygiene). Exact: every pinned hunk must be present once and reversing them must reproduce the c63f7ca1b2f file
+    byte for byte, so any other edit still fails the checks that compare against an older reference."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_quality_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_QUALITY_SHADER_DIGEST, ("reviewed soft shadow quality shader", "allowance pin")
+    allowed = json.loads(raw)
+    path = "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
+    original = subprocess.check_output(["git", "show", allowed["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowed["files"]["shadowUtil.glsl"]:
+        assert source.count(hunk["after"]) == 1, "soft shadow quality shader hunk"
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == original, "soft shadow quality shader reversal must reproduce its exact baseline"
+    return source
+
+
+SOFTSHADOW_FADE_DIGEST = "e2d360ac0c0885ce032026305d7f3378e8d90159568301ffcc1067ef26e70ad2"
 
 
 def reverse_softshadow_fade(source, name):
     """Peel the newest pipeline layer (projector fade-model uniform + hand-over clip).
 
     Exact and never optional for pipeline.cpp: both reviewed hunks must be present
-    once, and removing them must reproduce the complete c63f7ca1b2f file, so a
-    missing, duplicated or edited hunk and any other edit still fail.
+    once, and removing them must reproduce the complete 1d1162aaf77 file (main with
+    the soft shadow quality layer, which is peeled next), so a missing, duplicated
+    or edited hunk and any other edit still fail.
     """
     import hashlib
     import json
@@ -209,7 +253,7 @@ def reverse_softshadow_fade(source, name):
     raw = (Path(__file__).parent / "softshadow_fade_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_FADE_DIGEST, ("reviewed soft shadow fade", "allowance pin")
     allowed = json.loads(raw)
-    assert allowed["base"] == "c63f7ca1b2f", "soft shadow fade base"
+    assert allowed["base"] == "1d1162aaf77", "soft shadow fade base"
     assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 2, "soft shadow fade scope"
     return reverse_feature_allowance(source, name, "softshadow_fade_hunks.json",
                                      SOFTSHADOW_FADE_DIGEST, "reviewed soft shadow fade")
@@ -228,7 +272,9 @@ def reverse_softshadow_bias(source, name):
     """
     import hashlib
     import json
+    # Newest first: the projector fade model (built on the soft shadow quality layer), then the quality layer.
     source = reverse_softshadow_fade(source, name)
+    source = reverse_softshadow_quality(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_bias_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_BIAS_DIGEST, ("reviewed soft shadow bias", "allowance pin")

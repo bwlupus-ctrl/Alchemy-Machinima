@@ -47,7 +47,7 @@ import rig_shadow_gl as R
 import relight_spot_bias_gl_check as B
 from rig_shadow_presets_check import function, settings_defaults
 
-BASE = 'c63f7ca1b2f'
+BASE = '1d1162aaf77'   # main: this feature's exact base (with the soft shadow quality series)
 SHADER = B.SHADER
 LIMITS = dict(retention_kept=.90, retention_lost=.05, mean_visibility=.98, false_dark_percent=.02,
               expected_pixels=150, rounding=2.e-6, ramp_lift=.2)
@@ -80,8 +80,16 @@ MUTANTS = {
 }
 
 
+# The soft shadow quality series (RenderSoftShadowFillStep off = fill retired, RenderSoftShadowNoiseModel 1; gated by
+# relight_soft_shadow_quality_gl_check.py) shares this sampler. 1 = its shipped defaults, 0 = its old behaviour (the
+# shader's own defaults). evaluate() runs the fade checks under both; stated on every draw.
+QUALITY = 1
+
+
 def visibility(r, pr, cam, d, n, e, run, bias, fade, clip, airborne=False, vogel=False, upload=True, setup=None):
     def both(pr):
+        r.gl.ui(r.gl.loc(pr, b'soft_shadow_fill_retire'), int(QUALITY))
+        r.gl.ui(r.gl.loc(pr, b'soft_shadow_noise_model'), int(QUALITY))
         # Absent in BASE (location -1): GL ignores the upload, exactly like the viewer.
         if upload:
             r.gl.ui(r.gl.loc(pr, b'spot_shadow_fade_model'), int(fade))
@@ -816,7 +824,19 @@ def evaluate(out, negatives=True):
     shaft_failures = shaft_failures + looks_failures
     failures += long_failures + clips_failures + ['identity ' + k for k, ok in identity.items() if not ok]
     failures += zero_failures + slots_failures + edges_failures + shaft_failures
-    result = dict(base=BASE, limits=LIMITS, contracts=contracts, allowance=allowance, long_lens=long_lens, clips=clips, identity=identity, zero=zero,
+    # The same fade checks with the soft shadow quality series switched to its old behaviour (fill step and old noise).
+    global QUALITY
+    QUALITY = 0
+    try:
+        old_quality = dict(long_lens=long_lens_check(r, pr, defaults), clips=clips_check(r, pr, defaults),
+                           edges=edges_check(r, pr, r.tree, defaults), identity=(identity_check(r, pr, base, r.tree, defaults), None))
+    finally:
+        QUALITY = 1
+    for key, (rows, found) in old_quality.items():
+        found = ['identity ' + k for k, ok in rows.items() if not ok] if key == 'identity' else found
+        failures += ['old soft shadow quality: ' + str(x) for x in found]
+    old_quality = {key: rows for key, (rows, _) in old_quality.items()}
+    result = dict(base=BASE, limits=LIMITS, contracts=contracts, allowance=allowance, old_soft_shadow_quality=old_quality, long_lens=long_lens, clips=clips, identity=identity, zero=zero,
                   slots=slots, edges=edges, spotLightF_wiring=wiring, shaft=shaft, shaft_looks=shaft_looks)
     if negatives:
         rejected = {}

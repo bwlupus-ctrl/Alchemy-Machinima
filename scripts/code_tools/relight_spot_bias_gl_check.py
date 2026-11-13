@@ -51,8 +51,8 @@ MODEL_DEFAULT, MODEL_ALL = 1, 2
 # (pinned by digest, like the pipeline allowance layers): the contracts below are stated on the shader with that
 # layer reversed, and the reversal must reproduce FADE_BASE byte for byte. Nothing is removed by position or by
 # marker: a hunk is replaced only where its complete reviewed text is present, exactly once.
-FADE_BASE = 'c63f7ca1b2f'
-FADE_SHADER_DIGEST = 'd1d19fa71ae288d9b8287ab679bf2c8420d31217b51c98146878865f0b39a900'
+FADE_BASE = '1d1162aaf77'   # main with the soft shadow quality layer (softshadow_quality_shader_hunks.json), which is the next layer down
+FADE_SHADER_DIGEST = '4a21a44a0efd9fd2d81219a5bea9612ee224c824427090ca4089344a3d2c9432'
 
 
 def reverse_fade_layer(shader):

@@ -31,6 +31,7 @@ out vec4 frag_color;
 // Inputs
 in vec2 vary_fragcoord;
 uniform int render_debug_lighting_term;
+uniform int sun_projector_samples_removed; // RenderSunLightProjectorDeadSamples
 
 vec4 getPosition(vec2 pos_screen);
 vec4 getNorm(vec2 pos_screen);
@@ -64,8 +65,16 @@ void main()
     vec4 col;
     col.r = sampleDirectionalShadow(pos.xyz, norm.xyz, pos_screen);
     col.g = calcAmbientOcclusion(pos, norm.xyz, pos_screen);
-    col.b = sampleSpotShadow(pos.xyz, norm.xyz, 0, pos_screen);
-    col.a = sampleSpotShadow(pos.xyz, norm.xyz, 1, pos_screen);
+    // [SoftShadow quality] The blue / alpha projector samples are read by nothing (the lighting
+    // pass reads red + green; the cascade debug view returns above): 1.0 unless
+    // RenderSunLightProjectorDeadSamples restores them.
+    col.b = 1.0;
+    col.a = 1.0;
+    if (sun_projector_samples_removed == 0)
+    {
+        col.b = sampleSpotShadow(pos.xyz, norm.xyz, 0, pos_screen);
+        col.a = sampleSpotShadow(pos.xyz, norm.xyz, 1, pos_screen);
+    }
 
     frag_color = clamp(col, vec4(0), vec4(1));
 }

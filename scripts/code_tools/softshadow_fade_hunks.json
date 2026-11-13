@@ -1,6 +1,6 @@
 {
- "base": "c63f7ca1b2f",
- "description": "Projector shadow fade model (RenderSpotShadowFadeModel): one uniform upload beside the existing spot shadow offset/bias uploads in LLPipeline::bindSunShadowState (Tuning stage; placed before the bias upload so the older bias-model hunk stays verbatim), and the matching 'valid everywhere' hand-over clip in LLPipeline::nativeSpotShadowClip. No other pipeline change.",
+ "base": "1d1162aaf77",
+ "description": "Projector shadow fade model (RenderSpotShadowFadeModel): one uniform upload beside the existing spot shadow offset/bias uploads in LLPipeline::bindSunShadowState (Tuning stage; placed before the bias upload so the older bias-model hunk stays verbatim), and the matching 'valid everywhere' hand-over clip in LLPipeline::nativeSpotShadowClip. No other pipeline change. Rebuilt on main 1d1162aaf77 (after the soft shadow quality layer): reversing it reproduces that file exactly.",
  "files": {
   "pipeline.cpp": [
    {

@@ -1,5 +1,5 @@
 {
- "base": "c63f7ca1b2f",
+ "base": "1d1162aaf77",
  "description": "Projector shadow fade model (RenderSpotShadowFadeModel) in shadowUtil.glsl: the uniform with its comment block and the statements inside sampleSpotShadow (map-bounds gate, early-out, zero-weight guard, weight, ramp). Every hunk is exact text with its neighbouring base lines; reversing all of them must reproduce the base file byte for byte.",
  "file": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
  "hunks": [

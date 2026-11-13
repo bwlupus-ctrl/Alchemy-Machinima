@@ -208,8 +208,12 @@ for name in ('class1/deferred/shadowUtil.glsl','class3/deferred/projectorVolumet
             except AssertionError: pass
             else: raise AssertionError('fade layer allowance accepted ' + label)
         current=peel(current)
+        # Next exact layer: the soft shadow quality edits (fill step / noise hygiene), pinned hunks. It is
+        # given the fade-peeled text, which is its own complete reviewed file (FADE_BASE).
+        from director_actor_bar_check import reverse_softshadow_quality_shader
+        current=reverse_softshadow_quality_shader(current)
     assert legacy_tokens(current) == legacy_tokens(baseline), name
-print('PASS <=10 production selection preserves reviewed bias GLSL tokens (fade layer peeled exactly) and base shaft layout',flush=True)
+print('PASS <=10 production selection preserves reviewed bias GLSL tokens (fade and quality layers peeled exactly) and base shaft layout',flush=True)
 
 # Compile the production dispatch itself for every supported GLSL version.
 # Both dark-map and matrix-isolation probes discriminate all sixteen slots.

@@ -21154,6 +21154,39 @@
     <key>Value</key>
     <real>0.04</real>
   </map>
+  <key>RenderSoftShadowFillStep</key>
+  <map>
+    <key>Comment</key>
+    <string>Soft-shadow fill floor at the umbra edge (Ambient fill, BDMergeSoftShadowFill) on lit surfaces. FALSE (default) = the step is retired: the sun's soft kernels and the projector surface model (RenderSpotShadowBiasModel 1 or 2) return the plain visibility fraction, so a ramp across the umbra edge is smooth and monotonic and the fill no longer sparkles where the per-pixel kernel rotation flips a pixel between 0 and the fill level. TRUE = the old behaviour (any partially lit pixel is lifted toward the fill level). Volumetric shafts, froxel fog, the legacy projector receiver (RenderSpotShadowBiasModel 0) and the Classic shaft engine always keep the fill, so the Ambient fill slider still controls them.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderSoftShadowNoiseModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 1 (default) = hygiene: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash instead of a view-space sawtooth that slid with the camera, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>RenderSunLightProjectorDeadSamples</key>
+  <map>
+    <key>Comment</key>
+    <string>The sun/shadow light-map pass (sunLightF / sunLightSSAOF) also sampled the first two projector shadow slots into the light map's blue and alpha channels, which nothing reads (the lighting pass reads only red and green; the cascade debug view returns before it). FALSE (default) = those two soft-shadow samples per pixel are not taken (1.0 is written). TRUE = the old behaviour. Debug aid for an A/B of the saved GPU time.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
   <key>RenderSpotShadowBiasModel</key>
   <map>
     <key>Comment</key>
