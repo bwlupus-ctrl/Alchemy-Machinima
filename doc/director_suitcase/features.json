@@ -701,8 +701,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32059,430"
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32065,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -3436,6 +3436,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -11710,11 +11711,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@23073,412",
-          "indra/newview/app_settings/settings.xml@23621,362",
-          "indra/newview/app_settings/settings.xml@29312,100",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@23084,412",
+          "indra/newview/app_settings/settings.xml@23632,362",
+          "indra/newview/app_settings/settings.xml@29323,100",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -11844,8 +11845,9 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@164,12",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32869,721"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32875,721"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -11967,9 +11969,9 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@130,24",
           "indra/newview/llviewershadermgr.cpp@650,35",
-          "indra/newview/llviewershadermgr.cpp@2751,58",
-          "indra/newview/llviewershadermgr.cpp@4248,11",
-          "indra/newview/llviewershadermgr.cpp@6570,118"
+          "indra/newview/llviewershadermgr.cpp@2758,58",
+          "indra/newview/llviewershadermgr.cpp@4255,11",
+          "indra/newview/llviewershadermgr.cpp@6585,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -20752,6 +20754,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -24100,11 +24103,11 @@
           "indra/newview/app_settings/settings.xml@5946,21",
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6496,120",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@27504,98",
-          "indra/newview/app_settings/settings.xml@28037,229",
-          "indra/newview/app_settings/settings.xml@29457,2466",
-          "indra/newview/app_settings/settings.xml@32134,364"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@27515,98",
+          "indra/newview/app_settings/settings.xml@28048,229",
+          "indra/newview/app_settings/settings.xml@29468,2466",
+          "indra/newview/app_settings/settings.xml@32145,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24150,8 +24153,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@296,32",
-          "indra/newview/llviewercontrol.cpp@1257,19"
+          "indra/newview/llviewercontrol.cpp@296,53",
+          "indra/newview/llviewercontrol.cpp@1272,19"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -24252,13 +24255,13 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,30224"
+          "indra/newview/pipeline.cpp@10821,21113"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
-          "indra/newview/pipeline.h@2004,294"
+          "indra/newview/pipeline.h@2009,294"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -31346,6 +31349,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -35490,8 +35494,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -35504,8 +35508,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1241,11",
-          "indra/newview/llviewercontrol.cpp@1311,35"
+          "indra/newview/llviewercontrol.cpp@1256,11",
+          "indra/newview/llviewercontrol.cpp@1326,35"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -35598,9 +35602,10 @@
           "indra/newview/pipeline.cpp@1374,61",
           "indra/newview/pipeline.cpp@1439,15",
           "indra/newview/pipeline.cpp@1567,106",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32059,430",
-          "indra/newview/pipeline.cpp@32869,721"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32065,430",
+          "indra/newview/pipeline.cpp@32875,721"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -35610,9 +35615,9 @@
           "indra/newview/pipeline.h@721,90",
           "indra/newview/pipeline.h@814,100",
           "indra/newview/pipeline.h@1431,31",
-          "indra/newview/pipeline.h@1569,409",
-          "indra/newview/pipeline.h@2004,294",
-          "indra/newview/pipeline.h@2717,194"
+          "indra/newview/pipeline.h@1569,414",
+          "indra/newview/pipeline.h@2009,294",
+          "indra/newview/pipeline.h@2722,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -35637,8 +35642,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@95,154",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@612,267"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -35673,13 +35678,13 @@
           "indra/newview/llviewershadermgr.cpp@433,179",
           "indra/newview/llviewershadermgr.cpp@713,8",
           "indra/newview/llviewershadermgr.cpp@965,73",
-          "indra/newview/llviewershadermgr.cpp@1580,18",
-          "indra/newview/llviewershadermgr.cpp@1614,14",
-          "indra/newview/llviewershadermgr.cpp@2167,40",
-          "indra/newview/llviewershadermgr.cpp@2481,122",
-          "indra/newview/llviewershadermgr.cpp@2836,326",
-          "indra/newview/llviewershadermgr.cpp@3998,67",
-          "indra/newview/llviewershadermgr.cpp@5592,299"
+          "indra/newview/llviewershadermgr.cpp@1587,18",
+          "indra/newview/llviewershadermgr.cpp@1621,14",
+          "indra/newview/llviewershadermgr.cpp@2174,40",
+          "indra/newview/llviewershadermgr.cpp@2488,122",
+          "indra/newview/llviewershadermgr.cpp@2843,326",
+          "indra/newview/llviewershadermgr.cpp@4005,67",
+          "indra/newview/llviewershadermgr.cpp@5607,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -35704,15 +35709,15 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2394,363",
-          "indra/llrender/llshadermgr.cpp@2765,495"
+          "indra/llrender/llshadermgr.cpp@2400,363",
+          "indra/llrender/llshadermgr.cpp@2771,495"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@591,396",
-          "indra/llrender/llshadermgr.h@1062,95"
+          "indra/llrender/llshadermgr.h@597,396",
+          "indra/llrender/llshadermgr.h@1068,95"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -35937,6 +35942,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/avatarVelocityV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/motionBlurF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimWrapF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateDiopterGatherF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
@@ -36014,6 +36020,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/emissiveF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/motionBlurF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimWrapF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/tonemapUtilF.glsl",
@@ -38213,6 +38220,13 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl": {
         "includes": [],
         "qualified_call_candidates": [
           "LLPipeline::spotShadowMapIndex"
@@ -42680,6 +42694,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -43523,6 +43538,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -47771,9 +47787,9 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@31924,209",
-          "indra/newview/app_settings/settings.xml@32134,364"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@31935,209",
+          "indra/newview/app_settings/settings.xml@32145,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -48051,12 +48067,13 @@
           "indra/newview/pipeline.cpp@128,11",
           "indra/newview/pipeline.cpp@144,14",
           "indra/newview/pipeline.cpp@164,12",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@33725,222",
-          "indra/newview/pipeline.cpp@34529,979",
-          "indra/newview/pipeline.cpp@35784,344",
-          "indra/newview/pipeline.cpp@39822,153"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@33731,222",
+          "indra/newview/pipeline.cpp@34535,979",
+          "indra/newview/pipeline.cpp@35790,344",
+          "indra/newview/pipeline.cpp@39828,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -48175,7 +48192,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@95,154"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -48252,11 +48269,11 @@
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@130,24",
           "indra/newview/llviewershadermgr.cpp@725,32",
-          "indra/newview/llviewershadermgr.cpp@1774,259",
-          "indra/newview/llviewershadermgr.cpp@4506,816",
-          "indra/newview/llviewershadermgr.cpp@6440,8",
-          "indra/newview/llviewershadermgr.cpp@6480,70",
-          "indra/newview/llviewershadermgr.cpp@6570,118"
+          "indra/newview/llviewershadermgr.cpp@1781,259",
+          "indra/newview/llviewershadermgr.cpp@4513,824",
+          "indra/newview/llviewershadermgr.cpp@6455,8",
+          "indra/newview/llviewershadermgr.cpp@6495,70",
+          "indra/newview/llviewershadermgr.cpp@6585,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -48300,15 +48317,15 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2271,60",
-          "indra/llrender/llshadermgr.cpp@2394,363"
+          "indra/llrender/llshadermgr.cpp@2277,60",
+          "indra/llrender/llshadermgr.cpp@2400,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@439,89",
-          "indra/llrender/llshadermgr.h@591,396"
+          "indra/llrender/llshadermgr.h@445,89",
+          "indra/llrender/llshadermgr.h@597,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -48756,6 +48773,7 @@
       "indra/newview/app_settings/shaders/class1/avatar/eyeballActorGhostV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/froxelTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl",
@@ -48907,6 +48925,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/froxelTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
@@ -54368,6 +54387,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -56320,6 +56340,13 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl": {
         "includes": [],
         "qualified_call_candidates": [
           "LLPipeline::spotShadowMapIndex"
@@ -67116,6 +67143,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -71316,8 +71344,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@25776,1573"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@25787,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -73939,6 +73967,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -78914,6 +78943,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -79457,7 +79487,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5583,32",
           "indra/newview/app_settings/settings.xml@5616,21",
-          "indra/newview/app_settings/settings.xml@6617,14799"
+          "indra/newview/app_settings/settings.xml@6617,14810"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -79557,7 +79587,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@92,17",
-          "indra/newview/pipeline.cpp@1704,30224"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -79581,7 +79612,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@307,301"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -79661,6 +79692,7 @@
       "indra/newview/alworldoverlayviz.cpp",
       "indra/newview/alworldoverlayviz.h",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricClassicF.glsl",
       "indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricF.glsl",
       "indra/newview/llactormover.cpp",
@@ -79692,6 +79724,7 @@
     ],
     "shaders": [
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
       "indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricClassicF.glsl",
       "indra/newview/app_settings/shaders/class3/deferred/projectorVolumetricF.glsl"
@@ -81378,6 +81411,13 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl": {
         "includes": [],
         "qualified_call_candidates": [
           "LLPipeline::spotShadowMapIndex"
@@ -87936,11 +87976,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@23073,412",
-          "indra/newview/app_settings/settings.xml@23621,362",
-          "indra/newview/app_settings/settings.xml@29312,100",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@23084,412",
+          "indra/newview/app_settings/settings.xml@23632,362",
+          "indra/newview/app_settings/settings.xml@29323,100",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -87997,8 +88037,8 @@
       {
         "hunks": [
           "indra/newview/llviewershadermgr.cpp@650,35",
-          "indra/newview/llviewershadermgr.cpp@2751,58",
-          "indra/newview/llviewershadermgr.cpp@4248,11"
+          "indra/newview/llviewershadermgr.cpp@2758,58",
+          "indra/newview/llviewershadermgr.cpp@4255,11"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       }
@@ -91502,6 +91542,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -93964,12 +94005,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@21418,1113",
-          "indra/newview/app_settings/settings.xml@28663,648",
-          "indra/newview/app_settings/settings.xml@29457,2466",
-          "indra/newview/app_settings/settings.xml@31924,209",
-          "indra/newview/app_settings/settings.xml@32134,364"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@21429,1113",
+          "indra/newview/app_settings/settings.xml@28674,648",
+          "indra/newview/app_settings/settings.xml@29468,2466",
+          "indra/newview/app_settings/settings.xml@31935,209",
+          "indra/newview/app_settings/settings.xml@32145,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -94012,7 +94053,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@28,20",
-          "indra/newview/llviewercontrol.cpp@1151,85"
+          "indra/newview/llviewercontrol.cpp@1166,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -94271,16 +94312,17 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32059,430"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32065,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
           "indra/newview/pipeline.h@226,357",
-          "indra/newview/pipeline.h@1569,409",
-          "indra/newview/pipeline.h@2004,294"
+          "indra/newview/pipeline.h@1569,414",
+          "indra/newview/pipeline.h@2009,294"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -94305,7 +94347,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@2960,1228",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"
         ],
         "path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml"
@@ -99466,6 +99508,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -107761,6 +107804,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -113007,10 +113051,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@25776,1573",
-          "indra/newview/app_settings/settings.xml@27927,109",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@25787,1573",
+          "indra/newview/app_settings/settings.xml@27938,109",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -113058,7 +113102,8 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1704,30224"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -113095,7 +113140,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewershadermgr.cpp@1477,28"
+          "indra/newview/llviewershadermgr.cpp@1484,28"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -113113,7 +113158,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@591,396"
+          "indra/llrender/llshadermgr.h@597,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -115630,6 +115675,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -117257,8 +117303,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -119217,6 +119263,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -125701,15 +125748,15 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@21418,1113",
-          "indra/newview/app_settings/settings.xml@22533,76",
-          "indra/newview/app_settings/settings.xml@22665,407",
-          "indra/newview/app_settings/settings.xml@23073,412",
-          "indra/newview/app_settings/settings.xml@23566,54",
-          "indra/newview/app_settings/settings.xml@24094,164",
-          "indra/newview/app_settings/settings.xml@29457,2466",
-          "indra/newview/app_settings/settings.xml@32134,364"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@21429,1113",
+          "indra/newview/app_settings/settings.xml@22544,76",
+          "indra/newview/app_settings/settings.xml@22676,407",
+          "indra/newview/app_settings/settings.xml@23084,412",
+          "indra/newview/app_settings/settings.xml@23577,54",
+          "indra/newview/app_settings/settings.xml@24105,164",
+          "indra/newview/app_settings/settings.xml@29468,2466",
+          "indra/newview/app_settings/settings.xml@32145,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -125742,7 +125789,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1151,85"
+          "indra/newview/llviewercontrol.cpp@1166,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -125899,20 +125946,21 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@187,7",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32568,53",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@35784,344",
-          "indra/newview/pipeline.cpp@37893,1060",
-          "indra/newview/pipeline.cpp@39822,153"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32574,53",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@35790,344",
+          "indra/newview/pipeline.cpp@37899,1060",
+          "indra/newview/pipeline.cpp@39828,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
           "indra/newview/pipeline.h@226,357",
-          "indra/newview/pipeline.h@2004,294",
-          "indra/newview/pipeline.h@2318,34"
+          "indra/newview/pipeline.h@2009,294",
+          "indra/newview/pipeline.h@2323,34"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -125931,7 +125979,8 @@
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@577,66",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@644,33",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620",
-          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,1660",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@2960,1228",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4189,56",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4246,56",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4303,56",
@@ -126044,55 +126093,55 @@
           "indra/newview/llviewershadermgr.cpp@1069,41",
           "indra/newview/llviewershadermgr.cpp@1118,9",
           "indra/newview/llviewershadermgr.cpp@1276,54",
-          "indra/newview/llviewershadermgr.cpp@1477,28",
-          "indra/newview/llviewershadermgr.cpp@1507,35",
-          "indra/newview/llviewershadermgr.cpp@1774,259",
-          "indra/newview/llviewershadermgr.cpp@2091,10",
-          "indra/newview/llviewershadermgr.cpp@2111,46",
-          "indra/newview/llviewershadermgr.cpp@2215,7",
-          "indra/newview/llviewershadermgr.cpp@2228,164",
-          "indra/newview/llviewershadermgr.cpp@2401,12",
-          "indra/newview/llviewershadermgr.cpp@2416,13",
-          "indra/newview/llviewershadermgr.cpp@2444,13",
-          "indra/newview/llviewershadermgr.cpp@2459,13",
-          "indra/newview/llviewershadermgr.cpp@2481,122",
-          "indra/newview/llviewershadermgr.cpp@2605,59",
-          "indra/newview/llviewershadermgr.cpp@2675,29",
-          "indra/newview/llviewershadermgr.cpp@2706,28",
-          "indra/newview/llviewershadermgr.cpp@2751,58",
-          "indra/newview/llviewershadermgr.cpp@2836,326",
-          "indra/newview/llviewershadermgr.cpp@3231,7",
-          "indra/newview/llviewershadermgr.cpp@3244,7",
-          "indra/newview/llviewershadermgr.cpp@3535,154",
-          "indra/newview/llviewershadermgr.cpp@3693,16",
-          "indra/newview/llviewershadermgr.cpp@3718,17",
-          "indra/newview/llviewershadermgr.cpp@3761,13",
-          "indra/newview/llviewershadermgr.cpp@3808,14",
-          "indra/newview/llviewershadermgr.cpp@3857,12",
-          "indra/newview/llviewershadermgr.cpp@3901,12",
-          "indra/newview/llviewershadermgr.cpp@3915,49",
-          "indra/newview/llviewershadermgr.cpp@3966,14",
-          "indra/newview/llviewershadermgr.cpp@4146,7",
-          "indra/newview/llviewershadermgr.cpp@4159,7",
-          "indra/newview/llviewershadermgr.cpp@4178,7",
-          "indra/newview/llviewershadermgr.cpp@4193,7",
-          "indra/newview/llviewershadermgr.cpp@4215,7",
-          "indra/newview/llviewershadermgr.cpp@4231,7",
-          "indra/newview/llviewershadermgr.cpp@4248,11",
-          "indra/newview/llviewershadermgr.cpp@4288,8",
-          "indra/newview/llviewershadermgr.cpp@4321,7",
-          "indra/newview/llviewershadermgr.cpp@4339,7",
-          "indra/newview/llviewershadermgr.cpp@4353,7",
-          "indra/newview/llviewershadermgr.cpp@4365,7",
-          "indra/newview/llviewershadermgr.cpp@4398,15",
-          "indra/newview/llviewershadermgr.cpp@4431,14",
-          "indra/newview/llviewershadermgr.cpp@5592,299",
-          "indra/newview/llviewershadermgr.cpp@6147,71",
-          "indra/newview/llviewershadermgr.cpp@6224,115",
-          "indra/newview/llviewershadermgr.cpp@6372,12",
-          "indra/newview/llviewershadermgr.cpp@6455,12",
-          "indra/newview/llviewershadermgr.cpp@6480,70",
-          "indra/newview/llviewershadermgr.cpp@6570,118"
+          "indra/newview/llviewershadermgr.cpp@1484,28",
+          "indra/newview/llviewershadermgr.cpp@1514,35",
+          "indra/newview/llviewershadermgr.cpp@1781,259",
+          "indra/newview/llviewershadermgr.cpp@2098,10",
+          "indra/newview/llviewershadermgr.cpp@2118,46",
+          "indra/newview/llviewershadermgr.cpp@2222,7",
+          "indra/newview/llviewershadermgr.cpp@2235,164",
+          "indra/newview/llviewershadermgr.cpp@2408,12",
+          "indra/newview/llviewershadermgr.cpp@2423,13",
+          "indra/newview/llviewershadermgr.cpp@2451,13",
+          "indra/newview/llviewershadermgr.cpp@2466,13",
+          "indra/newview/llviewershadermgr.cpp@2488,122",
+          "indra/newview/llviewershadermgr.cpp@2612,59",
+          "indra/newview/llviewershadermgr.cpp@2682,29",
+          "indra/newview/llviewershadermgr.cpp@2713,28",
+          "indra/newview/llviewershadermgr.cpp@2758,58",
+          "indra/newview/llviewershadermgr.cpp@2843,326",
+          "indra/newview/llviewershadermgr.cpp@3238,7",
+          "indra/newview/llviewershadermgr.cpp@3251,7",
+          "indra/newview/llviewershadermgr.cpp@3542,154",
+          "indra/newview/llviewershadermgr.cpp@3700,16",
+          "indra/newview/llviewershadermgr.cpp@3725,17",
+          "indra/newview/llviewershadermgr.cpp@3768,13",
+          "indra/newview/llviewershadermgr.cpp@3815,14",
+          "indra/newview/llviewershadermgr.cpp@3864,12",
+          "indra/newview/llviewershadermgr.cpp@3908,12",
+          "indra/newview/llviewershadermgr.cpp@3922,49",
+          "indra/newview/llviewershadermgr.cpp@3973,14",
+          "indra/newview/llviewershadermgr.cpp@4153,7",
+          "indra/newview/llviewershadermgr.cpp@4166,7",
+          "indra/newview/llviewershadermgr.cpp@4185,7",
+          "indra/newview/llviewershadermgr.cpp@4200,7",
+          "indra/newview/llviewershadermgr.cpp@4222,7",
+          "indra/newview/llviewershadermgr.cpp@4238,7",
+          "indra/newview/llviewershadermgr.cpp@4255,11",
+          "indra/newview/llviewershadermgr.cpp@4295,8",
+          "indra/newview/llviewershadermgr.cpp@4328,7",
+          "indra/newview/llviewershadermgr.cpp@4346,7",
+          "indra/newview/llviewershadermgr.cpp@4360,7",
+          "indra/newview/llviewershadermgr.cpp@4372,7",
+          "indra/newview/llviewershadermgr.cpp@4405,15",
+          "indra/newview/llviewershadermgr.cpp@4438,14",
+          "indra/newview/llviewershadermgr.cpp@5607,299",
+          "indra/newview/llviewershadermgr.cpp@6162,71",
+          "indra/newview/llviewershadermgr.cpp@6239,115",
+          "indra/newview/llviewershadermgr.cpp@6387,12",
+          "indra/newview/llviewershadermgr.cpp@6470,12",
+          "indra/newview/llviewershadermgr.cpp@6495,70",
+          "indra/newview/llviewershadermgr.cpp@6585,118"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -126117,9 +126166,9 @@
           "indra/llrender/llshadermgr.cpp@485,7",
           "indra/llrender/llshadermgr.cpp@1704,41",
           "indra/llrender/llshadermgr.cpp@1781,31",
-          "indra/llrender/llshadermgr.cpp@2225,12",
-          "indra/llrender/llshadermgr.cpp@2271,60",
-          "indra/llrender/llshadermgr.cpp@2765,495"
+          "indra/llrender/llshadermgr.cpp@2231,12",
+          "indra/llrender/llshadermgr.cpp@2277,60",
+          "indra/llrender/llshadermgr.cpp@2771,495"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
@@ -126127,8 +126176,8 @@
         "hunks": [
           "indra/llrender/llshadermgr.h@41,9",
           "indra/llrender/llshadermgr.h@84,9",
-          "indra/llrender/llshadermgr.h@393,12",
-          "indra/llrender/llshadermgr.h@439,89"
+          "indra/llrender/llshadermgr.h@399,12",
+          "indra/llrender/llshadermgr.h@445,89"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -129613,6 +129662,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -136993,6 +137043,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -137794,6 +137845,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -140760,6 +140812,7 @@
       "scripts/code_tools/relight_shape_gl_check.py",
       "scripts/code_tools/relight_shape_math_check.py",
       "scripts/code_tools/relight_shape_ui_check.py",
+      "scripts/code_tools/relight_spot_bias_gl_check.py",
       "scripts/code_tools/relight_thin_check.py",
       "scripts/code_tools/relight_vcam_check.py",
       "scripts/code_tools/relight_vcam_dispatch_check.py",
@@ -141861,10 +141914,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@21418,1113",
-          "indra/newview/app_settings/settings.xml@22621,43",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@21429,1113",
+          "indra/newview/app_settings/settings.xml@22632,43",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -141887,7 +141940,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@28,20",
-          "indra/newview/llviewercontrol.cpp@1151,85"
+          "indra/newview/llviewercontrol.cpp@1166,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -142014,22 +142067,23 @@
           "indra/newview/pipeline.cpp@1233,11",
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32059,430",
-          "indra/newview/pipeline.cpp@32503,38",
-          "indra/newview/pipeline.cpp@32568,53",
-          "indra/newview/pipeline.cpp@32652,37",
-          "indra/newview/pipeline.cpp@32690,17",
-          "indra/newview/pipeline.cpp@32708,20",
-          "indra/newview/pipeline.cpp@32753,18",
-          "indra/newview/pipeline.cpp@32788,27",
-          "indra/newview/pipeline.cpp@32817,30",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@34033,51",
-          "indra/newview/pipeline.cpp@34090,243",
-          "indra/newview/pipeline.cpp@34335,11",
-          "indra/newview/pipeline.cpp@37530,362",
-          "indra/newview/pipeline.cpp@37893,1060"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32065,430",
+          "indra/newview/pipeline.cpp@32509,38",
+          "indra/newview/pipeline.cpp@32574,53",
+          "indra/newview/pipeline.cpp@32658,37",
+          "indra/newview/pipeline.cpp@32696,17",
+          "indra/newview/pipeline.cpp@32714,20",
+          "indra/newview/pipeline.cpp@32759,18",
+          "indra/newview/pipeline.cpp@32794,27",
+          "indra/newview/pipeline.cpp@32823,30",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@34039,51",
+          "indra/newview/pipeline.cpp@34096,243",
+          "indra/newview/pipeline.cpp@34341,11",
+          "indra/newview/pipeline.cpp@37536,362",
+          "indra/newview/pipeline.cpp@37899,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -142044,10 +142098,10 @@
           "indra/newview/pipeline.h@1431,31",
           "indra/newview/pipeline.h@1484,20",
           "indra/newview/pipeline.h@1506,62",
-          "indra/newview/pipeline.h@1569,409",
-          "indra/newview/pipeline.h@2004,294",
-          "indra/newview/pipeline.h@2318,34",
-          "indra/newview/pipeline.h@2717,194"
+          "indra/newview/pipeline.h@1569,414",
+          "indra/newview/pipeline.h@2009,294",
+          "indra/newview/pipeline.h@2323,34",
+          "indra/newview/pipeline.h@2722,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -142059,7 +142113,7 @@
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,1660",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"
         ],
         "path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml"
@@ -142144,16 +142198,16 @@
           "indra/newview/llviewershadermgr.cpp@190,22",
           "indra/newview/llviewershadermgr.cpp@276,47",
           "indra/newview/llviewershadermgr.cpp@760,81",
-          "indra/newview/llviewershadermgr.cpp@1774,259",
-          "indra/newview/llviewershadermgr.cpp@2042,8",
-          "indra/newview/llviewershadermgr.cpp@2111,46",
-          "indra/newview/llviewershadermgr.cpp@3285,23",
-          "indra/newview/llviewershadermgr.cpp@3323,23",
-          "indra/newview/llviewershadermgr.cpp@3359,22",
-          "indra/newview/llviewershadermgr.cpp@3394,85",
-          "indra/newview/llviewershadermgr.cpp@3998,67",
-          "indra/newview/llviewershadermgr.cpp@4506,816",
-          "indra/newview/llviewershadermgr.cpp@6224,115"
+          "indra/newview/llviewershadermgr.cpp@1781,259",
+          "indra/newview/llviewershadermgr.cpp@2049,8",
+          "indra/newview/llviewershadermgr.cpp@2118,46",
+          "indra/newview/llviewershadermgr.cpp@3292,23",
+          "indra/newview/llviewershadermgr.cpp@3330,23",
+          "indra/newview/llviewershadermgr.cpp@3366,22",
+          "indra/newview/llviewershadermgr.cpp@3401,85",
+          "indra/newview/llviewershadermgr.cpp@4005,67",
+          "indra/newview/llviewershadermgr.cpp@4513,824",
+          "indra/newview/llviewershadermgr.cpp@6239,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -142187,13 +142241,13 @@
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.cpp@2394,363"
+          "indra/llrender/llshadermgr.cpp@2400,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@591,396"
+          "indra/llrender/llshadermgr.h@597,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -146187,6 +146241,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -152153,6 +152208,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -154112,6 +154168,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -158146,11 +158203,11 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@5968,527",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@21418,1113",
-          "indra/newview/app_settings/settings.xml@25776,1573",
-          "indra/newview/app_settings/settings.xml@27350,153",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@21429,1113",
+          "indra/newview/app_settings/settings.xml@25787,1573",
+          "indra/newview/app_settings/settings.xml@27361,153",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -158164,7 +158221,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1278,18"
+          "indra/newview/llviewercontrol.cpp@1293,18"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -158244,18 +158301,19 @@
           "indra/newview/pipeline.cpp@1068,7",
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32059,430",
-          "indra/newview/pipeline.cpp@32503,38",
-          "indra/newview/pipeline.cpp@32568,53",
-          "indra/newview/pipeline.cpp@32652,37",
-          "indra/newview/pipeline.cpp@32708,20",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@34033,51",
-          "indra/newview/pipeline.cpp@34090,243",
-          "indra/newview/pipeline.cpp@37530,362",
-          "indra/newview/pipeline.cpp@37893,1060",
-          "indra/newview/pipeline.cpp@39822,153"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32065,430",
+          "indra/newview/pipeline.cpp@32509,38",
+          "indra/newview/pipeline.cpp@32574,53",
+          "indra/newview/pipeline.cpp@32658,37",
+          "indra/newview/pipeline.cpp@32714,20",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@34039,51",
+          "indra/newview/pipeline.cpp@34096,243",
+          "indra/newview/pipeline.cpp@37536,362",
+          "indra/newview/pipeline.cpp@37899,1060",
+          "indra/newview/pipeline.cpp@39828,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -158266,8 +158324,8 @@
           "indra/newview/pipeline.h@814,100",
           "indra/newview/pipeline.h@1027,42",
           "indra/newview/pipeline.h@1484,20",
-          "indra/newview/pipeline.h@2004,294",
-          "indra/newview/pipeline.h@2401,58"
+          "indra/newview/pipeline.h@2009,294",
+          "indra/newview/pipeline.h@2406,58"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -158280,7 +158338,8 @@
       {
         "hunks": [
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@368,40",
-          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,1660",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@2960,1228",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"
         ],
         "path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml"
@@ -158293,7 +158352,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1201,225"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1454,235"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -158323,15 +158382,15 @@
           "indra/newview/llviewershadermgr.cpp@276,47",
           "indra/newview/llviewershadermgr.cpp@725,32",
           "indra/newview/llviewershadermgr.cpp@760,81",
-          "indra/newview/llviewershadermgr.cpp@1429,30",
-          "indra/newview/llviewershadermgr.cpp@1774,259",
-          "indra/newview/llviewershadermgr.cpp@2051,12",
-          "indra/newview/llviewershadermgr.cpp@2073,9",
-          "indra/newview/llviewershadermgr.cpp@2111,46",
-          "indra/newview/llviewershadermgr.cpp@3394,85",
-          "indra/newview/llviewershadermgr.cpp@3693,16",
-          "indra/newview/llviewershadermgr.cpp@4506,816",
-          "indra/newview/llviewershadermgr.cpp@6224,115"
+          "indra/newview/llviewershadermgr.cpp@1429,37",
+          "indra/newview/llviewershadermgr.cpp@1781,259",
+          "indra/newview/llviewershadermgr.cpp@2058,12",
+          "indra/newview/llviewershadermgr.cpp@2080,9",
+          "indra/newview/llviewershadermgr.cpp@2118,46",
+          "indra/newview/llviewershadermgr.cpp@3401,85",
+          "indra/newview/llviewershadermgr.cpp@3700,16",
+          "indra/newview/llviewershadermgr.cpp@4513,824",
+          "indra/newview/llviewershadermgr.cpp@6239,115"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -158371,13 +158430,13 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@911,43",
-          "indra/llrender/llshadermgr.cpp@2394,363"
+          "indra/llrender/llshadermgr.cpp@2400,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@591,396"
+          "indra/llrender/llshadermgr.h@597,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -158647,6 +158706,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/actorMaskV.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/cineOutlineF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimAuxF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimSilSeedF.glsl",
@@ -158950,6 +159010,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimAuxF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimSilSeedF.glsl",
@@ -162686,6 +162747,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -163927,6 +163989,13 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl": {
         "includes": [],
         "qualified_call_candidates": [
           "LLPipeline::spotShadowMapIndex"
@@ -168034,6 +168103,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -168339,6 +168409,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -171800,12 +171871,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@3511,1055",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@21418,1113",
-          "indra/newview/app_settings/settings.xml@22665,407",
-          "indra/newview/app_settings/settings.xml@23073,412",
-          "indra/newview/app_settings/settings.xml@25776,1573",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@21429,1113",
+          "indra/newview/app_settings/settings.xml@22676,407",
+          "indra/newview/app_settings/settings.xml@23084,412",
+          "indra/newview/app_settings/settings.xml@25787,1573",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -171849,7 +171920,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@28,20",
-          "indra/newview/llviewercontrol.cpp@1151,85"
+          "indra/newview/llviewercontrol.cpp@1166,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -171920,14 +171991,15 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32059,430",
-          "indra/newview/pipeline.cpp@32623,13",
-          "indra/newview/pipeline.cpp@32652,37",
-          "indra/newview/pipeline.cpp@32708,20",
-          "indra/newview/pipeline.cpp@32753,18",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@37893,1060"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32065,430",
+          "indra/newview/pipeline.cpp@32629,13",
+          "indra/newview/pipeline.cpp@32658,37",
+          "indra/newview/pipeline.cpp@32714,20",
+          "indra/newview/pipeline.cpp@32759,18",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@37899,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -171935,8 +172007,8 @@
         "hunks": [
           "indra/newview/pipeline.h@226,357",
           "indra/newview/pipeline.h@1027,42",
-          "indra/newview/pipeline.h@2004,294",
-          "indra/newview/pipeline.h@2318,34"
+          "indra/newview/pipeline.h@2009,294",
+          "indra/newview/pipeline.h@2323,34"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -171948,7 +172020,7 @@
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@577,66",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@644,33",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620",
-          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@2960,1228",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"
         ],
         "path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml"
@@ -171986,8 +172058,8 @@
           "indra/newview/llviewershadermgr.cpp@370,21",
           "indra/newview/llviewershadermgr.cpp@760,81",
           "indra/newview/llviewershadermgr.cpp@1276,54",
-          "indra/newview/llviewershadermgr.cpp@1774,259",
-          "indra/newview/llviewershadermgr.cpp@4506,816"
+          "indra/newview/llviewershadermgr.cpp@1781,259",
+          "indra/newview/llviewershadermgr.cpp@4513,824"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -172002,18 +172074,18 @@
       {
         "hunks": [
           "indra/llrender/llshadermgr.cpp@1960,8",
-          "indra/llrender/llshadermgr.cpp@2225,12",
-          "indra/llrender/llshadermgr.cpp@2271,60",
-          "indra/llrender/llshadermgr.cpp@2394,363"
+          "indra/llrender/llshadermgr.cpp@2231,12",
+          "indra/llrender/llshadermgr.cpp@2277,60",
+          "indra/llrender/llshadermgr.cpp@2400,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@141,8",
-          "indra/llrender/llshadermgr.h@393,12",
-          "indra/llrender/llshadermgr.h@439,89",
-          "indra/llrender/llshadermgr.h@591,396"
+          "indra/llrender/llshadermgr.h@399,12",
+          "indra/llrender/llshadermgr.h@445,89",
+          "indra/llrender/llshadermgr.h@597,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -174081,6 +174153,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -179019,6 +179092,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -179721,6 +179795,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -181909,7 +181984,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14799"
+          "indra/newview/app_settings/settings.xml@6617,14810"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -181923,8 +181998,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1151,85",
-          "indra/newview/llviewercontrol.cpp@1311,35"
+          "indra/newview/llviewercontrol.cpp@1166,85",
+          "indra/newview/llviewercontrol.cpp@1326,35"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -181962,9 +182037,10 @@
           "indra/newview/pipeline.cpp@335,106",
           "indra/newview/pipeline.cpp@722,16",
           "indra/newview/pipeline.cpp@961,88",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@34090,243"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@34096,243"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -181974,15 +182050,15 @@
           "indra/newview/pipeline.h@226,357",
           "indra/newview/pipeline.h@721,90",
           "indra/newview/pipeline.h@814,100",
-          "indra/newview/pipeline.h@1569,409",
-          "indra/newview/pipeline.h@2559,14",
-          "indra/newview/pipeline.h@2717,194"
+          "indra/newview/pipeline.h@1569,414",
+          "indra/newview/pipeline.h@2564,14",
+          "indra/newview/pipeline.h@2722,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
       {
         "hunks": [
-          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889",
+          "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@2960,1228",
           "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"
         ],
         "path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml"
@@ -182001,8 +182077,10 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1201,225"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@612,267",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@966,383",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1454,235"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -182018,12 +182096,12 @@
           "indra/newview/llviewershadermgr.cpp@276,47",
           "indra/newview/llviewershadermgr.cpp@335,32",
           "indra/newview/llviewershadermgr.cpp@760,81",
-          "indra/newview/llviewershadermgr.cpp@1477,28",
-          "indra/newview/llviewershadermgr.cpp@1774,259",
-          "indra/newview/llviewershadermgr.cpp@2111,46",
-          "indra/newview/llviewershadermgr.cpp@2167,40",
-          "indra/newview/llviewershadermgr.cpp@4506,816",
-          "indra/newview/llviewershadermgr.cpp@5592,299"
+          "indra/newview/llviewershadermgr.cpp@1484,28",
+          "indra/newview/llviewershadermgr.cpp@1781,259",
+          "indra/newview/llviewershadermgr.cpp@2118,46",
+          "indra/newview/llviewershadermgr.cpp@2174,40",
+          "indra/newview/llviewershadermgr.cpp@4513,824",
+          "indra/newview/llviewershadermgr.cpp@5607,299"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -182039,14 +182117,14 @@
           "indra/llrender/llshadermgr.cpp@372,19",
           "indra/llrender/llshadermgr.cpp@400,17",
           "indra/llrender/llshadermgr.cpp@442,20",
-          "indra/llrender/llshadermgr.cpp@2394,363"
+          "indra/llrender/llshadermgr.cpp@2400,363"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
-          "indra/llrender/llshadermgr.h@439,89",
-          "indra/llrender/llshadermgr.h@591,396"
+          "indra/llrender/llshadermgr.h@445,89",
+          "indra/llrender/llshadermgr.h@597,396"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -182135,6 +182213,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicBloomFeedF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl",
@@ -182243,6 +182322,8 @@
       "BDMergeProjectorVolumetricsTintStrength",
       "BDMergeSnapshotAutoscale",
       "LocalFogBank",
+      "RenderSpotShadowBias",
+      "RenderSpotShadowBiasModel",
       "RenderVolumetricLighting",
       "RenderVolumetricLightingDirectional",
       "RenderVolumetricLightingFalloffMultiplier",
@@ -182282,6 +182363,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicBloomFeedF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl",
@@ -183322,6 +183404,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -183780,6 +183863,13 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl": {
         "includes": [],
         "qualified_call_candidates": [
           "LLPipeline::spotShadowMapIndex"
@@ -186049,6 +186139,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -186354,6 +186445,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -188094,7 +188186,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799"
+          "indra/newview/app_settings/settings.xml@6617,14810"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -200698,9 +200790,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@21418,1113",
-          "indra/newview/app_settings/settings.xml@29457,2466"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@21429,1113",
+          "indra/newview/app_settings/settings.xml@29468,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -200800,27 +200892,28 @@
           "indra/newview/pipeline.cpp@302,32",
           "indra/newview/pipeline.cpp@577,71",
           "indra/newview/pipeline.cpp@928,32",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@31968,30",
-          "indra/newview/pipeline.cpp@32019,16",
-          "indra/newview/pipeline.cpp@32059,430",
-          "indra/newview/pipeline.cpp@32503,38",
-          "indra/newview/pipeline.cpp@32652,37",
-          "indra/newview/pipeline.cpp@32690,17",
-          "indra/newview/pipeline.cpp@32869,721",
-          "indra/newview/pipeline.cpp@33602,15",
-          "indra/newview/pipeline.cpp@33663,15",
-          "indra/newview/pipeline.cpp@33725,222",
-          "indra/newview/pipeline.cpp@34033,51",
-          "indra/newview/pipeline.cpp@34090,243",
-          "indra/newview/pipeline.cpp@34402,36",
-          "indra/newview/pipeline.cpp@34446,7",
-          "indra/newview/pipeline.cpp@34457,41",
-          "indra/newview/pipeline.cpp@36321,47",
-          "indra/newview/pipeline.cpp@36767,78",
-          "indra/newview/pipeline.cpp@37530,362",
-          "indra/newview/pipeline.cpp@37893,1060",
-          "indra/newview/pipeline.cpp@39822,153"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@31974,30",
+          "indra/newview/pipeline.cpp@32025,16",
+          "indra/newview/pipeline.cpp@32065,430",
+          "indra/newview/pipeline.cpp@32509,38",
+          "indra/newview/pipeline.cpp@32658,37",
+          "indra/newview/pipeline.cpp@32696,17",
+          "indra/newview/pipeline.cpp@32875,721",
+          "indra/newview/pipeline.cpp@33608,15",
+          "indra/newview/pipeline.cpp@33669,15",
+          "indra/newview/pipeline.cpp@33731,222",
+          "indra/newview/pipeline.cpp@34039,51",
+          "indra/newview/pipeline.cpp@34096,243",
+          "indra/newview/pipeline.cpp@34408,36",
+          "indra/newview/pipeline.cpp@34452,7",
+          "indra/newview/pipeline.cpp@34463,41",
+          "indra/newview/pipeline.cpp@36327,47",
+          "indra/newview/pipeline.cpp@36773,78",
+          "indra/newview/pipeline.cpp@37536,362",
+          "indra/newview/pipeline.cpp@37899,1060",
+          "indra/newview/pipeline.cpp@39828,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -200834,10 +200927,10 @@
           "indra/newview/pipeline.h@923,100",
           "indra/newview/pipeline.h@1027,42",
           "indra/newview/pipeline.h@1431,31",
-          "indra/newview/pipeline.h@1569,409",
-          "indra/newview/pipeline.h@2004,294",
-          "indra/newview/pipeline.h@2401,58",
-          "indra/newview/pipeline.h@2684,32"
+          "indra/newview/pipeline.h@1569,414",
+          "indra/newview/pipeline.h@2009,294",
+          "indra/newview/pipeline.h@2406,58",
+          "indra/newview/pipeline.h@2689,32"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -200896,7 +200989,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@307,301",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@966,383"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -200905,8 +200999,8 @@
           "indra/newview/llviewershadermgr.cpp@171,11",
           "indra/newview/llviewershadermgr.cpp@760,81",
           "indra/newview/llviewershadermgr.cpp@1276,54",
-          "indra/newview/llviewershadermgr.cpp@2167,40",
-          "indra/newview/llviewershadermgr.cpp@2228,164"
+          "indra/newview/llviewershadermgr.cpp@2174,40",
+          "indra/newview/llviewershadermgr.cpp@2235,164"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -200966,7 +201060,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercamera.h@53,22"
+          "indra/newview/llviewercamera.h@53,28"
         ],
         "path": "indra/newview/llviewercamera.h"
       },
@@ -201187,6 +201281,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/prismProjectorFeedF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/prismSignalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
       "indra/newview/llactormaskeligibility.cpp",
@@ -201265,6 +201360,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/prismProjectorFeedF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/prismSignalF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/ultimateKaleidoF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
@@ -203992,6 +204088,7 @@
           "LLPanel::draw",
           "LLPanel::onVisibilityChange",
           "LLPanel::reshape",
+          "LLPipeline::clampSpotShadowCount",
           "LLPrismLens::ProjectorSettings",
           "LLPrismLens::bindRigProjector",
           "LLPrismLens::canRouteSource",
@@ -205457,6 +205554,13 @@
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl": {
         "includes": [],
         "qualified_call_candidates": [
           "LLPipeline::spotShadowMapIndex"
@@ -211876,6 +211980,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",
@@ -214247,10 +214352,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14799",
-          "indra/newview/app_settings/settings.xml@29457,2466",
-          "indra/newview/app_settings/settings.xml@31924,209",
-          "indra/newview/app_settings/settings.xml@32134,364"
+          "indra/newview/app_settings/settings.xml@6617,14810",
+          "indra/newview/app_settings/settings.xml@29468,2466",
+          "indra/newview/app_settings/settings.xml@31935,209",
+          "indra/newview/app_settings/settings.xml@32145,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -214265,8 +214370,8 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@53,10",
-          "indra/newview/llviewercontrol.cpp@1151,85",
-          "indra/newview/llviewercontrol.cpp@1311,35"
+          "indra/newview/llviewercontrol.cpp@1166,85",
+          "indra/newview/llviewercontrol.cpp@1326,35"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -214311,8 +214416,9 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
           "indra/newview/pipeline.cpp@1214,16",
-          "indra/newview/pipeline.cpp@1704,30224",
-          "indra/newview/pipeline.cpp@34529,979"
+          "indra/newview/pipeline.cpp@1704,9116",
+          "indra/newview/pipeline.cpp@10821,21113",
+          "indra/newview/pipeline.cpp@34535,979"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -214322,7 +214428,7 @@
           "indra/newview/pipeline.h@226,357",
           "indra/newview/pipeline.h@923,100",
           "indra/newview/pipeline.h@1431,31",
-          "indra/newview/pipeline.h@1569,409"
+          "indra/newview/pipeline.h@1569,414"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -214391,11 +214497,11 @@
           "indra/newview/llviewershadermgr.cpp@760,81",
           "indra/newview/llviewershadermgr.cpp@965,73",
           "indra/newview/llviewershadermgr.cpp@1069,41",
-          "indra/newview/llviewershadermgr.cpp@1477,28",
-          "indra/newview/llviewershadermgr.cpp@2111,46",
-          "indra/newview/llviewershadermgr.cpp@4506,816",
-          "indra/newview/llviewershadermgr.cpp@6224,115",
-          "indra/newview/llviewershadermgr.cpp@7058,30"
+          "indra/newview/llviewershadermgr.cpp@1484,28",
+          "indra/newview/llviewershadermgr.cpp@2118,46",
+          "indra/newview/llviewershadermgr.cpp@4513,824",
+          "indra/newview/llviewershadermgr.cpp@6239,115",
+          "indra/newview/llviewershadermgr.cpp@7073,30"
         ],
         "path": "indra/newview/llviewershadermgr.cpp"
       },
@@ -214411,16 +214517,16 @@
           "indra/llrender/llshadermgr.cpp@76,113",
           "indra/llrender/llshadermgr.cpp@299,64",
           "indra/llrender/llshadermgr.cpp@1861,13",
-          "indra/llrender/llshadermgr.cpp@2394,363",
-          "indra/llrender/llshadermgr.cpp@2765,495"
+          "indra/llrender/llshadermgr.cpp@2400,363",
+          "indra/llrender/llshadermgr.cpp@2771,495"
         ],
         "path": "indra/llrender/llshadermgr.cpp"
       },
       {
         "hunks": [
           "indra/llrender/llshadermgr.h@53,13",
-          "indra/llrender/llshadermgr.h@591,396",
-          "indra/llrender/llshadermgr.h@990,50"
+          "indra/llrender/llshadermgr.h@597,396",
+          "indra/llrender/llshadermgr.h@996,50"
         ],
         "path": "indra/llrender/llshadermgr.h"
       },
@@ -214559,7 +214665,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercamera.h@53,22"
+          "indra/newview/llviewercamera.h@53,28"
         ],
         "path": "indra/newview/llviewercamera.h"
       }
@@ -221846,6 +221952,7 @@
           "LLPanelLogin::updateLocationSelectorsVisibility",
           "LLPanelTopInfoBar::getInstance",
           "LLPipeline::refreshCachedSettings",
+          "LLPipeline::use16SpotShadowShaders",
           "LLSpellChecker::instance",
           "LLSpellChecker::setUseSpellCheck",
           "LLStartUp::getStartupState",
@@ -222425,6 +222532,7 @@
           "LLEnvironment::instance",
           "LLError::getDefaultLevel",
           "LLError::setDefaultLevel",
+          "LLPipeline::use16SpotShadowShaders",
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::syncMatrices",
           "LLShaderMgr::initAttribsAndUniforms",

@@ -46,6 +46,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicBloomFeedF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl`
@@ -75,24 +76,24 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,55", "indra/newview/CMakeLists.txt@335,124", "indra/newview/CMakeLists.txt@1145,59", "indra/newview/CMakeLists.txt@1301,183", "indra/newview/CMakeLists.txt@2878,32", "indra/newview/CMakeLists.txt@2984,198"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6617,14799"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@6617,14810"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@5834,129", "indra/newview/llappviewer.cpp@6518,45"]}
-- {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1151,85", "indra/newview/llviewercontrol.cpp@1311,35"]}
+- {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1166,85", "indra/newview/llviewercontrol.cpp@1326,35"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_adjust_environment.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_adjust_environment.xml@547,872"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@606,774", "indra/newview/alviewermenu.cpp@1417,79"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@3328,135", "indra/newview/app_settings/settings_alchemy.xml@3674,1119"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@25,27", "indra/newview/llviewerdisplay.cpp@2101,28"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,48", "indra/newview/pipeline.cpp@128,11", "indra/newview/pipeline.cpp@335,106", "indra/newview/pipeline.cpp@722,16", "indra/newview/pipeline.cpp@961,88", "indra/newview/pipeline.cpp@1704,30224", "indra/newview/pipeline.cpp@32869,721", "indra/newview/pipeline.cpp@34090,243"]}
-- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@147,12", "indra/newview/pipeline.h@226,357", "indra/newview/pipeline.h@721,90", "indra/newview/pipeline.h@814,100", "indra/newview/pipeline.h@1569,409", "indra/newview/pipeline.h@2559,14", "indra/newview/pipeline.h@2717,194"]}
-- {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,2889", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,48", "indra/newview/pipeline.cpp@128,11", "indra/newview/pipeline.cpp@335,106", "indra/newview/pipeline.cpp@722,16", "indra/newview/pipeline.cpp@961,88", "indra/newview/pipeline.cpp@1704,9116", "indra/newview/pipeline.cpp@10821,21113", "indra/newview/pipeline.cpp@32875,721", "indra/newview/pipeline.cpp@34096,243"]}
+- {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@147,12", "indra/newview/pipeline.h@226,357", "indra/newview/pipeline.h@721,90", "indra/newview/pipeline.h@814,100", "indra/newview/pipeline.h@1569,414", "indra/newview/pipeline.h@2564,14", "indra/newview/pipeline.h@2722,194"]}
+- {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@2960,1228", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@281,67"]}
 - {"path": "indra/newview/viewer_manifest.py", "hunks": ["indra/newview/viewer_manifest.py@108,12"]}
-- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@256,496", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1201,225"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@612,267", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@966,383", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1454,235"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@25,12", "indra/newview/lldrawpoolalpha.cpp@120,17"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@276,47", "indra/newview/llviewershadermgr.cpp@335,32", "indra/newview/llviewershadermgr.cpp@760,81", "indra/newview/llviewershadermgr.cpp@1477,28", "indra/newview/llviewershadermgr.cpp@1774,259", "indra/newview/llviewershadermgr.cpp@2111,46", "indra/newview/llviewershadermgr.cpp@2167,40", "indra/newview/llviewershadermgr.cpp@4506,816", "indra/newview/llviewershadermgr.cpp@5592,299"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@276,47", "indra/newview/llviewershadermgr.cpp@335,32", "indra/newview/llviewershadermgr.cpp@760,81", "indra/newview/llviewershadermgr.cpp@1484,28", "indra/newview/llviewershadermgr.cpp@1781,259", "indra/newview/llviewershadermgr.cpp@2118,46", "indra/newview/llviewershadermgr.cpp@2174,40", "indra/newview/llviewershadermgr.cpp@4513,824", "indra/newview/llviewershadermgr.cpp@5607,299"]}
 - {"path": "indra/newview/llviewershadermgr.h", "hunks": ["indra/newview/llviewershadermgr.h@358,58", "indra/newview/llviewershadermgr.h@442,34"]}
-- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@372,19", "indra/llrender/llshadermgr.cpp@400,17", "indra/llrender/llshadermgr.cpp@442,20", "indra/llrender/llshadermgr.cpp@2394,363"]}
-- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@439,89", "indra/llrender/llshadermgr.h@591,396"]}
+- {"path": "indra/llrender/llshadermgr.cpp", "hunks": ["indra/llrender/llshadermgr.cpp@372,19", "indra/llrender/llshadermgr.cpp@400,17", "indra/llrender/llshadermgr.cpp@442,20", "indra/llrender/llshadermgr.cpp@2400,363"]}
+- {"path": "indra/llrender/llshadermgr.h", "hunks": ["indra/llrender/llshadermgr.h@445,89", "indra/llrender/llshadermgr.h@597,396"]}
 - {"path": "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@261,432", "indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@749,175"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@70,296", "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@588,23"]}
 - {"path": "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@35,10", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@130,9", "indra/newview/app_settings/shaders/class1/environment/waterFogF.glsl@140,7"]}
@@ -182,6 +183,8 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `BDMergeProjectorVolumetricsTintStrength`
 - `BDMergeSnapshotAutoscale`
 - `LocalFogBank`
+- `RenderSpotShadowBias`
+- `RenderSpotShadowBiasModel`
 - `RenderVolumetricLighting`
 - `RenderVolumetricLightingDirectional`
 - `RenderVolumetricLightingFalloffMultiplier`
@@ -222,6 +225,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicBloomFeedF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicTemporalF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUpsampleF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicUtil.glsl`

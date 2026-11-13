@@ -65,7 +65,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,124", "indra/newview/CMakeLists.txt@1301,183", "indra/newview/CMakeLists.txt@2878,32"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3497", "indra/newview/app_settings/settings.xml@6617,14799", "indra/newview/app_settings/settings.xml@23073,412", "indra/newview/app_settings/settings.xml@23621,362", "indra/newview/app_settings/settings.xml@29312,100", "indra/newview/app_settings/settings.xml@29457,2466"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3497", "indra/newview/app_settings/settings.xml@6617,14810", "indra/newview/app_settings/settings.xml@23084,412", "indra/newview/app_settings/settings.xml@23632,362", "indra/newview/app_settings/settings.xml@29323,100", "indra/newview/app_settings/settings.xml@29468,2466"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@372,747"]}
 - {"path": "indra/newview/app_settings/settings_alchemy.xml", "hunks": ["indra/newview/app_settings/settings_alchemy.xml@1800,13"]}
 - {"path": "indra/newview/llviewerdisplay.cpp", "hunks": ["indra/newview/llviewerdisplay.cpp@2101,28"]}
@@ -74,7 +74,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/skins/default/xui/en/strings.xml", "hunks": ["indra/newview/skins/default/xui/en/strings.xml@4544,64"]}
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@485,30"]}
 - {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@4378,35", "indra/newview/llselectmgr.cpp@4561,28"]}
-- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@650,35", "indra/newview/llviewershadermgr.cpp@2751,58", "indra/newview/llviewershadermgr.cpp@4248,11"]}
+- {"path": "indra/newview/llviewershadermgr.cpp", "hunks": ["indra/newview/llviewershadermgr.cpp@650,35", "indra/newview/llviewershadermgr.cpp@2758,58", "indra/newview/llviewershadermgr.cpp@4255,11"]}
 
 ## settings
 

@@ -7,8 +7,8 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
       "HOOK": 548,
-      "OWNED": 939,
-      "TOOLING": 492
+      "OWNED": 940,
+      "TOOLING": 500
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -163,7 +163,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3914,
+        "settings_declared": 3915,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -239,10 +239,10 @@
       },
       "wiring_rows": 2316
     },
-    "head_source_tree": "6f833614e259e2b2c536de1133704366ac3ec93f",
+    "head_source_tree": "2bb77ff6d04f68631350618f87de75f523908579",
     "hook_files": 548,
-    "hunks": 3484,
-    "input_sha256": "b6155dbf2428b8aa2935df5e11343bcf791441d0dc3ac7465a7e3044b139f230",
+    "hunks": 3488,
+    "input_sha256": "aeb00b2f5b9ad811fb2124787ea157c963a41dd4aa6686a40945b2453ac88da7",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -250,7 +250,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2069
+    "settings": 2072
   },
   "paths": [
     {
@@ -13321,7 +13321,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -23358,6 +23357,27 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "roto-tron",
+        "shafts-volumetrics",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/app_settings/shaders/class1/deferred/projectorVolumetricClassicShadowUtil16.glsl",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
         "clones",
         "shafts-volumetrics"
       ],
@@ -31401,8 +31421,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
-        "vcam"
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -31421,7 +31440,6 @@
     {
       "candidate_features_from_subjects": [
         "roto-tron",
-        "sensor",
         "weather"
       ],
       "class": "HOOK",
@@ -36326,8 +36344,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "looks",
-        "sensor"
+        "looks"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -44129,6 +44146,21 @@
       ],
       "git_status": "A",
       "layer": 7,
+      "path": "scripts/code_tools/relight_spot_bias_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "rig"
+      ],
+      "git_status": "A",
+      "layer": 7,
       "path": "scripts/code_tools/relight_thin_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -45413,6 +45445,97 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/slog_gamut_ocio_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/softshadow_bias_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/spot_shadow_16_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/spot_shadow_bias_slots.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/spot_shadow_census.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/spot_shadow_classic_extension.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/spot_shadow_registration.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/spot_shadows_16_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
