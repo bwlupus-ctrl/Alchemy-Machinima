@@ -328,6 +328,21 @@ static bool handleShadowsResized(const LLSD& newvalue)
     return true;
 }
 
+static bool handleMaxSpotShadowsChanged(const LLSD& newvalue)
+{
+    handleShadowsResized(newvalue);
+    const bool wanted = LLPipeline::use16SpotShadowShaders(
+        newvalue.asInteger(), gGLManager.mNumTextureImageUnits);
+    const bool loaded = LLGLSLShader::sGlobalDefines.count("SPOT_SHADOWS_16") != 0;
+    if (wanted != loaded)
+    {
+        // The setting signal fires once per edit. setShaders rebuilds the global
+        // layout; ordinary frames and changes within either layout do no reload.
+        return handleSetShaderChanged(newvalue);
+    }
+    return true;
+}
+
 static bool handleWindowResized(const LLSD& newvalue)
 {
     gPipeline.requestResizeScreenTexture();
@@ -1269,7 +1284,7 @@ void settings_setup_listeners()
     setting_setup_signal_listener(gSavedSettings, "BDMergeShadowResolution2", handleShadowsResized);
     setting_setup_signal_listener(gSavedSettings, "BDMergeShadowResolution3", handleShadowsResized);
     setting_setup_signal_listener(gSavedSettings, "BDMergeProjectorShadowResolution", handleShadowsResized);
-    setting_setup_signal_listener(gSavedSettings, "BDMergeMaxSpotShadows", handleShadowsResized);
+    setting_setup_signal_listener(gSavedSettings, "BDMergeMaxSpotShadows", handleMaxSpotShadowsChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGlow", handleReleaseGLBufferChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGlow", handleSetShaderChanged);
     setting_setup_signal_listener(gSavedSettings, "RenderGlowResolutionPow", handleReleaseGLBufferChanged);

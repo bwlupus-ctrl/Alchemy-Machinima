@@ -682,4 +682,20 @@ template<> template<> void shadow_slot_object::test<26>()
     }
     ensure_equals("entry completes at 0.25s",out.fade[0],1.0);
 }
+
+// Native projector slots are independent of the eight area-shadow channels.
+template<> template<> void shadow_slot_object::test<27>()
+{
+    std::array<ALShadowSlot::Light<int>,16> owners{}, ranked{};
+    std::array<ALShadowSlot::Challenge<int>,16> states{};
+    for(unsigned i=0;i<16;++i)
+        owners[i]=ranked[i]={static_cast<int>(i+1),100.0-i,1};
+    auto chosen=ALShadowSlot::retainOwners(owners,ranked,16,states,0.0,1);
+    for(unsigned i=0;i<16;++i) ensure_equals("all sixteen owners retained",chosen[i],static_cast<int>(i+1));
+    owners[15]={}; ranked[15]={17,120.0,1};
+    chosen=ALShadowSlot::retainOwners(owners,ranked,16,states,0.02,2);
+    ensure_equals("sixteenth vacancy filled without eviction",chosen[15],17);
+    for(unsigned i=0;i<15;++i) ensure_equals("earlier owners unchanged",chosen[i],static_cast<int>(i+1));
+}
+
 }

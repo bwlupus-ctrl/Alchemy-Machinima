@@ -378,8 +378,10 @@ int main(int argc,char** argv){
     assert result.returncode == 0, result.stdout + result.stderr
     actual = {path: kind for kind, path in (line.split('\t', 1) for line in result.stdout.splitlines())}
     assert actual == classifications, 'production classifier differs from the independent legacy regex manifest'
-    assert len(classifications) == 366 and len(manifest) == 56, 'reviewed 310 root/56 shared inventory changed'
-    print('native production classifier matches every real file: 366 total, 310 roots, 56 shared (legacy regex reference)')
+    # The only added shared module is the frozen Classic utility's 16-slot companion.
+    assert classifications['class1/deferred/projectorVolumetricClassicShadowUtil16.glsl'] == 'shared'
+    assert len(classifications) == 367 and len(manifest) == 57, 'reviewed 310 root/57 shared inventory changed'
+    print('native production classifier matches every real file: 367 total, 310 roots, 57 shared (legacy regex reference)')
     result = subprocess.run([str(executable), 'fingerprint', str(tree / 'class')], capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stdout.strip() == f'{value:016x}', 'production scanner omitted/reordered a shared file'

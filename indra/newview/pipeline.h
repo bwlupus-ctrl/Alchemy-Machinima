@@ -1710,16 +1710,16 @@ public:
 
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
-    static constexpr U32    MAX_SPOT_SHADOWS = 10;
-    static_assert(MAX_SPOT_SHADOWS == 10u,
-                  "shadowUtil.glsl's two 10-case spot dispatches must match MAX_SPOT_SHADOWS");
+    static constexpr U32    MAX_SPOT_SHADOWS = 16;
+    static_assert(MAX_SPOT_SHADOWS == 16u,
+                  "shadowUtil.glsl's two 16-case spot dispatches must match MAX_SPOT_SHADOWS");
     static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;
     // Keep the legacy six-slot runtime path on constrained hardware, admit an
-    // eight-slot intermediate tier, and reserve the ten-slot ceiling for
+    // eight-slot intermediate tier, and reserve the sixteen-slot ceiling for
     // desktop-class 32-unit hardware.
     static constexpr U32 maxSpotShadowsForTextureUnits(U32 texture_units)
     {
-        const U32 hardware_max = texture_units >= 32u ? 10u
+        const U32 hardware_max = texture_units >= 32u ? 16u
             : texture_units >= 28u ? 8u : 6u;
         return hardware_max < MAX_SPOT_SHADOWS
             ? hardware_max : MAX_SPOT_SHADOWS;
@@ -1731,6 +1731,11 @@ public:
             maxSpotShadowsForTextureUnits(texture_units);
         return requested < 2u ? 2u
             : requested > hardware_max ? hardware_max : requested;
+    }
+    // Shader layout must remain legacy until the effective request exceeds ten.
+    static constexpr bool use16SpotShadowShaders(U32 requested, U32 texture_units)
+    {
+        return clampSpotShadowCount(requested, texture_units) > 10u;
     }
     static constexpr U32 spotShadowMapIndex(U32 spot_slot)
     {

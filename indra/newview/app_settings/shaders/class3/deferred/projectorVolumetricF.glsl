@@ -30,7 +30,7 @@
  * that projector's sphere of influence, shaped by its frustum + cookie and
  * self-shadowed by its own shadow map. Reuses the exact spotLightF /
  * deferredUtil projector math (proj_mat/proj_n/size/color/falloff/cookie) and
- * the NSpot per-slot shadow dispatch (sampleSpotShadow, shadowMap4-13).
+ * the NSpot per-slot shadow dispatch (sampleSpotShadow, shadowMap4-19).
  */
 
 #extension GL_ARB_texture_rectangle : enable
@@ -50,6 +50,17 @@ in vec2 vary_fragcoord;
 // Projector uniforms consumed only inside deferredUtil.glsl are declared there.
 // Uniforms read directly in this shader object must also be declared here; the
 // GLSL linker merges matching declarations across fragment-stage objects.
+// The 16-slot variant is admitted only on >=32 fragment texture units.
+#ifdef SPOT_SHADOWS_16
+#define SPOT_SHADOW_COUNT 16
+#define SPOT_SHADOW_MATRIX_COUNT 20
+#define SPOT_SHADOW_MAX_INDEX 15
+#else
+#define SPOT_SHADOW_COUNT 10
+#define SPOT_SHADOW_MATRIX_COUNT 14
+#define SPOT_SHADOW_MAX_INDEX 9
+#endif
+
 uniform vec3  center;           // LIGHT_CENTER, view space
 uniform float size;             // LIGHT_SIZE (sphere-of-influence radius); also
                                 // consumed inside deferredUtil - declared here
@@ -128,7 +139,7 @@ const int projvol_cookie_footprint = 0;
 uniform mat4  proj_mat;
 uniform sampler2D depthMap;
 uniform sampler2D projectionMap;
-uniform mat4 shadow_matrix[14];
+uniform mat4 shadow_matrix[SPOT_SHADOW_MATRIX_COUNT];
 uniform sampler2DShadow shadowMap4;
 uniform sampler2DShadow shadowMap5;
 uniform sampler2DShadow shadowMap6;
@@ -139,6 +150,14 @@ uniform sampler2DShadow shadowMap10;
 uniform sampler2DShadow shadowMap11;
 uniform sampler2DShadow shadowMap12;
 uniform sampler2DShadow shadowMap13;
+#ifdef SPOT_SHADOWS_16
+uniform sampler2DShadow shadowMap14;
+uniform sampler2DShadow shadowMap15;
+uniform sampler2DShadow shadowMap16;
+uniform sampler2DShadow shadowMap17;
+uniform sampler2DShadow shadowMap18;
+uniform sampler2DShadow shadowMap19;
+#endif
 
 // [BDMerge G3.3 Batch A] look-neutral performance gates.
 uniform int   projvol_frustum_clip;       // E1: 0 = sphere bounds; !=0 = frustum-clipped [t0,t1] (default)
@@ -359,7 +378,17 @@ float projvolAirborneShadow(vec4 clip)
     if (proj_shadow_idx == 6) return texture(shadowMap10, q);
     if (proj_shadow_idx == 7) return texture(shadowMap11, q);
     if (proj_shadow_idx == 8) return texture(shadowMap12, q);
+#ifdef SPOT_SHADOWS_16
+    if (proj_shadow_idx == 9) return texture(shadowMap13, q);
+    if (proj_shadow_idx == 10) return texture(shadowMap14, q);
+    if (proj_shadow_idx == 11) return texture(shadowMap15, q);
+    if (proj_shadow_idx == 12) return texture(shadowMap16, q);
+    if (proj_shadow_idx == 13) return texture(shadowMap17, q);
+    if (proj_shadow_idx == 14) return texture(shadowMap18, q);
+    return texture(shadowMap19, q);
+#else
     return texture(shadowMap13, q);
+#endif
 }
 
 // Two-point Gauss-Legendre integrates only the smooth, cheap terms. Shadow,
@@ -770,8 +799,8 @@ void main()
     vec3 world_origin = vec3(0.0), world_rate = vec3(0.0);
     if (projvol_airborne_tap != 0 || projvol_hard_beam_shadows != 0)
     {
-        shadow_origin = shadow_matrix[4 + clamp(proj_shadow_idx, 0, 9)][3];
-        shadow_rate = shadow_matrix[4 + clamp(proj_shadow_idx, 0, 9)] * vec4(d, 0.0);
+        shadow_origin = shadow_matrix[4 + clamp(proj_shadow_idx, 0, SPOT_SHADOW_MAX_INDEX)][3];
+        shadow_rate = shadow_matrix[4 + clamp(proj_shadow_idx, 0, SPOT_SHADOW_MAX_INDEX)] * vec4(d, 0.0);
         world_origin = projvol_inv_modelview[3].xyz;
         world_rate = mat3(projvol_inv_modelview) * d;
     }

@@ -156,6 +156,24 @@ def reverse_feature_allowance(source, name, filename, digest, label):
     return source
 
 
+SPOT_SHADOWS_16_DIGEST = "1fec21dea70c05465499dbff45160c9b7f185f4ce671912b055bf67f54536827"
+
+
+def reverse_spot_shadows_16(source, name):
+    """Peel the exact 16-slot ceiling layer before all older pipeline pins."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "spot_shadows_16_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SPOT_SHADOWS_16_DIGEST, "16-slot allowance pin"
+    allowed = json.loads(raw)
+    assert allowed["base"] == "fb616f2519c", "16-slot base"
+    if name not in allowed["files"] or not any(h["after"] in source for h in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "spot_shadows_16_hunks.json",
+                                     SPOT_SHADOWS_16_DIGEST, "16-slot projector ceiling")
+
+
 SHAFT_SLOT_MERGE_DIGEST = "899d39e572e8a7718d6cb35f8bb40c7d6f2d6a472b8a999774210d92102f6ba6"
 
 
@@ -164,6 +182,7 @@ def reverse_shaft_slot_merge(source, name):
     import hashlib
     import json
     source = source.replace("\r\n", "\n")
+    source = reverse_spot_shadows_16(source, name)
     raw = (Path(__file__).parent / "shaft_slot_merge_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SHAFT_SLOT_MERGE_DIGEST, ("reviewed shaft slot merge", "allowance pin")
     allowed = json.loads(raw)

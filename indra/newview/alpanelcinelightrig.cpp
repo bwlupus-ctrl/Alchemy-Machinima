@@ -3857,7 +3857,8 @@ void ALPanelCineLightRig::onClickShadowFixIt()
 {
     const S32 requested = computeRequestedShadowSlots();
     gSavedSettings.setU32("BDMergeMaxSpotShadows",
-        std::clamp(static_cast<U32>(requested), 2u, 10u));
+        LLPipeline::clampSpotShadowCount(
+            static_cast<U32>(requested), gGLManager.mNumTextureImageUnits));
 }
 
 void ALPanelCineLightRig::updateDerivedStatus()
@@ -3922,7 +3923,8 @@ void ALPanelCineLightRig::updateDerivedStatus()
     }
     // BDMergeMaxSpotShadows is a U32 setting; getS32 on it failed conversion
     // every panel update (log flood) and returned the wrong value.
-    const S32 slots = (S32)(U32)shadow_slots;
+    const S32 slots = static_cast<S32>(LLPipeline::clampSpotShadowCount(
+        static_cast<U32>(shadow_slots), gGLManager.mNumTextureImageUnits));
     const S32 hint_state = requested > slots ? 1
         : shaft_suppressed ? 2
         : shaft_on_dark_light ? 3 : 0;
@@ -3934,13 +3936,14 @@ void ALPanelCineLightRig::updateDerivedStatus()
         setVisibleIfChanged(mShadowFixIt, hint_state == 1);
         if (hint_state == 1)
         {
-            const S32 displayed_request = std::clamp(requested, 2, 10);
+            const S32 displayed_request = std::clamp(requested, 2, static_cast<S32>(LLPipeline::MAX_SPOT_SHADOWS));
             setTextIfChanged(mShadowHint, llformat(
                 "%d rig projectors request %d shadow slots. Raise Max Spot "
                 "Shadows or use Key only; shafts also require a slot.",
                 displayed_request, slots));
             setLabelIfChanged(mShadowFixIt, llformat(
-                "Allow %d spot shadows", displayed_request));
+                "Allow %d spot shadows", static_cast<S32>(LLPipeline::clampSpotShadowCount(
+                    static_cast<U32>(displayed_request), gGLManager.mNumTextureImageUnits))));
         }
         else if (hint_state == 2)
         {
