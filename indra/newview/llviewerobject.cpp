@@ -5485,7 +5485,9 @@ void LLViewerObject::updateAvatarMeshVisibility(const LLUUID& id, const LLUUID& 
     LLVOAvatar* avatar = getAvatar();
     if (avatar)
     {
-        avatar->updateMeshVisibility();
+        // [ALCHEMY:perf] Coalesced: marks the avatar; walks at once when
+        // AlchemyPerfCoalescedBodyVisibility is off.
+        avatar->requestMeshVisibilityUpdate();
     }
 }
 

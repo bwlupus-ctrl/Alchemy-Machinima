@@ -59,6 +59,14 @@
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>1</integer>
     </map>
+
+    <key>AlchemyPerfCoalescedBodyVisibility</key>
+    <map>
+        <key>Comment</key><string>Upstream fix: attachment texture changes mark the avatar and its hidden-body-part check runs once per frame instead of once per changed face. FALSE restores the exact previous behaviour (a full check on every change). Takes effect immediately.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
     <key>StepAnimEnabled</key>
     <map><key>Comment</key><string>[StepAnim] Enable viewer-local stepped character animation.</string><key>Persist</key><integer>1</integer><key>Type</key><string>Boolean</string><key>Value</key><integer>0</integer></map>
     <key>StepAnimScope</key>
