@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2816 classified paths.
+`inventory.csv` / `inventory.json` contain 2820 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -73,7 +73,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [composition](features/composition.md) | 3 | 44 | 24 | 12 |
 | [gaze](features/gaze.md) | 3 | 67 | 30 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 32 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 199 | 97 | 83 |
+| [clones](features/clones.md) | 4 | 200 | 97 | 83 |
 | [crowd](features/crowd.md) | 4 | 55 | 11 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 124 | 55 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 69 | 60 | 17 |
@@ -211,7 +211,7 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2316 wiring rows; page-source summary
+Existing evidence: 2317 wiring rows; page-source summary
 `{"ambiguous_rows": 0, "independent_json_rows": 2316, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2316, "unresolved_rows": 83}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale

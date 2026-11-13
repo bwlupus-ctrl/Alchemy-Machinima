@@ -7,10 +7,55 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
       "HOOK": 548,
-      "OWNED": 940,
-      "TOOLING": 509
+      "OWNED": 941,
+      "TOOLING": 512
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_kit/gen_report.txt"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,14 +68,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "d97bf9d567b8be54a832db87a3adf4715cadbb20d7dde938dbc8ecdfb482f6d7",
+        "csv_sha256": "564b87048dbfca74d8c6c63f53e6aaa34cdf8b3c324a2e355fbe22d376fcd9e0",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4819,
+        "entries": 4821,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -73,9 +118,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2592,
+        "generated_kit_rows": 2593,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2181,
+        "interactive_rows": 2182,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -192,12 +237,12 @@
         "rows": 2316,
         "unresolved_rows": 83
       },
-      "wiring_rows": 2316
+      "wiring_rows": 2317
     },
-    "head_source_tree": "ab1f705c3923e028fa9a65b3eb5e133f62511505",
+    "head_source_tree": "fc9dd66284f6f1a13b0e23859d04359677d79666",
     "hook_files": 548,
     "hunks": 3487,
-    "input_sha256": "8829beb2a2ed964ad2b2dff05247c48066257c35be9011b8dd14409c0e907df6",
+    "input_sha256": "92181c8435a35c741fe6e0e8f7a756abf3864d0461f135386b55e53fa9d89078",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13276,6 +13321,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -16030,6 +16076,24 @@
       "git_status": "A",
       "layer": 2,
       "path": "indra/newview/alghostspawnengine.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "clones"
+      ],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alghoststayinplace.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -19274,6 +19338,7 @@
       "candidate_features_from_subjects": [
         "actor-bar",
         "camera",
+        "clones",
         "gaze",
         "roto-tron",
         "vcam"
@@ -27674,7 +27739,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera"
+        "camera",
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29456,8 +29522,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "gaze"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -32156,8 +32221,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
-        "gaze"
+        "director-shell"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -41821,6 +41885,36 @@
         "path/prefix"
       ],
       "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_stay_in_place_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/clone_stay_in_place_mover_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
         "looks"
       ],
       "git_status": "A",
@@ -43305,6 +43399,21 @@
       "git_status": "A",
       "layer": 4,
       "path": "scripts/code_tools/fixtures/clone_qol_fixture.cpp.in",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "scripts/code_tools/fixtures/clone_stay_in_place.cpp.in",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

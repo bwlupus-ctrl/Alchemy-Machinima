@@ -262,12 +262,12 @@ All 3487 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@534,7`
 - `indra/newview/CMakeLists.txt@828,8`
 - `indra/newview/CMakeLists.txt@1244,20`
-- `indra/newview/CMakeLists.txt@1561,7`
-- `indra/newview/CMakeLists.txt@1848,8`
-- `indra/newview/CMakeLists.txt@2374,7`
-- `indra/newview/CMakeLists.txt@2654,38`
-- `indra/newview/CMakeLists.txt@2749,7`
-- `indra/newview/CMakeLists.txt@2789,7`
+- `indra/newview/CMakeLists.txt@1562,7`
+- `indra/newview/CMakeLists.txt@1849,8`
+- `indra/newview/CMakeLists.txt@2375,7`
+- `indra/newview/CMakeLists.txt@2655,38`
+- `indra/newview/CMakeLists.txt@2750,7`
+- `indra/newview/CMakeLists.txt@2790,7`
 - `indra/newview/app_settings/settings.xml@22677,10`
 - `indra/newview/app_settings/settings.xml@23553,21`
 - `indra/newview/app_settings/settings.xml@23575,32`
@@ -634,18 +634,18 @@ All 3487 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llvoavatar.cpp@10194,7`
 - `indra/newview/llvoavatar.cpp@10337,78`
 - `indra/newview/llvoavatar.cpp@12128,7`
-- `indra/newview/llvoavatar.cpp@13124,12`
-- `indra/newview/llvoavatar.cpp@13801,8`
-- `indra/newview/llvoavatar.cpp@14138,3`
+- `indra/newview/llvoavatar.cpp@13138,12`
+- `indra/newview/llvoavatar.cpp@13815,8`
+- `indra/newview/llvoavatar.cpp@14152,3`
 - `indra/newview/llvoavatar.h@31,7`
 - `indra/newview/llvoavatar.h@326,7`
 - `indra/newview/llvoavatar.h@335,7`
 - `indra/newview/llvoavatar.h@394,7`
 - `indra/newview/llvoavatar.h@527,17`
-- `indra/newview/llvoavatar.h@935,24`
-- `indra/newview/llvoavatar.h@968,21`
-- `indra/newview/llvoavatar.h@1190,8`
-- `indra/newview/llvoavatar.h@1461,3`
+- `indra/newview/llvoavatar.h@942,24`
+- `indra/newview/llvoavatar.h@975,21`
+- `indra/newview/llvoavatar.h@1197,8`
+- `indra/newview/llvoavatar.h@1468,3`
 - `indra/newview/llvovolume.cpp@104,26`
 - `indra/newview/llvovolume.cpp@800,17`
 - `indra/newview/llvovolume.cpp@1705,15`
@@ -2144,23 +2144,23 @@ All 3487 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@1145,59`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1206,14`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1244,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1301,183`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1561,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1590,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1692,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1703,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1848,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1919,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1935,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2134,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2374,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2654,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2749,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2789,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2878,32`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2916,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2984,198`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3243,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@1301,184`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1562,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1591,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1693,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1704,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1849,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1920,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1936,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2135,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2375,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2655,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2750,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2790,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2879,32`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2917,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2985,198`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3244,40`: unknown/non-function (if (BUILD_TESTING))
 - `indra/newview/app_settings/settings.xml@2,3497`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3500,10`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3511,1055`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2396,23 +2396,23 @@ All 3487 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llvoavatar.cpp@24,24`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.cpp@50,24`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.cpp@745,7`: unknown/non-function (LLVOAvatar::LLVOAvatar(const LLUUID& id,)
-- `indra/newview/llvoavatar.cpp@14138,3`: unknown/non-function (bool LLVOAvatar::isBuddy() const)
+- `indra/newview/llvoavatar.cpp@14152,3`: unknown/non-function (bool LLVOAvatar::isBuddy() const)
 - `indra/newview/llvoavatar.h@31,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.h@56,8`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvoavatar.h@326,7`: unknown/non-function (public:)
 - `indra/newview/llvoavatar.h@335,7`: unknown/non-function (public:)
 - `indra/newview/llvoavatar.h@394,7`: unknown/non-function (public:)
 - `indra/newview/llvoavatar.h@527,17`: unknown/non-function (public:)
-- `indra/newview/llvoavatar.h@552,45`: unknown/non-function (public:)
-- `indra/newview/llvoavatar.h@649,13`: unknown/non-function (public:)
-- `indra/newview/llvoavatar.h@715,7`: unknown/non-function (private:)
-- `indra/newview/llvoavatar.h@968,21`: unknown/non-function (public:)
-- `indra/newview/llvoavatar.h@997,21`: unknown/non-function (public:)
-- `indra/newview/llvoavatar.h@1044,12`: unknown/non-function (public:)
-- `indra/newview/llvoavatar.h@1227,11`: unknown/non-function (private:)
-- `indra/newview/llvoavatar.h@1279,17`: unknown/non-function (private:)
-- `indra/newview/llvoavatar.h@1319,7`: unknown/non-function (private:)
-- `indra/newview/llvoavatar.h@1461,3`: unknown/non-function (void dump_sequential_xml(const std::string outprefix, const LLSD& content);)
+- `indra/newview/llvoavatar.h@552,52`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@656,13`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@722,7`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@975,21`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@1004,21`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@1051,12`: unknown/non-function (public:)
+- `indra/newview/llvoavatar.h@1234,11`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@1286,17`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@1326,7`: unknown/non-function (private:)
+- `indra/newview/llvoavatar.h@1468,3`: unknown/non-function (void dump_sequential_xml(const std::string outprefix, const LLSD& content);)
 - `indra/newview/llvovolume.cpp@27,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvovolume.cpp@69,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llvovolume.cpp@83,8`: unknown/non-function (declaration, XML, build list or global scope)
