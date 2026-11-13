@@ -877,6 +877,9 @@ public:
     void notifyMeshUnavailable(const LLVolumeParams& mesh_params, S32 request_lod, S32 volume_lod);
     void notifySkinInfoReceived(LLMeshSkinInfo* info);
     void notifySkinInfoUnavailable(const LLUUID& info);
+    // Any thread: the only way a background thread may touch mLoadingSkins.
+    void noteSkinInfoPending(const LLUUID& mesh_id);
+    bool snapshotSkinWaiters(const LLUUID& mesh_id, std::vector<LLPointer<LLVOVolume>>& waiters);
     void notifyDecompositionReceived(LLModel::Decomposition* info, bool physics_mesh);
 
     S32 getActualMeshLOD(const LLVolumeParams& mesh_params, S32 lod);
