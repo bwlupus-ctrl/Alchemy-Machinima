@@ -508,6 +508,15 @@ bool LLJoystickCameraRotate::handleMouseUp(S32 x, S32 y, MASK mask)
     return LLJoystick::handleMouseUp(x, y, mask);
 }
 
+// The mouseup never arrives if capture is lost mid-drag
+// Detect that mouse capture is lost to release the avatar movement lock
+void LLJoystickCameraRotate::onMouseCaptureLost()
+{
+    gAgent.setMovementLocked(false);
+    mInCenter = false;
+    LLJoystick::onMouseCaptureLost();
+}
+
 bool LLJoystickCameraRotate::handleHover(S32 x, S32 y, MASK mask)
 {
     if (!pointInCenterDot(x, y, CENTER_DOT_RADIUS))

@@ -11,6 +11,46 @@
          name="Texture"
          top="0"
          width="295">
+    <!-- xui-check: exclusive TexOffsetU bumpyOffsetU -->
+    <!-- xui-check: exclusive TexOffsetU gltfTextureOffsetU -->
+    <!-- xui-check: exclusive TexOffsetU shinyOffsetU -->
+    <!-- xui-check: exclusive TexOffsetV bumpyOffsetV -->
+    <!-- xui-check: exclusive TexOffsetV gltfTextureOffsetV -->
+    <!-- xui-check: exclusive TexOffsetV shinyOffsetV -->
+    <!-- xui-check: exclusive TexRot bumpyRot -->
+    <!-- xui-check: exclusive TexRot gltfTextureRotation -->
+    <!-- xui-check: exclusive TexRot shinyRot -->
+    <!-- xui-check: exclusive TexScaleU bumpyScaleU -->
+    <!-- xui-check: exclusive TexScaleU gltfTextureScaleU -->
+    <!-- xui-check: exclusive TexScaleU shinyScaleU -->
+    <!-- xui-check: exclusive TexScaleV bumpyScaleV -->
+    <!-- xui-check: exclusive TexScaleV gltfTextureScaleV -->
+    <!-- xui-check: exclusive TexScaleV shinyScaleV -->
+    <!-- xui-check: exclusive add_media pbr_from_inventory -->
+    <!-- xui-check: exclusive bumpyOffsetU gltfTextureOffsetU -->
+    <!-- xui-check: exclusive bumpyOffsetU shinyOffsetU -->
+    <!-- xui-check: exclusive bumpyOffsetV gltfTextureOffsetV -->
+    <!-- xui-check: exclusive bumpyOffsetV shinyOffsetV -->
+    <!-- xui-check: exclusive bumpyRot gltfTextureRotation -->
+    <!-- xui-check: exclusive bumpyRot shinyRot -->
+    <!-- xui-check: exclusive bumpyScaleU gltfTextureScaleU -->
+    <!-- xui-check: exclusive bumpyScaleU shinyScaleU -->
+    <!-- xui-check: exclusive bumpyScaleV gltfTextureScaleV -->
+    <!-- xui-check: exclusive bumpyScaleV shinyScaleV -->
+    <!-- xui-check: exclusive delete_media pbr_from_inventory -->
+    <!-- xui-check: exclusive edit_selected_pbr environment -->
+    <!-- xui-check: exclusive edit_selected_pbr maskcutoff -->
+    <!-- xui-check: exclusive edit_selected_pbr material_permissions_loading_label -->
+    <!-- xui-check: exclusive glossiness media_info -->
+    <!-- xui-check: exclusive glossiness pbr_from_inventory -->
+    <!-- xui-check: exclusive gltfRptctrl rptctrl -->
+    <!-- xui-check: exclusive gltfTextureOffsetU shinyOffsetU -->
+    <!-- xui-check: exclusive gltfTextureOffsetV shinyOffsetV -->
+    <!-- xui-check: exclusive gltfTextureRotation shinyRot -->
+    <!-- xui-check: exclusive gltfTextureScaleU shinyScaleU -->
+    <!-- xui-check: exclusive gltfTextureScaleV shinyScaleV -->
+    <!-- xui-check: exclusive media_info pbr_from_inventory -->
+    <!-- xui-check: exclusive save_selected_pbr shinycolorswatch -->
             <panel.string
              name="paste_error_face_selection_mismatch">
               When multiple faces are copied, the target object must have the same number of faces selected.
@@ -315,7 +355,7 @@
              top_pad="5"
              width="64" />
             <button
-            visible="true"
+            visible="false"
              follows="left|top"
              height="23"
              layout="topleft"
@@ -339,7 +379,7 @@
                 Loading contents...
             </text>
             <button
-            visible="true"
+            visible="false"
              follows="left|top"
              height="23"
              layout="topleft"
@@ -349,7 +389,7 @@
              label="Edit Selected"
              width="140"/>
             <button
-            visible="true"
+            visible="false"
              follows="left|top"
              height="23"
              layout="topleft"
@@ -588,6 +628,7 @@
              layout="topleft"
              follows="left|top"
              left_pad="11"
+             visible="false"
              name="combobox shininess"
              top_delta="-6"
              width="69">
@@ -622,6 +663,7 @@
              height="10"
              layout="topleft"
              left_delta="-127"
+             visible="false"
              name="label glossiness"
              text_readonly_color="LabelDisabledColor"
              top_pad="7"
@@ -639,6 +681,7 @@
              layout="topleft"
              top_delta="-4"
              left_pad="11"
+             visible="false"
              name="glossiness"
              width="69" />
             <text
@@ -648,6 +691,7 @@
              height="10"
              layout="topleft"
              left_delta="-127"
+             visible="false"
              name="label environment"
              text_readonly_color="LabelDisabledColor"
              top_pad="8"
@@ -665,6 +709,7 @@
              layout="topleft"
              top_delta="-4"
              left_pad="11"
+             visible="false"
              name="environment"
              width="69" />
             <text
@@ -674,6 +719,7 @@
              height="10"
              layout="topleft"
              left_delta="-127"
+             visible="false"
              name="label shinycolor"
              text_readonly_color="LabelDisabledColor"
              top_pad="8"
@@ -688,6 +734,7 @@
              label=""
              layout="topleft"
              left_pad="11"
+             visible="false"
              name="shinycolorswatch"
              tool_tip="Click to open color picker"
              top_delta="-4"
@@ -757,6 +804,7 @@
              layout="topleft"
              follows="left|top"
              left_pad="5"
+             visible="false"
              name="combobox texgen"
              top_pad="-13"
              width="70">
@@ -770,11 +818,12 @@
                  value="Planar" />
             </combo_box>
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -783,11 +832,12 @@
              top_pad="1"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -801,32 +851,33 @@
              initial_value=""
              label="Repeats per meter"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="100"
              min_val="-100"
              name="rptctrl"
              width="271" />
            <spinner
-             decimal_digits="2"
+             decimal_digits="5"
              follows="left|top"
              height="19"
              increment="1"
              initial_value="0"
              label="Rotation degrees"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="360"
              min_val="-360"
              name="TexRot"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -834,11 +885,12 @@
              name="TexOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -846,11 +898,12 @@
              name="TexOffsetV"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -859,11 +912,12 @@
              top_delta="-115"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -871,7 +925,7 @@
              name="bumpyScaleV"
              width="271" />
            <spinner
-             decimal_digits="2"
+             decimal_digits="5"
              follows="left|top"
              height="19"
              top_pad="27"
@@ -879,18 +933,19 @@
              initial_value="0"
 			 label="Rotation degrees"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="360"
              min_val="-360"
              name="bumpyRot"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -898,11 +953,12 @@
              name="bumpyOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -910,11 +966,12 @@
              name="bumpyOffsetV"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -923,11 +980,12 @@
              top_delta="-115"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical scale"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -935,7 +993,7 @@
              name="shinyScaleV"
              width="271" />
            <spinner
-             decimal_digits="2"
+             decimal_digits="5"
              follows="left|top"
              height="19"
              top_pad="27"
@@ -943,18 +1001,19 @@
              initial_value="0"
 			 label="Rotation degrees"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="360"
              min_val="-360"
              name="shinyRot"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Horizontal offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -962,11 +1021,12 @@
              name="shinyOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Vertical offset"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-1"
@@ -975,11 +1035,12 @@
              width="271" />
             <!-- BEGIN PBR Material texture transform parameters -->
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="1"
              label="Scale u"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -988,11 +1049,12 @@
              top_delta="-115"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="1"
              label="Scale v"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-10000"
@@ -1006,18 +1068,19 @@
              initial_value=""
              label="Repeats per meter"
              layout="topleft"
-             label_width="200"
+             label_width="175"
              left="10"
              max_val="100"
              min_val="-100"
              name="gltfRptctrl"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Rotation"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-360"
@@ -1025,11 +1088,12 @@
              name="gltfTextureRotation"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Offset u"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-999"
@@ -1037,11 +1101,12 @@
              name="gltfTextureOffsetU"
              width="271" />
             <spinner
+             decimal_digits="5"
              follows="left|top"
              height="19"
              initial_value="0"
              label="Offset v"
-             label_width="200"
+             label_width="175"
              layout="topleft"
              left="10"
              min_val="-999"
