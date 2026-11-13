@@ -19,11 +19,11 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,124", "indra/newview/CMakeLists.txt@1301,184", "indra/newview/CMakeLists.txt@2985,198"]}
-- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@1955,24", "indra/newview/llappviewer.cpp@5652,9", "indra/newview/llappviewer.cpp@6031,30", "indra/newview/llappviewer.cpp@6167,7"]}
+- {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@1955,24", "indra/newview/llappviewer.cpp@5655,9", "indra/newview/llappviewer.cpp@6034,30", "indra/newview/llappviewer.cpp@6170,7"]}
 - {"path": "indra/newview/alviewermenu.cpp", "hunks": ["indra/newview/alviewermenu.cpp@18,37", "indra/newview/alviewermenu.cpp@296,7", "indra/newview/alviewermenu.cpp@306,8"]}
 - {"path": "indra/newview/llviewermenu.cpp", "hunks": ["indra/newview/llviewermenu.cpp@25,8", "indra/newview/llviewermenu.cpp@6036,7"]}
 - {"path": "indra/newview/llagent.cpp", "hunks": ["indra/newview/llagent.cpp@26,12", "indra/newview/llagent.cpp@1087,17", "indra/newview/llagent.cpp@4783,9"]}
-- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@29,8", "indra/newview/llselectmgr.cpp@4805,8", "indra/newview/llselectmgr.cpp@4901,8", "indra/newview/llselectmgr.cpp@5073,8", "indra/newview/llselectmgr.cpp@5529,13", "indra/newview/llselectmgr.cpp@5805,10", "indra/newview/llselectmgr.cpp@6031,8", "indra/newview/llselectmgr.cpp@7721,21", "indra/newview/llselectmgr.cpp@7931,7", "indra/newview/llselectmgr.cpp@9180,7", "indra/newview/llselectmgr.cpp@9305,7"]}
+- {"path": "indra/newview/llselectmgr.cpp", "hunks": ["indra/newview/llselectmgr.cpp@29,8", "indra/newview/llselectmgr.cpp@4814,8", "indra/newview/llselectmgr.cpp@4910,8", "indra/newview/llselectmgr.cpp@5082,8", "indra/newview/llselectmgr.cpp@5538,13", "indra/newview/llselectmgr.cpp@5814,10", "indra/newview/llselectmgr.cpp@6040,8", "indra/newview/llselectmgr.cpp@7730,21", "indra/newview/llselectmgr.cpp@7940,7", "indra/newview/llselectmgr.cpp@9189,7", "indra/newview/llselectmgr.cpp@9314,7"]}
 - {"path": "indra/newview/llviewerobject.cpp", "hunks": ["indra/newview/llviewerobject.cpp@25,13", "indra/newview/llviewerobject.cpp@2352,33", "indra/newview/llviewerobject.cpp@4614,27"]}
 - {"path": "indra/newview/lldrawable.cpp", "hunks": ["indra/newview/lldrawable.cpp@48,8", "indra/newview/lldrawable.cpp@63,20"]}
 - {"path": "indra/newview/llviewerobjectlist.cpp", "hunks": ["indra/newview/llviewerobjectlist.cpp@27,7", "indra/newview/llviewerobjectlist.cpp@244,21", "indra/newview/llviewerobjectlist.cpp@1402,8"]}

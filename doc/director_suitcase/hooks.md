@@ -352,35 +352,36 @@ HEAD coordinates; guards/features are candidate evidence
 | 2047–2080 (n=34) | LLAppViewer::cleanup | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step up to "Global stuff deleted" is logged so a quit that dies or stalls in this range shows exactly where (11/11: the log ended after the decomposition shutdown line, with no settings save). |
 | 2087–2115 (n=29) | LLAppViewer::cleanup | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_INFOS, LL_ENDL |
 | 2147–2155 (n=9) | LLAppViewer::cleanup | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: decoded sounds now live in the dedicated "sounds" subfolder -- clear it too |
-| 2222–2238 (n=17) | LLAppViewer::cleanup | sensor | creative-candidate | unknown; conditional evidence present | Edits gSavedSettings, ALUIPerfSelfTest, ALEnvOnlyDiagnostics, LL_INFOS, LL_ENDL |
-| 2328–2335 (n=8) | LLAppViewer::cleanup | rig | creative-candidate | unknown; no local conditional evidence | Edits LLPipeline |
-| 2472–2496 (n=25) | LLAppViewer::cleanup | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge FastExit] Everything durable is now persisted (settings, per-account settings, mute list, conversation/transaction logs, inventory cache) and all child processes (SLVoice, media/CEF plugins) and worker threads have already been shut down above - the only thing left in th |
-| 2535–2559 (n=25) | LLAppViewer::initThreads | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs (measured: ~45 threads' worth of queued decode demand on 32 threads); 0 = stock ceiling of 16 A decoder can transiently hold a full raw image plus conversion and cache copies. Limit concurrency to one worker per 2  |
-| 2650–2702 (n=53) | applyMachinimaDebugLogging | actor-bar, actor-path, camera, capture-sidecar, clones, director-shell, looks, rig, roto-tron, weather | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [DebugLogging] additional fork tags |
-| 2796–2802 (n=7) | LLAppViewer::loadSettingsFromDirectory | unknown | unknown-review | unknown; no local conditional evidence | Edits ALScopedPresetMaterializing |
-| 2902–2908 (n=7) | LLAppViewer::loadColorSettings | director-shell | creative-candidate | unknown; no local conditional evidence | Edits ALDirectorTheme |
-| 3646–3652 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
-| 3656–3662 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
-| 4614–4630 (n=17) | LLAppViewer::fastQuit, LLAppViewer::forceQuit | camera, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: [XInputRumble] _exit below skips LLViewerJoystick::terminate. |
-| 4643–4652 (n=10) | LLAppViewer::requestQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Final recovery capture belongs before closeAllChildren() and the logout teardown, while Director's model/UI dependencies are known to be alive. |
-| 4684–4693 (n=10) | LLAppViewer::requestQuit | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and latch the quit flag, so no settle can send a hover / region-environment update during logout. Covers sliders outside floaters (Quick Settings pulldown) too. |
-| 4754–4764 (n=11) | LLAppViewer::abortQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLFloaterDirector, ALUIPerfSelfTest |
-| 4866–4877 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The general one-shot is consumed below even if another viewer owns the media cache. Only the media lock owner's completed sweep acknowledges this. |
-| 4995–5006 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: Retain the Preferences request after its persisted flag was consumed above, also in a read-only viewer that wins the separate media lock. Media cleanup acquires its own exclusive lock off-main, including when either VCam enable is off. purgeCache() stays non-recursive. |
-| 5102–5110 (n=9) | LLAppViewer::purgeCache | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its own sweep to be cleared along with the rest of the cache. |
-| 5374–5397 (n=24) | LLAppViewer::idle | capture-sidecar, clones, roto-tron, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [Temporal Capture] Advance the presentation clock and freeze this iteration's immutable time context BEFORE any cinematic consumer (object path/ghost updates, gObjectList.update, particles, camera) runs later in idle() or in the following display(). Wall/network time is untouched |
-| 5408–5444 (n=37) | LLAppViewer::idle | gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md) [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static constraint members, since llcha |
-| 5505–5519 (n=15) | LLAppViewer::idle | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Login-screen tests are ticked by idle_startup(). Once an authorized in-world test reaches STATE_STARTED, idle_startup() is no longer called. Keep the active-runner check as the zero-cost gate for normal sessions. |
-| 5652–5660 (n=9) | LLAppViewer::idle | tracking | creative-candidate | unknown; conditional evidence present | Edits gDisconnected, gTeleportDisplay, ALProjectorTracker |
-| 5696–5753 (n=58) | LLAppViewer::idle | actor-bar, actor-path, clones, gaze, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ObjectPath] client-side object drives (props on splines): advance and re-assert each enrolled object's rendered transform BEFORE gObjectList.update(), so the driven mount's new pose is consumed THIS frame by object interpolation, the seated-avatar root slave, the skeleton world- |
-| 5843–5975 (n=133) | LLAppViewer::idle | actor-path, camera, clones, director-shell, rig, shafts-volumetrics, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World: hold the particle simulation while the world is frozen so existing particles hang in place instead of aging out (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the merge spec for this item requires the full scene — including particles  |
-| 5978–6021 (n=44) | LLAppViewer::idle | camera, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Follow the final VCam/flycam camera; hidden costs one cached bool test. The ownership sampler and recorder must observe the same final, post-operator camera.  Keep this immediately before onIdleFrame(). |
-| 6031–6060 (n=30) | LLAppViewer::idle | actor-path, clones, gaze, stepped-animation, tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b |
-| 6084–6091 (n=8) | LLAppViewer::idleShutdown | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles |
-| 6167–6173 (n=7) | LLAppViewer::sendLogoutRequest | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
-| 6492–6507 (n=16) | LLAppViewer::disconnectViewer | clones, director-shell, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched. |
-| 6513–6520 (n=8) | LLAppViewer::disconnectViewer | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALExposureSettingsHistory |
-| 6531–6575 (n=45) | LLAppViewer::disconnectViewer | actor-bar, actor-path, clones, composition, director-shell, rig, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses |
+| 2161–2169 (n=9) | LLAppViewer::cleanup | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: Model previews release their decomposition handles while the UI is destroyed. |
+| 2225–2241 (n=17) | LLAppViewer::cleanup | sensor | creative-candidate | unknown; conditional evidence present | Edits gSavedSettings, ALUIPerfSelfTest, ALEnvOnlyDiagnostics, LL_INFOS, LL_ENDL |
+| 2331–2338 (n=8) | LLAppViewer::cleanup | rig | creative-candidate | unknown; no local conditional evidence | Edits LLPipeline |
+| 2475–2499 (n=25) | LLAppViewer::cleanup | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge FastExit] Everything durable is now persisted (settings, per-account settings, mute list, conversation/transaction logs, inventory cache) and all child processes (SLVoice, media/CEF plugins) and worker threads have already been shut down above - the only thing left in th |
+| 2538–2562 (n=25) | LLAppViewer::initThreads | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs (measured: ~45 threads' worth of queued decode demand on 32 threads); 0 = stock ceiling of 16 A decoder can transiently hold a full raw image plus conversion and cache copies. Limit concurrency to one worker per 2  |
+| 2653–2705 (n=53) | applyMachinimaDebugLogging | actor-bar, actor-path, camera, capture-sidecar, clones, director-shell, looks, rig, roto-tron, weather | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [DebugLogging] additional fork tags |
+| 2799–2805 (n=7) | LLAppViewer::loadSettingsFromDirectory | unknown | unknown-review | unknown; no local conditional evidence | Edits ALScopedPresetMaterializing |
+| 2905–2911 (n=7) | LLAppViewer::loadColorSettings | director-shell | creative-candidate | unknown; no local conditional evidence | Edits ALDirectorTheme |
+| 3649–3655 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
+| 3659–3665 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
+| 4617–4633 (n=17) | LLAppViewer::fastQuit, LLAppViewer::forceQuit | camera, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: [XInputRumble] _exit below skips LLViewerJoystick::terminate. |
+| 4646–4655 (n=10) | LLAppViewer::requestQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Final recovery capture belongs before closeAllChildren() and the logout teardown, while Director's model/UI dependencies are known to be alive. |
+| 4687–4696 (n=10) | LLAppViewer::requestQuit | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and latch the quit flag, so no settle can send a hover / region-environment update during logout. Covers sliders outside floaters (Quick Settings pulldown) too. |
+| 4757–4767 (n=11) | LLAppViewer::abortQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLFloaterDirector, ALUIPerfSelfTest |
+| 4869–4880 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The general one-shot is consumed below even if another viewer owns the media cache. Only the media lock owner's completed sweep acknowledges this. |
+| 4998–5009 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: Retain the Preferences request after its persisted flag was consumed above, also in a read-only viewer that wins the separate media lock. Media cleanup acquires its own exclusive lock off-main, including when either VCam enable is off. purgeCache() stays non-recursive. |
+| 5105–5113 (n=9) | LLAppViewer::purgeCache | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its own sweep to be cleared along with the rest of the cache. |
+| 5377–5400 (n=24) | LLAppViewer::idle | capture-sidecar, clones, roto-tron, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [Temporal Capture] Advance the presentation clock and freeze this iteration's immutable time context BEFORE any cinematic consumer (object path/ghost updates, gObjectList.update, particles, camera) runs later in idle() or in the following display(). Wall/network time is untouched |
+| 5411–5447 (n=37) | LLAppViewer::idle | gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md) [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static constraint members, since llcha |
+| 5508–5522 (n=15) | LLAppViewer::idle | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Login-screen tests are ticked by idle_startup(). Once an authorized in-world test reaches STATE_STARTED, idle_startup() is no longer called. Keep the active-runner check as the zero-cost gate for normal sessions. |
+| 5655–5663 (n=9) | LLAppViewer::idle | tracking | creative-candidate | unknown; conditional evidence present | Edits gDisconnected, gTeleportDisplay, ALProjectorTracker |
+| 5699–5756 (n=58) | LLAppViewer::idle | actor-bar, actor-path, clones, gaze, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ObjectPath] client-side object drives (props on splines): advance and re-assert each enrolled object's rendered transform BEFORE gObjectList.update(), so the driven mount's new pose is consumed THIS frame by object interpolation, the seated-avatar root slave, the skeleton world- |
+| 5846–5978 (n=133) | LLAppViewer::idle | actor-path, camera, clones, director-shell, rig, shafts-volumetrics, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World: hold the particle simulation while the world is frozen so existing particles hang in place instead of aging out (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the merge spec for this item requires the full scene — including particles  |
+| 5981–6024 (n=44) | LLAppViewer::idle | camera, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Follow the final VCam/flycam camera; hidden costs one cached bool test. The ownership sampler and recorder must observe the same final, post-operator camera.  Keep this immediately before onIdleFrame(). |
+| 6034–6063 (n=30) | LLAppViewer::idle | actor-path, clones, gaze, stepped-animation, tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b |
+| 6087–6094 (n=8) | LLAppViewer::idleShutdown | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles |
+| 6170–6176 (n=7) | LLAppViewer::sendLogoutRequest | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
+| 6495–6510 (n=16) | LLAppViewer::disconnectViewer | clones, director-shell, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched. |
+| 6516–6523 (n=8) | LLAppViewer::disconnectViewer | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALExposureSettingsHistory |
+| 6534–6578 (n=45) | LLAppViewer::disconnectViewer | actor-bar, actor-path, clones, composition, director-shell, rig, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses |
 
 ## Slice 1: `indra/newview/llfloaterenvironmentadjust.cpp`
 
@@ -1399,55 +1400,56 @@ HEAD coordinates; guards/features are candidate evidence
 | 4994–5001 (n=8) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits LLFloater, gFloaterTools, ALWeatherShelter |
 | 5008–5015 (n=8) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits LLToolMgr, ALWeatherShelter |
 | 5076–5096 (n=21) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits ALWeatherShelter |
-| 5535–5542 (n=8) | can_batch_gltf_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
-| 5581–5588 (n=8) | can_batch_legacy_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_MODE_BLEND |
-| 5690–5776 (n=87) | resolve_actor_fx_owners, resolve_outer_transform | actor-bar, capture-sidecar, director-shell, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Native Actor FX is authored for the visible Director actor, not necessarily the avatar that skins this one face. Worn animated objects are skinned by an LLControlAvatar. Keep that exact runtime identity in LLDrawInfo even before the object joins the Director cast: cast membership |
-| 5835–5844 (n=10) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Edits LLClientOuterTransform |
-| 5861–5867 (n=7) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 5892–5931 (n=40) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, LLRenderPass, ALPHA_MODE_MASK, ALPHA_MODE_BLEND, ALPHA_MODE_OPAQUE |
-| 5941–5964 (n=24) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawPool, LLRenderPass, LLPipeline, ALPHA_MODE_BLEND, LLMaterial, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK |
-| 5970–5979 (n=10) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_MODE_MASK |
-| 5993–6000 (n=8) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6004–6020 (n=17) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6033–6051 (n=19) | LLVolumeGeometryManager::registerFace | sensor | creative-candidate | unknown; conditional evidence present | Edits LLDrawInfo |
-| 6090–6113 (n=24) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: mVertexBuffer's TYPE_EMISSIVE allocation is group-wide. Preserve exact per-draw authored-glow ownership so shared Actor FX (and any other DrawInfo consumer) never classifies a neighbouring face's emissive stream as this batch's glow. |
-| 6120–6130 (n=11) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6155–6169 (n=15) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD llvovolume.cpp:5574). Rigid only; rigged faces (model_mat == null) get their previous transform from the palette cache in Phase 1b. |
-| 6181–6198 (n=18) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] Mark draws that belong to a genuinely worn attachment (rigged or not). getAvatarAncestor() excludes standalone animesh even though getAvatar() returns its control avatar. Drives the gated 3-pass alpha ordering in LLDrawPoolAlpha. |
-| 6218–6233 (n=16) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLMaterial, ALPHA_MODE_BLEND |
-| 6239–6255 (n=17) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: The pass is authoritative. Store the same effective policy for scalar legacy/PBR rendering, alpha-pool shader selection, shadows, velocity, and Actor FX replay. Shared material assets remain untouched. |
-| 6259–6267 (n=9) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 6400–6406 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawable |
-| 6411–6417 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
-| 6566–6574 (n=9) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Preserve material fetches, animesh controllers, attachment joint overrides and face setup above; omit only draw geometry. |
-| 6593–6618 (n=26) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_OVERRIDE_NONE, LLDrawPool, ALPHA_MODE_MASK |
-| 6707–6714 (n=8) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
-| 6883–6936 (n=54) | apply_target_mask_vertex_coverage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: TARGET_MASK coverage is texture alpha alone.  Bake that policy only into the affected face's vertex range: RGB remains untouched, while alpha becomes one. Legacy glow has no per-DrawInfo cutoff upload, so its otherwise-unused emissive RGB carries a 16-bit cutoff plus a marker for |
-| 6988–6998 (n=11) | LLVolumeGeometryManager::rebuildMesh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline |
-| 7168–7201 (n=34) | LLVolumeGeometryManager::genDrawInfo | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: sIndexedGLTFChannels distinct materials into one batch, assigning each face a material slot via setTextureIndex. The shader selects per-vertex by that slot. See LLRenderPass::pushGLTFBatchIndexed. Static/native GBuffer PBR retains the full indexed material width. Rigged PBR is al |
-| 7208–7227 (n=20) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: splitting after slot assignment would leave sparse indexed material lists that shared replay must reject |
-| 7236–7243 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 7251–7257 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7292–7298 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7305–7334 (n=30) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, LLMaterial, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
-| 7336–7342 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7350–7363 (n=14) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: per-DrawInfo authored-glow batch split |
-| 7372–7380 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 7390–7396 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7621–7627 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7630–7645 (n=16) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G2.3 fix] Only an explicit per-target MASK policy owns pass routing independently of TE alpha. getGeometryVolume() baked TE/base-colour alpha into this range. Remove it only for TARGET_MASK so every mask shader tests texture alpha alone; all other faces incur no vertex r |
-| 7648–7660 (n=13) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawPool, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_BLEND, LLMaterial |
-| 7664–7682 (n=19) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
-| 7685–7691 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 7696–7707 (n=12) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_MODE_MASK |
-| 7717–7725 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
-| 7751–7762 (n=12) | LLVolumeGeometryManager::genDrawInfo | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge G2.3 fix] Forced MASK material faces must reach the material-mask table even with TE alpha or legacy bump set. |
-| 7794–7800 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7821–7827 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7849–7863 (n=15) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLRenderPass |
-| 7934–7940 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
-| 7957–7964 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
-| 8055–8061 (n=7) | LLGeometryManager::addGeometryCount | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 5127–5146 (n=20) | LLVOVolume::lineSegmentIntersect | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: surfaceToTexture takes the hit in agent space, which a planar face projects from. |
+| 5548–5555 (n=8) | can_batch_gltf_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
+| 5594–5601 (n=8) | can_batch_legacy_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_MODE_BLEND |
+| 5703–5789 (n=87) | resolve_actor_fx_owners, resolve_outer_transform | actor-bar, capture-sidecar, director-shell, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Native Actor FX is authored for the visible Director actor, not necessarily the avatar that skins this one face. Worn animated objects are skinned by an LLControlAvatar. Keep that exact runtime identity in LLDrawInfo even before the object joins the Director cast: cast membership |
+| 5848–5857 (n=10) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Edits LLClientOuterTransform |
+| 5874–5880 (n=7) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 5905–5944 (n=40) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, LLRenderPass, ALPHA_MODE_MASK, ALPHA_MODE_BLEND, ALPHA_MODE_OPAQUE |
+| 5954–5977 (n=24) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawPool, LLRenderPass, LLPipeline, ALPHA_MODE_BLEND, LLMaterial, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK |
+| 5983–5992 (n=10) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_MODE_MASK |
+| 6006–6013 (n=8) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6017–6033 (n=17) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6046–6064 (n=19) | LLVolumeGeometryManager::registerFace | sensor | creative-candidate | unknown; conditional evidence present | Edits LLDrawInfo |
+| 6103–6126 (n=24) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: mVertexBuffer's TYPE_EMISSIVE allocation is group-wide. Preserve exact per-draw authored-glow ownership so shared Actor FX (and any other DrawInfo consumer) never classifies a neighbouring face's emissive stream as this batch's glow. |
+| 6133–6143 (n=11) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6168–6182 (n=15) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD llvovolume.cpp:5574). Rigid only; rigged faces (model_mat == null) get their previous transform from the palette cache in Phase 1b. |
+| 6194–6211 (n=18) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] Mark draws that belong to a genuinely worn attachment (rigged or not). getAvatarAncestor() excludes standalone animesh even though getAvatar() returns its control avatar. Drives the gated 3-pass alpha ordering in LLDrawPoolAlpha. |
+| 6231–6246 (n=16) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLMaterial, ALPHA_MODE_BLEND |
+| 6252–6268 (n=17) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: The pass is authoritative. Store the same effective policy for scalar legacy/PBR rendering, alpha-pool shader selection, shadows, velocity, and Actor FX replay. Shared material assets remain untouched. |
+| 6272–6280 (n=9) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 6413–6419 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawable |
+| 6424–6430 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
+| 6579–6587 (n=9) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Preserve material fetches, animesh controllers, attachment joint overrides and face setup above; omit only draw geometry. |
+| 6606–6631 (n=26) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_OVERRIDE_NONE, LLDrawPool, ALPHA_MODE_MASK |
+| 6720–6727 (n=8) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
+| 6896–6949 (n=54) | apply_target_mask_vertex_coverage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: TARGET_MASK coverage is texture alpha alone.  Bake that policy only into the affected face's vertex range: RGB remains untouched, while alpha becomes one. Legacy glow has no per-DrawInfo cutoff upload, so its otherwise-unused emissive RGB carries a 16-bit cutoff plus a marker for |
+| 7001–7011 (n=11) | LLVolumeGeometryManager::rebuildMesh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline |
+| 7181–7214 (n=34) | LLVolumeGeometryManager::genDrawInfo | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: sIndexedGLTFChannels distinct materials into one batch, assigning each face a material slot via setTextureIndex. The shader selects per-vertex by that slot. See LLRenderPass::pushGLTFBatchIndexed. Static/native GBuffer PBR retains the full indexed material width. Rigged PBR is al |
+| 7221–7240 (n=20) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: splitting after slot assignment would leave sparse indexed material lists that shared replay must reject |
+| 7249–7256 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 7264–7270 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7305–7311 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7318–7347 (n=30) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, LLMaterial, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
+| 7349–7355 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7363–7376 (n=14) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: per-DrawInfo authored-glow batch split |
+| 7385–7393 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 7403–7409 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7634–7640 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7643–7658 (n=16) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G2.3 fix] Only an explicit per-target MASK policy owns pass routing independently of TE alpha. getGeometryVolume() baked TE/base-colour alpha into this range. Remove it only for TARGET_MASK so every mask shader tests texture alpha alone; all other faces incur no vertex r |
+| 7661–7673 (n=13) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawPool, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_BLEND, LLMaterial |
+| 7677–7695 (n=19) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
+| 7698–7704 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 7709–7720 (n=12) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_MODE_MASK |
+| 7730–7738 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
+| 7764–7775 (n=12) | LLVolumeGeometryManager::genDrawInfo | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge G2.3 fix] Forced MASK material faces must reach the material-mask table even with TE alpha or legacy bump set. |
+| 7807–7813 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7834–7840 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7862–7876 (n=15) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLRenderPass |
+| 7947–7953 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
+| 7970–7977 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
+| 8068–8074 (n=7) | LLGeometryManager::addGeometryCount | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/pipeline.cpp`
 
@@ -2027,6 +2029,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 1085–1097 (n=13) | wstring_grapheme_align_forward | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [TextLinear] bounded; identical result to the cluster-list overload. |
 | 1119–1133 (n=15) | wstring_emoji_range_at | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [TextLinear] bounded; identical result to the cluster-list overload. |
 
+## Slice 3: `indra/llphysicsextensionsos/llconvexdecomposition.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 77–88 (n=12) | LLConvexDecomposition::quitSystem | composition | creative-candidate | unknown; conditional evidence present | Edits LLCD_OK |
+
 ## Slice 3: `indra/llplugin/llpluginclassmedia.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -2210,6 +2220,22 @@ HEAD coordinates; guards/features are candidate evidence
 | 29–49 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLButton, LLComboBox, LLSliderCtrl, LLTextBox, LLFloaterHoverHeight |
 | 56–92 (n=37) | unknown/non-function (public:) | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: virtual*/ void onOpen(const LLSD& key); [ClientHeight] Local (client-side) avatar height. No draw() override: every refresh below is event-driven (open, drop-down opening, Reset all, name-cache callback, store change). |
 
+## Slice 3: `indra/newview/lljoystickbutton.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 508–522 (n=15) | LLJoystickCameraRotate::onMouseCaptureLost | camera | creative-candidate | unknown; no local conditional evidence | Comment evidence: The mouseup never arrives if capture is lost mid-drag Detect that mouse capture is lost to release the avatar movement lock |
+
+## Slice 3: `indra/newview/lljoystickbutton.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 150–156 (n=7) | unknown/non-function (public:) | camera | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 3: `indra/newview/llmeshrepository.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -2219,9 +2245,17 @@ HEAD coordinates; guards/features are candidate evidence
 | 29–36 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 2031–2078 (n=48) | LLMeshRepoThread::fetchMeshLOD | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1-2b] decoded mesh pool short-circuit: a hit skips the disk read AND the inflate + LLSD parse + face build in lodReceived. Serves a deep copy; replicates lodReceived's post-unpack delivery. |
 | 2430–2439 (n=10) | LLMeshRepoThread::lodReceived | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] write-through into the decoded mesh pool, pre-rigging (hits re-run rigging against current avatar state) |
-| 4341–4356 (n=16) | LLMeshRepository::shutdown | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step is logged so a quit that dies or stalls here shows where. |
-| 4558–4566 (n=9) | LLMeshRepository::notifyLoadedMeshes | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] main-thread settings/budget refresh for the mesh pool |
-| 5735–5751 (n=17) | LLPhysicsDecomp::shutdown | composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ShutdownTrace] a stalled join reports itself every 2 s instead of hanging silently. |
+| 4337–4358 (n=22) | LLMeshRepository::shutdown, LLMeshRepository::shutdownDecomposition | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step is logged so a quit that dies or stalls here shows where. |
+| 4560–4568 (n=9) | LLMeshRepository::notifyLoadedMeshes | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] main-thread settings/budget refresh for the mesh pool |
+| 5737–5753 (n=17) | LLPhysicsDecomp::shutdown | composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ShutdownTrace] a stalled join reports itself every 2 s instead of hanging silently. |
+
+## Slice 3: `indra/newview/llmeshrepository.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 864–870 (n=7) | unknown/non-function (public:) | composition | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/newview/llpreviewanim.cpp`
 
@@ -2251,31 +2285,32 @@ HEAD coordinates; guards/features are candidate evidence
 | 143–210 (n=68) | selectionAllLocalMeshPreview, selectionHasGhostManipProxy, synthesizeLocalPreviewNode | clones, looks, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: True only if the selection is non-empty and consists entirely of local MESH previews (LLLocalMeshMgr). Narrower than selectionAllLocalPreview(): a Ghost Studio manipulation proxy is client-only (isLocalOnly) but is NOT a mesh preview, so it must never be routed to the Local Mesh  |
 | 268–280 (n=13) | deleteLocalPreviewSelection | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Defence in depth: only actual mesh previews belong to LLLocalMeshMgr. The dispatch already filters to all-mesh-preview selections, but a ghost manip proxy (client-only, not a mesh preview) must never be despawned here. |
 | 1290–1303 (n=14) | LLSelectMgr::setHoverObject | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): hovering must never request object properties from the simulator (requestObjectPropertiesFamily below). |
-| 4378–4412 (n=35) | LLSelectMgr::selectDelete | clones, crowd | creative-candidate | unknown; conditional evidence present | Comment evidence: Client-only local mesh previews have no sim counterpart; delete them locally instead of sending a DeRez the sim would ignore. [GhostStudio] Delete on the manip proxy removes the SELECTED GHOST instance (the proxy is only an editing handle). After the stock-tool handoff, this norm |
-| 4561–4588 (n=28) | LLSelectMgr::selectForceDelete | clones, crowd | creative-candidate | unknown; conditional evidence present | Edits ALGhostStudio, LLUUID, ALGhostGroupModel |
-| 4805–4812 (n=8) | LLSelectMgr::selectDuplicate | tracking | creative-candidate | unknown; no local conditional evidence | Comment evidence: Duplicate baselines are reused by later transform sends; never cache a driven pose. |
-| 4828–4838 (n=11) | LLSelectMgr::selectDuplicate | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Client-only local previews: duplicate locally. The ObjectDuplicate send below is swallowed for an all-local selection (sendListToRegions gate), which would otherwise make Ctrl+D / shift-drag-copy a silent no-op. Local MESH previews: duplicate locally. The ObjectDuplicate send bel |
-| 4901–4908 (n=8) | LLSelectMgr::repeatDuplicate | tracking | creative-candidate | unknown; no local conditional evidence | Comment evidence: Duplicate baselines are reused by later transform sends; never cache a driven pose. |
-| 4931–4937 (n=7) | LLSelectMgr::repeatDuplicate | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 5073–5080 (n=8) | LLSelectMgr::sendMultipleUpdate | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Last-resort barrier: an unhooked editor must never send a tracked pose. |
-| 5529–5541 (n=13) | LLSelectMgr::sendAttach | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Also protect attachment requests using an alternate selection handle. |
-| 5805–5814 (n=10) | LLSelectMgr::saveSelectedObjectTransform | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Restore before even the PICK baseline of a click that starts a drag. |
-| 6031–6038 (n=8) | LLSelectMgr::packObjectIDAndRotation | tracking | creative-candidate | unknown; conditional evidence present | Edits ALProjectorTracker |
-| 6195–6201 (n=7) | LLSelectMgr::sendListToRegions, apply | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6209–6215 (n=7) | LLSelectMgr::sendListToRegions, apply | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6619–6625 (n=7) | LLSelectMgr::processObjectPropertiesFamily | camera | creative-candidate | unknown; no local conditional evidence | Edits LLCinematicCamera |
-| 7241–7250 (n=10) | LLSelectMgr::generateSilhouette | unknown | unknown-review | unknown; no local conditional evidence | Edits LLMatrix4 |
-| 7307–7316 (n=10) | LLSelectNode::LLSelectNode | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7721–7741 (n=21) | LLSelectNode::renderOneSilhouette | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Reuse the captured contour, carrying it with the current rigid pose. This also handles an independently driven child outside Build tools. |
-| 7931–7937 (n=7) | LLSelectMgr::updateSelectionCenter | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
-| 8128–8151 (n=24) | LLSelectMgr::canUndo, cloneUndoRoute | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneEditUndo] Route decision (see ALGhostManipProxy::undoRoute). |
-| 8155–8166 (n=12) | LLSelectMgr::undo | clones | creative-candidate | unknown; conditional evidence present | Edits ALGhostManipProxy |
-| 8171–8180 (n=10) | LLSelectMgr::canRedo | clones | creative-candidate | unknown; conditional evidence present | Edits ALGhostManipProxy, LLSelectMgr |
-| 8183–8194 (n=12) | LLSelectMgr::redo | clones | creative-candidate | unknown; conditional evidence present | Edits ALGhostManipProxy |
-| 8303–8309 (n=7) | LLSelectMgr::canSelectObject | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 9180–9186 (n=7) | LLSelectMgr::selectionMove | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
-| 9305–9311 (n=7) | LLSelectMgr::sendSelectionMove | tracking | creative-candidate | unknown; conditional evidence present | Edits ALProjectorTracker |
-| 9412–9414 (n=3) | unknown/non-function (bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3463–3486 (n=24) | LLSelectMgr::adjustTexturesByScale | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The shader maps uv to offset + R * scale * uv, so holding the face centre (uv 0.5, 0.5) in place moves the offset by R * (old_scale - new_scale) / 2. |
+| 4387–4421 (n=35) | LLSelectMgr::selectDelete | clones, crowd | creative-candidate | unknown; conditional evidence present | Comment evidence: Client-only local mesh previews have no sim counterpart; delete them locally instead of sending a DeRez the sim would ignore. [GhostStudio] Delete on the manip proxy removes the SELECTED GHOST instance (the proxy is only an editing handle). After the stock-tool handoff, this norm |
+| 4570–4597 (n=28) | LLSelectMgr::selectForceDelete | clones, crowd | creative-candidate | unknown; conditional evidence present | Edits ALGhostStudio, LLUUID, ALGhostGroupModel |
+| 4814–4821 (n=8) | LLSelectMgr::selectDuplicate | tracking | creative-candidate | unknown; no local conditional evidence | Comment evidence: Duplicate baselines are reused by later transform sends; never cache a driven pose. |
+| 4837–4847 (n=11) | LLSelectMgr::selectDuplicate | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Client-only local previews: duplicate locally. The ObjectDuplicate send below is swallowed for an all-local selection (sendListToRegions gate), which would otherwise make Ctrl+D / shift-drag-copy a silent no-op. Local MESH previews: duplicate locally. The ObjectDuplicate send bel |
+| 4910–4917 (n=8) | LLSelectMgr::repeatDuplicate | tracking | creative-candidate | unknown; no local conditional evidence | Comment evidence: Duplicate baselines are reused by later transform sends; never cache a driven pose. |
+| 4940–4946 (n=7) | LLSelectMgr::repeatDuplicate | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 5082–5089 (n=8) | LLSelectMgr::sendMultipleUpdate | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Last-resort barrier: an unhooked editor must never send a tracked pose. |
+| 5538–5550 (n=13) | LLSelectMgr::sendAttach | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Also protect attachment requests using an alternate selection handle. |
+| 5814–5823 (n=10) | LLSelectMgr::saveSelectedObjectTransform | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Restore before even the PICK baseline of a click that starts a drag. |
+| 6040–6047 (n=8) | LLSelectMgr::packObjectIDAndRotation | tracking | creative-candidate | unknown; conditional evidence present | Edits ALProjectorTracker |
+| 6204–6210 (n=7) | LLSelectMgr::sendListToRegions, apply | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6218–6224 (n=7) | LLSelectMgr::sendListToRegions, apply | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6628–6634 (n=7) | LLSelectMgr::processObjectPropertiesFamily | camera | creative-candidate | unknown; no local conditional evidence | Edits LLCinematicCamera |
+| 7250–7259 (n=10) | LLSelectMgr::generateSilhouette | unknown | unknown-review | unknown; no local conditional evidence | Edits LLMatrix4 |
+| 7316–7325 (n=10) | LLSelectNode::LLSelectNode | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7730–7750 (n=21) | LLSelectNode::renderOneSilhouette | tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: Reuse the captured contour, carrying it with the current rigid pose. This also handles an independently driven child outside Build tools. |
+| 7940–7946 (n=7) | LLSelectMgr::updateSelectionCenter | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
+| 8137–8160 (n=24) | LLSelectMgr::canUndo, cloneUndoRoute | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneEditUndo] Route decision (see ALGhostManipProxy::undoRoute). |
+| 8164–8175 (n=12) | LLSelectMgr::undo | clones | creative-candidate | unknown; conditional evidence present | Edits ALGhostManipProxy |
+| 8180–8189 (n=10) | LLSelectMgr::canRedo | clones | creative-candidate | unknown; conditional evidence present | Edits ALGhostManipProxy, LLSelectMgr |
+| 8192–8203 (n=12) | LLSelectMgr::redo | clones | creative-candidate | unknown; conditional evidence present | Edits ALGhostManipProxy |
+| 8312–8318 (n=7) | LLSelectMgr::canSelectObject | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 9189–9195 (n=7) | LLSelectMgr::selectionMove | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
+| 9314–9320 (n=7) | LLSelectMgr::sendSelectionMove | tracking | creative-candidate | unknown; conditional evidence present | Edits ALProjectorTracker |
+| 9421–9423 (n=3) | unknown/non-function (bool LLCheckIdenticalFunctor<class LLFace *>::same(class LLFace* const & a, clas) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/newview/llsurfacepatch.cpp`
 
@@ -2901,9 +2936,10 @@ HEAD coordinates; guards/features are candidate evidence
 | 651–658 (n=8) | LLAvatarActions::pay | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
 | 731–738 (n=8) | LLAvatarActions::teleportRequest | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
 | 854–861 (n=8) | LLAvatarActions::share | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
-| 1378–1385 (n=8) | LLAvatarActions::toggleBlock | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
-| 1400–1407 (n=8) | LLAvatarActions::toggleMute | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
-| 1461–1468 (n=8) | LLAvatarActions::inviteToGroup | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
+| 1051–1063 (n=13) | give_inventory_cb | unknown | unknown-review | unknown; conditional evidence present | Edits LL_WARNS, LL_ENDL |
+| 1385–1392 (n=8) | LLAvatarActions::toggleBlock | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
+| 1407–1414 (n=8) | LLAvatarActions::toggleMute | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
+| 1468–1475 (n=8) | LLAvatarActions::inviteToGroup | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar |
 
 ## Slice 4: `indra/newview/llavatarrenderinfoaccountant.cpp`
 
@@ -3003,20 +3039,23 @@ HEAD coordinates; guards/features are candidate evidence
 | 117–255 (n=139) | category_items_pass, clear_inventory_drag_validation_cache | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Match collectDescendents(EXCLUDE_TRASH): the Trash category is part of the result, but its contents are not. Test the category itself before deciding whether to descend into it. Match the legacy test exactly: getType(), not getActualType(). Don't return yet: the legacy path rejec |
 | 1423–1429 (n=7) | LLInvFVBridge::startDrag | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
 | 2673–2690 (n=18) | LLFolderBridge::getLabelSuffix | unknown | unknown-review | unknown; conditional evidence present | Edits LLInventoryModel, gInventory, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 2900–2911 (n=12) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 2939–2984 (n=46) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 3120–3130 (n=11) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The drop path needs this materialized list below to deactivate gestures moved to Trash. Collect it once and reuse it. |
-| 3139–3145 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 3160–3176 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 3181–3187 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 3230–3236 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 3498–3514 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 5292–5298 (n=7) | LLFolderBridge::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 6490–6546 (n=57) | check_category | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: One DFS. The former implementation collected every subtree and then recursively repeated those same collections for each child folder. Empty folder should be checked as any other folder view item. If we are filtering by date the folder should not pass because it doesn't have its  |
-| 7481–7493 (n=13) | LLAnimationBridge::buildContextMenu | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] plays on the Ghost Studio selection (links resolved); only offered while an entity clone is selected. |
-| 7497–7508 (n=12) | LLAnimationBridge::performAction | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] same path as the Clones page Inventory combo. |
-| 7648–7659 (n=12) | LLObjectBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] Restores 366a7f2325d (lost in the 663df365ca6 history merge): DoubleClickAttachmentAdd adds instead of replacing; Ctrl inverts. |
-| 8032–8046 (n=15) | LLWearableBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] DoubleClickWearableAdd adds clothing (alphas, tattoos, layers) instead of replacing that type; Ctrl inverts. Body parts always replace. |
+| 2725–2735 (n=11) | LLFolderBridge::update | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2905–2916 (n=12) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 2944–2989 (n=46) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 3125–3135 (n=11) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The drop path needs this materialized list below to deactivate gestures moved to Trash. Collect it once and reuse it. |
+| 3144–3150 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 3165–3181 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 3186–3192 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 3235–3241 (n=7) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 3503–3519 (n=17) | LLFolderBridge::dragCategoryIntoFolder | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 5297–5303 (n=7) | LLFolderBridge::dragOrDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 6495–6551 (n=57) | check_category | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Empty folder should be checked as any other folder view item. If we are filtering by date the folder should not pass because it doesn't have its own creation date. See LLInvFVBridge::getCreationDate(). One DFS. The former implementation collected every subtree and then recursivel |
+| 7486–7498 (n=13) | LLAnimationBridge::buildContextMenu | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] plays on the Ghost Studio selection (links resolved); only offered while an entity clone is selected. |
+| 7502–7513 (n=12) | LLAnimationBridge::performAction | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [CloneAnimDrop] same path as the Clones page Inventory combo. |
+| 7610–7617 (n=8) | LLObjectBridge::performAction | unknown | unknown-review | unknown; conditional evidence present | Edits LLCachedControl, gSavedSettings |
+| 7653–7664 (n=12) | LLObjectBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] Restores 366a7f2325d (lost in the 663df365ca6 history merge): DoubleClickAttachmentAdd adds instead of replacing; Ctrl inverts. |
+| 8037–8051 (n=15) | LLWearableBridge::openItem | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DoubleClickAdd] DoubleClickWearableAdd adds clothing (alphas, tattoos, layers) instead of replacing that type; Ctrl inverts. Body parts always replace. |
+| 8839–8846 (n=8) | LLObjectBridgeAction::attachOrDetach | unknown | unknown-review | unknown; conditional evidence present | Edits LLCachedControl, gSavedSettings, LLAppearanceMgr |
 
 ## Slice 4: `indra/newview/llmanip.cpp`
 
@@ -5325,14 +5364,17 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 686–692 (n=7) | LLFolderViewItem::handleMouseDown | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 726–747 (n=22) | LLFolderViewItem::handleHover | unknown | unknown-review | unknown; conditional evidence present | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
-| 782–788 (n=7) | LLFolderViewItem::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 1283–1294 (n=12) | LLFolderViewFolder::getChildCullRectScreen | unknown | unknown-review | unknown; no local conditional evidence | Edits LLRect, LLFolderViewFolder, LLFolderView |
-| 1343–1348 (n=6) | LLFolderViewFolder::arrange | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 2340–2346 (n=7) | LLFolderViewFolder::handleDragAndDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 2365–2371 (n=7) | LLFolderViewFolder::handleDragAndDropToThisFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
-| 2734–2736 (n=3) | unknown/non-function (LLFolderViewItem* LLFolderViewFolder::getPreviousFromChild( LLFolderViewItem* it) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 267–277 (n=11) | LLFolderViewItem::~LLFolderViewItem | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 395–406 (n=12) | LLFolderViewItem::refresh | unknown | unknown-review | unknown; conditional evidence present | Edits LLFolderViewModelItem |
+| 440–449 (n=10) | LLFolderViewItem::refreshSuffix | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 699–705 (n=7) | LLFolderViewItem::handleMouseDown | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 739–760 (n=22) | LLFolderViewItem::handleHover | unknown | unknown-review | unknown; conditional evidence present | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI, LL_PROFILE_ZONE_NAMED_CATEGORY_UI |
+| 795–801 (n=7) | LLFolderViewItem::handleMouseUp | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 1296–1307 (n=12) | LLFolderViewFolder::getChildCullRectScreen | unknown | unknown-review | unknown; no local conditional evidence | Edits LLRect, LLFolderViewFolder, LLFolderView |
+| 1356–1361 (n=6) | LLFolderViewFolder::arrange | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 2353–2359 (n=7) | LLFolderViewFolder::handleDragAndDrop | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 2378–2384 (n=7) | LLFolderViewFolder::handleDragAndDropToThisFolder | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 2747–2749 (n=3) | unknown/non-function (LLFolderViewItem* LLFolderViewFolder::getPreviousFromChild( LLFolderViewItem* it) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/llui/llfolderviewitem.h`
 
@@ -5699,10 +5741,11 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 222–235 (n=14) | LLControlVariable::setValue | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 267–273 (n=7) | LLControlVariable::setDefaultValue | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 276–282 (n=7) | LLControlVariable::setDefaultValue | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 300–311 (n=12) | LLControlVariable::resetToDefault | unknown | unknown-review | unknown; no local conditional evidence | Edits LLControlVariable |
+| 206–218 (n=13) | LLControlVariable::getComparableValue | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A control whose declared type changed from Boolean to an integer type (e.g. InventoryAddAttachmentBehavior) can still be fed an old saved LLSD Boolean. Store it as Integer 0/1 so combo boxes (which compare asString()) match. |
+| 229–242 (n=14) | LLControlVariable::setValue | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 274–280 (n=7) | LLControlVariable::setDefaultValue | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 283–289 (n=7) | LLControlVariable::setDefaultValue | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 307–318 (n=12) | LLControlVariable::resetToDefault | unknown | unknown-review | unknown; no local conditional evidence | Edits LLControlVariable |
 
 ## Slice 99: `indra/llxml/llcontrol.h`
 
@@ -6060,6 +6103,25 @@ HEAD coordinates; guards/features are candidate evidence
 | 206–225 (n=20) | FSPoseState::applyMotionStatesToPosingMotion | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A simulator-signaled motion shares its instance with local users. Never stop that instance while probing for loaded keyframe data. Initialization requests the keyframe data asynchronously while leaving the motion stopped. No preview/AO/STOP lifetime needed. |
 | 320–329 (n=10) | FSPoseState::motionIdIsFromPrimAgentOwnsAgentIsSittingOn | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Posing somebody else's local skeleton must not issue simulator inventory requests, even when their seat happens to belong to us. |
 
+## Slice 99: `indra/newview/fsposingmotion.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 28–34 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 84–104 (n=21) | FSPosingMotion::onUpdate | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A fraction of the gap for the time this frame took, not for the frame itself. A joint switched off in the poser keeps its state in the pose with no usage, so the blend ignores it and whatever else animates the joint (the eye motion moves mEyeLeft and mEyeRight every frame) carrie |
+| 108–126 (n=19) | FSPosingMotion::onUpdate | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 99: `indra/newview/fsposingmotion.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 221–227 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The time constant, in seconds, we use for transitioning between one animation-state to another; this affects the 'damping' The half-life, in seconds, we use for transitioning between one animation-state to another; this affects the 'damping' |
+| 231–239 (n=9) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: At 0.04 s a frame at 60 fps closes a quarter of the gap, and a frame at any other rate closes what the same time would. |
+
 ## Slice 99: `indra/newview/llagentwearables.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6332,6 +6394,7 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 38–44 (n=7) | LLFolderViewModelInventory::startDrag | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 209–215 (n=7) | LLFolderViewModelItemInventory::setPassedFilter | unknown | unknown-review | unknown; no local conditional evidence | Edits LLFolderViewFolder |
 
 ## Slice 99: `indra/newview/llheroprobemanager.cpp`
 
@@ -6479,7 +6542,10 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 418–428 (n=11) | LLInventoryPanel::draw | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1626–1632 (n=7) | LLInventoryPanel::onSelectionChange | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
+| 611–618 (n=8) | LLInventoryPanel::itemChanged | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 718–724 (n=7) | LLInventoryPanel::itemChanged | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 758–764 (n=7) | LLInventoryPanel::itemChanged | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1627–1633 (n=7) | LLInventoryPanel::onSelectionChange | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_SCOPED_CATEGORY_UI |
 
 ## Slice 99: `indra/newview/llkeyconflict.cpp`
 
@@ -6619,6 +6685,15 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 245–254 (n=10) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3, LLQuaternion, LLMatrix4 |
+
+## Slice 99: `indra/newview/llsidepanelinventory.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 313–325 (n=13) | LLSidepanelInventory::observeInboxModifications | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Collapsing/expanding the inbox layout panel doesn't toggle actual view visibility, so if the inbox is already expanded at this point, build the views right away. |
+| 380–396 (n=17) | LLSidepanelInventory::onToggleInboxBtn | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Build the views when expanding the inbox if that hasn't happened yet. |
 
 ## Slice 99: `indra/newview/llsnapshotlivepreview.cpp`
 
@@ -6803,6 +6878,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 149–157 (n=9) | onSpatialExtentsChanged | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Called after EVERY write of the entry's extents (both setSpatialExtents overloads and shift), whatever the static type of the caller: LLDrawable overrides it to invalidate the world-shadow bounds cache. Keep it O(1). |
+
+## Slice 99: `indra/newview/llviewerparcelmgr.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 324–337 (n=14) | LLViewerParcelMgr::writeHighlightSegments | unknown | unknown-review | unknown; conditional evidence present | Edits LL_WARNS, LL_ENDL |
 
 ## Slice 99: `indra/newview/llviewerregion.h`
 
@@ -7100,6 +7183,44 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 197–217 (n=21) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge C6] high-res override toggle (donor: Black Dragon "Allow High |
+
+## Slice 99: `indra/newview/skins/default/xui/en/panel_tools_texture.xml`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 11–56 (n=46) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: xui-check: exclusive TexOffsetU bumpyOffsetU --> xui-check: exclusive TexOffsetU gltfTextureOffsetU --> xui-check: exclusive TexOffsetU shinyOffsetU --> xui-check: exclusive TexOffsetV bumpyOffsetV --> xui-check: exclusive TexOffsetV gltfTextureOffsetV --> xui-check: exclusive Te |
+| 355–361 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 379–385 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 389–395 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 628–634 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 663–669 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 681–687 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 691–697 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 709–715 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 719–725 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 734–740 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 804–810 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 818–829 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 832–843 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 851–883 (n=33) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 885–896 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 898–909 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 912–923 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 925–931 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 933–951 (n=19) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 953–964 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 966–977 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 980–991 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 993–999 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1001–1019 (n=19) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1021–1032 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1035–1046 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1049–1060 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1068–1086 (n=19) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1088–1099 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1101–1112 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 99: `indra/newview/skins/default/xui/en/widgets/floater.xml`
 

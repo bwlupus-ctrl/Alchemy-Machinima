@@ -6,9 +6,9 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
-      "HOOK": 548,
+      "HOOK": 557,
       "OWNED": 941,
-      "TOOLING": 512
+      "TOOLING": 513
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2317
     },
-    "head_source_tree": "b1943c6ed5a68a6ee87451abf03eccb54e5f5a57",
-    "hook_files": 548,
-    "hunks": 3487,
-    "input_sha256": "4a9e6d9f661b0962c49dc09274dbbe059d4a8e1df3bc27252f494182d0a5e68b",
+    "head_source_tree": "76c5ee25a7a5af288244c3eb966b9ea9f8bdf59d",
+    "hook_files": 557,
+    "hunks": 3545,
+    "input_sha256": "e7a1f693f1b369334d03b40c1574c6d008341b022b3ce93f4d5081e8152c7410",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -205,7 +205,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2077
+    "settings": 2078
   },
   "paths": [
     {
@@ -10816,6 +10816,24 @@
     },
     {
       "candidate_features_from_subjects": [
+        "composition"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "composition"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/llphysicsextensionsos/llconvexdecomposition.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
         "director-shell",
         "vcam"
       ],
@@ -12472,6 +12490,19 @@
       "layer": 99,
       "path": "indra/llxml/llcontrol.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llxml/tests/llcontrol_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
       "candidate_features_from_subjects": [
@@ -27354,6 +27385,36 @@
     },
     {
       "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/fsposingmotion.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-path",
+        "gaze",
+        "stepped-animation"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/fsposingmotion.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
       "class": "EXCLUDED-OTHER",
       "deleted": false,
       "feature_evidence": [],
@@ -27694,8 +27755,8 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
-        "clones"
+        "clones",
+        "composition"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -29906,6 +29967,38 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/lljoystickbutton.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/lljoystickbutton.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "director-shell",
         "gaze"
@@ -30045,7 +30138,9 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "composition"
+      ],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -30057,6 +30152,23 @@
       "git_status": "M",
       "layer": 3,
       "path": "indra/newview/llmeshrepository.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [
+        "composition"
+      ],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "composition"
+      ],
+      "git_status": "M",
+      "layer": 3,
+      "path": "indra/newview/llmeshrepository.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -30771,7 +30883,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
         "clones",
         "vcam"
       ],
@@ -30852,6 +30963,21 @@
       "git_status": "M",
       "layer": 4,
       "path": "indra/newview/llsettingsvo.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "M",
+      "layer": 9,
+      "path": "indra/newview/llsidepanelinventory.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -31106,6 +31232,7 @@
         "camera",
         "capture-sidecar",
         "clones",
+        "composition",
         "director-shell",
         "looks",
         "rig",
@@ -31886,6 +32013,25 @@
       "git_status": "M",
       "layer": 8,
       "path": "indra/newview/llvieweroctree.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "camera",
+        "director-shell",
+        "environment",
+        "rig",
+        "vcam"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llviewerparcelmgr.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -38667,6 +38813,19 @@
       "layer": 2,
       "path": "indra/newview/skins/default/xui/en/panel_temporal_capture.xml",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/newview/skins/default/xui/en/panel_tools_texture.xml",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
       "candidate_features_from_subjects": [

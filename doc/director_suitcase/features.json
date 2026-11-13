@@ -615,9 +615,9 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5696,58",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5699,58",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -694,7 +694,7 @@
       {
         "hunks": [
           "indra/newview/llvovolume.cpp@83,8",
-          "indra/newview/llvovolume.cpp@5690,87"
+          "indra/newview/llvovolume.cpp@5703,87"
         ],
         "path": "indra/newview/llvovolume.cpp"
       },
@@ -11355,6 +11355,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1256,
+        "source": "indra/newview/fsposingmotion.h",
+        "text": "fsposingmotion.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 342,
         "source": "indra/newview/llactormover.cpp",
         "text": "llactormover.cpp"
@@ -11740,11 +11746,11 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@1729,12",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5696,58",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@6031,30",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5699,58",
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@6034,30",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -15832,6 +15838,15 @@
           "indra/newview/fsposestate.h",
           "indra/newview/fsposingmotion.h",
           "indra/newview/llvoavatar.h"
+        ],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/fsposingmotion.h": {
+        "includes": [
+          "indra/llcharacter/llkeyframemotion.h",
+          "indra/llcharacter/llmotion.h",
+          "indra/newview/fsjointpose.h"
         ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
@@ -23878,6 +23893,18 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 727,
+        "source": "indra/newview/lljoystickbutton.cpp",
+        "text": "lljoystickbutton.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1757,
+        "source": "indra/newview/lljoystickbutton.h",
+        "text": "lljoystickbutton.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 736,
         "source": "indra/newview/lllocalmesh.cpp",
         "text": "lllocalmesh.cpp"
@@ -24034,6 +24061,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1062,
+        "source": "indra/newview/llviewerparcelmgr.cpp",
+        "text": "llviewerparcelmgr.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1072,
         "source": "indra/newview/llviewertexture.cpp",
         "text": "llviewertexture.cpp"
@@ -24174,10 +24207,10 @@
           "indra/newview/llappviewer.cpp@382,60",
           "indra/newview/llappviewer.cpp@1636,8",
           "indra/newview/llappviewer.cpp@1955,24",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@4614,17",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@5978,44"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@4617,17",
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@5981,44"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -24396,8 +24429,20 @@
       },
       {
         "hunks": [
+          "indra/newview/lljoystickbutton.cpp@508,15"
+        ],
+        "path": "indra/newview/lljoystickbutton.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/lljoystickbutton.h@150,7"
+        ],
+        "path": "indra/newview/lljoystickbutton.h"
+      },
+      {
+        "hunks": [
           "indra/newview/llselectmgr.cpp@29,8",
-          "indra/newview/llselectmgr.cpp@6619,7"
+          "indra/newview/llselectmgr.cpp@6628,7"
         ],
         "path": "indra/newview/llselectmgr.cpp"
       },
@@ -29969,6 +30014,85 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/lljoystickbutton.cpp": {
+        "includes": [
+          "indra/llcommon/indra_constants.h",
+          "indra/llmath/llcoord.h",
+          "indra/llrender/llglheaders.h",
+          "indra/llrender/llrender.h",
+          "indra/llui/llui.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentcamera.h",
+          "indra/newview/lljoystickbutton.h",
+          "indra/newview/llmoveview.h",
+          "indra/newview/llviewercamera.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h"
+        ],
+        "qualified_call_candidates": [
+          "LLButton::handleHover",
+          "LLButton::handleMouseDown",
+          "LLButton::handleMouseUp",
+          "LLFloaterMove::getYawRate",
+          "LLJoystick::LLJoystick",
+          "LLJoystick::getElapsedHeldDownTime",
+          "LLJoystick::handleHover",
+          "LLJoystick::handleMouseDown",
+          "LLJoystick::handleMouseUp",
+          "LLJoystick::nameFromQuadrant",
+          "LLJoystick::onBtnHeldDown",
+          "LLJoystick::onMouseCaptureLost",
+          "LLJoystick::pointInCenterDot",
+          "LLJoystick::pointInCircle",
+          "LLJoystick::quadrantFromName",
+          "LLJoystick::selectQuadrant",
+          "LLJoystick::setValue",
+          "LLJoystick::updateSlop",
+          "LLJoystickAgentSlide::onHeldDown",
+          "LLJoystickAgentSlide::onMouseUp",
+          "LLJoystickAgentTurn::onHeldDown",
+          "LLJoystickCameraRotate::LLJoystickCameraRotate",
+          "LLJoystickCameraRotate::draw",
+          "LLJoystickCameraRotate::drawRotatedImage",
+          "LLJoystickCameraRotate::getOrbitRate",
+          "LLJoystickCameraRotate::handleHover",
+          "LLJoystickCameraRotate::handleMouseDown",
+          "LLJoystickCameraRotate::handleMouseUp",
+          "LLJoystickCameraRotate::onHeldDown",
+          "LLJoystickCameraRotate::onMouseCaptureLost",
+          "LLJoystickCameraRotate::resetJoystickCamera",
+          "LLJoystickCameraRotate::setToggleState",
+          "LLJoystickCameraRotate::updateSlop",
+          "LLJoystickCameraTrack::LLJoystickCameraTrack",
+          "LLJoystickCameraTrack::onHeldDown",
+          "LLJoystickCameraTrack::resetJoystickCamera",
+          "LLJoystickQuaternion::LLJoystickQuaternion",
+          "LLJoystickQuaternion::draw",
+          "LLJoystickQuaternion::drawRotatedImage",
+          "LLJoystickQuaternion::getOrbitRate",
+          "LLJoystickQuaternion::getRotation",
+          "LLJoystickQuaternion::handleMouseDown",
+          "LLJoystickQuaternion::handleMouseUp",
+          "LLJoystickQuaternion::onHeldDown",
+          "LLJoystickQuaternion::setRotation",
+          "LLJoystickQuaternion::setToggleState",
+          "LLJoystickQuaternion::updateSlop",
+          "LLUI::getUIImage"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/lljoystickbutton.h": {
+        "includes": [
+          "indra/llmath/llcoord.h",
+          "indra/llmath/llquaternion.h",
+          "indra/llui/llbutton.h",
+          "indra/newview/llviewertexture.h"
+        ],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
       "indra/newview/lllocalmesh.cpp": {
         "includes": [
           "indra/llappearance/lljointdata.h",
@@ -32686,6 +32810,161 @@
           "LLViewerOctreePartition::LLViewerOctreePartition",
           "LLViewerOctreePartition::cleanup",
           "LLViewerOctreePartition::isOcclusionEnabled"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/llviewerparcelmgr.cpp": {
+        "includes": [
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcallbacklist.h",
+          "indra/llcommon/llsdutil.h",
+          "indra/llinventory/llparcel.h",
+          "indra/llmath/llsdutil_math.h",
+          "indra/llmessage/llcachename.h",
+          "indra/llmessage/llcorehttputil.h",
+          "indra/llmessage/message.h",
+          "indra/llrender/llgl.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llui.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentaccess.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatergroups.h",
+          "indra/newview/llfloatersellland.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llpanelnearbymedia.h",
+          "indra/newview/llparcelselection.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerparcelaskplay.h",
+          "indra/newview/llviewerparcelmedia.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerparceloverlay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llweb.h",
+          "indra/newview/llworld.h",
+          "indra/newview/roles_constants.h"
+        ],
+        "qualified_call_candidates": [
+          "LLApp::isExiting",
+          "LLEnvironment::instance",
+          "LLEventPumps::instance",
+          "LLFloaterBuyLand::buyLand",
+          "LLFloaterSellLand::sellLand",
+          "LLNotifications::instance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLStringUtil::trim",
+          "LLViewerAudio::getInstance",
+          "LLViewerParcelAskPlay::getInstance",
+          "LLViewerParcelMedia::getInstance",
+          "LLViewerParcelMgr::LLViewerParcelMgr",
+          "LLViewerParcelMgr::addObserver",
+          "LLViewerParcelMgr::allowAgentBuild",
+          "LLViewerParcelMgr::allowAgentDamage",
+          "LLViewerParcelMgr::allowAgentFly",
+          "LLViewerParcelMgr::allowAgentPush",
+          "LLViewerParcelMgr::allowAgentScripts",
+          "LLViewerParcelMgr::allowAgentVoice",
+          "LLViewerParcelMgr::allowVoiceModeration",
+          "LLViewerParcelMgr::buyPass",
+          "LLViewerParcelMgr::callbackDivideLand",
+          "LLViewerParcelMgr::callbackJoinLand",
+          "LLViewerParcelMgr::canAgentBuyParcel",
+          "LLViewerParcelMgr::canHearSound",
+          "LLViewerParcelMgr::cleanupGlobals",
+          "LLViewerParcelMgr::deedAlertCB",
+          "LLViewerParcelMgr::deedLandToGroup",
+          "LLViewerParcelMgr::deleteParcelBuy",
+          "LLViewerParcelMgr::deselectLand",
+          "LLViewerParcelMgr::deselectUnused",
+          "LLViewerParcelMgr::dump",
+          "LLViewerParcelMgr::getAgentOrSelectedParcel",
+          "LLViewerParcelMgr::getAgentParcel",
+          "LLViewerParcelMgr::getAgentParcelId",
+          "LLViewerParcelMgr::getAgentParcelName",
+          "LLViewerParcelMgr::getBlockedImage",
+          "LLViewerParcelMgr::getCollisionParcel",
+          "LLViewerParcelMgr::getDisplayInfo",
+          "LLViewerParcelMgr::getFloatingParcelSelection",
+          "LLViewerParcelMgr::getHoverParcel",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerParcelMgr::getParcelSelection",
+          "LLViewerParcelMgr::getPassImage",
+          "LLViewerParcelMgr::getSelectedArea",
+          "LLViewerParcelMgr::getSelectionRegion",
+          "LLViewerParcelMgr::getTeleportInProgress",
+          "LLViewerParcelMgr::inAgentParcel",
+          "LLViewerParcelMgr::instance",
+          "LLViewerParcelMgr::isCollisionBanned",
+          "LLViewerParcelMgr::isOwnedAt",
+          "LLViewerParcelMgr::isOwnedOtherAt",
+          "LLViewerParcelMgr::isOwnedSelfAt",
+          "LLViewerParcelMgr::isParcelModifiableByAgent",
+          "LLViewerParcelMgr::isParcelOwnedByAgent",
+          "LLViewerParcelMgr::isSoundLocal",
+          "LLViewerParcelMgr::isVoiceRestricted",
+          "LLViewerParcelMgr::makeLandmarkAtSelection",
+          "LLViewerParcelMgr::notifyObservers",
+          "LLViewerParcelMgr::onStartMusicResponse",
+          "LLViewerParcelMgr::onTeleportDone",
+          "LLViewerParcelMgr::onTeleportFailed",
+          "LLViewerParcelMgr::onTeleportFinished",
+          "LLViewerParcelMgr::optionallyStartMusic",
+          "LLViewerParcelMgr::postTeleportFinished",
+          "LLViewerParcelMgr::processParcelAccessListReply",
+          "LLViewerParcelMgr::processParcelDwellReply",
+          "LLViewerParcelMgr::processParcelOverlay",
+          "LLViewerParcelMgr::processParcelProperties",
+          "LLViewerParcelMgr::reclaimParcel",
+          "LLViewerParcelMgr::releaseAlertCB",
+          "LLViewerParcelMgr::removeObserver",
+          "LLViewerParcelMgr::render",
+          "LLViewerParcelMgr::renderParcelCollision",
+          "LLViewerParcelMgr::resetSegments",
+          "LLViewerParcelMgr::selectCollisionParcel",
+          "LLViewerParcelMgr::selectLand",
+          "LLViewerParcelMgr::selectParcelAt",
+          "LLViewerParcelMgr::selectParcelInRectangle",
+          "LLViewerParcelMgr::selectionEmpty",
+          "LLViewerParcelMgr::sendParcelAccessListRequest",
+          "LLViewerParcelMgr::sendParcelAccessListUpdate",
+          "LLViewerParcelMgr::sendParcelBuy",
+          "LLViewerParcelMgr::sendParcelDeed",
+          "LLViewerParcelMgr::sendParcelDwellRequest",
+          "LLViewerParcelMgr::sendParcelGodForceOwner",
+          "LLViewerParcelMgr::sendParcelGodForceToContent",
+          "LLViewerParcelMgr::sendParcelPropertiesUpdate",
+          "LLViewerParcelMgr::sendParcelRelease",
+          "LLViewerParcelMgr::setCollisionUpdateCallback",
+          "LLViewerParcelMgr::setHoverParcel",
+          "LLViewerParcelMgr::setTeleportDoneCallback",
+          "LLViewerParcelMgr::setTeleportFailedCallback",
+          "LLViewerParcelMgr::setTeleportFinishedCallback",
+          "LLViewerParcelMgr::setupParcelBuy",
+          "LLViewerParcelMgr::startBuyLand",
+          "LLViewerParcelMgr::startDeedLandToGroup",
+          "LLViewerParcelMgr::startDivideLand",
+          "LLViewerParcelMgr::startJoinLand",
+          "LLViewerParcelMgr::startReleaseLand",
+          "LLViewerParcelMgr::startSellLand",
+          "LLViewerParcelMgr::writeAgentParcelFromBitmap",
+          "LLViewerParcelMgr::writeHighlightSegments",
+          "LLViewerParcelMgr::writeSegmentsFromBitmap",
+          "LLViewerTextureManager::getFetchedTextureFromFile",
+          "LLWorld::getInstance"
         ],
         "unresolved_includes": []
       },
@@ -35571,8 +35850,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5374,24"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5377,24"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -35656,11 +35935,11 @@
         "hunks": [
           "indra/newview/llvovolume.cpp@1569,18",
           "indra/newview/llvovolume.cpp@1613,26",
-          "indra/newview/llvovolume.cpp@5690,87",
-          "indra/newview/llvovolume.cpp@5835,10",
-          "indra/newview/llvovolume.cpp@5993,8",
-          "indra/newview/llvovolume.cpp@6090,24",
-          "indra/newview/llvovolume.cpp@6155,15"
+          "indra/newview/llvovolume.cpp@5703,87",
+          "indra/newview/llvovolume.cpp@5848,10",
+          "indra/newview/llvovolume.cpp@6006,8",
+          "indra/newview/llvovolume.cpp@6103,24",
+          "indra/newview/llvovolume.cpp@6168,15"
         ],
         "path": "indra/newview/llvovolume.cpp"
       },
@@ -47908,13 +48187,13 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@2023,11",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5374,24",
-          "indra/newview/llappviewer.cpp@5696,58",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@6031,30",
-          "indra/newview/llappviewer.cpp@6492,16",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5377,24",
+          "indra/newview/llappviewer.cpp@5699,58",
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@6034,30",
+          "indra/newview/llappviewer.cpp@6495,16",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -48335,13 +48614,13 @@
           "indra/newview/llselectmgr.cpp@106,9",
           "indra/newview/llselectmgr.cpp@143,68",
           "indra/newview/llselectmgr.cpp@268,13",
-          "indra/newview/llselectmgr.cpp@4378,35",
-          "indra/newview/llselectmgr.cpp@4561,28",
-          "indra/newview/llselectmgr.cpp@4828,11",
-          "indra/newview/llselectmgr.cpp@8128,24",
-          "indra/newview/llselectmgr.cpp@8155,12",
-          "indra/newview/llselectmgr.cpp@8171,10",
-          "indra/newview/llselectmgr.cpp@8183,12"
+          "indra/newview/llselectmgr.cpp@4387,35",
+          "indra/newview/llselectmgr.cpp@4570,28",
+          "indra/newview/llselectmgr.cpp@4837,11",
+          "indra/newview/llselectmgr.cpp@8137,24",
+          "indra/newview/llselectmgr.cpp@8164,12",
+          "indra/newview/llselectmgr.cpp@8180,10",
+          "indra/newview/llselectmgr.cpp@8192,12"
         ],
         "path": "indra/newview/llselectmgr.cpp"
       },
@@ -48526,9 +48805,9 @@
           "indra/newview/llavataractions.cpp@651,8",
           "indra/newview/llavataractions.cpp@731,8",
           "indra/newview/llavataractions.cpp@854,8",
-          "indra/newview/llavataractions.cpp@1378,8",
-          "indra/newview/llavataractions.cpp@1400,8",
-          "indra/newview/llavataractions.cpp@1461,8"
+          "indra/newview/llavataractions.cpp@1385,8",
+          "indra/newview/llavataractions.cpp@1407,8",
+          "indra/newview/llavataractions.cpp@1468,8"
         ],
         "path": "indra/newview/llavataractions.cpp"
       },
@@ -48589,8 +48868,8 @@
       {
         "hunks": [
           "indra/newview/llinventorybridge.cpp@27,7",
-          "indra/newview/llinventorybridge.cpp@7481,13",
-          "indra/newview/llinventorybridge.cpp@7497,12"
+          "indra/newview/llinventorybridge.cpp@7486,13",
+          "indra/newview/llinventorybridge.cpp@7502,12"
         ],
         "path": "indra/newview/llinventorybridge.cpp"
       },
@@ -71510,8 +71789,8 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@4684,10",
-          "indra/newview/llappviewer.cpp@6084,8"
+          "indra/newview/llappviewer.cpp@4687,10",
+          "indra/newview/llappviewer.cpp@6087,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -79154,6 +79433,12 @@
         "text": "llstring.cpp"
       },
       {
+        "file": "indra/llphysicsextensionsos/CMakeLists.txt",
+        "line": 7,
+        "source": "indra/llphysicsextensionsos/llconvexdecomposition.cpp",
+        "text": "llconvexdecomposition.cpp"
+      },
+      {
         "file": "indra/newview/CMakeLists.txt",
         "line": 395,
         "source": "indra/newview/alavataranimspeed.cpp",
@@ -79503,6 +79788,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1786,
+        "source": "indra/newview/llmeshrepository.h",
+        "text": "llmeshrepository.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1923,
         "source": "indra/newview/llprismgate.h",
         "text": "llprismgate.h"
@@ -79530,6 +79821,12 @@
         "line": 962,
         "source": "indra/newview/llsurfacepatch.cpp",
         "text": "llsurfacepatch.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 975,
+        "source": "indra/newview/lltextureview.cpp",
+        "text": "lltextureview.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -79656,7 +79953,8 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@2047,34",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@2161,9",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -79773,6 +80071,12 @@
       },
       {
         "hunks": [
+          "indra/llphysicsextensionsos/llconvexdecomposition.cpp@77,12"
+        ],
+        "path": "indra/llphysicsextensionsos/llconvexdecomposition.cpp"
+      },
+      {
+        "hunks": [
           "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
@@ -79792,10 +80096,16 @@
       },
       {
         "hunks": [
-          "indra/newview/llmeshrepository.cpp@4341,16",
-          "indra/newview/llmeshrepository.cpp@5735,17"
+          "indra/newview/llmeshrepository.cpp@4337,22",
+          "indra/newview/llmeshrepository.cpp@5737,17"
         ],
         "path": "indra/newview/llmeshrepository.cpp"
+      },
+      {
+        "hunks": [
+          "indra/newview/llmeshrepository.h@864,7"
+        ],
+        "path": "indra/newview/llmeshrepository.h"
       },
       {
         "hunks": [
@@ -79931,6 +80241,28 @@
           "LLWStringUtil::replaceChar",
           "LLWStringUtil::toLower",
           "LLWStringUtil::trim"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/llphysicsextensionsos/llconvexdecomposition.cpp": {
+        "includes": [
+          "indra/llcommon/linden_common.h",
+          "indra/llphysicsextensionsos/llconvexdecomposition.h",
+          "indra/llphysicsextensionsos/llconvexdecompositionvhacd.h"
+        ],
+        "qualified_call_candidates": [
+          "LLConvexDecomposition::getInstance",
+          "LLConvexDecomposition::initSystem",
+          "LLConvexDecomposition::initThread",
+          "LLConvexDecomposition::isFunctional",
+          "LLConvexDecomposition::quitSystem",
+          "LLConvexDecomposition::quitThread",
+          "LLConvexDecompositionVHACD::getInstance",
+          "LLConvexDecompositionVHACD::initSystem",
+          "LLConvexDecompositionVHACD::initThread",
+          "LLConvexDecompositionVHACD::isFunctional",
+          "LLConvexDecompositionVHACD::quitSystem",
+          "LLConvexDecompositionVHACD::quitThread"
         ],
         "unresolved_includes": []
       },
@@ -84471,6 +84803,7 @@
           "LLMeshRepository::notifySkinInfoUnavailable",
           "LLMeshRepository::sQuiescentTimer",
           "LLMeshRepository::shutdown",
+          "LLMeshRepository::shutdownDecomposition",
           "LLMeshRepository::unregisterAllMeshes",
           "LLMeshRepository::unregisterMesh",
           "LLMeshRepository::unregisterSkinInfo",
@@ -84550,6 +84883,26 @@
             "include": "netdb.h"
           }
         ]
+      },
+      "indra/newview/llmeshrepository.h": {
+        "includes": [
+          "indra/llcommon/llassettype.h",
+          "indra/llcommon/lldeadmantimer.h",
+          "indra/llcommon/llthread.h",
+          "indra/llcommon/lluuid.h",
+          "indra/llcorehttp/httpcommon.h",
+          "indra/llcorehttp/httphandler.h",
+          "indra/llcorehttp/httpheaders.h",
+          "indra/llcorehttp/httpoptions.h",
+          "indra/llcorehttp/httprequest.h",
+          "indra/llmath/llvolume.h",
+          "indra/llphysicsextensionsos/llconvexdecomposition.h",
+          "indra/llprimitive/llmodel.h",
+          "indra/newview/lluploadfloaterobservers.h",
+          "indra/newview/llviewertexture.h"
+        ],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
       },
       "indra/newview/llprismgate.h": {
         "includes": [
@@ -84898,6 +85251,78 @@
           "LLSurfacePatch::updateVerticalStats",
           "LLSurfacePatch::updateVisibility",
           "LLViewerCamera::getInstance"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/lltextureview.cpp": {
+        "includes": [
+          "indra/llappearance/lltexlayer.h",
+          "indra/llcommon/llerror.h",
+          "indra/llfilesystem/lllfsthread.h",
+          "indra/llimage/llimageworker.h",
+          "indra/llmath/llrect.h",
+          "indra/llrender/llrender.h",
+          "indra/llui/lltooltip.h",
+          "indra/llui/llui.h",
+          "indra/llwindow/llwindow.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/llmeshrepository.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/lltexturecache.h",
+          "indra/newview/lltexturefetch.h",
+          "indra/newview/lltextureview.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewerobject.h",
+          "indra/newview/llviewerobjectlist.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerstats.h",
+          "indra/newview/llviewertexlayer.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerthrottle.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llvoavatarself.h",
+          "indra/newview/llvovolume.h",
+          "indra/newview/llworld.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::getImageDecodeThread",
+          "LLAppViewer::getTextureCache",
+          "LLAppViewer::getTextureFetch",
+          "LLAvatarAppearance::getDictionary",
+          "LLAvatarTexBar::draw",
+          "LLAvatarTexBar::getRequiredRect",
+          "LLAvatarTexBar::handleMouseDown",
+          "LLContainerView::draw",
+          "LLFontGL::getFontMonospace",
+          "LLGLTexMemBar::draw",
+          "LLGLTexMemBar::getRequiredRect",
+          "LLGLTexMemBar::handleMouseDown",
+          "LLGLTexSizeBar::draw",
+          "LLGLTexSizeBar::handleHover",
+          "LLImageGL::setCurTexSizebar",
+          "LLMemory::getAvailableMemKB",
+          "LLSelectMgr::getInstance",
+          "LLSelectMgr::instance",
+          "LLTextureBar::draw",
+          "LLTextureBar::getRequiredRect",
+          "LLTextureBar::handleMouseDown",
+          "LLTextureBar::sort",
+          "LLTextureBar::sort_fetch",
+          "LLTextureView::LLTextureView",
+          "LLTextureView::addBar",
+          "LLTextureView::draw",
+          "LLTextureView::handleKey",
+          "LLTextureView::handleMouseDown",
+          "LLTextureView::handleMouseUp",
+          "LLUI::popMatrix",
+          "LLUI::pushMatrix",
+          "LLUI::translate",
+          "LLView::handleMouseDown",
+          "LLViewerStats::instance",
+          "LLViewerTexture::getVRAMPressureStatus",
+          "LLViewerThrottle::getMaxBandwidthKbps",
+          "LLWorld::getInstance"
         ],
         "unresolved_includes": []
       },
@@ -88224,8 +88649,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llselectmgr.cpp@4378,35",
-          "indra/newview/llselectmgr.cpp@4561,28"
+          "indra/newview/llselectmgr.cpp@4387,35",
+          "indra/newview/llselectmgr.cpp@4570,28"
         ],
         "path": "indra/newview/llselectmgr.cpp"
       },
@@ -94049,6 +94474,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1062,
+        "source": "indra/newview/llviewerparcelmgr.cpp",
+        "text": "llviewerparcelmgr.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1072,
         "source": "indra/newview/llviewertexture.cpp",
         "text": "llviewertexture.cpp"
@@ -94243,14 +94674,14 @@
           "indra/newview/llappviewer.cpp@25,19",
           "indra/newview/llappviewer.cpp@156,7",
           "indra/newview/llappviewer.cpp@1955,24",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@2902,7",
-          "indra/newview/llappviewer.cpp@4614,17",
-          "indra/newview/llappviewer.cpp@4643,10",
-          "indra/newview/llappviewer.cpp@4754,11",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@6492,16",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@2905,7",
+          "indra/newview/llappviewer.cpp@4617,17",
+          "indra/newview/llappviewer.cpp@4646,10",
+          "indra/newview/llappviewer.cpp@4757,11",
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@6495,16",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -94529,7 +94960,7 @@
       {
         "hunks": [
           "indra/newview/llvovolume.cpp@83,8",
-          "indra/newview/llvovolume.cpp@5690,87"
+          "indra/newview/llvovolume.cpp@5703,87"
         ],
         "path": "indra/newview/llvovolume.cpp"
       },
@@ -109109,6 +109540,161 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llviewerparcelmgr.cpp": {
+        "includes": [
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcallbacklist.h",
+          "indra/llcommon/llsdutil.h",
+          "indra/llinventory/llparcel.h",
+          "indra/llmath/llsdutil_math.h",
+          "indra/llmessage/llcachename.h",
+          "indra/llmessage/llcorehttputil.h",
+          "indra/llmessage/message.h",
+          "indra/llrender/llgl.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llui.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentaccess.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatergroups.h",
+          "indra/newview/llfloatersellland.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llpanelnearbymedia.h",
+          "indra/newview/llparcelselection.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerparcelaskplay.h",
+          "indra/newview/llviewerparcelmedia.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerparceloverlay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llweb.h",
+          "indra/newview/llworld.h",
+          "indra/newview/roles_constants.h"
+        ],
+        "qualified_call_candidates": [
+          "LLApp::isExiting",
+          "LLEnvironment::instance",
+          "LLEventPumps::instance",
+          "LLFloaterBuyLand::buyLand",
+          "LLFloaterSellLand::sellLand",
+          "LLNotifications::instance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLStringUtil::trim",
+          "LLViewerAudio::getInstance",
+          "LLViewerParcelAskPlay::getInstance",
+          "LLViewerParcelMedia::getInstance",
+          "LLViewerParcelMgr::LLViewerParcelMgr",
+          "LLViewerParcelMgr::addObserver",
+          "LLViewerParcelMgr::allowAgentBuild",
+          "LLViewerParcelMgr::allowAgentDamage",
+          "LLViewerParcelMgr::allowAgentFly",
+          "LLViewerParcelMgr::allowAgentPush",
+          "LLViewerParcelMgr::allowAgentScripts",
+          "LLViewerParcelMgr::allowAgentVoice",
+          "LLViewerParcelMgr::allowVoiceModeration",
+          "LLViewerParcelMgr::buyPass",
+          "LLViewerParcelMgr::callbackDivideLand",
+          "LLViewerParcelMgr::callbackJoinLand",
+          "LLViewerParcelMgr::canAgentBuyParcel",
+          "LLViewerParcelMgr::canHearSound",
+          "LLViewerParcelMgr::cleanupGlobals",
+          "LLViewerParcelMgr::deedAlertCB",
+          "LLViewerParcelMgr::deedLandToGroup",
+          "LLViewerParcelMgr::deleteParcelBuy",
+          "LLViewerParcelMgr::deselectLand",
+          "LLViewerParcelMgr::deselectUnused",
+          "LLViewerParcelMgr::dump",
+          "LLViewerParcelMgr::getAgentOrSelectedParcel",
+          "LLViewerParcelMgr::getAgentParcel",
+          "LLViewerParcelMgr::getAgentParcelId",
+          "LLViewerParcelMgr::getAgentParcelName",
+          "LLViewerParcelMgr::getBlockedImage",
+          "LLViewerParcelMgr::getCollisionParcel",
+          "LLViewerParcelMgr::getDisplayInfo",
+          "LLViewerParcelMgr::getFloatingParcelSelection",
+          "LLViewerParcelMgr::getHoverParcel",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerParcelMgr::getParcelSelection",
+          "LLViewerParcelMgr::getPassImage",
+          "LLViewerParcelMgr::getSelectedArea",
+          "LLViewerParcelMgr::getSelectionRegion",
+          "LLViewerParcelMgr::getTeleportInProgress",
+          "LLViewerParcelMgr::inAgentParcel",
+          "LLViewerParcelMgr::instance",
+          "LLViewerParcelMgr::isCollisionBanned",
+          "LLViewerParcelMgr::isOwnedAt",
+          "LLViewerParcelMgr::isOwnedOtherAt",
+          "LLViewerParcelMgr::isOwnedSelfAt",
+          "LLViewerParcelMgr::isParcelModifiableByAgent",
+          "LLViewerParcelMgr::isParcelOwnedByAgent",
+          "LLViewerParcelMgr::isSoundLocal",
+          "LLViewerParcelMgr::isVoiceRestricted",
+          "LLViewerParcelMgr::makeLandmarkAtSelection",
+          "LLViewerParcelMgr::notifyObservers",
+          "LLViewerParcelMgr::onStartMusicResponse",
+          "LLViewerParcelMgr::onTeleportDone",
+          "LLViewerParcelMgr::onTeleportFailed",
+          "LLViewerParcelMgr::onTeleportFinished",
+          "LLViewerParcelMgr::optionallyStartMusic",
+          "LLViewerParcelMgr::postTeleportFinished",
+          "LLViewerParcelMgr::processParcelAccessListReply",
+          "LLViewerParcelMgr::processParcelDwellReply",
+          "LLViewerParcelMgr::processParcelOverlay",
+          "LLViewerParcelMgr::processParcelProperties",
+          "LLViewerParcelMgr::reclaimParcel",
+          "LLViewerParcelMgr::releaseAlertCB",
+          "LLViewerParcelMgr::removeObserver",
+          "LLViewerParcelMgr::render",
+          "LLViewerParcelMgr::renderParcelCollision",
+          "LLViewerParcelMgr::resetSegments",
+          "LLViewerParcelMgr::selectCollisionParcel",
+          "LLViewerParcelMgr::selectLand",
+          "LLViewerParcelMgr::selectParcelAt",
+          "LLViewerParcelMgr::selectParcelInRectangle",
+          "LLViewerParcelMgr::selectionEmpty",
+          "LLViewerParcelMgr::sendParcelAccessListRequest",
+          "LLViewerParcelMgr::sendParcelAccessListUpdate",
+          "LLViewerParcelMgr::sendParcelBuy",
+          "LLViewerParcelMgr::sendParcelDeed",
+          "LLViewerParcelMgr::sendParcelDwellRequest",
+          "LLViewerParcelMgr::sendParcelGodForceOwner",
+          "LLViewerParcelMgr::sendParcelGodForceToContent",
+          "LLViewerParcelMgr::sendParcelPropertiesUpdate",
+          "LLViewerParcelMgr::sendParcelRelease",
+          "LLViewerParcelMgr::setCollisionUpdateCallback",
+          "LLViewerParcelMgr::setHoverParcel",
+          "LLViewerParcelMgr::setTeleportDoneCallback",
+          "LLViewerParcelMgr::setTeleportFailedCallback",
+          "LLViewerParcelMgr::setTeleportFinishedCallback",
+          "LLViewerParcelMgr::setupParcelBuy",
+          "LLViewerParcelMgr::startBuyLand",
+          "LLViewerParcelMgr::startDeedLandToGroup",
+          "LLViewerParcelMgr::startDivideLand",
+          "LLViewerParcelMgr::startJoinLand",
+          "LLViewerParcelMgr::startReleaseLand",
+          "LLViewerParcelMgr::startSellLand",
+          "LLViewerParcelMgr::writeAgentParcelFromBitmap",
+          "LLViewerParcelMgr::writeHighlightSegments",
+          "LLViewerParcelMgr::writeSegmentsFromBitmap",
+          "LLViewerTextureManager::getFetchedTextureFromFile",
+          "LLWorld::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewertexture.cpp": {
         "includes": [
           "indra/llcommon/llerror.h",
@@ -113263,6 +113849,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1062,
+        "source": "indra/newview/llviewerparcelmgr.cpp",
+        "text": "llviewerparcelmgr.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1067,
         "source": "indra/newview/llviewershadermgr.cpp",
         "text": "llviewershadermgr.cpp"
@@ -115890,6 +116482,161 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llviewerparcelmgr.cpp": {
+        "includes": [
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcallbacklist.h",
+          "indra/llcommon/llsdutil.h",
+          "indra/llinventory/llparcel.h",
+          "indra/llmath/llsdutil_math.h",
+          "indra/llmessage/llcachename.h",
+          "indra/llmessage/llcorehttputil.h",
+          "indra/llmessage/message.h",
+          "indra/llrender/llgl.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llui.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentaccess.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatergroups.h",
+          "indra/newview/llfloatersellland.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llpanelnearbymedia.h",
+          "indra/newview/llparcelselection.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerparcelaskplay.h",
+          "indra/newview/llviewerparcelmedia.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerparceloverlay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llweb.h",
+          "indra/newview/llworld.h",
+          "indra/newview/roles_constants.h"
+        ],
+        "qualified_call_candidates": [
+          "LLApp::isExiting",
+          "LLEnvironment::instance",
+          "LLEventPumps::instance",
+          "LLFloaterBuyLand::buyLand",
+          "LLFloaterSellLand::sellLand",
+          "LLNotifications::instance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLStringUtil::trim",
+          "LLViewerAudio::getInstance",
+          "LLViewerParcelAskPlay::getInstance",
+          "LLViewerParcelMedia::getInstance",
+          "LLViewerParcelMgr::LLViewerParcelMgr",
+          "LLViewerParcelMgr::addObserver",
+          "LLViewerParcelMgr::allowAgentBuild",
+          "LLViewerParcelMgr::allowAgentDamage",
+          "LLViewerParcelMgr::allowAgentFly",
+          "LLViewerParcelMgr::allowAgentPush",
+          "LLViewerParcelMgr::allowAgentScripts",
+          "LLViewerParcelMgr::allowAgentVoice",
+          "LLViewerParcelMgr::allowVoiceModeration",
+          "LLViewerParcelMgr::buyPass",
+          "LLViewerParcelMgr::callbackDivideLand",
+          "LLViewerParcelMgr::callbackJoinLand",
+          "LLViewerParcelMgr::canAgentBuyParcel",
+          "LLViewerParcelMgr::canHearSound",
+          "LLViewerParcelMgr::cleanupGlobals",
+          "LLViewerParcelMgr::deedAlertCB",
+          "LLViewerParcelMgr::deedLandToGroup",
+          "LLViewerParcelMgr::deleteParcelBuy",
+          "LLViewerParcelMgr::deselectLand",
+          "LLViewerParcelMgr::deselectUnused",
+          "LLViewerParcelMgr::dump",
+          "LLViewerParcelMgr::getAgentOrSelectedParcel",
+          "LLViewerParcelMgr::getAgentParcel",
+          "LLViewerParcelMgr::getAgentParcelId",
+          "LLViewerParcelMgr::getAgentParcelName",
+          "LLViewerParcelMgr::getBlockedImage",
+          "LLViewerParcelMgr::getCollisionParcel",
+          "LLViewerParcelMgr::getDisplayInfo",
+          "LLViewerParcelMgr::getFloatingParcelSelection",
+          "LLViewerParcelMgr::getHoverParcel",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerParcelMgr::getParcelSelection",
+          "LLViewerParcelMgr::getPassImage",
+          "LLViewerParcelMgr::getSelectedArea",
+          "LLViewerParcelMgr::getSelectionRegion",
+          "LLViewerParcelMgr::getTeleportInProgress",
+          "LLViewerParcelMgr::inAgentParcel",
+          "LLViewerParcelMgr::instance",
+          "LLViewerParcelMgr::isCollisionBanned",
+          "LLViewerParcelMgr::isOwnedAt",
+          "LLViewerParcelMgr::isOwnedOtherAt",
+          "LLViewerParcelMgr::isOwnedSelfAt",
+          "LLViewerParcelMgr::isParcelModifiableByAgent",
+          "LLViewerParcelMgr::isParcelOwnedByAgent",
+          "LLViewerParcelMgr::isSoundLocal",
+          "LLViewerParcelMgr::isVoiceRestricted",
+          "LLViewerParcelMgr::makeLandmarkAtSelection",
+          "LLViewerParcelMgr::notifyObservers",
+          "LLViewerParcelMgr::onStartMusicResponse",
+          "LLViewerParcelMgr::onTeleportDone",
+          "LLViewerParcelMgr::onTeleportFailed",
+          "LLViewerParcelMgr::onTeleportFinished",
+          "LLViewerParcelMgr::optionallyStartMusic",
+          "LLViewerParcelMgr::postTeleportFinished",
+          "LLViewerParcelMgr::processParcelAccessListReply",
+          "LLViewerParcelMgr::processParcelDwellReply",
+          "LLViewerParcelMgr::processParcelOverlay",
+          "LLViewerParcelMgr::processParcelProperties",
+          "LLViewerParcelMgr::reclaimParcel",
+          "LLViewerParcelMgr::releaseAlertCB",
+          "LLViewerParcelMgr::removeObserver",
+          "LLViewerParcelMgr::render",
+          "LLViewerParcelMgr::renderParcelCollision",
+          "LLViewerParcelMgr::resetSegments",
+          "LLViewerParcelMgr::selectCollisionParcel",
+          "LLViewerParcelMgr::selectLand",
+          "LLViewerParcelMgr::selectParcelAt",
+          "LLViewerParcelMgr::selectParcelInRectangle",
+          "LLViewerParcelMgr::selectionEmpty",
+          "LLViewerParcelMgr::sendParcelAccessListRequest",
+          "LLViewerParcelMgr::sendParcelAccessListUpdate",
+          "LLViewerParcelMgr::sendParcelBuy",
+          "LLViewerParcelMgr::sendParcelDeed",
+          "LLViewerParcelMgr::sendParcelDwellRequest",
+          "LLViewerParcelMgr::sendParcelGodForceOwner",
+          "LLViewerParcelMgr::sendParcelGodForceToContent",
+          "LLViewerParcelMgr::sendParcelPropertiesUpdate",
+          "LLViewerParcelMgr::sendParcelRelease",
+          "LLViewerParcelMgr::setCollisionUpdateCallback",
+          "LLViewerParcelMgr::setHoverParcel",
+          "LLViewerParcelMgr::setTeleportDoneCallback",
+          "LLViewerParcelMgr::setTeleportFailedCallback",
+          "LLViewerParcelMgr::setTeleportFinishedCallback",
+          "LLViewerParcelMgr::setupParcelBuy",
+          "LLViewerParcelMgr::startBuyLand",
+          "LLViewerParcelMgr::startDeedLandToGroup",
+          "LLViewerParcelMgr::startDivideLand",
+          "LLViewerParcelMgr::startJoinLand",
+          "LLViewerParcelMgr::startReleaseLand",
+          "LLViewerParcelMgr::startSellLand",
+          "LLViewerParcelMgr::writeAgentParcelFromBitmap",
+          "LLViewerParcelMgr::writeHighlightSegments",
+          "LLViewerParcelMgr::writeSegmentsFromBitmap",
+          "LLViewerTextureManager::getFetchedTextureFromFile",
+          "LLWorld::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewershadermgr.cpp": {
         "includes": [
           "indra/llcharacter/lljoint.h",
@@ -117331,6 +118078,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1256,
+        "source": "indra/newview/fsposingmotion.h",
+        "text": "fsposingmotion.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 342,
         "source": "indra/newview/llactormover.cpp",
         "text": "llactormover.cpp"
@@ -117560,9 +118313,9 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@1729,12",
-          "indra/newview/llappviewer.cpp@5408,37",
-          "indra/newview/llappviewer.cpp@5696,58",
-          "indra/newview/llappviewer.cpp@6031,30"
+          "indra/newview/llappviewer.cpp@5411,37",
+          "indra/newview/llappviewer.cpp@5699,58",
+          "indra/newview/llappviewer.cpp@6034,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -120286,6 +121039,15 @@
       },
       "indra/newview/app_settings/settings.xml": {
         "includes": [],
+        "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/fsposingmotion.h": {
+        "includes": [
+          "indra/llcharacter/llkeyframemotion.h",
+          "indra/llcharacter/llmotion.h",
+          "indra/newview/fsjointpose.h"
+        ],
         "qualified_call_candidates": [],
         "unresolved_includes": []
       },
@@ -126047,10 +126809,10 @@
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@916,26",
           "indra/newview/llappviewer.cpp@1955,24",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5696,58",
-          "indra/newview/llappviewer.cpp@5978,44",
-          "indra/newview/llappviewer.cpp@6492,16"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5699,58",
+          "indra/newview/llappviewer.cpp@5981,44",
+          "indra/newview/llappviewer.cpp@6495,16"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -126213,12 +126975,12 @@
       },
       {
         "hunks": [
-          "indra/newview/llvovolume.cpp@5690,87",
-          "indra/newview/llvovolume.cpp@5835,10",
-          "indra/newview/llvovolume.cpp@6090,24",
-          "indra/newview/llvovolume.cpp@6181,18",
-          "indra/newview/llvovolume.cpp@6239,17",
-          "indra/newview/llvovolume.cpp@7168,34"
+          "indra/newview/llvovolume.cpp@5703,87",
+          "indra/newview/llvovolume.cpp@5848,10",
+          "indra/newview/llvovolume.cpp@6103,24",
+          "indra/newview/llvovolume.cpp@6194,18",
+          "indra/newview/llvovolume.cpp@6252,17",
+          "indra/newview/llvovolume.cpp@7181,34"
         ],
         "path": "indra/newview/llvovolume.cpp"
       },
@@ -126357,7 +127119,7 @@
       {
         "hunks": [
           "indra/newview/llselectmgr.cpp@143,68",
-          "indra/newview/llselectmgr.cpp@8303,7"
+          "indra/newview/llselectmgr.cpp@8312,7"
         ],
         "path": "indra/newview/llselectmgr.cpp"
       },
@@ -142081,6 +142843,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1062,
+        "source": "indra/newview/llviewerparcelmgr.cpp",
+        "text": "llviewerparcelmgr.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 1066,
         "source": "indra/newview/llviewerregion.cpp",
         "text": "llviewerregion.cpp"
@@ -142247,10 +143015,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2328,8",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@2331,8",
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -154217,6 +154985,161 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llviewerparcelmgr.cpp": {
+        "includes": [
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcallbacklist.h",
+          "indra/llcommon/llsdutil.h",
+          "indra/llinventory/llparcel.h",
+          "indra/llmath/llsdutil_math.h",
+          "indra/llmessage/llcachename.h",
+          "indra/llmessage/llcorehttputil.h",
+          "indra/llmessage/message.h",
+          "indra/llrender/llgl.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llui.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentaccess.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatergroups.h",
+          "indra/newview/llfloatersellland.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llpanelnearbymedia.h",
+          "indra/newview/llparcelselection.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerparcelaskplay.h",
+          "indra/newview/llviewerparcelmedia.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerparceloverlay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llweb.h",
+          "indra/newview/llworld.h",
+          "indra/newview/roles_constants.h"
+        ],
+        "qualified_call_candidates": [
+          "LLApp::isExiting",
+          "LLEnvironment::instance",
+          "LLEventPumps::instance",
+          "LLFloaterBuyLand::buyLand",
+          "LLFloaterSellLand::sellLand",
+          "LLNotifications::instance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLStringUtil::trim",
+          "LLViewerAudio::getInstance",
+          "LLViewerParcelAskPlay::getInstance",
+          "LLViewerParcelMedia::getInstance",
+          "LLViewerParcelMgr::LLViewerParcelMgr",
+          "LLViewerParcelMgr::addObserver",
+          "LLViewerParcelMgr::allowAgentBuild",
+          "LLViewerParcelMgr::allowAgentDamage",
+          "LLViewerParcelMgr::allowAgentFly",
+          "LLViewerParcelMgr::allowAgentPush",
+          "LLViewerParcelMgr::allowAgentScripts",
+          "LLViewerParcelMgr::allowAgentVoice",
+          "LLViewerParcelMgr::allowVoiceModeration",
+          "LLViewerParcelMgr::buyPass",
+          "LLViewerParcelMgr::callbackDivideLand",
+          "LLViewerParcelMgr::callbackJoinLand",
+          "LLViewerParcelMgr::canAgentBuyParcel",
+          "LLViewerParcelMgr::canHearSound",
+          "LLViewerParcelMgr::cleanupGlobals",
+          "LLViewerParcelMgr::deedAlertCB",
+          "LLViewerParcelMgr::deedLandToGroup",
+          "LLViewerParcelMgr::deleteParcelBuy",
+          "LLViewerParcelMgr::deselectLand",
+          "LLViewerParcelMgr::deselectUnused",
+          "LLViewerParcelMgr::dump",
+          "LLViewerParcelMgr::getAgentOrSelectedParcel",
+          "LLViewerParcelMgr::getAgentParcel",
+          "LLViewerParcelMgr::getAgentParcelId",
+          "LLViewerParcelMgr::getAgentParcelName",
+          "LLViewerParcelMgr::getBlockedImage",
+          "LLViewerParcelMgr::getCollisionParcel",
+          "LLViewerParcelMgr::getDisplayInfo",
+          "LLViewerParcelMgr::getFloatingParcelSelection",
+          "LLViewerParcelMgr::getHoverParcel",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerParcelMgr::getParcelSelection",
+          "LLViewerParcelMgr::getPassImage",
+          "LLViewerParcelMgr::getSelectedArea",
+          "LLViewerParcelMgr::getSelectionRegion",
+          "LLViewerParcelMgr::getTeleportInProgress",
+          "LLViewerParcelMgr::inAgentParcel",
+          "LLViewerParcelMgr::instance",
+          "LLViewerParcelMgr::isCollisionBanned",
+          "LLViewerParcelMgr::isOwnedAt",
+          "LLViewerParcelMgr::isOwnedOtherAt",
+          "LLViewerParcelMgr::isOwnedSelfAt",
+          "LLViewerParcelMgr::isParcelModifiableByAgent",
+          "LLViewerParcelMgr::isParcelOwnedByAgent",
+          "LLViewerParcelMgr::isSoundLocal",
+          "LLViewerParcelMgr::isVoiceRestricted",
+          "LLViewerParcelMgr::makeLandmarkAtSelection",
+          "LLViewerParcelMgr::notifyObservers",
+          "LLViewerParcelMgr::onStartMusicResponse",
+          "LLViewerParcelMgr::onTeleportDone",
+          "LLViewerParcelMgr::onTeleportFailed",
+          "LLViewerParcelMgr::onTeleportFinished",
+          "LLViewerParcelMgr::optionallyStartMusic",
+          "LLViewerParcelMgr::postTeleportFinished",
+          "LLViewerParcelMgr::processParcelAccessListReply",
+          "LLViewerParcelMgr::processParcelDwellReply",
+          "LLViewerParcelMgr::processParcelOverlay",
+          "LLViewerParcelMgr::processParcelProperties",
+          "LLViewerParcelMgr::reclaimParcel",
+          "LLViewerParcelMgr::releaseAlertCB",
+          "LLViewerParcelMgr::removeObserver",
+          "LLViewerParcelMgr::render",
+          "LLViewerParcelMgr::renderParcelCollision",
+          "LLViewerParcelMgr::resetSegments",
+          "LLViewerParcelMgr::selectCollisionParcel",
+          "LLViewerParcelMgr::selectLand",
+          "LLViewerParcelMgr::selectParcelAt",
+          "LLViewerParcelMgr::selectParcelInRectangle",
+          "LLViewerParcelMgr::selectionEmpty",
+          "LLViewerParcelMgr::sendParcelAccessListRequest",
+          "LLViewerParcelMgr::sendParcelAccessListUpdate",
+          "LLViewerParcelMgr::sendParcelBuy",
+          "LLViewerParcelMgr::sendParcelDeed",
+          "LLViewerParcelMgr::sendParcelDwellRequest",
+          "LLViewerParcelMgr::sendParcelGodForceOwner",
+          "LLViewerParcelMgr::sendParcelGodForceToContent",
+          "LLViewerParcelMgr::sendParcelPropertiesUpdate",
+          "LLViewerParcelMgr::sendParcelRelease",
+          "LLViewerParcelMgr::setCollisionUpdateCallback",
+          "LLViewerParcelMgr::setHoverParcel",
+          "LLViewerParcelMgr::setTeleportDoneCallback",
+          "LLViewerParcelMgr::setTeleportFailedCallback",
+          "LLViewerParcelMgr::setTeleportFinishedCallback",
+          "LLViewerParcelMgr::setupParcelBuy",
+          "LLViewerParcelMgr::startBuyLand",
+          "LLViewerParcelMgr::startDeedLandToGroup",
+          "LLViewerParcelMgr::startDivideLand",
+          "LLViewerParcelMgr::startJoinLand",
+          "LLViewerParcelMgr::startReleaseLand",
+          "LLViewerParcelMgr::startSellLand",
+          "LLViewerParcelMgr::writeAgentParcelFromBitmap",
+          "LLViewerParcelMgr::writeHighlightSegments",
+          "LLViewerParcelMgr::writeSegmentsFromBitmap",
+          "LLViewerTextureManager::getFetchedTextureFromFile",
+          "LLWorld::getInstance"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llviewerregion.cpp": {
         "includes": [
           "indra/llcommon/indra_constants.h",
@@ -158585,8 +159508,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5374,24"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5377,24"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -158660,7 +159583,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llvovolume.cpp@7751,12"
+          "indra/newview/llvovolume.cpp@7764,12"
         ],
         "path": "indra/newview/llvovolume.cpp"
       },
@@ -172292,10 +173215,10 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@25,19",
-          "indra/newview/llappviewer.cpp@2222,17",
-          "indra/newview/llappviewer.cpp@3646,7",
-          "indra/newview/llappviewer.cpp@3656,7",
-          "indra/newview/llappviewer.cpp@6513,8"
+          "indra/newview/llappviewer.cpp@2225,17",
+          "indra/newview/llappviewer.cpp@3649,7",
+          "indra/newview/llappviewer.cpp@3659,7",
+          "indra/newview/llappviewer.cpp@6516,8"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -172392,7 +173315,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llvovolume.cpp@6033,19"
+          "indra/newview/llvovolume.cpp@6046,19"
         ],
         "path": "indra/newview/llvovolume.cpp"
       },
@@ -182410,8 +183333,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -188424,6 +189347,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1256,
+        "source": "indra/newview/fsposingmotion.h",
+        "text": "fsposingmotion.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 342,
         "source": "indra/newview/llactormover.cpp",
         "text": "llactormover.cpp"
@@ -188626,8 +189555,8 @@
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@916,26",
           "indra/newview/llappviewer.cpp@1729,12",
-          "indra/newview/llappviewer.cpp@5374,24",
-          "indra/newview/llappviewer.cpp@6031,30"
+          "indra/newview/llappviewer.cpp@5377,24",
+          "indra/newview/llappviewer.cpp@6034,30"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -190681,6 +191610,15 @@
           "LLViewerCamera::getInstance",
           "LLViewerTextureManager::getLocalTexture"
         ],
+        "unresolved_includes": []
+      },
+      "indra/newview/fsposingmotion.h": {
+        "includes": [
+          "indra/llcharacter/llkeyframemotion.h",
+          "indra/llcharacter/llmotion.h",
+          "indra/newview/fsjointpose.h"
+        ],
+        "qualified_call_candidates": [],
         "unresolved_includes": []
       },
       "indra/newview/llactormover.cpp": {
@@ -195720,9 +196658,9 @@
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@1955,24",
-          "indra/newview/llappviewer.cpp@5652,9",
-          "indra/newview/llappviewer.cpp@6031,30",
-          "indra/newview/llappviewer.cpp@6167,7"
+          "indra/newview/llappviewer.cpp@5655,9",
+          "indra/newview/llappviewer.cpp@6034,30",
+          "indra/newview/llappviewer.cpp@6170,7"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -195752,16 +196690,16 @@
       {
         "hunks": [
           "indra/newview/llselectmgr.cpp@29,8",
-          "indra/newview/llselectmgr.cpp@4805,8",
-          "indra/newview/llselectmgr.cpp@4901,8",
-          "indra/newview/llselectmgr.cpp@5073,8",
-          "indra/newview/llselectmgr.cpp@5529,13",
-          "indra/newview/llselectmgr.cpp@5805,10",
-          "indra/newview/llselectmgr.cpp@6031,8",
-          "indra/newview/llselectmgr.cpp@7721,21",
-          "indra/newview/llselectmgr.cpp@7931,7",
-          "indra/newview/llselectmgr.cpp@9180,7",
-          "indra/newview/llselectmgr.cpp@9305,7"
+          "indra/newview/llselectmgr.cpp@4814,8",
+          "indra/newview/llselectmgr.cpp@4910,8",
+          "indra/newview/llselectmgr.cpp@5082,8",
+          "indra/newview/llselectmgr.cpp@5538,13",
+          "indra/newview/llselectmgr.cpp@5814,10",
+          "indra/newview/llselectmgr.cpp@6040,8",
+          "indra/newview/llselectmgr.cpp@7730,21",
+          "indra/newview/llselectmgr.cpp@7940,7",
+          "indra/newview/llselectmgr.cpp@9189,7",
+          "indra/newview/llselectmgr.cpp@9314,7"
         ],
         "path": "indra/newview/llselectmgr.cpp"
       },
@@ -201033,6 +201971,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 943,
+        "source": "indra/newview/llsidepanelinventory.cpp",
+        "text": "llsidepanelinventory.cpp"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 961,
         "source": "indra/newview/llsurface.cpp",
         "text": "llsurface.cpp"
@@ -201132,6 +202076,12 @@
         "line": 2082,
         "source": "indra/newview/llvieweroctree.h",
         "text": "llvieweroctree.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
+        "line": 1062,
+        "source": "indra/newview/llviewerparcelmgr.cpp",
+        "text": "llviewerparcelmgr.cpp"
       },
       {
         "file": "indra/newview/CMakeLists.txt",
@@ -201268,12 +202218,12 @@
           "indra/newview/llappviewer.cpp@72,35",
           "indra/newview/llappviewer.cpp@276,8",
           "indra/newview/llappviewer.cpp@1955,24",
-          "indra/newview/llappviewer.cpp@4866,12",
-          "indra/newview/llappviewer.cpp@4995,12",
-          "indra/newview/llappviewer.cpp@5843,133",
-          "indra/newview/llappviewer.cpp@5978,44",
-          "indra/newview/llappviewer.cpp@6492,16",
-          "indra/newview/llappviewer.cpp@6531,45"
+          "indra/newview/llappviewer.cpp@4869,12",
+          "indra/newview/llappviewer.cpp@4998,12",
+          "indra/newview/llappviewer.cpp@5846,133",
+          "indra/newview/llappviewer.cpp@5981,44",
+          "indra/newview/llappviewer.cpp@6495,16",
+          "indra/newview/llappviewer.cpp@6534,45"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },
@@ -210634,6 +211584,81 @@
         ],
         "unresolved_includes": []
       },
+      "indra/newview/llsidepanelinventory.cpp": {
+        "includes": [
+          "indra/llcommon/lldate.h",
+          "indra/llcommon/llstring.h",
+          "indra/llinventory/llfoldertype.h",
+          "indra/llui/llbutton.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llfolderview.h",
+          "indra/llui/lllayoutstack.h",
+          "indra/llui/lltabcontainer.h",
+          "indra/llui/lltextbox.h",
+          "indra/llui/lltrans.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llappearancemgr.h",
+          "indra/newview/llappviewer.h",
+          "indra/newview/llavataractions.h",
+          "indra/newview/llfirstuse.h",
+          "indra/newview/llfloatersidepanelcontainer.h",
+          "indra/newview/llinventorybridge.h",
+          "indra/newview/llinventoryfunctions.h",
+          "indra/newview/llinventorymodel.h",
+          "indra/newview/llinventorymodelbackgroundfetch.h",
+          "indra/newview/llinventoryobserver.h",
+          "indra/newview/llinventorypanel.h",
+          "indra/newview/lloutfitobserver.h",
+          "indra/newview/llpanelmaininventory.h",
+          "indra/newview/llpanelmarketplaceinbox.h",
+          "indra/newview/llselectmgr.h",
+          "indra/newview/llsidepanelinventory.h",
+          "indra/newview/llsidepaneliteminfo.h",
+          "indra/newview/llsidepaneltaskinfo.h",
+          "indra/newview/llviewermedia.h",
+          "indra/newview/llviewernetwork.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llweb.h"
+        ],
+        "qualified_call_candidates": [
+          "LLAppViewer::instance",
+          "LLAvatarActions::canShareSelectedItems",
+          "LLAvatarActions::getInventorySelectedUUIDs",
+          "LLFirstUse::newInventory",
+          "LLFloaterReg::getFloaterList",
+          "LLInventoryModelBackgroundFetch::instance",
+          "LLOutfitObserver::instance",
+          "LLRegisterPanelClass::defaultPanelClassBuilder",
+          "LLSidepanelInventory::LLSidepanelInventory",
+          "LLSidepanelInventory::canShare",
+          "LLSidepanelInventory::canWearSelected",
+          "LLSidepanelInventory::cleanup",
+          "LLSidepanelInventory::clearSelections",
+          "LLSidepanelInventory::enableInbox",
+          "LLSidepanelInventory::getActivePanel",
+          "LLSidepanelInventory::getInboxSelectionList",
+          "LLSidepanelInventory::getSelectedCount",
+          "LLSidepanelInventory::getSelectedItem",
+          "LLSidepanelInventory::hideInbox",
+          "LLSidepanelInventory::initInventoryViews",
+          "LLSidepanelInventory::isMainInventoryPanelActive",
+          "LLSidepanelInventory::observeInboxCreation",
+          "LLSidepanelInventory::observeInboxModifications",
+          "LLSidepanelInventory::onBackButtonClicked",
+          "LLSidepanelInventory::onInboxChanged",
+          "LLSidepanelInventory::onOpen",
+          "LLSidepanelInventory::onSelectionChange",
+          "LLSidepanelInventory::onToggleInboxBtn",
+          "LLSidepanelInventory::openInbox",
+          "LLSidepanelInventory::performActionOnSelection",
+          "LLSidepanelInventory::postBuild",
+          "LLSidepanelInventory::selectAllItemsPanel",
+          "LLSidepanelInventory::showInventoryPanel",
+          "LLSidepanelInventory::toggleInbox",
+          "LLSidepanelInventory::updateInbox"
+        ],
+        "unresolved_includes": []
+      },
       "indra/newview/llsurface.cpp": {
         "includes": [
           "indra/llcommon/llbitpack.h",
@@ -212426,6 +213451,161 @@
           "indra/newview/llviewercamera.h"
         ],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/llviewerparcelmgr.cpp": {
+        "includes": [
+          "indra/llaudio/llaudioengine.h",
+          "indra/llcommon/indra_constants.h",
+          "indra/llcommon/llcallbacklist.h",
+          "indra/llcommon/llsdutil.h",
+          "indra/llinventory/llparcel.h",
+          "indra/llmath/llsdutil_math.h",
+          "indra/llmessage/llcachename.h",
+          "indra/llmessage/llcorehttputil.h",
+          "indra/llmessage/message.h",
+          "indra/llrender/llgl.h",
+          "indra/llui/llfloaterreg.h",
+          "indra/llui/llnotifications.h",
+          "indra/llui/llnotificationsutil.h",
+          "indra/llui/llresmgr.h",
+          "indra/llui/llui.h",
+          "indra/newview/llagent.h",
+          "indra/newview/llagentaccess.h",
+          "indra/newview/llenvironment.h",
+          "indra/newview/llfloaterbuyland.h",
+          "indra/newview/llfloatergroups.h",
+          "indra/newview/llfloatersellland.h",
+          "indra/newview/llfloatertools.h",
+          "indra/newview/llpanelnearbymedia.h",
+          "indra/newview/llparcelselection.h",
+          "indra/newview/llslurl.h",
+          "indra/newview/llstatusbar.h",
+          "indra/newview/llvieweraudio.h",
+          "indra/newview/llviewercontrol.h",
+          "indra/newview/llviewermenu.h",
+          "indra/newview/llviewerparcelaskplay.h",
+          "indra/newview/llviewerparcelmedia.h",
+          "indra/newview/llviewerparcelmgr.h",
+          "indra/newview/llviewerparceloverlay.h",
+          "indra/newview/llviewerprecompiledheaders.h",
+          "indra/newview/llviewerregion.h",
+          "indra/newview/llviewertexture.h",
+          "indra/newview/llviewertexturelist.h",
+          "indra/newview/llviewerwindow.h",
+          "indra/newview/llweb.h",
+          "indra/newview/llworld.h",
+          "indra/newview/roles_constants.h"
+        ],
+        "qualified_call_candidates": [
+          "LLApp::isExiting",
+          "LLEnvironment::instance",
+          "LLEventPumps::instance",
+          "LLFloaterBuyLand::buyLand",
+          "LLFloaterSellLand::sellLand",
+          "LLNotifications::instance",
+          "LLNotificationsUtil::add",
+          "LLNotificationsUtil::getSelectedOption",
+          "LLStringUtil::trim",
+          "LLViewerAudio::getInstance",
+          "LLViewerParcelAskPlay::getInstance",
+          "LLViewerParcelMedia::getInstance",
+          "LLViewerParcelMgr::LLViewerParcelMgr",
+          "LLViewerParcelMgr::addObserver",
+          "LLViewerParcelMgr::allowAgentBuild",
+          "LLViewerParcelMgr::allowAgentDamage",
+          "LLViewerParcelMgr::allowAgentFly",
+          "LLViewerParcelMgr::allowAgentPush",
+          "LLViewerParcelMgr::allowAgentScripts",
+          "LLViewerParcelMgr::allowAgentVoice",
+          "LLViewerParcelMgr::allowVoiceModeration",
+          "LLViewerParcelMgr::buyPass",
+          "LLViewerParcelMgr::callbackDivideLand",
+          "LLViewerParcelMgr::callbackJoinLand",
+          "LLViewerParcelMgr::canAgentBuyParcel",
+          "LLViewerParcelMgr::canHearSound",
+          "LLViewerParcelMgr::cleanupGlobals",
+          "LLViewerParcelMgr::deedAlertCB",
+          "LLViewerParcelMgr::deedLandToGroup",
+          "LLViewerParcelMgr::deleteParcelBuy",
+          "LLViewerParcelMgr::deselectLand",
+          "LLViewerParcelMgr::deselectUnused",
+          "LLViewerParcelMgr::dump",
+          "LLViewerParcelMgr::getAgentOrSelectedParcel",
+          "LLViewerParcelMgr::getAgentParcel",
+          "LLViewerParcelMgr::getAgentParcelId",
+          "LLViewerParcelMgr::getAgentParcelName",
+          "LLViewerParcelMgr::getBlockedImage",
+          "LLViewerParcelMgr::getCollisionParcel",
+          "LLViewerParcelMgr::getDisplayInfo",
+          "LLViewerParcelMgr::getFloatingParcelSelection",
+          "LLViewerParcelMgr::getHoverParcel",
+          "LLViewerParcelMgr::getInstance",
+          "LLViewerParcelMgr::getParcelSelection",
+          "LLViewerParcelMgr::getPassImage",
+          "LLViewerParcelMgr::getSelectedArea",
+          "LLViewerParcelMgr::getSelectionRegion",
+          "LLViewerParcelMgr::getTeleportInProgress",
+          "LLViewerParcelMgr::inAgentParcel",
+          "LLViewerParcelMgr::instance",
+          "LLViewerParcelMgr::isCollisionBanned",
+          "LLViewerParcelMgr::isOwnedAt",
+          "LLViewerParcelMgr::isOwnedOtherAt",
+          "LLViewerParcelMgr::isOwnedSelfAt",
+          "LLViewerParcelMgr::isParcelModifiableByAgent",
+          "LLViewerParcelMgr::isParcelOwnedByAgent",
+          "LLViewerParcelMgr::isSoundLocal",
+          "LLViewerParcelMgr::isVoiceRestricted",
+          "LLViewerParcelMgr::makeLandmarkAtSelection",
+          "LLViewerParcelMgr::notifyObservers",
+          "LLViewerParcelMgr::onStartMusicResponse",
+          "LLViewerParcelMgr::onTeleportDone",
+          "LLViewerParcelMgr::onTeleportFailed",
+          "LLViewerParcelMgr::onTeleportFinished",
+          "LLViewerParcelMgr::optionallyStartMusic",
+          "LLViewerParcelMgr::postTeleportFinished",
+          "LLViewerParcelMgr::processParcelAccessListReply",
+          "LLViewerParcelMgr::processParcelDwellReply",
+          "LLViewerParcelMgr::processParcelOverlay",
+          "LLViewerParcelMgr::processParcelProperties",
+          "LLViewerParcelMgr::reclaimParcel",
+          "LLViewerParcelMgr::releaseAlertCB",
+          "LLViewerParcelMgr::removeObserver",
+          "LLViewerParcelMgr::render",
+          "LLViewerParcelMgr::renderParcelCollision",
+          "LLViewerParcelMgr::resetSegments",
+          "LLViewerParcelMgr::selectCollisionParcel",
+          "LLViewerParcelMgr::selectLand",
+          "LLViewerParcelMgr::selectParcelAt",
+          "LLViewerParcelMgr::selectParcelInRectangle",
+          "LLViewerParcelMgr::selectionEmpty",
+          "LLViewerParcelMgr::sendParcelAccessListRequest",
+          "LLViewerParcelMgr::sendParcelAccessListUpdate",
+          "LLViewerParcelMgr::sendParcelBuy",
+          "LLViewerParcelMgr::sendParcelDeed",
+          "LLViewerParcelMgr::sendParcelDwellRequest",
+          "LLViewerParcelMgr::sendParcelGodForceOwner",
+          "LLViewerParcelMgr::sendParcelGodForceToContent",
+          "LLViewerParcelMgr::sendParcelPropertiesUpdate",
+          "LLViewerParcelMgr::sendParcelRelease",
+          "LLViewerParcelMgr::setCollisionUpdateCallback",
+          "LLViewerParcelMgr::setHoverParcel",
+          "LLViewerParcelMgr::setTeleportDoneCallback",
+          "LLViewerParcelMgr::setTeleportFailedCallback",
+          "LLViewerParcelMgr::setTeleportFinishedCallback",
+          "LLViewerParcelMgr::setupParcelBuy",
+          "LLViewerParcelMgr::startBuyLand",
+          "LLViewerParcelMgr::startDeedLandToGroup",
+          "LLViewerParcelMgr::startDivideLand",
+          "LLViewerParcelMgr::startJoinLand",
+          "LLViewerParcelMgr::startReleaseLand",
+          "LLViewerParcelMgr::startSellLand",
+          "LLViewerParcelMgr::writeAgentParcelFromBitmap",
+          "LLViewerParcelMgr::writeHighlightSegments",
+          "LLViewerParcelMgr::writeSegmentsFromBitmap",
+          "LLViewerTextureManager::getFetchedTextureFromFile",
+          "LLWorld::getInstance"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/llviewershadermgr.cpp": {
@@ -214843,8 +216023,8 @@
       {
         "hunks": [
           "indra/newview/llappviewer.cpp@72,35",
-          "indra/newview/llappviewer.cpp@2650,53",
-          "indra/newview/llappviewer.cpp@5843,133"
+          "indra/newview/llappviewer.cpp@2653,53",
+          "indra/newview/llappviewer.cpp@5846,133"
         ],
         "path": "indra/newview/llappviewer.cpp"
       },

@@ -8182,21 +8182,21 @@
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/fsposeranimator.cpp",
     "dependency": "indra/newview/fsposingmotion.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/fsposeranimator.h",
     "dependency": "indra/newview/fsposingmotion.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
@@ -8221,6 +8221,24 @@
     "class": "base-owned",
     "consumer": "indra/newview/fsposestate.cpp",
     "dependency": "indra/newview/fsposestate.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at base"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "HOOK",
+    "consumer": "indra/newview/fsposingmotion.cpp",
+    "dependency": "indra/newview/fsposingmotion.h",
+    "excluded": false,
+    "origin": "present at local Alchemy base",
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
+  },
+  {
+    "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
+    "class": "base-owned",
+    "consumer": "indra/newview/fsposingmotion.h",
+    "dependency": "indra/newview/fsjointpose.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
     "reason": "present at base"
@@ -10720,12 +10738,12 @@
   },
   {
     "action": "LL target: inspect Alchemy implementation; provide equivalent or port with dependencies",
-    "class": "base-owned",
+    "class": "HOOK",
     "consumer": "indra/newview/llghostavatar.cpp",
     "dependency": "indra/newview/fsposingmotion.h",
     "excluded": false,
     "origin": "present at local Alchemy base",
-    "reason": "present at base"
+    "reason": "present at local base; adapt individual hunks, never copy wholesale"
   },
   {
     "action": "carry/adapt fork source",

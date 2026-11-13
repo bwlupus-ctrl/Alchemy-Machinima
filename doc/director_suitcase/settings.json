@@ -30783,6 +30783,26 @@
     "type": "Boolean"
   },
   {
+    "change": "changed",
+    "comment": "Defines behavior when hitting return on an inventory item",
+    "declaration_count_base": 1,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "InventoryAddAttachmentBehavior",
+    "persisted": "1",
+    "previous_default": "0",
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
     "change": "added",
     "comment": "Polls for Xbox controller hot-plug events and automatically selects the controller for Flycam.",
     "declaration_count_base": 0,
