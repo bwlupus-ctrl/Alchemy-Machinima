@@ -86,7 +86,7 @@ def selftest():
     """Prove frozen engine identity and the newest exact-reversal allowance."""
     import subprocess
     from relight_volumetric_engine_check import function
-    from director_actor_bar_check import reverse_shaft_slot_merge
+    from director_actor_bar_check import reverse_shaft_slot_merge, reverse_softshadow_bias, reverse_spot_shadows_16
     current = (NV / "pipeline.cpp").read_text(encoding="utf-8")
     base = subprocess.check_output(
         ["git", "show", "8c350a71b4e:indra/newview/pipeline.cpp"],
@@ -103,16 +103,51 @@ def selftest():
         print("PASS frozen base identity and planted edit/unmarked hook:", name)
     for name in ("pipeline.cpp", "pipeline.h"):
         source = (NV / name).read_text(encoding="utf-8")
+        common = subprocess.check_output(
+            ["git", "show", "fb616f2519c:indra/newview/" + name],
+            encoding="utf-8").replace("\r\n", "\n")
+        feature_reverse = reverse_softshadow_bias if name == "pipeline.cpp" else reverse_spot_shadows_16
+        assert feature_reverse(source, name) == common, (name, "combined feature baseline")
+        import json
+        allowance = "softshadow_bias_hunks.json" if name == "pipeline.cpp" else "spot_shadows_16_hunks.json"
+        hunks = json.loads(Path(__file__).with_name(allowance).read_text(encoding="utf-8"))["files"][name]
+        for hunk in hunks:
+            assert source.count(hunk["after"]) == 1
+            for label, changed in (
+                ("missing hunk", source.replace(hunk["after"], hunk["before"], 1)),
+                ("duplicate hunk", source + hunk["after"]),
+                ("edited hunk", source.replace(hunk["after"], hunk["after"] + "\n// planted edit\n", 1)),
+            ):
+                # The optional spot16 peel is a no-op when its entire layer is absent;
+                # composing with the older full-file pin must still reject that state.
+                try:
+                    assert feature_reverse(changed, name) == common
+                except AssertionError:
+                    pass
+                else:
+                    raise AssertionError("feature allowance accepted " + label + ": " + name)
         original = subprocess.check_output(
             ["git", "show", "8c350a71b4e:indra/newview/" + name],
             encoding="utf-8").replace("\r\n", "\n")
-        assert reverse_shaft_slot_merge(source, name) == original
+        # The projector bias-model uniform is the newer exact pipeline.cpp layer: peel it
+        # first (it requires the complete fb616f2519c file), then this layer as before.
+        def peel(text):
+            return reverse_shaft_slot_merge(reverse_softshadow_bias(text, name), name)
+        assert peel(source) == original
         try:
-            reverse_shaft_slot_merge(source + "\n// planted unrelated edit\n", name)
+            peel(source + "\n// planted unrelated edit\n")
         except AssertionError:
             pass
         else:
             raise AssertionError("allowance accepted unrelated edit: " + name)
+        if name == "pipeline.cpp":
+            # Without the newer layer peeled, the older exact reversal must refuse the file.
+            try:
+                reverse_shaft_slot_merge(source, name)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError("shaft slot merge layer accepted the newer bias-model hunk")
         print("PASS exact reversal and rejected unrelated edit:", name)
     print("PASS: shaft slot merge integration selftest")
 

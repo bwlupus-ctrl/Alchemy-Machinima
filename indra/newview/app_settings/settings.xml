@@ -21135,7 +21135,7 @@
   <key>RenderSpotShadowBias</key>
   <map>
     <key>Comment</key>
-    <string>Bias value for shadows (prevent shadow acne).</string>
+    <string>Bias value for projector shadows (prevent shadow acne): a constant in non-linear shadow-map depth. Used by the legacy receiver model (RenderSpotShadowBiasModel 0), by rig Detail lights that keep the legacy receiver, and by volumetric shafts; the surface model uses a metric bias instead.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
@@ -21146,13 +21146,24 @@
   <key>RenderSpotShadowOffset</key>
   <map>
     <key>Comment</key>
-    <string>Offset value for shadows (prevent shadow acne).</string>
+    <string>Projector shadow receiver offset along the surface normal, metres (prevent shadow acne). Legacy receiver model (RenderSpotShadowBiasModel 0): the offset itself. Surface model (1 or 2): one quarter of this value (1 cm at the default 0.04) is the ceiling of the texel-scaled offset, and the full value still sets the depth at which the projector shadow fades out with camera distance.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>F32</string>
     <key>Value</key>
     <real>0.04</real>
+  </map>
+  <key>RenderSpotShadowBiasModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Projector shadow receiver bias on lit surfaces. 0 = legacy: a fixed RenderSpotShadowOffset (4 cm) normal offset plus a constant depth bias, which hides casters within a few cm of the receiver (straps, collars, hair fringe, eyelashes). 1 = surface model (default) for every projector except rig lights with Detail shadows, which keep their own receiver: normal offset of 4 shadow-map texels of world footprint times the sine of the light's incidence, between 0.5 mm and RenderSpotShadowOffset / 4 (never less than the camera depth buffer's own precision at that distance), plus a depth bias of at least 0.75 texel and, where the offset is clamped, the receiver plane's slope. 2 = the surface model for rig lights with Detail shadows too (0.15 mm floor; no screen-derivative receiver, slightly less of the finest contact shadow). Volumetric shafts and fog are not affected by this setting.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
   </map>
 
   <key>RenderShadowResolutionScale</key>
