@@ -228,11 +228,11 @@
 //     sCacheBytesWritten              "
 //     sCacheReads                     "
 //     sCacheWrites                    "
-//     mLoadingMeshes                  mMeshMutex [4]  rw.main.none, rw.any.mMeshMutex
+//     mLoadingMeshes                  mMeshMutex [4]  rw.main.none, rw.main.mMeshMutex
 //     mSkinMap                        none            rw.main.none
 //     mDecompositionMap               none            rw.main.none
 //     mPendingRequests                mMeshMutex [4]  rw.main.mMeshMutex
-//     mLoadingSkins                   mMeshMutex [4]  rw.main.mMeshMutex
+//     mLoadingSkins                   mMeshMutex      rw.main.mMeshMutex, rw.any.mMeshMutex (noteSkinInfoPending)
 //     mPendingSkinRequests            mMeshMutex [4]  rw.main.mMeshMutex
 //     mLoadingDecompositions          mMeshMutex [4]  rw.main.mMeshMutex
 //     mPendingDecompositionRequests   mMeshMutex [4]  rw.main.mMeshMutex
@@ -2360,14 +2360,9 @@ EMeshProcessingResult LLMeshRepoThread::headerReceived(const LLVolumeParams& mes
         // immediately request SkinInfo since we'll need it before we can render any LoD if it is present
         if (skin_offset >= 0 && skin_size > 0)
         {
-            {
-                LLMutexLock lock(gMeshRepo.mMeshMutex);
-
-                if (gMeshRepo.mLoadingSkins.find(mesh_id) == gMeshRepo.mLoadingSkins.end())
-                {
-                    gMeshRepo.mLoadingSkins[mesh_id]; // add an empty vector to indicate to main thread that we are loading skin info
-                }
-            }
+            // Tell the main thread a skin fetch is in flight. No other mesh mutex is held
+            // here: mMeshMutex is first in the lock order.
+            gMeshRepo.noteSkinInfoPending(mesh_id);
 
             S32 offset = (S32)header_size + skin_offset;
             bool request_skin = true;
@@ -4428,6 +4423,10 @@ void LLMeshRepository::unregisterSkinInfo(const LLUUID& mesh_id, LLVOVolume* vob
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
 
     llassert(mesh_id.notNull());
+    // The repo thread inserts into mLoadingSkins through noteSkinInfoPending(), so every
+    // access needs mMeshMutex. Nothing below calls out of the repository. The mutex is
+    // null after shutdown(), when the repo thread is gone and LLMutexLock is a no-op.
+    LLMutexLock lock(mMeshMutex);
     auto skin_pair_iter = mLoadingSkins.find(mesh_id);
     if (skin_pair_iter != mLoadingSkins.end())
     {
@@ -4460,7 +4459,11 @@ void LLMeshRepository::unregisterAllMeshes()
     {
         lod.clear();
     }
-    mLoadingSkins.clear();
+    {
+        // Shared with the repo thread, see noteSkinInfoPending().
+        LLMutexLock lock(mMeshMutex);
+        mLoadingSkins.clear();
+    }
 }
 
 S32 LLMeshRepository::loadMesh(LLVOVolume* vobj, const LLVolumeParams& mesh_params, S32 new_lod, S32 last_lod)
@@ -4866,10 +4869,10 @@ void LLMeshRepository::notifySkinInfoReceived(LLMeshSkinInfo* info)
     // Alternative: We can get skin size from header
     sCacheBytesSkins += info->sizeBytes();
 
-    skin_load_map::iterator iter = mLoadingSkins.find(mesh_id);
-    if (iter != mLoadingSkins.end())
+    std::vector<LLPointer<LLVOVolume>> waiters;
+    if (snapshotSkinWaiters(mesh_id, waiters))
     {
-        for (LLPointer<LLVOVolume>& vobj : snapshot_waiting_volumes(iter->second.mVolumes))
+        for (LLPointer<LLVOVolume>& vobj : waiters)
         {
             if (!vobj->isDead())
             {
@@ -4878,24 +4881,52 @@ void LLMeshRepository::notifySkinInfoReceived(LLMeshSkinInfo* info)
         }
         // By key: the callbacks above may have erased this entry (or rehashed the map)
         // through unregisterSkinInfo() or a re-entrant fetchSkinInfo().
+        LLMutexLock lock(mMeshMutex);
         mLoadingSkins.erase(mesh_id);
     }
 }
 
 void LLMeshRepository::notifySkinInfoUnavailable(const LLUUID& mesh_id)
 {
-    skin_load_map::iterator iter = mLoadingSkins.find(mesh_id);
-    if (iter != mLoadingSkins.end())
+    std::vector<LLPointer<LLVOVolume>> waiters;
+    if (snapshotSkinWaiters(mesh_id, waiters))
     {
-        for (LLPointer<LLVOVolume>& vobj : snapshot_waiting_volumes(iter->second.mVolumes))
+        for (LLPointer<LLVOVolume>& vobj : waiters)
         {
             if (!vobj->isDead())
             {
                 vobj->notifySkinInfoUnavailable();
             }
         }
+        LLMutexLock lock(mMeshMutex);
         mLoadingSkins.erase(mesh_id);
     }
+}
+
+// Any thread. Marks a skin fetch as in flight so getSkinInfo() appends its object to the
+// entry instead of issuing a second request. Named after the helper in Alchemy
+// f711a13bbd6; there it runs on the main thread from a published header queue we do not
+// have, here it is the one place a background thread reaches mLoadingSkins and it takes
+// mMeshMutex to do so.
+void LLMeshRepository::noteSkinInfoPending(const LLUUID& mesh_id)
+{
+    LLMutexLock lock(mMeshMutex);
+    mLoadingSkins.try_emplace(mesh_id);
+}
+
+// Main thread. Copies the objects waiting on a skin under mMeshMutex so the caller can
+// notify them without touching the map; see snapshot_waiting_volumes() for why the copy
+// holds references. Returns false when nothing is registered for the mesh.
+bool LLMeshRepository::snapshotSkinWaiters(const LLUUID& mesh_id, std::vector<LLPointer<LLVOVolume>>& waiters)
+{
+    LLMutexLock lock(mMeshMutex);
+    skin_load_map::iterator iter = mLoadingSkins.find(mesh_id);
+    if (iter == mLoadingSkins.end())
+    {
+        return false;
+    }
+    waiters = snapshot_waiting_volumes(iter->second.mVolumes);
+    return true;
 }
 
 void LLMeshRepository::notifyDecompositionReceived(LLModel::Decomposition* decomp, bool physics_mesh)
