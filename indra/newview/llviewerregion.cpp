@@ -1558,6 +1558,7 @@ void LLViewerRegion::createVisibleObjects(F32 max_time)
         return;
     }
 
+    static LLCachedControl<bool> cap_geom_budget(gSavedSettings, "AlchemyPerfGeomBudgetCap", true);
     S32 throttle = sNewObjectCreationThrottle;
     bool has_new_obj = false;
     LLTimer update_timer;
@@ -1568,9 +1569,15 @@ void LLViewerRegion::createVisibleObjects(F32 max_time)
 
         if(vo_entry->getState() < LLVOCacheEntry::WAITING)
         {
-            addNewObject(vo_entry);
+            LLViewerObject* objectp = addNewObject(vo_entry);
             has_new_obj = true;
-            if(throttle > 0 && !(--throttle) && update_timer.getElapsedTimeF32() > max_time)
+            // Count successful creations only: an uncreatable priority-list
+            // head must not consume every frame's count budget. Failed attempts
+            // still check the deadline. Keep the legacy branch unchanged.
+            const bool stop = cap_geom_budget
+                ? (throttle > 0 && ((objectp && !(--throttle)) || update_timer.getElapsedTimeF32() > max_time))
+                : (throttle > 0 && !(--throttle) && update_timer.getElapsedTimeF32() > max_time);
+            if (stop)
             {
                 break;
             }

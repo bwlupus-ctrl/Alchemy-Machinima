@@ -49,6 +49,8 @@
 
 extern LL_COMMON_API bool on_main_thread();
 
+bool LLImageGLThread::sBatchedRowUploads = true;
+
 #if !LL_IMAGEGL_THREAD_CHECK
 #define checkActiveThread()
 #endif
@@ -1299,12 +1301,51 @@ bool should_stagger_image_set(bool compressed)
 
 // Equivalent to calling glSetSubImage2D(target, miplevel, x_offset, y_offset, width, height, pixformat, pixtype, src), assuming the total width of the image is data_width
 // However, instead there are multiple calls to glSetSubImage2D on smaller slices of the image
-void sub_image_lines(U32 target, S32 miplevel, S32 x_offset, S32 y_offset, S32 width, S32 height, U32 pixformat, U32 pixtype, const U8* src, S32 data_width)
+void sub_image_lines(U32 target, S32 miplevel, S32 x_offset, S32 y_offset, S32 width, S32 height, U32 pixformat, U32 pixtype, const U8* src, S32 data_width, bool compressed)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_TEXTURE;
 
     LL_PROFILE_ZONE_NUM(width);
     LL_PROFILE_ZONE_NUM(height);
+
+    // Both callers gate row uploads through should_stagger_image_set(), which
+    // requires the main thread (and excludes compressed textures). Enforce
+    // those preconditions here too before querying the current GL context.
+    if (LLImageGLThread::sBatchedRowUploads)
+    {
+        llassert(!compressed);
+    }
+    if (LLImageGLThread::sBatchedRowUploads && !compressed && on_main_thread() && width > 0 && height > 0)
+    {
+        // Packed 8:8:8:8 is one four-byte pixel, not four U32 components.
+        const U32 pixel_bytes = pixtype == GL_UNSIGNED_INT_8_8_8_8_REV ? 4
+            : LLImageGL::dataFormatComponents(pixformat) * type_width_from_pixtype(pixtype);
+        const size_t line_bytes = size_t(data_width) * pixel_bytes;
+        GLint row_length = 0;
+        GLint alignment = 1;
+        glGetIntegerv(GL_UNPACK_ROW_LENGTH, &row_length);
+        glGetIntegerv(GL_UNPACK_ALIGNMENT, &alignment);
+        const size_t unpack_bytes = size_t(row_length > 0 ? row_length : width) * pixel_bytes;
+        const size_t unpack_stride = (unpack_bytes + alignment - 1) / alignment * alignment;
+
+        // Normally alignment is 1 (LLRender::init). If GL strides differently
+        // from the legacy source increments, retain the ENTIRE legacy path,
+        // including its full-width batches, to preserve its exact pixel reads.
+        if (unpack_stride == line_bytes && pixel_bytes > 0)
+        {
+            constexpr size_t SLICE_BYTES = 64 * 1024;
+            const S32 rows = S32(llmax(size_t(1), SLICE_BYTES / (size_t(width) * pixel_bytes)));
+            for (S32 y = 0; y < height; )
+            {
+                const S32 slice = llmin(rows, height - y);
+                glTexSubImage2D(target, miplevel, x_offset, y_offset + y, width, slice, pixformat, pixtype, src);
+                y += slice;
+                // Do not form a pointer beyond the source after the last slice.
+                if (y < height) src += line_bytes * slice;
+            }
+            return;
+        }
+    }
 
     U32 components = LLImageGL::dataFormatComponents(pixformat);
     U32 type_width = type_width_from_pixtype(pixtype);
@@ -1446,7 +1487,7 @@ bool LLImageGL::setSubImage(const U8* datap, S32 data_width, S32 data_height, S3
         }
         else
         {
-            sub_image_lines(mTarget, 0, x_pos, y_pos, width, height, mFormatPrimary, mFormatType, sub_datap, data_width);
+            sub_image_lines(mTarget, 0, x_pos, y_pos, width, height, mFormatPrimary, mFormatType, sub_datap, data_width, isCompressed());
         }
         if (!skip_unbind)
         {
@@ -1763,7 +1804,7 @@ void LLImageGL::setManualImage(U32 target, S32 miplevel, S32 intformat, S32 widt
             if (src)
             {
                 LL_PROFILE_ZONE_NAMED("glTexImage2D copy");
-                sub_image_lines(target, miplevel, 0, 0, width, height, pixformat, pixtype, src, width);
+                sub_image_lines(target, miplevel, 0, 0, width, height, pixformat, pixtype, src, width, compress);
             }
         }
         if (track_alloc)

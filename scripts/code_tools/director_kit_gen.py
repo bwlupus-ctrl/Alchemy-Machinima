@@ -30,6 +30,7 @@ import director_clone_clear_check as clone_clear_check  # noqa: E402  (Clear ani
 import director_clone_menu_check as clone_menu_check  # noqa: E402  (clone right-click menus, Select in Director)
 import avatar_gaze_menu_check  # noqa: E402  (avatar Director > Gaze)
 import director_fade_check  # noqa: E402  (background-only Director opacity)
+import body_visibility_coalesce_check  # noqa: E402  (coalesced body-visibility walk: pins + native fixture)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -380,8 +381,9 @@ def validate_data(data: dict) -> None:
     if len(removes) != 1 or removes[0][0] != 'rig_status' or removes[0][1].get('btn') != 'Remove rig' or not removes[0][1].get('no_widget_history'):
         raise GenError("borrowed rig removal must be one searchable rig-status action with structural history")
     # Shaft status and Test shafts add two searchable rows: 2519 -> 2521.
-    if len(pages) != 40 or row_count != 2521:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2521")
+    # Four upstream performance A/B switches: 2521 -> 2525 (11/12).
+    if len(pages) != 40 or row_count != 2525:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2525")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):
@@ -2801,7 +2803,8 @@ def main(argv: list[str] | None = None) -> int:
         shader_load_check.native_check(ROOT)
         # Source gates with no runner of their own: prebuild_guard reaches them through
         # this --check. Each runs its check and its planted-negative selftest.
-        for gate in (director_fade_check, list_select_check, clone_clear_check, clone_menu_check, avatar_gaze_menu_check):
+        for gate in (body_visibility_coalesce_check, director_fade_check, list_select_check, clone_clear_check,
+                     clone_menu_check, avatar_gaze_menu_check):
             with contextlib.redirect_stdout(io.StringIO()) as gate_out:
                 gate_failed = gate.run_check() or gate.selftest()
             if gate_failed:

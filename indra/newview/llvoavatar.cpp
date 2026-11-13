@@ -864,6 +864,7 @@ void LLVOAvatar::debugAvatarRezTime(std::string notification_name, std::string c
 LLVOAvatar::~LLVOAvatar()
 {
     if (LLActorMover::instanceExists()) LLActorMover::instance().onAvatarRemoved(this);
+    clearMeshVisibilityDirty();
     sInstances.remove(this);
 
     if (!mFullyLoaded)
@@ -931,6 +932,8 @@ LLClientOuterTransform* LLVOAvatar::getClientOuterTransformHandle() const
 void LLVOAvatar::markDead()
 {
     if (LLActorMover::instanceExists()) LLActorMover::instance().onAvatarRemoved(this);
+    // A dead avatar never keeps a pending body-visibility walk.
+    clearMeshVisibilityDirty();
     if (mNameText)
     {
         mNameText->markDead();
@@ -6422,6 +6425,7 @@ private:
 U32 LLVOAvatar::renderSkinned()
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    flushMeshVisibilityIfDirty();
     LLScopedAvatarOuterModelView outer_modelview(this);
 
     U32 num_indices = 0;
@@ -6612,6 +6616,7 @@ U32 LLVOAvatar::renderSkinned()
 
 U32 LLVOAvatar::renderTransparent(bool first_pass)
 {
+    flushMeshVisibilityIfDirty();
     U32 num_indices = 0;
     if( isWearingWearableType( LLWearableType::WT_SKIRT ) && (isUIAvatar() || isTextureVisible(TEX_SKIRT_BAKED)) )
     {
@@ -6665,6 +6670,7 @@ U32 LLVOAvatar::renderTransparent(bool first_pass)
 //-----------------------------------------------------------------------------
 U32 LLVOAvatar::renderRigid()
 {
+    flushMeshVisibilityIfDirty();
     LLScopedAvatarOuterModelView outer_modelview(this);
     U32 num_indices = 0;
 
@@ -8816,6 +8822,7 @@ void LLVOAvatar::uploadActorGhostPalette()
 
 bool LLVOAvatar::isActorGhostSystemReplayReady()
 {
+    flushMeshVisibilityIfDirty();
     if (!isBuilt() || mDrawable.isNull()
         || mDrawable->isState(LLDrawable::REBUILD_GEOMETRY)
         || mDirtyMesh)
@@ -8902,6 +8909,8 @@ LLViewerJoint*  LLVOAvatar::getViewerJoint(S32 idx)
 //-----------------------------------------------------------------------------
 void LLVOAvatar::hideHair()
 {
+    // A pending coalesced walk must not run after, and undo, this explicit hide.
+    flushMeshVisibilityIfDirty();
     mMeshLOD[MESH_ID_HAIR]->setVisible(false, true);
 }
 
@@ -8910,6 +8919,8 @@ void LLVOAvatar::hideHair()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::hideSkirt()
 {
+    // A pending coalesced walk must not run after, and undo, this explicit hide.
+    flushMeshVisibilityIfDirty();
     mMeshLOD[MESH_ID_SKIRT]->setVisible(false, true);
 }
 
@@ -10327,11 +10338,77 @@ void LLVOAvatar::debugColorizeSubMeshes(U32 i, const LLColor4& color)
 
 
 //-----------------------------------------------------------------------------
+// [ALCHEMY:perf] Coalesced body visibility (AlchemyPerfCoalescedBodyVisibility)
+//-----------------------------------------------------------------------------
+// static
+S32 LLVOAvatar::sMeshVisibilityDirtyCount = 0;
+
+void LLVOAvatar::clearMeshVisibilityDirty()
+{
+    if (mMeshVisibilityDirty)
+    {
+        mMeshVisibilityDirty = false;
+        --sMeshVisibilityDirtyCount;
+    }
+}
+
+void LLVOAvatar::requestMeshVisibilityUpdate()
+{
+    static LLCachedControl<bool> coalesce(gSavedSettings, "AlchemyPerfCoalescedBodyVisibility", true);
+    if (!coalesce || isDead())
+    {
+        // Switch off: the previous behaviour, one walk per request.
+        updateMeshVisibility();
+        return;
+    }
+    if (!mMeshVisibilityDirty)
+    {
+        mMeshVisibilityDirty = true;
+        ++sMeshVisibilityDirtyCount;
+    }
+}
+
+// static
+void LLVOAvatar::flushPendingMeshVisibility()
+{
+    if (sMeshVisibilityDirtyCount == 0)
+    {
+        return;
+    }
+    // Runs whatever the switch says, so marks left from before it was turned
+    // off are walked on the next frame.
+    for (LLCharacter* character : LLCharacter::sInstances)
+    {
+        LLVOAvatar* avatar = static_cast<LLVOAvatar*>(character);
+        if (avatar->mMeshVisibilityDirty)
+        {
+            avatar->updateMeshVisibility();
+            if (sMeshVisibilityDirtyCount <= 0)
+            {
+                break;
+            }
+        }
+    }
+    // Every marked avatar is in sInstances, so the count is zero here. If it
+    // ever is not, say so once and reset it so the empty check stays cheap.
+    if (sMeshVisibilityDirtyCount != 0)
+    {
+        LL_WARNS_ONCE("Avatar") << "Body visibility dirty count out of balance: "
+                                << sMeshVisibilityDirtyCount << LL_ENDL;
+        llassert(sMeshVisibilityDirtyCount == 0);
+        sMeshVisibilityDirtyCount = 0;
+    }
+}
+
+//-----------------------------------------------------------------------------
 // updateMeshVisibility()
 // Hide the mesh joints if attachments are using baked textures
 //-----------------------------------------------------------------------------
 void LLVOAvatar::updateMeshVisibility()
 {
+    // Every walk, immediate or coalesced, satisfies a pending request.
+    clearMeshVisibilityDirty();
+
     bool bake_flag[BAKED_NUM_INDICES];
     memset(bake_flag, 0, BAKED_NUM_INDICES*sizeof(bool));
 

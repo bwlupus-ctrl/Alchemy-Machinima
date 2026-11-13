@@ -2,6 +2,40 @@
 <llsd xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="llsd.xsd">
 <map>
+    <key>AlchemyPerfGeomBudgetCap</key>
+    <map>
+      <key>Comment</key>
+      <string>Caps the per-frame geometry budget at 5 ms and stops object creation at either its count or time limit. FALSE restores the exact previous behaviour. Live toggle; repeat loading or teleport for a full A/B.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>AlchemyPerfBatchedRowUploads</key>
+    <map>
+      <key>Comment</key>
+      <string>Batches small mip and glyph upload rows into slices of up to 64 KB, preserving source stride. FALSE restores the exact previous behaviour. Live toggle; repeat loading or teleport for a full A/B.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>AlchemyPerfCachedMatrixInverse</key>
+    <map>
+      <key>Comment</key>
+      <string>Caches modelview and projection inverses across shader switches; uses affine inversion only for affine modelviews. FALSE restores the exact previous behaviour. Live toggle; takes effect on the next draw.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+
     <key>DirectorActionAllOffMode</key>
     <map>
         <key>Comment</key><string>Director v2 only: replace the idle ACTION button with mouse-only, confirmed ALL OFF. F3 keeps its normal ACTION behavior.</string>
@@ -21,6 +55,14 @@
     <key>AlchemyEmergencyPurgeSliced</key>
     <map>
         <key>Comment</key><string>Spread emergency texture purges across frames and preserve unused textures' lazy-flush timers.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
+
+    <key>AlchemyPerfCoalescedBodyVisibility</key>
+    <map>
+        <key>Comment</key><string>Upstream fix: attachment texture changes mark the avatar and its hidden-body-part check runs once per frame instead of once per changed face. FALSE restores the exact previous behaviour (a full check on every change). Takes effect immediately.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>1</integer>

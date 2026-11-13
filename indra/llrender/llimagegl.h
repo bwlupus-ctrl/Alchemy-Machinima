@@ -419,6 +419,8 @@ public:
 class LLImageGLThread : public LLSimpleton<LLImageGLThread>, LL::ThreadPool
 {
 public:
+    // Viewer-owned runtime setting; staggered uploads run on the main thread.
+    static bool sBatchedRowUploads;
     // follows gSavedSettings "RenderGLMultiThreadedTextures"
     static bool sEnabledTextures;
     // follows gSavedSettings "RenderGLMultiThreadedMedia"
