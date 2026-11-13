@@ -701,8 +701,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32065,430"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32133,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -10112,12 +10112,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -11711,11 +11717,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@23084,412",
-          "indra/newview/app_settings/settings.xml@23632,362",
-          "indra/newview/app_settings/settings.xml@29323,100",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@23140,412",
+          "indra/newview/app_settings/settings.xml@23688,362",
+          "indra/newview/app_settings/settings.xml@29379,100",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -11846,8 +11852,8 @@
         "hunks": [
           "indra/newview/pipeline.cpp@164,12",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32875,721"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32943,721"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -22241,12 +22247,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -24103,11 +24115,11 @@
           "indra/newview/app_settings/settings.xml@5946,21",
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6496,120",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@27515,98",
-          "indra/newview/app_settings/settings.xml@28048,229",
-          "indra/newview/app_settings/settings.xml@29468,2466",
-          "indra/newview/app_settings/settings.xml@32145,364"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@27571,98",
+          "indra/newview/app_settings/settings.xml@28104,229",
+          "indra/newview/app_settings/settings.xml@29524,2466",
+          "indra/newview/app_settings/settings.xml@32201,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24255,7 +24267,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@10821,21113"
+          "indra/newview/pipeline.cpp@10821,21181"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -33718,12 +33730,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -35494,8 +35512,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -35603,9 +35621,9 @@
           "indra/newview/pipeline.cpp@1439,15",
           "indra/newview/pipeline.cpp@1567,106",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32065,430",
-          "indra/newview/pipeline.cpp@32875,721"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32133,430",
+          "indra/newview/pipeline.cpp@32943,721"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -35642,8 +35660,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@612,267"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,246",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@843,266"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -44899,12 +44917,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -47787,9 +47811,9 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@31935,209",
-          "indra/newview/app_settings/settings.xml@32145,364"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@31991,209",
+          "indra/newview/app_settings/settings.xml@32201,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -48068,12 +48092,12 @@
           "indra/newview/pipeline.cpp@144,14",
           "indra/newview/pipeline.cpp@164,12",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@33731,222",
-          "indra/newview/pipeline.cpp@34535,979",
-          "indra/newview/pipeline.cpp@35790,344",
-          "indra/newview/pipeline.cpp@39828,153"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@33799,222",
+          "indra/newview/pipeline.cpp@34603,979",
+          "indra/newview/pipeline.cpp@35858,344",
+          "indra/newview/pipeline.cpp@39896,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -48192,7 +48216,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,246"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -69314,12 +69338,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -71344,8 +71374,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@25787,1573"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@25843,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -79487,7 +79517,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5583,32",
           "indra/newview/app_settings/settings.xml@5616,21",
-          "indra/newview/app_settings/settings.xml@6617,14810"
+          "indra/newview/app_settings/settings.xml@6617,14866"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -79588,7 +79618,7 @@
         "hunks": [
           "indra/newview/pipeline.cpp@92,17",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113"
+          "indra/newview/pipeline.cpp@10821,21181"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -79612,7 +79642,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@307,301"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -86661,12 +86691,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -87976,11 +88012,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@23084,412",
-          "indra/newview/app_settings/settings.xml@23632,362",
-          "indra/newview/app_settings/settings.xml@29323,100",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@23140,412",
+          "indra/newview/app_settings/settings.xml@23688,362",
+          "indra/newview/app_settings/settings.xml@29379,100",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -94005,12 +94041,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@21429,1113",
-          "indra/newview/app_settings/settings.xml@28674,648",
-          "indra/newview/app_settings/settings.xml@29468,2466",
-          "indra/newview/app_settings/settings.xml@31935,209",
-          "indra/newview/app_settings/settings.xml@32145,364"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@21485,1113",
+          "indra/newview/app_settings/settings.xml@28730,648",
+          "indra/newview/app_settings/settings.xml@29524,2466",
+          "indra/newview/app_settings/settings.xml@31991,209",
+          "indra/newview/app_settings/settings.xml@32201,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -94313,8 +94349,8 @@
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32065,430"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32133,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -110921,12 +110957,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -113051,10 +113093,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@25787,1573",
-          "indra/newview/app_settings/settings.xml@27938,109",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@25843,1573",
+          "indra/newview/app_settings/settings.xml@27994,109",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -113103,7 +113145,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113"
+          "indra/newview/pipeline.cpp@10821,21181"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -115969,12 +116011,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -117303,8 +117351,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -125748,15 +125796,15 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@21429,1113",
-          "indra/newview/app_settings/settings.xml@22544,76",
-          "indra/newview/app_settings/settings.xml@22676,407",
-          "indra/newview/app_settings/settings.xml@23084,412",
-          "indra/newview/app_settings/settings.xml@23577,54",
-          "indra/newview/app_settings/settings.xml@24105,164",
-          "indra/newview/app_settings/settings.xml@29468,2466",
-          "indra/newview/app_settings/settings.xml@32145,364"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@21485,1113",
+          "indra/newview/app_settings/settings.xml@22600,76",
+          "indra/newview/app_settings/settings.xml@22732,407",
+          "indra/newview/app_settings/settings.xml@23140,412",
+          "indra/newview/app_settings/settings.xml@23633,54",
+          "indra/newview/app_settings/settings.xml@24161,164",
+          "indra/newview/app_settings/settings.xml@29524,2466",
+          "indra/newview/app_settings/settings.xml@32201,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -125947,12 +125995,12 @@
           "indra/newview/pipeline.cpp@187,7",
           "indra/newview/pipeline.cpp@1374,61",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32574,53",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@35790,344",
-          "indra/newview/pipeline.cpp@37899,1060",
-          "indra/newview/pipeline.cpp@39828,153"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32642,53",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@35858,344",
+          "indra/newview/pipeline.cpp@37967,1060",
+          "indra/newview/pipeline.cpp@39896,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -139696,12 +139744,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -140812,7 +140866,10 @@
       "scripts/code_tools/relight_shape_gl_check.py",
       "scripts/code_tools/relight_shape_math_check.py",
       "scripts/code_tools/relight_shape_ui_check.py",
+      "scripts/code_tools/relight_soft_shadow_quality_gl_check.py",
       "scripts/code_tools/relight_spot_bias_gl_check.py",
+      "scripts/code_tools/relight_spot_fade_gl_check.py",
+      "scripts/code_tools/relight_spot_metric_gl_check.py",
       "scripts/code_tools/relight_thin_check.py",
       "scripts/code_tools/relight_vcam_check.py",
       "scripts/code_tools/relight_vcam_dispatch_check.py",
@@ -141914,10 +141971,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@21429,1113",
-          "indra/newview/app_settings/settings.xml@22632,43",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@21485,1113",
+          "indra/newview/app_settings/settings.xml@22688,43",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -142068,22 +142125,22 @@
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32065,430",
-          "indra/newview/pipeline.cpp@32509,38",
-          "indra/newview/pipeline.cpp@32574,53",
-          "indra/newview/pipeline.cpp@32658,37",
-          "indra/newview/pipeline.cpp@32696,17",
-          "indra/newview/pipeline.cpp@32714,20",
-          "indra/newview/pipeline.cpp@32759,18",
-          "indra/newview/pipeline.cpp@32794,27",
-          "indra/newview/pipeline.cpp@32823,30",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@34039,51",
-          "indra/newview/pipeline.cpp@34096,243",
-          "indra/newview/pipeline.cpp@34341,11",
-          "indra/newview/pipeline.cpp@37536,362",
-          "indra/newview/pipeline.cpp@37899,1060"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32133,430",
+          "indra/newview/pipeline.cpp@32577,38",
+          "indra/newview/pipeline.cpp@32642,53",
+          "indra/newview/pipeline.cpp@32726,37",
+          "indra/newview/pipeline.cpp@32764,17",
+          "indra/newview/pipeline.cpp@32782,20",
+          "indra/newview/pipeline.cpp@32827,18",
+          "indra/newview/pipeline.cpp@32862,27",
+          "indra/newview/pipeline.cpp@32891,30",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@34107,51",
+          "indra/newview/pipeline.cpp@34164,243",
+          "indra/newview/pipeline.cpp@34409,11",
+          "indra/newview/pipeline.cpp@37604,362",
+          "indra/newview/pipeline.cpp@37967,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -142129,6 +142186,13 @@
           "indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"
         ],
         "path": "indra/newview/skins/default/xui/en/menu_viewer.xml"
+      },
+      {
+        "hunks": [
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508"
+        ],
+        "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
       {
         "hunks": [
@@ -142851,6 +142915,7 @@
       "RenderProbeDirtySunDeg",
       "RenderReflectionProbeReachCull",
       "RenderShadowSlotHysteresis",
+      "RenderSpotShadowPenumbraModel",
       "RenderWorldShadowHiddenBodyCasts",
       "TronPresetAlsoRigRim",
       "AlchemyEnvLocalLightSize",
@@ -142870,6 +142935,7 @@
       "indra/newview/app_settings/shaders/class1/deferred/rigRimWrapBlurF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/rigRimWrapF.glsl",
       "indra/newview/app_settings/shaders/class1/deferred/screenSpaceRayUtil.glsl",
+      "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl",
       "indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl",
@@ -147310,6 +147376,13 @@
       "indra/newview/app_settings/shaders/class1/deferred/screenSpaceRayUtil.glsl": {
         "includes": [],
         "qualified_call_candidates": [],
+        "unresolved_includes": []
+      },
+      "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl": {
+        "includes": [],
+        "qualified_call_candidates": [
+          "LLPipeline::spotShadowMapIndex"
+        ],
         "unresolved_includes": []
       },
       "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl": {
@@ -155948,12 +156021,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -158203,11 +158282,11 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@5968,527",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@21429,1113",
-          "indra/newview/app_settings/settings.xml@25787,1573",
-          "indra/newview/app_settings/settings.xml@27361,153",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@21485,1113",
+          "indra/newview/app_settings/settings.xml@25843,1573",
+          "indra/newview/app_settings/settings.xml@27417,153",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -158302,18 +158381,18 @@
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32065,430",
-          "indra/newview/pipeline.cpp@32509,38",
-          "indra/newview/pipeline.cpp@32574,53",
-          "indra/newview/pipeline.cpp@32658,37",
-          "indra/newview/pipeline.cpp@32714,20",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@34039,51",
-          "indra/newview/pipeline.cpp@34096,243",
-          "indra/newview/pipeline.cpp@37536,362",
-          "indra/newview/pipeline.cpp@37899,1060",
-          "indra/newview/pipeline.cpp@39828,153"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32133,430",
+          "indra/newview/pipeline.cpp@32577,38",
+          "indra/newview/pipeline.cpp@32642,53",
+          "indra/newview/pipeline.cpp@32726,37",
+          "indra/newview/pipeline.cpp@32782,20",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@34107,51",
+          "indra/newview/pipeline.cpp@34164,243",
+          "indra/newview/pipeline.cpp@37604,362",
+          "indra/newview/pipeline.cpp@37967,1060",
+          "indra/newview/pipeline.cpp@39896,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -158352,7 +158431,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1454,235"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1712,234"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -169942,12 +170021,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -171871,12 +171956,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@3511,1055",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@21429,1113",
-          "indra/newview/app_settings/settings.xml@22676,407",
-          "indra/newview/app_settings/settings.xml@23084,412",
-          "indra/newview/app_settings/settings.xml@25787,1573",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@21485,1113",
+          "indra/newview/app_settings/settings.xml@22732,407",
+          "indra/newview/app_settings/settings.xml@23140,412",
+          "indra/newview/app_settings/settings.xml@25843,1573",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -171992,14 +172077,14 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32065,430",
-          "indra/newview/pipeline.cpp@32629,13",
-          "indra/newview/pipeline.cpp@32658,37",
-          "indra/newview/pipeline.cpp@32714,20",
-          "indra/newview/pipeline.cpp@32759,18",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@37899,1060"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32133,430",
+          "indra/newview/pipeline.cpp@32697,13",
+          "indra/newview/pipeline.cpp@32726,37",
+          "indra/newview/pipeline.cpp@32782,20",
+          "indra/newview/pipeline.cpp@32827,18",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@37967,1060"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -180507,12 +180592,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -181984,7 +182075,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14810"
+          "indra/newview/app_settings/settings.xml@6617,14866"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -182038,9 +182129,9 @@
           "indra/newview/pipeline.cpp@722,16",
           "indra/newview/pipeline.cpp@961,88",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@34096,243"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@34164,243"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -182077,10 +182168,10 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,188",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@612,267",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@966,383",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1454,235"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,246",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@843,266",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1712,234"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -182322,8 +182413,11 @@
       "BDMergeProjectorVolumetricsTintStrength",
       "BDMergeSnapshotAutoscale",
       "LocalFogBank",
+      "RenderSoftShadowFillStep",
       "RenderSpotShadowBias",
       "RenderSpotShadowBiasModel",
+      "RenderSpotShadowFadeModel",
+      "RenderSpotShadowPenumbraModel",
       "RenderVolumetricLighting",
       "RenderVolumetricLightingDirectional",
       "RenderVolumetricLightingFalloffMultiplier",
@@ -186806,12 +186900,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -188186,7 +188286,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810"
+          "indra/newview/app_settings/settings.xml@6617,14866"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -200790,9 +200890,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@21429,1113",
-          "indra/newview/app_settings/settings.xml@29468,2466"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@21485,1113",
+          "indra/newview/app_settings/settings.xml@29524,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -200893,27 +200993,27 @@
           "indra/newview/pipeline.cpp@577,71",
           "indra/newview/pipeline.cpp@928,32",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@31974,30",
-          "indra/newview/pipeline.cpp@32025,16",
-          "indra/newview/pipeline.cpp@32065,430",
-          "indra/newview/pipeline.cpp@32509,38",
-          "indra/newview/pipeline.cpp@32658,37",
-          "indra/newview/pipeline.cpp@32696,17",
-          "indra/newview/pipeline.cpp@32875,721",
-          "indra/newview/pipeline.cpp@33608,15",
-          "indra/newview/pipeline.cpp@33669,15",
-          "indra/newview/pipeline.cpp@33731,222",
-          "indra/newview/pipeline.cpp@34039,51",
-          "indra/newview/pipeline.cpp@34096,243",
-          "indra/newview/pipeline.cpp@34408,36",
-          "indra/newview/pipeline.cpp@34452,7",
-          "indra/newview/pipeline.cpp@34463,41",
-          "indra/newview/pipeline.cpp@36327,47",
-          "indra/newview/pipeline.cpp@36773,78",
-          "indra/newview/pipeline.cpp@37536,362",
-          "indra/newview/pipeline.cpp@37899,1060",
-          "indra/newview/pipeline.cpp@39828,153"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@32042,30",
+          "indra/newview/pipeline.cpp@32093,16",
+          "indra/newview/pipeline.cpp@32133,430",
+          "indra/newview/pipeline.cpp@32577,38",
+          "indra/newview/pipeline.cpp@32726,37",
+          "indra/newview/pipeline.cpp@32764,17",
+          "indra/newview/pipeline.cpp@32943,721",
+          "indra/newview/pipeline.cpp@33676,15",
+          "indra/newview/pipeline.cpp@33737,15",
+          "indra/newview/pipeline.cpp@33799,222",
+          "indra/newview/pipeline.cpp@34107,51",
+          "indra/newview/pipeline.cpp@34164,243",
+          "indra/newview/pipeline.cpp@34476,36",
+          "indra/newview/pipeline.cpp@34520,7",
+          "indra/newview/pipeline.cpp@34531,41",
+          "indra/newview/pipeline.cpp@36395,47",
+          "indra/newview/pipeline.cpp@36841,78",
+          "indra/newview/pipeline.cpp@37604,362",
+          "indra/newview/pipeline.cpp@37967,1060",
+          "indra/newview/pipeline.cpp@39896,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -200989,8 +201089,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@307,301",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@966,383"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -212366,12 +212466,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
@@ -214352,10 +214458,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14810",
-          "indra/newview/app_settings/settings.xml@29468,2466",
-          "indra/newview/app_settings/settings.xml@31935,209",
-          "indra/newview/app_settings/settings.xml@32145,364"
+          "indra/newview/app_settings/settings.xml@6617,14866",
+          "indra/newview/app_settings/settings.xml@29524,2466",
+          "indra/newview/app_settings/settings.xml@31991,209",
+          "indra/newview/app_settings/settings.xml@32201,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -214417,8 +214523,8 @@
           "indra/newview/pipeline.cpp@225,16",
           "indra/newview/pipeline.cpp@1214,16",
           "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21113",
-          "indra/newview/pipeline.cpp@34535,979"
+          "indra/newview/pipeline.cpp@10821,21181",
+          "indra/newview/pipeline.cpp@34603,979"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -223244,12 +223350,18 @@
           "ALRelight::gain",
           "ALRelight::legacy",
           "ALRelight::primSourceRadius",
+          "ALRelight::shadowSourceRadius",
+          "ALRelight::spotDepthA",
+          "ALRelight::spotPenumbraScale",
+          "ALRelight::spotPenumbraSetback",
+          "ALRelight::spotPenumbraTrim",
           "ALRelight::takeRecord",
           "ALSensorSettings::preset",
           "ALShadowDepth::amount",
           "ALShadowDepth::farReachUniform",
           "ALShadowDepth::finite",
           "ALShadowSlot::fadeStep",
+          "ALShadowSlot::finite",
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",

@@ -34239,6 +34239,46 @@
     "type": "Boolean"
   },
   {
+    "change": "added",
+    "comment": "Soft-shadow fill floor at the umbra edge (Ambient fill, BDMergeSoftShadowFill) on lit surfaces. FALSE (default) = the step is retired: the sun's soft kernels and the projector surface model (RenderSpotShadowBiasModel 1 or 2) return the plain visibility fraction, so a ramp across the umbra edge is smooth and monotonic and the fill no longer sparkles where the per-pixel kernel rotation flips a pixel between 0 and the fill level. TRUE = the old behaviour (any partially lit pixel is lifted toward the fill level). Volumetric shafts, froxel fog, the legacy projector receiver (RenderSpotShadowBiasModel 0) and the Classic shaft engine always keep the fill, so the Ambient fill slider still controls them.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "shafts-volumetrics"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderSoftShadowFillStep",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 1 (default) = hygiene: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash instead of a view-space sawtooth that slid with the camera, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderSoftShadowNoiseModel",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
     "change": "changed",
     "comment": "Bias value for projector shadows (prevent shadow acne): a constant in non-linear shadow-map depth. Used by the legacy receiver model (RenderSpotShadowBiasModel 0), by rig Detail lights that keep the legacy receiver, and by volumetric shafts; the surface model uses a metric bias instead.",
     "declaration_count_base": 1,
@@ -34299,6 +34339,26 @@
     "type": "Boolean"
   },
   {
+    "change": "added",
+    "comment": "Where a projector's shadow map stops deciding on lit surfaces. 0 = legacy: projector shadows follow the sun shadow distance; they fade to lit over the far half of the last sun cascade's camera-distance range and are gone beyond it, so on a long-lens shot from far back they vanish or are replaced by the screen-space soft shadow trace. 1 = map-bounded (default): a projector's shadow is its own map's result at every camera distance (bounded only by the map and the light's range), and the soft shadow trace of a mapped light stays contact-only there. Volumetric shafts and fog are not affected by this setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "shafts-volumetrics"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderSpotShadowFadeModel",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
     "change": "changed",
     "comment": "Projector shadow receiver offset along the surface normal, metres (prevent shadow acne). Legacy receiver model (RenderSpotShadowBiasModel 0): the offset itself. Surface model (1 or 2): one quarter of this value (1 cm at the default 0.04) is the ceiling of the texel-scaled offset, and the full value still sets the depth at which the projector shadow fades out with camera distance.",
     "declaration_count_base": 1,
@@ -34317,6 +34377,47 @@
     "scene_evidence": [],
     "scope": "review feature ownership",
     "type": "F32"
+  },
+  {
+    "change": "added",
+    "comment": "Soft projector shadow width on lit surfaces (needs the projector surface model, RenderSpotShadowBiasModel 1 or 2, and soft projector shadows or a rig softness). 1 (default) = metric: the penumbra is sized by the light's physical source radius in metres, the same radius the world cube and area shadows use (rig fixture source size, RenderLocalLightSizeFromPrim, RenderLocalLightDefaultRadius; 0.10 m for an unsized light), so it is sharp at contact, widens smoothly with the gap between caster and receiver, and no longer depends on shadow map resolution or projector FOV (up to the Max penumbra cap, BDMergeSoftShadowMaxPenumbra, in map texels). Softness (BDMergeSoftShadowSoftness, or a rig light's own softness) scales the radius by softness / 3; a rig light in fixture mode uses its fixture source size as is. 0 = the old texel softness (7 fixed steps of a dimensionless gap). Volumetric shafts and fog are not affected by this setting.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "rig",
+      "shafts-volumetrics"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderSpotShadowPenumbraModel",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "U32"
+  },
+  {
+    "change": "added",
+    "comment": "The sun/shadow light-map pass (sunLightF / sunLightSSAOF) also sampled the first two projector shadow slots into the light map's blue and alpha channels, which nothing reads (the lighting pass reads only red and green; the cascade debug view returns before it). FALSE (default) = those two soft-shadow samples per pixel are not taken (1.0 is written). TRUE = the old behaviour. Debug aid for an A/B of the saved GPU time.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderSunLightProjectorDeadSamples",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
   },
   {
     "change": "changed",

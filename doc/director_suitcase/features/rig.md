@@ -185,7 +185,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@186,55", "indra/newview/CMakeLists.txt@335,124", "indra/newview/CMakeLists.txt@1145,59", "indra/newview/CMakeLists.txt@1301,183", "indra/newview/CMakeLists.txt@2878,32", "indra/newview/CMakeLists.txt@2984,198"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3497", "indra/newview/app_settings/settings.xml@6617,14810", "indra/newview/app_settings/settings.xml@21429,1113", "indra/newview/app_settings/settings.xml@22632,43", "indra/newview/app_settings/settings.xml@29468,2466"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3497", "indra/newview/app_settings/settings.xml@6617,14866", "indra/newview/app_settings/settings.xml@21485,1113", "indra/newview/app_settings/settings.xml@22688,43", "indra/newview/app_settings/settings.xml@29524,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2328,8", "indra/newview/llappviewer.cpp@2650,53", "indra/newview/llappviewer.cpp@5834,129", "indra/newview/llappviewer.cpp@6518,45"]}
 - {"path": "indra/newview/llfloaterenvironmentadjust.cpp", "hunks": ["indra/newview/llfloaterenvironmentadjust.cpp@115,182"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@28,20", "indra/newview/llviewercontrol.cpp@1166,85"]}
@@ -202,12 +202,13 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/newview/llviewertexture.h", "hunks": ["indra/newview/llviewertexture.h@442,12"]}
 - {"path": "indra/newview/llvoavatar.cpp", "hunks": ["indra/newview/llvoavatar.cpp@50,24", "indra/newview/llvoavatar.cpp@4723,28"]}
 - {"path": "indra/newview/llvovolume.cpp", "hunks": ["indra/newview/llvovolume.cpp@69,7", "indra/newview/llvovolume.cpp@622,26", "indra/newview/llvovolume.cpp@686,9", "indra/newview/llvovolume.cpp@910,9", "indra/newview/llvovolume.cpp@967,14", "indra/newview/llvovolume.cpp@1324,41", "indra/newview/llvovolume.cpp@1794,9", "indra/newview/llvovolume.cpp@2250,23", "indra/newview/llvovolume.cpp@2298,16", "indra/newview/llvovolume.cpp@2371,36", "indra/newview/llvovolume.cpp@3532,34"]}
-- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,48", "indra/newview/pipeline.cpp@92,17", "indra/newview/pipeline.cpp@335,106", "indra/newview/pipeline.cpp@577,71", "indra/newview/pipeline.cpp@1214,16", "indra/newview/pipeline.cpp@1233,11", "indra/newview/pipeline.cpp@1351,21", "indra/newview/pipeline.cpp@1374,61", "indra/newview/pipeline.cpp@1704,9116", "indra/newview/pipeline.cpp@10821,21113", "indra/newview/pipeline.cpp@32065,430", "indra/newview/pipeline.cpp@32509,38", "indra/newview/pipeline.cpp@32574,53", "indra/newview/pipeline.cpp@32658,37", "indra/newview/pipeline.cpp@32696,17", "indra/newview/pipeline.cpp@32714,20", "indra/newview/pipeline.cpp@32759,18", "indra/newview/pipeline.cpp@32794,27", "indra/newview/pipeline.cpp@32823,30", "indra/newview/pipeline.cpp@32875,721", "indra/newview/pipeline.cpp@34039,51", "indra/newview/pipeline.cpp@34096,243", "indra/newview/pipeline.cpp@34341,11", "indra/newview/pipeline.cpp@37536,362", "indra/newview/pipeline.cpp@37899,1060"]}
+- {"path": "indra/newview/pipeline.cpp", "hunks": ["indra/newview/pipeline.cpp@28,48", "indra/newview/pipeline.cpp@92,17", "indra/newview/pipeline.cpp@335,106", "indra/newview/pipeline.cpp@577,71", "indra/newview/pipeline.cpp@1214,16", "indra/newview/pipeline.cpp@1233,11", "indra/newview/pipeline.cpp@1351,21", "indra/newview/pipeline.cpp@1374,61", "indra/newview/pipeline.cpp@1704,9116", "indra/newview/pipeline.cpp@10821,21181", "indra/newview/pipeline.cpp@32133,430", "indra/newview/pipeline.cpp@32577,38", "indra/newview/pipeline.cpp@32642,53", "indra/newview/pipeline.cpp@32726,37", "indra/newview/pipeline.cpp@32764,17", "indra/newview/pipeline.cpp@32782,20", "indra/newview/pipeline.cpp@32827,18", "indra/newview/pipeline.cpp@32862,27", "indra/newview/pipeline.cpp@32891,30", "indra/newview/pipeline.cpp@32943,721", "indra/newview/pipeline.cpp@34107,51", "indra/newview/pipeline.cpp@34164,243", "indra/newview/pipeline.cpp@34409,11", "indra/newview/pipeline.cpp@37604,362", "indra/newview/pipeline.cpp@37967,1060"]}
 - {"path": "indra/newview/pipeline.h", "hunks": ["indra/newview/pipeline.h@39,29", "indra/newview/pipeline.h@226,357", "indra/newview/pipeline.h@721,90", "indra/newview/pipeline.h@814,100", "indra/newview/pipeline.h@923,100", "indra/newview/pipeline.h@1027,42", "indra/newview/pipeline.h@1431,31", "indra/newview/pipeline.h@1484,20", "indra/newview/pipeline.h@1506,62", "indra/newview/pipeline.h@1569,414", "indra/newview/pipeline.h@2009,294", "indra/newview/pipeline.h@2323,34", "indra/newview/pipeline.h@2722,194"]}
 - {"path": "indra/newview/skins/default/textures/textures.xml", "hunks": ["indra/newview/skins/default/textures/textures.xml@134,31"]}
 - {"path": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml", "hunks": ["indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@1299,1660", "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@4360,2151"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_object.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_object.xml@281,67"]}
 - {"path": "indra/newview/skins/default/xui/en/menu_viewer.xml", "hunks": ["indra/newview/skins/default/xui/en/menu_viewer.xml@200,243"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474", "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508"]}
 - {"path": "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl", "hunks": ["indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@24,42", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@84,49", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@137,59", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@267,36", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@326,13", "indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl@485,30"]}
 - {"path": "indra/newview/llagent.cpp", "hunks": ["indra/newview/llagent.cpp@1087,17", "indra/newview/llagent.cpp@4329,11"]}
 - {"path": "indra/newview/lldrawpoolalpha.cpp", "hunks": ["indra/newview/lldrawpoolalpha.cpp@25,12", "indra/newview/lldrawpoolalpha.cpp@49,14", "indra/newview/lldrawpoolalpha.cpp@120,17", "indra/newview/lldrawpoolalpha.cpp@314,439", "indra/newview/lldrawpoolalpha.cpp@1164,157", "indra/newview/lldrawpoolalpha.cpp@1349,116", "indra/newview/lldrawpoolalpha.cpp@1662,65"]}
@@ -489,6 +490,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `RenderProbeDirtySunDeg`
 - `RenderReflectionProbeReachCull`
 - `RenderShadowSlotHysteresis`
+- `RenderSpotShadowPenumbraModel`
 - `RenderWorldShadowHiddenBodyCasts`
 - `TronPresetAlsoRigRim`
 - `AlchemyEnvLocalLightSize`
@@ -509,6 +511,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `indra/newview/app_settings/shaders/class1/deferred/rigRimWrapBlurF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/rigRimWrapF.glsl`
 - `indra/newview/app_settings/shaders/class1/deferred/screenSpaceRayUtil.glsl`
+- `indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/alphaF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/pbralphaF.glsl`
 - `indra/newview/app_settings/shaders/class2/deferred/sharedActorFxPbrF.glsl`
@@ -761,7 +764,10 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - `scripts/code_tools/relight_shape_gl_check.py`
 - `scripts/code_tools/relight_shape_math_check.py`
 - `scripts/code_tools/relight_shape_ui_check.py`
+- `scripts/code_tools/relight_soft_shadow_quality_gl_check.py`
 - `scripts/code_tools/relight_spot_bias_gl_check.py`
+- `scripts/code_tools/relight_spot_fade_gl_check.py`
+- `scripts/code_tools/relight_spot_metric_gl_check.py`
 - `scripts/code_tools/relight_thin_check.py`
 - `scripts/code_tools/relight_vcam_check.py`
 - `scripts/code_tools/relight_vcam_dispatch_check.py`
