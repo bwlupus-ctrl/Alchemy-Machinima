@@ -11392,7 +11392,7 @@
     <key>BDMergeMaxSpotShadows</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge NSpot] Number of projector (spot) lights that can cast shadows at once (stock viewer: 2, max 10). Each slot renders an extra shadow map per frame. Reallocates live on change.</string>
+      <string>[BDMerge NSpot] Number of projector (spot) lights that can cast shadows at once (stock viewer: 2, max 16; GPU tiers 6/8/16). Each slot renders an extra shadow map per frame (up to 64 MB VRAM at 4096; 16 slots: 1024 MB at 4096 or 256 MB at 2048). Reallocates live on change.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>

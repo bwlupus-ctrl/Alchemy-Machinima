@@ -2573,7 +2573,7 @@ void cine_light_rig_model_object::test<29>()
     };
     const TierCase tiers[] = {
         {16u, 6u}, {27u, 6u}, {28u, 8u},
-        {31u, 8u}, {32u, 10u}, {64u, 10u},
+        {31u, 8u}, {32u, 16u}, {64u, 16u},
     };
     for (const TierCase& item : tiers)
     {
@@ -2590,7 +2590,7 @@ void cine_light_rig_model_object::test<29>()
     ensure_equals("32-unit hardware admits the ten-slot request",
         LLPipeline::clampSpotShadowCount(10u, 32u), 10u);
     ensure_equals("oversized requests clamp to the compile-time ceiling",
-        LLPipeline::clampSpotShadowCount(99u, 64u), 10u);
+        LLPipeline::clampSpotShadowCount(99u, 64u), 16u);
 }
 
 template<> template<>
@@ -2604,6 +2604,7 @@ void cine_light_rig_model_object::test<30>()
     };
     const U32 expected_spot_maps[] = {
         4u, 5u, 6u, 7u, 8u, 9u, 10u, 11u, 12u, 13u,
+        14u, 15u, 16u, 17u, 18u, 19u,
     };
     const S32 spot_sampler_uniforms[] = {
         LLShaderMgr::DEFERRED_SHADOW4, LLShaderMgr::DEFERRED_SHADOW5,
@@ -2611,6 +2612,10 @@ void cine_light_rig_model_object::test<30>()
         LLShaderMgr::DEFERRED_SHADOW8, LLShaderMgr::DEFERRED_SHADOW9,
         LLShaderMgr::DEFERRED_SHADOW10, LLShaderMgr::DEFERRED_SHADOW11,
         LLShaderMgr::DEFERRED_SHADOW12, LLShaderMgr::DEFERRED_SHADOW13,
+        LLShaderMgr::DEFERRED_SHADOW14, LLShaderMgr::DEFERRED_SHADOW15,
+        LLShaderMgr::DEFERRED_SHADOW16, LLShaderMgr::DEFERRED_SHADOW17,
+        LLShaderMgr::DEFERRED_SHADOW18, LLShaderMgr::DEFERRED_SHADOW19,
+
     };
     const S32 camera_ids[] = {
         LLViewerCamera::CAMERA_SPOT_SHADOW0,
@@ -2623,6 +2628,13 @@ void cine_light_rig_model_object::test<30>()
         LLViewerCamera::CAMERA_SPOT_SHADOW7,
         LLViewerCamera::CAMERA_SPOT_SHADOW8,
         LLViewerCamera::CAMERA_SPOT_SHADOW9,
+        LLViewerCamera::CAMERA_SPOT_SHADOW10,
+        LLViewerCamera::CAMERA_SPOT_SHADOW11,
+        LLViewerCamera::CAMERA_SPOT_SHADOW12,
+        LLViewerCamera::CAMERA_SPOT_SHADOW13,
+        LLViewerCamera::CAMERA_SPOT_SHADOW14,
+        LLViewerCamera::CAMERA_SPOT_SHADOW15,
+
     };
     static_assert(LL_ARRAY_SIZE(expected_sun_maps) == 4u,
                   "sun map literals must cover all four sun slots");
@@ -2656,9 +2668,9 @@ void cine_light_rig_model_object::test<30>()
             camera_ids[slot],
             static_cast<S32>(LLViewerCamera::CAMERA_SPOT_SHADOW0 + slot));
     }
-    ensure_equals("water cameras begin after all ten spot cameras",
+    ensure_equals("water cameras begin after all sixteen spot cameras",
         static_cast<S32>(LLViewerCamera::CAMERA_WATER0),
-        static_cast<S32>(LLViewerCamera::CAMERA_SPOT_SHADOW0 + 10));
+        static_cast<S32>(LLViewerCamera::CAMERA_SPOT_SHADOW0 + 16));
 }
 
 template<> template<>

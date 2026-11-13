@@ -1446,6 +1446,13 @@ std::string LLViewerShaderMgr::loadBasicShaders()
         attribs["GBUFFER_FLAG_ENCODING"] = "2";   // hash-only: no shader reads it
     }
 
+    // The largest 16-slot spot variant uses 28 fragment texture units.
+    // Preserve every legacy shader layout for effective requests of ten or less.
+    if (LLPipeline::use16SpotShadowShaders(
+            gSavedSettings.getU32("BDMergeMaxSpotShadows"), gGLManager.mNumTextureImageUnits))
+    {
+        attribs["SPOT_SHADOWS_16"] = "1";
+    }
     LLGLSLShader::sGlobalDefines = attribs;
 
     // We no longer have to bind the shaders to global glhandles, they are automatically added to a map now.
@@ -5105,7 +5112,15 @@ bool LLViewerShaderMgr::loadShadersDeferred()
         }
         gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/postDeferredNoTCV.glsl", GL_VERTEX_SHADER));
         gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicUtil.glsl", GL_FRAGMENT_SHADER));
-        gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil.glsl", GL_FRAGMENT_SHADER));
+        if (LLPipeline::use16SpotShadowShaders(
+            gSavedSettings.getU32("BDMergeMaxSpotShadows"), gGLManager.mNumTextureImageUnits))
+        {
+            gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil16.glsl", GL_FRAGMENT_SHADER));
+        }
+        else
+        {
+            gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil.glsl", GL_FRAGMENT_SHADER));
+        }
         gDeferredProjectorVolumetricClassicProgram.mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicF.glsl", GL_FRAGMENT_SHADER));
         gDeferredProjectorVolumetricClassicProgram.mShaderLevel = mShaderLevel[SHADER_DEFERRED];
         success = gDeferredProjectorVolumetricClassicProgram.createShader();

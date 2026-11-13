@@ -38,7 +38,7 @@ BASE = 'c4d3614d3e7'
 ROUND1 = '167d3c5c44f'
 ROUND2 = '3439a7e8c3d'
 BLOOM = 'class1/deferred/projectorVolumetricBloomFeedF.glsl'
-G.PREAMBLE += '\n#define SPOT_SHADOW 1\n'
+G.PREAMBLE += '\n#define SPOT_SHADOW 1\n#define SPOT_SHADOWS_16 1\n'
 
 
 class ControlTree(G.SourceTree):
@@ -65,6 +65,9 @@ class Runner(G.AreaRunner):
     def __init__(self, tree, gl):
         self.tree, self.gl, self.textures = tree, gl, {}
         self.preamble=G.PREAMBLE
+        utility=tree.read(G.SHADERS+'/class1/deferred/shadowUtil.glsl')
+        self.shadow_matrix_count = 20 if ('SPOT_SHADOWS_16 1' in self.preamble and
+            'SPOT_SHADOW_MATRIX_COUNT' in utility) else 14
         shaft_source = tree.read(G.SHADERS+'/'+SHAFT)
         self.modern = tree.ref != BASE
         self.mrt = 'out float projvol_termination' in shaft_source
@@ -144,9 +147,9 @@ class Runner(G.AreaRunner):
         gl.param(0x0DE1,0x884C,0x884E); gl.param(0x0DE1,0x884D,0x0203)
         gl.param(0x0DE1,0x2801,0x2601); gl.param(0x0DE1,0x2800,0x2601)
         self._mat(pr,b'proj_mat',light['matrix']@np.linalg.inv(cam.view))
-        mats = np.tile(np.eye(4),(14,1,1)); mats[4:] = light['matrix']@np.linalg.inv(cam.view)
+        mats = np.tile(np.eye(4),(self.shadow_matrix_count,1,1)); mats[4:] = light['matrix']@np.linalg.inv(cam.view)
         data = np.ascontiguousarray(mats.transpose(0,2,1),np.float32)
-        gl.matrix(gl.loc(pr,b'shadow_matrix'),14,0,data.ctypes.data_as(C.POINTER(gl.F)))
+        gl.matrix(gl.loc(pr,b'shadow_matrix'),self.shadow_matrix_count,0,data.ctypes.data_as(C.POINTER(gl.F)))
         planes = light['planes']@np.linalg.inv(cam.view)
         planes = np.ascontiguousarray(planes/np.linalg.norm(planes[:,:3],axis=1)[:,None],np.float32)
         gl.u4fv(gl.loc(pr,b'projvol_frustum_planes'),6,planes.ctypes.data_as(C.POINTER(gl.F)))
@@ -233,9 +236,9 @@ class Runner(G.AreaRunner):
         self._mat(pr,b'inv_proj',np.linalg.inv(cam.proj))
         self._mat(pr,b'projvol_inv_modelview',np.linalg.inv(cam.view))
         self._mat(pr,b'proj_mat',light['matrix']@np.linalg.inv(cam.view))
-        mats = np.tile(np.eye(4),(14,1,1)); mats[4:] = light['matrix']@np.linalg.inv(cam.view)
+        mats = np.tile(np.eye(4),(self.shadow_matrix_count,1,1)); mats[4:] = light['matrix']@np.linalg.inv(cam.view)
         data = np.ascontiguousarray(mats.transpose(0,2,1),np.float32)
-        gl.matrix(gl.loc(pr,b'shadow_matrix'),14,0,data.ctypes.data_as(C.POINTER(gl.F)))
+        gl.matrix(gl.loc(pr,b'shadow_matrix'),self.shadow_matrix_count,0,data.ctypes.data_as(C.POINTER(gl.F)))
         planes = (light['planes'] if planes_override is None else planes_override)@np.linalg.inv(cam.view)
         planes = np.ascontiguousarray(planes/np.linalg.norm(planes[:,:3],axis=1)[:,None],np.float32)
         gl.u4fv(gl.loc(pr,b'projvol_frustum_planes'),6,planes.ctypes.data_as(C.POINTER(gl.F)))
@@ -269,7 +272,7 @@ class Runner(G.AreaRunner):
             if isinstance(val,tuple): self.uf(pr,name,*map(float,val))
             elif isinstance(val,(bool,int,np.integer)): self.ui(pr,name,int(val))
             else: self.uf(pr,name,float(val))
-        for i in range(4,14): self.ui(pr,'shadowMap'+str(i),3)
+        for i in range(4,20): self.ui(pr,'shadowMap'+str(i),3)
         if self.host is not None:
             commands = host_request(self.host, 'U', [dither,1,frame/60.0])
             self.execute(pr,commands,None,None)

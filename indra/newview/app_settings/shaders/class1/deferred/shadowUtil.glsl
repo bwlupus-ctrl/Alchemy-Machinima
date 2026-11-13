@@ -23,6 +23,15 @@
  * $/LicenseInfo$
  */
 
+// The 16-slot variant is admitted only on >=32 fragment texture units.
+#ifdef SPOT_SHADOWS_16
+#define SPOT_SHADOW_COUNT 16
+#define SPOT_SHADOW_MATRIX_COUNT 20
+#else
+#define SPOT_SHADOW_COUNT 10
+#define SPOT_SHADOW_MATRIX_COUNT 14
+#endif
+
 uniform sampler2D   normalMap;
 
 #if defined(SUN_SHADOW)
@@ -50,13 +59,21 @@ uniform sampler2DShadow shadowMap10;
 uniform sampler2DShadow shadowMap11;
 uniform sampler2DShadow shadowMap12;
 uniform sampler2DShadow shadowMap13;
+#ifdef SPOT_SHADOWS_16
+uniform sampler2DShadow shadowMap14;
+uniform sampler2DShadow shadowMap15;
+uniform sampler2DShadow shadowMap16;
+uniform sampler2DShadow shadowMap17;
+uniform sampler2DShadow shadowMap18;
+uniform sampler2DShadow shadowMap19;
+#endif
 #endif
 
 uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform vec2 shadow_res;
 uniform vec2 proj_shadow_res;
-uniform mat4 shadow_matrix[14]; // [BDMerge NSpot] 4 sun + up to 10 spot
+uniform mat4 shadow_matrix[SPOT_SHADOW_MATRIX_COUNT]; // [BDMerge NSpot] 4 sun + up to 16 spot
 uniform vec4 shadow_clip;
 // [ShadowDist P1] Control A: cascade blend width as a fraction of each split
 // (stock 0.25 -> bands 0.75x .. 1.25x). Uploaded from the sampled pack's
@@ -120,8 +137,8 @@ uniform int   soft_shadow_vogel;  // 0 = fixed 12-tap Poisson (default), 1 = Vog
 uniform int   soft_shadow_taps;   // Vogel tap count (clamped to SOFT_SHADOW_VOGEL_MAX)
 // Per projector-shadow slot. Zero is a strict sentinel for the existing
 // global behavior; positive values override only the penumbra growth scale.
-uniform float spot_shadow_softness[10];
-uniform float spot_shadow_detail[10];
+uniform float spot_shadow_softness[SPOT_SHADOW_COUNT];
+uniform float spot_shadow_detail[SPOT_SHADOW_COUNT];
 
 // 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
 const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
@@ -1133,7 +1150,7 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
             float w = 1.0;
             w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;
 
-            // KEEP IN SYNC: this 10-case GLSL dispatch MUST mirror
+            // KEEP IN SYNC: this 16-case GLSL dispatch MUST mirror
             // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
             if (index == 0)
             {
@@ -1180,11 +1197,47 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
                 lpos = detail ? detailSpotReceiver(original_pos,norm,8) : shadow_matrix[12]*spos;
                 shadow += pcfSpotShadow(shadowMap12, lpos, 0.8, spos.xy, spot_shadow_softness[8],detail)*w;
             }
+#ifdef SPOT_SHADOWS_16
+            else if (index == 9)
+#else
             else
+#endif
             {
                 lpos = detail ? detailSpotReceiver(original_pos,norm,9) : shadow_matrix[13]*spos;
                 shadow += pcfSpotShadow(shadowMap13, lpos, 0.8, spos.xy, spot_shadow_softness[9],detail)*w;
             }
+#ifdef SPOT_SHADOWS_16
+            else if (index == 10)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,10) : shadow_matrix[14]*spos;
+                shadow += pcfSpotShadow(shadowMap14, lpos, 0.8, spos.xy, spot_shadow_softness[10],detail)*w;
+            }
+            else if (index == 11)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,11) : shadow_matrix[15]*spos;
+                shadow += pcfSpotShadow(shadowMap15, lpos, 0.8, spos.xy, spot_shadow_softness[11],detail)*w;
+            }
+            else if (index == 12)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,12) : shadow_matrix[16]*spos;
+                shadow += pcfSpotShadow(shadowMap16, lpos, 0.8, spos.xy, spot_shadow_softness[12],detail)*w;
+            }
+            else if (index == 13)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,13) : shadow_matrix[17]*spos;
+                shadow += pcfSpotShadow(shadowMap17, lpos, 0.8, spos.xy, spot_shadow_softness[13],detail)*w;
+            }
+            else if (index == 14)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,14) : shadow_matrix[18]*spos;
+                shadow += pcfSpotShadow(shadowMap18, lpos, 0.8, spos.xy, spot_shadow_softness[14],detail)*w;
+            }
+            else
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,15) : shadow_matrix[19]*spos;
+                shadow += pcfSpotShadow(shadowMap19, lpos, 0.8, spos.xy, spot_shadow_softness[15],detail)*w;
+            }
+#endif
             weight += w;
             shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);
         }
@@ -1290,7 +1343,7 @@ float sampleSpotShadowConservative(vec3 pos, int index)
     // No norm * spot_shadow_offset receiver nudge and no shadow_clip camera-space
     // early-out/fade/weighting - just the sample projected straight into this
     // projector's own map.
-    // KEEP IN SYNC: this 10-case GLSL dispatch MUST mirror
+    // KEEP IN SYNC: this 16-case GLSL dispatch MUST mirror
     // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
     vec4 spos = vec4(pos, 1.0);
     if (index == 0)
@@ -1329,7 +1382,17 @@ float sampleSpotShadowConservative(vec3 pos, int index)
     {
         return pcfSpotShadowConservative(shadowMap12, shadow_matrix[12] * spos);
     }
+#ifdef SPOT_SHADOWS_16
+    if (index == 9) return pcfSpotShadowConservative(shadowMap13, shadow_matrix[13] * spos);
+    if (index == 10) return pcfSpotShadowConservative(shadowMap14, shadow_matrix[14] * spos);
+    if (index == 11) return pcfSpotShadowConservative(shadowMap15, shadow_matrix[15] * spos);
+    if (index == 12) return pcfSpotShadowConservative(shadowMap16, shadow_matrix[16] * spos);
+    if (index == 13) return pcfSpotShadowConservative(shadowMap17, shadow_matrix[17] * spos);
+    if (index == 14) return pcfSpotShadowConservative(shadowMap18, shadow_matrix[18] * spos);
+    return pcfSpotShadowConservative(shadowMap19, shadow_matrix[19] * spos);
+#else
     return pcfSpotShadowConservative(shadowMap13, shadow_matrix[13] * spos);
+#endif
 #else
     return 1.0;
 #endif

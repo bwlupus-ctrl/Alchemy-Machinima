@@ -255,6 +255,12 @@ public:
         DEFERRED_SHADOW11,                  //  "shadowMap11"
         DEFERRED_SHADOW12,                  //  "shadowMap12"
         DEFERRED_SHADOW13,                  //  "shadowMap13"
+        DEFERRED_SHADOW14,                  //  "shadowMap14"
+        DEFERRED_SHADOW15,                  //  "shadowMap15"
+        DEFERRED_SHADOW16,                  //  "shadowMap16"
+        DEFERRED_SHADOW17,                  //  "shadowMap17"
+        DEFERRED_SHADOW18,                  //  "shadowMap18"
+        DEFERRED_SHADOW19,                  //  "shadowMap19"
         DEFERRED_POSITION,                  //  "positionMap"
         DEFERRED_DIFFUSE,                   //  "diffuseRect"
         DEFERRED_SPECULAR,                  //  "specularRect"
@@ -1021,7 +1027,7 @@ public:
 
     // Schema changes discard metadata. Epoch changes invalidate program keys.
     static constexpr const char* SHADER_CACHE_SCHEMA = "620ec4f7-831c-40d2-b391-8b1c94813245";
-    static constexpr U32 SHADER_CACHE_EPOCH = 5;
+    static constexpr U32 SHADER_CACHE_EPOCH = 7;
     static bool readShaderSource(const std::string& filename, std::string& source);
     void initShaderCache(bool enabled, bool second_instance);
     void hashShaderCacheFeatures();

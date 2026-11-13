@@ -2087,8 +2087,14 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("shadowMap11");
     mReservedUniforms.push_back("shadowMap12");
     mReservedUniforms.push_back("shadowMap13");
+    mReservedUniforms.push_back("shadowMap14");
+    mReservedUniforms.push_back("shadowMap15");
+    mReservedUniforms.push_back("shadowMap16");
+    mReservedUniforms.push_back("shadowMap17");
+    mReservedUniforms.push_back("shadowMap18");
+    mReservedUniforms.push_back("shadowMap19");
 
-    llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW13+1);
+    llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW19+1);
 
     mReservedUniforms.push_back("positionMap");
     mReservedUniforms.push_back("diffuseRect");

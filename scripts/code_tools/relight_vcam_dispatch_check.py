@@ -22,7 +22,9 @@ def check_dispatch(g):
     begin = begin[begin.index('    static LLCachedControl<bool> area('):begin.index('    mPrismSavedNearbyLights =')]
     end = method(nv / 'pipeline.cpp', 'void LLPipeline::endPrismAuxiliaryState()')
     end = end[end.index('    if (mPrismAreaStateSaved)'):end.index('    // Discard the temporary')]
-    entry = render[:render.index('    const auto& registry =')]
+    registry_start = render.index('    const auto& registry =')
+    registry_control = render[registry_start:render.index(';', registry_start)+1]
+    entry = render[:registry_start]
     assert lighting.count('renderAreaShadows(debugLightingTerm()') == 2
     assert 'if (area_early)\n        {\n            renderAreaShadows' in lighting
     assert 'if (!area_early)\n        {\n            renderAreaShadows' in lighting
@@ -48,6 +50,7 @@ def check_dispatch(g):
 #include "alshadowdepthmath.h"
 #include "alworldshadowmath.h"
 #include <array>
+#include <type_traits>
 #include <cstring>
 #include <algorithm>
 #include <cmath>
@@ -165,6 +168,12 @@ struct LLUUID {
     bool isNull() const { return *this == LLUUID{}; }
 };
 const LLUUID LLUUID::null{};
+// This fixture supplies world lights only (actor_only=false in dispatch).
+// Preserve the production registry boundary needed by the copied depth policy.
+struct ALCineLightRigManager {
+    static const ALCineLightRigManager& instance() { static ALCineLightRigManager v; return v; }
+    U8 actorOnlyBits(const LLUUID&) const { return 0; }
+};
 struct LLTimer { static double getTotalSeconds() { return 0.0; } };
 struct LLVector4 { float mV[4]={}; LLVector4()=default; LLVector4(float x,float y,float z,float w):mV{x,y,z,w} {} void clear() { for(auto& v:mV) v=0; } void set(float x,float y,float z,float r) { mV[0]=x;mV[1]=y;mV[2]=z;mV[3]=r; } };
 namespace glm {
@@ -239,6 +248,7 @@ struct LLRenderTarget {
 struct VB { void setBuffer() {} void drawArrays(int,int,int) { cb(10,0,0,0,nullptr,nullptr); } } vb;
 struct Take { ALAreaShadow::Selection<LLUUID> selected; ALAreaShadow::Workload work{}; int authoredSteps=0; bool feed=false,segmentedRequested=false; bool planned=false; std::string status; unsigned width=0,height=0,frame=0; };
 struct LLPipeline {
+    static constexpr unsigned MAX_SPOT_SHADOWS=16;
     struct RenderTargetPack {
         LLRenderTarget areaGather[2],areaScratch[2],areaVisibility[2];
         bool areaAllocFailed=false; // log state only
@@ -262,7 +272,7 @@ struct LLPipeline {
     bool mAreaShadowThinRequested=false,mAreaShadowLowMemory=false;
     std::array<LLUUID,8> mAreaShadowIDs{},mPrismSavedAreaIDs{};
     Take mRelightAreaTake,mRelightFeedAreaTake,mPrismSavedAreaTake;
-    std::array<LLUUID,10> mRelightAreaSlotIDs{},mPrismSavedAreaSlotIDs{};
+    std::array<LLUUID,MAX_SPOT_SHADOWS> mRelightAreaSlotIDs{},mPrismSavedAreaSlotIDs{};
     ALAreaShadow::FeedPasses mPrismAreaPasses;
     ALAreaShadow::FeedSet mAreaLiveFeeds; unsigned mAreaLiveFeedsFrame=~0u;
     // Stand-in for the native sampler's shadow_clip; the production dispatch must upload z and w.
@@ -286,9 +296,12 @@ struct LLPipeline {
     VB* mScreenTriangleVB=&vb;
     std::array<LLDrawable,8> drawables;
     std::array<LLDrawable*,8> mLights;
-    static constexpr unsigned MAX_SPOT_SHADOWS=10;
-    std::array<LLDrawable*,10> mShadowSpotLight{};
-    float mSpotLightFade[10]={};
+    std::array<LLDrawable*,MAX_SPOT_SHADOWS> mShadowSpotLight{};
+    float mSpotLightFade[MAX_SPOT_SHADOWS]={};
+    static_assert(std::tuple_size<decltype(mRelightAreaSlotIDs)>::value == MAX_SPOT_SHADOWS);
+    static_assert(std::tuple_size<decltype(mPrismSavedAreaSlotIDs)>::value == MAX_SPOT_SHADOWS);
+    static_assert(std::tuple_size<decltype(mShadowSpotLight)>::value == MAX_SPOT_SHADOWS);
+    static_assert(std::extent<decltype(mSpotLightFade)>::value == MAX_SPOT_SHADOWS);
     LLPipeline() { for(unsigned i=0;i<8;++i) mLights[i]=&drawables[i]; }
     void setLights(int first,const float* light) {
         for(unsigned i=0;i<8;++i) {
@@ -327,11 +340,11 @@ bool gCubeSnapshot=false;
     fixture += '\n' + method(nv / 'pipeline.cpp', 'void LLPipeline::releaseUnusedPrismAreaTargets(')
     # Execute the production entry, including every OFF/view/limit/program gate.
     # Only scene collection is supplied by the fixed fixture objects.
-    fixture += '\n'+entry
+    fixture += '\n'+entry+registry_control+'\n'
     fixture += 'ALAreaShadow::Selection<LLUUID> selected; selected.size=count;\n'
     fixture += 'for(unsigned i=0;i<count;++i) selected.lights[i].id=drawables[i].volume.id;\n'
-    # Light 0 owns native slot 0 (fade .75); the others have no native map.
-    fixture += 'selected.lights[0].shadowMap=true; mShadowSpotLight[0]=&drawables[0]; mSpotLightFade[0]=.75f;\n'
+    # Light 0 owns native slot 15 (fade .75); exercise the new last slot independently of eight area channels.
+    fixture += 'selected.lights[0].shadowMap=true; mShadowSpotLight[15]=&drawables[0]; mSpotLightFade[15]=.75f;\n'
     # Importance scores for the smooth group fade: light i has score 8 - 0.02 i, so every admitted light is within 5 percent of
     # the first dropped one whenever lights are dropped, and fades.
     fixture += 'for(unsigned i=0;i<8;++i) selected.lights[i].score=8.0-0.02*i;\n'
@@ -981,7 +994,9 @@ extern "C" __declspec(dllexport) int run(Callback callback,int action,int slot,i
     g['uf'][2](g['loc'](g['area_gather'],b'area_native_clip'),0,0)
     g['uf'][1](g['loc'](g['area_gather'],b'area_native_offset'),0)
     # ... and the per-channel uniforms (a mapped light 0 at fade .75, the group fade, the Thin march of the hybrid dispatch).
-    for name in (b'area_contact_fade',b'area_dropout',b'area_contact_dist',b'area_regular_mix'):
+    # Far reach is opt-in too; leaving the production upload at 24 m leaks
+    # into the following Thin oracle, whose independent reference uses 8 m.
+    for name in (b'area_contact_fade',b'area_dropout',b'area_contact_dist',b'area_regular_mix',b'area_far_reach'):
         g['uf'][4](g['loc'](g['area_gather'],name),0,0,0,0)
     for name in (b'area_thin_objects',b'area_near_steps',b'area_rest_steps'):
         g['ui'](g['loc'](g['area_gather'],name),0)

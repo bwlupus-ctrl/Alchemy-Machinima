@@ -4069,12 +4069,12 @@
 				left="215"
 				width="143"
 				min_val="2"
-				max_val="10"
+				max_val="16"
 				increment="1"
 				decimal_digits="0"
 				show_text="true"
 				name="bd_max_spot_shadows"
-				tool_tip="How many projector lights cast shadows at once (stock: 2). Each adds a shadow-map pass per frame. Pairs with Stable projector shadows for deterministic slot assignment." />
+				tool_tip="How many projector lights cast shadows at once (default 2, max 16; capped by GPU). Each slot is another shadow pass; up to 64 MB VRAM at 4096 per slot. 16 slots: 1024 MB at 4096 or 256 MB at 2048." />
 			<button
 				name="reset_BDMergeMaxSpotShadows"
 				follows="left|top"

@@ -284,7 +284,8 @@ def engine_checks(V, args, gl, report):
     shader_manager=tree.read('indra/llrender/llshadermgr.cpp')
     check('classic_frozen_shadow_registration',
           'if (features->hasShadows && shader->mDefines.count("PROJVOL_CLASSIC_UTIL") == 0)' in shader_manager and
-          manager.count('mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil.glsl", GL_FRAGMENT_SHADER))') == 1)
+          manager.count('mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil.glsl", GL_FRAGMENT_SHADER))') == 1 and
+          manager.count('mShaderFiles.push_back(make_pair("deferred/projectorVolumetricClassicShadowUtil16.glsl", GL_FRAGMENT_SHADER))') == 1)
     # Every frozen shader, including fallback and deferred reconstruction helper,
     # must be the exact git blob, not a normalized-text or approximate comparison.
     mapping={p:p.replace('projectorVolumetric','projectorVolumetricClassic') for p in [
@@ -307,10 +308,21 @@ def engine_checks(V, args, gl, report):
                   if V.G.SourceTree(FROZEN).exists(SHADERS+'class%d/'%n+module))
         check('shared_helper/'+module,V.G.SourceTree(FROZEN).read(path)==V.G.SourceTree('WORKTREE').read(path))
 
+    from spot_shadow_classic_extension import check_classic_extension
+    from spot_shadow_registration import production_selection
+    registration = production_selection()
+    check('classic_exact_slot_only_extension', check_classic_extension(V.G.REPO,
+        subprocess.check_output(['git','show',FROZEN+':'+SHADERS+'class1/deferred/shadowUtil.glsl'],cwd=V.G.REPO)))
+
     class ClassicTree(V.G.SourceTree):
-        def __init__(self): super().__init__(FROZEN)
+        def __init__(self, requested=16):
+            super().__init__(FROZEN)
+            self.classic_path = registration[(requested,32)][1]
         def read(self,path):
             relative=path.removeprefix(SHADERS)
+            # Exercise the utility selected by actual production registration.
+            if relative == 'class1/deferred/shadowUtil.glsl':
+                return tree.read(SHADERS+'class1/'+self.classic_path)
             return (V.G.REPO/SHADERS/mapping[relative]).read_text(encoding='utf-8') if relative in mapping else V.G.SourceTree('WORKTREE').read(path)
 
     class SharedShadowClassicTree(ClassicTree):
@@ -326,6 +338,15 @@ def engine_checks(V, args, gl, report):
     programs=[classic.shaft,classic.up,
               classic.link('class1/deferred/projectorVolumetricTemporalF.glsl',False),
               classic.link(V.BLOOM,False)]
+    saved = V.G.PREAMBLE
+    try:
+        V.G.PREAMBLE = saved.replace('#define SPOT_SHADOWS_16 1\n','')
+        classic_legacy = V.Runner(ClassicTree(10),gl)
+        legacy_programs = [classic_legacy.shaft, classic_legacy.up,
+            classic_legacy.link('class1/deferred/projectorVolumetricTemporalF.glsl',False),
+            classic_legacy.link(V.BLOOM,False)]
+    finally: V.G.PREAMBLE = saved
+    report['classic_legacy_extra_programs']=len(legacy_programs)
     report['classic_extra_programs']=4
     report['classic_fixture_link_seconds']=time.perf_counter()-t
     lengths=[]
@@ -373,6 +394,8 @@ def engine_checks(V, args, gl, report):
             _,a,_=V.render_look(reference,fixture,classic_default_spec)
             _,b,_=V.render_look(classic,fixture,classic_default_spec)
             check('classic_defaults_bytes/'+name,a.tobytes()==b.tobytes())
+            _,legacy,_=V.render_look(classic_legacy,fixture,classic_default_spec)
+            check('classic_legacy_defaults_bytes/'+name,a.tobytes()==legacy.tobytes())
             _,shared,_=V.render_look(shared_classic,fixture,classic_default_spec)
             check('classic_shared_defaults_bytes/'+name,a.tobytes()==shared.tobytes())
             _,a,_=V.render_look(before,fixture,new_default_spec)
@@ -387,6 +410,8 @@ def engine_checks(V, args, gl, report):
                                                 **{'spot_shadow_detail[0]':flag}))
                     _,a,_=reference.run(fixture,**controls);_,b,_=classic.run(fixture,**controls)
                     check('classic_detail_bytes/%s/soft=%s/flag=%s'%(name,soft,flag),a.tobytes()==b.tobytes())
+                    _,legacy,_=classic_legacy.run(fixture,**controls)
+                    check('classic_legacy_detail_bytes/%s/soft=%s/flag=%s'%(name,soft,flag),a.tobytes()==legacy.tobytes())
                     _,shared,_=shared_classic.run(fixture,**controls)
                     if flag:
                         shared_rim_changed |= a.tobytes()!=shared.tobytes()
@@ -397,6 +422,8 @@ def engine_checks(V, args, gl, report):
                     kwargs=dict(half=half,steps=24,rim=rim,cookie=True,beam=1,conservative=0)
                     _,a,_=reference.run(fixture,**kwargs);_,b,_=classic.run(fixture,**kwargs)
                     check('classic_bytes/%s/%s/%s'%(name,half,rim),a.tobytes()==b.tobytes())
+                    _,legacy,_=classic_legacy.run(fixture,**kwargs)
+                    check('classic_legacy_bytes/%s/%s/%s'%(name,half,rim),a.tobytes()==legacy.tobytes())
             for look in V.parse_looks()['looks']:
                 spec=V.look_spec(V.look_state(look,defaults))
                 # Full is the immutable New reference. Budgeted integration has
@@ -433,9 +460,11 @@ def engine_checks(V, args, gl, report):
             V.G.PREAMBLE+='\n#define PROJVOL_DUST_ENABLE 1\n#define PROJVOL_CONSERVATIVE_SHADOW 1\n'
             dust_ref=V.DustRunner(V.G.SourceTree(FROZEN),gl)
             dust_classic=V.DustRunner(ClassicTree(),gl)
+            V.G.PREAMBLE=V.G.PREAMBLE.replace('#define SPOT_SHADOWS_16 1\n','')
+            dust_legacy=V.DustRunner(ClassicTree(10),gl)
         finally: V.G.PREAMBLE=saved
         volume,_=V.synthetic_dust_volume(gl)
-        dust_ref.volume=dust_classic.volume=volume
+        dust_ref.volume=dust_classic.volume=dust_legacy.volume=volume
         for name,fixture in fixtures.items():
             for half in (False,True):
                 for conservative in (0,1):
@@ -445,6 +474,8 @@ def engine_checks(V, args, gl, report):
                     _,a,_=dust_ref.run(fixture,half=half,conservative=conservative,uniforms=uniforms)
                     _,b,_=dust_classic.run(fixture,half=half,conservative=conservative,uniforms=uniforms)
                     check('classic_dust_bytes/%s/%s/%s'%(name,half,conservative),a.tobytes()==b.tobytes())
+                    _,legacy,_=dust_legacy.run(fixture,half=half,conservative=conservative,uniforms=uniforms)
+                    check('classic_legacy_dust_bytes/%s/%s/%s'%(name,half,conservative),a.tobytes()==legacy.tobytes())
     finally:
         host.stdin.close();assert host.wait(timeout=5)==0
     # Generation gate proves enabled_control propagates to the actual widgets.
