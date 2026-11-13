@@ -880,7 +880,20 @@ float sampleSpotShadow(vec3 p,vec3 n,int i,vec2 uv);
 void main(){vec2 tc=gl_FragCoord.xy/screen_res;vec3 p=getPosition(tc).xyz;vec3 n=getNorm(tc).xyz;
 frag_color=vec4(sampleSpotShadow(p,n,probe_slot,tc));}
 """
-TIMING_LIMIT_MS = 2.0   # per sixteen full-screen lights at 4K; the aim is 1 ms, the measurement repeats to about +-0.5 ms
+TIMING_LIMIT_MS = 2.0   # STRESS rows only (widest kernel: softness = cap - 1; cap 16 has no tighter documented budget)
+# DEFAULT-SETTINGS budget (round 2 gate finding): the real defaults (cap, softness, kernel read from settings.xml),
+# metric - BASE and setting 0 - BASE, 16 full-screen lights at 4K, 'passes' shape. The target is 1 ms; the measurement
+# repeats to about +-0.1 ms on a quiet GPU, so a small explicit noise allowance is added. Do not loosen either number.
+DEFAULT_BUDGET_MS = 1.0
+DEFAULT_NOISE_ALLOWANCE_MS = 0.25
+
+
+def default_budget_failures(row, label):
+    """Failure strings for one default-settings timing row (empty = within DEFAULT_BUDGET_MS + the noise allowance)."""
+    limit = DEFAULT_BUDGET_MS + DEFAULT_NOISE_ALLOWANCE_MS
+    return [f"timing {label}: {what} costs {row[key]:.2f} ms more than BASE over 16 lights at 4K with the default settings "
+            f"(limit {DEFAULT_BUDGET_MS} + {DEFAULT_NOISE_ALLOWANCE_MS} noise = {limit} ms)"
+            for key, what in (('metric_minus_base_ms', 'the metric model'), ('off_minus_base_ms', 'the setting at 0')) if row[key] > limit]
 
 
 def timing_check(r, host, defaults, repeats=20, shapes=('passes', 'one pass'), caps=(6., 16.), tree=None):
@@ -895,7 +908,9 @@ def timing_check(r, host, defaults, repeats=20, shapes=('passes', 'one pass'), c
     'typical' = the sphere + plane (mostly lit, some umbra and penumbra). 'worst' = every pixel in the umbra of a wall
     0.4 m from the lamp, where BOTH models run their widest kernel: the old model's softness is cap - 1, so its radius
     there is the cap too and the difference is the search, not the radius. Max penumbra 6 (the default) and 16.
-    Gated: 'passes' shape, metric - base and off - base, each at most TIMING_LIMIT_MS for the sixteen lights together."""
+    Gated: 'passes' shape, metric - base and off - base, each at most TIMING_LIMIT_MS for the sixteen lights together
+    (stress rows), plus one 'default' row per scene at the REAL defaults (cap, softness, kernel from settings.xml) held to
+    DEFAULT_BUDGET_MS + DEFAULT_NOISE_ALLOWANCE_MS."""
     gl = r.gl
     defines = '#define SPOT_SHADOW 1\n#define SPOT_SHADOWS_16 1\n'
     e = lamp()
@@ -921,9 +936,14 @@ def timing_check(r, host, defaults, repeats=20, shapes=('passes', 'one pass'), c
             bias[:3, :3] *= .5
             bias[:3, 3] = .5
             matrix = bias @ ncam.proj @ ncam.view @ np.linalg.inv(cam.view)
-            for cap in caps:
-                for kernel, vogel in (('poisson', False), ('vogel', True)):
-                    run = run_of(defaults, cap, BDMergeSoftShadowSoftness=cap - 1.)
+            default_cap = float(defaults['BDMergeSoftShadowMaxPenumbra'])
+            default_vogel = bool(int(defaults['RenderShadowSoftVogel']))
+            configs = [(cap, kernel, vogel, False) for cap in caps for kernel, vogel in (('poisson', False), ('vogel', True))]
+            configs.append((default_cap, 'vogel' if default_vogel else 'poisson', default_vogel, True))
+            for cap, kernel, vogel, is_default in configs:
+                if True:
+                    # stress rows: softness forced to cap - 1 (widest kernel); the default row keeps the setting's own softness
+                    run = run_of(defaults, cap) if is_default else run_of(defaults, cap, BDMergeSoftShadowSoftness=cap - 1.)
 
                     def bind(prog, m):
                         r.target_float(cam)
@@ -951,7 +971,8 @@ def timing_check(r, host, defaults, repeats=20, shapes=('passes', 'one pass'), c
                             gl.draw(4, 0, 3)
                     modes = (('base', programs['base'], (0., 0., 0., 0.)), ('off', programs['current'], (0., 0., 0., 0.)),
                              ('metric', programs['current'], metric))
-                    row = dict(check='timing', shape=shape, scene=name, kernel=kernel, cap_texels=cap, resolution='3840x2160', slots=16)
+                    row = dict(check='timing', shape=shape, scene=name, kernel=kernel, cap_texels=cap, resolution='3840x2160', slots=16,
+                               defaults_row=is_default, softness=float(run['BDMergeSoftShadowSoftness']))
                     best = {}
                     for mode, prog, m in modes:
                         bind(prog, m)
@@ -967,7 +988,9 @@ def timing_check(r, host, defaults, repeats=20, shapes=('passes', 'one pass'), c
                     row['off_minus_base_ms'] = best['off'] - best['base']
                     row['metric_minus_base_ms'] = best['metric'] - best['base']
                     rows.append(row)
-                    if passes:
+                    if passes and is_default:
+                        failures += default_budget_failures(row, f"{name} {kernel} cap {cap:.0f} softness {row['softness']:g} (defaults)")
+                    elif passes:
                         for key, label in (('metric_minus_base_ms', 'the metric model'), ('off_minus_base_ms', 'the setting at 0')):
                             if row[key] > TIMING_LIMIT_MS:
                                 failures.append(f"timing {name} {kernel} cap {cap:.0f}: {label} costs {row[key]:.2f} ms more than BASE over 16 lights at 4K "
@@ -1287,6 +1310,13 @@ def evaluate(out, do_negatives=True):
                 caught = True
                 print('[spot-metric] header mutant', name, 'does not compile:', str(ex).strip().splitlines()[-1][:160] if str(ex).strip() else '', flush=True)
             note(name, caught)
+        # the default-settings cost budget: a row just over it must fail, rows at / under it must pass (both models)
+        over = DEFAULT_BUDGET_MS + DEFAULT_NOISE_ALLOWANCE_MS + .01
+        note('default_budget_metric_over_limit', default_budget_failures(dict(metric_minus_base_ms=over, off_minus_base_ms=0.), 'planted'))
+        note('default_budget_off_over_limit', default_budget_failures(dict(metric_minus_base_ms=0., off_minus_base_ms=over), 'planted'))
+        note('default_budget_old_2ms_limit', default_budget_failures(dict(metric_minus_base_ms=1.9, off_minus_base_ms=1.9), 'planted'))
+        note('default_budget_accepts_the_limit', not default_budget_failures(
+            dict(metric_minus_base_ms=DEFAULT_BUDGET_MS + DEFAULT_NOISE_ALLOWANCE_MS, off_minus_base_ms=DEFAULT_BUDGET_MS), 'planted'))
         pipeline = r.tree.read(PIPELINE)
         for name, (before, after) in pipeline_negatives().items():
             assert pipeline.count(before) == 1, ('mutation drift', name)
