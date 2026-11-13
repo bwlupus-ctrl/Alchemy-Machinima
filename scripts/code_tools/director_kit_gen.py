@@ -382,8 +382,14 @@ def validate_data(data: dict) -> None:
         raise GenError("borrowed rig removal must be one searchable rig-status action with structural history")
     # Shaft status and Test shafts add two searchable rows: 2519 -> 2521.
     # Four upstream performance A/B switches: 2521 -> 2525 (11/12).
-    if len(pages) != 40 or row_count != 2525:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2525")
+    # Per-clone Stay in place adds one searchable switch: 2525 -> 2526 (11/13 integration).
+    if len(pages) != 40 or row_count != 2526:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2526")
+    stay = [row for _, page in pages if page["name"] == "ghosts_tab"
+            for card in page["cards"] if card["id"] == "pose"
+            for row in card["rows"] if row.get("w") == "stay_in_place_check"]
+    if len(stay) != 1 or stay[0].get("l") != "Stay in place" or stay[0].get("k") != "toggle" or stay[0].get("d") != 0:
+        raise GenError("Clones Pose & drive requires one default-off Stay in place switch")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

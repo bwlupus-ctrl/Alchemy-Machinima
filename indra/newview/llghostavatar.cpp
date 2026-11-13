@@ -29,6 +29,7 @@
 #include "llghostavatar.h"
 #include "alghostanimmirrormath.h"
 #include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules
+#include "alghoststayinplace.h"     // [StayInPlace] pure placement math
 #include "fsposingmotion.h"         // [ClearAnim] the Poser's motion survives a clear
 #include "llpolyskeletaldistortion.h" // [ClearAnim] applied shape offsets for the neutral rest
 #include "alreflectmath.h"
@@ -1013,6 +1014,7 @@ LLGhostAvatar::LLGhostAvatar(const LLUUID& id, const LLPCode pcode, LLViewerRegi
 // virtual
 LLGhostAvatar::~LLGhostAvatar()
 {
+    clearStayInPlace();
     sOffsetHotGazes.erase(this);
     mOffsetHotRotations.clear();
     if (mRenderOnlyHidden) --sRenderHiddenReasons;
@@ -1184,17 +1186,36 @@ void LLGhostAvatar::refreshVisualBounds(bool force_refresh)
 
 void LLGhostAvatar::ghostSlamPosition(const LLVector3& pos_agent)
 {
+    if (!mStayInPlace)
+    {
+        slamGhostRoot(pos_agent, pos_agent);
+        return;
+    }
+    // [StayInPlace] Every caller passes the AUTHORED root (foot lock, direct
+    // placement, floor hold, the mover's moving root). Remember it and present
+    // it with the current offset on top; the authored value is never changed.
+    mStayAuthoredRootGlobal = gAgent.getPosGlobalFromAgent(pos_agent);
+    mStayAuthoredValid = true;
+    // Never a cached world-space offset: a writer may have turned or scaled the
+    // root since the last presentation (Ghost Edit, floor hold, mover).
+    mStayOffset = measureStayInPlaceOffset();
+    const LLVector3 presented = pos_agent + mStayOffset;
+    slamGhostRoot(presented, mStayRootAuthored ? pos_agent : presented);
+}
+
+void LLGhostAvatar::slamGhostRoot(const LLVector3& object_agent, const LLVector3& root_agent)
+{
     // Set the REAL object position, not just the render root. LLActorMover's
     // applyOverride() paints mRoot only (llactormover.cpp:1894) and explicitly
     // leaves the drawable position alone, which is tolerable for a puppeteered
     // real avatar but not here: a ghost's culling, pixel area, LOD, impostor
     // selection and picking all evaluate off the drawable. If those disagree
     // with where it is drawn, it flickers out at the wrong distances.
-    setPositionAgent(pos_agent);
+    setPositionAgent(object_agent);
 
     // The remainder is LLVOAvatar::slamPosition() (llvoavatar.cpp:4036) with
     // the gAgent teleport omitted.
-    mRoot->setWorldPosition(pos_agent);
+    mRoot->setWorldPosition(root_agent);
     setChanged(TRANSLATED);
     if (mDrawable.notNull())
     {
@@ -1305,12 +1326,24 @@ void LLGhostAvatar::applyDesiredGhostFootPosition()
         return;
     }
 
+    // [StayInPlace] The clone is PRESENTED at the authored root plus its offset;
+    // compare against that, or an enabled clone would re-slam every frame. The
+    // authored root itself is what goes to the slam (and is remembered).
+    LLVector3 presented_root = root_agent;
+    if (mStayInPlace)
+    {
+        mStayAuthoredRootGlobal = gAgent.getPosGlobalFromAgent(root_agent);
+        mStayAuthoredValid = true;
+        presented_root += mStayOffset;
+    }
+
     // Newly cloned appearance data can change pelvis-to-foot over several
     // frames. Only slam when that derived root actually changes so the
     // persistent foot lock does not enqueue redundant drawable moves forever.
-    if (dist_vec_squared(getPositionAgent(), root_agent) <=
+    // (During Studio's post pass a source's root JOINT shows the authored root.)
+    if (dist_vec_squared(getPositionAgent(), presented_root) <=
             F_APPROXIMATELY_ZERO &&
-        dist_vec_squared(mRoot->getWorldPosition(), root_agent) <=
+        dist_vec_squared(mRoot->getWorldPosition(), mStayRootAuthored ? root_agent : presented_root) <=
             F_APPROXIMATELY_ZERO)
     {
         return;
@@ -1347,7 +1380,10 @@ void LLGhostAvatar::syncGhostObjectToMovingRoot()
     // enqueue drawable moves forever while effectively stationary. Compared
     // against the OBJECT position, so slow walks self-limit: drift accumulates
     // to at most ~sqrt(F_APPROXIMATELY_ZERO) (~3 mm) before a sync fires.
-    if (dist_vec_squared(getPositionAgent(), root_agent) <=
+    // [StayInPlace] applyOverride() just repainted the mover's AUTHORED root
+    // without the offset, so an enabled clone is always presented again.
+    if (!mStayInPlace &&
+        dist_vec_squared(getPositionAgent(), root_agent) <=
             F_APPROXIMATELY_ZERO)
     {
         return;
@@ -1377,6 +1413,8 @@ void LLGhostAvatar::setGhostRotation(const LLQuaternion& rotation)
         mDrawable->clearState(LLDrawable::EARLY_MOVE);
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
+    // [StayInPlace] The offset turns with the root: present it for THIS rotation.
+    if (mStayInPlace) applyStayInPlace();
 }
 
 void LLGhostAvatar::setGhostTiltRotation(const LLQuaternion& rotation)
@@ -1410,6 +1448,8 @@ void LLGhostAvatar::setGhostTiltRotation(const LLQuaternion& rotation)
         mDrawable->clearState(LLDrawable::EARLY_MOVE);
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
+    // [StayInPlace] The offset turns with the root: present it for THIS rotation.
+    if (mStayInPlace) applyStayInPlace();
 }
 
 void LLGhostAvatar::reassertTiltRotation()
@@ -1512,9 +1552,13 @@ void LLGhostAvatar::updateEntityOuterTransform()
     {
         return;
     }
+    // [StayInPlace] A scaled clone draws its hips (1 - scale) x the pivot's lag
+    // off the spot, so its pivot follows the compensated root closely.
+    const F32 pivot_epsilon = (mStayInPlace && mEntityScale != 1.f)
+        ? ALGhostStayInPlace::PUBLISH_EPSILON_SQUARED : F_APPROXIMATELY_ZERO;
     if (outer->mEnabled &&
         is_approx_equal(outer->mScale, mEntityScale) &&
-        dist_vec_squared(outer->mFootPivot, foot) < F_APPROXIMATELY_ZERO)
+        dist_vec_squared(outer->mFootPivot, foot) < pivot_epsilon)
     {
         return;
     }
@@ -1587,6 +1631,8 @@ void LLGhostAvatar::setEntityScale(F32 scale)
 {
     mEntityScale = llclamp(scale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
     updateEntityOuterTransform();
+    // [StayInPlace] The offset scales with the drawn body: present it for THIS scale.
+    if (mStayInPlace) applyStayInPlace();
 }
 
 void LLGhostAvatar::neutralizeEntityPhysicsParams()
@@ -2159,6 +2205,292 @@ bool LLGhostAvatar::buildSkeleton(const LLAvatarSkeletonInfo* info)
     return LLVOAvatar::buildSkeleton(info);
 }
 
+// [StayInPlace] The model write lives with the runtime it drives. Instance copies
+// (duplicates, crowd members) copy this session-only field wholesale.
+void ALGhostStudio::setInstanceStayInPlace(const LLUUID& id, bool enabled)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE || inst->mStayInPlace == enabled) return;
+    inst->mStayInPlace = enabled;
+    touchInstances();
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+    {
+        ghost->setStayInPlace(enabled);
+        // A toggle is visible at once, even to a snapshot taken before the next idle.
+        ghost->applyStayInPlace();
+    }
+}
+
+std::set<LLGhostAvatar*> LLGhostAvatar::sStayInPlaceAvatars;
+
+void LLGhostAvatar::setClientHeightKey(const LLUUID& key)
+{
+    mClientHeightKey = key;
+    const auto* inst = ALGhostStudio::instance().getInstance(key);
+    setStayInPlace(inst && inst->mStayInPlace);
+}
+
+void LLGhostAvatar::setStayInPlace(bool enabled)
+{
+    // Overlay helper avatars share this class but have no entity instance.
+    const auto* inst = ALGhostStudio::instance().getInstance(mClientHeightKey);
+    enabled = enabled && inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE && !inst->mDeleting &&
+        !isDead() && !mMarkedForDeath;
+    if (enabled)
+    {
+        mStayDisabling = false; // switched back on before a deferred restore ran
+        if (mStayInPlace) return;
+        mStayInPlace = true;
+        mStaySteppedWindow = false;
+        mStayRootAuthored = false;
+        mStayOffset.clear();
+        // Nothing is presented yet, so the root still is the authored one. The next
+        // root writer (foot lock, mover, placement) refreshes it in any case.
+        mStayAuthoredValid = mRoot && getRegion() && mRoot->getWorldPosition().isFinite();
+        if (mStayAuthoredValid) mStayAuthoredRootGlobal = gAgent.getPosGlobalFromAgent(mRoot->getWorldPosition());
+        sStayInPlaceAvatars.insert(this);
+        return;
+    }
+    if (!mStayInPlace) return;
+    // Put the clone back on its authored placement, exactly. It stays registered
+    // (presenting no offset) until that restore has really run.
+    mStayDisabling = true;
+    finishStayInPlaceDisable();
+}
+
+void LLGhostAvatar::finishStayInPlaceDisable()
+{
+    // An offset is only ever presented on a recorded authored root, so without
+    // one (or on a dying body) there is nothing left to put back.
+    LLVector3 authored;
+    if (isDead() || mMarkedForDeath || !getStayInPlaceAuthoredRoot(authored))
+    {
+        clearStayInPlace();
+        return;
+    }
+    if (!mRoot || !getRegion()) return; // not placeable now: retried from the frame hook
+    clearStayInPlace();
+    slamGhostRoot(authored, authored);
+    updateEntityOuterTransform();
+    refreshVisualBounds(true);
+}
+
+void LLGhostAvatar::clearStayInPlace()
+{
+    if (!mStayInPlace) return;
+    sStayInPlaceAvatars.erase(this);
+    mStayInPlace = false;
+    mStayDisabling = false;
+    mStayAuthoredValid = false;
+    mStaySteppedWindow = false;
+    mStayRootAuthored = false;
+    mStayPassDirtied = false;
+    mStayOffset.clear();
+}
+
+bool LLGhostAvatar::getStayInPlaceAuthoredRoot(LLVector3& root_agent) const
+{
+    if (!mStayInPlace || !mStayAuthoredValid) return false;
+    root_agent = gAgent.getPosAgentFromGlobal(mStayAuthoredRootGlobal);
+    return true;
+}
+
+LLVector3 LLGhostAvatar::getStayInPlaceRenderedOffset() const
+{
+    // The scale pivot rides the root (updateEntityOuterTransform), so the drawn
+    // shift is the root shift; a Floor placement pins the pivot and scales it.
+    return mGhostFloorPosition ? mStayOffset * mEntityScale : mStayOffset;
+}
+
+LLVector3 LLGhostAvatar::measureStayInPlaceOffset()
+{
+    // A deferred switch-off presents no offset; neither does an unbuilt body.
+    if (mStayDisabling || !isBuilt() || !mRoot || !mPelvisp) return LLVector3::zero;
+    // The pelvis hangs off the root, so its local X (forward) / Y (left) are the
+    // clone's own horizontal plane whatever the root's facing, tilt or Floor
+    // flip. The forward rest reference is the active (highest key, as
+    // LLVector3OverrideMap resolves it) pelvis rest override, else 0; sideways
+    // is always centred. Reflect and Flip write local (x, -y, z), so the same
+    // reference holds for them without knowing which wrote the pose.
+    const auto& overrides = mPelvisp->m_attachmentPosOverrides.getMap();
+    const F32 rest_x = overrides.empty() ? 0.f : overrides.rbegin()->second.mV[VX];
+    return ALGhostStayInPlace::rootOffset(mPelvisp->getPosition(), rest_x, mRoot->getScale(),
+        mRoot->getWorldRotation(), mGhostFloorPosition ? 1.f : mEntityScale);
+}
+
+void LLGhostAvatar::presentStayInPlace(const LLVector3& offset, const LLVector3& root_base_agent)
+{
+    LLVector3 authored;
+    if (!getStayInPlaceAuthoredRoot(authored)) return;
+    const LLVector3 object_agent = authored + offset;
+    // While Studio's post pass reads this clone as a SOURCE, its root joint
+    // keeps the authored root; the frame hook presents it right after.
+    const LLVector3 root_agent = mStayRootAuthored ? root_base_agent : root_base_agent + offset;
+    if (!object_agent.isFinite() || !root_agent.isFinite()) return;
+    mStayOffset = offset;
+    if (dist_vec_squared(getPositionAgent(), object_agent) <= ALGhostStayInPlace::PUBLISH_EPSILON_SQUARED &&
+        dist_vec_squared(mRoot->getWorldPosition(), root_agent) <= ALGhostStayInPlace::PUBLISH_EPSILON_SQUARED)
+    {
+        return; // a held pose: nothing to publish
+    }
+    // The same late-placement contract as a foot or gizmo write after avatar
+    // evaluation: object, drawable, root, child matrices, palettes, attachments.
+    slamGhostRoot(object_agent, root_agent);
+    updateEntityOuterTransform();
+    refreshVisualBounds();
+}
+
+// Idempotent: measures the CURRENT pelvis, root rotation and scale, and publishes
+// only when the presented placement really changes. Run after every late
+// pelvis, rotation or scale writer.
+void LLGhostAvatar::applyStayInPlace()
+{
+    if (!mStayInPlace) return;
+    if (mStayDisabling)
+    {
+        finishStayInPlaceDisable();
+        return;
+    }
+    if (isDead() || mMarkedForDeath || !isBuilt() || !mRoot || !mPelvisp || !getRegion()) return;
+    LLVector3 authored;
+    if (!getStayInPlaceAuthoredRoot(authored)) return;
+    presentStayInPlace(measureStayInPlaceOffset(), authored);
+}
+
+// static
+void LLGhostAvatar::applyStayInPlaceAvatars()
+{
+    for (auto it = sStayInPlaceAvatars.begin(); it != sStayInPlaceAvatars.end();)
+    {
+        LLGhostAvatar* ghost = *it++; // a deferred switch-off leaves the registry here
+        // Any Studio post pass or Stepped window of an earlier point is over.
+        if (ghost->mStayRootAuthored) ghost->endStayInPlacePostPass();
+        ghost->mStaySteppedWindow = false;
+        ghost->applyStayInPlace();
+    }
+}
+
+// static
+void LLGhostAvatar::beginStayInPlacePostPass()
+{
+    // Studio's post pass places Reflect "Mirror position" clones from their
+    // SOURCE's root joint (Wall and Floor) and stores the result as authored
+    // placement. A source with Stay in place on therefore shows it its AUTHORED
+    // root joint for the length of that pass. Joint only; nothing is published.
+    for (LLGhostAvatar* ghost : sStayInPlaceAvatars)
+    {
+        LLVector3 authored;
+        if (ghost->mStayDisabling || ghost->isDead() || !ghost->mRoot || !hasLiveSource(ghost->getID()) ||
+            !ghost->getStayInPlaceAuthoredRoot(authored)) continue;
+        // No child update here: a joint position write marks the whole subtree
+        // dirty and every world accessor resolves its parents lazily, so a reader
+        // in the pass sees one consistent authored skeleton. The CACHED world
+        // matrices (which rendering reads directly) stay the presented ones for
+        // as long as nothing in the pass resolves them: the root's matrix-dirty
+        // bit, set by this write, is the witness.
+        ghost->mStayPassRoot = ghost->mRoot->getWorldPosition();
+        ghost->mRoot->setWorldPosition(authored);
+        ghost->mStayPassDirtied = (ghost->mRoot->mDirtyFlags & LLJoint::MATRIX_DIRTY) != 0;
+        ghost->mStayRootAuthored = true;
+    }
+}
+
+void LLGhostAvatar::endStayInPlacePostPass()
+{
+    mStayRootAuthored = false;
+    if (isDead() || !mRoot) return;
+    // Did ANYTHING in the pass resolve this skeleton's world matrices at the
+    // authored root? Every such writer -- a mirror, Reflect or Flip stamp, the
+    // start-offset history, a tilt re-assert, a placement or transform write, a
+    // bounds refresh, any world-matrix read -- resolves the root first and so
+    // clears the matrix-dirty bit the pass set on it. No list of writers.
+    const bool resolved = mStayPassDirtied && !(mRoot->mDirtyFlags & LLJoint::MATRIX_DIRTY);
+    // Then the cached child matrices (and whatever was published from them) are
+    // in authored space: keep the authored joint, so the presentation that
+    // follows sees the difference and publishes the presented skeleton.
+    if (resolved) return;
+    // Untouched: the cached matrices still are the presented ones. Put the exact
+    // presented root joint back, so a held pose publishes nothing at all.
+    mRoot->setWorldPosition(mStayPassRoot);
+}
+
+// static
+void LLGhostAvatar::beginStayInPlaceStepped(LLVOAvatar* avatar)
+{
+    if (!avatar || !avatar->isGhostAvatar()) return;
+    LLGhostAvatar* ghost = static_cast<LLGhostAvatar*>(avatar);
+    LLVector3 authored;
+    if (ghost->mStayDisabling || ghost->isDead() || !ghost->mRoot || !ghost->getStayInPlaceAuthoredRoot(authored)) return;
+    // Stepped must read and hold the AUTHORED root: a held root would otherwise
+    // carry a stale offset, and its limb history would see the compensation as
+    // body travel. Joint matrices only; nothing is published.
+    ghost->mRoot->setWorldPosition(authored);
+    ghost->mRoot->updateWorldMatrixChildren();
+    ghost->mStaySteppedWindow = true;
+}
+
+// static
+void LLGhostAvatar::presentStayInPlaceStepped(bool recapture_verify)
+{
+    for (LLGhostAvatar* ghost : sStayInPlaceAvatars)
+    {
+        if (!ghost->mStaySteppedWindow || ghost->isDead() || !ghost->isBuilt() || !ghost->mRoot ||
+            !ghost->mPelvisp || !ghost->getRegion()) continue;
+        // The root as Stepped left it (the smooth authored root, or its own held
+        // one) and the pelvis and root rotation it actually presents.
+        const LLVector3 stepped_root = ghost->mRoot->getWorldPosition();
+        ghost->presentStayInPlace(ghost->measureStayInPlaceOffset(), stepped_root);
+        if (!recapture_verify) continue;
+        // StepAnimDebugVerify captured its expected render state inside
+        // writeOverlay(), before this presentation moved the clone and what it
+        // wears. Capture the state that is really rendered.
+        ghost->captureStepAnimRenderState();
+        for (const auto& point : ghost->mAttachmentPoints)
+        {
+            if (!point.second) continue;
+            for (LLViewerObject* object : point.second->mAttachedObjects)
+            {
+                LLControlAvatar* worn = (object && !object->isDead() && object->isAnimatedObject())
+                    ? object->getControlAvatar() : nullptr;
+                if (worn && !worn->isDead()) worn->captureStepAnimRenderState();
+            }
+        }
+    }
+}
+
+// static
+void LLGhostAvatar::steppedVerifyRoot(const LLVOAvatar* avatar, LLVector3& root_agent)
+{
+    if (!avatar || !avatar->isGhostAvatar()) return;
+    const LLGhostAvatar* ghost = static_cast<const LLGhostAvatar*>(avatar);
+    LLVector3 authored;
+    if (!ghost->getStayInPlaceAuthoredRoot(authored)) return;
+    // The ACTUAL joint, never cached intent: where the presenter left it (its own
+    // tolerance) it stands for the authored root Stepped restored; anywhere else
+    // it is reported, less the offset, so a real root change still shows.
+    if (dist_vec_squared(root_agent, authored + ghost->mStayOffset) <= ALGhostStayInPlace::PUBLISH_EPSILON_SQUARED)
+        root_agent = authored;
+    else
+        root_agent -= ghost->mStayOffset;
+}
+
+// static
+void LLGhostAvatar::endStayInPlaceStepped()
+{
+    // Stepped has put its smooth pose back (a root position it held stays
+    // behind, moved by the offset; the absolute write below replaces it).
+    // Present the smooth pose, so a snapshot between frames or a UI edit before
+    // the next idle still sees the hips over the spot.
+    for (auto it = sStayInPlaceAvatars.begin(); it != sStayInPlaceAvatars.end();)
+    {
+        LLGhostAvatar* ghost = *it++;
+        if (!ghost->mStaySteppedWindow) continue;
+        ghost->mStaySteppedWindow = false;
+        ghost->applyStayInPlace();
+    }
+}
+
 void LLGhostAvatar::setDirectedMirror(bool enabled)
 {
     if (mDirectedMirror == enabled && enabled) return;
@@ -2445,8 +2777,11 @@ void LLGhostAvatar::applyReflectStamp(const LLVector3& normal, bool hot_gaze)
         if (q.isFinite())
         {
             mRoot->setWorldRotation(q);
+            // [StayInPlace] The hold is an AUTHORED root: idleUpdate hands it back
+            // to ghostSlamPosition(), which presents the offset on top again.
             if (floor && mGhostFloorPosition)
-                mReflectFloorRootHold.capture(gAgent.getPosGlobalFromAgent(mRoot->getWorldPosition()), q);
+                mReflectFloorRootHold.capture(mStayInPlace && mStayAuthoredValid ? mStayAuthoredRootGlobal :
+                    gAgent.getPosGlobalFromAgent(mRoot->getWorldPosition()), q);
         }
         else written = false;
     }
@@ -4238,6 +4573,7 @@ std::string LLGhostAvatar::getRigDiagnosticText(bool include_live_render_state,
 
 void LLGhostAvatar::markForDeath()
 {
+    clearStayInPlace();
     sOffsetHotGazes.erase(this);
     mOffsetHotRotations.clear();
     // Deferred death, mirroring LLControlAvatar. markDead() must never run
@@ -4249,6 +4585,7 @@ void LLGhostAvatar::markForDeath()
 // virtual
 void LLGhostAvatar::markDead()
 {
+    clearStayInPlace();
     sOffsetHotGazes.erase(this);
     mOffsetHotRotations.clear();
     releaseSourceReference();

@@ -884,6 +884,9 @@ void ALSteppedAnimRuntime::applyHeld()
         LLViewerObject* object = gObjectList.findObject(id);
         LLVOAvatar* avatar = object ? object->asAvatar() : nullptr;
         if (!eligible(avatar)) continue;
+        // [StayInPlace] Capture and hold the clone's AUTHORED root, never its
+        // presented one. One empty-registry test when every switch is off.
+        if (LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::beginStayInPlaceStepped(avatar);
         Entry& entry = mEntries[id];
         Entry* decision_source = nullptr;
         if (entry.mDecisionSource.notNull())
@@ -948,6 +951,15 @@ void ALSteppedAnimRuntime::applyHeld()
         ALSteppedAnim::applyAttachmentHolds(entry.mClasses, entry.mParents, entry.mAssignment.heldClasses,
                                             entry.mAttachHeld, entry.mWritten);
         writeOverlay(avatar, entry, entry.mWritten);
+    }
+    // [StayInPlace] Every overlay is written: keep the hips over the spot for
+    // the pelvis and root rotation Stepped actually presents.
+    if (LLGhostAvatar::hasStayInPlaceAvatars())
+    {
+        // StepAnimDebugVerify then expects what is really rendered, not the
+        // state writeOverlay() captured before this presentation.
+        static LLCachedControl<bool> stay_verify(gSavedSettings, "StepAnimDebugVerify");
+        LLGhostAvatar::presentStayInPlaceStepped(stay_verify);
     }
     if (sHasOverlay)
         ALGhostStudio::instance().applyStepAnimNameplateOffsets([this](const LLUUID& id)
@@ -1033,6 +1045,8 @@ void ALSteppedAnimRuntime::endFrameRestore()
             if (avatar && !avatar->isDead() && avatar->getRootJoint()) restoreOverlay(avatar, entry);
         }
     }
+    // [StayInPlace] Mirror applyHeld(): the smooth pose is back, present it.
+    if (LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::endStayInPlaceStepped();
     for (auto it = mEntries.begin(); it != mEntries.end();)
         if (it->second.mDropAfterRestore) it = mEntries.erase(it); else ++it;
     sHasOverlay = false;
@@ -1139,8 +1153,12 @@ void ALSteppedAnimRuntime::verifyRestored(const char* point)
                         << " for " << item.first << " joint " << i << LL_ENDL;
             }
             LLJoint* root = avatar->getRootJoint();
+            // [StayInPlace] Stepped held and restored the AUTHORED root; the root joint
+            // then carries the presented offset again. Compare what Stepped owns.
+            LLVector3 verify_root = root ? root->getPosition() : LLVector3::zero;
+            if (root && LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::steppedVerifyRoot(avatar, verify_root);
             if (root && (((entry.mVerifyRootMask & WRITE_ROT) && !rotEqual(root->getRotation(), entry.mVerifyPose.rootRot)) ||
-                         ((entry.mVerifyRootMask & WRITE_POS) && !vecEqual(root->getPosition(), entry.mVerifyPose.rootPos))))
+                         ((entry.mVerifyRootMask & WRITE_POS) && !vecEqual(verify_root, entry.mVerifyPose.rootPos))))
                 LL_WARNS("StepAnim") << "Unexpected post-restore root change at " << point
                     << " for " << item.first << LL_ENDL;
         }

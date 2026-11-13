@@ -1,0 +1,16 @@
+{
+  "base": "8c350a71b4e",
+  "description": "Stay in place: arrival facing toward a cast member and the no-path heading preview read where the avatar stands (LLVOAvatar::getPlacedRootPosition), not a Stay in place clone's presented root. Two read-only substitutions; identical for every other avatar. Newest llactormover layer; exact reversal to base.",
+  "files": {
+    "llactormover.cpp": [
+      {
+        "before": "                    LLVector3 d = tgt->getRootJoint()->getWorldPosition() - agent;\n",
+        "after": "                    LLVector3 d = tgt->getPlacedRootPosition() - agent;   // [StayInPlace] where the target stands\n"
+      },
+      {
+        "before": "            LLVector3 origin = av->getRootJoint()->getWorldPosition();\n            origin.mV[VZ] += PATH_RIBBON_LIFT - av->getPelvisToFoot();   // just above ground\n",
+        "after": "            LLVector3 origin = av->getPlacedRootPosition();   // [StayInPlace] where the move will start\n            origin.mV[VZ] += PATH_RIBBON_LIFT - av->getPelvisToFoot();   // just above ground\n"
+      }
+    ]
+  }
+}

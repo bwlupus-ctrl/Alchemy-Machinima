@@ -1385,6 +1385,7 @@ set(viewer_HEADER_FILES
     alghostanimassetindex.h
     alghostanimdrop.h # [CloneAnimDrop]
     alghostclearanim.h # [ClearAnim]
+    alghoststayinplace.h # [StayInPlace]
     alwornanimnames.h # [CloneAnimDrop]
     alworldoverlayviz.h
     alscrollfocus.h

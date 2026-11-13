@@ -5909,7 +5909,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
             {
                 if (tgt->getRootJoint())
                 {
-                    LLVector3 d = tgt->getRootJoint()->getWorldPosition() - agent;
+                    LLVector3 d = tgt->getPlacedRootPosition() - agent;   // [StayInPlace] where the target stands
                     target_yaw = (d.magVecSquared() > 1e-4f)
                                      ? atan2f(d.mV[VY], d.mV[VX])
                                      : atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
@@ -15054,7 +15054,7 @@ void LLActorMover::renderHeadingPreview(bool depth_aware)
             const F32 yaw = atan2f(at.mV[VY], at.mV[VX]) + configuredHeading() * DEG_TO_RAD;
             const LLVector3 dir(cosf(yaw), sinf(yaw), 0.f);
 
-            LLVector3 origin = av->getRootJoint()->getWorldPosition();
+            LLVector3 origin = av->getPlacedRootPosition();   // [StayInPlace] where the move will start
             origin.mV[VZ] += PATH_RIBBON_LIFT - av->getPelvisToFoot();   // just above ground
             const LLVector3 end = origin + dir * dist;
 

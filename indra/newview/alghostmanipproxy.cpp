@@ -1014,8 +1014,12 @@ void ALGhostManipProxy::pushInstanceToProxy()
             mProxyUsesBodyPivot = true;
             // Foot placement lifts the skeleton root in WORLD Z, not along
             // the authored rotation. Keep that lift unrotated during pitch/roll.
-            const LLVector3 rendered_root = ghost->getRootJoint()->getWorldPosition() *
+            LLVector3 rendered_root = ghost->getRootJoint()->getWorldPosition() *
                 ghost->getClientOuterTransformMatrix();
+            // [StayInPlace] The Stay in place shift turns WITH the body, unlike
+            // that lift: keep it out, so a rotate drag stores the authored foot.
+            if (LLGhostAvatar::hasStayInPlaceAvatars())
+                rendered_root -= ghost->getStayInPlaceRenderedOffset();
             mProxyRootOffset = rendered_root - gAgent.getPosAgentFromGlobal(foot);
         }
     }

@@ -590,7 +590,14 @@ public:
     //    impostor centre-minus-foot (offset cancels), 14532 live root (6);
     //    alghoststudio.cpp overlay head-paired foot + palette anchor (2);
     //    llvoavatar.cpp 11960 (1).
+    // [StayInPlace] For an entity clone with Stay in place on, base space is also
+    // free of that presentation shift: the authored root is returned, not the
+    // presented one (LLGhostAvatar::getStayInPlaceAuthoredRoot).
     LLVector3   getBaseRootPosition() const;
+    // [StayInPlace] The root a reader should AIM AT or START FROM (arrival facing,
+    // heading preview, mirror bisector): the root joint's world position, but the
+    // authored root for a Stay in place clone. Client height is left in.
+    LLVector3   getPlacedRootPosition() const;
 // [RLVa:KB] - Checked: RLVa-2.2 (@setcam_avdist)
     bool        isRlvSilhouette() const;
 // [/RLVa:KB]

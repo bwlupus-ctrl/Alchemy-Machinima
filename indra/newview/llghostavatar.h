@@ -98,8 +98,42 @@ public:
     // Studio BEFORE applyEntityRuntimeState() so the very first foot lock already
     // resolves the clone's local height offset (inst.mEntityId is only published
     // AFTER that call, so findInstanceByRuntime() would miss).
-    void setClientHeightKey(const LLUUID& key) { mClientHeightKey = key; }
+    // [StayInPlace] Also re-arms Stay in place on the fresh body of an instance whose
+    // switch is on (a respawn), before that body is first placed.
+    void setClientHeightKey(const LLUUID& key);
     const LLUUID& getClientHeightKey() const { return mClientHeightKey; }
+
+    // [StayInPlace] Per-clone "Stay in place" (entity clones only, session only).
+    // The skeleton is NEVER written. Once this frame's pose is final, the pelvis's
+    // horizontal drift in the clone-root frame is measured and the PRESENTED
+    // root/object placement is shifted by its opposite, on top of the AUTHORED
+    // root every root writer passes to ghostSlamPosition(). Authored placement
+    // (path, drag, Reflect placement, crowd, foot lock, undo) is never rewritten;
+    // authoring reads take LLVOAvatar::getBaseRootPosition().
+    // With every switch off this is one empty-registry / one flag test per site.
+    static bool hasStayInPlaceAvatars() { return !sStayInPlaceAvatars.empty(); }
+    // LLAppViewer::idle(): right after ALGhostStudio::updatePostObjectList() (the
+    // last ordinary pose writer) and again after the Switchboard tick (the last
+    // late one), before every placement consumer. Idempotent.
+    static void applyStayInPlaceAvatars();
+    // LLAppViewer::idle(), right before updatePostObjectList(): a Stay in place
+    // clone that is another clone's SOURCE shows that pass its authored root.
+    static void beginStayInPlacePostPass();
+    // ALSteppedAnimRuntime only. Stepped reads and holds the AUTHORED root; the
+    // offset is re-derived from the pelvis it presents, and again from the
+    // smooth pose once it has restored its overlay.
+    static void beginStayInPlaceStepped(LLVOAvatar* avatar);
+    static void presentStayInPlaceStepped(bool recapture_verify);
+    static void endStayInPlaceStepped();
+    // StepAnimDebugVerify: the root Stepped restored, under the presented offset.
+    static void steppedVerifyRoot(const LLVOAvatar* avatar, LLVector3& root_agent);
+    void setStayInPlace(bool enabled);
+    void applyStayInPlace();
+    bool isStayInPlace() const { return mStayInPlace; }
+    // The authored root (agent space) under the presented one; false when off.
+    bool getStayInPlaceAuthoredRoot(LLVector3& root_agent) const;
+    // How far the DRAWN body is shifted (outer scale included); zero when off.
+    LLVector3 getStayInPlaceRenderedOffset() const;
 
     // LLVOAvatar::slamPosition() MINUS its opening gAgent.setPositionAgent()
     // (llvoavatar.cpp:4038), which would teleport the real agent onto the ghost.
@@ -319,6 +353,24 @@ public:
     static S32 clearTestHarnessGhosts();
 
 private:
+    // [StayInPlace]
+    static std::set<LLGhostAvatar*> sStayInPlaceAvatars;
+    bool mStayInPlace = false;
+    bool mStayAuthoredValid = false;
+    bool mStaySteppedWindow = false;     // Stepped's held overlay is presented
+    bool mStayRootAuthored = false;      // root joint shows the authored root (Studio post pass)
+    bool mStayPassDirtied = false;       // ...and that write set the root's matrix-dirty bit
+    LLVector3 mStayPassRoot;             // the presented root joint to put back after the pass
+    void endStayInPlacePostPass();
+    bool mStayDisabling = false;         // switched off; authored restore still owed
+    void finishStayInPlaceDisable();
+    LLVector3 mStayOffset;               // agent space; inside the object + root position
+    LLVector3d mStayAuthoredRootGlobal;  // the last AUTHORED root a writer passed in
+    void clearStayInPlace();
+    LLVector3 measureStayInPlaceOffset();
+    void presentStayInPlace(const LLVector3& offset, const LLVector3& root_base_agent);
+    // ghostSlamPosition()'s body: object/drawable and root joint placed apart.
+    void slamGhostRoot(const LLVector3& object_agent, const LLVector3& root_agent);
     void publishGhostTransform();
     void applyDesiredGhostFootPosition();
     // While Actor Mover drives this ghost (applyOverride() returned true) it

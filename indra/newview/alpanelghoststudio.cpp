@@ -539,6 +539,10 @@ bool ALPanelGhostStudio::postBuild()
     mAnimPauseBtn = getChild<LLButton>("btn_anim_pause");
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
     mDriveModeCombo = getChild<LLComboBox>("drive_mode_combo");
+    // [StayInPlace] Kit-only row: the standalone legacy panel has no such control.
+    mStayInPlaceCheck = findChild<LLCheckBoxCtrl>("stay_in_place_check");
+    mStayInPlaceRow = ALKitRow::rowFor(mStayInPlaceCheck);
+    if (mStayInPlaceRow) mStayInPlaceLabel = mStayInPlaceRow->findChild<LLTextBox>("stay_in_place_check_label");
     mReflectPlane = getChild<LLComboBox>("reflect_plane_combo");
     mReflectOrientation = getChild<LLComboBox>("reflect_orientation_combo");
     // Populate the real combo in both the shared XUI and generated kit hosts.
@@ -862,6 +866,7 @@ bool ALPanelGhostStudio::postBuild()
     mAnimPauseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimPause(); });
     mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
     mDriveModeCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDriveModeCommit(); });
+    if (mStayInPlaceCheck) mStayInPlaceCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onStayInPlaceCommit(); });
     mDirectedAnimEdit->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedAnimCommit(); });
     mDirectedMirrorCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onDirectedMirrorCommit(); });
     mSourceAnimationsCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onSourceAnimationCommit(); });
@@ -1939,6 +1944,17 @@ void ALPanelGhostStudio::refreshDetail()
     setEnabledIfChanged(mAnimResumeBtn, entity);
     setEnabledIfChanged(mEntityLookCombo, entity);
     setEnabledIfChanged(mDriveModeCombo, entity);
+    // [StayInPlace] Entity clones only; an overlay clone gets the plain reason.
+    setEnabledIfChanged(mStayInPlaceRow, entity);
+    setEnabledIfChanged(mStayInPlaceCheck, entity);
+    setValueIfChanged(mStayInPlaceCheck, LLSD(entity && inst->mStayInPlace), true);
+    static const std::string stay_help =
+        "Keep this clone's hips over its spot when an animation moves them forward or sideways. Height is kept, so sits and crouches still work. Entity clones only.";
+    static const std::string stay_entity_only = "Entity clones only";
+    const std::string& stay_tip = entity ? stay_help : stay_entity_only;
+    setToolTipIfChanged(mStayInPlaceRow, stay_tip);
+    setToolTipIfChanged(mStayInPlaceCheck, stay_tip);
+    setToolTipIfChanged(mStayInPlaceLabel, stay_tip);
     const bool reflect = entity && inst->mDriveMode == ALGhostStudio::DRIVE_REFLECT;
     const auto* light_ghost = entity ? dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst->mEntityId)) : nullptr;
     setEnabledIfChanged(mMirrorLightRig, light_ghost && !light_ghost->isDead() && light_ghost->isPoseStampDriven());
@@ -3626,6 +3642,47 @@ bool ALPanelGhostStudio::playInventoryAnimationOnSelectedClones(const LLUUID& it
     applyInventoryAnimationTo(ALGhostStudio::instance().selectedEntityClones(),
                               item->getAssetUUID(), item->getName());
     return true;
+}
+
+// [StayInPlace] The selected entity clones (group headers expanded), one undo step.
+void ALPanelGhostStudio::onStayInPlaceCommit()
+{
+    if (!mStayInPlaceCheck) return;
+    const bool enabled = mStayInPlaceCheck->getValue().asBoolean();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    auto before = std::make_shared<std::vector<std::pair<LLUUID, bool>>>();
+    // selectedInstances expands group headers and deduplicates multi-selection.
+    for (const LLUUID& id : selectedInstances())
+    {
+        const auto* inst = studio.getInstance(id);
+        if (!inst || inst->mDeleting || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE || inst->mStayInPlace == enabled) continue;
+        before->emplace_back(id, inst->mStayInPlace);
+        studio.setInstanceStayInPlace(id, enabled);
+    }
+    if (before->empty()) return;
+    if (ALKitShell* shell = ALKitShell::find(this))
+    {
+        auto validate = [before, enabled](bool redo, std::string& reason)
+        {
+            for (const auto& saved : *before)
+            {
+                const auto* inst = ALGhostStudio::instance().getInstance(saved.first);
+                if (!inst || inst->mDeleting || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
+                    inst->mStayInPlace != (redo ? saved.second : enabled))
+                {
+                    reason = "Those clones changed since Stay in place was edited";
+                    return false;
+                }
+            }
+            return true;
+        };
+        shell->history().recordCustom(this, "clone_stay_in_place", "Stay in place", [before, enabled](bool redo, std::string&)
+        {
+            for (const auto& saved : *before)
+                ALGhostStudio::instance().setInstanceStayInPlace(saved.first, redo ? enabled : saved.second);
+            return true;
+        }, false, validate);
+    }
 }
 
 void ALPanelGhostStudio::onDirectedMirrorCommit()

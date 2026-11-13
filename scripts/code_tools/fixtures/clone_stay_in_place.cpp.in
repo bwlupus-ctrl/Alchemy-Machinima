@@ -1,0 +1,858 @@
+// Native fixture for the entity clone "Stay in place" switch (root placement
+// compensation). Small doubles run the UNCHANGED production methods, which
+// clone_stay_in_place_check.py splices in at the markers.
+#include <cassert>
+#include <algorithm>
+#include <cmath>
+#include <cstring>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <memory>
+#include <set>
+#include <string>
+#include <utility>
+#include <vector>
+#include "alghoststayinplace.h"
+using F32 = float; using F64 = double; using U32 = unsigned; using S32 = int;
+#define llmax std::max
+#define llmin std::min
+#define llfinite std::isfinite
+#define llclamp std::clamp
+constexpr float GHOST_SCALE_MIN = 0.1f, GHOST_SCALE_MAX = 10.f;
+struct Settings {} gSavedSettings;
+bool gStepVerify = false; // StepAnimDebugVerify
+template <class T> struct LLCachedControl {
+    LLCachedControl(Settings&, const char*) {}
+    operator T() const { return gStepVerify; }
+};
+struct NullStream {
+    template <class T> NullStream& operator<<(const T&) { return *this; }
+    NullStream& operator<<(std::ostream& (*)(std::ostream&)) { return *this; }
+};
+#define LL_WARNS(tag) NullStream()
+#define LL_ENDL std::endl
+constexpr F32 F_APPROXIMATELY_ZERO = 0.00001f;
+enum { VX, VY, VZ, VW };
+enum { TRANSLATED = 1, ROTATED = 2 };
+void assert_main_thread() {}
+
+struct LLUUID {
+    int value = 0;
+    LLUUID(int v = 0) : value(v) {}
+    operator int() const { return value; }
+    static const LLUUID null;
+};
+const LLUUID LLUUID::null;
+
+struct LLQuaternion {
+    F32 mQ[4]{0.f, 0.f, 0.f, 1.f};
+    LLQuaternion() = default;
+    LLQuaternion(F32 angle, F32 ax, F32 ay, F32 az) {
+        const F32 n = std::sqrt(ax*ax + ay*ay + az*az), s = std::sin(angle * .5f) / n;
+        mQ[0] = ax*s; mQ[1] = ay*s; mQ[2] = az*s; mQ[3] = std::cos(angle * .5f);
+    }
+    bool isFinite() const { return std::isfinite(mQ[0] + mQ[1] + mQ[2] + mQ[3]); }
+};
+struct LLVector3 {
+    F32 mV[3]{};
+    LLVector3() = default;
+    LLVector3(F32 x, F32 y, F32 z) : mV{x, y, z} {}
+    void clear() { mV[0] = mV[1] = mV[2] = 0.f; }
+    bool isFinite() const { return std::isfinite(mV[0]) && std::isfinite(mV[1]) && std::isfinite(mV[2]); }
+    void scaleVec(const LLVector3& s) { mV[0] *= s.mV[0]; mV[1] *= s.mV[1]; mV[2] *= s.mV[2]; }
+    LLVector3 operator+(const LLVector3& b) const { return {mV[0]+b.mV[0], mV[1]+b.mV[1], mV[2]+b.mV[2]}; }
+    LLVector3 operator-(const LLVector3& b) const { return {mV[0]-b.mV[0], mV[1]-b.mV[1], mV[2]-b.mV[2]}; }
+    LLVector3 operator*(F32 k) const { return {mV[0]*k, mV[1]*k, mV[2]*k}; }
+    LLVector3& operator+=(const LLVector3& b) { *this = *this + b; return *this; }
+    LLVector3& operator-=(const LLVector3& b) { *this = *this - b; return *this; }
+    static const LLVector3 zero;
+};
+const LLVector3 LLVector3::zero;
+// The viewer's own v * q.
+LLVector3 operator*(const LLVector3& a, const LLQuaternion& rot) {
+    const F32 rw = -rot.mQ[VX]*a.mV[VX] - rot.mQ[VY]*a.mV[VY] - rot.mQ[VZ]*a.mV[VZ];
+    const F32 rx =  rot.mQ[VW]*a.mV[VX] + rot.mQ[VY]*a.mV[VZ] - rot.mQ[VZ]*a.mV[VY];
+    const F32 ry =  rot.mQ[VW]*a.mV[VY] + rot.mQ[VZ]*a.mV[VX] - rot.mQ[VX]*a.mV[VZ];
+    const F32 rz =  rot.mQ[VW]*a.mV[VZ] + rot.mQ[VX]*a.mV[VY] - rot.mQ[VY]*a.mV[VX];
+    return {-rw*rot.mQ[VX] + rx*rot.mQ[VW] - ry*rot.mQ[VZ] + rz*rot.mQ[VY],
+            -rw*rot.mQ[VY] + ry*rot.mQ[VW] - rz*rot.mQ[VX] + rx*rot.mQ[VZ],
+            -rw*rot.mQ[VZ] + rz*rot.mQ[VW] - rx*rot.mQ[VY] + ry*rot.mQ[VX]};
+}
+F32 dist_vec_squared(const LLVector3& a, const LLVector3& b) {
+    const LLVector3 d = a - b; return d.mV[0]*d.mV[0] + d.mV[1]*d.mV[1] + d.mV[2]*d.mV[2];
+}
+struct LLVector3d {
+    F64 mdV[3]{};
+    LLVector3d() = default;
+    LLVector3d(F64 x, F64 y, F64 z) : mdV{x, y, z} {}
+    bool isFinite() const { return std::isfinite(mdV[0]) && std::isfinite(mdV[1]) && std::isfinite(mdV[2]); }
+};
+bool same(const LLVector3& a, const LLVector3& b) { return std::memcmp(a.mV, b.mV, sizeof(a.mV)) == 0; }
+bool same(const LLVector3d& a, const LLVector3d& b) { return std::memcmp(a.mdV, b.mdV, sizeof(a.mdV)) == 0; }
+bool near(const LLVector3& a, const LLVector3& b, F32 eps = 2.e-4f) { return dist_vec_squared(a, b) <= eps * eps; }
+struct Agent {
+    LLVector3d origin{256000., 512000., 0.}; // exact round trips, like a region origin
+    LLVector3d getPosGlobalFromAgent(const LLVector3& p) const { return {origin.mdV[0]+p.mV[0], origin.mdV[1]+p.mV[1], origin.mdV[2]+p.mV[2]}; }
+    LLVector3 getPosAgentFromGlobal(const LLVector3d& p) const { return {F32(p.mdV[0]-origin.mdV[0]), F32(p.mdV[1]-origin.mdV[1]), F32(p.mdV[2]-origin.mdV[2])}; }
+} gAgent;
+
+// "No skeleton writes anywhere": while a Stay in place or placement entry point
+// runs, the only joint write allowed is the ROOT joint's world position/rotation.
+int gStayScope = 0;
+struct StayScope { StayScope() { ++gStayScope; } ~StayScope() { --gStayScope; } };
+struct Joint {
+    // LLJoint's dirty protocol: a write marks the subtree dirty (once); world position reads resolve
+    // lazily; the CACHED world matrix, which rendering reads through a raw pointer, is only rebuilt
+    // by updateWorldMatrixChildren().
+    enum { MATRIX_DIRTY = 1, POSITION_DIRTY = 4 };
+    mutable U32 mDirtyFlags = 0;
+    std::vector<Joint*> children;
+    LLVector3 cachedWorld;
+    void touch(U32 flags = MATRIX_DIRTY | POSITION_DIRTY) {
+        if ((flags | mDirtyFlags) == mDirtyFlags) return;
+        mDirtyFlags |= flags;
+        for (Joint* child : children) child->touch(flags);
+    }
+    Joint* parent = nullptr;
+    LLVector3 pos, scale{1.f, 1.f, 1.f};
+    LLQuaternion rot;
+    int worldUpdates = 0, writes = 0;
+    struct Overrides {
+        std::map<int, LLVector3> values;
+        const std::map<int, LLVector3>& getMap() const { return values; }
+    } m_attachmentPosOverrides;
+    const LLVector3& getPosition() const { return pos; }
+    const LLVector3& getScale() const { return scale; }
+    void setPosition(const LLVector3& v, bool overrides = true) {
+        (void)overrides; assert(!gStayScope || !parent);
+        if (!same(pos, v)) { pos = v; touch(); }
+        ++writes;
+    }
+    void setRotation(const LLQuaternion& q) { assert(!gStayScope || !parent); rot = q; touch(); ++writes; }
+    void setScale(const LLVector3& v) { assert(!gStayScope); scale = v; ++writes; }
+    LLQuaternion getWorldRotation() const { assert(!parent); return rot; }
+    void setWorldRotation(const LLQuaternion& q) { assert(!parent); rot = q; touch(); }
+    LLVector3 getWorldPosition() const {
+        mDirtyFlags &= ~U32(POSITION_DIRTY); // resolved lazily; the cached MATRIX is not
+        if (!parent) return pos;
+        LLVector3 local = pos; local.scaleVec(parent->scale);
+        return local * parent->rot + parent->getWorldPosition();
+    }
+    void setWorldPosition(const LLVector3& v) { assert(!parent); if (!same(pos, v)) { pos = v; touch(); } }
+    void updateWorldMatrixChildren() {
+        ++worldUpdates;
+        if (mDirtyFlags & MATRIX_DIRTY) { cachedWorld = getWorldPosition(); mDirtyFlags = 0; }
+        for (Joint* child : children) child->updateWorldMatrixChildren();
+    }
+};
+using LLJoint = Joint;
+namespace ALReflect {
+@FLOOR_HOLD@
+}
+struct LLGhostAvatar;
+struct LLCharacter { F32 timeFactor = 1.f; void setAnimTimeFactor(F32 f) { timeFactor = f; } };
+struct LLVOAvatar : LLCharacter {
+    virtual ~LLVOAvatar() = default;
+    Joint root, pelvis;
+    Joint* mRoot = &root;
+    Joint* mPelvisp = &pelvis;
+    struct { F32 value = 0.f; F32 effective() const { return value; } } mClientHeightCache;
+    F32 pelvisToFoot = 1.f;
+    int captures = 0;
+    LLVector3 capturedRoot;
+    virtual bool isGhostAvatar() const { return true; }
+    Joint* getRootJoint() { return mRoot; }
+    F32 getPelvisToFoot() const { return pelvisToFoot; }
+    LLVector3 getBaseRootPosition() const;
+    LLVector3 getPlacedRootPosition() const;
+    // StepAnimDebugVerify's expected render state (here: where the root renders).
+    void captureStepAnimRenderState() { ++captures; capturedRoot = mRoot->getWorldPosition(); }
+};
+struct LLControlAvatar {
+    int captures = 0;
+    bool isDead() const { return false; }
+    void captureStepAnimRenderState() { ++captures; }
+};
+struct LLViewerObject {
+    bool animated = true;
+    LLControlAvatar* control = nullptr;
+    bool isDead() const { return false; }
+    bool isAnimatedObject() const { return animated; }
+    LLControlAvatar* getControlAvatar() { return control; }
+};
+struct LLViewerJointAttachment { std::vector<LLViewerObject*> mAttachedObjects; };
+struct LLDrawable {
+    enum { EARLY_MOVE = 1 };
+    LLVector3 position;
+    const LLVector3* objectPosition = nullptr;
+    void clearState(int) {}
+};
+struct DrawablePtr {
+    LLDrawable* p = nullptr;
+    bool notNull() const { return p != nullptr; }
+    LLDrawable* operator->() const { return p; }
+};
+struct Pipeline { void updateMoveNormalAsync(const DrawablePtr& d); } gPipeline;
+struct ALGhostStudio {
+    enum { BACKING_ENTITY_CLONE, BACKING_OVERLAY };
+    enum { DRIVE_MIRROR, DRIVE_DIRECTED, DRIVE_FROZEN, DRIVE_TRUE_MIRROR, DRIVE_REFLECT };
+    struct Instance {
+        bool mDeleting = false;
+        int mKind = BACKING_ENTITY_CLONE;
+        bool mStayInPlace = false;
+        bool mReflectFloor = false;
+        LLVector3d mFootGlobal; // authored; only the tests write it
+        LLGhostAvatar* ghost = nullptr;
+    };
+    std::map<int, Instance> instances;
+    int revision = 0;
+    static ALGhostStudio& instance() { static ALGhostStudio s; return s; }
+    Instance* getInstance(int id) { auto i = instances.find(id); return i == instances.end() ? nullptr : &i->second; }
+    const Instance* findInstanceByRuntime(int id) { return getInstance(id); }
+    void touchInstances() { ++revision; }
+    LLGhostAvatar* resolveEntityClone(int id) { Instance* i = getInstance(id); return i ? i->ghost : nullptr; }
+    void setInstanceStayInPlace(const LLUUID& id, bool enabled);
+};
+struct LLActorMover {
+    std::map<LLGhostAvatar*, LLVector3> driving; // the mover's AUTHORED moving root
+    static LLActorMover& instance() { static LLActorMover s; return s; }
+    bool applyOverride(LLGhostAvatar* ghost);
+};
+struct LLGhostAvatar : LLVOAvatar {
+    LLUUID mClientHeightKey;
+    LLVector3 object;                 // the viewer object position (agent)
+    LLDrawable drawable;
+    DrawablePtr mDrawable{&drawable};
+    LLVector3 pivot;                  // outer-scale foot pivot
+    bool dead = false, built = true, region = true, mMarkedForDeath = false;
+    bool mDesiredGhostFootValid = false, mGhostFloorPosition = false;
+    LLVector3d mDesiredGhostFootGlobal;
+    ALReflect::FloorRootHold mReflectFloorRootHold;
+    F32 mEntityScale = 1.f, mEntityAnimTimeFactor = 1.f, clientHeight = 0.f;
+    std::map<int, LLViewerJointAttachment*> mAttachmentPoints;
+    bool mTiltRotationValid = false;
+    LLQuaternion objectRotation;
+    void setRotation(const LLQuaternion& q, bool) { objectRotation = q; }
+    inline static std::set<int> sLiveSources; // clones some other clone uses as its source
+    static bool hasLiveSource(const LLUUID& id) { return sLiveSources.count(id) != 0; }
+    int mEntityDriveMode = ALGhostStudio::DRIVE_MIRROR;
+    int publishes = 0, bounds = 0, forcedBounds = 0, outers = 0;
+    // [StayInPlace] the production members
+    static std::set<LLGhostAvatar*> sStayInPlaceAvatars;
+    bool mStayInPlace = false;
+    bool mStayAuthoredValid = false;
+    bool mStaySteppedWindow = false;
+    bool mStayRootAuthored = false;
+    bool mStayDisabling = false;
+    bool mStayPassDirtied = false;
+    // What the system mesh draws from: the pelvis's CACHED world matrix.
+    bool drawnWhereItStands() const { return same(pelvis.cachedWorld, pelvis.getWorldPosition()); }
+    LLVector3 mStayPassRoot;
+    LLVector3 mStayOffset;
+    bool poseStampDriven = false; // True mirror / Reflect: its own stamp moves its attachments every frame
+    bool isPoseStampDriven() const { return poseStampDriven; }
+    void endStayInPlacePostPass();
+    static void steppedVerifyRoot(const LLVOAvatar* avatar, LLVector3& root_agent);
+    LLVector3d mStayAuthoredRootGlobal;
+
+    explicit LLGhostAvatar(int id) { pelvis.parent = &root; root.children = {&pelvis}; drawable.objectPosition = &object; ALGhostStudio::instance().instances[id].ghost = this; setClientHeightKey(id); }
+    ~LLGhostAvatar() override {
+        @DEATH_CLEAR@
+        if (auto* inst = ALGhostStudio::instance().getInstance(mClientHeightKey)) if (inst->ghost == this) inst->ghost = nullptr;
+    }
+    void markForDeath() {
+        @DEATH_CLEAR@
+        mMarkedForDeath = true;
+    }
+    LLUUID getID() const { return mClientHeightKey; }
+    bool isDead() const { return dead; }
+    bool isBuilt() const { return built; }
+    const void* getRegion() const { return region ? this : nullptr; }
+    const LLVector3& getPositionAgent() const { return object; }
+    LLVector3 getRenderPosition() const { return drawable.position; }
+    void setPositionAgent(const LLVector3& p) { object = p; }
+    void setChanged(int) {}
+    F32 getClientHeightZ() const { return clientHeight; }
+    void publishGhostTransform() { mRoot->updateWorldMatrixChildren(); ++publishes; }
+    void refreshVisualBounds(bool force = false) { ++bounds; forcedBounds += force; }
+    void updateEntityOuterTransform() {
+        ++outers;
+        pivot = mRoot->getWorldPosition();
+        pivot.mV[VZ] -= llmax(0.f, pelvisToFoot);
+        if (mGhostFloorPosition) pivot = gAgent.getPosAgentFromGlobal(mDesiredGhostFootGlobal);
+    }
+    // Where a skeleton point is DRAWN (the outer scale pivots on the foot).
+    LLVector3 rendered(const LLVector3& p) const { return pivot + (p - pivot) * mEntityScale; }
+    LLVector3 hips() const { return rendered(mPelvisp->getWorldPosition()); }
+
+    void setClientHeightKey(const LLUUID& key);
+    void ghostSlamPosition(const LLVector3& pos_agent);
+    void slamGhostRoot(const LLVector3& object_agent, const LLVector3& root_agent);
+    void setGhostPosition(const LLVector3& pos_agent);
+    void setGhostRotation(const LLQuaternion& rotation);
+    void setEntityScale(F32 scale);
+    void setGhostFootPosition(const LLVector3& foot_agent);
+    void setGhostFloorPosition(const LLVector3& root_agent, const LLVector3& foot_agent);
+    void applyDesiredGhostFootPosition();
+    void syncGhostObjectToMovingRoot();
+    void idleTail();
+    static bool hasStayInPlaceAvatars() { return !sStayInPlaceAvatars.empty(); }
+    static void applyStayInPlaceAvatars();
+    static void beginStayInPlacePostPass();
+    static void beginStayInPlaceStepped(LLVOAvatar* avatar);
+    static void presentStayInPlaceStepped(bool recapture_verify);
+    void finishStayInPlaceDisable();
+    static void endStayInPlaceStepped();
+    void setStayInPlace(bool enabled);
+    void applyStayInPlace();
+    void clearStayInPlace();
+    bool getStayInPlaceAuthoredRoot(LLVector3& root_agent) const;
+    LLVector3 getStayInPlaceRenderedOffset() const;
+    LLVector3 measureStayInPlaceOffset();
+    void presentStayInPlace(const LLVector3& offset, const LLVector3& root_base_agent);
+    // The Floor Reflect stamp's root write and hold capture (production statement).
+    void floorStamp(const LLQuaternion& q, bool floor = true) {
+        mRoot->setWorldRotation(q);
+        @FLOOR_CAPTURE@
+    }
+};
+// The drawable takes the object position.
+void Pipeline::updateMoveNormalAsync(const DrawablePtr& d) { d.p->position = *d.p->objectPosition; }
+bool LLActorMover::applyOverride(LLGhostAvatar* ghost) {
+    auto found = driving.find(ghost);
+    if (found == driving.end()) return false;
+    LLVector3 root_world = found->second;
+    root_world.mV[VZ] += ghost->mClientHeightCache.effective();
+    ghost->getRootJoint()->setWorldPosition(root_world); // the ROOT JOINT only, without the offset
+    return true;
+}
+@PRODUCTION@
+@SLAM@
+@PLACEMENT@
+@SETTERS@
+@BASE_ROOT@
+// Studio's own source read for Reflect "Mirror position" (alghoststudio.cpp).
+@REFLECT_SOURCE@
+// The production reads of where an avatar STANDS (llactormover.cpp, alcinelightrigmanager.cpp).
+LLVector3 arrivalFacingDelta(LLVOAvatar* tgt, const LLVector3& agent) {
+    @MOVER_FACING@
+    return d;
+}
+LLVector3 headingPreviewOrigin(LLVOAvatar* av) {
+    @MOVER_ORIGIN@
+    return origin;
+}
+LLVector3 rigBisectorFoot(LLVOAvatar* source) {
+    @RIG_FOOT@
+    return foot;
+}
+void LLGhostAvatar::idleTail()
+{
+@IDLE_TAIL@
+
+struct LLSD { bool value; bool asBoolean() const { return value; } };
+struct Check { bool value = true; LLSD getValue() const { return {value}; } };
+struct History {
+    using Fn = std::function<bool(bool, std::string&)>;
+    Fn replay, validate;
+    int records = 0;
+    void recordCustom(void*, const std::string&, const std::string&, Fn f, bool, Fn v) { ++records; replay = f; validate = v; }
+    bool run(bool redo) { std::string why; return validate(redo, why) && replay(redo, why); }
+};
+struct ALKitShell {
+    History h;
+    static ALKitShell& shell() { static ALKitShell s; return s; }
+    static ALKitShell* find(void*) { return &shell(); }
+    History& history() { return h; }
+};
+struct ALPanelGhostStudio {
+    Check check;
+    Check* mStayInPlaceCheck = &check;
+    std::vector<int> selection;
+    const std::vector<int>& selectedInstances() { return selection; }
+    void onStayInPlaceCommit();
+};
+@UI@
+
+// ---- the frame, in LLAppViewer::idle() order ------------------------------
+std::function<void(LLGhostAvatar&)> gPoseStamp; // updatePostObjectList(): the last ordinary pose writer
+std::function<void(LLGhostAvatar&)> gLatePose;  // the Switchboard tick: a forced pose cut after the main point
+std::function<void()> gMidSample;               // HUD effects, drawable moves, particles: between the two
+void postObjectList(std::vector<LLGhostAvatar*>& ghosts) { if (gPoseStamp) for (auto* g : ghosts) gPoseStamp(*g); }
+void frame(std::vector<LLGhostAvatar*> ghosts, const std::function<void(LLGhostAvatar&)>& animate) {
+    for (LLGhostAvatar* g : ghosts) {
+        // LLVOAvatar::updateCharacter(): the root comes from the render position,
+        // the mover may repaint it, then the controller evaluates the pose.
+        g->mRoot->setWorldPosition(g->getRenderPosition());
+        LLActorMover::instance().applyOverride(g);
+        animate(*g);
+        g->root.mDirtyFlags = g->pelvis.mDirtyFlags = Joint::MATRIX_DIRTY | Joint::POSITION_DIRTY;
+        g->mRoot->updateWorldMatrixChildren(); // updateCharacter() leaves the matrices resolved
+        StayScope scope;
+        g->idleTail();
+    }
+    @FRAME_PRE@
+    postObjectList(ghosts);
+    @FRAME_MAIN@
+    if (gMidSample) gMidSample();
+    if (gLatePose) for (LLGhostAvatar* g : ghosts) gLatePose(*g);
+    @FRAME_LATE@
+}
+LLVector3 rest(const LLGhostAvatar& g) {
+    const auto& o = g.pelvis.m_attachmentPosOverrides.values;
+    return {o.empty() ? 0.f : o.rbegin()->second.mV[VX], 0.f, g.pelvis.pos.mV[VZ]};
+}
+// Where the hips are drawn when they are over the clone's spot: the pose with only
+// its rest forward offset and its own height, at the AUTHORED root.
+LLVector3 spot(const LLGhostAvatar& g, const LLVector3& authored_root) {
+    LLVector3 pivot_authored = authored_root; pivot_authored.mV[VZ] -= llmax(0.f, g.pelvisToFoot);
+    if (g.mGhostFloorPosition) pivot_authored = gAgent.getPosAgentFromGlobal(g.mDesiredGhostFootGlobal);
+    LLVector3 local = rest(g); local.scaleVec(g.root.scale);
+    return pivot_authored + (authored_root + local * g.root.rot - pivot_authored) * g.mEntityScale;
+}
+LLVector3 footRoot(const LLGhostAvatar& g, const LLVector3& foot) { return {foot.mV[0], foot.mV[1], foot.mV[2] + g.pelvisToFoot + g.clientHeight}; }
+
+struct Step { // ALSteppedAnimRuntime's pelvis and root position channels
+    struct Local { LLVector3 pos; };
+    struct Buffer { std::vector<Local> joints{{}}; LLVector3 rootPos; };
+    struct Entry { Buffer mSmooth, mWritten, mVerifyPose; std::vector<int> mWrittenMask{0}, mVerifyMask{0}; int mRootWrittenMask = 0, mVerifyRootMask = 0; } entry;
+    enum { WRITE_POS = 1 };
+    Buffer held; bool holdPelvis = true, holdRoot = false;
+    LLGhostAvatar* ghost = nullptr;
+    static bool vecEqual(const LLVector3& x, const LLVector3& y) { return std::memcmp(x.mV, y.mV, sizeof(x.mV)) == 0; }
+    void applyHeld() {
+        LLVOAvatar* avatar = ghost; (void)avatar;
+        @STEP_BEGIN@
+        Joint* joint = ghost->mPelvisp; Joint* root = ghost->mRoot; const int i = 0;
+        entry.mSmooth.joints[0].pos = joint->getPosition(); entry.mSmooth.rootPos = root->getPosition(); // readPose
+        Buffer render = entry.mSmooth;
+        if (holdPelvis) render.joints[0] = held.joints[0];
+        if (holdRoot) render.rootPos = held.rootPos;
+        entry.mWritten = render; entry.mWrittenMask[0] = 0; entry.mRootWrittenMask = 0;
+        const Local& target = render.joints[i];
+        @STEP_WRITE@
+        @STEP_ROOT_WRITE@
+        if (gStepVerify) avatar->captureStepAnimRenderState(); // writeOverlay()'s capture
+        @STEP_PRESENT@
+    }
+    void endFrameRestore() {
+        Joint* joint = ghost->mPelvisp; Joint* root = ghost->mRoot; const int i = 0;
+        const int mask = entry.mWrittenMask[0]; bool restored = false;
+        entry.mVerifyPose = entry.mSmooth; entry.mVerifyRootMask = 0;
+        @STEP_RESTORE@
+        @STEP_ROOT_RESTORE@
+        (void)restored; entry.mWrittenMask[0] = 0; entry.mRootWrittenMask = 0;
+        @STEP_RESTORE_END@
+    }
+    // The root half of ALSteppedAnimRuntime::verifyRestored(): no "unexpected root change".
+    bool verifyRestored() {
+        const LLVOAvatar* avatar = ghost; Joint* root = ghost->mRoot;
+        @STEP_VERIFY_ROOT@
+        return !(root && (entry.mVerifyRootMask & WRITE_POS) && !vecEqual(verify_root, entry.mVerifyPose.rootPos));
+    }
+};
+
+int main() {
+    auto& studio = ALGhostStudio::instance();
+    auto& mover = LLActorMover::instance();
+    const F32 PI = 3.14159265f;
+    const LLQuaternion turned(1.1f, 0.f, 0.f, 1.f);            // yaw
+    const LLQuaternion tilted(.9f, .3f, 1.f, .2f);             // local height has world-horizontal parts
+    const LLQuaternion upside_down(PI, 1.f, 0.f, 0.f);         // Floor Reflect's body flip
+    auto drift = [](int n) { return LLVector3(.125f + .31f * n, -.4f * n + .05f, -.2f - .03f * n); };
+
+    // ---- OFF: nothing registered, nothing presented, nothing published --------
+    {
+        LLGhostAvatar off(1);
+        const LLVector3 foot(40.f, 50.f, 20.f);
+        { StayScope s; off.setGhostFootPosition(foot); }
+        const LLVector3 authored = footRoot(off, foot);
+        assert(same(off.object, authored) && same(off.root.pos, authored) && off.publishes == 1);
+        for (int n = 0; n < 4; ++n) {
+            frame({&off}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(n); });
+            assert(same(off.object, authored) && same(off.root.pos, authored)); // the body drifts, as before
+            assert(same(off.getBaseRootPosition(), authored));
+        }
+        assert(!LLGhostAvatar::hasStayInPlaceAvatars() && off.publishes == 1 && off.bounds == 0 && off.pelvis.writes == 0);
+        assert(same(off.mStayOffset, LLVector3::zero) && !near(off.hips(), spot(off, authored)));
+        assert(same(off.getPlacedRootPosition(), off.root.pos) && same(arrivalFacingDelta(&off, foot), off.root.pos - foot));
+        mover.driving[&off] = LLVector3(41.f, 50.f, 21.f);    // a path walk, byte for byte the old contract
+        frame({&off}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(2); });
+        assert(same(off.object, LLVector3(41.f, 50.f, 21.f)) && same(off.root.pos, off.object) && off.publishes == 2);
+        mover.driving.clear();
+    }
+
+    // ---- ON: hips over the spot, height kept, in every root frame ----------------
+    struct Case { const char* name; LLQuaternion rot; F32 scale; };
+    for (const Case& c : {Case{"upright", LLQuaternion(), 1.f}, Case{"turned", turned, 1.f}, Case{"tilted", tilted, 1.f},
+                          Case{"turned and scaled", turned, 2.f}, Case{"tilted and small", tilted, .5f}}) {
+        LLGhostAvatar a(2);
+        a.root.rot = c.rot; a.mEntityScale = c.scale;
+        a.pelvis.m_attachmentPosOverrides.values[3] = LLVector3(.25f, .5f, 9.f);
+        a.pelvis.m_attachmentPosOverrides.values[8] = LLVector3(.125f, -.25f, 12.f); // the highest key is the active override
+        const LLVector3 foot(60.f, 70.f, 25.f), authored = footRoot(a, foot);
+        { StayScope s; a.setGhostFootPosition(foot); studio.setInstanceStayInPlace(2, true); }
+        assert(a.mStayInPlace && LLGhostAvatar::hasStayInPlaceAvatars());
+        assert(near(a.hips(), spot(a, authored))); // the toggle shows at once, before any idle
+        const LLVector3d authored_foot = a.mDesiredGhostFootGlobal;
+        for (int n = 0; n < 6; ++n) {
+            frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(n); });
+            assert(near(a.hips(), spot(a, authored)));                    // over the spot, this very frame
+            assert(same(a.pelvis.pos, drift(n)) && a.pelvis.writes == 0); // the skeleton is untouched: height and pose kept
+            assert(same(a.getBaseRootPosition(), authored));              // authoring space never sees the offset
+            assert(same(a.mDesiredGhostFootGlobal, authored_foot));
+            assert(same(a.object, a.root.pos));                           // culling/picking follow the presented root
+        }
+        assert(!near(a.root.pos, authored));                              // ...which really is displaced
+        // A standing pose (rest forward offset, no sideways) presents the authored root itself.
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = LLVector3(.125f, 0.f, -.3f); });
+        assert(near(a.root.pos, authored, 1.e-5f));
+        // A held pose publishes nothing more.
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(3); });
+        const int publishes = a.publishes, bounds = a.bounds;
+        for (int n = 0; n < 3; ++n) frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(3); });
+        assert(a.publishes == publishes && a.bounds == bounds);
+
+        // Drag / Ghost Edit / crowd / undo: authored values go in and stay authored.
+        const LLVector3 dragged(63.f, 68.f, 25.5f);
+        { StayScope s; a.setGhostFootPosition(dragged); }
+        assert(same(a.mDesiredGhostFootGlobal, gAgent.getPosGlobalFromAgent(dragged)));
+        assert(same(a.getBaseRootPosition(), footRoot(a, dragged)) && near(a.hips(), spot(a, footRoot(a, dragged))));
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(4); });
+        assert(near(a.hips(), spot(a, footRoot(a, dragged))) && same(a.getBaseRootPosition(), footRoot(a, dragged)));
+        { StayScope s; a.setGhostFootPosition(foot); } // undo restores the stored authored foot
+        assert(same(a.mDesiredGhostFootGlobal, authored_foot) && same(a.getBaseRootPosition(), authored));
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(5); });
+        assert(near(a.hips(), spot(a, authored)));
+
+        // A path walk: the mover repaints its own authored root every frame.
+        for (int n = 0; n < 5; ++n) {
+            const LLVector3 path(60.f + .001f * n, 70.f + .4f * n, 26.f);
+            mover.driving[&a] = path;
+            frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(n % 3); });
+            assert(same(a.getBaseRootPosition(), path));   // the mover's capture space is its own path
+            assert(near(a.hips(), spot(a, path)));
+            assert(same(a.mDesiredGhostFootGlobal, authored_foot)); // the walk never touches the stored foot
+        }
+        // A slow walk in a standing pose (no offset to hide behind): still every frame.
+        for (int n = 0; n < 4; ++n) {
+            const LLVector3 path(61.f + .001f * n, 72.f, 26.f);
+            mover.driving[&a] = path;
+            frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = LLVector3(.125f, 0.f, -.3f); });
+            assert(same(a.getBaseRootPosition(), path) && near(a.hips(), spot(a, path), 2.e-5f));
+        }
+        mover.driving.clear();
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(1); });   // the walk ends: back on the authored foot
+        assert(near(a.hips(), spot(a, authored)) && same(a.getBaseRootPosition(), authored));
+
+        // The last ordinary pose writer (a Flip / mirror stamp) is what gets measured.
+        gPoseStamp = [](LLGhostAvatar& g) { g.pelvis.pos.mV[VY] = -g.pelvis.pos.mV[VY]; g.pelvis.pos.mV[VX] += .5f; };
+        int sampled = 0;
+        gMidSample = [&] { assert(near(a.hips(), spot(a, authored))); ++sampled; }; // particles and HUD see it too
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(2); });
+        assert(near(a.hips(), spot(a, authored)) && sampled == 1);
+        gPoseStamp = nullptr; gMidSample = nullptr;
+
+        // A LATE pose writer (the Switchboard's forced pose cut) is presented before the cameras sample.
+        gLatePose = [](LLGhostAvatar& g) { g.pelvis.pos = LLVector3(-.7f, .9f, -.5f); };
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(2); });
+        assert(near(a.hips(), spot(a, authored)) && same(a.pelvis.pos, LLVector3(-.7f, .9f, -.5f)));
+        gLatePose = nullptr;
+
+        // Late TRANSFORM edits (Ghost Edit rotate / stretch from the manip proxy tick, the floor
+        // hold's direct root turn): never the previous rotation's or scale's offset.
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(4); });
+        { StayScope s; a.setGhostRotation(LLQuaternion(2.3f, 0.f, 0.f, 1.f)); }
+        assert(near(a.hips(), spot(a, authored)));
+        { StayScope s; a.setEntityScale(c.scale * 1.5f); }
+        assert(near(a.hips(), spot(a, authored)));
+        { StayScope s; a.mRoot->setWorldRotation(c.rot); a.ghostSlamPosition(authored); a.updateEntityOuterTransform(); }
+        assert(near(a.hips(), spot(a, authored)));
+        { StayScope s; a.setEntityScale(c.scale); }
+        assert(near(a.hips(), spot(a, authored)) && same(a.getBaseRootPosition(), authored));
+
+        // The manip proxy's root lift excludes the shift (it turns with the body).
+        frame({&a}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(4); });
+        // Readers of where the clone STANDS (arrival facing, heading preview, rig bisector): the
+        // authored root, not the displaced one.
+        const LLVector3 from(1.f, 2.f, 3.f);
+        assert(!near(a.root.pos, authored) && same(a.getPlacedRootPosition(), authored));
+        assert(same(arrivalFacingDelta(&a, from), authored - from) && same(headingPreviewOrigin(&a), authored));
+        assert(same(rigBisectorFoot(&a), authored));
+        const LLVector3 lift = a.rendered(a.root.pos) - a.getStayInPlaceRenderedOffset() - foot;
+        assert(near(lift, LLVector3(0.f, 0.f, a.pelvisToFoot * a.mEntityScale)));
+
+        // OFF again: exactly the authored placement, at once.
+        { StayScope s; studio.setInstanceStayInPlace(2, false); }
+        assert(!LLGhostAvatar::hasStayInPlaceAvatars() && same(a.object, authored) && same(a.root.pos, authored));
+        assert(same(a.mStayOffset, LLVector3::zero) && a.forcedBounds == 1 && a.pelvis.writes == 0);
+        (void)c.name;
+    }
+
+    // ---- Floor Reflect: upside-down root, mirrored pose, pinned scale pivot ----------
+    for (F32 scale : {1.f, 2.f}) {
+        LLGhostAvatar f(4);
+        studio.instances[4].mReflectFloor = true;
+        f.mEntityDriveMode = ALGhostStudio::DRIVE_REFLECT; f.mEntityScale = scale;
+        const LLVector3 floor_root(80.f, 90.f, 9.f), floor_foot(80.f, 90.f, 10.f);
+        { StayScope s; studio.setInstanceStayInPlace(4, true); }
+        for (int n = 0; n < 5; ++n) {
+            // Studio's post pass: mirrored placement, then the stamp (root flip + hold, reflected local pose).
+            gPoseStamp = [&](LLGhostAvatar& g) {
+                StayScope s;
+                g.setGhostFloorPosition(floor_root, floor_foot);
+                g.floorStamp(upside_down);
+                const LLVector3 d = drift(n);
+                g.pelvis.pos = LLVector3(d.mV[0], -d.mV[1], d.mV[2]);
+            };
+            frame({&f}, [](LLGhostAvatar&) {});
+            assert(near(f.hips(), spot(f, floor_root)));
+            assert(same(f.getBaseRootPosition(), floor_root));
+            assert(same(gAgent.getPosAgentFromGlobal(f.mReflectFloorRootHold.position), floor_root)); // the hold is authored
+        }
+        // The source goes away: the frozen hold alone keeps placing the clone (idleUpdate), never twice.
+        gPoseStamp = nullptr;
+        for (int n = 0; n < 3; ++n) {
+            frame({&f}, [](LLGhostAvatar&) {});
+            assert(near(f.hips(), spot(f, floor_root)) && same(f.getBaseRootPosition(), floor_root));
+        }
+        { StayScope s; studio.setInstanceStayInPlace(4, false); }
+        assert(same(f.root.pos, floor_root) && f.pelvis.writes == 0);
+    }
+
+    // ---- Stepped: its held overlay changes the pelvis after the main point ---------
+    for (bool hold_root : {false, true}) {
+        LLGhostAvatar s(5);
+        s.root.rot = turned;
+        const LLVector3 foot(100.f, 110.f, 30.f), authored = footRoot(s, foot);
+        { StayScope scope; s.setGhostFootPosition(foot); studio.setInstanceStayInPlace(5, true); }
+        Step step; step.ghost = &s; step.holdRoot = hold_root;
+        LLControlAvatar worn; LLViewerObject tail; tail.control = &worn;   // a worn animesh
+        LLViewerJointAttachment point; point.mAttachedObjects = {&tail};
+        s.mAttachmentPoints[1] = &point;
+        gStepVerify = true;
+        step.held.joints[0].pos = LLVector3(2.f, 3.f, -.8f);
+        const LLVector3 held_root = authored + LLVector3(.5f, -.25f, 0.f); // a root Stepped captured on an earlier tick
+        step.held.rootPos = held_root;
+        for (int n = 0; n < 3; ++n) {
+            const LLVector3 smooth = drift(n + 1);
+            frame({&s}, [&](LLGhostAvatar& g) { g.pelvis.pos = smooth; });
+            assert(near(s.hips(), spot(s, authored)));                 // particles, VCam and cameras sample this
+            step.applyHeld();
+            assert(same(step.entry.mSmooth.rootPos, authored));        // Stepped captured the AUTHORED root
+            assert(same(step.entry.mSmooth.joints[0].pos, smooth));    // ...and the raw pose
+            assert(same(s.pelvis.pos, LLVector3(2.f, 3.f, -.8f)));     // its held pelvis is what renders
+            assert(near(s.hips(), spot(s, hold_root ? held_root : authored))); // hips over the spot for THAT pelvis
+            // StepAnimDebugVerify expects exactly what renders (clone and worn animesh): no false mismatch.
+            assert(same(s.capturedRoot, s.root.pos) && s.captures == 2 * (n + 1) && worn.captures == n + 1);
+            assert(same(s.getBaseRootPosition(), authored));
+            step.endFrameRestore();
+            assert(same(s.pelvis.pos, smooth));                        // Stepped restored its own channels
+            assert(near(s.hips(), spot(s, authored)));                 // a snapshot between frames still stays
+            assert(near(s.root.pos - s.mStayOffset, authored, 5.e-5f) && same(s.getBaseRootPosition(), authored));
+            assert(!s.mStaySteppedWindow && step.verifyRestored());
+        }
+        assert(s.pelvis.writes == 6); // Stepped's own writes only: one hold and one restore a frame
+        // A held pelvis at its rest reference presents no offset, so Stepped DOES restore the root it
+        // held; the smooth pose's offset is presented afterwards. Its restore check still passes.
+        step.held.joints[0].pos = LLVector3(0.f, 0.f, -.6f);
+        frame({&s}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(2); });
+        step.applyHeld();
+        assert(near(s.hips(), spot(s, hold_root ? held_root : authored)));
+        step.endFrameRestore();
+        assert(!hold_root || (step.entry.mVerifyRootMask & Step::WRITE_POS));
+        assert(near(s.hips(), spot(s, authored)) && !near(s.root.pos, authored) && step.verifyRestored());
+        if (hold_root) { // ...and a REAL root change after the restore is still reported
+            const LLVector3 kept = s.root.pos;
+            s.root.pos = kept + LLVector3(.01f, 0.f, 0.f);
+            assert(!step.verifyRestored());
+            s.root.pos = kept;
+            assert(step.verifyRestored());
+            // An offset below the presenter's tolerance is not written: the joint still IS the restored root.
+            const LLVector3 kept_offset = s.mStayOffset;
+            s.root.pos = authored; s.mStayOffset = LLVector3(3.e-5f, 0.f, 0.f);
+            assert(step.verifyRestored());
+            s.root.pos = kept; s.mStayOffset = kept_offset;
+        }
+        s.mStaySteppedWindow = true; s.built = false;      // a stale window on a body that cannot be presented
+        frame({&s}, [](LLGhostAvatar&) {});
+        assert(!s.mStaySteppedWindow);
+        s.built = true;
+        { StayScope scope; studio.setInstanceStayInPlace(5, false); }
+        assert(same(s.root.pos, authored));
+        gStepVerify = false;
+    }
+
+    // ---- a Stay in place clone as another clone's SOURCE (Reflect "Mirror position") --
+    {
+        LLGhostAvatar src(20), mirror(21);
+        LLGhostAvatar::sLiveSources.insert(20);
+        src.root.rot = turned;
+        const LLVector3 foot(120.f, 130.f, 40.f), authored = footRoot(src, foot);
+        { StayScope s; src.setGhostFootPosition(foot); studio.setInstanceStayInPlace(20, true); }
+        LLVector3d wall, floor, floor_root; int reads = 0;
+        gPoseStamp = [&](LLGhostAvatar& g) {
+            if (&g != &mirror) return;
+            wall = reflectSourceFoot(&src);            // Wall: the source's root joint
+            floor = reflectSourceFoot(&src, true);     // Floor: its base root
+            floor_root = gAgent.getPosGlobalFromAgent(src.getRootJoint()->getWorldPosition()); // Floor root
+            ++reads;
+        };
+        for (int n = 0; n < 3; ++n) {
+            frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(n + 1); });
+            assert(reads == n + 1);
+            // What Studio stores into the mirror clone's authored foot never contains the source's offset.
+            assert(same(wall, gAgent.getPosGlobalFromAgent(foot)) && same(floor, gAgent.getPosGlobalFromAgent(foot)));
+            assert(same(floor_root, gAgent.getPosGlobalFromAgent(authored)));
+            assert(near(src.hips(), spot(src, authored)) && !near(src.root.pos, authored)); // presented again right after
+        }
+        // A stationary source (held pose, nonzero offset) publishes NOTHING per frame: its presented
+        // root joint is put back exactly after the pass.
+        {
+            const int publishes = src.publishes;
+            const LLVector3 presented = src.root.pos;
+            for (int n = 0; n < 3; ++n) {
+                frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(3); });
+                assert(same(wall, gAgent.getPosGlobalFromAgent(foot)) && same(floor_root, gAgent.getPosGlobalFromAgent(authored)));
+                assert(src.publishes == publishes && same(src.root.pos, presented) && near(src.hips(), spot(src, authored)));
+                assert(src.drawnWhereItStands()); // its cached matrices never left presented space
+            }
+            assert(reads == 6);
+            int expected = publishes;
+            // A Flip stamp on the source (Mirror/Directed drive; not "stamp driven") writes the pose and
+            // propagates the child matrices at the AUTHORED root inside the pass. With a steady offset
+            // nothing else would publish: the skeleton must still end up drawn in presented space.
+            gPoseStamp = [&](LLGhostAvatar& g) {
+                if (&g != &src) return;
+                g.pelvis.pos.mV[VY] = -g.pelvis.pos.mV[VY];
+                g.pelvis.touch(); g.mRoot->updateWorldMatrixChildren();
+            };
+            for (int n = 0; n < 3; ++n) {
+                frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(3); });
+                assert(src.publishes == ++expected && src.drawnWhereItStands() && near(src.hips(), spot(src, authored)));
+            }
+            // The start-offset history: the same propagation (its delayed pose equal to the live one here).
+            gPoseStamp = [&](LLGhostAvatar& g) { if (&g == &src) g.mRoot->updateWorldMatrixChildren(); };
+            for (int n = 0; n < 3; ++n) {
+                frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(3); });
+                assert(src.publishes == ++expected && src.drawnWhereItStands() && same(src.root.pos, presented));
+            }
+            // So does a transform setter or an unconditional placement write inside the pass.
+            gPoseStamp = [&](LLGhostAvatar& g) { if (&g == &src) { StayScope s; g.setGhostRotation(turned); } };
+            frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(3); });
+            expected += 2; // the setter's own + the re-present
+            assert(src.publishes == expected && same(src.root.pos, presented) && src.drawnWhereItStands());
+            gPoseStamp = [&](LLGhostAvatar& g) { if (&g == &src) { StayScope s; g.ghostSlamPosition(authored); } };
+            frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(3); });
+            expected += 2;
+            assert(src.publishes == expected && same(src.root.pos, presented) && src.drawnWhereItStands());
+            // A per-frame foot placement of the SAME spot inside the pass (a Reflect "Mirror position"
+            // clone that is itself a source) is no write at all: its foot lock holds.
+            gPoseStamp = [&](LLGhostAvatar& g) { if (&g == &src) { StayScope s; g.setGhostFootPosition(foot); } };
+            for (int n = 0; n < 2; ++n) frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(3); });
+            assert(src.publishes == expected && same(src.root.pos, presented) && near(src.hips(), spot(src, authored)));
+            assert(src.drawnWhereItStands());
+            reads = 3; // keep the placement / rotation alternation of the next test
+        }
+        // The source is itself re-placed inside that pass before the mirror reads it.
+        const LLVector3 moved(121.f, 131.f, 40.f);
+        gPoseStamp = [&](LLGhostAvatar& g) {
+            if (&g == &src) { StayScope s; if (reads % 2) g.setGhostFootPosition(moved); else g.setGhostRotation(turned); return; }
+            wall = reflectSourceFoot(&src);
+            floor_root = gAgent.getPosGlobalFromAgent(src.getRootJoint()->getWorldPosition());
+            ++reads;
+        };
+        for (int n = 0; n < 2; ++n) { // a placement write, then a rotation write, inside the pass
+            frame({&src, &mirror}, [&](LLGhostAvatar& g) { if (&g == &src) g.pelvis.pos = drift(2 + n); });
+            assert(same(wall, gAgent.getPosGlobalFromAgent(moved)) && same(floor_root, gAgent.getPosGlobalFromAgent(footRoot(src, moved))));
+            assert(near(src.hips(), spot(src, footRoot(src, moved))));
+        }
+        gPoseStamp = nullptr;
+        LLGhostAvatar::sLiveSources.clear();
+        { StayScope s; studio.setInstanceStayInPlace(20, false); }
+    }
+
+    // ---- switched off while the body cannot be placed: the restore is owed, then paid --
+    {
+        LLGhostAvatar d(22);
+        const LLVector3 foot(140.f, 150.f, 45.f), authored = footRoot(d, foot);
+        { StayScope s; d.setGhostFootPosition(foot); studio.setInstanceStayInPlace(22, true); }
+        frame({&d}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(3); });
+        assert(!near(d.root.pos, authored));
+        d.region = false;
+        { StayScope s; studio.setInstanceStayInPlace(22, false); }
+        assert(d.mStayInPlace && d.mStayDisabling && LLGhostAvatar::hasStayInPlaceAvatars());
+        frame({&d}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(4); });
+        assert(d.mStayDisabling && !near(d.root.pos, authored));    // still not placeable
+        d.region = true;
+        frame({&d}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(5); });
+        assert(!d.mStayInPlace && !LLGhostAvatar::hasStayInPlaceAvatars());
+        assert(same(d.object, authored) && same(d.root.pos, authored) && same(d.mStayOffset, LLVector3::zero));
+        // Switched back on before an owed restore ran: it simply stays on.
+        { StayScope s; studio.setInstanceStayInPlace(22, true); }
+        frame({&d}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(3); });
+        d.region = false;
+        { StayScope s; studio.setInstanceStayInPlace(22, false); studio.setInstanceStayInPlace(22, true); }
+        d.region = true;
+        assert(d.mStayInPlace && !d.mStayDisabling);
+        frame({&d}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(2); });
+        assert(near(d.hips(), spot(d, authored)) && same(d.getBaseRootPosition(), authored));
+        { StayScope s; studio.setInstanceStayInPlace(22, false); }
+        assert(same(d.root.pos, authored));
+    }
+
+    // ---- registry, respawn, overlay, history ------------------------------------------
+    {
+        studio.instances[7].mStayInPlace = true;                       // an instance whose switch is on
+        studio.instances[8].mKind = ALGhostStudio::BACKING_OVERLAY;
+        studio.instances[8].mStayInPlace = true;                       // (a converted copy): never an overlay helper
+        {
+            LLGhostAvatar first(7), overlay(8);
+            assert(first.mStayInPlace && LLGhostAvatar::sStayInPlaceAvatars.count(&first) == 1);
+            assert(!overlay.mStayInPlace && LLGhostAvatar::sStayInPlaceAvatars.count(&overlay) == 0);
+            { StayScope s; overlay.setStayInPlace(true); studio.setInstanceStayInPlace(8, false); }
+            assert(!overlay.mStayInPlace && studio.instances[8].mStayInPlace); // the model setter ignores overlays too
+            { StayScope s; first.setGhostFootPosition(LLVector3(5.f, 6.f, 7.f)); }
+            frame({&first}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(2); });
+            assert(near(first.hips(), spot(first, footRoot(first, LLVector3(5.f, 6.f, 7.f)))));
+            first.markForDeath();                                      // delete: the registry forgets the body at once
+            assert(!LLGhostAvatar::hasStayInPlaceAvatars() && !first.mStayInPlace && same(first.mStayOffset, LLVector3::zero));
+            LLGhostAvatar::applyStayInPlaceAvatars();
+            LLGhostAvatar respawned(7);                                // the fresh body of the same instance re-arms
+            assert(respawned.mStayInPlace && same(respawned.mStayOffset, LLVector3::zero));
+            { StayScope s; respawned.setGhostFootPosition(LLVector3(5.f, 6.f, 7.f)); }
+            frame({&respawned}, [&](LLGhostAvatar& g) { g.pelvis.pos = drift(1); });
+            assert(near(respawned.hips(), spot(respawned, footRoot(respawned, LLVector3(5.f, 6.f, 7.f)))));
+        }
+        assert(!LLGhostAvatar::hasStayInPlaceAvatars());               // destruction clears it as well
+        ALGhostStudio::Instance copy = studio.instances[7];            // duplicates / crowd copies are wholesale
+        assert(copy.mStayInPlace);
+        studio.instances[7].mStayInPlace = false;
+
+        LLGhostAvatar a(11), b(12), overlay(13);
+        studio.instances[13].mKind = ALGhostStudio::BACKING_OVERLAY;
+        ALPanelGhostStudio panel; panel.selection = {11, 12, 13};      // expanded group / multi-selection
+        auto& history = ALKitShell::shell().h;
+        { StayScope s; panel.onStayInPlaceCommit(); }
+        assert(history.records == 1 && a.mStayInPlace && b.mStayInPlace && !overlay.mStayInPlace);
+        assert(studio.instances[11].mStayInPlace && studio.instances[12].mStayInPlace && !studio.instances[13].mStayInPlace);
+        panel.selection = {13};                                        // undo targets the captured clones, not the selection
+        { StayScope s; assert(history.run(false)); }
+        assert(!a.mStayInPlace && !b.mStayInPlace && !LLGhostAvatar::hasStayInPlaceAvatars());
+        { StayScope s; assert(history.run(true)); }
+        assert(a.mStayInPlace && b.mStayInPlace);
+        { StayScope s; studio.setInstanceStayInPlace(11, false); }     // a conflict fails the whole step before any replay
+        assert(!history.run(false) && studio.instances[12].mStayInPlace);
+        { StayScope s; panel.selection = {11, 12}; panel.check.value = true; panel.onStayInPlaceCommit(); }
+        assert(history.records == 2);
+        { StayScope s; panel.onStayInPlaceCommit(); }                  // nothing changes: no empty undo step
+        assert(history.records == 2);
+    }
+    assert(!LLGhostAvatar::hasStayInPlaceAvatars());
+    std::cout << "PASS OFF inert; ON hips over the spot (upright/turned/tilted/scaled/floor), height and pose kept, "
+                 "authored drag/path/undo/floor hold untouched, no skeleton writes, Stepped held pelvis + held root + "
+                 "between-frame snapshot + debug verify, late pose and transform writers, Stay source for Reflect, "
+                 "owed switch-off restore, delete/respawn/overlay registry, multi-select history\n";
+    return 0;
+}

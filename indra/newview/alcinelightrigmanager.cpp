@@ -1686,7 +1686,8 @@ void ALCineLightRigManager::updateMirrors()
             {
                 // True Mirror copies pose/facing without a stored plane. Use
                 // the same live vertical source/clone bisector as Reflect.
-                LLVector3 foot = source->getRootJoint()->getWorldPosition();
+                // [StayInPlace] Where the source stands, not a Stay in place root shift.
+                LLVector3 foot = source->getPlacedRootPosition();
                 foot.mV[VZ] -= source->getPelvisToFoot();
                 ALReflect::updatePlane(plane, gAgent.getPosGlobalFromAgent(foot), inst.mFootGlobal,
                     LLVector3::x_axis * source->getRootJoint()->getWorldRotation(), false);
