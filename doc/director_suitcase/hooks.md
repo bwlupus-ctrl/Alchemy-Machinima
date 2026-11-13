@@ -904,15 +904,16 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 43–50 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 102–122 (n=21) | unknown/non-function (public:) | capture-sidecar, director-shell, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] Points at the owning drawable's mLastVelocityMatrix. Used only by the velocity pass: read as the previous object matrix, then the current mModelMatrix is queued for pass-end write-back. Null (default) -> identity fallback (zero object velocity). Wired in LLVolum |
-| 126–139 (n=14) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge] True when this draw belongs to a worn avatar attachment (rigged or not). Discriminator for the gated 3-pass alpha ordering (SIM non-rigged -> rigged -> attachment non-rigged) that keeps worn attachment alpha prims (eyelashes etc.) from being over-blended by rigged hair. |
-| 147–159 (n=13) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Effective per-slot PBR alpha cutoffs, parallel to mGLTFMaterialList. MASK slots contain [0..1]; OPAQUE slots contain -1. BLEND is never indexed. Keeping this state on the draw avoids mutating shared material assets when two objects use the same PBR material with different client  |
-| 178–184 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline |
-| 296–387 (n=92) | operator, worldAlphaDepth | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: interleaved world-alpha sort key: a stamped attachment's groups sort at the wearer's avatar depth, everything else at bounds depth at an exact depth tie, drain stamped ensembles before plain world groups so a null head cannot split every ensemble std::less: raw < on unrelated poi |
-| 484–492 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: avatar-ensemble sort key, fanned out from the bridge in LLPipeline::postSort; mDepth stays bounds-derived |
-| 594–607 (n=14) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: alpha draw-order stamp, set by LLVOAvatar::idleUpdateMisc / LLControlAvatar::idleUpdate and fanned out to this bridge's alpha groups in LLPipeline::postSort. mAvatarp is only ever compared, never dereferenced (avatar may die first). |
-| 904–906 (n=3) | unknown/non-function (extern const F32 SG_MAX_OBJ_RAD;) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 27–34 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 45–52 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 103–129 (n=27) | unknown/non-function (public:) | capture-sidecar, director-shell, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Shares ownership of the face's live animated texture matrix so mTextureMatrix stays valid for as long as this batch exists, even after the face is destroyed or its animation is removed (port of Firestorm ae465f3fb6c). Always set together with mTextureMatrix. [BDMerge A5.4-1a] Poi |
+| 133–146 (n=14) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge] True when this draw belongs to a worn avatar attachment (rigged or not). Discriminator for the gated 3-pass alpha ordering (SIM non-rigged -> rigged -> attachment non-rigged) that keeps worn attachment alpha prims (eyelashes etc.) from being over-blended by rigged hair. |
+| 154–166 (n=13) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Effective per-slot PBR alpha cutoffs, parallel to mGLTFMaterialList. MASK slots contain [0..1]; OPAQUE slots contain -1. BLEND is never indexed. Keeping this state on the draw avoids mutating shared material assets when two objects use the same PBR material with different client  |
+| 185–191 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline |
+| 303–394 (n=92) | operator, worldAlphaDepth | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: interleaved world-alpha sort key: a stamped attachment's groups sort at the wearer's avatar depth, everything else at bounds depth at an exact depth tie, drain stamped ensembles before plain world groups so a null head cannot split every ensemble std::less: raw < on unrelated poi |
+| 491–499 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: avatar-ensemble sort key, fanned out from the bridge in LLPipeline::postSort; mDepth stays bounds-derived |
+| 601–614 (n=14) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: alpha draw-order stamp, set by LLVOAvatar::idleUpdateMisc / LLControlAvatar::idleUpdate and fanned out to this bridge's alpha groups in LLPipeline::postSort. mAvatarp is only ever compared, never dereferenced (avatar may die first). |
+| 911–913 (n=3) | unknown/non-function (extern const F32 SG_MAX_OBJ_RAD;) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/lltooldraganddrop.cpp`
 
@@ -1378,78 +1379,80 @@ HEAD coordinates; guards/features are candidate evidence
 | 69–75 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 83–90 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | actor-bar, clones, director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 104–129 (n=26) | machinimaForceCullArea, machinimaForceSimpleRenderArea | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: when BDMergeMachinimaHighLOD is on, relax the small-on-screen face degradation constants to 0 so small/distant faces keep full materials and aren't dropped from batching. Off = stock constants (byte-identical). |
-| 622–647 (n=26) | LLVOVolume::animateTextures | rig, stepped-animation, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Coverage changes even after mTexAnimMode is established. The shared region/tile scheduler coalesces these per-frame events. [ProbeOnDemand] TXa: texture animation is running (called for every instance every frame, independent of the camera) -> debounced motion. |
-| 686–694 (n=9) | LLVOVolume::animateTextures | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] TXt: an animated-texture batch toggle is LOD-like churn, not a content change. |
-| 800–816 (n=17) | LLVOVolume::updateTextureVirtualSize | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Hidden source faces never enter a draw batch, but all material channels must retain fetch demand for appearance/attachment cloning. |
-| 910–918 (n=9) | LLVOVolume::updateTextureVirtualSize | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] TXt: size-driven texture-animation toggle (camera distance), not a content change. |
-| 967–980 (n=14) | LLVOVolume::updateTextureVirtualSize | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] MS: a refinement of an already-built sculpt is LOD churn; a first build (current_discard < 0) stays an event. |
-| 1324–1364 (n=41) | LLVOVolume::notifyMeshLoaded, LLVOVolume::probeNoteAssetArrival | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] MS: is this rebuild a pure refinement / LOD arrival of an asset this volume already built (same sculpt id + type, ready)? A first arrival or a SWAPPED asset returns false and stays a real geometry event. [ProbeOnDemand] MS: mesh LOD / refinement of an already-buil |
-| 1569–1586 (n=18) | LLVOVolume::calcLOD | capture-sidecar, clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Ghost entity clones apply a render-only outer scale (LLClientOuterTransform, up to GHOST_SCALE_MAX) at draw time, but LOD is otherwise computed from unscaled native geometry -- so a large clone is driven at its 1x LOD and pops. Resolve the clone's own scale here (a scaled clone p |
-| 1613–1638 (n=26) | LLVOVolume::calcLOD | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: getLastAnimExtents() is already outer-scaled in LLVOAvatar::calculateSpatialExtents, so 'radius' above already reflects the clone scale -- do NOT scale it again (that would apply the scale squared). Just record the avatar's scale for the source-LOD gate below. e.g. a cloned anime |
-| 1642–1655 (n=14) | LLVOVolume::calcLOD | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Non-rigged clone prim: extents are native, so scale the LOD radius by the clone's own outer scale (guarded; own_scale == 1 for normal prims -> no-op, byte-identical). |
-| 1705–1719 (n=15) | LLVOVolume::calcLOD | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] BDMergeMachinimaHighLOD: force every volume to highest detail regardless of distance/zoom. This kills wide-shot LOD loss AND the LOD-change popping (cur_detail stops changing -> updateLOD's markRebuild stops firing). Reuses the proven HUD/selection forced-LOD pat |
-| 1724–1761 (n=38) | LLVOVolume::calcLOD | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: RenderRiggedLODHysteresis: rigged radius/distance come from the avatar's animated extents, which are recomputed every few frames while it animates, so cur_detail can ping-pong across a threshold and rebuild/re-upload the whole rigged group each time. Increases in detail stay imme |
-| 1794–1802 (n=9) | LLVOVolume::updateLOD | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] LV: a camera-distance LOD switch is not a content change. |
-| 2250–2272 (n=23) | LLVOVolume::updateGeometry | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H4: a pure LOD rebuild (no content flag, no REBUILD_POSITION) is camera-driven churn: tag the WHOLE function (including genBBoxes -> movePartition) so its notes are dropped. A changed volume invalidates the built-asset identity. Nothing below runs unless RenderPro |
-| 2298–2313 (n=16) | LLVOVolume::updateGeometry | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H4: entry bounds + whether this rebuild changes content. |
-| 2371–2406 (n=36) | LLVOVolume::updateGeometry | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: Content changed: one discrete event over the entry + exit bounds. No content change but the bounds moved: motion. Built-asset identity (MS): ready only once the asset itself is loaded. |
-| 2673–2685 (n=13) | LLVOVolume::setTEMaterialID | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A client-only object's params are set on it directly; no sim ever gives it a material id, and resolving the null one it keeps would replace them with no material when its faces are deselected. |
-| 3532–3565 (n=34) | LLVOVolume::updateSpotLightPriority | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge SpotStable] Stable projector shadows: the viewer has only two projector-shadow slots, awarded by on-screen pixel size - so panning the camera away reshuffles which lights hold shadows mid-shot. When enabled, priority is the light's WORLD size instead (radius cubed, so bi |
-| 4870–4895 (n=26) | LLVOVolume::getManipPivotPositionAgent | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Raise the edit-manip pivot to just above the invisible proxy box top so the constant-screen-size translate/rotate gizmo sits clearly OVER the ghost, not buried mid-body at large clone scales. Only the manipulator ORIGIN moves -- the proxy transform, bbox, and stretch-scale handle |
-| 4975–4986 (n=12) | LLVOVolume::lineSegmentIntersect | clones, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Shelter rays count only visible surfaces: client-only FORCE_INVISIBLE helpers (rig emitters, catchlight, live probe, manipulator proxies) never shelter rain. |
-| 4994–5001 (n=8) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits LLFloater, gFloaterTools, ALWeatherShelter |
-| 5008–5015 (n=8) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits LLToolMgr, ALWeatherShelter |
-| 5076–5096 (n=21) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits ALWeatherShelter |
-| 5127–5146 (n=20) | LLVOVolume::lineSegmentIntersect | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: surfaceToTexture takes the hit in agent space, which a planar face projects from. |
-| 5548–5555 (n=8) | can_batch_gltf_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
-| 5594–5601 (n=8) | can_batch_legacy_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_MODE_BLEND |
-| 5703–5789 (n=87) | resolve_actor_fx_owners, resolve_outer_transform | actor-bar, capture-sidecar, director-shell, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Native Actor FX is authored for the visible Director actor, not necessarily the avatar that skins this one face. Worn animated objects are skinned by an LLControlAvatar. Keep that exact runtime identity in LLDrawInfo even before the object joins the Director cast: cast membership |
-| 5848–5857 (n=10) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Edits LLClientOuterTransform |
-| 5874–5880 (n=7) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 5905–5944 (n=40) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, LLRenderPass, ALPHA_MODE_MASK, ALPHA_MODE_BLEND, ALPHA_MODE_OPAQUE |
-| 5954–5977 (n=24) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawPool, LLRenderPass, LLPipeline, ALPHA_MODE_BLEND, LLMaterial, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK |
-| 5983–5992 (n=10) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_MODE_MASK |
-| 6006–6013 (n=8) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6017–6033 (n=17) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6046–6064 (n=19) | LLVolumeGeometryManager::registerFace | sensor | creative-candidate | unknown; conditional evidence present | Edits LLDrawInfo |
-| 6103–6126 (n=24) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: mVertexBuffer's TYPE_EMISSIVE allocation is group-wide. Preserve exact per-draw authored-glow ownership so shared Actor FX (and any other DrawInfo consumer) never classifies a neighbouring face's emissive stream as this batch's glow. |
-| 6133–6143 (n=11) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 6168–6182 (n=15) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD llvovolume.cpp:5574). Rigid only; rigged faces (model_mat == null) get their previous transform from the palette cache in Phase 1b. |
-| 6194–6211 (n=18) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] Mark draws that belong to a genuinely worn attachment (rigged or not). getAvatarAncestor() excludes standalone animesh even though getAvatar() returns its control avatar. Drives the gated 3-pass alpha ordering in LLDrawPoolAlpha. |
-| 6231–6246 (n=16) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLMaterial, ALPHA_MODE_BLEND |
-| 6252–6268 (n=17) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: The pass is authoritative. Store the same effective policy for scalar legacy/PBR rendering, alpha-pool shader selection, shadows, velocity, and Actor FX replay. Shared material assets remain untouched. |
-| 6272–6280 (n=9) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 6413–6419 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawable |
-| 6424–6430 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
-| 6579–6587 (n=9) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Preserve material fetches, animesh controllers, attachment joint overrides and face setup above; omit only draw geometry. |
-| 6606–6631 (n=26) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_OVERRIDE_NONE, LLDrawPool, ALPHA_MODE_MASK |
-| 6720–6727 (n=8) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
-| 6896–6949 (n=54) | apply_target_mask_vertex_coverage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: TARGET_MASK coverage is texture alpha alone.  Bake that policy only into the affected face's vertex range: RGB remains untouched, while alpha becomes one. Legacy glow has no per-DrawInfo cutoff upload, so its otherwise-unused emissive RGB carries a 16-bit cutoff plus a marker for |
-| 7001–7011 (n=11) | LLVolumeGeometryManager::rebuildMesh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline |
-| 7181–7214 (n=34) | LLVolumeGeometryManager::genDrawInfo | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: sIndexedGLTFChannels distinct materials into one batch, assigning each face a material slot via setTextureIndex. The shader selects per-vertex by that slot. See LLRenderPass::pushGLTFBatchIndexed. Static/native GBuffer PBR retains the full indexed material width. Rigged PBR is al |
-| 7221–7240 (n=20) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: splitting after slot assignment would leave sparse indexed material lists that shared replay must reject |
-| 7249–7256 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 7264–7270 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7305–7311 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7318–7347 (n=30) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, LLMaterial, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
-| 7349–7355 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7363–7376 (n=14) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: per-DrawInfo authored-glow batch split |
-| 7385–7393 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 7403–7409 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7634–7640 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7643–7658 (n=16) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G2.3 fix] Only an explicit per-target MASK policy owns pass routing independently of TE alpha. getGeometryVolume() baked TE/base-colour alpha into this range. Remove it only for TARGET_MASK so every mask shader tests texture alpha alone; all other faces incur no vertex r |
-| 7661–7673 (n=13) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawPool, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_BLEND, LLMaterial |
-| 7677–7695 (n=19) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
-| 7698–7704 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 7709–7720 (n=12) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_MODE_MASK |
-| 7730–7738 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
-| 7764–7775 (n=12) | LLVolumeGeometryManager::genDrawInfo | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge G2.3 fix] Forced MASK material faces must reach the material-mask table even with TE alpha or legacy bump set. |
-| 7807–7813 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7834–7840 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 7862–7876 (n=15) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLRenderPass |
-| 7947–7953 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
-| 7970–7977 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
-| 8068–8074 (n=7) | LLGeometryManager::addGeometryCount | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 427–443 (n=17) | LLVOVolume::processUpdateMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: delete or reset Existing draw batches retain the matrix until rebuilt. |
+| 535–551 (n=17) | LLVOVolume::processUpdateMessage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: delete or reset Existing draw batches retain the matrix until rebuilt. |
+| 630–655 (n=26) | LLVOVolume::animateTextures | rig, stepped-animation, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Coverage changes even after mTexAnimMode is established. The shared region/tile scheduler coalesces these per-frame events. [ProbeOnDemand] TXa: texture animation is running (called for every instance every frame, independent of the camera) -> debounced motion. |
+| 689–701 (n=13) | LLVOVolume::animateTextures | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] TXt: an animated-texture batch toggle is LOD-like churn, not a content change. |
+| 807–823 (n=17) | LLVOVolume::updateTextureVirtualSize | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Hidden source faces never enter a draw batch, but all material channels must retain fetch demand for appearance/attachment cloning. |
+| 917–925 (n=9) | LLVOVolume::updateTextureVirtualSize | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] TXt: size-driven texture-animation toggle (camera distance), not a content change. |
+| 974–987 (n=14) | LLVOVolume::updateTextureVirtualSize | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] MS: a refinement of an already-built sculpt is LOD churn; a first build (current_discard < 0) stays an event. |
+| 1331–1371 (n=41) | LLVOVolume::notifyMeshLoaded, LLVOVolume::probeNoteAssetArrival | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] MS: is this rebuild a pure refinement / LOD arrival of an asset this volume already built (same sculpt id + type, ready)? A first arrival or a SWAPPED asset returns false and stays a real geometry event. [ProbeOnDemand] MS: mesh LOD / refinement of an already-buil |
+| 1576–1593 (n=18) | LLVOVolume::calcLOD | capture-sidecar, clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Ghost entity clones apply a render-only outer scale (LLClientOuterTransform, up to GHOST_SCALE_MAX) at draw time, but LOD is otherwise computed from unscaled native geometry -- so a large clone is driven at its 1x LOD and pops. Resolve the clone's own scale here (a scaled clone p |
+| 1620–1645 (n=26) | LLVOVolume::calcLOD | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: getLastAnimExtents() is already outer-scaled in LLVOAvatar::calculateSpatialExtents, so 'radius' above already reflects the clone scale -- do NOT scale it again (that would apply the scale squared). Just record the avatar's scale for the source-LOD gate below. e.g. a cloned anime |
+| 1649–1662 (n=14) | LLVOVolume::calcLOD | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Non-rigged clone prim: extents are native, so scale the LOD radius by the clone's own outer scale (guarded; own_scale == 1 for normal prims -> no-op, byte-identical). |
+| 1712–1726 (n=15) | LLVOVolume::calcLOD | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] BDMergeMachinimaHighLOD: force every volume to highest detail regardless of distance/zoom. This kills wide-shot LOD loss AND the LOD-change popping (cur_detail stops changing -> updateLOD's markRebuild stops firing). Reuses the proven HUD/selection forced-LOD pat |
+| 1731–1768 (n=38) | LLVOVolume::calcLOD | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: RenderRiggedLODHysteresis: rigged radius/distance come from the avatar's animated extents, which are recomputed every few frames while it animates, so cur_detail can ping-pong across a threshold and rebuild/re-upload the whole rigged group each time. Increases in detail stay imme |
+| 1801–1809 (n=9) | LLVOVolume::updateLOD | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] LV: a camera-distance LOD switch is not a content change. |
+| 2257–2279 (n=23) | LLVOVolume::updateGeometry | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H4: a pure LOD rebuild (no content flag, no REBUILD_POSITION) is camera-driven churn: tag the WHOLE function (including genBBoxes -> movePartition) so its notes are dropped. A changed volume invalidates the built-asset identity. Nothing below runs unless RenderPro |
+| 2305–2320 (n=16) | LLVOVolume::updateGeometry | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H4: entry bounds + whether this rebuild changes content. |
+| 2378–2413 (n=36) | LLVOVolume::updateGeometry | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: Content changed: one discrete event over the entry + exit bounds. No content change but the bounds moved: motion. Built-asset identity (MS): ready only once the asset itself is loaded. |
+| 2680–2692 (n=13) | LLVOVolume::setTEMaterialID | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A client-only object's params are set on it directly; no sim ever gives it a material id, and resolving the null one it keeps would replace them with no material when its faces are deselected. |
+| 3539–3572 (n=34) | LLVOVolume::updateSpotLightPriority | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge SpotStable] Stable projector shadows: the viewer has only two projector-shadow slots, awarded by on-screen pixel size - so panning the camera away reshuffles which lights hold shadows mid-shot. When enabled, priority is the light's WORLD size instead (radius cubed, so bi |
+| 4877–4902 (n=26) | LLVOVolume::getManipPivotPositionAgent | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Raise the edit-manip pivot to just above the invisible proxy box top so the constant-screen-size translate/rotate gizmo sits clearly OVER the ghost, not buried mid-body at large clone scales. Only the manipulator ORIGIN moves -- the proxy transform, bbox, and stretch-scale handle |
+| 4982–4993 (n=12) | LLVOVolume::lineSegmentIntersect | clones, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Shelter rays count only visible surfaces: client-only FORCE_INVISIBLE helpers (rig emitters, catchlight, live probe, manipulator proxies) never shelter rain. |
+| 5001–5008 (n=8) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits LLFloater, gFloaterTools, ALWeatherShelter |
+| 5015–5022 (n=8) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits LLToolMgr, ALWeatherShelter |
+| 5083–5103 (n=21) | LLVOVolume::lineSegmentIntersect | weather | creative-candidate | unknown; conditional evidence present | Edits ALWeatherShelter |
+| 5134–5153 (n=20) | LLVOVolume::lineSegmentIntersect | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: surfaceToTexture takes the hit in agent space, which a planar face projects from. |
+| 5555–5562 (n=8) | can_batch_gltf_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
+| 5601–5608 (n=8) | can_batch_legacy_material | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_MODE_BLEND |
+| 5710–5796 (n=87) | resolve_actor_fx_owners, resolve_outer_transform | actor-bar, capture-sidecar, director-shell, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Native Actor FX is authored for the visible Director actor, not necessarily the avatar that skins this one face. Worn animated objects are skinned by an LLControlAvatar. Keep that exact runtime identity in LLDrawInfo even before the object joins the Director cast: cast membership |
+| 5855–5864 (n=10) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Edits LLClientOuterTransform |
+| 5881–5887 (n=7) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 5912–5951 (n=40) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, LLRenderPass, ALPHA_MODE_MASK, ALPHA_MODE_BLEND, ALPHA_MODE_OPAQUE |
+| 5961–5984 (n=24) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawPool, LLRenderPass, LLPipeline, ALPHA_MODE_BLEND, LLMaterial, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK |
+| 5990–5999 (n=10) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_MODE_MASK |
+| 6013–6020 (n=8) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6024–6040 (n=17) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6053–6071 (n=19) | LLVolumeGeometryManager::registerFace | sensor | creative-candidate | unknown; conditional evidence present | Edits LLDrawInfo |
+| 6110–6133 (n=24) | LLVolumeGeometryManager::registerFace | capture-sidecar, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: mVertexBuffer's TYPE_EMISSIVE allocation is group-wide. Preserve exact per-draw authored-glow ownership so shared Actor FX (and any other DrawInfo consumer) never classifies a neighbouring face's emissive stream as this batch's glow. |
+| 6140–6150 (n=11) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6174–6195 (n=22) | LLVolumeGeometryManager::registerFace | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: Share ownership of the live matrix with the batch (tex_mat is facep->mTextureMatrix, the view of this owner). [BDMerge A5.4-1a] velocity pass prev-object-matrix source (mirror BD llvovolume.cpp:5574). Rigid only; rigged faces (model_mat == null) get their previous transform from  |
+| 6207–6224 (n=18) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge] Mark draws that belong to a genuinely worn attachment (rigged or not). getAvatarAncestor() excludes standalone animesh even though getAvatar() returns its control avatar. Drives the gated 3-pass alpha ordering in LLDrawPoolAlpha. |
+| 6244–6259 (n=16) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLMaterial, ALPHA_MODE_BLEND |
+| 6265–6281 (n=17) | LLVolumeGeometryManager::registerFace | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: The pass is authoritative. Store the same effective policy for scalar legacy/PBR rendering, alpha-pool shader selection, shadows, velocity, and Actor FX replay. Shared material assets remain untouched. |
+| 6285–6293 (n=9) | LLVolumeGeometryManager::registerFace | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 6426–6432 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawable |
+| 6437–6443 (n=7) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; no local conditional evidence | Edits ALDerenderList |
+| 6592–6600 (n=9) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Preserve material fetches, animesh controllers, attachment joint overrides and face setup above; omit only draw geometry. |
+| 6619–6644 (n=26) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_OVERRIDE_NONE, LLDrawPool, ALPHA_MODE_MASK |
+| 6733–6740 (n=8) | LLVolumeGeometryManager::rebuildGeom | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
+| 6909–6962 (n=54) | apply_target_mask_vertex_coverage | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: TARGET_MASK coverage is texture alpha alone.  Bake that policy only into the affected face's vertex range: RGB remains untouched, while alpha becomes one. Legacy glow has no per-DrawInfo cutoff upload, so its otherwise-unused emissive RGB carries a 16-bit cutoff plus a marker for |
+| 7014–7024 (n=11) | LLVolumeGeometryManager::rebuildMesh | unknown | unknown-review | unknown; no local conditional evidence | Edits LLPipeline |
+| 7194–7227 (n=34) | LLVolumeGeometryManager::genDrawInfo | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: sIndexedGLTFChannels distinct materials into one batch, assigning each face a material slot via setTextureIndex. The shader selects per-vertex by that slot. See LLRenderPass::pushGLTFBatchIndexed. Static/native GBuffer PBR retains the full indexed material width. Rigged PBR is al |
+| 7234–7253 (n=20) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: splitting after slot assignment would leave sparse indexed material lists that shared replay must reject |
+| 7262–7269 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 7277–7283 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7318–7324 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7331–7360 (n=30) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, LLMaterial, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
+| 7362–7368 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7376–7389 (n=14) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: per-DrawInfo authored-glow batch split |
+| 7398–7406 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 7416–7422 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7647–7653 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7656–7671 (n=16) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G2.3 fix] Only an explicit per-target MASK policy owns pass routing independently of TE alpha. getGeometryVolume() baked TE/base-colour alpha into this range. Remove it only for TARGET_MASK so every mask shader tests texture alpha alone; all other faces incur no vertex r |
+| 7674–7686 (n=13) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawPool, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_BLEND, LLMaterial |
+| 7690–7708 (n=19) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial, LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, ALPHA_MODE_BLEND |
+| 7711–7717 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 7722–7733 (n=12) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline, ALPHA_MODE_MASK |
+| 7743–7751 (n=9) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
+| 7777–7788 (n=12) | LLVolumeGeometryManager::genDrawInfo | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge G2.3 fix] Forced MASK material faces must reach the material-mask table even with TE alpha or legacy bump set. |
+| 7820–7826 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7847–7853 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 7875–7889 (n=15) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, ALPHA_OVERRIDE_NONE, ALPHA_MODE_MASK, LLRenderPass |
+| 7960–7966 (n=7) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
+| 7983–7990 (n=8) | LLVolumeGeometryManager::genDrawInfo | unknown | unknown-review | unknown; conditional evidence present | Edits LLMaterial |
+| 8081–8087 (n=7) | LLGeometryManager::addGeometryCount | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/pipeline.cpp`
 
@@ -2243,11 +2246,20 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 29–36 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2031–2078 (n=48) | LLMeshRepoThread::fetchMeshLOD | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1-2b] decoded mesh pool short-circuit: a hit skips the disk read AND the inflate + LLSD parse + face build in lodReceived. Serves a deep copy; replicates lodReceived's post-unpack delivery. |
-| 2430–2439 (n=10) | LLMeshRepoThread::lodReceived | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] write-through into the decoded mesh pool, pre-rigging (hits re-run rigging against current avatar state) |
-| 4337–4358 (n=22) | LLMeshRepository::shutdown, LLMeshRepository::shutdownDecomposition | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step is logged so a quit that dies or stalls here shows where. |
-| 4560–4568 (n=9) | LLMeshRepository::notifyLoadedMeshes | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] main-thread settings/budget refresh for the mesh pool |
-| 5737–5753 (n=17) | LLPhysicsDecomp::shutdown | composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ShutdownTrace] a stalled join reports itself every 2 s instead of hanging silently. |
+| 228–238 (n=11) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: mLoadingMeshes                  mMeshMutex [4]  rw.main.none, rw.any.mMeshMutex mLoadingMeshes                  mMeshMutex [4]  rw.main.none, rw.main.mMeshMutex mLoadingSkins                   mMeshMutex [4]  rw.main.mMeshMutex mLoadingSkins                   mMeshMutex      rw.m |
+| 588–619 (n=32) | snapshot_waiting_volumes | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Take a strong reference to every object waiting on a mesh before notifying any of them.  Neither iterating MeshLoadData::mVolumes nor iterating a raw copy of it is safe. The set is self-maintaining: ~LLVOVolume runs unregisterOldMeshAndSkin(), which erases the object from mLoadin |
+| 2057–2104 (n=48) | LLMeshRepoThread::fetchMeshLOD | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1-2b] decoded mesh pool short-circuit: a hit skips the disk read AND the inflate + LLSD parse + face build in lodReceived. Serves a deep copy; replicates lodReceived's post-unpack delivery. |
+| 2360–2368 (n=9) | LLMeshRepoThread::headerReceived | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Tell the main thread a skin fetch is in flight. No other mesh mutex is held here: mMeshMutex is first in the lock order. |
+| 2451–2460 (n=10) | LLMeshRepoThread::lodReceived | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] write-through into the decoded mesh pool, pre-rigging (hits re-run rigging against current avatar state) |
+| 4358–4379 (n=22) | LLMeshRepository::shutdown, LLMeshRepository::shutdownDecomposition | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step is logged so a quit that dies or stalls here shows where. |
+| 4423–4432 (n=10) | LLMeshRepository::unregisterSkinInfo | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: The repo thread inserts into mLoadingSkins through noteSkinInfoPending(), so every access needs mMeshMutex. Nothing below calls out of the repository. The mutex is null after shutdown(), when the repo thread is gone and LLMutexLock is a no-op. |
+| 4459–4469 (n=11) | LLMeshRepository::unregisterAllMeshes | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Shared with the repo thread, see noteSkinInfoPending(). |
+| 4589–4597 (n=9) | LLMeshRepository::notifyLoadedMeshes | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-2b] main-thread settings/budget refresh for the mesh pool |
+| 4862–4934 (n=73) | LLMeshRepository::noteSkinInfoPending, LLMeshRepository::notifySkinInfoReceived, LLMeshRepository::notifySkinInfoUnavailable, LLMeshRepository::snapshotSkinWaiters | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Read out of 'info' before the callbacks below run, not after them. By key: the callbacks above may have erased this entry (or rehashed the map) through unregisterSkinInfo() or a re-entrant fetchSkinInfo(). Any thread. Marks a skin fetch as in flight so getSkinInfo() appends its o |
+| 4989–5005 (n=17) | LLMeshRepository::notifyMeshLoaded | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: By key: the callbacks above may have erased this entry (or rehashed the map) through unregisterMesh() or a re-entrant loadMesh(). |
+| 5021–5031 (n=11) | LLMeshRepository::notifyMeshUnavailable | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: setVolume() below re-enters loadMesh() and can destroy an LLVOVolume outright, so hold the waiters alive across the run -- see snapshot_waiting_volumes(). |
+| 5038–5044 (n=7) | LLMeshRepository::notifyMeshUnavailable | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 5803–5819 (n=17) | LLPhysicsDecomp::shutdown | composition | creative-candidate | unknown; conditional evidence present | Comment evidence: [ShutdownTrace] a stalled join reports itself every 2 s instead of hanging silently. |
 
 ## Slice 3: `indra/newview/llmeshrepository.h`
 
@@ -2256,6 +2268,7 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 864–870 (n=7) | unknown/non-function (public:) | composition | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 877–885 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Any thread: the only way a background thread may touch mLoadingSkins. |
 
 ## Slice 3: `indra/newview/llpreviewanim.cpp`
 
@@ -2411,9 +2424,12 @@ HEAD coordinates; guards/features are candidate evidence
 | 5970–5979 (n=10) | LLViewerObject::initRenderMaterial | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: A managed ghost binding must never write pinned channels back into a fetched base shared by source/world faces. |
 | 5991–6000 (n=10) | LLViewerObject::initRenderMaterial | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Also covers asynchronous material-completion callbacks that re-init. |
 | 6229–6240 (n=12) | LLViewerObject::getBoundingBoxAgent | clones | creative-candidate | unknown; conditional evidence present | Edits LLGhostAvatar, LLVector3, LLBBox, LLQuaternion |
-| 7907–7926 (n=20) | LLViewerObject::setRenderMaterialID, onMaterialComplete | clones, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
-| 7937–7947 (n=11) | LLViewerObject::setRenderMaterialID, onMaterialComplete | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
-| 8187–8189 (n=3) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 6877–6896 (n=20) | LLViewerObject::createNewParameterEntry | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 6920–6926 (n=7) | LLViewerObject::setParameterEntryInUse | unknown | unknown-review | unknown; conditional evidence present | Edits LLNetworkData |
+| 6935–6941 (n=7) | LLViewerObject::parameterChanged | unknown | unknown-review | unknown; conditional evidence present | Edits LLNetworkData |
+| 7910–7929 (n=20) | LLViewerObject::setRenderMaterialID, onMaterialComplete | clones, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
+| 7940–7950 (n=11) | LLViewerObject::setRenderMaterialID, onMaterialComplete | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] H7: an async PBR material finished loading. |
+| 8190–8192 (n=3) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/newview/llviewerpartsim.cpp`
 
@@ -2992,9 +3008,12 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 54–60 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1191–1213 (n=23) | LLFace::canRenderAsMask | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: One policy owns routing for legacy and PBR. PBR is handled by its own pool/pass selection below LLVOVolume, while this helper applies the same resolved decision to legacy auto-mask routing. |
-| 2283–2318 (n=36) | face_resolve_outer_transform | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Ghost entity clones share a post-skin outer transform (LLClientOuterTransform) via their object and/or skinning avatar. Mirrors resolve_outer_transform() in llvovolume.cpp so face pixel-area culling can account for the rendered (scaled) footprint. Returns null for normal content, |
-| 2413–2437 (n=25) | LLFace::calcPixelArea | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Ghost entity clones render at an outer scale about a world-space foot pivot, but the extents above (native mExtents / joint-derived mRiggedExtents) are unscaled -- so faces on a large clone evaluate their 1x pixel area and cross the ~8px force-cull, blinking. Scale the size and r |
+| 157–163 (n=7) | LLFace::init | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 176–198 (n=23) | LLFace::ensureTextureMatrix, LLFace::releaseTextureMatrix | unknown | unknown-review | unknown; conditional evidence present | Edits LLFace, LLMatrix4 |
+| 222–229 (n=8) | LLFace::destroy | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Outstanding draw batches retain the matrix until they are rebuilt. |
+| 1209–1231 (n=23) | LLFace::canRenderAsMask | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: One policy owns routing for legacy and PBR. PBR is handled by its own pool/pass selection below LLVOVolume, while this helper applies the same resolved decision to legacy auto-mask routing. |
+| 2301–2336 (n=36) | face_resolve_outer_transform | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Ghost entity clones share a post-skin outer transform (LLClientOuterTransform) via their object and/or skinning avatar. Mirrors resolve_outer_transform() in llvovolume.cpp so face pixel-area culling can account for the rendered (scaled) footprint. Returns null for normal content, |
+| 2431–2455 (n=25) | LLFace::calcPixelArea | capture-sidecar, clones | creative-candidate | unknown; conditional evidence present | Comment evidence: Ghost entity clones render at an outer scale about a world-space foot pivot, but the extents above (native mExtents / joint-derived mRiggedExtents) are unscaled -- so faces on a large clone evaluate their 1x pixel area and cross the ~8px force-cull, blinking. Scale the size and r |
 
 ## Slice 4: `indra/newview/llfloaterpay.cpp`
 
@@ -3192,12 +3211,13 @@ HEAD coordinates; guards/features are candidate evidence
 | 353–362 (n=10) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [GhostStudio] position used for the EDIT MANIPULATOR pivot only. Defaults to getPivotPositionAgent(); the ghost manip proxy raises it above its (large, invisible) body so the constant-screen-size gizmo isn't buried in the clone. |
 | 421–450 (n=30) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [GhostStudio] Debug-gated, viewer-local resolved material bindings. These never change semantic TE ids and never emit simulator updates. |
 | 488–505 (n=18) | getLastServerScale, hasLastServerTransform | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Latest accepted ObjectUpdate, before ping/omega extrapolation. A local render override must restore these values, including when it starts on an already moving prim. This cache is never serialized or sent. |
-| 842–852 (n=11) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Lazily allocated only for debug-gated local ghost volumes. Keeping one null pointer here avoids adding vector/map storage to every world object. |
-| 859–890 (n=32) | isCineRigEmitter, isCineRigProbe, isColorChart, isGhostManipProxy, isLocalMeshPreview | capture-sidecar, clones, looks, rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: Viewer-only render ownership. Never serialized or sent to the simulator. [GhostStudio] WHICH KIND of client-only object this is. isLocalOnly() only says "no sim counterpart" -- that is true for BOTH a local mesh preview and a Ghost Studio manipulation proxy, which must NOT share  |
-| 955–961 (n=7) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1061–1075 (n=15) | unknown/non-function (protected:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3d, LLUUID, LLVector3, LLQuaternion |
-| 1150–1157 (n=8) | unknown/non-function (public:) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1215–1217 (n=3) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 754–779 (n=26) | getExtraParameterEntry, getExtraParameterEntryCreate, isValidExtraParamType | unknown | unknown-review | unknown; conditional evidence present | Edits LLNetworkData |
+| 851–861 (n=11) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: Lazily allocated only for debug-gated local ghost volumes. Keeping one null pointer here avoids adding vector/map storage to every world object. |
+| 868–899 (n=32) | isCineRigEmitter, isCineRigProbe, isColorChart, isGhostManipProxy, isLocalMeshPreview | capture-sidecar, clones, looks, rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: Viewer-only render ownership. Never serialized or sent to the simulator. [GhostStudio] WHICH KIND of client-only object this is. isLocalOnly() only says "no sim counterpart" -- that is true for BOTH a local mesh preview and a Ghost Studio manipulation proxy, which must NOT share  |
+| 964–970 (n=7) | unknown/non-function (public:) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1070–1084 (n=15) | unknown/non-function (protected:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVector3d, LLUUID, LLVector3, LLQuaternion |
+| 1159–1166 (n=8) | unknown/non-function (public:) | rig | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1224–1226 (n=3) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 4: `indra/newview/llviewerobjectlist.cpp`
 
@@ -4003,12 +4023,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 856–888 (n=33) | LLViewerRegion::applyVisualWaterHeight, LLViewerRegion::getWaterHeight, LLViewerRegion::sanitizeVisualWaterHeight, LLViewerRegion::setWaterHeight | unknown | unknown-review | unknown; conditional evidence present | Edits LLViewerRegion, gSavedSettings, RenderWaterLevelOverride, RenderWaterLevel |
 | 1558–1564 (n=7) | LLViewerRegion::createVisibleObjects | unknown | unknown-review | unknown; conditional evidence present | Edits LLCachedControl, gSavedSettings |
 | 1569–1583 (n=15) | LLViewerRegion::createVisibleObjects | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Count successful creations only: an uncreatable priority-list head must not consume every frame's count budget. Failed attempts still check the deadline. Keep the legacy branch unchanged. |
-| 1859–1866 (n=8) | LLViewerRegion::killInvisibleObjects | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] cache culling (the camera turned) is not a scene change |
-| 2615–2624 (n=10) | LLViewerRegion::setSimulatorFeatures | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: call setShaders the first time GLTFEnabled is received as true (causes GLTF specific shaders to be loaded) Simulator capability only; shader loading does not read this setting. |
-| 2827–2833 (n=7) | unknown/non-function (void LLViewerRegion::decodeBoundingInfo(LLVOCacheEntry* entry)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLViewerRegion, LLDataPackerBinaryBuffer, LLUUID |
-| 2844–2855 (n=12) | LLViewerRegion::cacheFullUpdate | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] changed / replaced / revalidated cache entry: the data is authoritative, so a culled-then-re-created object is not "unchanged". |
-| 2884–2893 (n=10) | LLViewerRegion::cacheFullUpdate | rig | creative-candidate | unknown; conditional evidence present | Edits ALProbeDirty |
-| 4042–4044 (n=3) | unknown/non-function (U32 LLViewerRegion::getWhisperRange() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1828–1838 (n=11) | LLViewerRegion::killInvisibleObjects | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Set became empty |
+| 1864–1871 (n=8) | LLViewerRegion::killInvisibleObjects | rig | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ProbeOnDemand] cache culling (the camera turned) is not a scene change |
+| 1953–1969 (n=17) | LLViewerRegion::addNewObject | unknown | unknown-review | unknown; conditional evidence present | Edits LLViewerRegion, LLDrawable, LL_WARNS, LL_ENDL, LLVOCacheEntry |
+| 2629–2638 (n=10) | LLViewerRegion::setSimulatorFeatures | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: call setShaders the first time GLTFEnabled is received as true (causes GLTF specific shaders to be loaded) Simulator capability only; shader loading does not read this setting. |
+| 2841–2847 (n=7) | unknown/non-function (void LLViewerRegion::decodeBoundingInfo(LLVOCacheEntry* entry)) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLViewerRegion, LLDataPackerBinaryBuffer, LLUUID |
+| 2858–2869 (n=12) | LLViewerRegion::cacheFullUpdate | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeOnDemand] changed / replaced / revalidated cache entry: the data is authoritative, so a culled-then-re-created object is not "unchanged". |
+| 2898–2907 (n=10) | LLViewerRegion::cacheFullUpdate | rig | creative-candidate | unknown; conditional evidence present | Edits ALProbeDirty |
+| 4056–4058 (n=3) | unknown/non-function (U32 LLViewerRegion::getWhisperRange() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 7: `indra/newview/llviewertexturelist.cpp`
 
@@ -4976,6 +4998,16 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 99–106 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ClearAnim] Adds the joint position offsets apply() has applied so far to 'offsets'. |
 
+## Slice 99: `indra/llappearance/lltexlayer.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 1430–1444 (n=15) | LLTexLayer::renderMorphMasks | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Replace the cached mask without leaking its old allocation. |
+| 1475–1481 (n=7) | LLTexLayer::renderMorphMasks | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1518–1524 (n=7) | LLTexLayer::renderMorphMasks | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 99: `indra/llaudio/llaudiodecodemgr.cpp`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -5070,6 +5102,23 @@ HEAD coordinates; guards/features are candidate evidence
 | 883–890 (n=8) | LLMotionController::updateMotions | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: sGlobalTimeFactor scales every controller uniformly (see setGlobalTimeFactor). |
 | 992–1003 (n=12) | LLMotionController::activateMotionInstance | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/llcommon/llcallbacklist.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 86–103 (n=18) | LLCallbackList::deleteFunction | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: <FS:TJ> [FIRE-36314] Fix crash caused by possible callback erasure during callFunctions() Traversal in progress: tombstone the entry, callFunctions() removes it at the end. </FS:TJ> |
+| 110–174 (n=65) | DepthGuard, LLCallbackList::callFunctions, LLCallbackList::deleteAllFunctions, LLCallbackList::find, remove_if, ~DepthGuard | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Tombstones (func == nullptr, see deleteFunction()) must never match. <FS:TJ> [FIRE-36314] Fix crash caused by possible callback erasure during callFunctions() </FS:TJ> <FS:TJ> [FIRE-36314] Exception-safe: LLAppViewer::frame() catches LLContinueError and keeps running, so the dept |
+
+## Slice 99: `indra/llcommon/llcallbacklist.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 58–67 (n=10) | unknown/non-function (protected:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: <FS:TJ> [FIRE-36314] Fix crash caused by possible callback erasure during callFunctions() </FS:TJ> |
+
 ## Slice 99: `indra/llcommon/llmemory.h`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -5085,6 +5134,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 672–699 (n=28) | unknown/non-function (using EmojiClusterList = std::vector<std::pair<size_t, size_t>>;) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Cost note for the cluster-aware helpers below: the single-argument forms rebuild the cluster list internally on every call (an O(N) scan of 'wstr'). Fine for one-off cursor moves; expensive in tight loops over the same text. Callers making multiple cluster-aware queries on the sa |
+
+## Slice 99: `indra/llcommon/llworkerthread.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 89–102 (n=14) | LLWorkerThread::update | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Sample WCF_WORK_FINISHED BEFORE deleteOK(). Once the work is finished no new work (and so no new decode responder etc.) can start on a worker that is marked for delete, so whatever deleteOK() reports afterwards can only get safer. Reading the flag after deleteOK() lets a late doW |
 
 ## Slice 99: `indra/llcorehttp/httpcommon.cpp`
 
@@ -5242,13 +5299,14 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 29–35 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 331–338 (n=8) | cleanIfDue | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Run any deferred expiry sweep (see RenderVBOPoolCleanAtFrameEnd). Default: nothing to do. |
-| 536–553 (n=18) | clean, cleanIfDue | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: RenderVBOPoolCleanAtFrameEnd: only count the touch here; the expiry sweep runs from cleanIfDue() at the end of the frame, never in the middle of a rebuild. Same cadence as always (every 1k touches, 5 s expiry); only the call site differs. |
-| 706–712 (n=7) | unknown/non-function (U32 LLVertexBuffer::sGLRenderBuffer = 0;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVertexBuffer |
-| 925–931 (n=7) | LLVertexBuffer::drawRange | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawBudget |
-| 938–944 (n=7) | LLVertexBuffer::drawRangeFast | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawBudget |
-| 952–958 (n=7) | LLVertexBuffer::drawArrays | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawBudget |
-| 990–1005 (n=16) | LLVertexBuffer::endOfFrameCleanPool | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: static |
+| 299–319 (n=21) | delete_buffers | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Move current frame to free list Clear frame -3 (equals +1), this idx will be written over on the next call |
+| 334–341 (n=8) | cleanIfDue | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Run any deferred expiry sweep (see RenderVBOPoolCleanAtFrameEnd). Default: nothing to do. |
+| 539–556 (n=18) | clean, cleanIfDue | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: RenderVBOPoolCleanAtFrameEnd: only count the touch here; the expiry sweep runs from cleanIfDue() at the end of the frame, never in the middle of a rebuild. Same cadence as always (every 1k touches, 5 s expiry); only the call site differs. |
+| 709–715 (n=7) | unknown/non-function (U32 LLVertexBuffer::sGLRenderBuffer = 0;) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLVertexBuffer |
+| 928–934 (n=7) | LLVertexBuffer::drawRange | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawBudget |
+| 941–947 (n=7) | LLVertexBuffer::drawRangeFast | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawBudget |
+| 955–961 (n=7) | LLVertexBuffer::drawArrays | unknown | unknown-review | unknown; conditional evidence present | Edits LLDrawBudget |
+| 993–1008 (n=16) | LLVertexBuffer::endOfFrameCleanPool | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: static |
 
 ## Slice 99: `indra/llrender/llvertexbuffer.h`
 
@@ -6149,6 +6207,14 @@ HEAD coordinates; guards/features are candidate evidence
 | 109–115 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 162–168 (n=7) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
+## Slice 99: `indra/newview/llappearancemgr.cpp`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 4464–4472 (n=9) | LLAppearanceMgr::removeItemsFromAvatar | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Copy by value: removeCOFItemLinks() can free the inventory object that owns this UUID, and it is used again afterwards (c245f69dd90). |
+
 ## Slice 99: `indra/newview/lldrawable.h`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -6176,6 +6242,16 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 203–232 (n=30) | LLViewerDynamicTexture::updateAllInstances | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [DynTexIdle] The shared targets are bound + cleared lazily, only once an instance actually needs to render. Binding/clearing both every frame with nothing to draw cost ~3-5 ms/frame of CPU (driver stalls) in Tracy. needsRender() has side effects, so it is still called exactly onc |
 | 250–283 (n=34) | LLViewerDynamicTexture::updateAllInstances | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, LLAvatarAppearanceDefines |
+
+## Slice 99: `indra/newview/llface.h`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–34 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 183–195 (n=13) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Allocate the animated texture matrix if this face has none yet. Returns true when a new matrix was created. Drop this face's reference to its animated texture matrix. Draw batches that still share it keep it alive until they are rebuilt. |
+| 268–281 (n=14) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: Animated texture matrix. mTextureMatrix is a non-owning view of mTextureMatrixOwner and is always equal to mTextureMatrixOwner.get(). Draw batches (LLDrawInfo) share ownership, so removing the animation or destroying this face cannot free a matrix a pending batch still reads (por |
 
 ## Slice 99: `indra/newview/llfetchedgltfmaterial.cpp`
 
@@ -6766,12 +6842,16 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 33–40 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | unknown | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1136–1160 (n=25) | LLTextureFetchWorker::doWork | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1] decoded RAM pool short-circuit: a hit at the desired discard or finer skips the encoded cache read AND the J2K decode. The encoded disk cache was already written when this data first decoded, so persistence is not bypassed. |
-| 1863–1873 (n=11) | LLTextureFetchWorker::doWork | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1] write-through into the decoded RAM pool |
-| 2524–2531 (n=8) | LLTextureFetch::createRequest | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1] main-thread settings/budget refresh for the decoded pool |
-| 2816–2822 (n=7) | LLTextureFetch::getRequestFinished | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2830–2836 (n=7) | LLTextureFetch::getRequestFinished | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2847–2857 (n=11) | LLTextureFetch::getRequestFinished | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-S1] session-level attribution for the decoded-pool spike |
+| 344–379 (n=36) | DecodeResponder, completed, ~DecodeResponder | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Threads:  Tid once the decode has run, or the posting thread if it could not be queued The last thing this responder does with the worker. deleteOK holds the worker's deletion until every responder carrying a pointer to it has got this far. A worker taken out of the fetcher is on |
+| 576–585 (n=10) | unknown/non-function (private:) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: DecodeResponders alive that point at this worker. A responder lives on past completed() and past the worker's interest in its decode, so neither mDecodeHandle nor mDecoded can say when the last one is gone; this can. |
+| 907–913 (n=7) | unknown/non-function (LLTextureFetchWorker::LLTextureFetchWorker(LLTextureFetch* fetcher,) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1154–1178 (n=25) | LLTextureFetchWorker::doWork | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1] decoded RAM pool short-circuit: a hit at the desired discard or finer skips the encoded cache read AND the J2K decode. The encoded disk cache was already written when this data first decoded, so persistence is not bypassed. |
+| 1881–1891 (n=11) | LLTextureFetchWorker::doWork | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1] write-through into the decoded RAM pool |
+| 2190–2203 (n=14) | LLTextureFetchWorker::deleteOK | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: A decode responder dereferences this worker until it is destroyed, whether or not its decode still matters. Once a worker is out of mRequestMap its decode's result is dropped, so neither mDecodeHandle nor mDecoded ever settles for it; the count does. |
+| 2550–2557 (n=8) | LLTextureFetch::createRequest | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1] main-thread settings/budget refresh for the decoded pool |
+| 2842–2848 (n=7) | LLTextureFetch::getRequestFinished | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2856–2862 (n=7) | LLTextureFetch::getRequestFinished | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2873–2883 (n=11) | LLTextureFetch::getRequestFinished | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [BDMerge G5.1-S1] session-level attribution for the decoded-pool spike |
 
 ## Slice 99: `indra/newview/lltextureview.cpp`
 

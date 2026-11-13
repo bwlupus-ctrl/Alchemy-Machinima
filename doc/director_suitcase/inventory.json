@@ -6,7 +6,7 @@
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
       "GENERATED": 736,
-      "HOOK": 557,
+      "HOOK": 563,
       "OWNED": 941,
       "TOOLING": 513
     },
@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2317
     },
-    "head_source_tree": "76c5ee25a7a5af288244c3eb966b9ea9f8bdf59d",
-    "hook_files": 557,
-    "hunks": 3545,
-    "input_sha256": "e7a1f693f1b369334d03b40c1574c6d008341b022b3ce93f4d5081e8152c7410",
+    "head_source_tree": "c6b628a89ff3a5492e33cbdb1397205e51e76e7d",
+    "hook_files": 563,
+    "hunks": 3583,
+    "input_sha256": "93a4ccb3a0015cb96b0edb9200ee8ce35eb28a82e4e3693ec13a68584fe78d40",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -10223,6 +10223,21 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "M",
+      "layer": 9,
+      "path": "indra/llappearance/lltexlayer.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "clones"
       ],
@@ -10638,6 +10653,32 @@
       "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llcommon/llcallbacklist.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llcommon/llcallbacklist.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
       "feature_evidence": [
         "owned source / hook delta identifiers and comments"
       ],
@@ -10704,6 +10745,19 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/llcommon/llstring.h",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "M",
+      "layer": 99,
+      "path": "indra/llcommon/llworkerthread.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -27754,6 +27808,30 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-bar",
+        "actor-path",
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "roto-tron",
+        "stepped-animation"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llappearancemgr.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
       "candidate_features_from_subjects": [
         "clones",
         "composition"
@@ -28553,6 +28631,26 @@
       "git_status": "M",
       "layer": 4,
       "path": "indra/newview/llface.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "director-shell",
+        "rig",
+        "roto-tron"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llface.h",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -30147,7 +30245,8 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
-        "composition"
+        "composition",
+        "roto-tron"
       ],
       "git_status": "M",
       "layer": 3,
@@ -31033,7 +31132,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "looks"
       ],
       "class": "HOOK",
@@ -32479,8 +32577,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "weather"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
