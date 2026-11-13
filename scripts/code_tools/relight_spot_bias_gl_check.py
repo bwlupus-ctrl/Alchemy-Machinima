@@ -63,6 +63,10 @@ def reverse_fade_layer(shader):
     layer = json.loads(raw)
     assert layer['base'] == FADE_BASE and layer['file'] == SHADER and len(layer['hunks']) == 6, 'fade shader layer: scope'
     original = G.SourceTree(FADE_BASE).read(SHADER).replace('\r\n', '\n')
+    # Newest first: the metric penumbra layer (softshadow_metric_shader_hunks.json, built on the fade layer) is
+    # peeled exactly to the fade layer's own complete file; any other edit fails there or below.
+    from director_actor_bar_check import reverse_softshadow_metric_shader
+    shader = reverse_softshadow_metric_shader(shader)
     shader = shader.replace('\r\n', '\n')
     for hunk in layer['hunks']:
         assert original.count(hunk['before']) == 1, 'fade shader layer: baseline hunk'

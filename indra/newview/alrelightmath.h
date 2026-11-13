@@ -92,5 +92,98 @@ inline double diffuseRatio(double cosine, double radius, double distance)
     if (cosine >= std::sqrt(s2)) return cosine;
     return sphere(cosine, s2) / (3.14159265358979323846 * std::max(s2, 1.e-20));
 }
+// ---------------------------------------------------------------------------------------- shadow source size
+// One source radius (metres) for every local-light shadow path. `authored` is LLPipeline's
+// area_source_radius() (rig fixture size, RenderLocalLightSizeFromPrim or
+// RenderLocalLightDefaultRadius; 0 = unsized), the value all three paths start from:
+//   - the world cube resolve uploads min(authored > 0 ? authored : 0.1, 2) as area_world_info.z
+//     (LLPipeline::renderAreaShadows, kept inline there);
+//   - the screen-space area trace uploads it raw as area_lights[].w and areaShadowF.glsl applies
+//     the same 0.1 m to an unsized light;
+//   - the metric projector penumbra below uses this function.
+// relight_spot_metric_gl_check.py holds the three to the same default and cap.
+constexpr double kShadowSourceDefaultRadius = 0.1;
+constexpr double kShadowSourceMaxRadius = 2.0;
+constexpr double shadowSourceRadius(double authored)
+{
+    return authored > 0.0 ? (authored < kShadowSourceMaxRadius ? authored : kShadowSourceMaxRadius)
+                          : kShadowSourceDefaultRadius;
+}
+// Metric projector penumbra (RenderSpotShadowPenumbraModel 1): how the dimensionless softness
+// controls of the old model act on the source radius.
+//   - A rig light in fixture mode has an authored physical source size, and its softness
+//     override is DERIVED from that same size: the radius is used as is (trim 1), so the
+//     projector map and a world cube of the same fixture agree.
+//   - Any other light: radius * softness / 3, softness = the light's rig override when it has
+//     one, the global Softness (BDMergeSoftShadowSoftness) otherwise. 3 is that setting's
+//     default, so an untouched slider is exactly the physical radius.
+constexpr double kSpotPenumbraSoftnessUnit = 3.0;
+constexpr double kSpotPenumbraSoftnessMax = 16.0;
+constexpr double spotPenumbraTrim(bool fixture_sized, double override_softness, double global_softness)
+{
+    if (fixture_sized) return 1.0;
+    const double softness = override_softness > 0.0 ? override_softness : global_softness;
+    if (!(softness > 0.0)) return 0.0;
+    return (softness < kSpotPenumbraSoftnessMax ? softness : kSpotPenumbraSoftnessMax) / kSpotPenumbraSoftnessUnit;
+}
+// A perspective shadow map (OpenGL clip space, depth range 0..1) with projection P stores window
+// depth d(z) = A - K/z for axial distance z from the projection origin:
+//   A = (1 - P[2][2])/2 = far/(far-near),   K = -P[3][2]/2 = far*near/(far-near).
+constexpr double spotDepthA(double p22) { return 0.5 * (1.0 - p22); }
+constexpr double spotDepthK(double p32) { return -0.5 * p32; }
+// Texels of penumbra radius per unit of window depth between blocker and receiver, on one axis:
+//   focal = P[0][0] or P[1][1] = 1 / tan(half the field of view) on that axis.
+// A disk of radius R at the projection origin, seen past a blocker at z_b, leaves a penumbra of
+// radius R*(z_r-z_b)/z_b on a receiver at z_r; one texel there is 2*z_r/(focal*texels) wide, so
+// the radius is R*texels*focal/2 * (1/z_b - 1/z_r) = R*texels*focal/(2K) * (d_r - d_b) texels.
+// 0 = no valid projection (the caller keeps the old model for that slot).
+constexpr double spotPenumbraScale(double radius_m, double map_texels, double focal, double p32)
+{
+    const double depth_k = spotDepthK(p32);
+    return radius_m > 0.0 && map_texels > 0.0 && focal > 0.0 && depth_k > 1.e-9
+        ? radius_m * map_texels * focal / (2.0 * depth_k) : 0.0;
+}
+// The source disk sits at the LIGHT'S CENTRE (where the cube and area paths put it), which is
+// centre_depth metres in front of the projection origin (the origin is set back behind the lamp
+// prim; negative when the centre is behind it). Similar triangles then divide by (z_b - c)
+// instead of z_b: the radius above times z_b/(z_b - c) = 1/(1 - s*(A - d_b)), s = c/K.
+constexpr double spotPenumbraSetback(double centre_depth, double p32)
+{
+    const double depth_k = spotDepthK(p32);
+    return depth_k > 1.e-9 ? centre_depth / depth_k : 0.0;
+}
+// The shader's evaluation (shadowUtil.glsl spotMetricPenumbra), for the checks below.
+constexpr double spotPenumbraTexels(double scale, double depth_a, double setback, double receiver_d, double blocker_d)
+{
+    const double lever = 1.0 - setback * (depth_a - blocker_d);
+    return scale * (receiver_d - blocker_d) / (lever > 0.05 ? lever : 0.05);
+}
+namespace penumbra_selfcheck
+{
+constexpr bool within(double a, double b, double tolerance) { return a - b < tolerance && b - a < tolerance; }
+// 90 degree square map (focal 1), near 0.5 m, far 10.5 m: K = 10.5*0.5/10 = 0.525 (P32 = -1.05),
+// A = 10.5/10 = 1.05 (P22 = -1.1). R = 0.1 m on 2048 texels: 0.1*2048/(2*1*0.525) = 195.0476
+// texels per unit depth. Blocker 4 m and receiver 5 m from the origin: d = 0.91875 and 0.945,
+// 0.02625 apart: 5.12 texels of 2*5/2048 m = 0.025 m = R*(5-4)/4.
+constexpr double kA = spotDepthA(-1.1), kScale = spotPenumbraScale(0.1, 2048.0, 1.0, -1.05);
+static_assert(within(kA, 1.05, 1.e-12) && within(spotDepthK(-1.05), 0.525, 1.e-12), "spot depth constants");
+static_assert(within(kScale, 195.047619, 1.e-5), "spot penumbra scale");
+static_assert(within(spotPenumbraTexels(kScale, kA, 0.0, 0.945, 0.91875) * (2.0 * 5.0 / 2048.0), 0.025, 1.e-9), "spot penumbra metres");
+// The light's centre 0.4 m in front of the origin: R*(5-4)/(4-0.4) = 0.0277778 m.
+static_assert(within(spotPenumbraTexels(kScale, kA, spotPenumbraSetback(0.4, -1.05), 0.945, 0.91875) * (2.0 * 5.0 / 2048.0),
+                     0.1 * 1.0 / 3.6, 1.e-9), "spot penumbra setback");
+// ... and 0.3 m behind it: R*(5-4)/(4+0.3).
+static_assert(within(spotPenumbraTexels(kScale, kA, spotPenumbraSetback(-0.3, -1.05), 0.945, 0.91875) * (2.0 * 5.0 / 2048.0),
+                     0.1 * 1.0 / 4.3, 1.e-9), "spot penumbra negative setback");
+// Twice the focal length (a narrower cone) doubles the texels per metre, and so the radius in texels.
+static_assert(within(spotPenumbraScale(0.1, 2048.0, 2.0, -1.05), 2.0 * 195.047619, 1.e-4), "spot penumbra focal");
+static_assert(spotPenumbraScale(0.1, 2048.0, 1.0, 0.0) == 0.0 && spotPenumbraScale(0.0, 2048.0, 1.0, -1.05) == 0.0 &&
+              spotPenumbraSetback(0.4, 0.0) == 0.0, "spot penumbra invalid");
+static_assert(shadowSourceRadius(0.0) == 0.1 && shadowSourceRadius(-1.0) == 0.1 && shadowSourceRadius(0.3) == 0.3 &&
+              shadowSourceRadius(5.0) == 2.0, "shadow source radius");
+static_assert(spotPenumbraTrim(true, 8.0, 0.5) == 1.0 && spotPenumbraTrim(false, 0.0, 3.0) == 1.0 &&
+              spotPenumbraTrim(false, 6.0, 3.0) == 2.0 && spotPenumbraTrim(false, 0.0, 0.0) == 0.0 &&
+              within(spotPenumbraTrim(false, 0.0, 99.0), 16.0 / 3.0, 1.e-12), "spot penumbra trim");
+}
 }
 #endif
