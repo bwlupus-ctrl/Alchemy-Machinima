@@ -193,6 +193,55 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
+SOFTSHADOW_METRIC_DIGEST = "3674d6a474751d979587ddbd59d669e96b8b44335dd43c4bdf16e1d25fb40ec1"
+
+
+def reverse_softshadow_metric(source, name):
+    """Peel the newest pipeline layer (soft shadow fix 4: the per-slot metric penumbra upload after the per-slot
+    softness upload) before the soft shadow quality layer. Idempotent: skipped when
+    its hunk is already gone; the pinned digest is checked every time. Exact: removing the one reviewed hunk must
+    reproduce the complete 1d1162aaf77 file."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_metric_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_METRIC_DIGEST, ("reviewed soft shadow metric", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "1d1162aaf77", "soft shadow metric base"
+    assert set(allowed["files"]) == {"pipeline.cpp"} and len(allowed["files"]["pipeline.cpp"]) == 1, "soft shadow metric scope"
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "softshadow_metric_hunks.json",
+                                     SOFTSHADOW_METRIC_DIGEST, "reviewed soft shadow metric")
+
+
+SOFTSHADOW_METRIC_SHADER_DIGEST = "9ef5c721dc893072b44fa9a0f2a113887d4d1b2b3b9f79e79367044c9f237daa"
+
+
+def reverse_softshadow_metric_shader(source):
+    """Peel the reviewed soft shadow fix 4 edits of class1/deferred/shadowUtil.glsl (metric projector penumbra) before
+    the soft shadow quality edits. Idempotent: skipped when none of its hunks is present. Exact: every pinned hunk
+    must be present once and reversing them must reproduce the 1d1162aaf77 file byte for byte."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_metric_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_METRIC_SHADER_DIGEST, ("reviewed soft shadow metric shader", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == "1d1162aaf77", "soft shadow metric shader base"
+    assert set(allowed["files"]) == {"shadowUtil.glsl"} and len(allowed["files"]["shadowUtil.glsl"]) == 2, "soft shadow metric shader scope"
+    if not any(hunk["after"] in source for hunk in allowed["files"]["shadowUtil.glsl"]):
+        return source
+    path = "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
+    original = subprocess.check_output(["git", "show", allowed["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowed["files"]["shadowUtil.glsl"]:
+        assert original.count(hunk["before"]) == 1, "soft shadow metric shader baseline hunk"
+        assert source.count(hunk["after"]) == 1, "soft shadow metric shader hunk"
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == original, "soft shadow metric shader reversal must reproduce its exact baseline"
+    return source
+
+
 SOFTSHADOW_QUALITY_DIGEST = "27dc363be5445b13fcda058ff9b818a8752b6023a80a34e95547efbf4d237105"
 
 
@@ -202,6 +251,7 @@ def reverse_softshadow_quality(source, name):
     is checked every time. Exact: removing the one reviewed hunk must reproduce the complete c63f7ca1b2f file."""
     import hashlib
     import json
+    source = reverse_softshadow_metric(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_quality_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_QUALITY_DIGEST, ("reviewed soft shadow quality", "allowance pin")
@@ -223,6 +273,7 @@ def reverse_softshadow_quality_shader(source):
     byte for byte, so any other edit still fails the checks that compare against an older reference."""
     import hashlib
     import json
+    source = reverse_softshadow_metric_shader(source)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_quality_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_QUALITY_SHADER_DIGEST, ("reviewed soft shadow quality shader", "allowance pin")

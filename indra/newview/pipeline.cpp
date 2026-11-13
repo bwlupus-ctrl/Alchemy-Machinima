@@ -28344,6 +28344,48 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     shader.uniform1fv(LLStaticHashedString("spot_shadow_detail"), MAX_SPOT_SHADOWS, spot_shadow_detail);
     shader.uniform1fv(LLShaderMgr::SPOT_SHADOW_SOFTNESS,
                       MAX_SPOT_SHADOWS, spot_shadow_softness);
+    // [SoftShadow metric] RenderSpotShadowPenumbraModel 1: per slot, the projector penumbra in
+    // texels from the two window depths (shadowUtil.glsl spotMetricPenumbra): x, y = texels of
+    // radius per unit of depth between blocker and receiver along map X and Y, z = A and
+    // w = centre / K of the slot's OWN projection (alrelightmath.h). mShadowSpotLight,
+    // mShadowProjection and mShadowModelview hold a VCam (Prism) pass's own slots while it
+    // renders, so its feeds get their own lights' values. The source radius is the one the cube
+    // and area shadow paths use; softness trims it (ALRelight::spotPenumbraTrim). x = y = 0
+    // (the setting off, an empty slot, no usable projection) keeps the old texel softness.
+    F32 spot_shadow_metric[MAX_SPOT_SHADOWS * 4] = {};
+    static LLCachedControl<U32> spot_penumbra_model(gSavedSettings, "RenderSpotShadowPenumbraModel", 1);
+    if (spot_penumbra_model != 0)
+    {
+        LLRenderTarget* metric_map = getSpotShadowTarget(0);
+        for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
+        {
+            LLVOVolume* volume = mShadowSpotLight[i].notNull()
+                ? mShadowSpotLight[i]->getVOVolume() : nullptr;
+            if (!volume) continue;
+            LLVector4 rig_source;
+            const bool fixture_sized = ALCineLightRigManager::instance().lightShapeSourceFor(volume->getID(), rig_source) &&
+                rig_source.mV[0] >= 0.f;
+            const double radius = ALRelight::shadowSourceRadius(area_source_radius(volume)) *
+                ALRelight::spotPenumbraTrim(fixture_sized, spot_shadow_softness[i], BDMergeSoftShadowSoftness);
+            const U32 map_index = spotShadowMapIndex(i);
+            const glm::mat4& projection = mShadowProjection[map_index];
+            const double scale_x = ALRelight::spotPenumbraScale(radius, metric_map->getWidth(), projection[0][0], projection[3][2]);
+            const double scale_y = ALRelight::spotPenumbraScale(radius, metric_map->getHeight(), projection[1][1], projection[3][2]);
+            // The light's centre in the map's eye space (it looks down -Z): metres in front of the projection origin.
+            const glm::vec4 centre = mShadowModelview[map_index] * glm::vec4(glm::make_vec3(mShadowSpotLight[i]->getPositionAgent().mV), 1.f);
+            const double depth_a = ALRelight::spotDepthA(projection[2][2]);
+            const double setback = ALRelight::spotPenumbraSetback(-centre.z, projection[3][2]);
+            if (ALShadowSlot::finite(scale_x) && ALShadowSlot::finite(scale_y) && ALShadowSlot::finite(depth_a) &&
+                ALShadowSlot::finite(setback) && scale_x > 0.0 && scale_y > 0.0)
+            {
+                spot_shadow_metric[4 * i] = static_cast<F32>(llmin(scale_x, 1.e9));
+                spot_shadow_metric[4 * i + 1] = static_cast<F32>(llmin(scale_y, 1.e9));
+                spot_shadow_metric[4 * i + 2] = static_cast<F32>(depth_a);
+                spot_shadow_metric[4 * i + 3] = static_cast<F32>(setback);
+            }
+        }
+    }
+    shader.uniform4fv(LLStaticHashedString("spot_shadow_metric"), MAX_SPOT_SHADOWS, spot_shadow_metric);
 
     bindSunShadowState(shader, nullptr, SunShadowStage::Directions);
 

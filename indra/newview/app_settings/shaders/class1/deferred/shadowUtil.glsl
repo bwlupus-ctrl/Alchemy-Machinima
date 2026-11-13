@@ -580,6 +580,89 @@ float estimateDetailSpotBlockerGap(sampler2DShadow shadowMap, vec3 stc, float so
     return best_gap;
 }
 
+// [SoftShadow metric] RenderSpotShadowPenumbraModel: the projector SURFACE soft kernel sized by
+// the light's physical source radius, like the cube and area shadow paths.
+//
+// For the slot's own perspective map, window depth is d = A - K/z (z = axial distance from the
+// projection origin, K = far*near/(far-near), A = far/(far-near)). A source disk of radius R
+// at the light's centre (axial depth c: the projection origin sits behind the lamp prim), a
+// blocker at z_b and a receiver at z_r give a penumbra of radius R*(z_r-z_b)/(z_b-c) metres on
+// the receiver. One texel there is 2*z_r*tan(fov/2)/res metres, so the radius in texels is
+//     k * (d_r - d_b) / (1 - s*(A - d_b)),    k = R*res/(2*tan(fov/2)*K),  s = c/K
+// straight from the two window depths: no linearisation, and the same width in metres at any
+// map resolution or FOV. Per slot (LLPipeline::bindDeferredShader): x, y = k along map X and Y
+// (they differ only when the map's texels are not square in world space), z = A, w = s.
+// x or y <= 0 = the old dimensionless texel softness for that slot: the setting at 0, and
+// every program that never receives the upload.
+uniform vec4 spot_shadow_metric[SPOT_SHADOW_COUNT];
+const int   SPOT_METRIC_SEARCH_TAPS  = 8;      // rotated blocker-search taps
+const int   SPOT_METRIC_BISECT_STEPS = 5;      // depth compares per blocked tap
+const float SPOT_METRIC_BISECT_STEP  = 1.0 / 32.0;   // 2^-steps: what one tap resolves of the capped range
+const float SPOT_METRIC_SEARCH_PHASE = 1.1;    // radians between the search disk and the filter disk
+const float SPOT_METRIC_MIN_LEVER    = 0.05;   // floor of 1 - s*(A - d_b): a blocker at the lamp itself
+
+// Penumbra radius in texels along the map's wider axis for the receiver stc (already biased by
+// g_spot_bias_stc), and the kernel's UV radii in `texel`. 0 = this slot is on the old model.
+//
+// A comparison sampler does not return the stored depth, so each search tap that is occluded
+// bisects the compare reference for it: the mean blocker separation is continuous (the old
+// search had 7 levels of a fixed 0.2 window-depth range, which typical lamp-to-subject
+// distances never reached). Each tap bisects a grid shifted by its own share of one final
+// step, so the taps on one blocker average to 1/8 of a step (1/256 of the capped radius)
+// instead of all landing on the same level. The search disk is the widest penumbra any
+// blocker in front of this receiver could cast (blocker at the near plane), capped like the
+// kernel. Each tap pays the receiver plane's slope over its own distance (g_spot_widen_stc,
+// the surface bias model's term), so a slanted receiver is not its own blocker.
+float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, out vec2 texel)
+{
+    texel = vec2(0.0);
+    vec4 m = spot_shadow_metric[int(g_spot_slot + 0.5)];
+    if (!(min(m.x, m.y) > 0.0)) return 0.0;
+    float k_max = max(m.x, m.y);
+    vec2 shape = m.xy / k_max;
+    float cap = max(soft_shadow_max, 1.0);
+    float pr = 1.0;
+    float lever_near = max(1.0 - m.w * m.z, SPOT_METRIC_MIN_LEVER);   // blocker at the near plane (d_b = 0)
+    float reach = k_max * stc.z / lever_near;
+    if (reach > 1.0)
+    {
+        float search = min(reach, cap);
+        float limit = cap * max(lever_near, 1.0) / k_max;   // a separation at which the radius has reached the cap
+        float phi = softShadowPhi(search, g_spot_slot * SOFT_NOISE_SLOT_PHASE + SPOT_METRIC_SEARCH_PHASE);
+        float sum = 0.0;
+        float blocked = 0.0;
+        for (int i = 0; i < SPOT_METRIC_SEARCH_TAPS; ++i)
+        {
+            float r = sqrt((float(i) + 0.5) / float(SPOT_METRIC_SEARCH_TAPS)) * search;
+            float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+            vec2 uv = stc.xy + r * vec2(cos(theta), sin(theta)) * shape / proj_shadow_res;
+            float lift = max(r - 1.0, 0.0) * g_spot_widen_stc;
+            float tap_z = stc.z - lift;
+            if (texture(shadowMap, vec3(uv, tap_z)) < 0.5)
+            {
+                float lo = 0.0;
+                float hi = min(limit, max(tap_z, 0.0));
+                float shift = hi * SPOT_METRIC_BISECT_STEP * float(i) / float(SPOT_METRIC_SEARCH_TAPS);
+                for (int s = 0; s < SPOT_METRIC_BISECT_STEPS; ++s)
+                {
+                    float mid = 0.5 * (lo + hi);
+                    if (texture(shadowMap, vec3(uv, tap_z + shift - mid)) < 0.5) lo = mid; else hi = mid;
+                }
+                sum += lift + 0.5 * (lo + hi) - shift;
+                blocked += 1.0;
+            }
+        }
+        if (blocked > 0.0)
+        {
+            float gap = sum / blocked;   // mean d_r - d_b
+            float lever = max(1.0 - m.w * (m.z - (stc.z - gap)), SPOT_METRIC_MIN_LEVER);
+            pr = clamp(k_max * gap / lever, 1.0, cap);
+        }
+    }
+    texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;
+    return pr;
+}
+
 // [SoftShadow bias] The surface model's sampler: pcfSpotShadow's ordinary kernels, tap
 // for tap (blocker search, Vogel / Poisson soft disk, fill guard, snapped 5-tap hard
 // kernel), on the receiver prepared by spotSurfaceReceiver. stc is the texel-offset
@@ -601,12 +684,18 @@ float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen,
         float softness = projector_softness > 0.0
                        ? projector_softness : soft_shadow_scale;
         bool noise = soft_shadow_noise_model != 0;
-        float gap_scale = clamp(estimateSpotBlockerGap(shadowMap, stc.xyz, softness), 0.0, 1.0);
+        // [SoftShadow metric] metric_pr > 0: the radius and the kernel shape come from the
+        // light's source size; 0 (setting off, or no upload): the old statements, unchanged.
+        vec2 metric_texel;
+        float metric_pr = spotMetricPenumbra(shadowMap, stc.xyz, metric_texel);
+        float gap_scale = metric_pr > 0.0 ? 0.0 : clamp(estimateSpotBlockerGap(shadowMap, stc.xyz, softness), 0.0, 1.0);
         float pr = clamp(1.0 + softness * gap_scale,
                           1.0, max(soft_shadow_max, 1.0));
+        if (metric_pr > 0.0) pr = metric_pr;
         stc.z -= (pr - 1.0) * g_spot_widen_stc;
         vec2 texel = pr / proj_shadow_res;
         if (!noise) texel.y *= 1.5;   // [SoftShadow noise] the isotropic kernel drops the 1.5x
+        if (metric_pr > 0.0) texel = metric_texel;
         float shadow = 0.0;
 
         if (soft_shadow_vogel != 0)

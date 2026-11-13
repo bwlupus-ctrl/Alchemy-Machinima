@@ -21198,6 +21198,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderSpotShadowPenumbraModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Soft projector shadow width on lit surfaces (needs the projector surface model, RenderSpotShadowBiasModel 1 or 2, and soft projector shadows or a rig softness). 1 (default) = metric: the penumbra is sized by the light's physical source radius in metres, the same radius the world cube and area shadows use (rig fixture source size, RenderLocalLightSizeFromPrim, RenderLocalLightDefaultRadius; 0.10 m for an unsized light), so it is sharp at contact, widens smoothly with the gap between caster and receiver, and no longer depends on shadow map resolution or projector FOV (up to the Max penumbra cap, BDMergeSoftShadowMaxPenumbra, in map texels). Softness (BDMergeSoftShadowSoftness, or a rig light's own softness) scales the radius by softness / 3; a rig light in fixture mode uses its fixture source size as is. 0 = the old texel softness (7 fixed steps of a dimensionless gap). Volumetric shafts and fog are not affected by this setting.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
 
   <key>RenderShadowResolutionScale</key>
   <map>
