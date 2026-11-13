@@ -2725,6 +2725,11 @@ bool LLFolderBridge::isFavorite() const
 
 void LLFolderBridge::update()
 {
+    if (!mFolderViewItem)
+    {
+        return; // view already destroyed
+    }
+
     // we know we have children but  haven't  fetched them (doesn't obey filter)
     bool loading = !isUpToDate() && hasChildren() && mFolderViewItem->isOpen();
 
@@ -7605,8 +7610,8 @@ void LLObjectBridge::performAction(LLInventoryModel* model, std::string action)
         item = (LLViewerInventoryItem*)gInventory.getItem(object_id);
         if(item && gInventory.isObjectDescendentOf(object_id, gInventory.getRootFolderID()))
         {
-            static LLCachedControl<bool> replace_item(gSavedSettings, "InventoryAddAttachmentBehavior", false);
-            rez_attachment(item, NULL, ("attach" == action) ? replace_item() : true); // Replace if "Wear"ing.
+            static LLCachedControl<U32> add_attachment_behavior(gSavedSettings, "InventoryAddAttachmentBehavior", 0);
+            rez_attachment(item, NULL, ("attach" == action) ? (add_attachment_behavior() == 1) : true); // Replace if "Wear"ing.
         }
         else if(item && item->isFinished())
         {
@@ -8834,8 +8839,8 @@ void LLObjectBridgeAction::attachOrDetach()
     }
     else
     {
-        static LLCachedControl<bool> inventory_linking(gSavedSettings, "InventoryAddAttachmentBehavior", false);
-        LLAppearanceMgr::instance().wearItemOnAvatar(mUUID, true, inventory_linking()); // Don't replace if adding.
+        static LLCachedControl<U32> add_attachment_behavior(gSavedSettings, "InventoryAddAttachmentBehavior", 0);
+        LLAppearanceMgr::instance().wearItemOnAvatar(mUUID, true, add_attachment_behavior() == 1); // Don't replace if adding.
     }
 }
 

@@ -4337,8 +4337,6 @@ void LLMeshRepository::shutdown()
     delete mMeshMutex;
     mMeshMutex = NULL;
 
-    LL_INFOS(LOG_MESH) << "Shutting down decomposition system." << LL_ENDL;
-
     if (mDecompThread)
     {
         // [ShutdownTrace] each step is logged so a quit that dies or stalls here shows where.
@@ -4348,7 +4346,11 @@ void LLMeshRepository::shutdown()
         mDecompThread = NULL;
         LL_INFOS(LOG_MESH) << "[ShutdownTrace] decomposition thread deleted" << LL_ENDL;
     }
+}
 
+void LLMeshRepository::shutdownDecomposition()
+{
+    LL_INFOS(LOG_MESH) << "Shutting down decomposition system." << LL_ENDL;
     LLConvexDecomposition::quitSystem();
     LL_INFOS(LOG_MESH) << "[ShutdownTrace] convex decomposition quit" << LL_ENDL;
 }
