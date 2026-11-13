@@ -1828,6 +1828,11 @@ void LLViewerRegion::killInvisibleObjects(F32 max_time)
         if(iter == mImpl->mActiveSet.end())
         {
             iter = mImpl->mActiveSet.begin();
+            if (iter == mImpl->mActiveSet.end())
+            {
+                // Set became empty
+                break;
+            }
         }
         if((*iter)->getParentID() > 0)
         {
@@ -1948,8 +1953,17 @@ LLViewerObject* LLViewerRegion::addNewObject(LLVOCacheEntry* entry)
     }
     else
     {
-        LLViewerRegion* old_regionp = ((LLDrawable*)entry->getEntry()->getDrawable())->getRegion();
-        if(old_regionp != this)
+        LLDrawable* drawablep = (LLDrawable*)entry->getEntry()->getDrawable();
+        if (!drawablep || drawablep->isDead() || drawablep->getVObj().isNull())
+        {
+            LL_WARNS() << "Entry: " << entry->getLocalID() << " has a dead or invalid drawable; resetting to inactive." << LL_ENDL;
+            mImpl->mVisibleEntries.erase(entry);
+            entry->setState(LLVOCacheEntry::INACTIVE);
+            return NULL;
+        }
+
+        LLViewerRegion* old_regionp = drawablep->getRegion();
+        if (old_regionp != this)
         {
             //this object exists in two regions at the same time;
             //this case can be safely ignored here because

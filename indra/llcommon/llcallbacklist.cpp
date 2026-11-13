@@ -86,7 +86,18 @@ bool LLCallbackList::deleteFunction( callback_t func, void *data)
     callback_list_t::iterator iter = find(func,data);
     if (iter != mCallbackList.end())
     {
-        mCallbackList.erase(iter);
+        // <FS:TJ> [FIRE-36314] Fix crash caused by possible callback erasure during callFunctions()
+        if (mCallbackDepth > 0)
+        {
+            // Traversal in progress: tombstone the entry, callFunctions() removes it at the end.
+            iter->first = nullptr;
+            mHasPendingDeletions = true;
+        }
+        else
+        {
+            mCallbackList.erase(iter);
+        }
+        // </FS:TJ>
         return true;
     }
     else
@@ -99,23 +110,65 @@ inline
 LLCallbackList::callback_list_t::iterator
 LLCallbackList::find(callback_t func, void *data)
 {
+    // Tombstones (func == nullptr, see deleteFunction()) must never match.
+    if (!func)
+    {
+        return mCallbackList.end();
+    }
     callback_pair_t t(func, data);
     return std::find(mCallbackList.begin(), mCallbackList.end(), t);
 }
 
 void LLCallbackList::deleteAllFunctions()
 {
+    // <FS:TJ> [FIRE-36314] Fix crash caused by possible callback erasure during callFunctions()
+    if (mCallbackDepth > 0)
+    {
+        for (auto& entry : mCallbackList)
+        {
+            entry.first = nullptr;
+        }
+        mHasPendingDeletions = !mCallbackList.empty();
+        return;
+    }
+    // </FS:TJ>
     mCallbackList.clear();
 }
 
 
 void LLCallbackList::callFunctions()
 {
+    // <FS:TJ> [FIRE-36314] Exception-safe: LLAppViewer::frame() catches LLContinueError and keeps
+    // running, so the depth restore and the outermost tombstone purge must also run on unwind.
+    struct DepthGuard
+    {
+        LLCallbackList& mList;
+        explicit DepthGuard(LLCallbackList& list) : mList(list) { ++mList.mCallbackDepth; }
+        ~DepthGuard()
+        {
+            llassert(mList.mCallbackDepth > 0);
+            if (--mList.mCallbackDepth <= 0)
+            {
+                mList.mCallbackDepth = 0;
+                if (mList.mHasPendingDeletions)
+                {
+                    mList.mHasPendingDeletions = false;
+                    mList.mCallbackList.remove_if([](const auto& entry) { return !entry.first; });
+                }
+            }
+        }
+    } guard(*this);
+
     for (callback_list_t::iterator iter = mCallbackList.begin(); iter != mCallbackList.end(); )
     {
         callback_list_t::iterator curiter = iter++;
-        curiter->first(curiter->second);
+        // skip entries tombstoned by deleteFunction()/deleteAllFunctions()
+        if (curiter->first)
+        {
+            curiter->first(curiter->second);
+        }
     }
+    // </FS:TJ>
 }
 
 // Shim class to allow arbitrary boost::bind
