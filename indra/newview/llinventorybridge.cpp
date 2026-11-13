@@ -2725,6 +2725,11 @@ bool LLFolderBridge::isFavorite() const
 
 void LLFolderBridge::update()
 {
+    if (!mFolderViewItem)
+    {
+        return; // view already destroyed
+    }
+
     // we know we have children but  haven't  fetched them (doesn't obey filter)
     bool loading = !isUpToDate() && hasChildren() && mFolderViewItem->isOpen();
 

@@ -209,7 +209,7 @@ void LLFolderViewModelItemInventory::setPassedFilter(bool passed, S32 filter_gen
         // Need to rearrange the folder if the filtered state of the item changed,
         // previously passed item skipped filter generation changes while being dirty
         // or previously passed not yet filtered item was marked dirty
-        LLFolderViewFolder* parent_folder = mFolderViewItem->getParentFolder();
+        LLFolderViewFolder* parent_folder = mFolderViewItem ? mFolderViewItem->getParentFolder() : nullptr;
         if (parent_folder)
         {
             parent_folder->requestArrange();
