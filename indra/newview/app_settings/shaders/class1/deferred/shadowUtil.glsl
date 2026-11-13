@@ -200,6 +200,49 @@ const vec2 SPOT_BLOCKER_SEARCH_DISK[4] = vec2[4](
 const int   SOFT_SHADOW_VOGEL_MAX   = 32;
 const float SOFT_SHADOW_GOLDEN_ANGLE = 2.3999632;
 
+// [SoftShadow fill] RenderSoftShadowFillRetire. 0 = legacy: every soft kernel lifts a
+// partially lit result toward soft_shadow_fill (a floor that is a hard step at the umbra
+// edge). 1 = the SURFACE soft kernels (sun cascades, projector surface model) return the
+// plain visibility fraction. The legacy projector kernel (pcfSpotShadow: shaft and froxel
+// callers, RenderSpotShadowBiasModel 0) and the frozen Classic shaft copy keep the fill.
+// A program that never receives the upload stays on 0.
+uniform int soft_shadow_fill_retire = 0;
+
+// [SoftShadow noise] RenderSoftShadowNoiseModel. 0 = legacy statements, byte-identical.
+// 1 = noise hygiene on the same surface soft kernels as above:
+//   - a per-light phase added to the Vogel rotation (slot * 2.4 rad; the sun its own constant),
+//     so several lights do not add their sampling errors coherently;
+//   - the per-pixel rotation fades in only above ~2.3 texels (smoothstep(2.0, 3.5, radius)):
+//     16 taps do not band below that, and a sharp shadow stays grain-free;
+//   (no early-out: every pixel runs the full blocker search and kernel; an 8-tap probe cannot
+//     be made equivalent for blockers smaller than the tap spacing)
+//   - the Poisson X jitter is a per-pixel hash instead of the view-space sawtooth
+//     fract(pos_screen.y * 0.6667), which slid with the camera;
+//   - the projector kernel is isotropic (no texel.y *= 1.5).
+uniform int soft_shadow_noise_model = 0;
+const float SOFT_NOISE_SLOT_PHASE = 2.4;   // radians per projector slot
+const float SOFT_NOISE_SUN_PHASE  = 1.55;  // radians, the sun's own phase (the widest gap between the 16 slot phases)
+// Slot of the projector being sampled, written by sampleSpotShadow for pcfSpotShadowSurface.
+float g_spot_slot = 0.0;
+
+float softShadowIGN()
+{
+    return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+}
+
+// Vogel base rotation. Model 0: the per-pixel interleaved-gradient angle, as always.
+float softShadowPhi(float radius_texels, float phase)
+{
+    float phi = 6.2831853 * softShadowIGN();
+    return soft_shadow_noise_model != 0 ? phase + phi * smoothstep(2.0, 3.5, radius_texels) : phi;
+}
+
+// Poisson X jitter: the caller's legacy value for model 0, a per-pixel hash otherwise.
+float softShadowJitter(float legacy)
+{
+    return soft_shadow_noise_model != 0 ? softShadowIGN() : legacy;
+}
+
 // Cinematic Lighting 2.0 PCSS-lite blocker search.  A comparison sampler does
 // not expose raw blocker depth, so estimate receiver-minus-blocker separation by
 // summing shadow-test results across several evenly spaced depth deltas at each
@@ -252,6 +295,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         vec2 texel = pr / shadow_res;
         float shadow = 0.0;
 
+
         if (soft_shadow_vogel != 0)
         {
             // [Vogel A/B] Vogel-disk PCF over the SAME penumbra radius (texel).
@@ -263,8 +307,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
             // window pixels, exactly what IGN expects for true per-pixel grain.
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(pr, SOFT_NOISE_SUN_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -277,7 +320,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         }
         else
         {
-            float jit = fract(pos_screen.y * shadow_res.y);
+            float jit = softShadowJitter(fract(pos_screen.y * shadow_res.y));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -289,7 +332,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         // [BDMerge fix] Same partial-visibility guard as the spot path below: the
         // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
         // or the sun leaks through walls wherever soft sun shadows are enabled.
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -363,8 +406,7 @@ float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 
         {
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(max(pr.x, pr.y), SOFT_NOISE_SUN_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -377,7 +419,7 @@ float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 
         }
         else
         {
-            float jit = fract(pos_screen.y * res.y);
+            float jit = softShadowJitter(fract(pos_screen.y * res.y));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -386,7 +428,7 @@ float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 
             }
             shadow /= 12.0;
         }
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -558,20 +600,20 @@ float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen,
     {
         float softness = projector_softness > 0.0
                        ? projector_softness : soft_shadow_scale;
+        bool noise = soft_shadow_noise_model != 0;
         float gap_scale = clamp(estimateSpotBlockerGap(shadowMap, stc.xyz, softness), 0.0, 1.0);
         float pr = clamp(1.0 + softness * gap_scale,
                           1.0, max(soft_shadow_max, 1.0));
         stc.z -= (pr - 1.0) * g_spot_widen_stc;
         vec2 texel = pr / proj_shadow_res;
-        texel.y *= 1.5;
+        if (!noise) texel.y *= 1.5;   // [SoftShadow noise] the isotropic kernel drops the 1.5x
         float shadow = 0.0;
 
         if (soft_shadow_vogel != 0)
         {
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(pr, g_spot_slot * SOFT_NOISE_SLOT_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -584,7 +626,7 @@ float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen,
         }
         else
         {
-            float jit = fract(pos_screen.y * 0.666666666);
+            float jit = softShadowJitter(fract(pos_screen.y * 0.666666666));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -593,7 +635,7 @@ float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen,
             }
             shadow /= 12.0;
         }
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -745,6 +787,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
         vec2 texel = pr / res;
         float shadow = 0.0;
 
+
         if (soft_shadow_vogel != 0)
         {
             // [Vogel A/B] Vogel-disk PCF over the SAME penumbra radius (texel).
@@ -756,8 +799,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
             // window pixels, exactly what IGN expects for true per-pixel grain.
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(pr, SOFT_NOISE_SUN_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -770,7 +812,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
         }
         else
         {
-            float jit = fract(pos_screen.y * res.y);
+            float jit = softShadowJitter(fract(pos_screen.y * res.y));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -782,7 +824,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
         // [BDMerge fix] Same partial-visibility guard as the spot path below: the
         // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
         // or the sun leaks through walls wherever soft sun shadows are enabled.
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -799,7 +841,6 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
     return 1.0;
 #endif
 }
-
 
 // Test the ACTUAL normal-offset projection sunBandC/pcfShadowRes will sample.
 // The conservative footprint includes every tap, jitter/snap and bilinear neighbours.
@@ -1332,6 +1373,7 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
     if (spot_shadow_bias_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0 && (spot_shadow_bias_model == 2 || !detail))
     {
         g_spot_bias_mode = 1;
+        g_spot_slot = float(index);   // [SoftShadow noise] per-light Vogel phase
         g_spot_bias_floor = detail ? SPOT_BIAS_DETAIL_FLOOR : SPOT_BIAS_FLOOR;
         detail = true;
     }
@@ -1597,7 +1639,6 @@ float sampleSpotShadowConservative(vec3 pos, int index)
     return 1.0;
 #endif
 }
-
 
 // [BDMerge G3.2] Donor: Black Dragon (NiranV Dean) shadowUtil.glsl - cheap
 // non-PCF cascade sampling for the volumetric raymarch (Tofu Buzzard lineage).

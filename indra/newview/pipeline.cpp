@@ -28113,6 +28113,16 @@ void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const*
     // disk with a per-pixel spatial rotation. Tap count clamped to the shader max.
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_VOGEL, BDMergeSoftShadowVogel ? 1 : 0);
     shader.uniform1i(LLShaderMgr::SOFT_SHADOW_TAPS, llclamp(BDMergeSoftShadowTaps, 1, 32));
+    // [SoftShadow quality] Fill step (RenderSoftShadowFillStep, FALSE = retired), noise
+    // hygiene (RenderSoftShadowNoiseModel) and the unused projector light-map samples
+    // (RenderSunLightProjectorDeadSamples, FALSE = not taken). Programs without the uniform
+    // ignore each upload.
+    static LLCachedControl<bool> soft_fill_step(gSavedSettings, "RenderSoftShadowFillStep", false);
+    shader.uniform1i(LLStaticHashedString("soft_shadow_fill_retire"), soft_fill_step ? 0 : 1);
+    static LLCachedControl<U32> soft_noise_model(gSavedSettings, "RenderSoftShadowNoiseModel", 1);
+    shader.uniform1i(LLStaticHashedString("soft_shadow_noise_model"), (S32)llmin((U32)soft_noise_model, 1U));
+    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, "RenderSunLightProjectorDeadSamples", false);
+    shader.uniform1i(LLStaticHashedString("sun_projector_samples_removed"), sun_dead_samples ? 0 : 1);
     }
     if (stage == SunShadowStage::All || stage == SunShadowStage::Directions)
     {
