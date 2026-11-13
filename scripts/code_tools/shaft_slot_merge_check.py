@@ -86,7 +86,7 @@ def selftest():
     """Prove frozen engine identity and the newest exact-reversal allowance."""
     import subprocess
     from relight_volumetric_engine_check import function
-    from director_actor_bar_check import reverse_shaft_slot_merge
+    from director_actor_bar_check import reverse_shaft_slot_merge, reverse_softshadow_bias
     current = (NV / "pipeline.cpp").read_text(encoding="utf-8")
     base = subprocess.check_output(
         ["git", "show", "8c350a71b4e:indra/newview/pipeline.cpp"],
@@ -106,13 +106,25 @@ def selftest():
         original = subprocess.check_output(
             ["git", "show", "8c350a71b4e:indra/newview/" + name],
             encoding="utf-8").replace("\r\n", "\n")
-        assert reverse_shaft_slot_merge(source, name) == original
+        # The projector bias-model uniform is the newer exact pipeline.cpp layer: peel it
+        # first (it requires the complete fb616f2519c file), then this layer as before.
+        def peel(text):
+            return reverse_shaft_slot_merge(reverse_softshadow_bias(text, name), name)
+        assert peel(source) == original
         try:
-            reverse_shaft_slot_merge(source + "\n// planted unrelated edit\n", name)
+            peel(source + "\n// planted unrelated edit\n")
         except AssertionError:
             pass
         else:
             raise AssertionError("allowance accepted unrelated edit: " + name)
+        if name == "pipeline.cpp":
+            # Without the newer layer peeled, the older exact reversal must refuse the file.
+            try:
+                reverse_shaft_slot_merge(source, name)
+            except AssertionError:
+                pass
+            else:
+                raise AssertionError("shaft slot merge layer accepted the newer bias-model hunk")
         print("PASS exact reversal and rejected unrelated edit:", name)
     print("PASS: shaft slot merge integration selftest")
 
