@@ -157,6 +157,7 @@ void LLFace::init(LLDrawable* drawablep, LLViewerObject* objp)
 
     mReferenceIndex = -1;
 
+    mTextureMatrixOwner.reset();
     mTextureMatrix = NULL;
     mDrawInfo = NULL;
 
@@ -173,6 +174,23 @@ void LLFace::init(LLDrawable* drawablep, LLViewerObject* objp)
 // [SL:KB] - Patch: Render-TextureToggle (Catznip-4.0)
     mShowDiffTexture = true;
 // [/SL:KB]
+}
+
+bool LLFace::ensureTextureMatrix()
+{
+    if (mTextureMatrixOwner)
+    {
+        return false;
+    }
+    mTextureMatrixOwner = std::make_shared<LLMatrix4>();
+    mTextureMatrix = mTextureMatrixOwner.get();
+    return true;
+}
+
+void LLFace::releaseTextureMatrix()
+{
+    mTextureMatrix = NULL;
+    mTextureMatrixOwner.reset();
 }
 
 void LLFace::destroy()
@@ -204,8 +222,8 @@ void LLFace::destroy()
 
     if (mTextureMatrix)
     {
-        delete mTextureMatrix;
-        mTextureMatrix = NULL;
+        // Outstanding draw batches retain the matrix until they are rebuilt.
+        releaseTextureMatrix();
 
         if (mDrawablep)
         {

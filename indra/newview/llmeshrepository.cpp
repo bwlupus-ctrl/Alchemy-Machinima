@@ -588,6 +588,32 @@ F32 calculate_score(LLVOVolume* object)
     return drawable->getRadius() / llmax(drawable->mDistanceWRTCamera, 1.f);
 }
 
+// Take a strong reference to every object waiting on a mesh before notifying any of them.
+//
+// Neither iterating MeshLoadData::mVolumes nor iterating a raw copy of it is safe. The
+// set is self-maintaining: ~LLVOVolume runs unregisterOldMeshAndSkin(), which erases the
+// object from mLoadingMeshes/mLoadingSkins -- so a callback that destroys an object
+// invalidates the iterator the loop is standing on, and can destroy the whole set when it
+// takes the last entry. A re-entrant loadMesh() can rehash it from underneath as well. A
+// raw copy survives both of those and then calls virtuals on freed memory instead.
+//
+// Refcounted pointers are the only form that survives all three: the objects stay alive
+// for the duration of the notification run, the container is free to change underneath,
+// and isDead() skips the ones a callback killed.
+static std::vector<LLPointer<LLVOVolume>> snapshot_waiting_volumes(const boost::unordered_set<LLVOVolume*>& volumes)
+{
+    std::vector<LLPointer<LLVOVolume>> snapshot;
+    snapshot.reserve(volumes.size());
+    for (LLVOVolume* vobj : volumes)
+    {
+        if (vobj)
+        {
+            snapshot.emplace_back(vobj);
+        }
+    }
+    return snapshot;
+}
+
 void PendingRequestBase::updateScore()
 {
     mScore = 0;
@@ -4833,21 +4859,26 @@ void LLMeshRepository::notifyLoadedMeshes()
 
 void LLMeshRepository::notifySkinInfoReceived(LLMeshSkinInfo* info)
 {
-    mSkinMap[info->mMeshID] = info; // Cache into LLPointer
+    // Read out of `info` before the callbacks below run, not after them.
+    const LLUUID mesh_id = info->mMeshID;
+
+    mSkinMap[mesh_id] = info; // Cache into LLPointer
     // Alternative: We can get skin size from header
     sCacheBytesSkins += info->sizeBytes();
 
-    skin_load_map::iterator iter = mLoadingSkins.find(info->mMeshID);
+    skin_load_map::iterator iter = mLoadingSkins.find(mesh_id);
     if (iter != mLoadingSkins.end())
     {
-        for (LLVOVolume* vobj : iter->second.mVolumes)
+        for (LLPointer<LLVOVolume>& vobj : snapshot_waiting_volumes(iter->second.mVolumes))
         {
-            if (vobj)
+            if (!vobj->isDead())
             {
                 vobj->notifySkinInfoLoaded(info);
             }
         }
-        mLoadingSkins.erase(iter);
+        // By key: the callbacks above may have erased this entry (or rehashed the map)
+        // through unregisterSkinInfo() or a re-entrant fetchSkinInfo().
+        mLoadingSkins.erase(mesh_id);
     }
 }
 
@@ -4856,14 +4887,14 @@ void LLMeshRepository::notifySkinInfoUnavailable(const LLUUID& mesh_id)
     skin_load_map::iterator iter = mLoadingSkins.find(mesh_id);
     if (iter != mLoadingSkins.end())
     {
-        for (LLVOVolume* vobj : iter->second.mVolumes)
+        for (LLPointer<LLVOVolume>& vobj : snapshot_waiting_volumes(iter->second.mVolumes))
         {
-            if (vobj)
+            if (!vobj->isDead())
             {
                 vobj->notifySkinInfoUnavailable();
             }
         }
-        mLoadingSkins.erase(iter);
+        mLoadingSkins.erase(mesh_id);
     }
 }
 
@@ -4927,15 +4958,17 @@ void LLMeshRepository::notifyMeshLoaded(const LLVolumeParams& mesh_params, LLVol
         }
 
         //notify waiting LLVOVolume instances that their requested mesh is available
-        for (LLVOVolume* vobj : obj_iter->second.mVolumes)
+        for (LLPointer<LLVOVolume>& vobj : snapshot_waiting_volumes(obj_iter->second.mVolumes))
         {
-            if (vobj)
+            if (!vobj->isDead())
             {
                 vobj->notifyMeshLoaded();
             }
         }
 
-        mLoadingMeshes[lod].erase(obj_iter);
+        // By key: the callbacks above may have erased this entry (or rehashed the map)
+        // through unregisterMesh() or a re-entrant loadMesh().
+        mLoadingMeshes[lod].erase(mesh_id);
 
         LLViewerStatsRecorder::instance().meshLoaded();
     }
@@ -4957,9 +4990,11 @@ void LLMeshRepository::notifyMeshUnavailable(const LLVolumeParams& mesh_params, 
             LLPrimitive::getVolumeManager()->unrefVolume(sys_volume);
         }
 
-        for (LLVOVolume* vobj : obj_iter->second.mVolumes)
+        // setVolume() below re-enters loadMesh() and can destroy an LLVOVolume outright,
+        // so hold the waiters alive across the run -- see snapshot_waiting_volumes().
+        for (LLPointer<LLVOVolume>& vobj : snapshot_waiting_volumes(obj_iter->second.mVolumes))
         {
-            if (vobj)
+            if (!vobj->isDead())
             {
                 LLVolume* obj_volume = vobj->getVolume();
 
@@ -4972,7 +5007,7 @@ void LLMeshRepository::notifyMeshUnavailable(const LLVolumeParams& mesh_params, 
             }
         }
 
-        mLoadingMeshes[request_lod].erase(obj_iter);
+        mLoadingMeshes[request_lod].erase(mesh_id);
     }
 }
 

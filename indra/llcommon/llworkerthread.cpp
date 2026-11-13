@@ -89,9 +89,14 @@ size_t LLWorkerThread::update(F32 max_time_ms)
     {
         delete_list_t::iterator curiter = iter++;
         LLWorkerClass* worker = *curiter;
+        // Sample WCF_WORK_FINISHED BEFORE deleteOK(). Once the work is finished no new
+        // work (and so no new decode responder etc.) can start on a worker that is marked
+        // for delete, so whatever deleteOK() reports afterwards can only get safer. Reading
+        // the flag after deleteOK() lets a late doWork() slip in between the two reads.
+        const bool work_finished = worker->getFlags(LLWorkerClass::WCF_WORK_FINISHED);
         if (worker->deleteOK())
         {
-            if (worker->getFlags(LLWorkerClass::WCF_WORK_FINISHED))
+            if (work_finished)
             {
                 worker->setFlags(LLWorkerClass::WCF_DELETE_REQUESTED);
                 delete_list.push_back(worker);
