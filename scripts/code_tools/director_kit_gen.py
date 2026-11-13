@@ -380,8 +380,9 @@ def validate_data(data: dict) -> None:
     if len(removes) != 1 or removes[0][0] != 'rig_status' or removes[0][1].get('btn') != 'Remove rig' or not removes[0][1].get('no_widget_history'):
         raise GenError("borrowed rig removal must be one searchable rig-status action with structural history")
     # Shaft status and Test shafts add two searchable rows: 2519 -> 2521.
-    if len(pages) != 40 or row_count != 2521:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2521")
+    # Four upstream performance A/B switches: 2521 -> 2525 (11/12).
+    if len(pages) != 40 or row_count != 2525:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2525")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

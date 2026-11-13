@@ -1167,6 +1167,21 @@ static void setupWeatherMaterialListeners()
 void settings_setup_listeners()
 {
     LL_PROFILE_ZONE_SCOPED;
+    // Keep low-level rendering independent of newview's settings storage.
+    // Construct cached readers before registering listeners so their cached
+    // values are updated before these forwarding callbacks run.
+    static LLCachedControl<bool> batched_rows(gSavedSettings, "AlchemyPerfBatchedRowUploads", true);
+    static LLCachedControl<bool> cached_inverse(gSavedSettings, "AlchemyPerfCachedMatrixInverse", true);
+    LLImageGLThread::sBatchedRowUploads = batched_rows;
+    LLRender::sCachedMatrixInverse = cached_inverse;
+    setting_setup_signal_listener(gSavedSettings, "AlchemyPerfBatchedRowUploads", []()
+    {
+        LLImageGLThread::sBatchedRowUploads = batched_rows;
+    });
+    setting_setup_signal_listener(gSavedSettings, "AlchemyPerfCachedMatrixInverse", []()
+    {
+        LLRender::sCachedMatrixInverse = cached_inverse;
+    });
     // Settings behavior must exist before the lazy Exposure page is opened.
     // Restores own both preset and ISO, in either write order.
     setting_setup_signal_listener(gSavedSettings, "CineSensorPreset", []()
