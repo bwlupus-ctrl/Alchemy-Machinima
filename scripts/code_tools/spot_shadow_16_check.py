@@ -171,7 +171,8 @@ out.mkdir(parents=True,exist_ok=True)
 (out/'sampler-census.json').write_text(json.dumps(dict(classification=classification, budgets=budget_rows),indent=2)+'\n',encoding='utf-8')
 
 # With the production <=10 selection, preprocessing the three widened modules
-# must reproduce every base GLSL token (including the old terminal else).
+# must reproduce every token of the reviewed bias branch (including the old
+# terminal else). The projector shader itself still compares to the common base.
 def legacy_tokens(text):
     def branch(m):
         return m[1].split('#else\n',1)[1] if '#else\n' in m[1] else ''
@@ -183,9 +184,10 @@ def legacy_tokens(text):
     return re.findall(r'\w+|[^\s]',text)
 for name in ('class1/deferred/shadowUtil.glsl','class3/deferred/projectorVolumetricF.glsl'):
     path=s['root']/name
-    baseline=subprocess.check_output(['git','show','fb616f2519c:'+path.as_posix()],encoding='utf-8')
+    reference = '46ec4444fff' if name == 'class1/deferred/shadowUtil.glsl' else 'fb616f2519c'
+    baseline=subprocess.check_output(['git','show',reference+':'+path.as_posix()],encoding='utf-8')
     assert legacy_tokens(path.read_text(encoding='utf-8')) == legacy_tokens(baseline), name
-print('PASS <=10 production selection preserves all base GLSL tokens/layouts',flush=True)
+print('PASS <=10 production selection preserves reviewed bias GLSL tokens and base shaft layout',flush=True)
 
 # Compile the production dispatch itself for every supported GLSL version.
 # Both dark-map and matrix-isolation probes discriminate all sixteen slots.
@@ -366,11 +368,11 @@ int main(){
 '''
 result = compile_run(check_directory('spot_shadows_16'), source, 'tiers')
 assert result.returncode == 0, result.stdout + result.stderr
-from director_actor_bar_check import reverse_spot_shadows_16
+from director_actor_bar_check import reverse_spot_shadows_16, reverse_softshadow_bias
 for name in ('pipeline.h', 'pipeline.cpp'):
     current = (ROOT / 'indra/newview' / name).read_text(encoding='utf-8')
     baseline = subprocess.check_output(['git','show','fb616f2519c:indra/newview/' + name], encoding='utf-8').replace('\r\n','\n')
-    assert reverse_spot_shadows_16(current, name) == baseline
+    assert reverse_spot_shadows_16(reverse_softshadow_bias(current, name), name) == baseline
     if name == 'pipeline.h':
         try: reverse_spot_shadows_16(current + '\n// unrelated edit\n', name)
         except AssertionError: pass

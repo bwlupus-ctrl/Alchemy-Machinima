@@ -576,12 +576,15 @@ def lighting_wiring(r, defaults):
 
 def source_contracts(tree):
     shader = tree.read(SHADER)
-    base = G.SourceTree(BASE).read(SHADER)
+    # The other reviewed feature widens only dispatch/layout. Removing the bias
+    # insertions must reproduce that exact feature tree, never arbitrary WORKTREE.
+    # GPU model-0/airborne/rim parity below still uses the original common BASE.
+    base = G.SourceTree('148442e419c').read(SHADER)
     sample = function(shader, 'float sampleSpotShadow(')
     new = function(shader, 'vec4 spotSurfaceReceiver(') + function(shader, 'float pcfSpotShadowSurface(')
     block = sample[sample.index('    // [SoftShadow bias]'):sample.index('\n    vec4 spos = vec4(pos,1.0);')]
     # Every legacy statement survives verbatim: removing the model's own insertions
-    # from the three touched functions reproduces BASE, and the rest are untouched.
+    # from the three touched functions reproduces spot16, and the rest are untouched.
     verbatim = (
         sample.replace(block, '', 1) == function(base, 'float sampleSpotShadow(') and
         function(shader, 'float pcfSpotShadow(').replace(
@@ -668,6 +671,10 @@ def evaluate(out, negatives=True, normal_map=True):
     shaft, shaft_failures, shaft_base = shaft_check(r.gl, r.tree)
     failures += calls_failures + widen_failures + shaft_failures
     result.update(calls=calls, widen=widen, spotLightF_wiring=wiring, shaft=shaft)
+    from spot_shadow_bias_slots import check as slots_check
+    slots, slots_failures = slots_check(r, defaults, negatives=negatives)
+    result['combined_slots'] = slots
+    failures += slots_failures
     if normal_map:
         # Informational: twice the designed slack. Reported, not gated.
         rows = normal_check(r, pr, defaults, tilts=(-20., 20.))[0]
