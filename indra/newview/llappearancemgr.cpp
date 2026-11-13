@@ -4464,7 +4464,9 @@ void LLAppearanceMgr::removeItemsFromAvatar(const uuid_vec_t& ids_to_remove, nul
     for (uuid_vec_t::const_iterator it = ids_to_remove.begin(); it != ids_to_remove.end(); ++it)
     {
         const LLUUID& id_to_remove = *it;
-        const LLUUID& linked_item_id = gInventory.getLinkedItemID(id_to_remove);
+        // Copy by value: removeCOFItemLinks() can free the inventory object that owns this UUID,
+        // and it is used again afterwards (c245f69dd90).
+        const LLUUID linked_item_id = gInventory.getLinkedItemID(id_to_remove);
 
         if ( (rlv_handler_t::isEnabled()) && (!rlvPredCanRemoveItem(linked_item_id)) )
         {
