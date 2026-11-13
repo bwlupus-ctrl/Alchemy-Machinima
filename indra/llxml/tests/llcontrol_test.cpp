@@ -151,4 +151,22 @@ namespace tut
         ensure("listener fired on changed setting", mListenerFired);
     }
 
+    //a saved LLSD Boolean loaded into a U32 control becomes Integer 0/1
+    template<> template<>
+    void control_group_t::test<5>()
+    {
+        mCG->loadFromFile(mTestConfigFile.c_str());
+        LLSD user;
+        user["TestSetting"]["Comment"] = "Dummy setting used for testing";
+        user["TestSetting"]["Persist"] = 1;
+        user["TestSetting"]["Type"] = "Boolean";
+        user["TestSetting"]["Value"] = true;
+        writeSettingsFile(user);
+        mCG->loadFromFile(mTestConfigFile.c_str(), false);
+        LLSD v = mCG->getControl("TestSetting")->getValue();
+        ensure("converted to integer", v.isInteger());
+        ensure_equals("value is 1", v.asInteger(), 1);
+        ensure_equals("string form matches combo item", v.asString(), std::string("1"));
+    }
+
 }

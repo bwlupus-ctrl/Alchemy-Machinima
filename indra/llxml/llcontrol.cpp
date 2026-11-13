@@ -206,6 +206,13 @@ LLSD LLControlVariable::getComparableValue(const LLSD& value)
             storable_value = value;
         }
     }
+    else if ((TYPE_U32 == type() || TYPE_S32 == type()) && value.isBoolean())
+    {
+        // A control whose declared type changed from Boolean to an integer type (e.g.
+        // InventoryAddAttachmentBehavior) can still be fed an old saved LLSD Boolean.
+        // Store it as Integer 0/1 so combo boxes (which compare asString()) match.
+        storable_value = LLSD::Integer(value.asBoolean() ? 1 : 0);
+    }
     else
     {
         storable_value = value;

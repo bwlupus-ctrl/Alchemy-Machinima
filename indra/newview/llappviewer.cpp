@@ -2954,21 +2954,6 @@ bool tempSetControl(const std::string& name, const std::string& value)
     return false;
 }
 
-// Rewrites an LLSD Boolean held by an integer-typed (U32/S32) control as Integer 0/1, keeping the choice.
-static void normalizeBooleanStoredAsInteger(LLControlGroup& group, const std::string& name)
-{
-    LLControlVariable* control = group.getControl(name);
-    if (!control || !(control->isType(TYPE_U32) || control->isType(TYPE_S32)))
-    {
-        return;
-    }
-    const LLSD value = control->getValue();
-    if (value.isBoolean())
-    {
-        control->setValue(LLSD::Integer(value.asBoolean() ? 1 : 0), true);
-    }
-}
-
 bool LLAppViewer::initConfiguration()
 {
     // Load settings files list
@@ -3028,9 +3013,6 @@ bool LLAppViewer::initConfiguration()
     }
 
     initStrings(); // setup paths for LLTrans based on settings files only
-    // A control whose declared type changed from Boolean to U32 can still hold an old saved LLSD
-    // Boolean; combo boxes compare asString(), so rewrite it as integer before any UI binds.
-    normalizeBooleanStoredAsInteger(gSavedSettings, "InventoryAddAttachmentBehavior");
     // - set procedural settings
     // Note: can't use LL_PATH_PER_SL_ACCOUNT for any of these since we haven't logged in yet
     gSavedSettings.setString("ClientSettingsFile",
