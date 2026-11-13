@@ -1756,7 +1756,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     if (ALCineLightRig::sActorOnlyRequestedSlots || sAnyActorOnly || mActorOnlyObjectSlots || !mMirrors.empty())
         rebuildActorOnlyRegistry();
     // No blanket non-focus suppression: each enabled rig casts per its own
-    // ShadowMode and the pipeline caps the total at MAX_SPOT_SHADOWS(10) by
+    // ShadowMode and the pipeline caps the total at MAX_SPOT_SHADOWS(16) by
     // priority. Force-suppressing non-focus rigs starved multi-light shadow/
     // shaft setups (a suppressed projector loses its shadow slot AND its shaft).
     // applyShadowSuppression()/suppressedSlotMask() are retained (unused here)

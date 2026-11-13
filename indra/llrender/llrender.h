@@ -573,6 +573,7 @@ public:
     static bool sNsightDebugSupport;
     static LLVector2 sUIGLScaleFactor;
     static bool sClassicMode; // classic sky mode active
+    static bool sCachedMatrixInverse; // viewer-owned live performance switch
     static bool s10bitBackBuffer;
 
 private:
@@ -587,6 +588,12 @@ private:
     U32 mMatIdx[NUM_MATRIX_MODES];
     U32 mMatHash[NUM_MATRIX_MODES];
     glm::mat4 mMatrix[NUM_MATRIX_MODES][LL_MATRIX_STACK_DEPTH];
+
+    void invalidateMatrixInverse(eMatrixMode mode);
+    const glm::mat4& getCachedMatrixInverse(eMatrixMode mode);
+    glm::mat4 mCachedInverse[2];
+    bool mCachedInverseValid[2] = { false, false };
+    bool mCachedInverseEnabled = true;
     U32 mCurMatHash[NUM_MATRIX_MODES];
     F32 mLocalLightSpecExponent = 368.f;
     U32 mLightHash;

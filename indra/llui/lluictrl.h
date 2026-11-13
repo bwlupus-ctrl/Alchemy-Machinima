@@ -223,6 +223,9 @@ public:
     // Ansariel: Changed to virtual. We might want to change the transparency ourself!
     virtual F32 getCurrentTransparency();
 
+    // Keep the existing active/inactive alpha and add only the background multiplier.
+    F32 getBackgroundTransparency() { return getCurrentTransparency() * getBackgroundOpacity(); }
+
     void                setTransparencyType(ETypeTransparency type);
     ETypeTransparency   getTransparencyType() const {return mTransparencyType;}
 

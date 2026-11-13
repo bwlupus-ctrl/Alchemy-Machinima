@@ -830,7 +830,10 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Update Geom");
-            const F32 max_geom_update_time = 0.005f*10.f*gFrameIntervalSeconds.value(); // 50 ms/second update time
+            static LLCachedControl<bool> cap_geom_budget(gSavedSettings, "AlchemyPerfGeomBudgetCap", true);
+            const F32 legacy_geom_update_time = 0.005f*10.f*gFrameIntervalSeconds.value(); // 50 ms/second update time
+            const F32 max_geom_update_time = cap_geom_budget
+                ? llmin(legacy_geom_update_time, 0.005f) : legacy_geom_update_time;
             gPipeline.createObjects(max_geom_update_time);
             gPipeline.processPartitionQ();
             gPipeline.updateGeom(max_geom_update_time);
@@ -965,6 +968,21 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
                 gGLTFMaterialList.flushMaterials();
             }
         }
+
+        // [ALCHEMY:perf] Coalesced body visibility: walk every avatar still
+        // marked, after the network, idle and image callbacks that can ask and
+        // before the Prism view, state sort and main geometry passes.
+        // This is NOT what makes the result correct. Dynamic textures, hero
+        // probes, sun / world-cube shadows and impostor generation draw
+        // avatars earlier in this function; they, and everything after this
+        // line, are correct because each reader (LLVOAvatar::renderSkinned,
+        // renderTransparent, renderRigid, isActorGhostSystemReplayReady) runs
+        // its own avatar's pending walk first. This call only bounds how long
+        // a mark can wait (avatars that are not drawn) and drains marks left
+        // when the switch is turned off. An avatar can be walked more than
+        // once in a frame: an early reader walks it, an image callback above
+        // marks it again, and this call walks it again.
+        LLVOAvatar::flushPendingMeshVisibility();
 
         LLGLState::checkStates();
 

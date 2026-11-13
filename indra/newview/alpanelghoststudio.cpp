@@ -3687,9 +3687,8 @@ void ALPanelGhostStudio::onStayInPlaceCommit()
 
 void ALPanelGhostStudio::onDirectedMirrorCommit()
 {
-    ALGhostStudio& studio = ALGhostStudio::instance();
     const bool enabled = mDirectedMirrorCheck->getValue().asBoolean();
-    for (const LLUUID& id : selectedInstances()) studio.setInstanceDirectedMirror(id, enabled);
+    ALGhostCloneActions::setDirectedMirror(selectedInstances(), enabled);
 }
 
 void ALPanelGhostStudio::onSourceAnimationCommit()

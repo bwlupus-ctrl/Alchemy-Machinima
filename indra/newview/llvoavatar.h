@@ -942,6 +942,24 @@ public:
     virtual void    dirtyMesh(); // Dirty the avatar mesh
     void            updateMeshData();
     void            updateMeshVisibility();
+    // [ALCHEMY:perf] Coalesced body visibility (AlchemyPerfCoalescedBodyVisibility).
+    // Attachment texture-entry callbacks ask through requestMeshVisibilityUpdate():
+    // with the switch on it only marks this avatar, and the one walk runs at
+    // the frame flush or at the first reader of the result, whichever comes
+    // first. With the switch off (or on a dead avatar) it walks immediately.
+    // updateMeshVisibility() itself stays immediate and clears the mark.
+    void            requestMeshVisibilityUpdate();
+    // Walk every marked avatar once. One integer compare when nothing is marked.
+    static void     flushPendingMeshVisibility();
+    static S32      getMeshVisibilityDirtyCount() { return sMeshVisibilityDirtyCount; }
+    bool            isMeshVisibilityDirty() const { return mMeshVisibilityDirty; }
+private:
+    // Readers and other writers of the body-part visibility call this first.
+    void            flushMeshVisibilityIfDirty() { if (mMeshVisibilityDirty) { updateMeshVisibility(); } }
+    void            clearMeshVisibilityDirty();
+    bool            mMeshVisibilityDirty = false;
+    static S32      sMeshVisibilityDirtyCount;
+public:
     LLViewerTexture*        getBakedTexture(const U8 te);
 
     // Matrix palette cache entry

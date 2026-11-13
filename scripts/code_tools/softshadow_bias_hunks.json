@@ -1,0 +1,12 @@
+{
+  "base": "fb616f2519c",
+  "description": "Projector receiver bias model (RenderSpotShadowBiasModel): one uniform upload beside the existing spot shadow bias/offset uploads in LLPipeline::bindSunShadowState (Tuning stage). No other pipeline change.",
+  "files": {
+    "pipeline.cpp": [
+      {
+        "before": "    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);\n\n    // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadow uniforms.\n",
+        "after": "    shader.uniform1f(LLShaderMgr::DEFERRED_SPOT_SHADOW_BIAS, RenderSpotShadowBias);\n    // [SoftShadow bias] Projector receiver bias model on lit surfaces (shadowUtil.glsl\n    // sampleSpotShadow): 0 = legacy, 1 = surface model (rig Detail lights keep their\n    // own receiver), 2 = surface model for every projector. A program without the\n    // uniform ignores it.\n    static LLCachedControl<U32> spot_shadow_bias_model(gSavedSettings, \"RenderSpotShadowBiasModel\", 1);\n    shader.uniform1i(LLStaticHashedString(\"spot_shadow_bias_model\"), (S32)llmin((U32)spot_shadow_bias_model, 2U));\n\n    // [BDMerge Batch 2] Feature 1: soft (contact-hardening + filled) shadow uniforms.\n"
+      }
+    ]
+  }
+}

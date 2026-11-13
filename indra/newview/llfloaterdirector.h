@@ -66,6 +66,9 @@ public:
     void setMinimized(bool minimized) override;
     void setVisible(bool visible) override;
     void draw() override;
+    bool ownsBackgroundOpacity() const override { return true; }
+    F32 getOwnBackgroundOpacity() const override;
+    void drawBackgroundUnderlay() override;
     // Esc = CUT while the transport is running or counting down; stock
     // floater behavior otherwise
     bool handleKeyHere(KEY key, MASK mask) override;
@@ -658,6 +661,7 @@ private:
     std::string mCastChipTooltip;
     ALKitShell* mShell = nullptr;
     bool mIsV2 = false;
+    F32 mBackgroundOpacity = 1.f;
     LLComboBox* mCrashBackupCombo = nullptr;
     LLButton* mCrashBackupRestoreButton = nullptr;
     LLButton* mCrashBackupDeleteButton = nullptr;

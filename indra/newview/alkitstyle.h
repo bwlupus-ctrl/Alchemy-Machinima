@@ -81,6 +81,9 @@ enum EColor
     COLOR_COUNT
 };
 const LLUIColor& color(EColor color);
+// Custom kit fills use the same inherited multiplier as LLPanel backgrounds.
+// Do not apply it to text, icons, control faces, focus or selection painting.
+F32              backgroundAlpha(const LLView* view);
 const LLFontGL*  sansFont(const std::string& size = "Kit12", bool bold = false);
 const LLFontGL*  monoFont(const std::string& size = "Kit12", bool bold = false);
 // Returns text, or its prefix with an ellipsis, so the result is at most max_pixels wide in font.

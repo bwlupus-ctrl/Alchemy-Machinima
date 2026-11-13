@@ -1,0 +1,15 @@
+{
+  "base": "fb616f2519c",
+  "files": {
+    "pipeline.h": [
+      {
+        "before": "\n    // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime\n    // count is BDMergeMaxSpotShadows (2 = stock)\n    static constexpr U32    MAX_SPOT_SHADOWS = 10;\n    static_assert(MAX_SPOT_SHADOWS == 10u,\n                  \"shadowUtil.glsl's two 10-case spot dispatches must match MAX_SPOT_SHADOWS\");\n    static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;\n    // Keep the legacy six-slot runtime path on constrained hardware, admit an\n    // eight-slot intermediate tier, and reserve the ten-slot ceiling for\n    // desktop-class 32-unit hardware.\n    static constexpr U32 maxSpotShadowsForTextureUnits(U32 texture_units)\n    {\n        const U32 hardware_max = texture_units >= 32u ? 10u\n            : texture_units >= 28u ? 8u : 6u;\n        return hardware_max < MAX_SPOT_SHADOWS\n            ? hardware_max : MAX_SPOT_SHADOWS;\n",
+        "after": "\n    // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime\n    // count is BDMergeMaxSpotShadows (2 = stock)\n    static constexpr U32    MAX_SPOT_SHADOWS = 16;\n    static_assert(MAX_SPOT_SHADOWS == 16u,\n                  \"shadowUtil.glsl's two 16-case spot dispatches must match MAX_SPOT_SHADOWS\");\n    static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;\n    // Keep the legacy six-slot runtime path on constrained hardware, admit an\n    // eight-slot intermediate tier, and reserve the sixteen-slot ceiling for\n    // desktop-class 32-unit hardware.\n    static constexpr U32 maxSpotShadowsForTextureUnits(U32 texture_units)\n    {\n        const U32 hardware_max = texture_units >= 32u ? 16u\n            : texture_units >= 28u ? 8u : 6u;\n        return hardware_max < MAX_SPOT_SHADOWS\n            ? hardware_max : MAX_SPOT_SHADOWS;\n"
+      },
+      {
+        "before": "            maxSpotShadowsForTextureUnits(texture_units);\n        return requested < 2u ? 2u\n            : requested > hardware_max ? hardware_max : requested;\n    }\n    static constexpr U32 spotShadowMapIndex(U32 spot_slot)\n    {\n",
+        "after": "            maxSpotShadowsForTextureUnits(texture_units);\n        return requested < 2u ? 2u\n            : requested > hardware_max ? hardware_max : requested;\n    }\n    // Shader layout must remain legacy until the effective request exceeds ten.\n    static constexpr bool use16SpotShadowShaders(U32 requested, U32 texture_units)\n    {\n        return clampSpotShadowCount(requested, texture_units) > 10u;\n    }\n    static constexpr U32 spotShadowMapIndex(U32 spot_slot)\n    {\n"
+      }
+    ]
+  }
+}

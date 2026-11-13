@@ -2,6 +2,40 @@
 <llsd xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xsi:noNamespaceSchemaLocation="llsd.xsd">
 <map>
+    <key>AlchemyPerfGeomBudgetCap</key>
+    <map>
+      <key>Comment</key>
+      <string>Caps the per-frame geometry budget at 5 ms and stops object creation at either its count or time limit. FALSE restores the exact previous behaviour. Live toggle; repeat loading or teleport for a full A/B.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>AlchemyPerfBatchedRowUploads</key>
+    <map>
+      <key>Comment</key>
+      <string>Batches small mip and glyph upload rows into slices of up to 64 KB, preserving source stride. FALSE restores the exact previous behaviour. Live toggle; repeat loading or teleport for a full A/B.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+    <key>AlchemyPerfCachedMatrixInverse</key>
+    <map>
+      <key>Comment</key>
+      <string>Caches modelview and projection inverses across shader switches; uses affine inversion only for affine modelviews. FALSE restores the exact previous behaviour. Live toggle; takes effect on the next draw.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
+
     <key>DirectorActionAllOffMode</key>
     <map>
         <key>Comment</key><string>Director v2 only: replace the idle ACTION button with mouse-only, confirmed ALL OFF. F3 keeps its normal ACTION behavior.</string>
@@ -21,6 +55,14 @@
     <key>AlchemyEmergencyPurgeSliced</key>
     <map>
         <key>Comment</key><string>Spread emergency texture purges across frames and preserve unused textures' lazy-flush timers.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
+
+    <key>AlchemyPerfCoalescedBodyVisibility</key>
+    <map>
+        <key>Comment</key><string>Upstream fix: attachment texture changes mark the avatar and its hidden-body-part check runs once per frame instead of once per changed face. FALSE restores the exact previous behaviour (a full check on every change). Takes effect immediately.</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>1</integer>
@@ -8190,7 +8232,7 @@
     <key>DirectorBackgroundOpacity</key>
     <map>
       <key>Comment</key>
-      <string>Opacity of a solid backing layer drawn behind the whole Director window in the theme's window colour. 1 = fully solid.</string>
+      <string>How solid the Director's backgrounds are. 100% = solid; lower lets the world show through. Text and controls stay solid.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -10173,9 +10215,9 @@
     <key>TemporalMode</key>
     <map>
       <key>Comment</key>
-      <string>[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.</string>
+      <string>[Temporal Capture] Presentation-clock mode for World Time Scale. 0 = Live (stock; presentation time == wall time); 1 = Manual scale (local cinematic dynamics advance at TemporalWorldScale). Other values reserved for later Temporal Capture pillars. See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md. Session only: every login starts Live (scenes still store it).</string>
       <key>Persist</key>
-      <integer>1</integer>
+      <integer>0</integer>
       <key>Type</key>
       <string>S32</string>
       <key>Value</key>
@@ -10184,9 +10226,9 @@
     <key>TemporalWorldScale</key>
     <map>
       <key>Comment</key>
-      <string>[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real.</string>
+      <string>[Temporal Capture] World time scale for Manual mode: 0 = freeze (paused), 1 = realtime, up to 8x. Scales avatar/ghost animation, actor motion, object spin/paths, texture animation and particles together while network/UI/watchdog time stays real. Session only: every login starts at 1 (scenes still store it).</string>
       <key>Persist</key>
-      <integer>1</integer>
+      <integer>0</integer>
       <key>Type</key>
       <string>F32</string>
       <key>Value</key>
@@ -11350,7 +11392,7 @@
     <key>BDMergeMaxSpotShadows</key>
     <map>
       <key>Comment</key>
-      <string>[BDMerge NSpot] Number of projector (spot) lights that can cast shadows at once (stock viewer: 2, max 10). Each slot renders an extra shadow map per frame. Reallocates live on change.</string>
+      <string>[BDMerge NSpot] Number of projector (spot) lights that can cast shadows at once (stock viewer: 2, max 16; GPU tiers 6/8/16). Each slot renders an extra shadow map per frame (up to 64 MB VRAM at 4096; 16 slots: 1024 MB at 4096 or 256 MB at 2048). Reallocates live on change.</string>
       <key>Persist</key>
       <integer>1</integer>
       <key>Type</key>
@@ -21093,7 +21135,7 @@
   <key>RenderSpotShadowBias</key>
   <map>
     <key>Comment</key>
-    <string>Bias value for shadows (prevent shadow acne).</string>
+    <string>Bias value for projector shadows (prevent shadow acne): a constant in non-linear shadow-map depth. Used by the legacy receiver model (RenderSpotShadowBiasModel 0), by rig Detail lights that keep the legacy receiver, and by volumetric shafts; the surface model uses a metric bias instead.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
@@ -21104,13 +21146,80 @@
   <key>RenderSpotShadowOffset</key>
   <map>
     <key>Comment</key>
-    <string>Offset value for shadows (prevent shadow acne).</string>
+    <string>Projector shadow receiver offset along the surface normal, metres (prevent shadow acne). Legacy receiver model (RenderSpotShadowBiasModel 0): the offset itself. Surface model (1 or 2): one quarter of this value (1 cm at the default 0.04) is the ceiling of the texel-scaled offset, and the full value still sets the depth at which the projector shadow fades out with camera distance.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>F32</string>
     <key>Value</key>
     <real>0.04</real>
+  </map>
+  <key>RenderSoftShadowFillStep</key>
+  <map>
+    <key>Comment</key>
+    <string>Soft-shadow fill floor at the umbra edge (Ambient fill, BDMergeSoftShadowFill) on lit surfaces. FALSE (default) = the step is retired: the sun's soft kernels and the projector surface model (RenderSpotShadowBiasModel 1 or 2) return the plain visibility fraction, so a ramp across the umbra edge is smooth and monotonic and the fill no longer sparkles where the per-pixel kernel rotation flips a pixel between 0 and the fill level. TRUE = the old behaviour (any partially lit pixel is lifted toward the fill level). Volumetric shafts, froxel fog, the legacy projector receiver (RenderSpotShadowBiasModel 0) and the Classic shaft engine always keep the fill, so the Ambient fill slider still controls them.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderSoftShadowNoiseModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 1 (default) = hygiene: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash instead of a view-space sawtooth that slid with the camera, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>RenderSunLightProjectorDeadSamples</key>
+  <map>
+    <key>Comment</key>
+    <string>The sun/shadow light-map pass (sunLightF / sunLightSSAOF) also sampled the first two projector shadow slots into the light map's blue and alpha channels, which nothing reads (the lighting pass reads only red and green; the cascade debug view returns before it). FALSE (default) = those two soft-shadow samples per pixel are not taken (1.0 is written). TRUE = the old behaviour. Debug aid for an A/B of the saved GPU time.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>Boolean</string>
+    <key>Value</key>
+    <integer>0</integer>
+  </map>
+  <key>RenderSpotShadowBiasModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Projector shadow receiver bias on lit surfaces. 0 = legacy: a fixed RenderSpotShadowOffset (4 cm) normal offset plus a constant depth bias, which hides casters within a few cm of the receiver (straps, collars, hair fringe, eyelashes). 1 = surface model (default) for every projector except rig lights with Detail shadows, which keep their own receiver: normal offset of 4 shadow-map texels of world footprint times the sine of the light's incidence, between 0.5 mm and RenderSpotShadowOffset / 4 (never less than the camera depth buffer's own precision at that distance), plus a depth bias of at least 0.75 texel and, where the offset is clamped, the receiver plane's slope. 2 = the surface model for rig lights with Detail shadows too (0.15 mm floor; no screen-derivative receiver, slightly less of the finest contact shadow). Volumetric shafts and fog are not affected by this setting.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+  <key>RenderSpotShadowPenumbraModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Soft projector shadow width on lit surfaces (needs the projector surface model, RenderSpotShadowBiasModel 1 or 2, and soft projector shadows or a rig softness). 1 (default) = metric: the penumbra is sized by the light's physical source radius in metres, the same radius the world cube and area shadows use (rig fixture source size, RenderLocalLightSizeFromPrim, RenderLocalLightDefaultRadius; 0.10 m for an unsized light), so it is sharp at contact, widens smoothly with the gap between caster and receiver, and no longer depends on shadow map resolution or projector FOV (up to the Max penumbra cap, BDMergeSoftShadowMaxPenumbra, in map texels). Softness (BDMergeSoftShadowSoftness, or a rig light's own softness) scales the radius by softness / 3; a rig light in fixture mode uses its fixture source size as is. 0 = the old texel softness (7 fixed steps of a dimensionless gap). Volumetric shafts and fog are not affected by this setting.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+
+  <key>RenderSpotShadowFadeModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Where a projector's shadow map stops deciding on lit surfaces. 0 = legacy: projector shadows follow the sun shadow distance; they fade to lit over the far half of the last sun cascade's camera-distance range and are gone beyond it, so on a long-lens shot from far back they vanish or are replaced by the screen-space soft shadow trace. 1 = map-bounded (default): a projector's shadow is its own map's result at every camera distance (bounded only by the map and the light's range), and the soft shadow trace of a mapped light stays contact-only there. Volumetric shafts and fog are not affected by this setting.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
   </map>
 
   <key>RenderShadowResolutionScale</key>

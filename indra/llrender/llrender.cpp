@@ -37,6 +37,7 @@
 #include "llshadermgr.h"
 #include "hbxxh.h"
 #include "glm/gtc/type_ptr.hpp"
+#include "glm/gtc/matrix_inverse.hpp"
 
 
 #if GL_ARB_debug_output
@@ -55,6 +56,8 @@ extern void APIENTRY gl_debug_callback(GLenum source,
 #endif
 
 thread_local LLRender gGL;
+
+bool LLRender::sCachedMatrixInverse = true;
 
 // Handy copies of last good GL matrices
 F32 gGLModelView[16];
@@ -801,6 +804,7 @@ LLRender::LLRender()
         }
         mMatIdx[i] = 0;
         mMatHash[i] = 0;
+        invalidateMatrixInverse(eMatrixMode(i));
         mCurMatHash[i] = 0xFFFFFFFF;
     }
 
@@ -1016,6 +1020,35 @@ void LLRender::syncLightState()
     }
 }
 
+// Check the actual matrix from every camera/model writer, including arbitrary
+// loadMatrix/multMatrix inputs. No tolerance: even a tiny projective term must
+// use general inversion. Projection always uses the general inverse.
+static bool is_affine_modelview(const glm::mat4& mat)
+{
+    return mat[0][3] == 0.f && mat[1][3] == 0.f &&
+           mat[2][3] == 0.f && mat[3][3] == 1.f;
+}
+
+void LLRender::invalidateMatrixInverse(eMatrixMode mode)
+{
+    if (mode == MM_MODELVIEW || mode == MM_PROJECTION)
+    {
+        mCachedInverseValid[mode] = false;
+    }
+}
+
+const glm::mat4& LLRender::getCachedMatrixInverse(eMatrixMode mode)
+{
+    if (!mCachedInverseValid[mode])
+    {
+        const glm::mat4& mat = mMatrix[mode][mMatIdx[mode]];
+        mCachedInverse[mode] = mode == MM_MODELVIEW && is_affine_modelview(mat)
+            ? glm::affineInverse(mat) : glm::inverse(mat);
+        mCachedInverseValid[mode] = true;
+    }
+    return mCachedInverse[mode];
+}
+
 void LLRender::syncMatrices()
 {
     STOP_GLERROR;
@@ -1041,6 +1074,19 @@ void LLRender::syncMatrices()
     static glm::mat4 cached_normal;
     static U32 cached_normal_hash = 0xFFFFFFFF;
 
+    if (mCachedInverseEnabled != sCachedMatrixInverse)
+    {
+        mCachedInverseEnabled = sCachedMatrixInverse;
+        invalidateMatrixInverse(MM_MODELVIEW);
+        invalidateMatrixInverse(MM_PROJECTION);
+        // Resend uniforms on a live toggle, including the normal matrix.
+        ++mMatHash[MM_MODELVIEW];
+        ++mMatHash[MM_PROJECTION];
+        cached_mvp_mdv_hash = ~mMatHash[MM_MODELVIEW];
+        cached_mvp_proj_hash = ~mMatHash[MM_PROJECTION];
+        cached_normal_hash = ~mMatHash[MM_MODELVIEW];
+    }
+
     if (shader)
     {
         bool mvp_done = false;
@@ -1051,11 +1097,13 @@ void LLRender::syncMatrices()
             const glm::mat4& mat = mMatrix[MM_MODELVIEW][mMatIdx[MM_MODELVIEW]];
 
             // if MDV has changed, update the cached inverse as well
-            if (cached_mvp_mdv_hash != mMatHash[MM_MODELVIEW])
+            if (!sCachedMatrixInverse && cached_mvp_mdv_hash != mMatHash[MM_MODELVIEW])
             {
                 cached_inv_mdv = glm::inverse(mat);
             }
 
+            const glm::mat4& inv_mdv = sCachedMatrixInverse
+                ? getCachedMatrixInverse(MM_MODELVIEW) : cached_inv_mdv;
             shader->uniformMatrix4fv(name[MM_MODELVIEW], 1, GL_FALSE, glm::value_ptr(mat));
             shader->mMatHash[MM_MODELVIEW] = mMatHash[MM_MODELVIEW];
 
@@ -1063,9 +1111,9 @@ void LLRender::syncMatrices()
             S32 loc = shader->getUniformLocation(LLShaderMgr::NORMAL_MATRIX);
             if (loc > -1)
             {
-                if (cached_normal_hash != mMatHash[i])
+                if (sCachedMatrixInverse || cached_normal_hash != mMatHash[i])
                 {
-                    cached_normal = glm::transpose(cached_inv_mdv);
+                    cached_normal = glm::transpose(inv_mdv);
                     cached_normal_hash = mMatHash[i];
                 }
 
@@ -1083,7 +1131,7 @@ void LLRender::syncMatrices()
 
             if (shader->getUniformLocation(LLShaderMgr::INVERSE_MODELVIEW_MATRIX) > -1)
             {
-                shader->uniformMatrix4fv(LLShaderMgr::INVERSE_MODELVIEW_MATRIX, 1, GL_FALSE, glm::value_ptr(cached_inv_mdv));
+                shader->uniformMatrix4fv(LLShaderMgr::INVERSE_MODELVIEW_MATRIX, 1, GL_FALSE, glm::value_ptr(inv_mdv));
             }
 
             //update MVP matrix
@@ -1115,7 +1163,8 @@ void LLRender::syncMatrices()
             // Anything beyond the standard proj and inv proj mats are special cases.  Please setup special uniforms accordingly in the future.
             if (shader->getUniformLocation(LLShaderMgr::INVERSE_PROJECTION_MATRIX) > -1)
             {
-                glm::mat4 inv_proj = glm::inverse(mat);
+                const glm::mat4 inv_proj = sCachedMatrixInverse
+                    ? getCachedMatrixInverse(MM_PROJECTION) : glm::inverse(mat);
                 shader->uniformMatrix4fv(LLShaderMgr::INVERSE_PROJECTION_MATRIX, 1, false, glm::value_ptr(inv_proj));
             }
 
@@ -1173,6 +1222,7 @@ void LLRender::translatef(const GLfloat& x, const GLfloat& y, const GLfloat& z)
     {
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] = glm::translate(mMatrix[mMatrixMode][mMatIdx[mMatrixMode]], glm::vec3(x, y, z));
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 
@@ -1183,6 +1233,7 @@ void LLRender::scalef(const GLfloat& x, const GLfloat& y, const GLfloat& z)
     {
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] = glm::scale(mMatrix[mMatrixMode][mMatIdx[mMatrixMode]], glm::vec3(x, y, z));
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 
@@ -1193,6 +1244,7 @@ void LLRender::ortho(F32 left, F32 right, F32 bottom, F32 top, F32 zNear, F32 zF
     {
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] *= glm::ortho(left, right, bottom, top, zNear, zFar);
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 
@@ -1203,6 +1255,7 @@ void LLRender::rotatef(const GLfloat& a, const GLfloat& x, const GLfloat& y, con
     {
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] = glm::rotate(mMatrix[mMatrixMode][mMatIdx[mMatrixMode]], glm::radians(a), glm::vec3(x,y,z));
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 
@@ -1215,6 +1268,7 @@ void LLRender::pushMatrix()
         {
             mMatrix[mMatrixMode][mMatIdx[mMatrixMode]+1] = mMatrix[mMatrixMode][mMatIdx[mMatrixMode]];
             ++mMatIdx[mMatrixMode];
+            invalidateMatrixInverse(mMatrixMode);
         }
         else
         {
@@ -1231,6 +1285,7 @@ void LLRender::popMatrix()
         {
             --mMatIdx[mMatrixMode];
             mMatHash[mMatrixMode]++;
+            invalidateMatrixInverse(mMatrixMode);
         }
         else
         {
@@ -1245,6 +1300,7 @@ void LLRender::loadMatrix(const GLfloat* m)
     {
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] = glm::make_mat4((GLfloat*) m);
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 
@@ -1254,6 +1310,7 @@ void LLRender::multMatrix(const GLfloat* m)
     {
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] *= glm::make_mat4(m);
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 
@@ -1297,6 +1354,7 @@ void LLRender::loadIdentity()
 
         mMatrix[mMatrixMode][mMatIdx[mMatrixMode]] = glm::identity<glm::mat4>();
         mMatHash[mMatrixMode]++;
+        invalidateMatrixInverse(mMatrixMode);
     }
 }
 

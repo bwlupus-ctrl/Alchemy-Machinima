@@ -55,6 +55,106 @@ const std::string LLToastNotifyPanel::sFontScript("SansSerif");
 
 LLToastNotifyPanel::button_click_signal_t LLToastNotifyPanel::sButtonClickSignal;
 
+// [OfferRow] Helpers to put 3+ ordinary (non-script) toast buttons on a single row.
+namespace
+{
+    // Narrowest width this button may be given: what LLButton::resize() would auto-resize it
+    // to (label width in the button's font + its own left/right label padding), but never
+    // more than its current width. A button with an image overlay is not shrunk at all:
+    // toast buttons have none and LLButton does not expose its overlay/label spacing.
+    S32 toast_button_min_width(LLButton* btn)
+    {
+        const S32 cur_width = btn->getRect().getWidth();
+        if (btn->getImageOverlay().notNull())
+        {
+            return cur_width;
+        }
+        const S32 label_width = btn->getFont()->getWidth(btn->getCurrentLabel().getWString().c_str());
+        return llmin(cur_width, label_width + btn->getLeftHPad() + btn->getRightHPad());
+    }
+
+    // Tries to fit all buttons on one row of panel_width. On success returns true and fills
+    // 'widths' (same order as 'buttons'; each between toast_button_min_width() and the current
+    // width) and 'gap' (HPAD..2*HPAD). Returns false without touching the outputs when the
+    // buttons do not fit even at their minimum widths with HPAD gaps.
+    bool fit_toast_buttons_in_row(const std::vector<std::pair<int, LLButton*>>& buttons,
+                                  S32 panel_width, std::vector<S32>& widths, S32& gap)
+    {
+        const S32 count = S32(buttons.size());
+        if (count < 2 || panel_width <= 0)
+        {
+            return false;
+        }
+
+        std::vector<S32> min_widths;
+        std::vector<S32> cur_widths;
+        S32 min_total = 0;
+        for (const auto& entry : buttons)
+        {
+            if (!entry.second || entry.first == -1 || entry.first == -2)
+            {
+                // ignore/mute style entries are not part of the row walk in updateButtonsLayout()
+                return false;
+            }
+            cur_widths.push_back(entry.second->getRect().getWidth());
+            min_widths.push_back(toast_button_min_width(entry.second));
+            min_total += min_widths.back();
+        }
+
+        const S32 spare = panel_width - min_total;
+        if (spare < (count - 1) * HPAD)
+        {
+            return false;
+        }
+        const S32 row_gap = llclamp(spare / (count - 1), HPAD, 2 * HPAD);
+        const S32 row_width = panel_width - (count - 1) * row_gap; // >= min_total
+
+        // Largest common width 'share' for which sum(clamp(share, min, cur)) still fits the row.
+        auto total_at = [&](S32 share)
+        {
+            S32 total = 0;
+            for (S32 i = 0; i < count; ++i)
+            {
+                total += llclamp(share, min_widths[i], cur_widths[i]);
+            }
+            return total;
+        };
+        S32 lo = 0; // total_at(0) == min_total <= row_width
+        S32 hi = row_width;
+        while (lo < hi)
+        {
+            const S32 mid = (lo + hi + 1) / 2;
+            if (total_at(mid) <= row_width)
+            {
+                lo = mid;
+            }
+            else
+            {
+                hi = mid - 1;
+            }
+        }
+
+        widths.resize(count);
+        S32 leftover = row_width;
+        for (S32 i = 0; i < count; ++i)
+        {
+            widths[i] = llclamp(lo, min_widths[i], cur_widths[i]);
+            leftover -= widths[i];
+        }
+        // Rounding remainder: one pixel each to buttons sitting at the common width.
+        for (S32 i = 0; i < count && leftover > 0; ++i)
+        {
+            if (widths[i] == lo && widths[i] < cur_widths[i])
+            {
+                ++widths[i];
+                --leftover;
+            }
+        }
+        gap = row_gap;
+        return true;
+    }
+}
+
 LLToastNotifyPanel::LLToastNotifyPanel(const LLNotificationPtr& notification, const LLRect& rect, bool show_images)
 :   LLCheckBoxToastPanel(notification)
 ,   LLInstanceTracker<LLToastNotifyPanel, LLUUID, LLInstanceTrackerReplaceOnCollision>(notification->getID())
@@ -406,6 +506,30 @@ void LLToastNotifyPanel::init( LLRect rect, bool show_images )
                 if(h_pad < 2*HPAD) // still not enough space between buttons ?
                 {
                     h_pad = 2*HPAD;
+                }
+            }
+            // [OfferRow] Ordinary toast with exactly 3 buttons whose row would wrap with the widths and
+            // h_pad computed above (e.g. the inventory offers: 3 x ToastButtonWidth does not fit,
+            // so Block / Block Owner ended up alone on a second row). If the buttons fit on ONE row
+            // once the fixed-width ones give up spare width, shrink them toward an equal share,
+            // never below what LLButton would auto-resize to for the label, with a HPAD..2*HPAD gap.
+            // buttons_width and h_pad are updated, so button_rows below evaluates to 1 and
+            // updateButtonsLayout() never reaches its wrap branch. If they do not fit, nothing changes.
+            if (!mIsScriptDialog && buttons.size() == 3 &&
+                buttons_width + (S32(buttons.size()) - 1) * h_pad > button_panel_width)
+            {
+                std::vector<S32> row_widths;
+                S32 row_gap = 0;
+                if (fit_toast_buttons_in_row(buttons, button_panel_width, row_widths, row_gap))
+                {
+                    buttons_width = 0;
+                    for (size_t i = 0; i < buttons.size(); ++i)
+                    {
+                        LLButton* btn = buttons[i].second;
+                        btn->reshape(row_widths[i], btn->getRect().getHeight());
+                        buttons_width += row_widths[i];
+                    }
+                    h_pad = row_gap;
                 }
             }
             if (mIsScriptDialog)

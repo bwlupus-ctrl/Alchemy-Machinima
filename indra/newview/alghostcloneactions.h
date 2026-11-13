@@ -235,6 +235,26 @@ std::vector<FadeBefore> fadeRows(const std::vector<LLUUID>& rows, bool fade_out)
 // Undo (jump back to the saved resting state) / redo (the same fade again). False when no saved
 // clone survives.
 bool restoreFade(const std::vector<FadeBefore>& before, bool redo, bool fade_out);
+// ---- Flip pose left/right (the Clones page "Flip pose L/R" row and the clone menu's Animation > Flip left/right) --
+// ONE writer for both: only entity clones the page row is enabled for take it (Mirror, True mirror or Directed, or
+// Frozen from those: ALGhostAnimMirrorMath::directedMirrorActive); every other clone of the rows is left alone.
+// Session-only state (ALGhostStudio::Instance::mDirectedMirror through setInstanceDirectedMirror).
+bool directedMirrorEligible(const LLUUID& instance_id);
+struct FlipBefore
+{
+    LLUUID mId;             // the clone instance (stable across a respawn of its entity)
+    bool mOn = false;
+};
+// Eligible clones of the rows with their current flip, in order.
+std::vector<FlipBefore> snapshotDirectedMirror(const std::vector<LLUUID>& rows);
+// Writes `enabled` on every eligible clone of the rows. True when any value changed.
+bool setDirectedMirror(const std::vector<LLUUID>& rows, bool enabled);
+// History preflight: true when at least one saved clone is replayable NOW (the same directedMirrorEligible
+// predicate restoreDirectedMirror applies), so a step that replay could not apply is refused before any write.
+bool directedMirrorReplayable(const std::vector<FlipBefore>& state);
+// Undo / redo: each saved clone that is still eligible gets its flip back (a partial step applies to the replayable
+// clones, like restoreGaze). False (changing nothing) when none is replayable.
+bool restoreDirectedMirror(const std::vector<FlipBefore>& state);
 }
 
 #endif // AL_ALGHOSTCLONEACTIONS_H

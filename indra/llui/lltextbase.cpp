@@ -1574,7 +1574,8 @@ void LLTextBase::draw()
 
     if (mBGVisible)
     {
-        F32 alpha = getCurrentTransparency();
+        // Read-only documents are background surfaces; editable fields keep solid faces.
+        F32 alpha = mReadOnly ? getBackgroundTransparency() : getCurrentTransparency();
         // clip background rect against extents, if we support scrolling
         LLRect bg_rect = mVisibleTextRect;
         if (mScroller)

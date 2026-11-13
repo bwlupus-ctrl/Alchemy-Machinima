@@ -3251,7 +3251,7 @@ void LLMenuGL::draw( void )
 
     if( mBgVisible )
     {
-        gl_rect_2d( 0, getRect().getHeight(), getRect().getWidth(), 0, mBackgroundColor.get() );
+        gl_rect_2d( 0, getRect().getHeight(), getRect().getWidth(), 0, mBackgroundColor.get() % getBackgroundOpacity() );
     }
     LLView::draw();
 }

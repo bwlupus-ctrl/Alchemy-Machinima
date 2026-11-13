@@ -293,9 +293,9 @@ void ALKitPopover::draw()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI;
     if (mOuterImage && mInnerImage)
     {
-        mOuterImage->draw(0, 0, getRect().getWidth(), getRect().getHeight(), ALKitStyle::color(ALKitStyle::INPUT_BORDER).get());
+        mOuterImage->draw(0, 0, getRect().getWidth(), getRect().getHeight(), ALKitStyle::color(ALKitStyle::INPUT_BORDER).get() % ALKitStyle::backgroundAlpha(this));
         mInnerImage->draw(1, 1, llmax(1, getRect().getWidth() - 2), llmax(1, getRect().getHeight() - 2),
-                          ALKitStyle::color(ALKitStyle::RAIL_BG).get());
+                          ALKitStyle::color(ALKitStyle::RAIL_BG).get() % ALKitStyle::backgroundAlpha(this));
     }
     LLPanel::draw();
 }

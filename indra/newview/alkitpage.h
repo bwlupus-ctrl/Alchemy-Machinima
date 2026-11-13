@@ -6,6 +6,7 @@
 #include "alscrollfit.h"
 #include "alkitsearch.h"
 #include "aluirefresh.h"
+#include "alshaftstatusconsumer.h"
 #include <boost/signals2.hpp>
 #include <functional>
 #include <utility>
@@ -109,6 +110,7 @@ public:
     bool               postBuild() override;
     void               buildResetPopover();
     void               draw() override;
+    void               onVisibilityChange(bool visible) override;
     void               reshape(S32, S32, bool = true) override;
     ALKitRow*          findRow(const std::string&) const;
     ALKitRow*          findRowBySetting(const std::string&) const;
@@ -263,6 +265,8 @@ private:
         SubjectValueSource mValueSource = SubjectValueSource::CONTROL;
     };
     std::vector<SubjectCombo>                         mSubjectCombos;
+    LLTextBox* mShaftStatus = nullptr;
+    ALLiveReadoutClock mShaftStatusClock{1.f};
     ALLiveReadoutClock                              mReadoutClock{ 10.f };
     std::vector<SectionData>                        mSections;
     std::vector<ModeData>                           mModeDefs;

@@ -23,6 +23,15 @@
  * $/LicenseInfo$
  */
 
+// The 16-slot variant is admitted only on >=32 fragment texture units.
+#ifdef SPOT_SHADOWS_16
+#define SPOT_SHADOW_COUNT 16
+#define SPOT_SHADOW_MATRIX_COUNT 20
+#else
+#define SPOT_SHADOW_COUNT 10
+#define SPOT_SHADOW_MATRIX_COUNT 14
+#endif
+
 uniform sampler2D   normalMap;
 
 #if defined(SUN_SHADOW)
@@ -50,13 +59,21 @@ uniform sampler2DShadow shadowMap10;
 uniform sampler2DShadow shadowMap11;
 uniform sampler2DShadow shadowMap12;
 uniform sampler2DShadow shadowMap13;
+#ifdef SPOT_SHADOWS_16
+uniform sampler2DShadow shadowMap14;
+uniform sampler2DShadow shadowMap15;
+uniform sampler2DShadow shadowMap16;
+uniform sampler2DShadow shadowMap17;
+uniform sampler2DShadow shadowMap18;
+uniform sampler2DShadow shadowMap19;
+#endif
 #endif
 
 uniform vec3 sun_dir;
 uniform vec3 moon_dir;
 uniform vec2 shadow_res;
 uniform vec2 proj_shadow_res;
-uniform mat4 shadow_matrix[14]; // [BDMerge NSpot] 4 sun + up to 10 spot
+uniform mat4 shadow_matrix[SPOT_SHADOW_MATRIX_COUNT]; // [BDMerge NSpot] 4 sun + up to 16 spot
 uniform vec4 shadow_clip;
 // [ShadowDist P1] Control A: cascade blend width as a fraction of each split
 // (stock 0.25 -> bands 0.75x .. 1.25x). Uploaded from the sampled pack's
@@ -120,8 +137,57 @@ uniform int   soft_shadow_vogel;  // 0 = fixed 12-tap Poisson (default), 1 = Vog
 uniform int   soft_shadow_taps;   // Vogel tap count (clamped to SOFT_SHADOW_VOGEL_MAX)
 // Per projector-shadow slot. Zero is a strict sentinel for the existing
 // global behavior; positive values override only the penumbra growth scale.
-uniform float spot_shadow_softness[10];
-uniform float spot_shadow_detail[10];
+uniform float spot_shadow_softness[SPOT_SHADOW_COUNT];
+uniform float spot_shadow_detail[SPOT_SHADOW_COUNT];
+
+// [SoftShadow bias] Projector receiver bias model for LIT SURFACES (a non-zero
+// receiver normal); RenderSpotShadowBiasModel.
+//   0 = legacy, byte-identical: 4 cm normal offset (spot_shadow_offset) + a constant
+//       window-depth bias; rig Detail lights use their screen-derivative receiver.
+//   1 = surface model: texel-scaled normal offset + analytic receiver-plane depth bias
+//       from the G-buffer normal (spotSurfaceReceiver). Rig lights with Detail shadows
+//       keep their own (legacy) Detail receiver.
+//   2 = surface model for every projector, rig Detail lights included.
+// The initialiser keeps a program that never receives the upload on the legacy
+// model. Zero-normal callers (volumetric shafts, froxel injection) only ever reach
+// the test of this switch: the mode below stays 0 for them and every legacy
+// statement runs unchanged.
+uniform int spot_shadow_bias_model = 0;
+// Volumetric shafts never change with this switch. The New shaft engine also samples
+// its surface rim through sampleSpotShadow with a REAL normal (projectorVolumetricF.glsl,
+// inside `if (projvol_rim_strength > 0.0)`), so the zero-normal test alone does not
+// cover it: the shaft program's own rim uniform keeps every such call on the legacy
+// model. No other program uploads it (0 here), and the Classic engine links its own
+// frozen copy of this file.
+uniform float projvol_rim_strength;
+// [SoftShadow fade] Where a projector's own shadow map stops deciding on LIT SURFACES;
+// RenderSpotShadowFadeModel.
+//   0 = legacy: the projector shadow follows the SUN cascade range (shadow_clip). It
+//       ramps to lit over the last half of [shadow_clip.z, shadow_clip.w] of camera
+//       distance and is fully lit beyond shadow_clip.w.
+//   1 = map-bounded: for a receiver INSIDE this projector's map frustum (u, v and
+//       depth, tested in sampleSpotShadow) the shadow is the map's own result at every
+//       camera distance. A receiver outside the map keeps the legacy statements (0):
+//       the map has no answer for it, only clamped edge texels.
+// The CPU keeps the area-shadow hand-over in step (LLPipeline::nativeSpotShadowClip:
+// "valid everywhere" with model 1), so the screen trace stays contact-only where the
+// map now persists. The initialiser keeps a program that never receives the upload
+// on the legacy fade. Zero-normal callers (volumetric shafts, froxel injection) and
+// the New shaft engine's surface rim (projvol_rim_strength > 0) never take model 1.
+uniform int spot_shadow_fade_model = 0;
+const float SPOT_BIAS_REACH_TEXELS = 4.0;      // texels a tap of the 1-texel kernels sits from the receiver (snap + tap + bilinear)
+const float SPOT_BIAS_FLOOR        = 0.0005;   // metres: floor of the normal offset and of the depth bias
+const float SPOT_BIAS_DETAIL_FLOOR = 0.00015;  // the same floor for a rig light with Detail shadows (its legacy receiver's)
+const float SPOT_BIAS_DEPTH_TEXELS = 0.75;     // depth bias floor along the light ray, in texels of world footprint
+const float SPOT_BIAS_CAMERA_QUANTA = 2.0;     // G-buffer depth steps (24-bit) the reconstructed receiver may be off by
+const float SPOT_BIAS_DEPTH_QUANTUM = 2.0e-6;  // stc.z precision floor (float32 projection + 24-bit map), for far receivers
+const vec2  SPOT_BIAS_NORMAL_SLACK = vec2(0.98480775, 0.17364818); // cos, sin of 10 degrees: how far a shading normal may sit off the geometry
+// Per-call receiver state, written by sampleSpotShadow / spotSurfaceReceiver and read
+// by pcfSpotShadow for the same call (the 10-case slot dispatch stays untouched).
+int   g_spot_bias_mode  = 0;     // 0 = legacy statements, 1 = surface model
+float g_spot_bias_floor = 0.0005; // SPOT_BIAS_FLOOR or SPOT_BIAS_DETAIL_FLOOR for this light
+float g_spot_bias_stc   = 0.0;   // depth bias in stc.z, toward the light
+float g_spot_widen_stc  = 0.0;   // extra depth bias per texel of soft-kernel radius beyond 1
 
 // 12-tap Poisson-ish disk for the widened soft-shadow PCF kernel.
 const vec2 SOFT_SHADOW_DISK[12] = vec2[12](
@@ -148,6 +214,49 @@ const vec2 SPOT_BLOCKER_SEARCH_DISK[4] = vec2[4](
 // samples are actually summed. Golden angle (radians) drives the spiral.
 const int   SOFT_SHADOW_VOGEL_MAX   = 32;
 const float SOFT_SHADOW_GOLDEN_ANGLE = 2.3999632;
+
+// [SoftShadow fill] RenderSoftShadowFillRetire. 0 = legacy: every soft kernel lifts a
+// partially lit result toward soft_shadow_fill (a floor that is a hard step at the umbra
+// edge). 1 = the SURFACE soft kernels (sun cascades, projector surface model) return the
+// plain visibility fraction. The legacy projector kernel (pcfSpotShadow: shaft and froxel
+// callers, RenderSpotShadowBiasModel 0) and the frozen Classic shaft copy keep the fill.
+// A program that never receives the upload stays on 0.
+uniform int soft_shadow_fill_retire = 0;
+
+// [SoftShadow noise] RenderSoftShadowNoiseModel. 0 = legacy statements, byte-identical.
+// 1 = noise hygiene on the same surface soft kernels as above:
+//   - a per-light phase added to the Vogel rotation (slot * 2.4 rad; the sun its own constant),
+//     so several lights do not add their sampling errors coherently;
+//   - the per-pixel rotation fades in only above ~2.3 texels (smoothstep(2.0, 3.5, radius)):
+//     16 taps do not band below that, and a sharp shadow stays grain-free;
+//   (no early-out: every pixel runs the full blocker search and kernel; an 8-tap probe cannot
+//     be made equivalent for blockers smaller than the tap spacing)
+//   - the Poisson X jitter is a per-pixel hash instead of the view-space sawtooth
+//     fract(pos_screen.y * 0.6667), which slid with the camera;
+//   - the projector kernel is isotropic (no texel.y *= 1.5).
+uniform int soft_shadow_noise_model = 0;
+const float SOFT_NOISE_SLOT_PHASE = 2.4;   // radians per projector slot
+const float SOFT_NOISE_SUN_PHASE  = 1.55;  // radians, the sun's own phase (the widest gap between the 16 slot phases)
+// Slot of the projector being sampled, written by sampleSpotShadow for pcfSpotShadowSurface.
+float g_spot_slot = 0.0;
+
+float softShadowIGN()
+{
+    return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+}
+
+// Vogel base rotation. Model 0: the per-pixel interleaved-gradient angle, as always.
+float softShadowPhi(float radius_texels, float phase)
+{
+    float phi = 6.2831853 * softShadowIGN();
+    return soft_shadow_noise_model != 0 ? phase + phi * smoothstep(2.0, 3.5, radius_texels) : phi;
+}
+
+// Poisson X jitter: the caller's legacy value for model 0, a per-pixel hash otherwise.
+float softShadowJitter(float legacy)
+{
+    return soft_shadow_noise_model != 0 ? softShadowIGN() : legacy;
+}
 
 // Cinematic Lighting 2.0 PCSS-lite blocker search.  A comparison sampler does
 // not expose raw blocker depth, so estimate receiver-minus-blocker separation by
@@ -201,6 +310,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         vec2 texel = pr / shadow_res;
         float shadow = 0.0;
 
+
         if (soft_shadow_vogel != 0)
         {
             // [Vogel A/B] Vogel-disk PCF over the SAME penumbra radius (texel).
@@ -212,8 +322,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
             // window pixels, exactly what IGN expects for true per-pixel grain.
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(pr, SOFT_NOISE_SUN_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -226,7 +335,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         }
         else
         {
-            float jit = fract(pos_screen.y * shadow_res.y);
+            float jit = softShadowJitter(fract(pos_screen.y * shadow_res.y));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -238,7 +347,7 @@ float pcfShadow(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mul, 
         // [BDMerge fix] Same partial-visibility guard as the spot path below: the
         // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
         // or the sun leaks through walls wherever soft sun shadows are enabled.
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -312,8 +421,7 @@ float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 
         {
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(max(pr.x, pr.y), SOFT_NOISE_SUN_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -326,7 +434,7 @@ float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 
         }
         else
         {
-            float jit = fract(pos_screen.y * res.y);
+            float jit = softShadowJitter(fract(pos_screen.y * res.y));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -335,7 +443,7 @@ float pcfShadowC(sampler2DShadow shadowMap, vec4 stc, vec4 coef, vec2 res, vec2 
             }
             shadow /= 12.0;
         }
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -487,9 +595,259 @@ float estimateDetailSpotBlockerGap(sampler2DShadow shadowMap, vec3 stc, float so
     return best_gap;
 }
 
+// [SoftShadow metric] RenderSpotShadowPenumbraModel: the projector SURFACE soft kernel sized by
+// the light's physical source radius, like the cube and area shadow paths.
+//
+// For the slot's own perspective map, window depth is d = A - K/z (z = axial distance from the
+// projection origin, K = far*near/(far-near), A = far/(far-near)). A source disk of radius R
+// at the light's centre (axial depth c: the projection origin sits behind the lamp prim), a
+// blocker at z_b and a receiver at z_r give a penumbra of radius R*(z_r-z_b)/(z_b-c) metres on
+// the receiver. One texel there is 2*z_r*tan(fov/2)/res metres, so the radius in texels is
+//     k * (d_r - d_b) / (1 - s*(A - d_b)),    k = R*res/(2*tan(fov/2)*K),  s = c/K
+// straight from the two window depths: no linearisation, and the same width in metres at any
+// map resolution or FOV. Per slot (LLPipeline::bindDeferredShader): x, y = k along map X and Y
+// (they differ only when the map's texels are not square in world space), z = A, w = s.
+// x or y <= 0 = the old dimensionless texel softness for that slot: the setting at 0, and
+// every program that never receives the upload.
+uniform vec4 spot_shadow_metric[SPOT_SHADOW_COUNT];
+const int   SPOT_METRIC_BISECT_STEPS = 5;      // depth compares on the measured tap
+const float SPOT_METRIC_BISECT_STEP  = 1.0 / 32.0;   // 2^-steps: what the bisection resolves of the capped range
+const float SPOT_METRIC_SEARCH_PHASE = 1.1;    // radians between the search disk and the filter disk
+const float SPOT_METRIC_MIN_LEVER    = 0.05;   // floor of 1 - s*(A - d_b): a blocker at the lamp itself
+const float SPOT_METRIC_SLOPE_SHARE  = 0.25;   // share of the blocker separation the widened kernel's slope bias may use
+
+// One search tap of the 6-tap Vogel spiral: `at` = its position on the unit disk (z = radius),
+// `turn` = the rotation, `spread` = the disk's UV radii. 1 = lit.
+float spotMetricSearchTap(sampler2DShadow shadowMap, vec3 stc, vec3 at, vec2 turn, vec2 spread, float search, out vec3 tap)
+{
+    tap.xy = stc.xy + (turn * at.x + vec2(-turn.y, turn.x) * at.y) * spread;
+    tap.z = stc.z - max(at.z * search - 1.0, 0.0) * g_spot_widen_stc;
+    return textureLod(shadowMap, tap, 0.0);
+}
+
+// Penumbra radius in texels along the map's wider axis for the receiver stc (already biased by
+// g_spot_bias_stc) and the slot's metric m, and the kernel's UV radii in `texel`.
+// `clear` = the search found no blocker at all (see the near taps).
+//
+// The blocker separation is measured, not stepped (the old search had 7 levels of a fixed 0.2
+// window-depth range, which typical lamp-to-subject distances never reached): a comparison
+// sampler does not return the stored depth, so the compare reference of the first occluded
+// tap (near and search taps alternating) is bisected over the capped range, on a grid shifted
+// per pixel so the remaining step is grain, not a contour.
+//
+// Near taps: six compares at the corners shared by the 2x2 quads of the texel block around
+// the receiver (equal bilinear weights), at the receiver's own depth. The block is every
+// texel the 1-texel kernel can read: 4 x 4 for the Vogel disk (every tap within one texel,
+// plus its bilinear footprint; two of the six taps repeat), 6 x 4 for the Poisson disk, whose
+// X jitter reaches 1.43 texels. So "no near tap occluded" is "the 1-texel kernel is fully
+// lit", texel for texel: a blocker the filter can see is never invisible to the search,
+// however small, and when nothing is occluded the caller returns lit without that kernel.
+// Search taps: six on a rotated Vogel spiral over the widest penumbra any blocker in front
+// of this receiver could cast (blocker at the near plane), capped like the kernel. Each pays
+// the receiver plane's slope over its own distance (g_spot_widen_stc, the surface bias model's
+// term), so a slanted receiver is not its own blocker.
+//
+// The widened kernel also pays that slope, (pr - 1) * g_spot_widen_stc, as depth bias. The
+// radius is therefore held to what SPOT_METRIC_SLOPE_SHARE of the measured separation can
+// pay: at a grazing angle a wide kernel would need more bias than the blocker is away, and
+// the compare would pass the blocker (a lit hole inside its shadow). A quarter, because a
+// blocker parallel to the receiver recedes under the kernel as fast as the receiver does and
+// uses as much again. There the penumbra narrows instead; the bias never reaches the blocker.
+//
+// Written without loops over taps, arrays or implicit-LOD fetches: 12 compares, then 5 more
+// where something is occluded (the old search: 4, then up to 24 more). The driver's cost of
+// this path is its code, not only its fetches (relight_spot_metric_gl_check.py timing).
+float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, vec4 m, out vec2 texel, out bool clear)
+{
+    float k_max = max(m.x, m.y);
+    vec2 shape = m.xy / k_max;
+    float cap = max(soft_shadow_max, 1.0);
+    float pr = 1.0;
+    float lever_near = max(1.0 - m.w * m.z, SPOT_METRIC_MIN_LEVER);   // blocker at the near plane (d_b = 0)
+    float search = min(k_max * stc.z / lever_near, cap);
+    float limit = cap * max(lever_near, 1.0) / k_max;   // a separation at which the radius has reached the cap
+    float phi = softShadowPhi(search, g_spot_slot * SOFT_NOISE_SLOT_PHASE + SPOT_METRIC_SEARCH_PHASE);
+    vec2 turn = vec2(cos(phi), sin(phi));
+    vec2 spread = search * shape / proj_shadow_res;
+    vec2 inv_res = 1.0 / proj_shadow_res;
+    vec2 block = floor(stc.xy * proj_shadow_res - 0.5) * inv_res;   // lower-left texel centre of the receiver's cell, as a quad corner
+    // Quad corners along X, in texels from there: 0, 2 (Vogel; the third repeats) or -1, 1, 3 (Poisson).
+    vec3 column = (soft_shadow_vogel != 0 ? vec3(0.0, 2.0, 2.0) : vec3(-1.0, 1.0, 3.0)) * inv_res.x;
+    float row = 2.0 * inv_res.y;
+    // Lowest priority first: the last assignment that fires is the measured tap (x, y = uv,
+    // z = compare reference), `how` its occlusion threshold. Near quads: any of four texels.
+    // Each tap is formed where it is tested, so nothing but `tap` and `how` stays live.
+    vec3 tap = vec3(0.0);
+    float how = 0.0;
+    vec3 t;
+    if (spotMetricSearchTap(shadowMap, stc, vec3( 0.80783, -0.51388, 0.95743), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
+    t = vec3(block + vec2(column.z, row), stc.z);
+    if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
+    if (spotMetricSearchTap(shadowMap, stc, vec3(-0.85279, -0.15085, 0.86603), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
+    t = vec3(block + vec2(column.z, 0.0), stc.z);
+    if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
+    if (spotMetricSearchTap(shadowMap, stc, vec3( 0.46470,  0.60612, 0.76376), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
+    t = vec3(block + vec2(column.x, row), stc.z);
+    if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
+    if (spotMetricSearchTap(shadowMap, stc, vec3( 0.05643, -0.64303, 0.64550), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
+    t = vec3(block + vec2(column.y, 0.0), stc.z);
+    if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
+    if (spotMetricSearchTap(shadowMap, stc, vec3(-0.36868,  0.33775, 0.50000), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
+    t = vec3(block + vec2(column.y, row), stc.z);
+    if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
+    if (spotMetricSearchTap(shadowMap, stc, vec3( 0.28868,  0.00000, 0.28868), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
+    t = vec3(block + vec2(column.x, 0.0), stc.z);
+    if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
+    clear = how == 0.0;
+    if (!clear)
+    {
+        float lo = 0.0;
+        float hi = min(limit, max(tap.z, 0.0));
+        float shift = hi * SPOT_METRIC_BISECT_STEP * softShadowIGN();
+        for (int s = 0; s < SPOT_METRIC_BISECT_STEPS; ++s)
+        {
+            float mid = 0.5 * (lo + hi);
+            if (textureLod(shadowMap, vec3(tap.xy, tap.z + shift - mid), 0.0) < how) lo = mid; else hi = mid;
+        }
+        float gap = stc.z - tap.z + max(0.5 * (lo + hi) - shift, 0.0);   // d_r - d_b
+        float lever = max(1.0 - m.w * (m.z - (stc.z - gap)), SPOT_METRIC_MIN_LEVER);
+        pr = clamp(k_max * gap / lever, 1.0, cap);
+        pr = min(pr, 1.0 + SPOT_METRIC_SLOPE_SHARE * gap / max(g_spot_widen_stc, 1.e-12));
+    }
+    texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;
+    return pr;
+}
+
+// The metric soft kernel: the search above, then the same Vogel / Poisson disks as the old
+// statements in pcfSpotShadowSurface, with the noise model (phase, rotation fade, hash jitter)
+// and the fill rule of RenderSoftShadowNoiseModel / RenderSoftShadowFillStep, over the metric
+// radius. stc is the receiver after the perspective divide and the surface model's depth bias.
+float pcfSpotShadowMetric(sampler2DShadow shadowMap, vec3 stc, vec2 pos_screen, vec4 m)
+{
+    vec2 texel;
+    bool clear;
+    float pr = spotMetricPenumbra(shadowMap, stc, m, texel, clear);
+    // Nothing occluded in the search and none of the texels the 1-texel kernel reads: that
+    // kernel is fully lit, tap for tap, so it is not run.
+    if (clear) return 1.0;
+    // The surface bias model's widened-kernel term, on the metric radius.
+    float tap_z = stc.z - (pr - 1.0) * g_spot_widen_stc;
+    float shadow = 0.0;
+    if (soft_shadow_vogel != 0)
+    {
+        int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+        float inv_n = 1.0 / float(taps);
+        float slot_phase = g_spot_slot * SOFT_NOISE_SLOT_PHASE;
+        float phi = softShadowPhi(pr, slot_phase);
+        for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+        {
+            if (i >= taps) break;
+            float r = sqrt((float(i) + 0.5) * inv_n);
+            float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+            shadow += textureLod(shadowMap, vec3(stc.xy + r * vec2(cos(theta), sin(theta)) * texel, tap_z), 0.0);
+        }
+        shadow *= inv_n;
+    }
+    else
+    {
+        float jit = softShadowJitter(fract(pos_screen.y * 0.666666666));
+        for (int i = 0; i < 12; ++i)
+        {
+            vec2 o = SOFT_SHADOW_DISK[i] * texel;
+            o.x += (jit - 0.5) * texel.x;
+            shadow += textureLod(shadowMap, vec3(stc.xy + o, tap_z), 0.0);
+        }
+        shadow /= 12.0;
+    }
+    if (soft_shadow_fill_retire == 0 && soft_shadow_fill > 0.0 && shadow > 0.0)
+        shadow = mix(soft_shadow_fill, 1.0, shadow);
+    return clamp(shadow, 0.0, 1.0);
+}
+
+// [SoftShadow bias] The surface model's sampler: pcfSpotShadow's ordinary kernels, tap
+// for tap (blocker search, Vogel / Poisson soft disk, fill guard, snapped 5-tap hard
+// kernel), on the receiver prepared by spotSurfaceReceiver. stc is the texel-offset
+// receiver and g_spot_bias_stc its metric depth bias; spot_shadow_bias (a constant in
+// non-linear window depth) is not used. A soft kernel wider than one texel pays the
+// receiver plane's slope over the extra radius, so a slanted receiver inside a wide
+// penumbra does not shadow itself.
+float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen, float projector_softness)
+{
+#if defined(SPOT_SHADOW)
+    if (stc.w <= 1.e-4) return 1.0;   // behind the projection origin: outside the map, lit
+    stc.xyz /= stc.w;
+    // Smaller stc.z is nearer the light (the compare passes when ref <= stored), so a bias
+    // is SUBTRACTED; the legacy line adds RenderSpotShadowBias, which is negative.
+    stc.z -= g_spot_bias_stc;
+
+    if (soft_shadow_enable != 0 || projector_softness > 0.0)
+    {
+        // [SoftShadow metric] A slot with a metric (RenderSpotShadowPenumbraModel 1) takes the
+        // metric search and kernel; x or y <= 0 (setting off, or no upload) runs the old
+        // statements below, unchanged.
+        vec4 metric = spot_shadow_metric[int(g_spot_slot + 0.5)];
+        if (min(metric.x, metric.y) > 0.0) return pcfSpotShadowMetric(shadowMap, stc.xyz, pos_screen, metric);
+        float softness = projector_softness > 0.0
+                       ? projector_softness : soft_shadow_scale;
+        bool noise = soft_shadow_noise_model != 0;
+        float gap_scale = clamp(estimateSpotBlockerGap(shadowMap, stc.xyz, softness), 0.0, 1.0);
+        float pr = clamp(1.0 + softness * gap_scale,
+                          1.0, max(soft_shadow_max, 1.0));
+        stc.z -= (pr - 1.0) * g_spot_widen_stc;
+        vec2 texel = pr / proj_shadow_res;
+        if (!noise) texel.y *= 1.5;   // [SoftShadow noise] the isotropic kernel drops the 1.5x
+        float shadow = 0.0;
+
+        if (soft_shadow_vogel != 0)
+        {
+            int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
+            float inv_n = 1.0 / float(taps);
+            float phi = softShadowPhi(pr, g_spot_slot * SOFT_NOISE_SLOT_PHASE);
+            for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
+            {
+                if (i >= taps) break;
+                float r = sqrt((float(i) + 0.5) * inv_n);
+                float theta = float(i) * SOFT_SHADOW_GOLDEN_ANGLE + phi;
+                vec2 o = r * vec2(cos(theta), sin(theta)) * texel;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow *= inv_n;
+        }
+        else
+        {
+            float jit = softShadowJitter(fract(pos_screen.y * 0.666666666));
+            for (int i = 0; i < 12; ++i)
+            {
+                vec2 o = SOFT_SHADOW_DISK[i] * texel;
+                o.x += (jit - 0.5) * texel.x;
+                shadow += texture(shadowMap, vec3(stc.xy + o, stc.z));
+            }
+            shadow /= 12.0;
+        }
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
+            shadow = mix(soft_shadow_fill, 1.0, shadow);
+        return clamp(shadow, 0.0, 1.0);
+    }
+
+    stc.x = floor(proj_shadow_res.x * stc.x + fract(pos_screen.y*0.666666666)) / proj_shadow_res.x; // snap
+    vec2 off = 1.0/proj_shadow_res;
+    off.y *= 1.5;
+    float shadow = texture(shadowMap, stc.xyz);
+    shadow += texture(shadowMap, stc.xyz+vec3(off.x*2.0, off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(off.x, -off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(-off.x, off.y, 0.0));
+    shadow += texture(shadowMap, stc.xyz+vec3(-off.x*2.0, -off.y, 0.0));
+    return shadow*0.2;
+#else
+    return 1.0;
+#endif
+}
+
 float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 pos_screen, float projector_softness, bool detail)
 {
 #if defined(SPOT_SHADOW)
+    // [SoftShadow bias] surface model (never set for a zero-normal caller).
+    if (g_spot_bias_mode == 1) return pcfSpotShadowSurface(shadowMap, stc, pos_screen, projector_softness);
     if (detail && stc.w <= 1.e-4) return 1.0;
     stc.xyz /= stc.w;
     stc.z += spot_shadow_bias * bias_scale;
@@ -618,6 +976,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
         vec2 texel = pr / res;
         float shadow = 0.0;
 
+
         if (soft_shadow_vogel != 0)
         {
             // [Vogel A/B] Vogel-disk PCF over the SAME penumbra radius (texel).
@@ -629,8 +988,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
             // window pixels, exactly what IGN expects for true per-pixel grain.
             int taps = clamp(soft_shadow_taps, 1, SOFT_SHADOW_VOGEL_MAX);
             float inv_n = 1.0 / float(taps);
-            float phi = 6.2831853 * fract(52.9829189 *
-                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+            float phi = softShadowPhi(pr, SOFT_NOISE_SUN_PHASE);
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -643,7 +1001,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
         }
         else
         {
-            float jit = fract(pos_screen.y * res.y);
+            float jit = softShadowJitter(fract(pos_screen.y * res.y));
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -655,7 +1013,7 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
         // [BDMerge fix] Same partial-visibility guard as the spot path below: the
         // fill floor must never lift a FULLY occluded pixel (e.g. a room interior),
         // or the sun leaks through walls wherever soft sun shadows are enabled.
-        if (soft_shadow_fill > 0.0 && shadow > 0.0)
+        if (soft_shadow_fill > 0.0 && shadow > 0.0 && soft_shadow_fill_retire == 0)
             shadow = mix(soft_shadow_fill, 1.0, shadow);
         return clamp(shadow, 0.0, 1.0);
     }
@@ -672,7 +1030,6 @@ float pcfShadowRes(sampler2DShadow shadowMap, vec3 norm, vec4 stc, float bias_mu
     return 1.0;
 #endif
 }
-
 
 // Test the ACTUAL normal-offset projection sunBandC/pcfShadowRes will sample.
 // The conservative footprint includes every tap, jitter/snap and bilinear neighbours.
@@ -1080,10 +1437,84 @@ int directionalShadowCascade(vec3 pos, vec3 norm)
 #endif
 }
 
+// [SoftShadow bias] Surface-model receiver for projector slot `index`. Everything is
+// derived from the slot's own generated matrix, so optical setback, FOV, aspect and a
+// Prism / probe view's re-expressed matrix are all accounted for, and nothing depends
+// on screen derivatives (defined at silhouettes and after the caller's discard).
+//
+// With stc = (ru.p, rv.p, rz.p) / (rw.p) (matrix row r = (m[0][r], m[1][r], m[2][r])), the
+// Jacobian d(stc)/dp at the receiver has rows gu = (ru - u*rw)/w, gv = (rv - v*rw)/w,
+// gd = (rz - d*rw)/w (the sunBandC derivation). ray = cross(gu, gv) moves depth only: it
+// is the light ray through the receiver. gd.ray is the Jacobian determinant, so one metre
+// along the ray is |gd.ray|/|ray| in stc.z, and the receiver plane with G-buffer normal N
+// meets the ray at cos(a) = |N.ray|/|ray|: its depth slope is tan(a) per metre across the map.
+//
+//   texel  = world footprint of one map texel at the receiver's axial depth
+//   reach  = 4 * texel                    how far a tap of the 1-texel kernels sits from the receiver
+//   floor  = 0.5 mm (0.15 mm for a rig light with Detail shadows)
+//   camera = how far the receiver itself may be off: 2 steps of the 24-bit G-buffer depth it
+//            was reconstructed from, in metres along the view ray (grows with camera distance^2)
+//   offset = max(clamp(reach * sin(a), floor, spot_shadow_offset / 4), camera)   metres along N
+//   bias   = max(floor, 0.75 * texel, deficit * reach * tan(a + 10 deg))         metres along the ray
+//            deficit = 1 - offset / (reach * sin(a)): the share of the reach the clamped
+//            offset could not cover (0 while the offset is not clamped)
+//
+// The offset is a displacement in space: the depth it buys along the ray grows with the
+// receiver's TRUE incidence, so it stays sufficient when the G-buffer normal (a shading
+// normal: normal maps, smoothing) disagrees with the rasterised geometry, and it vanishes
+// on a receiver facing the light, where casters millimetres above the surface matter most.
+// The taps therefore do NOT follow the estimated plane (a tap that trusts a shading normal
+// acnes as soon as it is wrong). The receiver-plane slope only supplies depth bias where
+// the offset is clamped (coarse texels, grazing light), with 10 degrees of slack on the
+// normal and the slope capped at cos >= 1/8 like sunBandC.
+vec4 spotSurfaceReceiver(vec3 pos, vec3 norm, int index)
+{
+    mat4 m = shadow_matrix[4+index];
+    g_spot_bias_stc = SPOT_BIAS_DEPTH_QUANTUM;
+    g_spot_widen_stc = 0.0;
+    vec4 lp0 = m*vec4(pos,1.0);
+    if (lp0.w <= 1.e-4) return lp0;   // pcfSpotShadowSurface: outside the map, lit
+    vec3 n = normalize(norm);
+    vec3 ru = vec3(m[0].x,m[1].x,m[2].x);
+    vec3 rv = vec3(m[0].y,m[1].y,m[2].y);
+    vec3 rz = vec3(m[0].z,m[1].z,m[2].z);
+    vec3 rw = vec3(m[0].w,m[1].w,m[2].w);
+    float w0 = lp0.w;
+    vec3 st0 = lp0.xyz/w0;
+    vec3 gu = (ru-st0.x*rw)/w0;
+    vec3 gv = (rv-st0.y*rw)/w0;
+    vec3 gd = (rz-st0.z*rw)/w0;
+    vec3 ray = cross(gu,gv);
+    float ray_len = length(ray);
+    if (!(ray_len > 0.0)) return lp0; // degenerate matrix: no offset, precision floor only
+    float cos_a = min(abs(dot(n,ray))/ray_len,1.0);
+    float sin_a = sqrt(max(1.0-cos_a*cos_a,0.0));
+    // Same texel derivation as detailSpotReceiver below.
+    float texel = max(2.0*w0/(length(2.0*ru-rw)*proj_shadow_res.x),
+                      2.0*w0/(length(2.0*rv-rw)*proj_shadow_res.y));
+    float reach = SPOT_BIAS_REACH_TEXELS*texel;
+    float ceiling = max(0.25*spot_shadow_offset,g_spot_bias_floor);
+    // View depth is 1/(a*z_ndc + b) with a = inv_proj[2][3], so one 24-bit depth step (2^-23 in
+    // z_ndc) moves the reconstructed receiver |pos.z| * |pos| * |a| * 2^-23 metres along its view ray.
+    float camera = SPOT_BIAS_CAMERA_QUANTA*1.1920929e-7*abs(inv_proj[2][3]*pos.z)*length(pos);
+    float offset = max(clamp(reach*sin_a,g_spot_bias_floor,ceiling),camera);
+    vec4 lp = m*vec4(pos+n*offset,1.0);
+    if (lp.w <= 1.e-4) return lp;
+    float ray_stc = abs(dot(gd,ray))/ray_len;   // stc.z per metre along the light ray
+    float deficit = max(1.0-offset/max(reach*sin_a,1.e-9),0.0);
+    float tan_s = (sin_a*SPOT_BIAS_NORMAL_SLACK.x+cos_a*SPOT_BIAS_NORMAL_SLACK.y)/
+                  max(cos_a*SPOT_BIAS_NORMAL_SLACK.x-sin_a*SPOT_BIAS_NORMAL_SLACK.y,0.125);
+    float floor_m = max(SPOT_BIAS_DEPTH_TEXELS*texel,g_spot_bias_floor);
+    g_spot_bias_stc = max(max(floor_m,deficit*reach*tan_s)*ray_stc,SPOT_BIAS_DEPTH_QUANTUM);
+    g_spot_widen_stc = 1.5*texel*tan_s*ray_stc;
+    return lp;
+}
+
 // The actual generated projector matrix includes optical setback and FOV.
 // Its rows recover axial depth and metres/texel without guessing light range.
 vec4 detailSpotReceiver(vec3 pos, vec3 norm, int index)
 {
+    if (g_spot_bias_mode == 1) return spotSurfaceReceiver(pos,norm,index);
     mat4 m = shadow_matrix[4+index];
     vec3 axis = vec3(m[0].w,m[1].w,m[2].w);
     vec3 right = 2.0*vec3(m[0].x,m[1].x,m[2].x)-axis;
@@ -1118,9 +1549,40 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
     bool detail = spot_shadow_detail[index] > 0.5 && dot(norm,norm) > 0.0;
     vec3 original_pos = pos;
     if (!detail) pos += norm * spot_shadow_offset;
+    // [SoftShadow bias] Surface model: the map lookup comes from spotSurfaceReceiver
+    // through the receiver route of the dispatch below, which passes original_pos (the
+    // UNSHIFTED receiver), never pos. `pos` keeps the legacy shift above for an ordinary
+    // projector on purpose: it now feeds only the camera-distance fade (spos / pos.z
+    // below), which the area-shadow hand-over mirrors at that same depth
+    // (area_native_offset). The mode is reset on EVERY call, before anything can read
+    // it: pcfSpotShadow and detailSpotReceiver are reached only from this function, and
+    // the conservative samplers below never read it. A zero normal and the shaft
+    // program's rim never enter: mode 0, legacy statements only.
+    g_spot_bias_mode = 0;
+    if (spot_shadow_bias_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0 && (spot_shadow_bias_model == 2 || !detail))
+    {
+        g_spot_bias_mode = 1;
+        g_spot_slot = float(index);   // [SoftShadow noise] per-light Vogel phase
+        g_spot_bias_floor = detail ? SPOT_BIAS_DETAIL_FLOOR : SPOT_BIAS_FLOOR;
+        detail = true;
+    }
+
+    // [SoftShadow fade] Model 1, lit surfaces INSIDE this projector's map only: no sun-cascade
+    // early-out, weight or ramp; the result is the map's own (pcf * 1 + 0) / 1 at every camera
+    // distance. A receiver outside the map's frustum (u, v or depth) has no answer in the map,
+    // its taps clamp to the edge texels, so it stays on the legacy statements: unchanged inside
+    // the sun range, lit beyond it. The test is needed here: the lighting shader clips only the
+    // light's range and the projection depth, and a glossy receiver outside the cone still shows
+    // the projector's reflection. The receiver tested is the unshifted one.
+    bool map_bounded = false;
+    if (spot_shadow_fade_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0)
+    {
+        vec4 mp = shadow_matrix[4+index]*vec4(original_pos,1.0);
+        map_bounded = mp.w > 1.e-4 && all(greaterThanEqual(mp.xyz,vec3(0.0))) && all(lessThanEqual(mp.xyz,vec3(mp.w)));
+    }
 
     vec4 spos = vec4(pos,1.0);
-    if (spos.z > -shadow_clip.w)
+    if (map_bounded || spos.z > -shadow_clip.w)
     {
         vec4 lpos;
 
@@ -1130,10 +1592,23 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
         float weight = 0.0;
 
         {
+            // [SoftShadow fade] The legacy weight below is negative near the camera and crosses
+            // zero at view depth shadow_clip.z * (1 - shadow_split_blend), where its
+            // (pcf * w + ramp) / w was 0/0 (NaN). The ramp is zero there (it starts at the
+            // middle of [clip.z, clip.w]), so ANY non-zero weight returns the limit, the map's
+            // own result: at exactly that depth the domain is doubled and the weight becomes
+            // 0.5 (the quotient tested here is the one subtracted below). Every other depth is
+            // untouched, for every caller. The guard sits in FRONT of the weight on purpose:
+            // a select on w itself (if (w == 0.0) w = ...) changes how the compiler rounds
+            // the legacy division, by one float step, in the visibility and the shaft programs
+            // (measured; relight_spot_fade_gl_check.py and the shaft byte gates pin the bytes).
+            if (max(spos.z-far_split.z, 0.0)/transition_domain.z == 1.0) transition_domain.z *= 2.0;
             float w = 1.0;
             w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;
+            // [SoftShadow fade] Model 1: a weight of exactly 1, so the division below is exact.
+            if (map_bounded) w = 1.0;
 
-            // KEEP IN SYNC: this 10-case GLSL dispatch MUST mirror
+            // KEEP IN SYNC: this 16-case GLSL dispatch MUST mirror
             // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
             if (index == 0)
             {
@@ -1180,13 +1655,49 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
                 lpos = detail ? detailSpotReceiver(original_pos,norm,8) : shadow_matrix[12]*spos;
                 shadow += pcfSpotShadow(shadowMap12, lpos, 0.8, spos.xy, spot_shadow_softness[8],detail)*w;
             }
+#ifdef SPOT_SHADOWS_16
+            else if (index == 9)
+#else
             else
+#endif
             {
                 lpos = detail ? detailSpotReceiver(original_pos,norm,9) : shadow_matrix[13]*spos;
                 shadow += pcfSpotShadow(shadowMap13, lpos, 0.8, spos.xy, spot_shadow_softness[9],detail)*w;
             }
+#ifdef SPOT_SHADOWS_16
+            else if (index == 10)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,10) : shadow_matrix[14]*spos;
+                shadow += pcfSpotShadow(shadowMap14, lpos, 0.8, spos.xy, spot_shadow_softness[10],detail)*w;
+            }
+            else if (index == 11)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,11) : shadow_matrix[15]*spos;
+                shadow += pcfSpotShadow(shadowMap15, lpos, 0.8, spos.xy, spot_shadow_softness[11],detail)*w;
+            }
+            else if (index == 12)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,12) : shadow_matrix[16]*spos;
+                shadow += pcfSpotShadow(shadowMap16, lpos, 0.8, spos.xy, spot_shadow_softness[12],detail)*w;
+            }
+            else if (index == 13)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,13) : shadow_matrix[17]*spos;
+                shadow += pcfSpotShadow(shadowMap17, lpos, 0.8, spos.xy, spot_shadow_softness[13],detail)*w;
+            }
+            else if (index == 14)
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,14) : shadow_matrix[18]*spos;
+                shadow += pcfSpotShadow(shadowMap18, lpos, 0.8, spos.xy, spot_shadow_softness[14],detail)*w;
+            }
+            else
+            {
+                lpos = detail ? detailSpotReceiver(original_pos,norm,15) : shadow_matrix[19]*spos;
+                shadow += pcfSpotShadow(shadowMap19, lpos, 0.8, spos.xy, spot_shadow_softness[15],detail)*w;
+            }
+#endif
             weight += w;
-            shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);
+            if (!map_bounded) shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);
         }
 
         shadow /= weight;
@@ -1290,7 +1801,7 @@ float sampleSpotShadowConservative(vec3 pos, int index)
     // No norm * spot_shadow_offset receiver nudge and no shadow_clip camera-space
     // early-out/fade/weighting - just the sample projected straight into this
     // projector's own map.
-    // KEEP IN SYNC: this 10-case GLSL dispatch MUST mirror
+    // KEEP IN SYNC: this 16-case GLSL dispatch MUST mirror
     // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
     vec4 spos = vec4(pos, 1.0);
     if (index == 0)
@@ -1329,12 +1840,21 @@ float sampleSpotShadowConservative(vec3 pos, int index)
     {
         return pcfSpotShadowConservative(shadowMap12, shadow_matrix[12] * spos);
     }
+#ifdef SPOT_SHADOWS_16
+    if (index == 9) return pcfSpotShadowConservative(shadowMap13, shadow_matrix[13] * spos);
+    if (index == 10) return pcfSpotShadowConservative(shadowMap14, shadow_matrix[14] * spos);
+    if (index == 11) return pcfSpotShadowConservative(shadowMap15, shadow_matrix[15] * spos);
+    if (index == 12) return pcfSpotShadowConservative(shadowMap16, shadow_matrix[16] * spos);
+    if (index == 13) return pcfSpotShadowConservative(shadowMap17, shadow_matrix[17] * spos);
+    if (index == 14) return pcfSpotShadowConservative(shadowMap18, shadow_matrix[18] * spos);
+    return pcfSpotShadowConservative(shadowMap19, shadow_matrix[19] * spos);
+#else
     return pcfSpotShadowConservative(shadowMap13, shadow_matrix[13] * spos);
+#endif
 #else
     return 1.0;
 #endif
 }
-
 
 // [BDMerge G3.2] Donor: Black Dragon (NiranV Dean) shadowUtil.glsl - cheap
 // non-PCF cascade sampling for the volumetric raymarch (Tofu Buzzard lineage).

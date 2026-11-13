@@ -29,6 +29,8 @@ import director_list_select_check as list_select_check  # noqa: E402  (multi-sel
 import director_clone_clear_check as clone_clear_check  # noqa: E402  (Clear animations wiring)
 import director_clone_menu_check as clone_menu_check  # noqa: E402  (clone right-click menus, Select in Director)
 import avatar_gaze_menu_check  # noqa: E402  (avatar Director > Gaze)
+import director_fade_check  # noqa: E402  (background-only Director opacity)
+import body_visibility_coalesce_check  # noqa: E402  (coalesced body-visibility walk: pins + native fixture)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -374,13 +376,15 @@ def validate_data(data: dict) -> None:
     # Director tag highlight toggle: 2509 -> 2510.
     # Quick Gaze: eight independent This actor rows, 2510 -> 2518 (11/11).
     # Borrowed rig removal adds one searchable action: 2518 -> 2519 (11/12).
-    # Per-clone Stay in place adds one searchable switch: 2519 -> 2520 (11/12).
     rig_page = next(p for _, p in pages if p['name'] == 'cine_light_rig_tab')
     removes = [(c['id'], r) for c in rig_page['cards'] for r in c['rows'] if r.get('w') == 'cine_remove_borrowed_rig']
     if len(removes) != 1 or removes[0][0] != 'rig_status' or removes[0][1].get('btn') != 'Remove rig' or not removes[0][1].get('no_widget_history'):
         raise GenError("borrowed rig removal must be one searchable rig-status action with structural history")
-    if len(pages) != 40 or row_count != 2520:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2520")
+    # Shaft status and Test shafts add two searchable rows: 2519 -> 2521.
+    # Four upstream performance A/B switches: 2521 -> 2525 (11/12).
+    # Per-clone Stay in place adds one searchable switch: 2525 -> 2526 (11/13 integration).
+    if len(pages) != 40 or row_count != 2526:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2526")
     stay = [row for _, page in pages if page["name"] == "ghosts_tab"
             for card in page["cards"] if card["id"] == "pose"
             for row in card["rows"] if row.get("w") == "stay_in_place_check"]
@@ -2805,7 +2809,8 @@ def main(argv: list[str] | None = None) -> int:
         shader_load_check.native_check(ROOT)
         # Source gates with no runner of their own: prebuild_guard reaches them through
         # this --check. Each runs its check and its planted-negative selftest.
-        for gate in (list_select_check, clone_clear_check, clone_menu_check, avatar_gaze_menu_check):
+        for gate in (body_visibility_coalesce_check, director_fade_check, list_select_check, clone_clear_check,
+                     clone_menu_check, avatar_gaze_menu_check):
             with contextlib.redirect_stdout(io.StringIO()) as gate_out:
                 gate_failed = gate.run_check() or gate.selftest()
             if gate_failed:

@@ -482,6 +482,18 @@ public:
     static void  toggleVolumetricShaft(const LLUUID& id, bool user_edit = true);
     static bool  isVolumetricShaftEnabled(const LLUUID& id);
     static void  clearVolumetricShafts();
+    // [Shaft slot priority] A WORLD projector the user flagged for Volumetric Shaft (own id
+    // or root-edit id) ranks above unflagged world projectors and below cine rig emitters in
+    // the native shadow-slot auction (spotShadowTier). False for a Cast Shadows opt-out and
+    // for a flag that is only a VCam auto-enable.
+    static bool  isUserShaftSlotPromoted(LLVOVolume* volume);
+    // [Shaft status] One short line on `light`'s shaft for the Director Projector Shafts
+    // page (first blocking reason, or its slot). Evaluated by visible pages at most once per second.
+    // Counts only - never ids or names of other objects.
+    static std::string projectorShaftStatus(LLVOVolume* light);
+    static void acquireShaftTestMaster(const LLUUID& id);
+    bool hasProjectorShaftShadowSlot(LLVOVolume* light, bool current_frame = false);
+    void observeProjectorShafts(LLRenderTarget* target);
     // [World Shadow pick] Session-only per-light opt-in for the world (cube) shadow slots: the right-click "World Shadow" check item,
     // beside "Volumetric Shaft". Keyed by the LIGHT prim's own object id (a point light or a projector, any owner or permissions; the
     // pick touches nothing on the object). Picked lights take the slots first (alworldshadowmath.h updateResidencyPicked). The set is NOT
@@ -1698,16 +1710,16 @@ public:
 
     // [BDMerge NSpot] compile-time ceiling for projector shadows; runtime
     // count is BDMergeMaxSpotShadows (2 = stock)
-    static constexpr U32    MAX_SPOT_SHADOWS = 10;
-    static_assert(MAX_SPOT_SHADOWS == 10u,
-                  "shadowUtil.glsl's two 10-case spot dispatches must match MAX_SPOT_SHADOWS");
+    static constexpr U32    MAX_SPOT_SHADOWS = 16;
+    static_assert(MAX_SPOT_SHADOWS == 16u,
+                  "shadowUtil.glsl's two 16-case spot dispatches must match MAX_SPOT_SHADOWS");
     static constexpr U32    MAX_SHADOW_MATS = 4 + MAX_SPOT_SHADOWS;
     // Keep the legacy six-slot runtime path on constrained hardware, admit an
-    // eight-slot intermediate tier, and reserve the ten-slot ceiling for
+    // eight-slot intermediate tier, and reserve the sixteen-slot ceiling for
     // desktop-class 32-unit hardware.
     static constexpr U32 maxSpotShadowsForTextureUnits(U32 texture_units)
     {
-        const U32 hardware_max = texture_units >= 32u ? 10u
+        const U32 hardware_max = texture_units >= 32u ? 16u
             : texture_units >= 28u ? 8u : 6u;
         return hardware_max < MAX_SPOT_SHADOWS
             ? hardware_max : MAX_SPOT_SHADOWS;
@@ -1719,6 +1731,11 @@ public:
             maxSpotShadowsForTextureUnits(texture_units);
         return requested < 2u ? 2u
             : requested > hardware_max ? hardware_max : requested;
+    }
+    // Shader layout must remain legacy until the effective request exceeds ten.
+    static constexpr bool use16SpotShadowShaders(U32 requested, U32 texture_units)
+    {
+        return clampSpotShadowCount(requested, texture_units) > 10u;
     }
     static constexpr U32 spotShadowMapIndex(U32 spot_slot)
     {
@@ -1999,6 +2016,9 @@ public:
 
     LLPointer<LLDrawable>   mShadowSpotLight[MAX_SPOT_SHADOWS];
     F32                     mSpotLightFade[MAX_SPOT_SHADOWS];
+    std::array<LLUUID, MAX_SPOT_SHADOWS> mShaftDrawId{};
+    std::array<U32, MAX_SPOT_SHADOWS> mShaftDrawFrame{};
+    std::array<bool, MAX_SPOT_SHADOWS> mShaftDrawClassic{};
     LLPointer<LLDrawable>   mTargetShadowSpotLight[MAX_SPOT_SHADOWS];
     LLPointer<LLDrawable>   mSpotAuctionEligible[MAX_SPOT_SHADOWS];
     struct SpotAuctionEntry

@@ -236,6 +236,14 @@
       <menu_item_call.on_click function="GhostClone.RestartAnim" />
       <menu_item_call.on_enable function="GhostClone.EnableEntities" />
     </menu_item_call>
+    <menu_item_check
+     label="Flip left/right"
+     name="Flip left right"
+     tool_tip="Mirror the clone's playing animation left/right (same as Flip pose L/R in the Director). Entity clones in Mirror, True mirror or a chosen animation.">
+      <menu_item_check.on_click function="GhostClone.FlipLR" />
+      <menu_item_check.on_check function="GhostClone.CheckFlipLR" />
+      <menu_item_check.on_enable function="GhostClone.EnableFlipLR" />
+    </menu_item_check>
     <context_menu
      label="Speed"
      name="Anim Speed">

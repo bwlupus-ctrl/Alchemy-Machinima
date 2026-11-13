@@ -423,6 +423,8 @@ public:
     bool            getAutoFocus() const { return mAutoFocus; }
 
 protected:
+    // Included in this floater's background pass, before its shadow and chrome.
+    virtual void    drawBackgroundUnderlay() {}
     void            applyControlsAndPosition(LLFloater* other);
 
     void            stackWith(LLFloater& other);
@@ -575,7 +577,7 @@ private:
     F32             mButtonScale;
     bool            mAutoFocus;
     ETypeTransparency mAppliedTransparency { TT_DEFAULT };
-    U32               mAppliedTreeGeneration { 0 };
+    U64               mAppliedTreeGeneration { 0 };
     LLHandle<LLFloater> mSnappedTo;
 
     LLHandle<LLFloater> mHostHandle;
