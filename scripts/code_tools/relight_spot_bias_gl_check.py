@@ -46,6 +46,59 @@ KERNELS = (('hard', False, False), ('poisson', True, False), ('vogel', True, Tru
 MODEL_DEFAULT, MODEL_ALL = 1, 2
 
 
+# The projector fade model (RenderSpotShadowFadeModel, relight_spot_fade_gl_check.py) is a later, separately
+# reviewed layer of shadowUtil.glsl. It is EXACTLY the hunks of softshadow_fade_shader_hunks.json on FADE_BASE
+# (pinned by digest, like the pipeline allowance layers): the contracts below are stated on the shader with that
+# layer reversed, and the reversal must reproduce FADE_BASE byte for byte. Nothing is removed by position or by
+# marker: a hunk is replaced only where its complete reviewed text is present, exactly once.
+FADE_BASE = '1d1162aaf77'   # main with the soft shadow quality layer (softshadow_quality_shader_hunks.json), which is the next layer down
+FADE_SHADER_DIGEST = '4a21a44a0efd9fd2d81219a5bea9612ee224c824427090ca4089344a3d2c9432'
+
+
+def reverse_fade_layer(shader):
+    """shadowUtil.glsl with the fade-model layer reversed to FADE_BASE; any other difference fails."""
+    import hashlib
+    raw = Path(__file__).with_name('softshadow_fade_shader_hunks.json').read_bytes().replace(b'\r\n', b'\n')
+    assert hashlib.sha256(raw).hexdigest() == FADE_SHADER_DIGEST, 'fade shader layer: allowance pin'
+    layer = json.loads(raw)
+    assert layer['base'] == FADE_BASE and layer['file'] == SHADER and len(layer['hunks']) == 6, 'fade shader layer: scope'
+    original = G.SourceTree(FADE_BASE).read(SHADER).replace('\r\n', '\n')
+    shader = shader.replace('\r\n', '\n')
+    for hunk in layer['hunks']:
+        assert original.count(hunk['before']) == 1, 'fade shader layer: baseline hunk'
+        assert shader.count(hunk['after']) == 1, ('fade shader layer: exact reviewed hunk', hunk['after'][:80])
+        shader = shader.replace(hunk['after'], hunk['before'], 1)
+    assert shader == original, 'fade shader layer: reversal must reproduce its exact baseline'
+    return shader
+
+
+def fade_layer_negatives(shader):
+    """Planted edits of the fade layer; every one must be refused by reverse_fade_layer. Returns the survivors."""
+    uniform = 'uniform int spot_shadow_fade_model = 0;\n'
+    gate = '    if (spot_shadow_fade_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0)\n'
+    weight = '            if (map_bounded) w = 1.0;\n'
+    planted = {
+        # Executable text inside the uniform's comment block (it would change the sun bias of every program).
+        'define_inside_the_uniform_block': (uniform, '#define shadow_bias 0.0\n' + uniform),
+        'define_at_the_top_of_the_uniform_block': ('// RenderSpotShadowFadeModel.\n', '// RenderSpotShadowFadeModel.\n#define shadow_bias 0.0\n'),
+        'statement_inside_the_gate': (gate, '    pos.z += 0.0;\n' + gate),
+        'edited_statement': (weight, weight.replace('1.0', '2.0')),
+        'missing_statement': (weight, ''),
+        'duplicated_statement': (weight, weight * 2),
+        'comment_edited': ('// [SoftShadow fade] Model 1: a weight of exactly 1,', '// [SoftShadow fade] Model 1: a weight of exactly 2,'),
+        'unrelated_edit_elsewhere': ('uniform float shadow_bias;\n', 'uniform float shadow_bias;\nuniform float planted_unrelated;\n'),
+    }
+    survivors = []
+    for name, (old, new) in planted.items():
+        assert shader.count(old) == 1, ('fade layer negative anchor', name)
+        try:
+            reverse_fade_layer(shader.replace(old, new, 1))
+        except AssertionError:
+            continue
+        survivors.append(name)
+    return survivors
+
+
 class MutantTree(G.SourceTree):
     """The worktree with exact, single-site edits of shadowUtil.glsl (planted negatives)."""
     def __init__(self, edits):
@@ -575,7 +628,15 @@ def lighting_wiring(r, defaults):
 
 
 def source_contracts(tree):
-    shader = tree.read(SHADER)
+    # The newer fade-model layer is reversed first, exactly (softshadow_fade_shader_hunks.json); everything
+    # below is the reviewed bias contract on the remaining text.
+    worktree_shader = tree.read(SHADER)
+    try:
+        shader = reverse_fade_layer(worktree_shader)
+        fade_layer_exact = shader == G.SourceTree(FADE_BASE).read(SHADER)
+        fade_layer_survivors = fade_layer_negatives(worktree_shader)
+    except AssertionError as error:
+        shader, fade_layer_exact, fade_layer_survivors = G.SourceTree(FADE_BASE).read(SHADER), False, [str(error)]
     # The other reviewed feature widens only dispatch/layout. Removing the bias
     # insertions must reproduce that exact feature tree, never arbitrary WORKTREE.
     # GPU model-0/airborne/rim parity below still uses the original common BASE.
@@ -626,6 +687,8 @@ def source_contracts(tree):
             'detailSpotReceiver(pos' not in sample,
         'no_screen_derivative_in_model': 'dFd' not in new and 'fwidth' not in new,
         'legacy_functions_verbatim': verbatim,
+        'fade_layer_is_exact': fade_layer_exact,
+        'fade_layer_rejects_planted_edits': not fade_layer_survivors,
         'gate_is_nonzero_normal': block.count(GATE) == 1 and block.count('g_spot_bias_mode = 0;') == 1 and
                                   block.index('g_spot_bias_mode = 0;') < block.index(GATE) and
                                   shader.count('g_spot_bias_mode = 1;') == 1 and 'g_spot_bias_mode = 1;' in block,

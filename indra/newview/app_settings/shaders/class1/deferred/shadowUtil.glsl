@@ -160,6 +160,21 @@ uniform int spot_shadow_bias_model = 0;
 // model. No other program uploads it (0 here), and the Classic engine links its own
 // frozen copy of this file.
 uniform float projvol_rim_strength;
+// [SoftShadow fade] Where a projector's own shadow map stops deciding on LIT SURFACES;
+// RenderSpotShadowFadeModel.
+//   0 = legacy: the projector shadow follows the SUN cascade range (shadow_clip). It
+//       ramps to lit over the last half of [shadow_clip.z, shadow_clip.w] of camera
+//       distance and is fully lit beyond shadow_clip.w.
+//   1 = map-bounded: for a receiver INSIDE this projector's map frustum (u, v and
+//       depth, tested in sampleSpotShadow) the shadow is the map's own result at every
+//       camera distance. A receiver outside the map keeps the legacy statements (0):
+//       the map has no answer for it, only clamped edge texels.
+// The CPU keeps the area-shadow hand-over in step (LLPipeline::nativeSpotShadowClip:
+// "valid everywhere" with model 1), so the screen trace stays contact-only where the
+// map now persists. The initialiser keeps a program that never receives the upload
+// on the legacy fade. Zero-normal callers (volumetric shafts, froxel injection) and
+// the New shaft engine's surface rim (projvol_rim_strength > 0) never take model 1.
+uniform int spot_shadow_fade_model = 0;
 const float SPOT_BIAS_REACH_TEXELS = 4.0;      // texels a tap of the 1-texel kernels sits from the receiver (snap + tap + bilinear)
 const float SPOT_BIAS_FLOOR        = 0.0005;   // metres: floor of the normal offset and of the depth bias
 const float SPOT_BIAS_DETAIL_FLOOR = 0.00015;  // the same floor for a rig light with Detail shadows (its legacy receiver's)
@@ -1378,8 +1393,22 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
         detail = true;
     }
 
+    // [SoftShadow fade] Model 1, lit surfaces INSIDE this projector's map only: no sun-cascade
+    // early-out, weight or ramp; the result is the map's own (pcf * 1 + 0) / 1 at every camera
+    // distance. A receiver outside the map's frustum (u, v or depth) has no answer in the map,
+    // its taps clamp to the edge texels, so it stays on the legacy statements: unchanged inside
+    // the sun range, lit beyond it. The test is needed here: the lighting shader clips only the
+    // light's range and the projection depth, and a glossy receiver outside the cone still shows
+    // the projector's reflection. The receiver tested is the unshifted one.
+    bool map_bounded = false;
+    if (spot_shadow_fade_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0)
+    {
+        vec4 mp = shadow_matrix[4+index]*vec4(original_pos,1.0);
+        map_bounded = mp.w > 1.e-4 && all(greaterThanEqual(mp.xyz,vec3(0.0))) && all(lessThanEqual(mp.xyz,vec3(mp.w)));
+    }
+
     vec4 spos = vec4(pos,1.0);
-    if (spos.z > -shadow_clip.w)
+    if (map_bounded || spos.z > -shadow_clip.w)
     {
         vec4 lpos;
 
@@ -1389,8 +1418,21 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
         float weight = 0.0;
 
         {
+            // [SoftShadow fade] The legacy weight below is negative near the camera and crosses
+            // zero at view depth shadow_clip.z * (1 - shadow_split_blend), where its
+            // (pcf * w + ramp) / w was 0/0 (NaN). The ramp is zero there (it starts at the
+            // middle of [clip.z, clip.w]), so ANY non-zero weight returns the limit, the map's
+            // own result: at exactly that depth the domain is doubled and the weight becomes
+            // 0.5 (the quotient tested here is the one subtracted below). Every other depth is
+            // untouched, for every caller. The guard sits in FRONT of the weight on purpose:
+            // a select on w itself (if (w == 0.0) w = ...) changes how the compiler rounds
+            // the legacy division, by one float step, in the visibility and the shaft programs
+            // (measured; relight_spot_fade_gl_check.py and the shaft byte gates pin the bytes).
+            if (max(spos.z-far_split.z, 0.0)/transition_domain.z == 1.0) transition_domain.z *= 2.0;
             float w = 1.0;
             w -= max(spos.z-far_split.z, 0.0)/transition_domain.z;
+            // [SoftShadow fade] Model 1: a weight of exactly 1, so the division below is exact.
+            if (map_bounded) w = 1.0;
 
             // KEEP IN SYNC: this 16-case GLSL dispatch MUST mirror
             // LLPipeline::spotShadowMapIndex(): spot slot s -> shadowMap[4 + s].
@@ -1481,7 +1523,7 @@ float sampleSpotShadow(vec3 pos, vec3 norm, int index, vec2 pos_screen)
             }
 #endif
             weight += w;
-            shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);
+            if (!map_bounded) shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);
         }
 
         shadow /= weight;

@@ -139,8 +139,15 @@ def width(centres, mean, lo=.1, hi=.9):
     return None if a is None or b is None else b - a
 
 
+# RenderSpotShadowFadeModel (the projector fade model, relight_spot_fade_gl_check.py) for every projector draw of
+# this file. 0 = the legacy sampler, which is also the shader's own default and what BASE implements; evaluate()
+# repeats the measuring checks with 1 (map-bounded, the setting's default). Stated on every draw: programs keep
+# uniform values, and a program without the uniform (BASE) ignores the upload.
+FADE_MODEL = 0
+
+
 def projector(r, pr, cam, d, n, e, run, retire, noise, vogel=True, model=B.MODEL_ALL, airborne=False, setup=None, clip=None):
-    uni = dict(soft_shadow_fill_retire=int(retire), soft_shadow_noise_model=int(noise))
+    uni = dict(soft_shadow_fill_retire=int(retire), soft_shadow_noise_model=int(noise), spot_shadow_fade_model=int(FADE_MODEL))
 
     def hook(p):
         for k, val in uni.items():
@@ -685,7 +692,10 @@ def reader_contracts(tree):
 
 # ---------------------------------------------------------------- source contracts
 def source_contracts(tree):
-    shader = tree.read(SHADER)
+    # The projector fade model is a newer, separately reviewed layer on top of this series: it is reversed first,
+    # exactly (softshadow_fade_shader_hunks.json, digest-pinned; the result must be this series' complete reviewed
+    # file), and every contract below is stated on that text.
+    shader = B.reverse_fade_layer(tree.read(SHADER))
     base = G.SourceTree(BASE).read(SHADER)
     settings = settings_defaults()
     pipeline = tree.read('indra/newview/pipeline.cpp')
@@ -810,6 +820,34 @@ def evaluate(out, do_negatives=True):
     failures += f
     result.update(identity=identity, fill=fill_rows, phase=phase_rows, fade=fade_rows,
                   camera=camera_rows, isotropy=iso_rows, full_kernel=full_rows, shaft=shaft_rows, sunlight=sun_rows)
+    # The same measurements with the map-bounded projector fade model (RenderSpotShadowFadeModel 1, the default):
+    # the fill, noise and full-kernel results must hold under both models. The byte-identity checks stay on
+    # model 0 above, which is what BASE implements.
+    global FADE_MODEL
+    FADE_MODEL = 1
+    try:
+        model1 = {}
+        for key, run_check in (('fill', lambda: fill_check(r, r.visibility, defaults)), ('phase', lambda: phase_check(r, slot_prog, defaults)),
+                               ('fade', lambda: fade_check(r, slot_prog, defaults)), ('camera', lambda: camera_check(r, slot_prog, defaults)),
+                               ('isotropy', lambda: isotropy_check(r, slot_prog, defaults)), ('full_kernel', lambda: full_kernel_check(r, defaults))):
+            rows, f = run_check()
+            model1[key] = rows
+            failures += ['fade model 1: ' + str(x) for x in f]
+        # Positive control: the uniform reaches these draws and changes the sampler (a receiver beyond the sun range).
+        scene, cam, g, d, n, coord, mask = wall_view('A')
+        e = lamp()
+        r.native_map(scene, B.light_of(e), e['fov'], 2048)
+        run = run_defaults(defaults)
+        kept = projector(r, r.visibility, cam, d, n, e, run, 1, 1, clip=(.1, .2, .4, .8))
+        FADE_MODEL = 0
+        lost = projector(r, r.visibility, cam, d, n, e, run, 1, 1, clip=(.1, .2, .4, .8))
+        model1['control'] = dict(shadow_pixels_model1=int((kept[mask] < .5).sum()), shadow_pixels_model0=int((lost[mask] < .5).sum()))
+        if not (model1['control']['shadow_pixels_model1'] > 1000 and model1['control']['shadow_pixels_model0'] == 0):
+            failures.append('fade model 1: the model does not reach the quality draws %s' % model1['control'])
+    finally:
+        FADE_MODEL = 0
+    result['fade_model_1'] = model1
+    print('[soft-quality] fade model 1 repeat', json.dumps(model1['control']), flush=True)
     if do_negatives:
         rejected = {}
         for name, (edits, target) in negatives().items():

@@ -21199,6 +21199,18 @@
     <integer>1</integer>
   </map>
 
+  <key>RenderSpotShadowFadeModel</key>
+  <map>
+    <key>Comment</key>
+    <string>Where a projector's shadow map stops deciding on lit surfaces. 0 = legacy: projector shadows follow the sun shadow distance; they fade to lit over the far half of the last sun cascade's camera-distance range and are gone beyond it, so on a long-lens shot from far back they vanish or are replaced by the screen-space soft shadow trace. 1 = map-bounded (default): a projector's shadow is its own map's result at every camera distance (bounded only by the map and the light's range), and the soft shadow trace of a mapped light stays contact-only there. Volumetric shafts and fog are not affected by this setting.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>1</integer>
+  </map>
+
   <key>RenderShadowResolutionScale</key>
   <map>
     <key>Comment</key>

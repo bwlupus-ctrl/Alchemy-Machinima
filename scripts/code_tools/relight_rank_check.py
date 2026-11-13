@@ -18,7 +18,15 @@ composition):
   independent combined-output oracle sweeps the whole transition through the production gather, the
   production bilateral filter (radius 2 = the default and 8 = the maximum) AND the production spot-light
   composition (min(native + fade, screen)) for every combination of who sees the blocker, receiver
-  offsets 0 / 0.04 / 0.15 m and tilted normals.
+  offsets 0 / 0.04 / 0.15 m and tilted normals. That is the LEGACY native sampler (RenderSpotShadowFadeModel 0,
+  the uniform's own default), which every sweep above keeps pinning unchanged;
+* the map-bounded native sampler (RenderSpotShadowFadeModel 1, the setting's default): the native projector
+  shadow no longer ends with the sun cascades, so LLPipeline::nativeSpotShadowClip returns the "valid
+  everywhere" clip (all zeros) to the ranking, the gather and its filter. The same combined-output oracle then
+  proves the matched pair has no depth dependence at all (a shared blocker stays dark, a native-only shadow is
+  kept beyond shadow_clip.w, the screen trace stays contact-only: no gap and no second, different shadow), and
+  that each mismatched pair is rejected (sampler on model 1 with the legacy clip: the trace darkens where the
+  map is valid; sampler on model 0 with the valid-everywhere clip: a shared blocker is lit past the ramp).
 Run directly it re-launches the GPU harness with --area-only --rank-only.
 """
 from pathlib import Path
@@ -305,6 +313,101 @@ def check_rank_sources():
               and 'LLStaticHashedString("area_native_offset")' in mutated_pipeline
               and 'if (!plane_ok[0]) break;' in mutated_pipeline and 'release_plane(1)' not in mutated_pipeline)
         assert not ok, 'source mutation survived: ' + label
+    # [SoftShadow fade] RenderSpotShadowFadeModel. The native sampler's fade model and the hand-over clip are ONE
+    # switch: with model 1 (map-bounded, default) sampleSpotShadow no longer ramps to lit with the sun cascades on lit
+    # surfaces, and nativeSpotShadowClip() -- the only source of BOTH the ranking's selection_clip and the
+    # area_native_clip uploaded to the gather and its filter -- returns all zeros, the "valid everywhere" value of
+    # nativeShadowStrength / areaNativeStrength. With model 0 both sides are the legacy forms pinned above.
+    shadow_util = (nv / 'app_settings/shaders/class1/deferred/shadowUtil.glsl').read_text(encoding='utf-8')
+    settings_xml = (nv / 'app_settings/settings.xml').read_text(encoding='utf-8')
+
+    def fade_handover_ok(everything, render, util, settings, math):
+        start = everything.index('LLVector4 LLPipeline::nativeSpotShadowClip() const\n{')
+        clip_body = everything[start:everything.index('\n}\n', start)]
+        key = settings.index('<key>RenderSpotShadowFadeModel</key>') if '<key>RenderSpotShadowFadeModel</key>' in settings else -1
+        entry = settings[key:settings.index('</map>', key)] if key >= 0 else ''
+        early = '    if (spot_shadow_fade_model != 0) return LLVector4(0.f, 0.f, 0.f, 0.f);\n'
+        return (clip_body.count('static LLCachedControl<U32> spot_shadow_fade_model(gSavedSettings, "RenderSpotShadowFadeModel", 1);\n' + early) == 1
+                # The early return precedes every legacy return, and the legacy body is still there for model 0.
+                and clip_body.index(early) < clip_body.index('const RenderTargetPack& pack')
+                and 'return pack.shadowMeta.clip;' in clip_body and 'return mSunClipPlanes;' in clip_body
+                # One switch, three readers: the sampler's uniform, the ranking and the gather/filter upload.
+                and everything.count('"RenderSpotShadowFadeModel"') == 2
+                and everything.count('shader.uniform1i(LLStaticHashedString("spot_shadow_fade_model"), (S32)llmin((U32)spot_shadow_fade_model, 1U));') == 1
+                and render.count('const LLVector4 selection_clip = nativeSpotShadowClip();') == 1
+                and render.count('const LLVector4 native_clip = nativeSpotShadowClip();') == 1
+                and everything.count('nativeSpotShadowClip();') == 2
+                and render.count('uniform2f(LLStaticHashedString("area_native_clip"),native_clip.mV[2],native_clip.mV[3]);') == 2
+                and 'nativeShadowStrength(view_depth,selection_clip.mV[2],selection_clip.mV[3])' in render
+                # All zeros IS "valid everywhere" on the CPU and in both shader copies (never a new constant).
+                and 'if (!(clipZ > 0.0) || !(clipW > clipZ) || !std::isfinite(viewDepth)) return 1.0;' in math
+                and native_strength(1.e6, 0.0, 0.0) == 1.0 and native_strength(.01, 0.0, 0.0) == 1.0
+                # The sampler: legacy by default in the shader, model 1 only for a lit surface outside the shaft program.
+                and util.count('uniform int spot_shadow_fade_model = 0;\n') == 1
+                and util.count('    if (spot_shadow_fade_model != 0 && projvol_rim_strength <= 0.0 && dot(norm,norm) > 0.0)\n') == 1
+                # ... and only for a receiver inside the projector's own map (u, v and depth): outside it the legacy
+                # statements and the legacy ramp still run, and the hand-over never relied on the map there.
+                and util.count('        map_bounded = mp.w > 1.e-4 && all(greaterThanEqual(mp.xyz,vec3(0.0))) && all(lessThanEqual(mp.xyz,vec3(mp.w)));\n') == 1
+                and util.count('    if (map_bounded || spos.z > -shadow_clip.w)\n') == 1
+                and util.count('            if (map_bounded) w = 1.0;\n') == 1
+                and util.count('            if (!map_bounded) shadow += max((pos.z+shadow_clip.z)/(shadow_clip.z-shadow_clip.w)*2.0-1.0, 0.0);\n') == 1
+                and '<string>U32</string>' in entry and '<key>Value</key>\n    <integer>1</integer>' in entry.replace('\r\n', '\n'))
+
+    def both_shaders_valid_everywhere(*texts):
+        return all('if (area_native_clip.x <= 0.0 || area_native_clip.y <= area_native_clip.x) return 1.0;' in t for t in texts)
+
+    filter_glsl = (nv / 'app_settings/shaders/class3/deferred/areaShadowFilterF.glsl').read_text(encoding='utf-8')
+    assert fade_handover_ok(pipeline_all, pipeline, shadow_util, settings_xml, header), \
+        'the fade model must switch the native sampler and the hand-over clip together'
+    assert both_shaders_valid_everywhere(glsl, filter_glsl), 'gather and filter treat an unset clip as valid everywhere'
+    early_return = '    if (spot_shadow_fade_model != 0) return LLVector4(0.f, 0.f, 0.f, 0.f);\n'
+    key_at = settings_xml.index('<key>RenderSpotShadowFadeModel</key>')
+    map_end = settings_xml.index('</map>', key_at)
+    value_at = settings_xml.rindex('<integer>1</integer>', key_at, map_end)
+    settings_default_0 = settings_xml[:value_at] + '<integer>0</integer>' + settings_xml[value_at + len('<integer>1</integer>'):]
+    for label, everything, render, util, settings, math in (
+            ('hand-over clip ignores the fade model (the trace takes over where the map now persists)',
+             pipeline_all.replace(early_return, ''), pipeline, shadow_util, settings_xml, header),
+            ('hand-over clip follows the model inverted', pipeline_all.replace(early_return, early_return.replace('!= 0', '== 0')),
+             pipeline, shadow_util, settings_xml, header),
+            ('a non-zero "valid" clip (not the valid-everywhere value)',
+             pipeline_all.replace(early_return, early_return.replace('LLVector4(0.f, 0.f, 0.f, 0.f)', 'LLVector4(0.f, 0.f, 1.f, 1.e9f)')),
+             pipeline, shadow_util, settings_xml, header),
+            ('the gather upload bypasses nativeSpotShadowClip', pipeline_all,
+             pipeline.replace('const LLVector4 native_clip = nativeSpotShadowClip();', 'const LLVector4 native_clip = mSunClipPlanes;'),
+             shadow_util, settings_xml, header),
+            ('the ranking bypasses nativeSpotShadowClip', pipeline_all,
+             pipeline.replace('const LLVector4 selection_clip = nativeSpotShadowClip();', 'const LLVector4 selection_clip = mSunClipPlanes;'),
+             shadow_util, settings_xml, header),
+            ('sampler uniform dropped (the clip changes alone)',
+             pipeline_all.replace('LLStaticHashedString("spot_shadow_fade_model")', 'LLStaticHashedString("x")'),
+             pipeline, shadow_util, settings_xml, header),
+            ('sampler and clip read different settings',
+             pipeline_all.replace('spot_shadow_fade_model(gSavedSettings, "RenderSpotShadowFadeModel", 1);\n' + early_return,
+                                  'spot_shadow_fade_model(gSavedSettings, "RenderSpotShadowBiasModel", 1);\n' + early_return),
+             pipeline, shadow_util, settings_xml, header),
+            ('sampler takes model 1 outside the projector map', pipeline_all, pipeline,
+             shadow_util.replace('        map_bounded = mp.w > 1.e-4 && all(', '        map_bounded = true || all('), settings_xml, header),
+            ('sampler keeps the sun ramp in model 1', pipeline_all, pipeline,
+             shadow_util.replace('            if (!map_bounded) shadow += max(', '            shadow += max('), settings_xml, header),
+            ('sampler keeps the shadow_clip.w early-out in model 1', pipeline_all, pipeline,
+             shadow_util.replace('    if (map_bounded || spos.z > -shadow_clip.w)\n', '    if (spos.z > -shadow_clip.w)\n'), settings_xml, header),
+            ('shader default is model 1 (a program without the upload leaves the legacy clip behind)', pipeline_all, pipeline,
+             shadow_util.replace('uniform int spot_shadow_fade_model = 0;', 'uniform int spot_shadow_fade_model = 1;'), settings_xml, header),
+            ('setting missing', pipeline_all, pipeline, shadow_util,
+             settings_xml.replace('<key>RenderSpotShadowFadeModel</key>', '<key>RenderSpotShadowFadeModelX</key>'), header),
+            ('setting default is legacy', pipeline_all, pipeline, shadow_util, settings_default_0, header),
+            ('CPU strength no longer treats an unset clip as valid everywhere', pipeline_all, pipeline, shadow_util, settings_xml,
+             header.replace('if (!(clipZ > 0.0) || !(clipW > clipZ) || !std::isfinite(viewDepth)) return 1.0;',
+                            'if (!std::isfinite(viewDepth)) return 1.0;'))):
+        assert (everything, render, util, settings, math) != (pipeline_all, pipeline, shadow_util, settings_xml, header), label
+        assert not fade_handover_ok(everything, render, util, settings, math), 'fade hand-over mutation survived: ' + label
+    unset = 'if (area_native_clip.x <= 0.0 || area_native_clip.y <= area_native_clip.x) return 1.0;'
+    assert not both_shaders_valid_everywhere(glsl.replace(unset, ''), filter_glsl) and \
+        not both_shaders_valid_everywhere(glsl, filter_glsl.replace(unset, '')), 'unset-clip mutation survived'
+    print('[RelightQ] fade model hand-over sources PASS: RenderSpotShadowFadeModel (default 1) switches the native sampler uniform and '
+          'nativeSpotShadowClip (all zeros = valid everywhere for the ranking, the gather and the filter) together; 14 source '
+          'mutations and 2 shader mutations rejected', flush=True)
     print('[RelightQ] rank sources PASS: importance score with a continuous native weight, no unmapped-first or legacy '
           'camera-point term, sampled-map rule, feed slots 0 with the VCam switch off, no allocation backoff, '
           'plane-1 fallback, pre-hybrid housing (global bias sphere; ray utility baseline plus per-ray thin argument and exact reach-march fix), hand-over window .25 .. .45 '
@@ -685,7 +788,7 @@ void main() {
         # (2 = the default RenderAreaShadowDenoise, 8 = its maximum), which the lighting shaders actually sample.
         return pixels[:, :, 0] if radius is None else run_filter(pixels, radius, clip, offset, fade)[:, :, 0]
 
-    def composed(visibility_bytes, clip, fade, blend, offset=0.0):
+    def composed(visibility_bytes, clip, fade, blend, offset=0.0, model=0):
         upload(4, np.repeat(visibility_bytes[:, :, None], 4, axis=2).astype(np.float32) / 255, 0x8058)
         g['use'](compose)
         g['matrix'](loc(compose, b'inv_proj'), 1, 0, inverse.ctypes.data_as(C.POINTER(F)))
@@ -707,6 +810,10 @@ void main() {
         ui(loc(compose, b'proj_shadow_idx'), 0)
         uf[1](loc(compose, b'shadow_fade'), 1 - fade)
         ui(loc(compose, b'relight_enabled'), 2)
+        # RenderSpotShadowFadeModel: stated on every draw (programs keep uniform values). 0 = the legacy sampler,
+        # which is also the shader's own default.
+        assert loc(compose, b'spot_shadow_fade_model') >= 0, 'the production composition has the fade model uniform'
+        ui(loc(compose, b'spot_shadow_fade_model'), model)
         return draw(compose, probe=True)[:, :, 0]
 
     depth_columns = -z_wall
@@ -806,6 +913,81 @@ void main() {
                         assert final[analysis][-1] >= 1 - 3 / 255, 'a native-only blocker ramps to lit as stock'
                     cases += 1
                     sweeps += 1
+    # ---- [SoftShadow fade] RenderSpotShadowFadeModel 1: map-bounded native sampler + valid-everywhere clip -------
+    # The CPU hands the gather and its filter area_native_clip = (0, 0) (nativeSpotShadowClip), while the sampler
+    # still receives the real sun shadow_clip and must ignore it. Nothing may depend on the receiver depth any more:
+    # the native term is pcf + shadow_fade and the screen term is mix(full, contact, fade) at every column, including
+    # the columns past shadow_clip.w (clip (4, 5) puts 4.9 m of receivers beyond it).
+    valid_everywhere = (0.0, 0.0)
+    fade_cases = 0
+    fade_flat = 0.0
+    for n, (nimage, nz) in normal_images.items():
+      for offset in (0.0, .04, .15):
+        for clip, blend in (((5.0, 9.0), .25), ((4.5, 6.5), .1), ((4.0, 5.0), .25)):
+            for fade in (1.0, .5, 0.0):
+                for radius, (name, native_value, pcf, blocker) in itertools.product((None, 2.0, 8.0), scenes):
+                    set_native(native_value)
+                    v = gather_visibility(gather, valid_everywhere, fade, blocker, nimage, offset, radius)
+                    row = v[height // 2].astype(np.float32) / 255
+                    final = composed(v, clip, fade, blend, offset, model=1)[height // 2].astype(np.float32) / 255
+                    # Screen term: contact-only (1) weighted by the slot fade against the full trace (0 behind the post).
+                    expected_screen = fade if blocker else 1.0
+                    error = float(np.max(abs(row[analysis] - expected_screen)))
+                    assert error <= 3 / 255, ('model 1: the screen term is depth-independent', name, clip, fade, n, offset, radius, error)
+                    expected_final = min(min(max(pcf + (1 - fade), 0.0), 1.0), expected_screen)
+                    error = float(np.max(abs(final[analysis] - expected_final)))
+                    assert error <= 3 / 255, ('model 1: composition equals min(pcf + fade, screen) at every depth', name, clip, fade, n,
+                                              offset, radius, error, expected_final)
+                    spread = float(np.max(final[analysis]) - np.min(final[analysis]))
+                    assert spread <= 2 / 255, ('model 1: no band, gap or step anywhere along the old hand-over', name, clip, fade, n,
+                                               offset, radius, spread)
+                    fade_flat = max(fade_flat, spread)
+                    if fade == 1.0:
+                        if pcf == 0.0:
+                            # Seen by the map (shared, or native-only): dark at every depth -- past the old ramp and past
+                            # shadow_clip.w too, where the legacy sampler is lit (asserted for model 0 above).
+                            assert float(np.max(final[analysis])) <= 1 / 255 + 1.e-6, \
+                                ('model 1: the native shadow persists beyond the sun range', name, clip, n, offset, radius)
+                        elif blocker:
+                            # Only the screen trace sees it and the map says lit: the map decides (contact-only), exactly as
+                            # it always did INSIDE the native range. The trace must not add a second shadow further out.
+                            assert float(np.min(final[analysis])) >= 1 - 3 / 255, \
+                                ('model 1: the screen trace stays contact-only where the map persists', name, clip, n, offset, radius)
+                    fade_cases += 1
+    # Mismatch 1 (the CPU clip did not follow the sampler): model-1 sampler, legacy clip in the gather and filter. The
+    # full trace takes over past the old hand-over although the map is still valid: a second, different shadow appears.
+    set_native(.9)
+    for clip, blend in (((5.0, 9.0), .25), ((4.5, 6.5), .1)):
+        v_legacy_clip = gather_visibility(gather, clip, 1.0, True, radius=2.0)
+        mismatch = composed(v_legacy_clip, clip, 1.0, blend, model=1)[height // 2].astype(np.float32)[analysis] / 255
+        v_matched = gather_visibility(gather, valid_everywhere, 1.0, True, radius=2.0)
+        matched = composed(v_matched, clip, 1.0, blend, model=1)[height // 2].astype(np.float32)[analysis] / 255
+        assert float(np.min(matched)) >= 1 - 3 / 255 and float(np.min(mismatch)) <= 3 / 255 and float(np.max(mismatch)) >= 1 - 3 / 255, \
+            ('a legacy clip under the model-1 sampler darkens where the map is valid (mutation rejected)', clip,
+             float(np.min(matched)), float(np.min(mismatch)), float(np.max(mismatch)))
+    # Mismatch 2 (the sampler did not follow the CPU clip): legacy sampler, valid-everywhere clip. Past the native ramp
+    # the map is lit and the screen term is still contact-only: a blocker BOTH systems see is lit (the gap).
+    set_native(.1)
+    gap_peaks = []
+    for clip, blend in (((5.0, 9.0), .25), ((4.0, 5.0), .25)):
+        v_matched = gather_visibility(gather, valid_everywhere, 1.0, True, radius=2.0)
+        gap = composed(v_matched, clip, 1.0, blend, model=0)[height // 2].astype(np.float32)[analysis] / 255
+        kept = composed(v_matched, clip, 1.0, blend, model=1)[height // 2].astype(np.float32)[analysis] / 255
+        assert float(np.max(kept)) <= 1 / 255 + 1.e-6 and float(np.max(gap)) >= 1 - 3 / 255, \
+            ('a valid-everywhere clip under the legacy sampler lights a shared blocker (mutation rejected)', clip,
+             float(np.max(kept)), float(np.max(gap)))
+        gap_peaks.append(float(np.max(gap)))
+    # The legacy pair itself is untouched by the new uniform: stating model 0 reproduces the sweep above byte for byte
+    # (the sweep ran before the uniform was ever uploaded to this program, i.e. on the shader default).
+    set_native(.1)
+    v_legacy = gather_visibility(gather, (5.0, 9.0), 1.0, True, radius=2.0)
+    assert np.array_equal(composed(v_legacy, (5.0, 9.0), 1.0, .25, model=0), composed(v_legacy, (5.0, 9.0), 1.0, .25)), 'model 0 is the default'
+    print('[RelightQ] fade model 1 hand-over (combined output) PASS: production gather raw and through the production bilateral filter '
+          '(radius 2 and 8) + production spot-light composition with the map-bounded sampler and the valid-everywhere clip, %d sweeps over '
+          '3 normals x offsets 0/.04/.15 x 3 sun clips/blends x 3 fades x 4 scenes x 3 filter settings; the composite is flat along the old '
+          'hand-over (largest spread %.4f, limit %.4f), a map-seen blocker stays dark past shadow_clip.w, the trace stays contact-only; '
+          'mismatched pairs rejected (legacy clip under model 1 darkens a valid map; valid-everywhere clip under model 0 lights a shared '
+          'blocker to %.3f)' % (fade_cases, fade_flat, 2 / 255, min(gap_peaks)), flush=True)
     # Mutation: the superseded hand-over (screen term takes over WITH the native ramp) meets it mid-way.
     set_native(.1)
     v_old = gather_visibility(old_gather, (5.0, 9.0), 1.0, True, radius=8.0)
