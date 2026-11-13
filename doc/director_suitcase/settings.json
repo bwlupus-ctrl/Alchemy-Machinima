@@ -1216,6 +1216,86 @@
   },
   {
     "change": "added",
+    "comment": "Batches small mip and glyph upload rows into slices of up to 64 KB, preserving source stride. FALSE restores the exact previous behaviour. Live toggle; repeat loading or teleport for a full A/B.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "AlchemyPerfBatchedRowUploads",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Caches modelview and projection inverses across shader switches; uses affine inversion only for affine modelviews. FALSE restores the exact previous behaviour. Live toggle; takes effect on the next draw.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "AlchemyPerfCachedMatrixInverse",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Upstream fix: attachment texture changes mark the avatar and its hidden-body-part check runs once per frame instead of once per changed face. FALSE restores the exact previous behaviour (a full check on every change). Takes effect immediately.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "AlchemyPerfCoalescedBodyVisibility",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Caps the per-frame geometry budget at 5 ms and stops object creation at either its count or time limit. FALSE restores the exact previous behaviour. Live toggle; repeat loading or teleport for a full A/B.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "AlchemyPerfGeomBudgetCap",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "Advanced shelter: advanced world shelter map control.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

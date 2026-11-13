@@ -680,8 +680,8 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@4720,28",
-          "indra/newview/llvoavatar.cpp@12883,163"
+          "indra/newview/llvoavatar.cpp@4723,28",
+          "indra/newview/llvoavatar.cpp@12960,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -9161,6 +9161,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -9192,6 +9193,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -9353,6 +9355,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -11706,12 +11709,12 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@23031,412",
-          "indra/newview/app_settings/settings.xml@23579,362",
-          "indra/newview/app_settings/settings.xml@29270,100",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@23073,412",
+          "indra/newview/app_settings/settings.xml@23621,362",
+          "indra/newview/app_settings/settings.xml@29312,100",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -11778,12 +11781,12 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@25,27",
-          "indra/newview/llviewerdisplay.cpp@909,14",
-          "indra/newview/llviewerdisplay.cpp@997,17",
-          "indra/newview/llviewerdisplay.cpp@1122,36",
-          "indra/newview/llviewerdisplay.cpp@1173,16",
-          "indra/newview/llviewerdisplay.cpp@1886,34",
-          "indra/newview/llviewerdisplay.cpp@2083,28"
+          "indra/newview/llviewerdisplay.cpp@912,14",
+          "indra/newview/llviewerdisplay.cpp@1015,17",
+          "indra/newview/llviewerdisplay.cpp@1140,36",
+          "indra/newview/llviewerdisplay.cpp@1191,16",
+          "indra/newview/llviewerdisplay.cpp@1904,34",
+          "indra/newview/llviewerdisplay.cpp@2101,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -11814,17 +11817,17 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@863,7",
-          "indra/newview/llvoavatar.cpp@900,37",
-          "indra/newview/llvoavatar.cpp@2441,14",
-          "indra/newview/llvoavatar.cpp@2890,19",
-          "indra/newview/llvoavatar.cpp@4254,14",
-          "indra/newview/llvoavatar.cpp@4881,20",
-          "indra/newview/llvoavatar.cpp@5200,25",
-          "indra/newview/llvoavatar.cpp@5274,596",
-          "indra/newview/llvoavatar.cpp@5970,45",
-          "indra/newview/llvoavatar.cpp@8792,106",
-          "indra/newview/llvoavatar.cpp@12883,163"
+          "indra/newview/llvoavatar.cpp@863,8",
+          "indra/newview/llvoavatar.cpp@901,39",
+          "indra/newview/llvoavatar.cpp@2444,14",
+          "indra/newview/llvoavatar.cpp@2893,19",
+          "indra/newview/llvoavatar.cpp@4257,14",
+          "indra/newview/llvoavatar.cpp@4884,20",
+          "indra/newview/llvoavatar.cpp@5203,25",
+          "indra/newview/llvoavatar.cpp@5277,596",
+          "indra/newview/llvoavatar.cpp@5973,45",
+          "indra/newview/llvoavatar.cpp@8798,107",
+          "indra/newview/llvoavatar.cpp@12960,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -11832,9 +11835,9 @@
         "hunks": [
           "indra/newview/llvoavatar.h@56,8",
           "indra/newview/llvoavatar.h@552,45",
-          "indra/newview/llvoavatar.h@1191,10",
-          "indra/newview/llvoavatar.h@1209,11",
-          "indra/newview/llvoavatar.h@1261,17"
+          "indra/newview/llvoavatar.h@1209,10",
+          "indra/newview/llvoavatar.h@1227,11",
+          "indra/newview/llvoavatar.h@1279,17"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -19743,6 +19746,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -21578,6 +21582,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -21609,6 +21614,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -21770,6 +21776,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -24080,24 +24087,24 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@3458,10",
-          "indra/newview/app_settings/settings.xml@3469,1055",
-          "indra/newview/app_settings/settings.xml@4525,773",
-          "indra/newview/app_settings/settings.xml@5299,241",
-          "indra/newview/app_settings/settings.xml@5596,186",
-          "indra/newview/app_settings/settings.xml@5783,21",
-          "indra/newview/app_settings/settings.xml@5805,10",
-          "indra/newview/app_settings/settings.xml@5816,21",
-          "indra/newview/app_settings/settings.xml@5838,65",
-          "indra/newview/app_settings/settings.xml@5904,21",
-          "indra/newview/app_settings/settings.xml@5926,527",
-          "indra/newview/app_settings/settings.xml@6454,120",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@27462,98",
-          "indra/newview/app_settings/settings.xml@27995,229",
-          "indra/newview/app_settings/settings.xml@29415,2466",
-          "indra/newview/app_settings/settings.xml@32092,364"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@3500,10",
+          "indra/newview/app_settings/settings.xml@3511,1055",
+          "indra/newview/app_settings/settings.xml@4567,773",
+          "indra/newview/app_settings/settings.xml@5341,241",
+          "indra/newview/app_settings/settings.xml@5638,186",
+          "indra/newview/app_settings/settings.xml@5825,21",
+          "indra/newview/app_settings/settings.xml@5847,10",
+          "indra/newview/app_settings/settings.xml@5858,21",
+          "indra/newview/app_settings/settings.xml@5880,65",
+          "indra/newview/app_settings/settings.xml@5946,21",
+          "indra/newview/app_settings/settings.xml@5968,527",
+          "indra/newview/app_settings/settings.xml@6496,120",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@27504,98",
+          "indra/newview/app_settings/settings.xml@28037,229",
+          "indra/newview/app_settings/settings.xml@29457,2466",
+          "indra/newview/app_settings/settings.xml@32134,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24144,7 +24151,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@296,32",
-          "indra/newview/llviewercontrol.cpp@1242,19"
+          "indra/newview/llviewercontrol.cpp@1257,19"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -35483,8 +35490,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -35497,8 +35504,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1226,11",
-          "indra/newview/llviewercontrol.cpp@1296,35"
+          "indra/newview/llviewercontrol.cpp@1241,11",
+          "indra/newview/llviewercontrol.cpp@1311,35"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -35538,8 +35545,8 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@102,11",
-          "indra/newview/llviewerdisplay.cpp@1191,82",
-          "indra/newview/llviewerdisplay.cpp@1858,10"
+          "indra/newview/llviewerdisplay.cpp@1209,82",
+          "indra/newview/llviewerdisplay.cpp@1876,10"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -35558,10 +35565,10 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@900,37",
-          "indra/newview/llvoavatar.cpp@1633,21",
-          "indra/newview/llvoavatar.cpp@6380,49",
-          "indra/newview/llvoavatar.cpp@6601,9"
+          "indra/newview/llvoavatar.cpp@901,39",
+          "indra/newview/llvoavatar.cpp@1636,21",
+          "indra/newview/llvoavatar.cpp@6383,50",
+          "indra/newview/llvoavatar.cpp@6605,9"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -42822,6 +42829,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -43855,6 +43863,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -43886,6 +43895,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -44047,6 +44057,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -47759,10 +47770,10 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@31882,209",
-          "indra/newview/app_settings/settings.xml@32092,364"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@31924,209",
+          "indra/newview/app_settings/settings.xml@32134,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -47904,13 +47915,14 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@25,27",
-          "indra/newview/llviewerdisplay.cpp@909,14",
-          "indra/newview/llviewerdisplay.cpp@997,17",
-          "indra/newview/llviewerdisplay.cpp@1122,36",
-          "indra/newview/llviewerdisplay.cpp@1173,16",
-          "indra/newview/llviewerdisplay.cpp@1191,82",
-          "indra/newview/llviewerdisplay.cpp@1886,34",
-          "indra/newview/llviewerdisplay.cpp@2083,28"
+          "indra/newview/llviewerdisplay.cpp@912,14",
+          "indra/newview/llviewerdisplay.cpp@969,27",
+          "indra/newview/llviewerdisplay.cpp@1015,17",
+          "indra/newview/llviewerdisplay.cpp@1140,36",
+          "indra/newview/llviewerdisplay.cpp@1191,16",
+          "indra/newview/llviewerdisplay.cpp@1209,82",
+          "indra/newview/llviewerdisplay.cpp@1904,34",
+          "indra/newview/llviewerdisplay.cpp@2101,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -47960,53 +47972,53 @@
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
           "indra/newview/llvoavatar.cpp@745,7",
-          "indra/newview/llvoavatar.cpp@1041,7",
-          "indra/newview/llvoavatar.cpp@1063,7",
-          "indra/newview/llvoavatar.cpp@1126,7",
-          "indra/newview/llvoavatar.cpp@2018,8",
-          "indra/newview/llvoavatar.cpp@2126,8",
-          "indra/newview/llvoavatar.cpp@2179,29",
-          "indra/newview/llvoavatar.cpp@2441,14",
-          "indra/newview/llvoavatar.cpp@2809,8",
-          "indra/newview/llvoavatar.cpp@2830,9",
-          "indra/newview/llvoavatar.cpp@2949,33",
-          "indra/newview/llvoavatar.cpp@3017,8",
-          "indra/newview/llvoavatar.cpp@3548,12",
-          "indra/newview/llvoavatar.cpp@4113,15",
-          "indra/newview/llvoavatar.cpp@4269,8",
-          "indra/newview/llvoavatar.cpp@4665,7",
-          "indra/newview/llvoavatar.cpp@4720,28",
-          "indra/newview/llvoavatar.cpp@4805,10",
-          "indra/newview/llvoavatar.cpp@4921,8",
-          "indra/newview/llvoavatar.cpp@5000,7",
-          "indra/newview/llvoavatar.cpp@5058,19",
-          "indra/newview/llvoavatar.cpp@5084,18",
-          "indra/newview/llvoavatar.cpp@5117,21",
-          "indra/newview/llvoavatar.cpp@5200,25",
-          "indra/newview/llvoavatar.cpp@5274,596",
-          "indra/newview/llvoavatar.cpp@6380,49",
-          "indra/newview/llvoavatar.cpp@6665,7",
-          "indra/newview/llvoavatar.cpp@7385,7",
-          "indra/newview/llvoavatar.cpp@8792,106",
-          "indra/newview/llvoavatar.cpp@9761,14",
-          "indra/newview/llvoavatar.cpp@9927,7",
-          "indra/newview/llvoavatar.cpp@10019,8",
-          "indra/newview/llvoavatar.cpp@10134,12",
-          "indra/newview/llvoavatar.cpp@10149,7",
-          "indra/newview/llvoavatar.cpp@10196,12",
-          "indra/newview/llvoavatar.cpp@10227,11",
-          "indra/newview/llvoavatar.cpp@11367,101",
-          "indra/newview/llvoavatar.cpp@11569,10",
-          "indra/newview/llvoavatar.cpp@12559,7",
-          "indra/newview/llvoavatar.cpp@12582,8",
-          "indra/newview/llvoavatar.cpp@12596,10",
-          "indra/newview/llvoavatar.cpp@12883,163",
-          "indra/newview/llvoavatar.cpp@13142,7",
-          "indra/newview/llvoavatar.cpp@13181,7",
-          "indra/newview/llvoavatar.cpp@13734,7",
-          "indra/newview/llvoavatar.cpp@13993,7",
-          "indra/newview/llvoavatar.cpp@14008,7",
-          "indra/newview/llvoavatar.cpp@14026,9"
+          "indra/newview/llvoavatar.cpp@1044,7",
+          "indra/newview/llvoavatar.cpp@1066,7",
+          "indra/newview/llvoavatar.cpp@1129,7",
+          "indra/newview/llvoavatar.cpp@2021,8",
+          "indra/newview/llvoavatar.cpp@2129,8",
+          "indra/newview/llvoavatar.cpp@2182,29",
+          "indra/newview/llvoavatar.cpp@2444,14",
+          "indra/newview/llvoavatar.cpp@2812,8",
+          "indra/newview/llvoavatar.cpp@2833,9",
+          "indra/newview/llvoavatar.cpp@2952,33",
+          "indra/newview/llvoavatar.cpp@3020,8",
+          "indra/newview/llvoavatar.cpp@3551,12",
+          "indra/newview/llvoavatar.cpp@4116,15",
+          "indra/newview/llvoavatar.cpp@4272,8",
+          "indra/newview/llvoavatar.cpp@4668,7",
+          "indra/newview/llvoavatar.cpp@4723,28",
+          "indra/newview/llvoavatar.cpp@4808,10",
+          "indra/newview/llvoavatar.cpp@4924,8",
+          "indra/newview/llvoavatar.cpp@5003,7",
+          "indra/newview/llvoavatar.cpp@5061,19",
+          "indra/newview/llvoavatar.cpp@5087,18",
+          "indra/newview/llvoavatar.cpp@5120,21",
+          "indra/newview/llvoavatar.cpp@5203,25",
+          "indra/newview/llvoavatar.cpp@5277,596",
+          "indra/newview/llvoavatar.cpp@6383,50",
+          "indra/newview/llvoavatar.cpp@6670,8",
+          "indra/newview/llvoavatar.cpp@7391,7",
+          "indra/newview/llvoavatar.cpp@8798,107",
+          "indra/newview/llvoavatar.cpp@9772,14",
+          "indra/newview/llvoavatar.cpp@9938,7",
+          "indra/newview/llvoavatar.cpp@10030,8",
+          "indra/newview/llvoavatar.cpp@10145,12",
+          "indra/newview/llvoavatar.cpp@10160,7",
+          "indra/newview/llvoavatar.cpp@10207,12",
+          "indra/newview/llvoavatar.cpp@10238,11",
+          "indra/newview/llvoavatar.cpp@11444,101",
+          "indra/newview/llvoavatar.cpp@11646,10",
+          "indra/newview/llvoavatar.cpp@12636,7",
+          "indra/newview/llvoavatar.cpp@12659,8",
+          "indra/newview/llvoavatar.cpp@12673,10",
+          "indra/newview/llvoavatar.cpp@12960,163",
+          "indra/newview/llvoavatar.cpp@13219,7",
+          "indra/newview/llvoavatar.cpp@13258,7",
+          "indra/newview/llvoavatar.cpp@13811,7",
+          "indra/newview/llvoavatar.cpp@14070,7",
+          "indra/newview/llvoavatar.cpp@14085,7",
+          "indra/newview/llvoavatar.cpp@14103,9"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -48017,7 +48029,7 @@
           "indra/newview/llvoavatar.h@616,11",
           "indra/newview/llvoavatar.h@649,13",
           "indra/newview/llvoavatar.h@715,7",
-          "indra/newview/llvoavatar.h@1026,12"
+          "indra/newview/llvoavatar.h@1044,12"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -48219,13 +48231,13 @@
           "indra/newview/llviewerobject.cpp@4687,16",
           "indra/newview/llviewerobject.cpp@5226,211",
           "indra/newview/llviewerobject.cpp@5438,11",
-          "indra/newview/llviewerobject.cpp@5499,14",
-          "indra/newview/llviewerobject.cpp@5522,18",
-          "indra/newview/llviewerobject.cpp@5598,7",
-          "indra/newview/llviewerobject.cpp@5968,10",
-          "indra/newview/llviewerobject.cpp@5989,10",
-          "indra/newview/llviewerobject.cpp@6227,12",
-          "indra/newview/llviewerobject.cpp@7905,20"
+          "indra/newview/llviewerobject.cpp@5501,14",
+          "indra/newview/llviewerobject.cpp@5524,18",
+          "indra/newview/llviewerobject.cpp@5600,7",
+          "indra/newview/llviewerobject.cpp@5970,10",
+          "indra/newview/llviewerobject.cpp@5991,10",
+          "indra/newview/llviewerobject.cpp@6229,12",
+          "indra/newview/llviewerobject.cpp@7907,20"
         ],
         "path": "indra/newview/llviewerobject.cpp"
       },
@@ -48270,7 +48282,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llrender.cpp@1310,15"
+          "indra/llrender/llrender.cpp@1368,15"
         ],
         "path": "indra/llrender/llrender.cpp"
       },
@@ -49484,6 +49496,7 @@
           "LLRender::findIndexedGuardState",
           "LLRender::flush",
           "LLRender::genBuffer",
+          "LLRender::getCachedMatrixInverse",
           "LLRender::getLight",
           "LLRender::getLightStateSnapshot",
           "LLRender::getMatrix",
@@ -49496,6 +49509,7 @@
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::init",
           "LLRender::initVertexBuffer",
+          "LLRender::invalidateMatrixInverse",
           "LLRender::loadIdentity",
           "LLRender::loadMatrix",
           "LLRender::loadUIIdentity",
@@ -49561,6 +49575,10 @@
           {
             "candidates": [],
             "include": "glm/gtc/type_ptr.hpp"
+          },
+          {
+            "candidates": [],
+            "include": "glm/gtc/matrix_inverse.hpp"
           }
         ]
       },
@@ -65206,6 +65224,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -67949,6 +67968,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -67980,6 +68000,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -68141,6 +68162,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -71294,8 +71316,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@25734,1573"
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@25776,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -79433,9 +79455,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@5541,32",
-          "indra/newview/app_settings/settings.xml@5574,21",
-          "indra/newview/app_settings/settings.xml@6575,14799"
+          "indra/newview/app_settings/settings.xml@5583,32",
+          "indra/newview/app_settings/settings.xml@5616,21",
+          "indra/newview/app_settings/settings.xml@6617,14799"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -79512,15 +79534,15 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@2949,33",
-          "indra/newview/llvoavatar.cpp@5117,21",
-          "indra/newview/llvoavatar.cpp@5200,25",
-          "indra/newview/llvoavatar.cpp@5878,13",
-          "indra/newview/llvoavatar.cpp@5970,45",
-          "indra/newview/llvoavatar.cpp@9470,10",
-          "indra/newview/llvoavatar.cpp@9514,15",
-          "indra/newview/llvoavatar.cpp@9535,12",
-          "indra/newview/llvoavatar.cpp@12883,163"
+          "indra/newview/llvoavatar.cpp@2952,33",
+          "indra/newview/llvoavatar.cpp@5120,21",
+          "indra/newview/llvoavatar.cpp@5203,25",
+          "indra/newview/llvoavatar.cpp@5881,13",
+          "indra/newview/llvoavatar.cpp@5973,45",
+          "indra/newview/llvoavatar.cpp@9481,10",
+          "indra/newview/llvoavatar.cpp@9525,15",
+          "indra/newview/llvoavatar.cpp@9546,12",
+          "indra/newview/llvoavatar.cpp@12960,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -79528,7 +79550,7 @@
         "hunks": [
           "indra/newview/llvoavatar.h@56,8",
           "indra/newview/llvoavatar.h@552,45",
-          "indra/newview/llvoavatar.h@1261,17"
+          "indra/newview/llvoavatar.h@1279,17"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -85943,6 +85965,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -85974,6 +85997,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -86135,6 +86159,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -87910,12 +87935,12 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@23031,412",
-          "indra/newview/app_settings/settings.xml@23579,362",
-          "indra/newview/app_settings/settings.xml@29270,100",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@23073,412",
+          "indra/newview/app_settings/settings.xml@23621,362",
+          "indra/newview/app_settings/settings.xml@29312,100",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -87933,7 +87958,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@2083,28"
+          "indra/newview/llviewerdisplay.cpp@2101,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -91293,6 +91318,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -93936,14 +93962,14 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@5299,241",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@21376,1113",
-          "indra/newview/app_settings/settings.xml@28621,648",
-          "indra/newview/app_settings/settings.xml@29415,2466",
-          "indra/newview/app_settings/settings.xml@31882,209",
-          "indra/newview/app_settings/settings.xml@32092,364"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@5341,241",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@21418,1113",
+          "indra/newview/app_settings/settings.xml@28663,648",
+          "indra/newview/app_settings/settings.xml@29457,2466",
+          "indra/newview/app_settings/settings.xml@31924,209",
+          "indra/newview/app_settings/settings.xml@32134,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -93986,7 +94012,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@28,20",
-          "indra/newview/llviewercontrol.cpp@1151,70"
+          "indra/newview/llviewercontrol.cpp@1151,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -94138,8 +94164,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@909,14",
-          "indra/newview/llviewerdisplay.cpp@1886,34"
+          "indra/newview/llviewerdisplay.cpp@912,14",
+          "indra/newview/llviewerdisplay.cpp@1904,34"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -94216,22 +94242,22 @@
         "hunks": [
           "indra/newview/llvoavatar.cpp@24,24",
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@3684,35",
-          "indra/newview/llvoavatar.cpp@3731,12",
-          "indra/newview/llvoavatar.cpp@3820,7",
-          "indra/newview/llvoavatar.cpp@3881,18",
-          "indra/newview/llvoavatar.cpp@3975,7",
-          "indra/newview/llvoavatar.cpp@5274,596",
-          "indra/newview/llvoavatar.cpp@5895,10",
-          "indra/newview/llvoavatar.cpp@5970,45",
-          "indra/newview/llvoavatar.cpp@12883,163"
+          "indra/newview/llvoavatar.cpp@3687,35",
+          "indra/newview/llvoavatar.cpp@3734,12",
+          "indra/newview/llvoavatar.cpp@3823,7",
+          "indra/newview/llvoavatar.cpp@3884,18",
+          "indra/newview/llvoavatar.cpp@3978,7",
+          "indra/newview/llvoavatar.cpp@5277,596",
+          "indra/newview/llvoavatar.cpp@5898,10",
+          "indra/newview/llvoavatar.cpp@5973,45",
+          "indra/newview/llvoavatar.cpp@12960,163"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@552,45",
-          "indra/newview/llvoavatar.h@1301,7"
+          "indra/newview/llvoavatar.h@1319,7"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -107884,6 +107910,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -109815,6 +109842,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -109846,6 +109874,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -110007,6 +110036,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -112976,11 +113006,11 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@25734,1573",
-          "indra/newview/app_settings/settings.xml@27885,109",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@25776,1573",
+          "indra/newview/app_settings/settings.xml@27927,109",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -117226,9 +117256,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -117305,8 +117335,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llvoavatar.cpp@5274,596",
-          "indra/newview/llvoavatar.cpp@5970,45"
+          "indra/newview/llvoavatar.cpp@5277,596",
+          "indra/newview/llvoavatar.cpp@5973,45"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -124136,6 +124166,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -124167,6 +124198,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -124328,6 +124360,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -125667,16 +125700,16 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@21376,1113",
-          "indra/newview/app_settings/settings.xml@22491,76",
-          "indra/newview/app_settings/settings.xml@22623,407",
-          "indra/newview/app_settings/settings.xml@23031,412",
-          "indra/newview/app_settings/settings.xml@23524,54",
-          "indra/newview/app_settings/settings.xml@24052,164",
-          "indra/newview/app_settings/settings.xml@29415,2466",
-          "indra/newview/app_settings/settings.xml@32092,364"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@21418,1113",
+          "indra/newview/app_settings/settings.xml@22533,76",
+          "indra/newview/app_settings/settings.xml@22665,407",
+          "indra/newview/app_settings/settings.xml@23073,412",
+          "indra/newview/app_settings/settings.xml@23566,54",
+          "indra/newview/app_settings/settings.xml@24094,164",
+          "indra/newview/app_settings/settings.xml@29457,2466",
+          "indra/newview/app_settings/settings.xml@32134,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -125709,7 +125742,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1151,70"
+          "indra/newview/llviewercontrol.cpp@1151,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -125798,7 +125831,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@1886,34"
+          "indra/newview/llviewerdisplay.cpp@1904,34"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -125833,13 +125866,13 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@4289,13",
-          "indra/newview/llvoavatar.cpp@4720,28",
-          "indra/newview/llvoavatar.cpp@6641,8",
-          "indra/newview/llvoavatar.cpp@8792,106",
-          "indra/newview/llvoavatar.cpp@12883,163",
-          "indra/newview/llvoavatar.cpp@13581,18",
-          "indra/newview/llvoavatar.cpp@13744,17"
+          "indra/newview/llvoavatar.cpp@4292,13",
+          "indra/newview/llvoavatar.cpp@4723,28",
+          "indra/newview/llvoavatar.cpp@6646,8",
+          "indra/newview/llvoavatar.cpp@8798,107",
+          "indra/newview/llvoavatar.cpp@12960,163",
+          "indra/newview/llvoavatar.cpp@13658,18",
+          "indra/newview/llvoavatar.cpp@13821,17"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -137109,6 +137142,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -138590,6 +138624,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -138621,6 +138656,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -138782,6 +138818,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -141823,11 +141860,11 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@21376,1113",
-          "indra/newview/app_settings/settings.xml@22579,43",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@21418,1113",
+          "indra/newview/app_settings/settings.xml@22621,43",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -141850,7 +141887,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@28,20",
-          "indra/newview/llviewercontrol.cpp@1151,70"
+          "indra/newview/llviewercontrol.cpp@1151,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -141904,9 +141941,9 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@25,27",
-          "indra/newview/llviewerdisplay.cpp@887,16",
-          "indra/newview/llviewerdisplay.cpp@1488,25",
-          "indra/newview/llviewerdisplay.cpp@2083,28"
+          "indra/newview/llviewerdisplay.cpp@890,16",
+          "indra/newview/llviewerdisplay.cpp@1506,25",
+          "indra/newview/llviewerdisplay.cpp@2101,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -141947,7 +141984,7 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@4720,28"
+          "indra/newview/llvoavatar.cpp@4723,28"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -142096,9 +142133,9 @@
           "indra/newview/llviewerobject.cpp@965,35",
           "indra/newview/llviewerobject.cpp@1019,12",
           "indra/newview/llviewerobject.cpp@1053,11",
-          "indra/newview/llviewerobject.cpp@5550,11",
-          "indra/newview/llviewerobject.cpp@7905,20",
-          "indra/newview/llviewerobject.cpp@7935,11"
+          "indra/newview/llviewerobject.cpp@5552,11",
+          "indra/newview/llviewerobject.cpp@7907,20",
+          "indra/newview/llviewerobject.cpp@7937,11"
         ],
         "path": "indra/newview/llviewerobject.cpp"
       },
@@ -142129,12 +142166,12 @@
       },
       {
         "hunks": [
-          "indra/llrender/llrender.cpp@641,15",
-          "indra/llrender/llrender.cpp@659,25",
-          "indra/llrender/llrender.cpp@903,37",
-          "indra/llrender/llrender.cpp@954,17",
-          "indra/llrender/llrender.cpp@972,37",
-          "indra/llrender/llrender.cpp@1693,41"
+          "indra/llrender/llrender.cpp@644,15",
+          "indra/llrender/llrender.cpp@662,25",
+          "indra/llrender/llrender.cpp@907,37",
+          "indra/llrender/llrender.cpp@958,17",
+          "indra/llrender/llrender.cpp@976,37",
+          "indra/llrender/llrender.cpp@1751,41"
         ],
         "path": "indra/llrender/llrender.cpp"
       },
@@ -142144,7 +142181,7 @@
           "indra/llrender/llrender.h@287,9",
           "indra/llrender/llrender.h@411,17",
           "indra/llrender/llrender.h@479,71",
-          "indra/llrender/llrender.h@588,12"
+          "indra/llrender/llrender.h@588,19"
         ],
         "path": "indra/llrender/llrender.h"
       },
@@ -142297,9 +142334,9 @@
       {
         "hunks": [
           "indra/newview/llviewerregion.cpp@62,7",
-          "indra/newview/llviewerregion.cpp@1852,8",
-          "indra/newview/llviewerregion.cpp@2837,12",
-          "indra/newview/llviewerregion.cpp@2877,10"
+          "indra/newview/llviewerregion.cpp@1859,8",
+          "indra/newview/llviewerregion.cpp@2844,12",
+          "indra/newview/llviewerregion.cpp@2884,10"
         ],
         "path": "indra/newview/llviewerregion.cpp"
       },
@@ -143088,6 +143125,7 @@
           "LLRender::findIndexedGuardState",
           "LLRender::flush",
           "LLRender::genBuffer",
+          "LLRender::getCachedMatrixInverse",
           "LLRender::getLight",
           "LLRender::getLightStateSnapshot",
           "LLRender::getMatrix",
@@ -143100,6 +143138,7 @@
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::init",
           "LLRender::initVertexBuffer",
+          "LLRender::invalidateMatrixInverse",
           "LLRender::loadIdentity",
           "LLRender::loadMatrix",
           "LLRender::loadUIIdentity",
@@ -143165,6 +143204,10 @@
           {
             "candidates": [],
             "include": "glm/gtc/type_ptr.hpp"
+          },
+          {
+            "candidates": [],
+            "include": "glm/gtc/matrix_inverse.hpp"
           }
         ]
       },
@@ -152259,6 +152302,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -154724,6 +154768,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -154755,6 +154800,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -154916,6 +154962,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -158096,14 +158143,14 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@5299,241",
-          "indra/newview/app_settings/settings.xml@5926,527",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@21376,1113",
-          "indra/newview/app_settings/settings.xml@25734,1573",
-          "indra/newview/app_settings/settings.xml@27308,153",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@5341,241",
+          "indra/newview/app_settings/settings.xml@5968,527",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@21418,1113",
+          "indra/newview/app_settings/settings.xml@25776,1573",
+          "indra/newview/app_settings/settings.xml@27350,153",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -158117,7 +158164,7 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1263,18"
+          "indra/newview/llviewercontrol.cpp@1278,18"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -158159,8 +158206,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewerdisplay.cpp@1173,16",
-          "indra/newview/llviewerdisplay.cpp@1579,36"
+          "indra/newview/llviewerdisplay.cpp@1191,16",
+          "indra/newview/llviewerdisplay.cpp@1597,36"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -158173,7 +158220,7 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@50,24",
-          "indra/newview/llvoavatar.cpp@4720,28"
+          "indra/newview/llvoavatar.cpp@4723,28"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
@@ -158305,7 +158352,7 @@
       },
       {
         "hunks": [
-          "indra/llrender/llrender.cpp@1693,41"
+          "indra/llrender/llrender.cpp@1751,41"
         ],
         "path": "indra/llrender/llrender.cpp"
       },
@@ -159220,6 +159267,7 @@
           "LLRender::findIndexedGuardState",
           "LLRender::flush",
           "LLRender::genBuffer",
+          "LLRender::getCachedMatrixInverse",
           "LLRender::getLight",
           "LLRender::getLightStateSnapshot",
           "LLRender::getMatrix",
@@ -159232,6 +159280,7 @@
           "LLRender::indexedDrawBufferGuardSupported",
           "LLRender::init",
           "LLRender::initVertexBuffer",
+          "LLRender::invalidateMatrixInverse",
           "LLRender::loadIdentity",
           "LLRender::loadMatrix",
           "LLRender::loadUIIdentity",
@@ -159297,6 +159346,10 @@
           {
             "candidates": [],
             "include": "glm/gtc/type_ptr.hpp"
+          },
+          {
+            "candidates": [],
+            "include": "glm/gtc/matrix_inverse.hpp"
           }
         ]
       },
@@ -168130,6 +168183,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -168810,6 +168864,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -168841,6 +168896,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -169002,6 +169058,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -171741,14 +171798,14 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@3469,1055",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@21376,1113",
-          "indra/newview/app_settings/settings.xml@22623,407",
-          "indra/newview/app_settings/settings.xml@23031,412",
-          "indra/newview/app_settings/settings.xml@25734,1573",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@3511,1055",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@21418,1113",
+          "indra/newview/app_settings/settings.xml@22665,407",
+          "indra/newview/app_settings/settings.xml@23073,412",
+          "indra/newview/app_settings/settings.xml@25776,1573",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -171792,7 +171849,7 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@28,20",
-          "indra/newview/llviewercontrol.cpp@1151,70"
+          "indra/newview/llviewercontrol.cpp@1151,85"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -181852,7 +181909,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14799"
+          "indra/newview/app_settings/settings.xml@6617,14799"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -181866,8 +181923,8 @@
       },
       {
         "hunks": [
-          "indra/newview/llviewercontrol.cpp@1151,70",
-          "indra/newview/llviewercontrol.cpp@1296,35"
+          "indra/newview/llviewercontrol.cpp@1151,85",
+          "indra/newview/llviewercontrol.cpp@1311,35"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -181894,7 +181951,7 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@25,27",
-          "indra/newview/llviewerdisplay.cpp@2083,28"
+          "indra/newview/llviewerdisplay.cpp@2101,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -186141,6 +186198,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -188035,8 +188093,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -188068,21 +188126,21 @@
       {
         "hunks": [
           "indra/newview/llvoavatar.cpp@24,24",
-          "indra/newview/llvoavatar.cpp@1350,7",
-          "indra/newview/llvoavatar.cpp@3381,12",
-          "indra/newview/llvoavatar.cpp@5274,596",
-          "indra/newview/llvoavatar.cpp@7419,14",
-          "indra/newview/llvoavatar.cpp@7447,9",
-          "indra/newview/llvoavatar.cpp@9069,7",
-          "indra/newview/llvoavatar.cpp@11655,27",
-          "indra/newview/llvoavatar.cpp@11714,282"
+          "indra/newview/llvoavatar.cpp@1353,7",
+          "indra/newview/llvoavatar.cpp@3384,12",
+          "indra/newview/llvoavatar.cpp@5277,596",
+          "indra/newview/llvoavatar.cpp@7425,14",
+          "indra/newview/llvoavatar.cpp@7453,9",
+          "indra/newview/llvoavatar.cpp@9080,7",
+          "indra/newview/llvoavatar.cpp@11732,27",
+          "indra/newview/llvoavatar.cpp@11791,282"
         ],
         "path": "indra/newview/llvoavatar.cpp"
       },
       {
         "hunks": [
           "indra/newview/llvoavatar.h@213,33",
-          "indra/newview/llvoavatar.h@979,21"
+          "indra/newview/llvoavatar.h@997,21"
         ],
         "path": "indra/newview/llvoavatar.h"
       },
@@ -194125,6 +194183,7 @@
           "LLVOAvatar::cleanupClass",
           "LLVOAvatar::clearAttachmentOverrides",
           "LLVOAvatar::clearChat",
+          "LLVOAvatar::clearMeshVisibilityDirty",
           "LLVOAvatar::clearNameTag",
           "LLVOAvatar::clearPhases",
           "LLVOAvatar::clearStepAnimRenderState",
@@ -194156,6 +194215,7 @@
           "LLVOAvatar::findAttachmentByID",
           "LLVOAvatar::findAvatarFromAttachment",
           "LLVOAvatar::findMotion",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::getActorFxOwnerId",
           "LLVOAvatar::getAnimLabels",
           "LLVOAvatar::getAnimNames",
@@ -194317,6 +194377,7 @@
           "LLVOAvatar::renderRigid",
           "LLVOAvatar::renderSkinned",
           "LLVOAvatar::renderTransparent",
+          "LLVOAvatar::requestMeshVisibilityUpdate",
           "LLVOAvatar::requestStopMotion",
           "LLVOAvatar::resetAnimations",
           "LLVOAvatar::resetHUDAttachments",
@@ -200637,9 +200698,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@21376,1113",
-          "indra/newview/app_settings/settings.xml@29415,2466"
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@21418,1113",
+          "indra/newview/app_settings/settings.xml@29457,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -200710,11 +200771,11 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@67,11",
-          "indra/newview/llviewerdisplay.cpp@887,16",
-          "indra/newview/llviewerdisplay.cpp@968,10",
-          "indra/newview/llviewerdisplay.cpp@1173,16",
-          "indra/newview/llviewerdisplay.cpp@1886,34",
-          "indra/newview/llviewerdisplay.cpp@2083,28"
+          "indra/newview/llviewerdisplay.cpp@890,16",
+          "indra/newview/llviewerdisplay.cpp@969,27",
+          "indra/newview/llviewerdisplay.cpp@1191,16",
+          "indra/newview/llviewerdisplay.cpp@1904,34",
+          "indra/newview/llviewerdisplay.cpp@2101,28"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -210787,6 +210848,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",
@@ -214184,11 +214246,11 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@2,3455",
-          "indra/newview/app_settings/settings.xml@6575,14799",
-          "indra/newview/app_settings/settings.xml@29415,2466",
-          "indra/newview/app_settings/settings.xml@31882,209",
-          "indra/newview/app_settings/settings.xml@32092,364"
+          "indra/newview/app_settings/settings.xml@2,3497",
+          "indra/newview/app_settings/settings.xml@6617,14799",
+          "indra/newview/app_settings/settings.xml@29457,2466",
+          "indra/newview/app_settings/settings.xml@31924,209",
+          "indra/newview/app_settings/settings.xml@32134,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -214203,8 +214265,8 @@
       {
         "hunks": [
           "indra/newview/llviewercontrol.cpp@53,10",
-          "indra/newview/llviewercontrol.cpp@1151,70",
-          "indra/newview/llviewercontrol.cpp@1296,35"
+          "indra/newview/llviewercontrol.cpp@1151,85",
+          "indra/newview/llviewercontrol.cpp@1311,35"
         ],
         "path": "indra/newview/llviewercontrol.cpp"
       },
@@ -214229,7 +214291,7 @@
       {
         "hunks": [
           "indra/newview/llviewerdisplay.cpp@785,16",
-          "indra/newview/llviewerdisplay.cpp@887,16"
+          "indra/newview/llviewerdisplay.cpp@890,16"
         ],
         "path": "indra/newview/llviewerdisplay.cpp"
       },
@@ -221933,6 +221995,7 @@
           "LLTrace::get_frame_recording",
           "LLTrans::getString",
           "LLUI::getScaleFactor",
+          "LLVOAvatar::flushPendingMeshVisibility",
           "LLVOAvatar::updateImpostors",
           "LLVersionInfo::instance",
           "LLVertexBuffer::endOfFrameCleanPool",

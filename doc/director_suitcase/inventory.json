@@ -8,7 +8,7 @@
       "GENERATED": 736,
       "HOOK": 548,
       "OWNED": 939,
-      "TOOLING": 489
+      "TOOLING": 492
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -68,14 +68,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "142cbd6586249270faf354f29e58891b032fc3a64e99f093706c1c4ebbf5e431",
+        "csv_sha256": "d97bf9d567b8be54a832db87a3adf4715cadbb20d7dde938dbc8ecdfb482f6d7",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4811,
+        "entries": 4819,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -118,9 +118,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2588,
+        "generated_kit_rows": 2592,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2177,
+        "interactive_rows": 2181,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -163,7 +163,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3910,
+        "settings_declared": 3914,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -230,19 +230,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2312,
+        "independent_json_rows": 2316,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2312,
+        "rows": 2316,
         "unresolved_rows": 83
       },
-      "wiring_rows": 2312
+      "wiring_rows": 2316
     },
-    "head_source_tree": "eb5eccac8afeadd827cfd51da6d0d0c4b1f833e1",
+    "head_source_tree": "6f833614e259e2b2c536de1133704366ac3ec93f",
     "hook_files": 548,
-    "hunks": 3452,
-    "input_sha256": "6df6c97ad503f7bc2cbfd7593a8ee86c16c94d79217f93df4899ee0794f740b2",
+    "hunks": 3484,
+    "input_sha256": "b6155dbf2428b8aa2935df5e11343bcf791441d0dc3ac7465a7e3044b139f230",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -250,7 +250,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2065
+    "settings": 2069
   },
   "paths": [
     {
@@ -11161,8 +11161,7 @@
     {
       "candidate_features_from_subjects": [
         "looks",
-        "rig",
-        "roto-tron"
+        "rig"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -11181,7 +11180,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "looks",
         "rig",
         "weather"
       ],
@@ -20993,7 +20991,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "camera",
         "director-shell"
       ],
       "class": "HOOK",
@@ -31796,8 +31793,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "vcam"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -41447,6 +41443,32 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/body_visibility_coalesce_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/body_visibility_coalesce_fixture.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/clear_anim_studio_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -45882,6 +45904,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/ui_draw_lint_baseline.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/upstream_perf_fixture.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
