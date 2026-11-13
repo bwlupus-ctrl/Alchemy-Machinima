@@ -193,7 +193,7 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_METRIC_DIGEST = "369bc07c686cef70a5a64afc3e34d50f27ad41acf4004daf8e41a460ead9bc8c"
+SOFTSHADOW_METRIC_DIGEST = "e6df75b85308e69fcfae1d6862e6bc22b70b52d4f972f9a36ecc030d67b330da"
 
 
 def reverse_softshadow_metric(source, name):
@@ -215,7 +215,7 @@ def reverse_softshadow_metric(source, name):
                                      SOFTSHADOW_METRIC_DIGEST, "reviewed soft shadow metric")
 
 
-SOFTSHADOW_METRIC_SHADER_DIGEST = "8246a0c37da5b88ec089fe8e0c82d5f86b3481d90b52d36f3b74033eb29d2811"
+SOFTSHADOW_METRIC_SHADER_DIGEST = "ec16b3ef545120791d26aa8c6f73aca9e4fa2b47e26356a8ac0d0b64a511b033"
 
 
 def reverse_softshadow_metric_shader(source):

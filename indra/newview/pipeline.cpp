@@ -28361,9 +28361,9 @@ void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_
     // (the setting off, an empty slot, no usable projection) keeps the old texel softness.
     F32 spot_shadow_metric[MAX_SPOT_SHADOWS * 4] = {};
     static LLCachedControl<U32> spot_penumbra_model(gSavedSettings, "RenderSpotShadowPenumbraModel", 1);
-    if (spot_penumbra_model != 0)
+    LLRenderTarget* metric_map = spot_penumbra_model != 0 ? getSpotShadowTarget(0) : nullptr;
+    if (metric_map)
     {
-        LLRenderTarget* metric_map = getSpotShadowTarget(0);
         for (U32 i = 0; i < MAX_SPOT_SHADOWS; ++i)
         {
             LLVOVolume* volume = mShadowSpotLight[i].notNull()
