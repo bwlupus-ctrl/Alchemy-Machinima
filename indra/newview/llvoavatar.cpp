@@ -12979,8 +12979,22 @@ bool LLVOAvatar::refreshClientHeight()
 
 LLVector3 LLVOAvatar::getBaseRootPosition() const
 {
-    LLVector3 pos = mRoot->getWorldPosition();
+    LLVector3 pos = getPlacedRootPosition();
     pos.mV[VZ] -= mClientHeightCache.effective();
+    return pos;
+}
+
+// [StayInPlace] Where this avatar STANDS: its root, except that an entity clone
+// with Stay in place on presents its root shifted so its hips stay over its spot;
+// for that clone this is the authored root underneath. Identical to the root
+// joint's world position for every other avatar.
+LLVector3 LLVOAvatar::getPlacedRootPosition() const
+{
+    LLVector3 pos = mRoot->getWorldPosition();
+    if (LLGhostAvatar::hasStayInPlaceAvatars() && isGhostAvatar())
+    {
+        static_cast<const LLGhostAvatar*>(this)->getStayInPlaceAuthoredRoot(pos);
+    }
     return pos;
 }
 // [/ClientHeight] --------------------------------------------------------------

@@ -453,6 +453,7 @@ public:
         LLUUID      mDirectedAnim;       // anim asset played in DRIVE_DIRECTED
         bool        mAnimCleared = false; // [ClearAnim] Directed, no animation, neutral pose; session only
         bool        mDirectedMirror = false; // own Directed/paused pose; session-only
+        bool        mStayInPlace = false; // [StayInPlace] entity hips stay over the spot; session-only
         EDriveMode  mDirectedMirrorFreezeDrive = DRIVE_MIRROR; // eligibility only, never playback Resume
         F32         mAnimSpeed = 1.f;    // per-clone multiplier, before Chaos
         bool        mPhysicsEnabled = true;
@@ -827,6 +828,8 @@ public:
     bool      setInstanceDriveMode(const LLUUID& id, EDriveMode mode,
                                    const LLUUID& directed_anim = LLUUID::null);
     void      setInstanceDirectedMirror(const LLUUID& id, bool enabled);
+    // [StayInPlace] Entity clones only; defined beside the runtime (llghostavatar.cpp).
+    void      setInstanceStayInPlace(const LLUUID& id, bool enabled);
     // [ClearAnim] Stop every animation on an entity clone and rest it in the neutral
     // pose (Directed drive, no animation; AutoAnimate, authored gaze and an active
     // walk are switched off). `before` receives what one undo step puts back.

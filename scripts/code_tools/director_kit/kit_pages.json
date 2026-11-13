@@ -622,6 +622,7 @@
     "shimmer_speed_slider": {"no_widget_history": true},
     "glitch_slider": {"no_widget_history": true},
     "effect_fps_spinner": {"no_widget_history": true},
+    "stay_in_place_check": {"no_widget_history": true},
     "drive_mode_combo": {"no_widget_history": true},
     "chaos_slider": {"no_widget_history": true},
     "anim_speed_spinner": {"no_widget_history": true},

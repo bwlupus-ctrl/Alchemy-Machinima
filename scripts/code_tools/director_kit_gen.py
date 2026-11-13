@@ -374,12 +374,18 @@ def validate_data(data: dict) -> None:
     # Director tag highlight toggle: 2509 -> 2510.
     # Quick Gaze: eight independent This actor rows, 2510 -> 2518 (11/11).
     # Borrowed rig removal adds one searchable action: 2518 -> 2519 (11/12).
+    # Per-clone Stay in place adds one searchable switch: 2519 -> 2520 (11/12).
     rig_page = next(p for _, p in pages if p['name'] == 'cine_light_rig_tab')
     removes = [(c['id'], r) for c in rig_page['cards'] for r in c['rows'] if r.get('w') == 'cine_remove_borrowed_rig']
     if len(removes) != 1 or removes[0][0] != 'rig_status' or removes[0][1].get('btn') != 'Remove rig' or not removes[0][1].get('no_widget_history'):
         raise GenError("borrowed rig removal must be one searchable rig-status action with structural history")
-    if len(pages) != 40 or row_count != 2519:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2519")
+    if len(pages) != 40 or row_count != 2520:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2520")
+    stay = [row for _, page in pages if page["name"] == "ghosts_tab"
+            for card in page["cards"] if card["id"] == "pose"
+            for row in card["rows"] if row.get("w") == "stay_in_place_check"]
+    if len(stay) != 1 or stay[0].get("l") != "Stay in place" or stay[0].get("k") != "toggle" or stay[0].get("d") != 0:
+        raise GenError("Clones Pose & drive requires one default-off Stay in place switch")
     shortcuts: set[tuple[str, str, str]] = set()
     for _group, page in pages:
         for card in page.get("cards", []):

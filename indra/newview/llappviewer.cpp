@@ -5736,7 +5736,16 @@ void LLAppViewer::idle()
             // (post-motion, post-gaze/IK) -- which only exists once every
             // avatar's updateCharacter() has run above. Must stay immediately
             // after gObjectList.update() and before any render-side consumer.
+            // [StayInPlace] Reflect "Mirror position" reads its SOURCE's root in
+            // that pass and stores the result as authored placement: a source with
+            // Stay in place on shows it the authored root, never the presented one.
+            if (LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::beginStayInPlacePostPass();
             ALGhostStudio::instance().updatePostObjectList();
+            // [StayInPlace] Every clone pose is final above (controller, mirror,
+            // Reflect and Flip stamps, delayed history, tilt). Shift the PRESENTED
+            // root of each enabled clone so its hips stay over its spot, before
+            // any consumer (particles, lights, cameras, Stepped, render).
+            if (LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::applyStayInPlaceAvatars();
             // [AvatarLightResponse] per-frame table rebuild / counter roll / 1 Hz debug log
             ALAvatarLightResponse::tick();
         }
@@ -5896,6 +5905,10 @@ void LLAppViewer::idle()
         ALDirectorAnimSwitcher::instance().tick(
             LLPresentationTime::currentFrame().presentation_time);
     }
+    // [StayInPlace] The Switchboard just force-evaluated any pose cut (a new
+    // pelvis after the main point above). Present again, idempotently, before
+    // the first placement consumer below (fog, light rig, VCam, cameras).
+    if (LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::applyStayInPlaceAvatars();
 
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle local fog");

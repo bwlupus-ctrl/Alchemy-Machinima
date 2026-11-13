@@ -36,6 +36,7 @@
 #include <vector>
 
 class ALKitCard;
+class ALKitRow;
 
 class LLButton;
 class LLCheckBoxCtrl;
@@ -246,6 +247,7 @@ private:
     void onDirectedAnimCommit();
     void onAnimationLibraryCommit();
     void onDirectedMirrorCommit();
+    void onStayInPlaceCommit();
     void onSourceAnimationCommit();
     void onLoopModeCommit();
     void onClickAnimSync();
@@ -441,6 +443,9 @@ private:
     LLButton*         mReflectRecapture = nullptr;
     LLTextBox*        mReflectStatus = nullptr;
     LLComboBox*       mDriveModeCombo = nullptr;
+    LLCheckBoxCtrl*   mStayInPlaceCheck = nullptr; // [StayInPlace] kit row only
+    ALKitRow*         mStayInPlaceRow = nullptr;
+    LLTextBox*        mStayInPlaceLabel = nullptr;
     LLLineEditor*     mDirectedAnimEdit = nullptr;
     LLCheckBoxCtrl*   mDirectedMirrorCheck = nullptr;
     LLComboBox*       mSourceAnimationsCombo = nullptr;

@@ -19,12 +19,31 @@ GAZE_NEARBY_DIGEST = "6c575e2bd500ef4f4ff972d267a0e6363eec5e035f7455b5681ffb5c1a
 
 
 HOT_GAZE_QUERY_DIGEST = "408b82b9c15d87a42abd5ad31ceeb23e3d6f1c8f61c0ef2276bbf7e01ad2d1b0"
+CLONE_STAY_IN_PLACE_MOVER_DIGEST = "414b3d8a07c427caf0d75865b5d0efa4fdcb7bf2cb0f268c04787051c07958d4"
+
+
+def reverse_clone_stay_in_place_mover(source, name):
+    """Peel the Stay in place placed-root reads (the newest llactormover.cpp layer). Idempotent: skipped
+    when its hunks are already gone; the pinned digest is checked every time; exact full-file base."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    filename = "clone_stay_in_place_mover_hunks.json"
+    raw = (Path(__file__).parent / filename).read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == CLONE_STAY_IN_PLACE_MOVER_DIGEST, "Stay in place mover allowance pin"
+    allowed = json.loads(raw)
+    assert allowed["base"] == "8c350a71b4e", "Stay in place mover base"
+    if name not in allowed["files"] or not any(h["after"] in source for h in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, filename, CLONE_STAY_IN_PLACE_MOVER_DIGEST,
+                                     "reviewed Stay in place placed-root reads")
 
 
 def reverse_hot_gaze_query_mover(source, name):
     """Peel the newest sanctioned query layer first; idempotent, exact full-file base."""
     import hashlib
     import json
+    source = reverse_clone_stay_in_place_mover(source, name)
     source = source.replace("\r\n", "\n")
     filename = "hot_gaze_query_mover_hunks.json"
     raw = (Path(__file__).parent / filename).read_bytes().replace(b"\r\n", b"\n")

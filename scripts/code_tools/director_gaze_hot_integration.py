@@ -48,6 +48,13 @@ struct ALGhostStudio {
 };
 using avatar_joint_list_t=std::vector<LLJoint*>;
 struct LLGhostAvatar:LLVOAvatar {
+ // This fixture exercises gaze with Stay in place OFF (empty registry); the Stay
+ // fixture (clone_stay_in_place_check.py) runs the production hooks themselves.
+ static bool hasStayInPlaceAvatars(){return false;}
+ static void applyStayInPlaceAvatars(){} static void beginStayInPlacePostPass(){}
+ static void beginStayInPlaceStepped(LLVOAvatar*){} static void presentStayInPlaceStepped(bool){}
+ static void endStayInPlaceStepped(){} static void steppedVerifyRoot(const LLVOAvatar*,LLVector3&){}
+ bool mStayInPlace=false,mStayAuthoredValid=false;LLVector3d mStayAuthoredRootGlobal;
  LLGhostAvatar(){ghost=true;}
  ~LLGhostAvatar(){sOffsetHotGazes.erase(this);}
  bool mEntityAnimCleared=false; // [ClearAnim] fixture clones are never cleared
