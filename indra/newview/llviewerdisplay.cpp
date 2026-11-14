@@ -1995,6 +1995,12 @@ void render_ui(F32 zoom_factor, int subfield)
 // Off, or RenderVBOPoolCleanAtFrameEnd off: nothing here, the sweep stays where it was.
 static void clean_vbo_pool_before_present()
 {
+    // Exactly once per frame: a second swap() in the same frame (the disconnected screen presents
+    // and the frame then presents again) does not sweep again. display() clears the flag at its end.
+    if (sVBOPoolSweptBeforePresent)
+    {
+        return;
+    }
     static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
     static LLCachedControl<bool> vbo_clean_before_present(gSavedSettings, "RenderVBOPoolCleanBeforePresent", true);
     if (vbo_clean_at_frame_end && vbo_clean_before_present)
