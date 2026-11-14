@@ -8,9 +8,54 @@
       "GENERATED": 736,
       "HOOK": 563,
       "OWNED": 941,
-      "TOOLING": 513
+      "TOOLING": 520
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_kit/gen_report.txt"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,14 +68,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "564b87048dbfca74d8c6c63f53e6aaa34cdf8b3c324a2e355fbe22d376fcd9e0",
+        "csv_sha256": "629773404a71f0b7744b51a9fff33ba4f26b000d16473e3c8bc77d5f590cf4c7",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
           "pages": 41,
           "popovers": 6
         },
-        "entries": 4821,
+        "entries": 4827,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "moves_tab",
@@ -73,9 +118,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2593,
+        "generated_kit_rows": 2596,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2182,
+        "interactive_rows": 2185,
         "pages": 40,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -118,7 +163,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3920,
+        "settings_declared": 3922,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -185,19 +230,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2317,
+        "independent_json_rows": 2320,
         "multi_page_settings": 21,
         "owner_roots": 37,
         "pages": 40,
-        "rows": 2317,
+        "rows": 2320,
         "unresolved_rows": 83
       },
-      "wiring_rows": 2317
+      "wiring_rows": 2320
     },
-    "head_source_tree": "c6b628a89ff3a5492e33cbdb1397205e51e76e7d",
+    "head_source_tree": "e10a1d16d3f1f0f74f3a36dfc2cd376b6d9818ea",
     "hook_files": 563,
-    "hunks": 3583,
-    "input_sha256": "93a4ccb3a0015cb96b0edb9200ee8ce35eb28a82e4e3693ec13a68584fe78d40",
+    "hunks": 3581,
+    "input_sha256": "c763de1ffbb2aaaa4c41e404649ce8bebaccbeff535b1e7162ef1c0afcf0498b",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -205,7 +250,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2078
+    "settings": 2080
   },
   "paths": [
     {
@@ -16613,6 +16658,7 @@
     },
     {
       "candidate_features_from_subjects": [
+        "director-shell",
         "sensor",
         "weather"
       ],
@@ -28921,7 +28967,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -44415,6 +44460,36 @@
       ],
       "git_status": "A",
       "layer": 7,
+      "path": "scripts/code_tools/relight_soft_shadow_floor_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "rig"
+      ],
+      "git_status": "A",
+      "layer": 7,
+      "path": "scripts/code_tools/relight_soft_shadow_motion_gl_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "rig"
+      ],
+      "git_status": "A",
+      "layer": 7,
       "path": "scripts/code_tools/relight_soft_shadow_quality_gl_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -44831,6 +44906,21 @@
       "git_status": "A",
       "layer": 7,
       "path": "scripts/code_tools/relight_world_stencil_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "rig"
+      ],
+      "git_status": "A",
+      "layer": 7,
+      "path": "scripts/code_tools/relight_world_wide_source_gl_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -45771,6 +45861,32 @@
       ],
       "git_status": "A",
       "layer": 99,
+      "path": "scripts/code_tools/softshadow_angle_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/softshadow_angle_shader_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
       "path": "scripts/code_tools/softshadow_bias_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
@@ -45798,6 +45914,19 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/softshadow_fade_shader_hunks.json",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/softshadow_floor_filter_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -46908,6 +47037,19 @@
       "git_status": "A",
       "layer": 8,
       "path": "scripts/code_tools/weather_wp3_fix_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/world_shadow_near_guard_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

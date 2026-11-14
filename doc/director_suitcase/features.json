@@ -707,8 +707,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32133,430"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32155,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -2823,6 +2823,7 @@
           "indra/newview/alkithistory.h",
           "indra/newview/alkitmenu.h",
           "indra/newview/alkitpage.h",
+          "indra/newview/alkitpresets.h",
           "indra/newview/alkitqol.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
@@ -10381,6 +10382,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -10390,10 +10395,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -11938,11 +11945,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@23140,412",
-          "indra/newview/app_settings/settings.xml@23688,362",
-          "indra/newview/app_settings/settings.xml@29379,100",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@23162,412",
+          "indra/newview/app_settings/settings.xml@23710,362",
+          "indra/newview/app_settings/settings.xml@29401,100",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -12072,9 +12079,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@164,12",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32943,721"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32988,698"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -22762,6 +22768,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -22771,10 +22781,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -24600,11 +24612,11 @@
           "indra/newview/app_settings/settings.xml@5946,21",
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6496,120",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@27571,98",
-          "indra/newview/app_settings/settings.xml@28104,229",
-          "indra/newview/app_settings/settings.xml@29524,2466",
-          "indra/newview/app_settings/settings.xml@32201,364"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@27593,98",
+          "indra/newview/app_settings/settings.xml@28126,229",
+          "indra/newview/app_settings/settings.xml@29546,2466",
+          "indra/newview/app_settings/settings.xml@32223,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24752,7 +24764,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@10821,21181"
+          "indra/newview/pipeline.cpp@1704,30320"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -26305,10 +26317,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -26339,6 +26353,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -34739,6 +34754,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -34748,10 +34767,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -36473,8 +36494,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -36581,10 +36602,9 @@
           "indra/newview/pipeline.cpp@1374,61",
           "indra/newview/pipeline.cpp@1439,15",
           "indra/newview/pipeline.cpp@1567,106",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32133,430",
-          "indra/newview/pipeline.cpp@32943,721"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32155,430",
+          "indra/newview/pipeline.cpp@32988,698"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -36621,8 +36641,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,246",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@843,266"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,268",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@387,774"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -46178,6 +46198,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -46187,10 +46211,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -49031,9 +49057,9 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@31991,209",
-          "indra/newview/app_settings/settings.xml@32201,364"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@32013,209",
+          "indra/newview/app_settings/settings.xml@32223,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -49311,13 +49337,12 @@
           "indra/newview/pipeline.cpp@128,11",
           "indra/newview/pipeline.cpp@144,14",
           "indra/newview/pipeline.cpp@164,12",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@33799,222",
-          "indra/newview/pipeline.cpp@34603,979",
-          "indra/newview/pipeline.cpp@35858,344",
-          "indra/newview/pipeline.cpp@39896,153"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@33821,222",
+          "indra/newview/pipeline.cpp@34649,955",
+          "indra/newview/pipeline.cpp@35880,344",
+          "indra/newview/pipeline.cpp@39945,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -49436,7 +49461,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,246"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,268"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -70870,6 +70895,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -70879,10 +70908,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -72846,8 +72877,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@25843,1573"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@25865,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -74728,10 +74759,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -74762,6 +74795,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -74797,6 +74831,7 @@
           "indra/newview/alkithistory.h",
           "indra/newview/alkitmenu.h",
           "indra/newview/alkitpage.h",
+          "indra/newview/alkitpresets.h",
           "indra/newview/alkitqol.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
@@ -81017,7 +81052,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@5583,32",
           "indra/newview/app_settings/settings.xml@5616,21",
-          "indra/newview/app_settings/settings.xml@6617,14866"
+          "indra/newview/app_settings/settings.xml@6617,14888"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -81118,8 +81153,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@92,17",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181"
+          "indra/newview/pipeline.cpp@1704,30320"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -81149,7 +81183,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@387,774"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -88601,6 +88635,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -88610,10 +88648,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -89862,11 +89902,11 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@23140,412",
-          "indra/newview/app_settings/settings.xml@23688,362",
-          "indra/newview/app_settings/settings.xml@29379,100",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@23162,412",
+          "indra/newview/app_settings/settings.xml@23710,362",
+          "indra/newview/app_settings/settings.xml@29401,100",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -95938,12 +95978,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@21485,1113",
-          "indra/newview/app_settings/settings.xml@28730,648",
-          "indra/newview/app_settings/settings.xml@29524,2466",
-          "indra/newview/app_settings/settings.xml@31991,209",
-          "indra/newview/app_settings/settings.xml@32201,364"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@21507,1113",
+          "indra/newview/app_settings/settings.xml@28752,648",
+          "indra/newview/app_settings/settings.xml@29546,2466",
+          "indra/newview/app_settings/settings.xml@32013,209",
+          "indra/newview/app_settings/settings.xml@32223,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -96245,9 +96285,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32133,430"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32155,430"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -100294,10 +100333,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -100328,6 +100369,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -100383,6 +100425,7 @@
           "indra/newview/alkithistory.h",
           "indra/newview/alkitmenu.h",
           "indra/newview/alkitpage.h",
+          "indra/newview/alkitpresets.h",
           "indra/newview/alkitqol.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
@@ -103967,6 +104010,7 @@
           "indra/newview/alshadowslotmath.h"
         ],
         "qualified_call_candidates": [
+          "ALWorldShadow::nearPlane",
           "LLDrawable::getRenderMatrix"
         ],
         "unresolved_includes": []
@@ -113291,6 +113335,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -113300,10 +113348,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -115373,10 +115423,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@25843,1573",
-          "indra/newview/app_settings/settings.xml@27994,109",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@25865,1573",
+          "indra/newview/app_settings/settings.xml@28016,109",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -115424,8 +115474,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181"
+          "indra/newview/pipeline.cpp@1704,30320"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -118506,6 +118555,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -118515,10 +118568,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -119792,8 +119847,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -128285,15 +128340,15 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@21485,1113",
-          "indra/newview/app_settings/settings.xml@22600,76",
-          "indra/newview/app_settings/settings.xml@22732,407",
-          "indra/newview/app_settings/settings.xml@23140,412",
-          "indra/newview/app_settings/settings.xml@23633,54",
-          "indra/newview/app_settings/settings.xml@24161,164",
-          "indra/newview/app_settings/settings.xml@29524,2466",
-          "indra/newview/app_settings/settings.xml@32201,364"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@21507,1113",
+          "indra/newview/app_settings/settings.xml@22622,76",
+          "indra/newview/app_settings/settings.xml@22754,407",
+          "indra/newview/app_settings/settings.xml@23162,412",
+          "indra/newview/app_settings/settings.xml@23655,54",
+          "indra/newview/app_settings/settings.xml@24183,164",
+          "indra/newview/app_settings/settings.xml@29546,2466",
+          "indra/newview/app_settings/settings.xml@32223,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -128483,13 +128538,12 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@187,7",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32642,53",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@35858,344",
-          "indra/newview/pipeline.cpp@37967,1060",
-          "indra/newview/pipeline.cpp@39896,153"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32664,53",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@35880,344",
+          "indra/newview/pipeline.cpp@37989,1087",
+          "indra/newview/pipeline.cpp@39945,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -131499,10 +131553,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -131533,6 +131589,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -131568,6 +131625,7 @@
           "indra/newview/alkithistory.h",
           "indra/newview/alkitmenu.h",
           "indra/newview/alkitpage.h",
+          "indra/newview/alkitpresets.h",
           "indra/newview/alkitqol.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
@@ -142518,6 +142576,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -142527,10 +142589,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -143580,6 +143644,8 @@
       "scripts/code_tools/relight_shape_gl_check.py",
       "scripts/code_tools/relight_shape_math_check.py",
       "scripts/code_tools/relight_shape_ui_check.py",
+      "scripts/code_tools/relight_soft_shadow_floor_gl_check.py",
+      "scripts/code_tools/relight_soft_shadow_motion_gl_check.py",
       "scripts/code_tools/relight_soft_shadow_quality_gl_check.py",
       "scripts/code_tools/relight_spot_bias_gl_check.py",
       "scripts/code_tools/relight_spot_fade_gl_check.py",
@@ -143600,7 +143666,8 @@
       "scripts/code_tools/relight_world_math_check.py",
       "scripts/code_tools/relight_world_motion_check.py",
       "scripts/code_tools/relight_world_receiver_check.py",
-      "scripts/code_tools/relight_world_stencil_check.py"
+      "scripts/code_tools/relight_world_stencil_check.py",
+      "scripts/code_tools/relight_world_wide_source_gl_check.py"
     ],
     "cmake_entries": [
       {
@@ -144697,10 +144764,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@21485,1113",
-          "indra/newview/app_settings/settings.xml@22688,43",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@21507,1113",
+          "indra/newview/app_settings/settings.xml@22710,43",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -144850,23 +144917,22 @@
           "indra/newview/pipeline.cpp@1233,11",
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32133,430",
-          "indra/newview/pipeline.cpp@32577,38",
-          "indra/newview/pipeline.cpp@32642,53",
-          "indra/newview/pipeline.cpp@32726,37",
-          "indra/newview/pipeline.cpp@32764,17",
-          "indra/newview/pipeline.cpp@32782,20",
-          "indra/newview/pipeline.cpp@32827,18",
-          "indra/newview/pipeline.cpp@32862,27",
-          "indra/newview/pipeline.cpp@32891,30",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@34107,51",
-          "indra/newview/pipeline.cpp@34164,243",
-          "indra/newview/pipeline.cpp@34409,11",
-          "indra/newview/pipeline.cpp@37604,362",
-          "indra/newview/pipeline.cpp@37967,1060"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32155,430",
+          "indra/newview/pipeline.cpp@32599,38",
+          "indra/newview/pipeline.cpp@32664,53",
+          "indra/newview/pipeline.cpp@32748,37",
+          "indra/newview/pipeline.cpp@32786,17",
+          "indra/newview/pipeline.cpp@32804,20",
+          "indra/newview/pipeline.cpp@32849,18",
+          "indra/newview/pipeline.cpp@32884,27",
+          "indra/newview/pipeline.cpp@32913,30",
+          "indra/newview/pipeline.cpp@32965,18",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@34126,303",
+          "indra/newview/pipeline.cpp@34431,11",
+          "indra/newview/pipeline.cpp@37629,359",
+          "indra/newview/pipeline.cpp@37989,1087"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -144915,8 +144981,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,268",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@387,774",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1248,508"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -145635,6 +145702,7 @@
       "RenderAreaShadowWorldDebug",
       "RenderAreaShadowWorldNear",
       "RenderAreaShadowWorldScreenReach",
+      "RenderAreaShadowWorldWideTaps",
       "RenderAreaShadows",
       "RenderAreaShadowsVCam",
       "RenderLocalLightSizeFromPrim",
@@ -148513,10 +148581,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -148547,6 +148617,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -150010,6 +150081,7 @@
           "indra/newview/alshadowslotmath.h"
         ],
         "qualified_call_candidates": [
+          "ALWorldShadow::nearPlane",
           "LLDrawable::getRenderMatrix"
         ],
         "unresolved_includes": []
@@ -159006,6 +159078,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -159015,10 +159091,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -161225,11 +161303,11 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@5968,527",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@21485,1113",
-          "indra/newview/app_settings/settings.xml@25843,1573",
-          "indra/newview/app_settings/settings.xml@27417,153",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@21507,1113",
+          "indra/newview/app_settings/settings.xml@25865,1573",
+          "indra/newview/app_settings/settings.xml@27439,153",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -161323,19 +161401,17 @@
           "indra/newview/pipeline.cpp@1068,7",
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32133,430",
-          "indra/newview/pipeline.cpp@32577,38",
-          "indra/newview/pipeline.cpp@32642,53",
-          "indra/newview/pipeline.cpp@32726,37",
-          "indra/newview/pipeline.cpp@32782,20",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@34107,51",
-          "indra/newview/pipeline.cpp@34164,243",
-          "indra/newview/pipeline.cpp@37604,362",
-          "indra/newview/pipeline.cpp@37967,1060",
-          "indra/newview/pipeline.cpp@39896,153"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32155,430",
+          "indra/newview/pipeline.cpp@32599,38",
+          "indra/newview/pipeline.cpp@32664,53",
+          "indra/newview/pipeline.cpp@32748,37",
+          "indra/newview/pipeline.cpp@32804,20",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@34126,303",
+          "indra/newview/pipeline.cpp@37629,359",
+          "indra/newview/pipeline.cpp@37989,1087",
+          "indra/newview/pipeline.cpp@39945,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -161374,7 +161450,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1712,234"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1764,234"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -165117,10 +165193,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -165151,6 +165229,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -165186,6 +165265,7 @@
           "indra/newview/alkithistory.h",
           "indra/newview/alkitmenu.h",
           "indra/newview/alkitpage.h",
+          "indra/newview/alkitpresets.h",
           "indra/newview/alkitqol.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
@@ -173525,6 +173605,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -173534,10 +173618,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -175400,12 +175486,12 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@3511,1055",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@21485,1113",
-          "indra/newview/app_settings/settings.xml@22732,407",
-          "indra/newview/app_settings/settings.xml@23140,412",
-          "indra/newview/app_settings/settings.xml@25843,1573",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@21507,1113",
+          "indra/newview/app_settings/settings.xml@22754,407",
+          "indra/newview/app_settings/settings.xml@23162,412",
+          "indra/newview/app_settings/settings.xml@25865,1573",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -175520,15 +175606,15 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32133,430",
-          "indra/newview/pipeline.cpp@32697,13",
-          "indra/newview/pipeline.cpp@32726,37",
-          "indra/newview/pipeline.cpp@32782,20",
-          "indra/newview/pipeline.cpp@32827,18",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@37967,1060"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32155,430",
+          "indra/newview/pipeline.cpp@32719,13",
+          "indra/newview/pipeline.cpp@32748,37",
+          "indra/newview/pipeline.cpp@32804,20",
+          "indra/newview/pipeline.cpp@32849,18",
+          "indra/newview/pipeline.cpp@32965,18",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@37989,1087"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -177006,10 +177092,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -177040,6 +177128,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -177075,6 +177164,7 @@
           "indra/newview/alkithistory.h",
           "indra/newview/alkitmenu.h",
           "indra/newview/alkitpage.h",
+          "indra/newview/alkitpresets.h",
           "indra/newview/alkitqol.h",
           "indra/newview/alkitrow.h",
           "indra/newview/alkitshell.h",
@@ -184100,6 +184190,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -184109,10 +184203,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -185523,7 +185619,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14866"
+          "indra/newview/app_settings/settings.xml@6617,14888"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -185576,10 +185672,9 @@
           "indra/newview/pipeline.cpp@335,106",
           "indra/newview/pipeline.cpp@722,16",
           "indra/newview/pipeline.cpp@961,88",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@34164,243"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@34126,303"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -185616,10 +185711,10 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,246",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@843,266",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1712,234"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@112,268",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@387,774",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1248,508",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1764,234"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -186603,10 +186698,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -186637,6 +186734,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -190411,6 +190509,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -190420,10 +190522,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -191749,7 +191853,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866"
+          "indra/newview/app_settings/settings.xml@6617,14888"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -193293,10 +193397,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -193327,6 +193433,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -204607,9 +204714,9 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@21485,1113",
-          "indra/newview/app_settings/settings.xml@29524,2466"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@21507,1113",
+          "indra/newview/app_settings/settings.xml@29546,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -204709,28 +204816,26 @@
           "indra/newview/pipeline.cpp@302,32",
           "indra/newview/pipeline.cpp@577,71",
           "indra/newview/pipeline.cpp@928,32",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@32042,30",
-          "indra/newview/pipeline.cpp@32093,16",
-          "indra/newview/pipeline.cpp@32133,430",
-          "indra/newview/pipeline.cpp@32577,38",
-          "indra/newview/pipeline.cpp@32726,37",
-          "indra/newview/pipeline.cpp@32764,17",
-          "indra/newview/pipeline.cpp@32943,721",
-          "indra/newview/pipeline.cpp@33676,15",
-          "indra/newview/pipeline.cpp@33737,15",
-          "indra/newview/pipeline.cpp@33799,222",
-          "indra/newview/pipeline.cpp@34107,51",
-          "indra/newview/pipeline.cpp@34164,243",
-          "indra/newview/pipeline.cpp@34476,36",
-          "indra/newview/pipeline.cpp@34520,7",
-          "indra/newview/pipeline.cpp@34531,41",
-          "indra/newview/pipeline.cpp@36395,47",
-          "indra/newview/pipeline.cpp@36841,78",
-          "indra/newview/pipeline.cpp@37604,362",
-          "indra/newview/pipeline.cpp@37967,1060",
-          "indra/newview/pipeline.cpp@39896,153"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@32064,30",
+          "indra/newview/pipeline.cpp@32115,16",
+          "indra/newview/pipeline.cpp@32155,430",
+          "indra/newview/pipeline.cpp@32599,38",
+          "indra/newview/pipeline.cpp@32748,37",
+          "indra/newview/pipeline.cpp@32786,17",
+          "indra/newview/pipeline.cpp@32988,698",
+          "indra/newview/pipeline.cpp@33698,15",
+          "indra/newview/pipeline.cpp@33759,15",
+          "indra/newview/pipeline.cpp@33821,222",
+          "indra/newview/pipeline.cpp@34126,303",
+          "indra/newview/pipeline.cpp@34498,36",
+          "indra/newview/pipeline.cpp@34542,7",
+          "indra/newview/pipeline.cpp@34553,41",
+          "indra/newview/pipeline.cpp@36417,47",
+          "indra/newview/pipeline.cpp@36863,78",
+          "indra/newview/pipeline.cpp@37629,359",
+          "indra/newview/pipeline.cpp@37989,1087",
+          "indra/newview/pipeline.cpp@39945,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -204806,8 +204911,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@365,474",
-          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1196,508"
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@387,774",
+          "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl@1248,508"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
       },
@@ -209403,6 +209508,7 @@
           "indra/newview/alshadowslotmath.h"
         ],
         "qualified_call_candidates": [
+          "ALWorldShadow::nearPlane",
           "LLDrawable::getRenderMatrix"
         ],
         "unresolved_includes": []
@@ -216583,6 +216689,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -216592,10 +216702,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",
@@ -218515,10 +218627,10 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
-          "indra/newview/app_settings/settings.xml@6617,14866",
-          "indra/newview/app_settings/settings.xml@29524,2466",
-          "indra/newview/app_settings/settings.xml@31991,209",
-          "indra/newview/app_settings/settings.xml@32201,364"
+          "indra/newview/app_settings/settings.xml@6617,14888",
+          "indra/newview/app_settings/settings.xml@29546,2466",
+          "indra/newview/app_settings/settings.xml@32013,209",
+          "indra/newview/app_settings/settings.xml@32223,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -218579,9 +218691,8 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
           "indra/newview/pipeline.cpp@1214,16",
-          "indra/newview/pipeline.cpp@1704,9116",
-          "indra/newview/pipeline.cpp@10821,21181",
-          "indra/newview/pipeline.cpp@34603,979"
+          "indra/newview/pipeline.cpp@1704,30320",
+          "indra/newview/pipeline.cpp@34649,955"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -221491,10 +221602,12 @@
           "ALKitPresetStrip::ALKitPresetStrip",
           "ALKitPresetStrip::captureApplied",
           "ALKitPresetStrip::isModified",
+          "ALKitPresetStrip::layoutChildren",
           "ALKitPresetStrip::onSelect",
           "ALKitPresetStrip::postBuild",
           "ALKitPresetStrip::refresh",
           "ALKitPresetStrip::remove",
+          "ALKitPresetStrip::reshape",
           "ALKitPresetStrip::save",
           "ALKitPresetStrip::showSaveEditor",
           "ALKitPresetStrip::trackedSettingChanged",
@@ -221525,6 +221638,7 @@
           "LLNotificationsUtil::add",
           "LLNotificationsUtil::getSelectedOption",
           "LLPanel::postBuild",
+          "LLPanel::reshape",
           "LLSD::emptyMap",
           "LLSDSerialize::fromXML",
           "LLSDSerialize::toPrettyXML",
@@ -222290,6 +222404,7 @@
           "indra/newview/alshadowslotmath.h"
         ],
         "qualified_call_candidates": [
+          "ALWorldShadow::nearPlane",
           "LLDrawable::getRenderMatrix"
         ],
         "unresolved_includes": []
@@ -227471,6 +227586,10 @@
           "ALWorldShadow::farPlane",
           "ALWorldShadow::joinLines",
           "ALWorldShadow::linksetSiblingReach",
+          "ALWorldShadow::nearClipNote",
+          "ALWorldShadow::nearClipWarns",
+          "ALWorldShadow::nearCubeReaches",
+          "ALWorldShadow::nearRaisedByEmitter",
           "ALWorldShadow::normalizePicks",
           "ALWorldShadow::packViewRotation",
           "ALWorldShadow::pickLabel",
@@ -227480,10 +227599,12 @@
           "ALWorldShadow::plannedLights",
           "ALWorldShadow::plannedLightsFitting",
           "ALWorldShadow::slotReasonText",
+          "ALWorldShadow::softShadowFloor",
           "ALWorldShadow::splitReceiverDepth",
           "ALWorldShadow::tileSlot",
           "ALWorldShadow::transformedAabb",
           "ALWorldShadow::updateResidencyPicked",
+          "ALWorldShadow::wideSourceTaps",
           "ALWorldShadow::widenedFovRadians",
           "ALWorldShadow::worldEligibleWithNative",
           "ALWorldShadow::worldShadowReport",

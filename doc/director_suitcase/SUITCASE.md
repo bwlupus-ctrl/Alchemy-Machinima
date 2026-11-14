@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2836 classified paths.
+`inventory.csv` / `inventory.json` contain 2843 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -77,7 +77,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | [crowd](features/crowd.md) | 4 | 55 | 11 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 124 | 56 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 69 | 60 | 17 |
-| [rig](features/rig.md) | 7 | 175 | 57 | 251 |
+| [rig](features/rig.md) | 7 | 175 | 57 | 252 |
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 66 | 24 | 109 |
 | [tracking](features/tracking.md) | 7 | 9 | 17 | 0 |
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |
@@ -211,8 +211,8 @@ silently reintroduce the VRAM governor. This is an explicit IN/OUT difference fr
 
 ## Verification and evidence limits
 
-Existing evidence: 2317 wiring rows; page-source summary
-`{"ambiguous_rows": 0, "independent_json_rows": 2317, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2317, "unresolved_rows": 83}`.
+Existing evidence: 2320 wiring rows; page-source summary
+`{"ambiguous_rows": 0, "independent_json_rows": 2320, "multi_page_settings": 21, "owner_roots": 37, "pages": 40, "rows": 2320, "unresolved_rows": 83}`.
 Functional manifest's recorded wiring CSV SHA matches current bytes:
 **True**. Existing manifests can still be stale
 against code. `inputs.json` preserves their metadata and hashes; unresolved/ambiguous
@@ -238,7 +238,7 @@ A static/source gate proves its invariant only. GL fixtures prove their test sce
 not viewer integration. Use every feature sheet's in-world checkpoint and distinguish
 PASS / FAIL / INCONCLUSIVE. This kit does not claim a port has been built or run.
 
-The generated hook map covers 563 shared files / 3583 canonical
+The generated hook map covers 563 shared files / 3581 canonical
 three-context-line hunks. Function extraction is a conservative lexical scan; XML,
 declarations, constructors or complex macros may remain unknown. Local conditional
 evidence does not prove a dominating setting guard or an inert off path. Unknown and
