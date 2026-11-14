@@ -30775,6 +30775,11 @@ static std::string world_shadow_label(const LLUUID& id)
     return name.empty() ? "light " + short_id : name + " (" + short_id + ")";
 }
 
+// [Near clip guard] Per world-shadow slot: the near plane (metres) of the cube rendered this frame when it is past
+// ALWorldShadow::kNearClipWarn and reaches into an avatar's bounds, else 0. Written by generateWorldShadowCubes, read by the
+// Director status line and the throttled log (all on the main thread).
+static std::array<F32, ALWorldShadow::kMaxLights> sWorldShadowNearCut{};
+
 std::string LLPipeline::worldShadowReadout() const
 {
     std::string labels[ALWorldShadow::kMaxLights];
@@ -30784,7 +30789,12 @@ std::string LLPipeline::worldShadowReadout() const
         reasons[k] = mWorldShadowResident.held[k] ? mWorldShadowReason[k] : ALWorldShadow::SlotReason::None;
         if (reasons[k] != ALWorldShadow::SlotReason::None) labels[k] = world_shadow_label(mWorldShadowResident.id[k]);
     }
-    return ALWorldShadow::worldShadowReport(mWorldShadowState, mWorldShadowLights, labels, reasons, mWorldShadowPlanned,
+    // [Near clip guard] First, so the row shows it: the first rendering light whose near cube reaches an avatar.
+    std::string near_note;
+    for (U32 k = 0; k < ALWorldShadow::kMaxLights && near_note.empty(); ++k)
+        if (reasons[k] == ALWorldShadow::SlotReason::Rendered && sWorldShadowNearCut[k] > 0.f)
+            near_note = ALWorldShadow::nearClipNote(sWorldShadowNearCut[k], labels[k]) + " ";
+    return near_note + ALWorldShadow::worldShadowReport(mWorldShadowState, mWorldShadowLights, labels, reasons, mWorldShadowPlanned,
         mWorldShadowRequested, mWorldShadowBudgeted);
 }
 
@@ -38683,6 +38693,7 @@ void countWorldShadowRiggedMaps(LLCullResult& result, LLPipeline::WorldShadowDra
 // (updateCull clears it) and stateSort re-stamps the groups it keeps; the Prism aux pass reuses CAMERA_SPOT_SHADOW0+i the same way.
 void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
 {
+    sWorldShadowNearCut.fill(0.f);   // [Near clip guard] restated below by every frame that renders cubes
     static LLCachedControl<bool> cubes(gSavedSettings, "RenderAreaShadowCubeMaps", false);
     static LLCachedControl<bool> soft(gSavedSettings, "RenderAreaShadows", false);
     static LLCachedControl<S32> lights_setting(gSavedSettings, "RenderAreaShadowCubeLights", 2);
@@ -38801,6 +38812,8 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
                 static_cast<F32>(ALWorldShadow::farPlane(js[j].radius)), js[j].origin.mV[VX], js[j].origin.mV[VY], js[j].origin.mV[VZ], static_cast<unsigned>(errors[j]),
                 counts.avatarBodies, counts.riggedBatches, counts.selfBodies, counts.selfRigged);
             text += line;
+            if (sWorldShadowNearCut[js[j].slot] > 0.f)   // [Near clip guard] the verdict for the log
+                text += " NEAR_CLIP_REACHES_AVATAR";
         }
         log_world_shadow_impl(*this, mWorldShadowState, text.c_str(), n, mask);
     };
@@ -38841,6 +38854,27 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         if (!camera.AABBInFrustumNoFarClip(centre, extent)) { mWorldShadowReason[k] = ALWorldShadow::SlotReason::OutOfView; continue; }
         mWorldShadowReason[k] = ALWorldShadow::SlotReason::Rendered;   // provisional: confirmed when its six faces were drawn (end of the function)
         jobs[job_count++] = {k, found, found->getPositionAgent(), radius, worldShadowLightNear(found, radius)};
+    }
+    // [Near clip guard] A near plane past 25 cm that reaches into an avatar's bounds: that avatar's part inside the cube is clipped
+    // out of this light's map. Nothing is changed here; the status line and the log say so (ALWorldShadow::nearClipNote).
+    for (U32 j = 0; j < job_count; ++j)
+    {
+        if (!ALWorldShadow::nearClipWarns(jobs[j].near_plane)) continue;
+        const double p[3] = { jobs[j].origin.mV[VX], jobs[j].origin.mV[VY], jobs[j].origin.mV[VZ] };
+        for (LLCharacter* character : LLCharacter::sInstances)
+        {
+            LLVOAvatar* avatar = (LLVOAvatar*)character;
+            if (!avatar || avatar->isDead()) continue;
+            const LLVector3* ext = avatar->getLastAnimExtents();
+            if (!ext[0].isFinite() || !ext[1].isFinite()) continue;
+            const double lo[3] = { ext[0].mV[VX], ext[0].mV[VY], ext[0].mV[VZ] };
+            const double hi[3] = { ext[1].mV[VX], ext[1].mV[VY], ext[1].mV[VZ] };
+            if (ALWorldShadow::nearCubeReaches(lo, hi, p, jobs[j].near_plane))
+            {
+                sWorldShadowNearCut[jobs[j].slot] = jobs[j].near_plane;
+                break;
+            }
+        }
     }
     mWorldShadowState = job_count ? ALWorldShadow::State::On : ALWorldShadow::State::Pinned;
     mWorldShadowLights = job_count;

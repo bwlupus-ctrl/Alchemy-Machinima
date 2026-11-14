@@ -212,7 +212,7 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_ANGLE_DIGEST = "2aea8256857747ccec31999ff910e3cfc928f65fc3cb7d3cd01c4f65a232b0fd"
+SOFTSHADOW_ANGLE_DIGEST = "dc65efc82740e08deeb173abca604c215ea6329e60a9370ceb59c6cfe6c93af4"
 SOFTSHADOW_ANGLE_BASE = "0494b1f4d19"
 
 
