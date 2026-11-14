@@ -1,11 +1,15 @@
 {
   "base": "0494b1f4d19",
-  "description": "Steady soft shadows (camera-angle stability): the RenderSoftShadowNoiseModel upload clamp and default (2 = noise anchored to the projector map). No other pipeline change.",
+  "description": "Steady soft shadows (camera-angle stability): the RenderSoftShadowNoiseModel upload clamp and default (2 = noise anchored to the projector map) and the soft shadow softness floor uploads (RenderSoftShadowMinSoftness). No other pipeline change.",
   "files": {
     "pipeline.cpp": [
       {
         "before": "    shader.uniform1i(LLStaticHashedString(\"soft_shadow_fill_retire\"), soft_fill_step ? 0 : 1);\n    static LLCachedControl<U32> soft_noise_model(gSavedSettings, \"RenderSoftShadowNoiseModel\", 1);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_noise_model\"), (S32)llmin((U32)soft_noise_model, 1U));\n    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, \"RenderSunLightProjectorDeadSamples\", false);\n",
-        "after": "    shader.uniform1i(LLStaticHashedString(\"soft_shadow_fill_retire\"), soft_fill_step ? 0 : 1);\n    // [SoftShadow anchor] 2 (default) = model 1 with the projector noise anchored to the\n    // light's own shadow map, so it does not re-roll when the camera moves.\n    static LLCachedControl<U32> soft_noise_model(gSavedSettings, \"RenderSoftShadowNoiseModel\", 2);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_noise_model\"), (S32)llmin((U32)soft_noise_model, 2U));\n    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, \"RenderSunLightProjectorDeadSamples\", false);\n"
+        "after": "    shader.uniform1i(LLStaticHashedString(\"soft_shadow_fill_retire\"), soft_fill_step ? 0 : 1);\n    // [SoftShadow anchor] 2 (default) = model 1 with the projector noise anchored to the\n    // light's own shadow map, so it does not re-roll when the camera moves.\n    static LLCachedControl<U32> soft_noise_model(gSavedSettings, \"RenderSoftShadowNoiseModel\", 2);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_noise_model\"), (S32)llmin((U32)soft_noise_model, 2U));\n    // [SoftShadow floor] The least radius of the metric projector kernel, texels of the light's map.\n    static LLCachedControl<F32> soft_min_softness(gSavedSettings, \"RenderSoftShadowMinSoftness\", 2.f);\n    shader.uniform1f(LLStaticHashedString(\"soft_shadow_min_radius\"), static_cast<F32>(ALRelight::softShadowFloor(soft_min_softness)));\n    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, \"RenderSunLightProjectorDeadSamples\", false);\n"
+      },
+      {
+        "before": "                gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString(\"area_world_seed\"),1,world_seed);\n                gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString(\"area_world_rot\"),3,world_rot);\n",
+        "after": "                gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString(\"area_world_seed\"),1,world_seed);\n                // [SoftShadow floor] The same setting on the cube filter, texels of the cube face.\n                static LLCachedControl<F32> world_min_softness(gSavedSettings, \"RenderSoftShadowMinSoftness\", 2.f);\n                gAreaShadowFilterProgram.uniform1f(LLStaticHashedString(\"area_world_min_radius\"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));\n                gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString(\"area_world_rot\"),3,world_rot);\n"
       }
     ]
   }

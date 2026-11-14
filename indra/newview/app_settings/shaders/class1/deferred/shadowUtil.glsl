@@ -667,6 +667,14 @@ float estimateDetailSpotBlockerGap(sampler2DShadow shadowMap, vec3 stc, float so
 // x or y <= 0 = the old dimensionless texel softness for that slot: the setting at 0, and
 // every program that never receives the upload.
 uniform vec4 spot_shadow_metric[SPOT_SHADOW_COUNT];
+// [SoftShadow floor] RenderSoftShadowMinSoftness: the least radius of the metric kernel, in texels
+// of the projector's own map. A source of a few millimetres has a penumbra far under one texel;
+// the one-texel kernel then draws the map's texels as the shadow's outline. 0 (also a program
+// that never receives the upload) = off: one texel, as before. Never over Max penumbra, and the
+// slope clamp below still narrows the kernel at a grazing contact (no lit hole for softness).
+// The blocker search needs no change: its disk is the widest penumbra any blocker could cast
+// (a blocker at the near plane), which is Max penumbra for every source a floor matters to.
+uniform float soft_shadow_min_radius = 0.0;
 const int   SPOT_METRIC_BISECT_STEPS = 5;      // depth compares on the measured tap
 const float SPOT_METRIC_BISECT_STEP  = 1.0 / 32.0;   // 2^-steps: what the bisection resolves of the capped range
 const float SPOT_METRIC_SEARCH_PHASE = 1.1;    // radians between the search disk and the filter disk
@@ -719,6 +727,7 @@ float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, vec4 m, out vec2 t
     float k_max = max(m.x, m.y);
     vec2 shape = m.xy / k_max;
     float cap = max(soft_shadow_max, 1.0);
+    float low = clamp(soft_shadow_min_radius, 1.0, cap);
     float pr = 1.0;
     float lever_near = max(1.0 - m.w * m.z, SPOT_METRIC_MIN_LEVER);   // blocker at the near plane (d_b = 0)
     float search = min(k_max * stc.z / lever_near, cap);
@@ -768,7 +777,7 @@ float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, vec4 m, out vec2 t
         }
         float gap = stc.z - tap.z + max(0.5 * (lo + hi) - shift, 0.0);   // d_r - d_b
         float lever = max(1.0 - m.w * (m.z - (stc.z - gap)), SPOT_METRIC_MIN_LEVER);
-        pr = clamp(k_max * gap / lever, 1.0, cap);
+        pr = clamp(k_max * gap / lever, low, cap);
         pr = min(pr, 1.0 + SPOT_METRIC_SLOPE_SHARE * gap / max(g_spot_widen_stc, 1.e-12));
     }
     texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;

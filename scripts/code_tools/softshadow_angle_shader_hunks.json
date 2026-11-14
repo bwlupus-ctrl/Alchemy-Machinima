@@ -1,6 +1,6 @@
 {
   "base": "0494b1f4d19",
-  "description": "Steady soft shadows edits of class1/deferred/shadowUtil.glsl: noise model 2 (softShadowAnchored, the noise cell in spotSurfaceReceiver, the still Detail kernel). Exact hunks; reversing them must reproduce the 0494b1f4d19 file.",
+  "description": "Steady soft shadows edits of class1/deferred/shadowUtil.glsl: noise model 2 (softShadowAnchored, the noise cell in spotSurfaceReceiver, the still Detail kernel) and the softness floor of the metric projector kernel. Exact hunks; reversing them must reproduce the 0494b1f4d19 file.",
   "files": {
     "shadowUtil.glsl": [
       {
@@ -22,6 +22,18 @@
       {
         "before": "{\n    return soft_shadow_noise_model != 0 ? softShadowIGN() : legacy;\n",
         "after": "{\n    if (g_spot_noise >= 0.0) return 0.5;   // [SoftShadow anchor] the centred disk\n    return soft_shadow_noise_model != 0 ? softShadowIGN() : legacy;\n"
+      },
+      {
+        "before": "uniform vec4 spot_shadow_metric[SPOT_SHADOW_COUNT];\nconst int   SPOT_METRIC_BISECT_STEPS = 5;      // depth compares on the measured tap\n",
+        "after": "uniform vec4 spot_shadow_metric[SPOT_SHADOW_COUNT];\n// [SoftShadow floor] RenderSoftShadowMinSoftness: the least radius of the metric kernel, in texels\n// of the projector's own map. A source of a few millimetres has a penumbra far under one texel;\n// the one-texel kernel then draws the map's texels as the shadow's outline. 0 (also a program\n// that never receives the upload) = off: one texel, as before. Never over Max penumbra, and the\n// slope clamp below still narrows the kernel at a grazing contact (no lit hole for softness).\n// The blocker search needs no change: its disk is the widest penumbra any blocker could cast\n// (a blocker at the near plane), which is Max penumbra for every source a floor matters to.\nuniform float soft_shadow_min_radius = 0.0;\nconst int   SPOT_METRIC_BISECT_STEPS = 5;      // depth compares on the measured tap\n"
+      },
+      {
+        "before": "    float cap = max(soft_shadow_max, 1.0);\n    float pr = 1.0;\n",
+        "after": "    float cap = max(soft_shadow_max, 1.0);\n    float low = clamp(soft_shadow_min_radius, 1.0, cap);\n    float pr = 1.0;\n"
+      },
+      {
+        "before": "        float lever = max(1.0 - m.w * (m.z - (stc.z - gap)), SPOT_METRIC_MIN_LEVER);\n        pr = clamp(k_max * gap / lever, 1.0, cap);\n        pr = min(pr, 1.0 + SPOT_METRIC_SLOPE_SHARE * gap / max(g_spot_widen_stc, 1.e-12));\n",
+        "after": "        float lever = max(1.0 - m.w * (m.z - (stc.z - gap)), SPOT_METRIC_MIN_LEVER);\n        pr = clamp(k_max * gap / lever, low, cap);\n        pr = min(pr, 1.0 + SPOT_METRIC_SLOPE_SHARE * gap / max(g_spot_widen_stc, 1.e-12));\n"
       },
       {
         "before": "    {\n        // [SoftShadow metric] A slot with a metric (RenderSpotShadowPenumbraModel 1) takes the\n",

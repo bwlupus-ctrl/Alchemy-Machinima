@@ -28130,6 +28130,9 @@ void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const*
     // light's own shadow map, so it does not re-roll when the camera moves.
     static LLCachedControl<U32> soft_noise_model(gSavedSettings, "RenderSoftShadowNoiseModel", 2);
     shader.uniform1i(LLStaticHashedString("soft_shadow_noise_model"), (S32)llmin((U32)soft_noise_model, 2U));
+    // [SoftShadow floor] The least radius of the metric projector kernel, texels of the light's map.
+    static LLCachedControl<F32> soft_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 2.f);
+    shader.uniform1f(LLStaticHashedString("soft_shadow_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(soft_min_softness)));
     static LLCachedControl<bool> sun_dead_samples(gSavedSettings, "RenderSunLightProjectorDeadSamples", false);
     shader.uniform1i(LLStaticHashedString("sun_projector_samples_removed"), sun_dead_samples ? 0 : 1);
     }
@@ -31781,6 +31784,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world_light"),4,world_light[0].mV);
                 gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world_info"),4,world_info[0].mV);
                 gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString("area_world_seed"),1,world_seed);
+                // [SoftShadow floor] The same setting on the cube filter, texels of the cube face.
+                static LLCachedControl<F32> world_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 2.f);
+                gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_world_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));
                 gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_world_rot"),3,world_rot);
                 static LLCachedControl<S32> world_debug(gSavedSettings, "RenderAreaShadowWorldDebug", 0);
                 gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_debug"),world_any ? llclamp(static_cast<S32>(world_debug),0,3) : 0);

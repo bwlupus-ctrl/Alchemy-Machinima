@@ -212,7 +212,7 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_ANGLE_DIGEST = "e3c38730f14b57eca3654ee034279e3cfe06af761b1e80ab0474c00574e1cee7"
+SOFTSHADOW_ANGLE_DIGEST = "2aea8256857747ccec31999ff910e3cfc928f65fc3cb7d3cd01c4f65a232b0fd"
 SOFTSHADOW_ANGLE_BASE = "0494b1f4d19"
 
 
@@ -235,7 +235,7 @@ def reverse_softshadow_angle(source, name):
                                      SOFTSHADOW_ANGLE_DIGEST, "reviewed soft shadow angle")
 
 
-SOFTSHADOW_ANGLE_SHADER_DIGEST = "9539f999adb9c2bab58b06c7146d17aad693769c105264e005840efc0609a2ed"
+SOFTSHADOW_ANGLE_SHADER_DIGEST = "f9785c4913d7e33a5dd7546c0c20d9ca48cb66a4110c3db7e07ecdca89aa2e66"
 
 
 def reverse_softshadow_angle_shader(source):

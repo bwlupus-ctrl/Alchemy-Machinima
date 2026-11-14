@@ -426,6 +426,11 @@ class AreaRunner:
             gl.u4fv(gl.loc(fr, b'area_world_light'), 4, wlight.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4fv(gl.loc(fr, b'area_world_info'), 4, winfo.ctypes.data_as(C.POINTER(gl.F)))
             gl.u4uiv(gl.loc(fr, b'area_world_seed'), 1, wseed.ctypes.data_as(C.POINTER(gl.U)))
+            # RenderSoftShadowMinSoftness on the cube filter: uploaded only when the caller's world gives 'min_radius'
+            # (every older fixture leaves the program's default, 0 = off). Programs keep uniform values, so a caller
+            # that gave it once states it on every run.
+            if world is not None and 'min_radius' in world:
+                gl.uf[1](gl.loc(fr, b'area_world_min_radius'), float(world['min_radius']))
             gl.u3fv(gl.loc(fr, b'area_world_rot'), 3, wrot.ctypes.data_as(C.POINTER(gl.F)))
             gl.ui(gl.loc(fr, b'area_world_atlas'), 4)
             gl.active(0x84C3)

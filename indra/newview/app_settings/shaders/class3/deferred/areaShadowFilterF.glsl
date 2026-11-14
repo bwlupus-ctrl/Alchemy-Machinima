@@ -16,6 +16,10 @@ uniform vec4 area_world;          // per channel: 1 = this channel's light owns 
 uniform vec4 area_world_light[4]; // per channel: view-space centre xyz, far plane (metres)
 uniform vec4 area_world_info[4];  // per channel: x first atlas tile row (2 k), y near plane, z map-side source radius, w unused
 uniform uvec4 area_world_seed;    // per channel: light UUID hash (the rotation's Cranley-Patterson shift)
+// [SoftShadow floor] RenderSoftShadowMinSoftness: the least filter (and blocker search) radius of the world resolve, in texels of the cube face.
+// A source of a few millimetres leaves the filter at AW_MIN_RADIUS, 0.7 texel: the outline of the shadow is then the 512-texel face's staircase
+// (12 mm steps at 3 m). 0 (also a program that never receives it) = off: AW_MIN_RADIUS and a search of one texel, the bytes of a build without it.
+uniform float area_world_min_radius;
 uniform vec3 area_world_rot[3];   // ROWS of the view -> agent rotation (the columns of the view matrix's 3x3): agent = (dot(r0,v), dot(r1,v), dot(r2,v))
 uniform sampler2D area_world_atlas; // D32F atlas, 1632 x 1088 per light, compare mode NONE
 uniform int area_world_debug;     // diagnostic (RenderAreaShadowWorldDebug), 0 = normal: 1 world visibility only, 2 face / 5, 3 receiver depth minus atlas depth
@@ -659,7 +663,8 @@ float awFaceVisibility(int c)
     float rot = float(area_world_seed[c] >> 16)*(6.28318530718/65536.0)+dot(d,vec3(0.13,0.21,0.37));
     // Blocker search: where does the source disk see blockers? Search plane z_s, radius R_s texels.
     float z_s = max(near,r_map+0.05);
-    float search = clamp(r_map*max(zr-z_s,0.0)/(2.0*z_s*zr)*AW_USABLE,1.0,AW_MAX_RADIUS);
+    float aw_min_radius = min(max(AW_MIN_RADIUS,area_world_min_radius),AW_MAX_RADIUS);   // [SoftShadow floor]
+    float search = clamp(r_map*max(zr-z_s,0.0)/(2.0*z_s*zr)*AW_USABLE,max(1.0,aw_min_radius),AW_MAX_RADIUS);
     float blocker_sum = 0.0;
     float blocker_n = 0.0;
     // A valid plane with nd >= 0 has no positive comparison depth. Every
@@ -695,7 +700,7 @@ float awFaceVisibility(int c)
     if (blocker_n < 0.5) return 1.0;
     float z_b = max(blocker_sum/blocker_n,near);
     // Penumbra radius on the receiver plane -> texels of this face at the receiver's axial depth.
-    float radius = clamp(r_map*max(zr-z_b,0.0)/z_b*AW_USABLE/(2.0*zr),AW_MIN_RADIUS,AW_MAX_RADIUS);
+    float radius = clamp(r_map*max(zr-z_b,0.0)/z_b*AW_USABLE/(2.0*zr),aw_min_radius,AW_MAX_RADIUS);
     float lit = 0.0;
     float front_lit = 0.0;
     for (int k = 0; k < AW_FILTER_TAPS; ++k)
@@ -865,13 +870,19 @@ float awDirectionVisibility(int c, float blend)
     rot += dot(d,vec3(0.13,0.21,0.37));
     // Blocker search: where does the source disk see blockers? Search plane z_s, radius R_s texels.
     float z_s = max(near,r_map+0.05);
-    float search = max(r_map*max(dist-z_s,0.0)/(z_s*dist),2.0/AW_USABLE);
+    // [SoftShadow floor] The floor is in texels of the receiver's own face, as in the face path: here as an angle, through the same
+    // conversion the morph's face-space footprint uses (2 zr / (AW_USABLE dist)). An on-axis texel's angle instead would be up to three
+    // times the face path's floor beside a cube corner, and the band where the two paths meet would show as a notch in every edge
+    // that crosses it. 0 with the floor off: the two max() below then keep their old bounds, bit for bit.
+    float aw_min_radius = min(max(AW_MIN_RADIUS,area_world_min_radius),AW_MAX_RADIUS);
+    float aw_min_angular = area_world_min_radius > 0.0 ? 2.0*aw_min_radius*zr/(AW_USABLE*dist) : 0.0;
+    float search = max(r_map*max(dist-z_s,0.0)/(z_s*dist),max(2.0/AW_USABLE,aw_min_angular));
     // Small sources retain the existing local-cache footprint. Larger authored
     // apertures grow the bound in proportion to their radius (up to 2 m).
     bool large = r_map > 0.25;
     float max_angular = (2.0*AW_MAX_RADIUS/AW_USABLE)*(large ? r_map/0.1 : 1.0);
     search = min(search,max_angular);
-    float old_search = clamp(r_map*max(zr-z_s,0.0)/(2.0*z_s*zr)*AW_USABLE,1.0,AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
+    float old_search = clamp(r_map*max(zr-z_s,0.0)/(2.0*z_s*zr)*AW_USABLE,max(1.0,aw_min_radius),AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
     int search_taps = large ? AW_SEARCH_TAPS/2 : AW_SEARCH_TAPS;
     float blocker_sum = 0.0;
     float blocker_n = 0.0;
@@ -894,9 +905,9 @@ float awDirectionVisibility(int c, float blend)
     if (blocker_n < 0.5) return 1.0;
     float z_b = max(blocker_sum/blocker_n,near);
     // Penumbra radius on the receiver plane -> texels of this face at the receiver's axial depth.
-    float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),2.0*AW_MIN_RADIUS/AW_USABLE);
+    float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),max(2.0*AW_MIN_RADIUS/AW_USABLE,aw_min_angular));
     radius = min(radius,max_angular);
-    float old_radius = clamp(r_map*max(zr-z_b*zr/dist,0.0)/(z_b*zr/dist)*AW_USABLE/(2.0*zr),AW_MIN_RADIUS,AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
+    float old_radius = clamp(r_map*max(zr-z_b*zr/dist,0.0)/(z_b*zr/dist)*AW_USABLE/(2.0*zr),aw_min_radius,AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
     int filter_taps = large ? AW_FILTER_TAPS/2 : AW_FILTER_TAPS;
     float lit = 0.0;
     float front_lit = 0.0;
@@ -931,10 +942,21 @@ float awVisibility(int c)
     float major = max(a.x,max(a.y,a.z));
     float second = min(max(a.x,a.y),min(max(a.y,a.z),max(a.x,a.z)));
     float edge = second/max(major,1.e-6);
-    float visibility;
-    if (area_world_info[c].z > 0.25) visibility = awDirectionVisibility(c,1.0);
-    else if (edge <= 0.9921875) visibility = awFaceVisibility(c);
-    else visibility = awDirectionVisibility(c,smoothstep(0.9921875,1.0,edge));
+    // One call site per path. Without the softness floor exactly one of them runs, as before: the direction path for a softbox, the
+    // face path inside a face, and in the last two receiver texels the direction path morphing the face footprint (blend < 1).
+    // [SoftShadow floor] With the floor the footprint is two or more texels wide and that morph cannot carry it: it mixes tap OFFSETS
+    // of two differently turned bases, which pinches a wide disk to a point halfway (a notch in every edge that crosses a cube edge).
+    // The band then cross-fades the two finished RESULTS instead: the face path and the pure direction path, both valid there.
+    bool large = area_world_info[c].z > 0.25;
+    bool floored = area_world_min_radius > AW_MIN_RADIUS;
+    float morph = smoothstep(0.9921875,1.0,edge);
+    bool face_path = !large && (edge <= 0.9921875 || floored);
+    bool direction_path = large || edge > 0.9921875;
+    float visibility = 1.0;
+    float direct = 1.0;
+    if (face_path) visibility = awFaceVisibility(c);
+    if (direction_path) direct = awDirectionVisibility(c,large || floored ? 1.0 : morph);
+    if (direction_path) visibility = face_path ? mix(visibility,direct,morph) : direct;
     return mix(1.0,visibility,backface);
 }
 // Diagnostic values for the channel's visibility (RenderAreaShadowWorldDebug, runtime only): 1 the world term alone, 2 the face index as grey (face / 5),

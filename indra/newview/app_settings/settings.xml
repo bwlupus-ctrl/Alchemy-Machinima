@@ -21198,6 +21198,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderSoftShadowMinSoftness</key>
+  <map>
+    <key>Comment</key>
+    <string>Minimum shadow softness: the least filter radius of a local light's soft shadow, in texels of that light's own shadow map (world cube shadows, and projector shadows with the metric penumbra, RenderSpotShadowPenumbraModel 1). A light with a very small source (World light size 0.01 m) has a penumbra far under one texel, and its shadow then shows the map's texels as a blocky outline (worst on the 512-texel cube faces). 2 (default) = no edge narrower than about two texels; 0 = off (the old one-texel kernels); capped at 4. Max penumbra still wins, and a projector kernel still narrows at a grazing contact.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>2.0</real>
+  </map>
   <key>RenderSpotShadowPenumbraModel</key>
   <map>
     <key>Comment</key>
