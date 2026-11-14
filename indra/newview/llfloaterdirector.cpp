@@ -1254,6 +1254,109 @@ private:
     mutable ALKitSnapshotStore mStore;
 };
 
+// Soft shadow presets (Light > Rim > Soft shadows card). Owns SHADOW settings only: never the rim values (the Rim page
+// has its own CineRigRim* preset) and never the master switches (Soft shadows, Quality, Work budget). Built-ins set
+// exactly the keys they list; a saved preset stores the whole owned set below (director_presets/soft_shadows.xml).
+const std::vector<std::string>& softShadowPresetSettings()
+{
+    static const std::vector<std::string> keys = {
+        "RenderLocalLightDefaultRadius",   "RenderLocalLightSizeFromPrim",  "RenderShadowSlotHysteresis",
+        "RenderAreaShadowLights",          "RenderAreaShadowWorldNear",     "RenderAreaShadowCubeMaps",
+        "RenderSoftShadowNoiseModel",      "RenderSoftShadowMinSoftness",   "RenderAreaShadowWorldWideTaps",
+        "RenderSpotShadowPenumbraModel",   "RenderSpotShadowBiasModel",     "RenderSoftShadowFillStep",
+        "RenderSunLightProjectorDeadSamples", "RenderSpotShadowFadeModel" };
+    return keys;
+}
+
+struct SoftShadowBuiltIn
+{
+    const char* id;
+    const char* label;
+    const char* tip;
+    LLSD        values; // map: setting name -> value; only these are written
+};
+
+const std::vector<SoftShadowBuiltIn>& softShadowBuiltIns()
+{
+    static const std::vector<SoftShadowBuiltIn> presets = {
+        { "stable", "Stable filming",
+          "For moving cameras: small world light size, steady shadow slots, 8 shadowed lights, World shadows on, steady noise, "
+          "minimum softness 2, 64 wide-light taps.",
+          LLSD().with("RenderLocalLightDefaultRadius", 0.10).with("RenderLocalLightSizeFromPrim", false)
+              .with("RenderShadowSlotHysteresis", true).with("RenderAreaShadowLights", 8)
+              .with("RenderAreaShadowWorldNear", 0.05).with("RenderAreaShadowCubeMaps", true)
+              .with("RenderSoftShadowNoiseModel", 2).with("RenderSoftShadowMinSoftness", 2.0)
+              .with("RenderAreaShadowWorldWideTaps", 64).with("RenderSpotShadowPenumbraModel", 1) },
+        { "crisp", "Crisp contact",
+          "For close-up stills: World light size 3 cm, 8 shadowed lights, World shadows on, steady noise, minimum softness 1.",
+          LLSD().with("RenderLocalLightDefaultRadius", 0.03).with("RenderLocalLightSizeFromPrim", false)
+              .with("RenderShadowSlotHysteresis", true).with("RenderAreaShadowLights", 8)
+              .with("RenderAreaShadowWorldNear", 0.05).with("RenderAreaShadowCubeMaps", true)
+              .with("RenderSoftShadowNoiseModel", 2).with("RenderSoftShadowMinSoftness", 1.0)
+              .with("RenderAreaShadowWorldWideTaps", 64).with("RenderSpotShadowPenumbraModel", 1) },
+        { "legacy", "Before 11/13",
+          "A/B: the soft-shadow fix switches of 11/13 set to their old behaviour (bias, fill step, noise, dead samples, fade, "
+          "penumbra, minimum softness, wide taps). Everything else is left alone.",
+          LLSD().with("RenderSpotShadowBiasModel", 0).with("RenderSoftShadowFillStep", true)
+              .with("RenderSoftShadowNoiseModel", 0).with("RenderSunLightProjectorDeadSamples", true)
+              .with("RenderSpotShadowFadeModel", 0).with("RenderSpotShadowPenumbraModel", 0)
+              .with("RenderSoftShadowMinSoftness", 0.0).with("RenderAreaShadowWorldWideTaps", 0) },
+        { "performance", "Performance",
+          "For heavy scenes: 4 shadowed lights, World shadows off, no extra wide-light taps, steady noise, minimum softness 2. "
+          "World light size is left alone.",
+          LLSD().with("RenderAreaShadowLights", 4).with("RenderAreaShadowCubeMaps", false)
+              .with("RenderAreaShadowWorldWideTaps", 0).with("RenderSoftShadowNoiseModel", 2)
+              .with("RenderSoftShadowMinSoftness", 2.0) } };
+    return presets;
+}
+
+class ALSoftShadowPresetProvider final : public ALKitPresetProvider
+{
+public:
+    ALSoftShadowPresetProvider() : mStore("soft_shadows", softShadowPresetSettings()) {}
+    const std::string& key() const override { return mKey; }
+    void list(std::vector<Entry>& out) const override
+    {
+        for (const SoftShadowBuiltIn& preset : softShadowBuiltIns())
+            out.push_back({ "b:" + std::string(preset.id), preset.label, true, preset.tip });
+        for (const std::string& name : mStore.names())
+            out.push_back({ "u:" + name, name, false });
+    }
+    bool apply(const std::string& id) override
+    {
+        if (id.compare(0, 2, "b:") == 0)
+        {
+            for (const SoftShadowBuiltIn& preset : softShadowBuiltIns())
+            {
+                if (id.substr(2) == preset.id)
+                {
+                    ALPresetLook::Load load("Apply shadow preset");
+                    ALPresetLook::apply(softShadowPresetSettings(), preset.values);
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (id.compare(0, 2, "u:") != 0)
+            return false;
+        const std::string              name  = id.substr(2);
+        const std::vector<std::string> names = mStore.names();
+        if (std::find(names.begin(), names.end(), name) == names.end())
+            return false;
+        return mStore.load(name);
+    }
+    bool canSaveUser() const override { return true; }
+    bool saveUser(const std::string& name) override { return mStore.save(name); }
+    bool canDelete(const std::string& id) const override { return id.compare(0, 2, "u:") == 0; }
+    bool deleteUser(const std::string& id) override { return canDelete(id) && mStore.remove(id.substr(2)); }
+    U64  revision() const override { return mStore.revision(); }
+    const std::vector<std::string>& trackedSettings() const override { return softShadowPresetSettings(); }
+
+private:
+    std::string                mKey = "soft_shadows";
+    mutable ALKitSnapshotStore mStore;
+};
+
 void registerLookPresetProviders()
 {
     static bool registered = false;
@@ -1269,6 +1372,7 @@ void registerLookPresetProviders()
     ALKitPresetRegistry::instance().add(std::make_unique<ALSteppedPresetProvider>());
     ALKitPresetRegistry::instance().add(std::make_unique<ALWeatherPresetProvider>());
     ALKitPresetRegistry::instance().add(std::make_unique<ALProjectorShaftPresetProvider>());
+    ALKitPresetRegistry::instance().add(std::make_unique<ALSoftShadowPresetProvider>());
 }
 } // anonymous namespace
 

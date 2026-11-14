@@ -11,6 +11,7 @@
 #include "alkitcard.h"
 #include "alkithistory.h"
 #include "alkitpage.h"
+#include "alkitpresets.h"
 #include "llfontgl.h"
 #include "llfloaterreg.h"
 #include "lllineeditor.h"
@@ -651,6 +652,8 @@ void ALKitRow::layoutRow(S32 w)
         mControl->setOrigin(ALKitStyle::ROW_INSET, 0);
         return;
     }
+    // A card-level preset strip (combo + Save as... + Delete) spans the whole row, label hidden: it is not a settings track.
+    const bool strip_row = dynamic_cast<ALKitPresetStrip*>(mControl) != nullptr;
     const S32 h = heightForWidth(w);
     const S32 code_offset = mCodeReadout ? 12 : 0;
     const S32 value_width = mFillWidth && mMeta.kind == "toggle" ? 24 : ALKitStyle::VALUE_W;
@@ -663,7 +666,7 @@ void ALKitRow::layoutRow(S32 w)
     reshape(w, h, true);
     if (mLabel)
     {
-        const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
+        const bool full_span_custom = ((mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty()) || strip_row;
         // The label box is the mockup's 100 px label track; the favorite star has its own slot (below).
         if (mLabelWrap)
             mLabel->reshape(label_width, llmax(20, h - 8), true);
@@ -678,7 +681,7 @@ void ALKitRow::layoutRow(S32 w)
         fitLabel(label_width);
     }
 
-    const bool full_span_custom = (mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty();
+    const bool full_span_custom = ((mMeta.kind == "custom" || mMeta.kind == "readout" || mMeta.kind == "button") && mMeta.label.empty()) || strip_row;
     const S32 x = full_span_custom ? ALKitStyle::ROW_INSET
                                    : ALKitStyle::ROW_INSET + label_width + ALKitStyle::COL_GAP;
     const S32 cw =
@@ -1406,7 +1409,8 @@ void ALKitRow::refreshFavorite()
         mFavorite->setToolTip(LLStringExplicit(favorite ? "Remove from Quick" : "Add to Quick"));
         // Rows outside a page (popover rows) have no page key and cannot be Quick favorites.
         const bool inline_bar = mFillWidth && mMeta.kind == "custom" && dynamic_cast<ALFlowGridItem*>(mControl);
-        mFavorite->setVisible(!inline_bar && ALKitQol::isValidFavorite(key) && (mHovered || favorite));
+        const bool preset_strip = dynamic_cast<ALKitPresetStrip*>(mControl) != nullptr; // no setting, never a Quick favourite
+        mFavorite->setVisible(!inline_bar && !preset_strip && ALKitQol::isValidFavorite(key) && (mHovered || favorite));
     }
 }
 
