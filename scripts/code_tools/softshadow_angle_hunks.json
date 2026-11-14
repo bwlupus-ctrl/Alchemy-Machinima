@@ -1,0 +1,12 @@
+{
+  "base": "0494b1f4d19",
+  "description": "Steady soft shadows (camera-angle stability): the RenderSoftShadowNoiseModel upload clamp and default (2 = noise anchored to the projector map). No other pipeline change.",
+  "files": {
+    "pipeline.cpp": [
+      {
+        "before": "    shader.uniform1i(LLStaticHashedString(\"soft_shadow_fill_retire\"), soft_fill_step ? 0 : 1);\n    static LLCachedControl<U32> soft_noise_model(gSavedSettings, \"RenderSoftShadowNoiseModel\", 1);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_noise_model\"), (S32)llmin((U32)soft_noise_model, 1U));\n    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, \"RenderSunLightProjectorDeadSamples\", false);\n",
+        "after": "    shader.uniform1i(LLStaticHashedString(\"soft_shadow_fill_retire\"), soft_fill_step ? 0 : 1);\n    // [SoftShadow anchor] 2 (default) = model 1 with the projector noise anchored to the\n    // light's own shadow map, so it does not re-roll when the camera moves.\n    static LLCachedControl<U32> soft_noise_model(gSavedSettings, \"RenderSoftShadowNoiseModel\", 2);\n    shader.uniform1i(LLStaticHashedString(\"soft_shadow_noise_model\"), (S32)llmin((U32)soft_noise_model, 2U));\n    static LLCachedControl<bool> sun_dead_samples(gSavedSettings, \"RenderSunLightProjectorDeadSamples\", false);\n"
+      }
+    ]
+  }
+}

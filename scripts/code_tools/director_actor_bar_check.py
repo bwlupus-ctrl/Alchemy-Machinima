@@ -212,6 +212,57 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
+SOFTSHADOW_ANGLE_DIGEST = "e3c38730f14b57eca3654ee034279e3cfe06af761b1e80ab0474c00574e1cee7"
+SOFTSHADOW_ANGLE_BASE = "0494b1f4d19"
+
+
+def reverse_softshadow_angle(source, name):
+    """Peel the newest pipeline layer (steady soft shadows: the anchored noise model's upload clamp, the softness floor
+    upload and the world shadow near-clip guard) before the metric penumbra layer (reverse_softshadow_metric calls this
+    first). Idempotent: skipped when none of its hunks is present; the pinned digest is checked every time. Exact:
+    reversing the reviewed hunks must reproduce the complete 0494b1f4d19 file."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_angle_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_ANGLE_DIGEST, ("reviewed soft shadow angle", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == SOFTSHADOW_ANGLE_BASE, "soft shadow angle base"
+    assert set(allowed["files"]) == {"pipeline.cpp"}, "soft shadow angle scope"
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "softshadow_angle_hunks.json",
+                                     SOFTSHADOW_ANGLE_DIGEST, "reviewed soft shadow angle")
+
+
+SOFTSHADOW_ANGLE_SHADER_DIGEST = "9539f999adb9c2bab58b06c7146d17aad693769c105264e005840efc0609a2ed"
+
+
+def reverse_softshadow_angle_shader(source):
+    """Peel the reviewed steady soft shadow edits of class1/deferred/shadowUtil.glsl (noise model 2: the noise anchored
+    to the projector's own map; the softness floor) before the metric penumbra layer (reverse_softshadow_metric_shader
+    calls this first). Idempotent: skipped when none of its hunks is present. Exact: every pinned hunk must be present
+    once and reversing them must reproduce the 0494b1f4d19 file byte for byte."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_angle_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_ANGLE_SHADER_DIGEST, ("reviewed soft shadow angle shader", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == SOFTSHADOW_ANGLE_BASE, "soft shadow angle shader base"
+    assert set(allowed["files"]) == {"shadowUtil.glsl"}, "soft shadow angle shader scope"
+    if not any(hunk["after"] in source for hunk in allowed["files"]["shadowUtil.glsl"]):
+        return source
+    path = "indra/newview/app_settings/shaders/class1/deferred/shadowUtil.glsl"
+    original = subprocess.check_output(["git", "show", allowed["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in allowed["files"]["shadowUtil.glsl"]:
+        assert original.count(hunk["before"]) == 1, "soft shadow angle shader baseline hunk"
+        assert source.count(hunk["after"]) == 1, "soft shadow angle shader hunk"
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == original, "soft shadow angle shader reversal must reproduce its exact baseline"
+    return source
+
+
 SOFTSHADOW_METRIC_DIGEST = "e6df75b85308e69fcfae1d6862e6bc22b70b52d4f972f9a36ecc030d67b330da"
 
 
@@ -222,6 +273,7 @@ def reverse_softshadow_metric(source, name):
     reproduce the complete 28c8c83af9d file (main with the fade layer, which is peeled next)."""
     import hashlib
     import json
+    source = reverse_softshadow_angle(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_metric_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_METRIC_DIGEST, ("reviewed soft shadow metric", "allowance pin")
@@ -244,6 +296,7 @@ def reverse_softshadow_metric_shader(source):
     28c8c83af9d file byte for byte (main with the fade layer, which is peeled next)."""
     import hashlib
     import json
+    source = reverse_softshadow_angle_shader(source)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_metric_shader_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_METRIC_SHADER_DIGEST, ("reviewed soft shadow metric shader", "allowance pin")

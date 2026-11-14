@@ -21168,13 +21168,13 @@
   <key>RenderSoftShadowNoiseModel</key>
   <map>
     <key>Comment</key>
-    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 1 (default) = hygiene: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash instead of a view-space sawtooth that slid with the camera, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements.</string>
+    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 2 (default) = steady: model 1, but a projector's noise is anchored to its own shadow map instead of the screen pixel, so a penumbra does not boil when the camera moves; the default 12-tap kernel is centred (no jitter) and rig lights with Detail shadows get the same still kernel. The sun keeps model 1. 1 = hygiene with a per-pixel screen hash: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements (a view-space sawtooth that slides with the camera).</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>U32</string>
     <key>Value</key>
-    <integer>1</integer>
+    <integer>2</integer>
   </map>
   <key>RenderSunLightProjectorDeadSamples</key>
   <map>

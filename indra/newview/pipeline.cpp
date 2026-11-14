@@ -28126,8 +28126,10 @@ void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const*
     // ignore each upload.
     static LLCachedControl<bool> soft_fill_step(gSavedSettings, "RenderSoftShadowFillStep", false);
     shader.uniform1i(LLStaticHashedString("soft_shadow_fill_retire"), soft_fill_step ? 0 : 1);
-    static LLCachedControl<U32> soft_noise_model(gSavedSettings, "RenderSoftShadowNoiseModel", 1);
-    shader.uniform1i(LLStaticHashedString("soft_shadow_noise_model"), (S32)llmin((U32)soft_noise_model, 1U));
+    // [SoftShadow anchor] 2 (default) = model 1 with the projector noise anchored to the
+    // light's own shadow map, so it does not re-roll when the camera moves.
+    static LLCachedControl<U32> soft_noise_model(gSavedSettings, "RenderSoftShadowNoiseModel", 2);
+    shader.uniform1i(LLStaticHashedString("soft_shadow_noise_model"), (S32)llmin((U32)soft_noise_model, 2U));
     static LLCachedControl<bool> sun_dead_samples(gSavedSettings, "RenderSunLightProjectorDeadSamples", false);
     shader.uniform1i(LLStaticHashedString("sun_projector_samples_removed"), sun_dead_samples ? 0 : 1);
     }
