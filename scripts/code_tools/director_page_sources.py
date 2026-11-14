@@ -290,6 +290,20 @@ def model_binding_override(page: str, widget: str) -> dict | None:
         hit = binding("indra/newview/pipeline.cpp", 0, "LLPipeline", "clearAwayWorldShadowPicks")
         hit.update(wired_class="LLFloaterDirector", wired_function="bindPage", text="explicit scoped binding: the Director commit callback clears the away picks")
         return hit
+    if page == "light_rim_tab" and widget == "soft_shadow_preset_strip":
+        # Shadow preset: a card-level kit_preset_strip row. The strip's combo commit (ALKitPresetStrip::onSelect) applies the
+        # soft_shadows provider (ALSoftShadowPresetProvider, llfloaterdirector.cpp); the line is found by name.
+        source = (ROOT / "indra/newview/alkitpresets.cpp").read_text(encoding="utf-8")
+        match = re.search(r"(?m)^.*ALKitPresetStrip::onSelect[ ]*[(]", source)
+        if match is None:
+            raise RuntimeError("missing model binding: ALKitPresetStrip::onSelect")
+        return {
+            "file": "indra/newview/alkitpresets.cpp", "line": source.count(chr(10), 0, match.start()) + 1,
+            "class": "ALKitPresetStrip", "function": "onSelect",
+            "wired_class": "ALKitPresetStrip", "wired_function": "postBuild",
+            "pattern": None, "wiring_only": False,
+            "text": "explicit scoped binding: the strip's combo applies the soft_shadows preset provider",
+        }
     if page == "light_rim_tab" and widget == "cine_rimq_enable_tag":
         return {
             "file": "indra/newview/alrigrimcontroller.cpp", "line": 124,

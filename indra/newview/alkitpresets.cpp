@@ -451,11 +451,12 @@ bool ALKitSnapshotStore::write(const LLSD& root) const
 std::string ALKitSnapshotStore::path() const
 { return gDirUtilp->getExpandedFilename(LL_PATH_USER_SETTINGS, "director_presets", mKey + ".xml"); }
 
-ALKitPresetStrip::Params::Params() : provider("provider"), page("page")
+ALKitPresetStrip::Params::Params() : provider("provider"), page("page"), name_prefix("name_prefix", "")
 {
 }
 
-ALKitPresetStrip::ALKitPresetStrip(const Params& params) : LLPanel(params), mProviderKey(params.provider), mPage(params.page)
+ALKitPresetStrip::ALKitPresetStrip(const Params& params) : LLPanel(params), mProviderKey(params.provider), mPage(params.page),
+    mPrefix(params.name_prefix.isProvided() && !params.name_prefix().empty() ? params.name_prefix() : presetPrefix(params.page))
 {
 }
 
@@ -471,7 +472,7 @@ bool ALKitPresetStrip::postBuild()
         LL_WARNS("DirectorKit") << "Missing preset provider " << mProviderKey << LL_ENDL;
         return true;
     }
-    const std::string  prefix = presetPrefix(mPage);
+    const std::string& prefix = mPrefix;
     LLComboBox::Params combo_params;
     // Preserve the shared shaft panel's lookup contract on the v2 page.
     combo_params.name = mProviderKey == "projector_shafts" ? "ps_preset" : prefix + "_preset";
@@ -509,8 +510,31 @@ bool ALKitPresetStrip::postBuild()
             ALKitSettingWatch::instance().watch(setting, [this](const LLSD&, const LLSD&) { trackedSettingChanged(); }));
     }
     mShaftEngine = gSavedSettings.getU32("BDMergeProjectorVolumetricsEngine");
+    layoutChildren();
     refresh();
     return true;
+}
+
+// Combo + Save as... + Delete share one row. At the page bar's 334 px this is exactly the original fixed layout
+// (190 / 74 / 58); a narrower host (a card row at the minimum card width) shrinks only the combo.
+void ALKitPresetStrip::layoutChildren()
+{
+    if (!mCombo || !mName || !mSave || !mDelete)
+        return;
+    // A strip with no authored size (XUI-created, before its first reshape) gets the page bar's 334 x 24.
+    const S32 width   = getRect().getWidth() > 0 ? getRect().getWidth() : 334;
+    const S32 height  = getRect().getHeight() > 0 ? getRect().getHeight() : 24;
+    const S32 combo_w = llclamp(width - 144, 90, 190);
+    mCombo->setRect(LLRect(0, height, combo_w, 0));
+    mName->setRect(LLRect(0, height, combo_w, 0));
+    mSave->setRect(LLRect(combo_w + 6, height, combo_w + 80, 0));
+    mDelete->setRect(LLRect(combo_w + 86, height, combo_w + 144, 0));
+}
+
+void ALKitPresetStrip::reshape(S32 width, S32 height, bool called_from_parent)
+{
+    LLPanel::reshape(width, height, called_from_parent);
+    layoutChildren();
 }
 
 void ALKitPresetStrip::refresh()

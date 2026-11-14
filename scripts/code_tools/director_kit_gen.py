@@ -385,8 +385,9 @@ def validate_data(data: dict) -> None:
     # Per-clone Stay in place adds one searchable switch: 2525 -> 2526 (11/13 integration).
     # Minimum shadow softness: one persistent renderer slider on Light > Rim > Soft shadows, 2526 -> 2527 (11/13).
     # Wide light taps: one persistent renderer spinner under it, 2527 -> 2528 (11/13).
-    if len(pages) != 40 or row_count != 2528:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2528")
+    # Shadow preset: one card-level kit_preset_strip row at the top of Light > Rim > Soft shadows (soft_shadows provider), 2528 -> 2529 (11/13).
+    if len(pages) != 40 or row_count != 2529:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2529")
     stay = [row for _, page in pages if page["name"] == "ghosts_tab"
             for card in page["cards"] if card["id"] == "pose"
             for row in card["rows"] if row.get("w") == "stay_in_place_check"]
@@ -745,6 +746,10 @@ def control_for(row: dict, hosted: ET.Element | None, referenced: set[str], repo
     custom_tag = row.get("custom_tag")
     if custom_tag:
         child = ET.Element(str(custom_tag), {"name": widget})
+        # custom_attrs: authored XUI attributes of a code-built custom control (a card-level kit_preset_strip names its
+        # provider, page and widget-name prefix this way).
+        for key, value in sorted(row.get("custom_attrs", {}).items()):
+            child.set(str(key), scalar(value))
         if row.get("readout"):
             # Compact avatar target rows: name/source above two pairs of actions.
             child.set("width", "156")

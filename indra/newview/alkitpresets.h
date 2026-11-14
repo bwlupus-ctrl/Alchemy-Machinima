@@ -74,9 +74,13 @@ public:
     {
         Mandatory<std::string> provider;
         Mandatory<std::string> page;
+        // Widget-name prefix for the combo/editor/buttons; empty derives it from the page. A card-level strip sets it so
+        // it cannot collide with the page-level strip's names.
+        Optional<std::string>  name_prefix;
         Params();
     };
     bool postBuild() override;
+    void reshape(S32 width, S32 height, bool called_from_parent = true) override;
     void refresh();
 
 protected:
@@ -84,6 +88,7 @@ protected:
     explicit ALKitPresetStrip(const Params& params);
 
 private:
+    void                                            layoutChildren();
     void                                            onSelect();
     void                                            showSaveEditor();
     void                                            save();
@@ -93,6 +98,7 @@ private:
     bool                                            isModified() const;
     std::string                                     mProviderKey;
     std::string                                     mPage;
+    std::string                                     mPrefix;
     std::string                                     mAppliedId;
     std::string                                     mAppliedLabel;
     ALKitPresetProvider*                            mProvider = nullptr;
