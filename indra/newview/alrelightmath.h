@@ -109,18 +109,6 @@ constexpr double shadowSourceRadius(double authored)
     return authored > 0.0 ? (authored < kShadowSourceMaxRadius ? authored : kShadowSourceMaxRadius)
                           : kShadowSourceDefaultRadius;
 }
-// Minimum shadow softness (RenderSoftShadowMinSoftness): the least kernel radius of the metric
-// projector kernel and of the world cube filter, in texels of the light's own shadow map, as
-// uploaded. 0 or less = off (the kernels' own minimum: one texel, 0.7 texel on a cube face).
-// Capped at 4 texels: past that it is a blur of every contact shadow, not a guard against
-// texel-sized edges. Not a number = the default.
-constexpr double kSoftShadowFloorDefault = 2.0;
-constexpr double kSoftShadowFloorMax = 4.0;
-constexpr double softShadowFloor(double setting)
-{
-    return setting != setting ? kSoftShadowFloorDefault
-         : setting <= 0.0 ? 0.0 : (setting < kSoftShadowFloorMax ? setting : kSoftShadowFloorMax);
-}
 // Metric projector penumbra (RenderSpotShadowPenumbraModel 1): how the dimensionless softness
 // controls of the old model act on the source radius.
 //   - A rig light in fixture mode has an authored physical source size, and its softness
@@ -191,8 +179,6 @@ static_assert(within(spotPenumbraTexels(kScale, kA, spotPenumbraSetback(-0.3, -1
 static_assert(within(spotPenumbraScale(0.1, 2048.0, 2.0, -1.05), 2.0 * 195.047619, 1.e-4), "spot penumbra focal");
 static_assert(spotPenumbraScale(0.1, 2048.0, 1.0, 0.0) == 0.0 && spotPenumbraScale(0.0, 2048.0, 1.0, -1.05) == 0.0 &&
               spotPenumbraSetback(0.4, 0.0) == 0.0, "spot penumbra invalid");
-static_assert(softShadowFloor(0.0) == 0.0 && softShadowFloor(-3.0) == 0.0 && softShadowFloor(2.0) == 2.0 &&
-              softShadowFloor(0.5) == 0.5 && softShadowFloor(99.0) == 4.0, "soft shadow floor");
 static_assert(shadowSourceRadius(0.0) == 0.1 && shadowSourceRadius(-1.0) == 0.1 && shadowSourceRadius(0.3) == 0.3 &&
               shadowSourceRadius(5.0) == 2.0, "shadow source radius");
 static_assert(spotPenumbraTrim(true, 8.0, 0.5) == 1.0 && spotPenumbraTrim(false, 0.0, 3.0) == 1.0 &&

@@ -28126,13 +28126,13 @@ void LLPipeline::bindSunShadowState(LLGLSLShader& shader, LLRenderTarget* const*
     // ignore each upload.
     static LLCachedControl<bool> soft_fill_step(gSavedSettings, "RenderSoftShadowFillStep", false);
     shader.uniform1i(LLStaticHashedString("soft_shadow_fill_retire"), soft_fill_step ? 0 : 1);
-    // [SoftShadow anchor] 2 (default) = model 1 with the projector noise anchored to the
-    // light's own shadow map, so it does not re-roll when the camera moves.
+    // [SoftShadow still] 2 (default) = model 1 with the projector surface kernels held still
+    // (no per-pixel term), so a penumbra does not re-roll when the camera moves.
     static LLCachedControl<U32> soft_noise_model(gSavedSettings, "RenderSoftShadowNoiseModel", 2);
     shader.uniform1i(LLStaticHashedString("soft_shadow_noise_model"), (S32)llmin((U32)soft_noise_model, 2U));
     // [SoftShadow floor] The least radius of the metric projector kernel, texels of the light's map.
-    static LLCachedControl<F32> soft_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 2.f);
-    shader.uniform1f(LLStaticHashedString("soft_shadow_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(soft_min_softness)));
+    static LLCachedControl<F32> soft_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 1.5f);
+    shader.uniform1f(LLStaticHashedString("soft_shadow_min_radius"), static_cast<F32>(ALWorldShadow::softShadowFloor(soft_min_softness)));
     static LLCachedControl<bool> sun_dead_samples(gSavedSettings, "RenderSunLightProjectorDeadSamples", false);
     shader.uniform1i(LLStaticHashedString("sun_projector_samples_removed"), sun_dead_samples ? 0 : 1);
     }
@@ -30779,6 +30779,7 @@ static std::string world_shadow_label(const LLUUID& id)
 // ALWorldShadow::kNearClipWarn and reaches into an avatar's bounds, else 0. Written by generateWorldShadowCubes, read by the
 // Director status line and the throttled log (all on the main thread).
 static std::array<F32, ALWorldShadow::kMaxLights> sWorldShadowNearCut{};
+static std::array<bool, ALWorldShadow::kMaxLights> sWorldShadowNearCutByEmitter{};   // the light's own prim raised that plane, not the setting
 
 std::string LLPipeline::worldShadowReadout() const
 {
@@ -30793,7 +30794,7 @@ std::string LLPipeline::worldShadowReadout() const
     std::string near_note;
     for (U32 k = 0; k < ALWorldShadow::kMaxLights && near_note.empty(); ++k)
         if (reasons[k] == ALWorldShadow::SlotReason::Rendered && sWorldShadowNearCut[k] > 0.f)
-            near_note = ALWorldShadow::nearClipNote(sWorldShadowNearCut[k], labels[k]) + " ";
+            near_note = ALWorldShadow::nearClipNote(sWorldShadowNearCut[k], labels[k], sWorldShadowNearCutByEmitter[k]) + " ";
     return near_note + ALWorldShadow::worldShadowReport(mWorldShadowState, mWorldShadowLights, labels, reasons, mWorldShadowPlanned,
         mWorldShadowRequested, mWorldShadowBudgeted);
 }
@@ -31795,11 +31796,11 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 gAreaShadowFilterProgram.uniform4fv(LLStaticHashedString("area_world_info"),4,world_info[0].mV);
                 gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString("area_world_seed"),1,world_seed);
                 // [SoftShadow floor] The same setting on the cube filter, texels of the cube face.
-                static LLCachedControl<F32> world_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 2.f);
-                gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_world_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));
+                static LLCachedControl<F32> world_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 1.5f);
+                gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_world_min_radius"), static_cast<F32>(ALWorldShadow::softShadowFloor(world_min_softness)));
                 // [Softbox taps] The most filter taps a source wider than 0.25 m may use (0 = the old 16).
                 static LLCachedControl<U32> world_wide_taps(gSavedSettings, "RenderAreaShadowWorldWideTaps", 64);
-                gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_wide_taps"), (S32)llmin((U32)world_wide_taps, 128U));
+                gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_wide_taps"), ALWorldShadow::wideSourceTaps(world_wide_taps));
                 gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_world_rot"),3,world_rot);
                 static LLCachedControl<S32> world_debug(gSavedSettings, "RenderAreaShadowWorldDebug", 0);
                 gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_debug"),world_any ? llclamp(static_cast<S32>(world_debug),0,3) : 0);
@@ -38867,14 +38868,17 @@ void LLPipeline::generateWorldShadowCubes(LLCamera& camera)
         for (LLCharacter* character : LLCharacter::sInstances)
         {
             LLVOAvatar* avatar = (LLVOAvatar*)character;
-            if (!avatar || avatar->isDead()) continue;
+            // Preview avatars of UI floaters are not in the world (animated objects are, and they cast).
+            if (!avatar || avatar->isDead() || avatar->isUIAvatar()) continue;
             const LLVector3* ext = avatar->getLastAnimExtents();
             if (!ext[0].isFinite() || !ext[1].isFinite()) continue;
             const double lo[3] = { ext[0].mV[VX], ext[0].mV[VY], ext[0].mV[VZ] };
             const double hi[3] = { ext[1].mV[VX], ext[1].mV[VY], ext[1].mV[VZ] };
             if (ALWorldShadow::nearCubeReaches(lo, hi, p, jobs[j].near_plane))
             {
+                static LLCachedControl<F32> near_setting(gSavedSettings, "RenderAreaShadowWorldNear", 0.05f);
                 sWorldShadowNearCut[jobs[j].slot] = jobs[j].near_plane;
+                sWorldShadowNearCutByEmitter[jobs[j].slot] = ALWorldShadow::nearRaisedByEmitter(jobs[j].near_plane, near_setting());
                 break;
             }
         }

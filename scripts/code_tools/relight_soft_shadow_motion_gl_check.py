@@ -15,35 +15,39 @@ the same value for the same world point in every frame, so the measurement is
   model 0   RenderSoftShadowNoiseModel 0, the legacy statements: the Poisson jitter is a view-space sawtooth that
             slides with the camera, the Vogel rotation a screen-pixel hash.
   model 1   the screen-pixel hash everywhere: every pixel a world point crosses re-rolls its kernel.
-  model 2   the default: noise anchored to the lamp's own shadow map (softShadowAnchored), the Poisson disk centred.
+  model 2   the default: the projector surface kernels take no per-pixel term at all (the hash is replaced by its
+            mean, 0.5: the Poisson disk is centred, the Vogel and search rotations are the slot's own, the bisection
+            grid has one fixed shift).
 
-Asserted (Poisson = the default kernel, and Vogel; metric and legacy penumbra; an ordinary projector and a rig light
-on its own Detail receiver):
+Asserted (Poisson = the default kernel, and Vogel; metric and legacy penumbra):
   motion    positive control: the screen hash flickers (model 1, at least 3 steps per frame in the whole-pixel trucks);
             model 2 stays under 0.05 steps there (and so under model 0), and within 1 step of the floor in the
             half pixel truck.
   quality   against a 72-tap reference (model 1 averaged over six whole-pixel trucks) the low-frequency error of
             model 2 is at most half of model 0's on the Poisson kernel (the sawtooth displaces the edge), and no
             worse than the constant-noise render + 1 step on the Vogel kernel.
-  noise     a wide Vogel penumbra of model 2 still depends on the anchored value (it is a dither, not a constant);
-            a contact shadow (kernel under 2 texels) does not depend on it at all; and the anchored value is
-            continuous on the surface: under a truck of a tenth of a pixel the 99th percentile step of a world point
-            stays within 3 steps of the constant-noise render's (cells that are not interpolated jump at their
-            borders: measured 9 steps over it).
-  leak      a sun sample taken after a projector sample equals the sun sample taken alone (the anchor ends with its
-            own sample); the fixture's sun kernel does read the screen hash (positive control).
+  still     model 2 does not read the screen hash at all (bit-identical with the hash replaced by another constant
+            function of the pixel), wide penumbra and contact shadow.
+  leak      a sun sample taken after a projector sample equals the sun sample taken alone (the still flag ends with
+            its own sample); the fixture's sun kernel does read the screen hash (positive control).
+  detail    a rig light on its own Detail receiver (RenderSpotShadowBiasModel 1) is the legacy kernel, bit-identical
+            under every noise model. Reported: its flicker (the legacy sawtooth / hash). Stilling it too was built in
+            round 1 and taken out: the two extra statements in the legacy function cost 0.18 ms per 16 lights at 4K
+            for every projector, Detail or not (the driver's code shape, measured). RenderSpotShadowBiasModel 2 puts
+            Detail lights on the surface kernel and so on model 2.
   identity  models 0 and 1 are byte-identical to BASE in every case.
-  source    the pipeline uploads the setting clamped to 2 and settings.xml defaults it to 2.
+  source    the pipeline uploads the setting clamped to 2 and settings.xml defaults it to 2; model 2 adds no shader
+            input (no screen size, no derivative, no new uniform): it is reachable only through the surface kernel,
+            whose switch (the bias model) is uploaded in the same stage as the noise model.
 Reported, not asserted (attribution): which noise term of model 1 carries the flicker (kernel, metric search rotation,
 bisection shift), on a penumbra the cap does not saturate.
-Planted regressions must each be rejected: the anchor taken from the screen pixel, a cell that ignores the pixel
-footprint, a cell that is not interpolated, a full-turn rotation, the Poisson jitter kept, the anchor left set for
-the next sampler, model 2 routed to the screen hash, model 1 given the anchor, the Detail light left on the sawtooth
-or on the screen rotation.
+Planted regressions must each be rejected: model 2 left on the screen hash, model 1 made still, the still flag
+left set for the next sampler, the flag set outside the surface kernel's soft branch.
 """
 import argparse
 import json
 import math
+import re
 from pathlib import Path
 
 import numpy as np
@@ -194,26 +198,20 @@ CASES = [
     dict(name='poisson, rig Detail light', radius=.04, xc=2.2, cap=12., res=2048, metric=False, vogel=False, half=HALF, detail=True),
     dict(name='vogel, rig Detail light', radius=.04, xc=2.2, cap=12., res=2048, metric=False, vogel=True, half=HALF, detail=True),
 ]
-QUICK = (0, 3, 7, 8)   # the cases a planted regression is run against
+QUICK = (0, 3, 7)   # the cases a planted regression is run against
 WHOLE = ('truck 1 px', 'truck 3 px')
 LIMIT = dict(control=3., whole=.05, over_model0=.05, over_floor=1., band_share=.5, band_over_flat=1., step_over_floor=3.)
 
 # Exact statements of shadowUtil.glsl (a planted regression or a probe replaces one; drift fails the run).
 SCREEN_HASH = '    return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));\n'
-ANCHOR_VALUE = '    return abs(n * 2.0 - 1.0);\n'
-ANCHOR_SET = '        if (soft_shadow_noise_model == 2) g_spot_noise = softShadowAnchored(stc.xy * proj_shadow_res);\n'
-ANCHOR_CLEAR = '        g_spot_noise = -1.0;   // [SoftShadow anchor] the anchored noise ends with its own sample\n'
-CELL = '        g_spot_cell = log2(clamp(SOFT_NOISE_CELL_PIXELS*pixel/max(texel,1.e-9),1.0,4096.0));\n'
-BILINEAR = '    return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);\n'
-TURN = 'const float SOFT_NOISE_TURN = 0.0625;'
-CENTRED = '    if (g_spot_noise >= 0.0) return 0.5;   // [SoftShadow anchor] the centred disk\n'
-STILL_JIT = '            if (still) jit = 0.5;   // [SoftShadow anchor]\n'
-STILL_PHI = '            if (still) phi = 0.0;   // [SoftShadow anchor]\n'
+STILL_IGN = '    if (g_spot_still) return 0.5;\n'
+STILL_SET = '        g_spot_still = soft_shadow_noise_model == 2;\n'
+STILL_CLEAR = '        g_spot_still = false;   // [SoftShadow still] ends with its own sample\n'
 LEGACY_JIT = '            float jit = fract(pos_screen.y * 0.666666666);\n'
 LEGACY_PHI = ('            float phi = 6.2831853 * fract(52.9829189 *\n'
               '                        fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));\n')
 # every noise term at a constant: the screen hash, the anchored value, the Detail light's legacy statements
-FLAT = [(SCREEN_HASH, '    return 0.37;\n'), (ANCHOR_VALUE, '    return 0.37;\n'),
+FLAT = [(SCREEN_HASH, '    return 0.37;\n'),
         (LEGACY_JIT, '            float jit = 0.5;\n'), (LEGACY_PHI, '            float phi = 0.0;\n')]
 SHIFT = '        float shift = hi * SPOT_METRIC_BISECT_STEP * softShadowIGN();\n'
 KERNEL_PHI = '        float phi = softShadowPhi(pr, slot_phase);\n'
@@ -225,16 +223,11 @@ NO_KERNEL = [(KERNEL_PHI, '        float phi = slot_phase;\n'), (KERNEL_JIT, '0.
 
 def negatives():
     return {
-        'anchor_from_screen_pixel': [(ANCHOR_SET, ANCHOR_SET.replace('stc.xy * proj_shadow_res', 'gl_FragCoord.xy'))],
-        'cell_ignores_pixel_footprint': [(CELL, '        g_spot_cell = 0.0;\n')],
-        'cell_not_interpolated': [(BILINEAR, '    return h.x;\n')],
-        'full_turn_rotation': [(TURN, 'const float SOFT_NOISE_TURN = 1.0;')],
-        'poisson_jitter_kept': [(CENTRED, '    if (g_spot_noise >= 0.0) return g_spot_noise;\n')],
-        'anchor_left_set': [(ANCHOR_CLEAR, '')],
-        'model2_on_screen_hash': [(ANCHOR_SET, ANCHOR_SET.replace('== 2', '== 3'))],
-        'model1_takes_anchor': [(ANCHOR_SET, ANCHOR_SET.replace('== 2', '!= 0'))],
-        'detail_light_keeps_sawtooth': [(STILL_JIT, '')],
-        'detail_light_keeps_screen_rotation': [(STILL_PHI, '')],
+        'model2_left_on_the_screen_hash': [(STILL_IGN, '')],
+        'model2_never_selected': [(STILL_SET, STILL_SET.replace('== 2', '== 3'))],
+        'model1_made_still': [(STILL_SET, STILL_SET.replace('== 2', '!= 0'))],
+        'still_flag_left_set': [(STILL_CLEAR, '')],
+        'still_flag_set_for_every_sampler': [('bool g_spot_still = false;', 'bool g_spot_still = true;')],
     }
 
 
@@ -243,6 +236,9 @@ def motion_failures(row, case):
     tag = '%s, %s: ' % (row['case'], row['sequence'])
     if row['points'] < 800:
         return [tag + 'too few penumbra points (%d)' % row['points']]
+    if case.get('detail'):
+        # the legacy Detail kernel: not stilled (see the module text); it must simply be the same under every model
+        return [] if row['model0'] == row['model1'] == row['model2'] else [tag + 'the Detail kernel changes with the noise model']
     if row['sequence'] in WHOLE:
         if row['floor'] > .05:
             f.append(tag + 'the constant-noise render changes with the camera (%.3f): the fixture, the bias or the search has a camera term' % row['floor'])
@@ -272,46 +268,35 @@ def quality_failures(row, case):
 
 
 def noise_check(r, host, defaults, edits=()):
-    """Model 2 on the Vogel kernel: a wide penumbra depends on the anchored value, a contact shadow does not."""
+    """Model 2 reads no per-pixel hash: the render is bit-identical when the screen hash is another function of the pixel."""
     rows, failures = [], []
-    live = B.link(r, M.Mut(list(edits)), 'noise live')
-    still = B.link(r, M.Mut(list(edits) + [(ANCHOR_VALUE, '    return 0.37;\n')]), 'noise constant anchor')
-    case = CASES[3]
-    scene, e, run, metric = setup_case(r, host, defaults, case)
-    cam, g, d, n = view(scene, sequences(HALF)['truck 1 px'][0], HALF)
-    a, b = (frames_of(r, prog, [(cam, g, d, n)], e, run, metric, case, 2)[0][2] for prog in (live, still))
-    part = (g['surf'] == 0) & (a > .02) & (a < .98)
-    wide = float((np.abs(a - b)[part] > 1e-6).mean()) if part.any() else 0.
-    rows.append(dict(check='noise', scene='wide', pixels=int(part.sum()), depends_on_anchor=wide))
-    if part.sum() < 2000 or wide < .5:
-        failures.append('noise: a wide Vogel penumbra of model 2 does not use the anchored value (%.2f)' % wide)
-    # continuity: two frames a tenth of a pixel apart, the same world points
-    px = 2. * HALF / RES
-    c0 = sequences(HALF)['truck 1 px'][0]
-    views = [view(scene, c0 + np.array([.1, .1]) * px * k, HALF) for k in range(2)]
-    vals, keep, _ = follow(frames_of(r, live, views, e, run, metric, case, 2), HALF)
-    flat_vals = follow(frames_of(r, still, views, e, run, metric, case, 2), HALF)[0]
-    pen = keep & (flat_vals.mean(axis=0) > .05) & (flat_vals.mean(axis=0) < .95)
-    row = dict(check='noise', scene='continuity', points=int(pen.sum()))
-    if pen.any():
-        row.update(step_p99=float(np.percentile(np.abs(vals[1] - vals[0])[pen] * 255., 99)),
-                   floor_p99=float(np.percentile(np.abs(flat_vals[1] - flat_vals[0])[pen] * 255., 99)))
-    rows.append(row)
-    if pen.sum() < 2000 or row['step_p99'] > row['floor_p99'] + LIMIT['step_over_floor']:
-        failures.append('noise: the anchored value is not continuous on the surface (99th percentile step %s over a tenth of a pixel, floor %s)' %
-                        (row.get('step_p99'), row.get('floor_p99')))
+    live = B.link(r, M.Mut(list(edits)), 'still live')
+    other = B.link(r, M.Mut(list(edits) + [(SCREEN_HASH, '    return fract(dot(gl_FragCoord.xy, vec2(0.37, 0.61)));\n')]), 'still, other hash')
+    for case in (CASES[1], CASES[3]):
+        scene, e, run, metric = setup_case(r, host, defaults, case)
+        views = [view(scene, sequences(HALF)['truck 1 px'][0], HALF)]
+        row = dict(check='still', case=case['name'])
+        for model in (1, 2):
+            a, b = (frames_of(r, prog, views, e, run, metric, case, model)[0][2] for prog in (live, other))
+            part = (views[0][1]['surf'] == 0) & (a > .02) & (a < .98)
+            row['model%d_depends_on_hash' % model] = float((np.abs(a - b)[part] > 1e-6).mean()) if part.any() else None
+            row['pixels'] = int(part.sum())
+        rows.append(row)
+        if row['pixels'] < 2000 or row['model1_depends_on_hash'] < .5:
+            failures.append('still %s: positive control failed, model 1 does not read the hash here (%s)' % (case['name'], json.dumps(row)))
+        if row['model2_depends_on_hash'] != 0.:
+            failures.append('still %s: model 2 still reads the screen hash on %.3f of the penumbra' % (case['name'], row['model2_depends_on_hash']))
     e = M.lamp()
     scene = M.scene_of([M.card(.04)])
     cam, d, n, coord, mask = M.edge_view(scene, 0., .02)
     r.native_map(scene, B.light_of(e), e['fov'], 2048)
     _, metric = M.metric_of(host, r, e, .04)
     run = M.run_of(defaults, 24.)
-    a, b = (M.render(r, prog, cam, d, n, e, run, metric, taps=16, vogel=True, noise=2) for prog in (live, still))
-    part = mask & ((a > .02) & (a < .98) | (b > .02) & (b < .98))
-    same = float((np.abs(a - b)[part] < 1e-6).mean()) if part.any() else 0.
-    rows.append(dict(check='noise', scene='contact', pixels=int(part.sum()), independent_of_anchor=same))
-    if part.sum() < 100 or same < .999:
-        failures.append('noise: a contact shadow depends on the anchored value (%.3f, %d px)' % (same, int(part.sum())))
+    a, b = (M.render(r, prog, cam, d, n, e, run, metric, taps=16, vogel=True, noise=2) for prog in (live, other))
+    row = dict(check='still', case='contact', identical=bool(np.array_equal(a, b)), pixels=int((mask & (a > .02) & (a < .98)).sum()))
+    rows.append(row)
+    if not row['identical'] or row['pixels'] < 100:
+        failures.append('still: a contact shadow of model 2 reads the screen hash (%s)' % json.dumps(row))
     return rows, failures
 
 
@@ -378,18 +363,65 @@ def identity_check(r, host, defaults, live, base):
     return checks
 
 
+def body_of(text, signature):
+    start = text.index(signature)
+    depth, i = 0, text.index('{', start)
+    while True:
+        depth += text[i] == '{'
+        depth -= text[i] == '}'
+        if depth == 0:
+            return text[start:i + 1]
+        i += 1
+
+
+def reach_contracts(pipeline, shader, base_shader):
+    """Review round 1 (GLM a): what model 2 needs, and where it can run.
+
+    Model 2 adds no shader input: no screen size, no inverse projection term, no derivative, no new uniform (counted
+    against BASE below). Its one flag is set only in the soft branch of pcfSpotShadowSurface, which is reachable only with
+    g_spot_bias_mode == 1, i.e. spot_shadow_bias_model != 0. A program that never receives that upload keeps the shader
+    default 0 (VCam / Prism feeds, probe captures, the actor key pass: whatever they bind). The bias model is uploaded in ONE
+    place, the Tuning stage of LLPipeline::bindSunShadowState, and the noise model in that same stage: "can reach the still
+    kernel" implies "has this frame's noise model". Every call of bindSunShadowState is inside bindDeferredShader or directly
+    follows a bindDeferredShader of the same program."""
+    sun = body_of(pipeline, 'void LLPipeline::bindSunShadowState(')
+    tuning = sun[sun.index('stage == SunShadowStage::Tuning)'):sun.index('stage == SunShadowStage::Directions)')]
+    deferred = body_of(pipeline, 'void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target')
+    calls = [i for i in range(len(pipeline)) if pipeline.startswith('bindSunShadowState(shader', i) and not pipeline.startswith('void LLPipeline::', i - 17)]
+    start = pipeline.index('void LLPipeline::bindDeferredShader(LLGLSLShader& shader, LLRenderTarget* light_target')
+    inside = [start <= i < start + len(deferred) for i in calls]
+    after = ['bindDeferredShader(shader);' in pipeline[max(i - 120, 0):i] for i in calls]
+    surface = body_of(shader, 'float pcfSpotShadowSurface(')
+    soft = surface[surface.index('if (soft_shadow_enable != 0 || projector_softness > 0.0)'):]
+    count = lambda text, token: len(re.findall(token, text))
+    return {
+        'bias_and_noise_model_uploaded_in_the_same_stage': tuning.count('LLStaticHashedString("spot_shadow_bias_model")') == 1 and
+            tuning.count('LLStaticHashedString("soft_shadow_noise_model")') == 1 and
+            pipeline.count('"spot_shadow_bias_model"') == 1 and pipeline.count('"soft_shadow_noise_model"') == 1,
+        'every_sun_state_bind_follows_a_deferred_bind': len(calls) == 5 and all(a or b for a, b in zip(inside, after)) and sum(inside) == 4,
+        'bias_model_default_is_legacy': 'uniform int spot_shadow_bias_model = 0;' in shader,
+        'still_flag_set_once_in_the_surface_soft_branch': shader.count('g_spot_still = soft_shadow_noise_model == 2;') == 1 and
+            soft.count(STILL_SET) == 1 and shader.count('g_spot_still = ') == 3 and shader.count(STILL_CLEAR) == 1 and
+            'bool g_spot_still = false;' in shader and shader.count('pcfSpotShadowSurface(') == 2,
+        'still_flag_read_once': shader.count('if (g_spot_still)') == 1 and STILL_IGN in body_of(shader, 'float softShadowIGN()'),
+        'no_new_shader_inputs': all(count(shader, token) == count(base_shader, token) for token in
+                                    (r'gl_FragCoord', r'screen_res', r'inv_proj', r'dFd[xy]', r'fwidth')) and
+            sorted(re.findall(r'^uniform [^;]+;', shader, re.M)) == sorted(re.findall(r'^uniform [^;]+;', base_shader, re.M) +
+                                                                          ['uniform float soft_shadow_min_radius = 0.0;']),
+    }
+
+
 def source_contracts(tree):
     pipeline = tree.read('indra/newview/pipeline.cpp')
     settings = tree.read('indra/newview/app_settings/settings.xml')
     block = settings.split('<key>RenderSoftShadowNoiseModel</key>')[1].split('</map>')[0]
     shader = tree.read(B.SHADER)
     return {
+        **{'reach_' + k: v for k, v in reach_contracts(pipeline, shader, G.SourceTree(BASE).read(B.SHADER)).items()},
         'upload_clamps_to_2': pipeline.count('shader.uniform1i(LLStaticHashedString("soft_shadow_noise_model"), (S32)llmin((U32)soft_noise_model, 2U));') == 1,
         'setting_default_2': '<integer>2</integer>' in block and '<string>U32</string>' in block,
         'cached_default_2': pipeline.count('static LLCachedControl<U32> soft_noise_model(gSavedSettings, "RenderSoftShadowNoiseModel", 2);') == 1,
         'shader_default_legacy': 'uniform int soft_shadow_noise_model = 0;' in shader,
-        'anchor_set_once': shader.count('g_spot_noise = softShadowAnchored(') == 1 and shader.count('g_spot_noise = -1.0;') == 2,   # the declaration and the one clear
-        'no_derivatives_in_anchor': 'dFdx' not in shader.split('float softShadowCellNoise')[1].split('float softShadowPhi')[0],
     }
 
 
@@ -460,6 +492,9 @@ def evaluate(out, do_negatives=True):
                 _, f, mutant = run_checks(r, host, defaults, edits, cases=QUICK)
                 why = f[0] if f else 'identity'
                 caught = bool(f) or not all(identity_check(r, host, defaults, mutant, base).values())
+                if not caught:   # source-level regressions: the contracts on the mutated shader text
+                    caught = not all(source_contracts(M.Mut(edits)).values())
+                    why = 'source contract'
             except AssertionError as ex:
                 caught, why = True, 'raised ' + str(ex)[:100]
             rejected[name] = caught

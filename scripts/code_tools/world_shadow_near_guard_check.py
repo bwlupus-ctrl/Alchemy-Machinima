@@ -64,6 +64,14 @@ int main()
     const std::string note = nearClipNote(1.0, "light 2d5b6e9d");
     ensure("the sentence names the distance, the light and the remedy",
            note == "Near clip 1.00 m reaches an avatar at light 2d5b6e9d: the part inside casts no world shadow. Lower Near clip.");
+    // review round 1: a plane the light's own prim raised is not the Near clip slider's to lower
+    const std::string own = nearClipNote(0.26, "light a3494aec", true);
+    ensure("the emitter sentence names the prim, not the slider",
+           own == "The light prim of light a3494aec hides everything within 0.26 m of it, and an avatar is inside: the part inside casts no world shadow. Use a smaller light prim or move it away.");
+    ensure("emitter sentence never says Lower Near clip", own.find("Lower Near clip") == std::string::npos);
+    ensure("raised by the emitter: past the clamped setting", nearRaisedByEmitter(0.26, 0.05) && nearRaisedByEmitter(1.0, 0.5) &&
+           !nearRaisedByEmitter(0.05, 0.05) && !nearRaisedByEmitter(1.0, 1.05) && !nearRaisedByEmitter(0.3, 0.3) &&
+           !nearRaisedByEmitter(0.02, 0.01));   // a setting under the 2 cm clamp is the clamp
     // the runtime clamp the guard relies on: the setting never asks for more than 1 m, the emitter rule neither
     ensure("setting clamp", nearPlane(1.05) == 1.0 && emitterNearPlane(1.05, 0.0, 10.0) == 1.0 && emitterNearPlane(0.05, 0.6, 10.0) > 0.6);
     std::printf(failures ? "FAILED\n" : "OK\n");
@@ -81,7 +89,9 @@ HEADER_NEGATIVES = {
     'zero_near_reaches': ('    if (!(nearPlane > 0.0)) return false;\n', ''),
     'default_near_warns': ('constexpr double kNearClipWarn = 0.25;', 'constexpr double kNearClipWarn = 0.02;'),
     'warn_threshold_inclusive': ('nearPlane > kNearClipWarn; }', 'nearPlane >= kNearClipWarn; }'),
-    'sentence_without_remedy': (' Lower Near clip.";', '";'),
+    'sentence_without_remedy': ('"Lower Near clip.");', '"");'),
+    'emitter_remedy_says_lower_near_clip': ('byEmitter ? "Use a smaller light prim or move it away." : "Lower Near clip."', '"Lower Near clip."'),
+    'emitter_test_ignores_the_setting_clamp': ('nearPlane > ALWorldShadow::nearPlane(setting) + 1.e-4', 'nearPlane > setting + 1.e-4'),
 }
 
 COMPUTE = 'if (!ALWorldShadow::nearClipWarns(jobs[j].near_plane)) continue;'
@@ -89,7 +99,9 @@ REACH = 'if (ALWorldShadow::nearCubeReaches(lo, hi, p, jobs[j].near_plane))'
 STORE = 'sWorldShadowNearCut[jobs[j].slot] = jobs[j].near_plane;'
 RESET = 'sWorldShadowNearCut.fill(0.f);   // [Near clip guard] restated below by every frame that renders cubes'
 READ = 'if (reasons[k] == ALWorldShadow::SlotReason::Rendered && sWorldShadowNearCut[k] > 0.f)'
-NOTE = 'near_note = ALWorldShadow::nearClipNote(sWorldShadowNearCut[k], labels[k]) + " ";'
+NOTE = 'near_note = ALWorldShadow::nearClipNote(sWorldShadowNearCut[k], labels[k], sWorldShadowNearCutByEmitter[k]) + " ";'
+EMITTER = 'sWorldShadowNearCutByEmitter[jobs[j].slot] = ALWorldShadow::nearRaisedByEmitter(jobs[j].near_plane, near_setting());'
+AVATARS = 'if (!avatar || avatar->isDead() || avatar->isUIAvatar()) continue;'
 RETURN = 'return near_note + ALWorldShadow::worldShadowReport('
 LOG = 'text += " NEAR_CLIP_REACHES_AVATAR";'
 
@@ -100,6 +112,8 @@ PIPELINE_NEGATIVES = {
     'threshold_skipped': (COMPUTE, ''),
     'stored_by_job_index': (STORE, 'sWorldShadowNearCut[j] = jobs[j].near_plane;'),
     'log_verdict_missing': (LOG, ''),
+    'preview_avatars_counted': (AVATARS, 'if (!avatar || avatar->isDead()) continue;'),
+    'emitter_planes_blamed_on_the_setting': (EMITTER, ''),
     'near_plane_clamped_instead': ('jobs[job_count++] = {k, found, found->getPositionAgent(), radius, worldShadowLightNear(found, radius)};',
                                    'jobs[job_count++] = {k, found, found->getPositionAgent(), radius, llmin(worldShadowLightNear(found, radius), 0.25f)};'),
 }
@@ -126,7 +140,9 @@ def pipeline_contracts(text):
             gen.index('jobs[job_count++] = {k, found, found->getPositionAgent(), radius, worldShadowLightNear(found, radius)};') < gen.index(COMPUTE) and
             gen.index(COMPUTE) < gen.index(REACH) < gen.index(STORE),
         'avatars_by_animated_extents': 'const LLVector3* ext = avatar->getLastAnimExtents();' in gen[gen.index(COMPUTE):gen.index(STORE)] and
-            'if (!avatar || avatar->isDead()) continue;' in gen[gen.index(COMPUTE):gen.index(STORE)],
+            AVATARS in gen[gen.index(COMPUTE):gen.index(STORE)],
+        'emitter_raised_planes_get_their_own_sentence': gen.count(EMITTER) == 1 and gen.index(STORE) < gen.index(EMITTER) and
+            'static LLCachedControl<F32> near_setting(gSavedSettings, "RenderAreaShadowWorldNear", 0.05f);' in gen[gen.index(COMPUTE):gen.index(EMITTER)],
         'rendering_is_untouched': 'llmin(worldShadowLightNear' not in text and 'sWorldShadowNearCut' not in text.split('ALWorldShadow::emitterNearPlane(')[1].split('static F32 worldShadowLightNear')[0],
         'readout_puts_it_first_for_rendering_lights_only': readout.count(READ) == 1 and readout.count(NOTE) == 1 and readout.count(RETURN) == 1 and
             readout.index(READ) < readout.index(NOTE) < readout.index(RETURN),

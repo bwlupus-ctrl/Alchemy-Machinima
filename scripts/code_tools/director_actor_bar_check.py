@@ -212,7 +212,7 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_ANGLE_DIGEST = "3d63dfd18da759bce0f5d8713b53026fe762e121ccb643bbf1e34f836fcd8380"
+SOFTSHADOW_ANGLE_DIGEST = "3d7b8e22c6a499a17e154e786bcb3c09e26d941b964d598518f14297b597b18a"
 SOFTSHADOW_ANGLE_BASE = "0494b1f4d19"
 
 
@@ -235,7 +235,7 @@ def reverse_softshadow_angle(source, name):
                                      SOFTSHADOW_ANGLE_DIGEST, "reviewed soft shadow angle")
 
 
-SOFTSHADOW_ANGLE_SHADER_DIGEST = "aebaba1935a4b15b2a7cef8cadda617a9a6c4c1dc441cf60ea1854640e1e91b6"
+SOFTSHADOW_ANGLE_SHADER_DIGEST = "b7479f59a128760e152ac893cfefe9c98194a6159df8cc63a496a989bd3a377a"
 
 
 def reverse_softshadow_angle_shader(source):
@@ -263,7 +263,7 @@ def reverse_softshadow_angle_shader(source):
     return source
 
 
-SOFTSHADOW_FLOOR_FILTER_DIGEST = "23940f2b732f6e8801e4e2ad9463d2353914d2a9b769fdb771a9887a495cc174"
+SOFTSHADOW_FLOOR_FILTER_DIGEST = "04a1a63456c843a15d506ca5ea45e85cb271093b9349c2436ce016c407d6841d"
 
 
 def reverse_softshadow_floor_filter(source):

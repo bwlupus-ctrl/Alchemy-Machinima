@@ -234,84 +234,47 @@ uniform int soft_shadow_fill_retire = 0;
 //   - the Poisson X jitter is a per-pixel hash instead of the view-space sawtooth
 //     fract(pos_screen.y * 0.6667), which slid with the camera;
 //   - the projector kernel is isotropic (no texel.y *= 1.5).
-// 2 = model 1 with the projector's per-pixel noise ANCHORED TO ITS SHADOW MAP instead of the screen
-//     pixel (softShadowAnchored below). A screen-pixel hash re-rolls the kernel of a world point
-//     every time the camera moves it to another pixel: the penumbra boils under any camera move
-//     (relight_soft_shadow_motion_gl_check.py: 20-33 8-bit steps per frame on the Poisson kernel,
-//     10-12 on the Vogel kernel; the legacy sawtooth of model 0 slides instead, 1-2 steps, and
-//     displaces the edge by up to half a kernel). With the anchor:
-//       - the Vogel rotation and the metric search use the anchored value over a 1/16 turn;
-//       - the Poisson kernel is not jittered at all. Its X jitter moves the whole 12-tap disk by
-//         up to half its radius: measured against a 72-tap reference it is the largest error of
-//         that kernel in any form (as a slow field it bends the edge, as a hash it is the boil);
-//       - the metric search's bisection shift takes the anchored value.
-//     The sun kernels keep model 1's screen hash: their cascades are refitted to the camera, so
-//     their texels are not a place in the world.
+// 2 = model 1 with the PROJECTOR surface kernels held still: no per-pixel term at all. A screen-pixel
+//     hash re-rolls the kernel of a world point every time the camera moves it to another pixel, so
+//     the penumbra boils under any camera move (relight_soft_shadow_motion_gl_check.py: 20-33 8-bit
+//     steps per frame on the Poisson kernel, 10-12 on the Vogel kernel; the legacy sawtooth of
+//     model 0 slides instead, 1-3 steps, and displaces the edge by up to half a kernel). So:
+//     The per-pixel hash is replaced by its mean, 0.5, in softShadowIGN (the one statement):
+//       - the Vogel rotation and the metric search rotation are the slot's phase plus half a turn
+//         faded in with the kernel radius, a function of the shadow alone;
+//       - the Poisson disk is centred. Its X jitter moves the whole 12-tap disk by up to half its
+//         radius: against a 72-tap reference that is the largest error of the kernel in any form;
+//       - the metric search's bisection grid is shifted by half a step, the same everywhere.
+//     A noise anchored to the shadow map (value noise on the receiver's texel, cell = 4 screen
+//     pixels) was built and measured first: stable, but at the amplitude that stays stable under a
+//     half-pixel move it removed 0.1 of 5.3 steps of banding and cost 0.15 ms per 16 lights at 4K.
+//     The sun kernels keep model 1: g_spot_still is set only for the projector sample in progress.
 uniform int soft_shadow_noise_model = 0;
 const float SOFT_NOISE_SLOT_PHASE = 2.4;   // radians per projector slot
 const float SOFT_NOISE_SUN_PHASE  = 1.55;  // radians, the sun's own phase (the widest gap between the 16 slot phases)
 // Slot of the projector being sampled, written by sampleSpotShadow for pcfSpotShadowSurface.
 float g_spot_slot = 0.0;
-// [SoftShadow anchor] Noise model 2, projector surface kernels only.
-//   g_spot_cell  = log2 of the noise cell's side in map texels, written by spotSurfaceReceiver:
-//                  SOFT_NOISE_CELL_PIXELS screen pixels of this receiver, never under one texel.
-//   g_spot_noise = the anchored value for the projector sample in progress; negative = none, the
-//                  screen hash. pcfSpotShadowSurface sets it and pcfSpotShadow clears it when that
-//                  call returns, so no later sampler (a sun cascade, a legacy projector) reads it.
-const float SOFT_NOISE_CELL_PIXELS = 4.0;   // noise cell, in screen pixels of the receiver
-const float SOFT_NOISE_TURN = 0.0625;       // share of a full turn the anchored value rotates a kernel by
-float g_spot_cell = 0.0;
-float g_spot_noise = -1.0;
+// [SoftShadow still] Noise model 2: true while a projector surface sample is in progress.
+// pcfSpotShadowSurface sets it and pcfSpotShadow clears it when that call returns, so no later
+// sampler (a sun cascade, a legacy projector) reads it.
+bool g_spot_still = false;
 
 float softShadowIGN()
 {
-    if (g_spot_noise >= 0.0) return g_spot_noise;
+    if (g_spot_still) return 0.5;
     return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-}
-
-// One octave of value noise on the map's texel lattice: the interleaved-gradient hash of the four
-// cell corners around p, bilinearly interpolated. Continuous in p.
-float softShadowCellNoise(vec2 p, float level)
-{
-    vec2 i = floor(p);
-    vec2 f = p - i;
-    i += level * vec2(17.0, 59.0);   // another lattice per level
-    vec4 x = i.x * 0.06711056 + vec4(0.0, 0.06711056, 0.0, 0.06711056);
-    vec4 y = i.y * 0.00583715 + vec4(0.0, 0.0, 0.00583715, 0.00583715);
-    vec4 h = fract(52.9829189 * fract(x + y));
-    return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);
-}
-
-// The anchored noise of a receiver at map position `st` (texels): value noise whose cell is the
-// receiver's own SOFT_NOISE_CELL_PIXELS pixel footprint in the map (two neighbouring power-of-two
-// levels, cross-faded, so the cell follows the camera distance without a seam). It is a continuous
-// function of the receiver's place in the lamp's map and of nothing on the screen: the same world
-// point keeps its kernel while the camera moves, and a point between two pixels reads a value
-// between theirs. A white hash on the texels would alias as soon as a pixel covers several
-// texels, and a cell of one pixel still does under a move of half a pixel (measured: as much
-// flicker as the screen hash); four pixels and a 1/16 turn sit on the floor of the measurement.
-// Folded once by a triangle wave: the interpolation leaves values crowded around one half, the
-// fold spreads them over [0, 1] again and stays continuous.
-float softShadowAnchored(vec2 st)
-{
-    float level = floor(g_spot_cell);
-    float n = mix(softShadowCellNoise(st * exp2(-level), level),
-                  softShadowCellNoise(st * exp2(-level - 1.0), level + 1.0), g_spot_cell - level);
-    return abs(n * 2.0 - 1.0);
 }
 
 // Vogel base rotation. Model 0: the per-pixel interleaved-gradient angle, as always.
 float softShadowPhi(float radius_texels, float phase)
 {
     float phi = 6.2831853 * softShadowIGN();
-    if (g_spot_noise >= 0.0) phi *= SOFT_NOISE_TURN;   // [SoftShadow anchor]
     return soft_shadow_noise_model != 0 ? phase + phi * smoothstep(2.0, 3.5, radius_texels) : phi;
 }
 
 // Poisson X jitter: the caller's legacy value for model 0, a per-pixel hash otherwise.
 float softShadowJitter(float legacy)
 {
-    if (g_spot_noise >= 0.0) return 0.5;   // [SoftShadow anchor] the centred disk
     return soft_shadow_noise_model != 0 ? softShadowIGN() : legacy;
 }
 
@@ -727,6 +690,16 @@ float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, vec4 m, out vec2 t
     float k_max = max(m.x, m.y);
     vec2 shape = m.xy / k_max;
     float cap = max(soft_shadow_max, 1.0);
+    // [SoftShadow floor] The floor widens the KERNEL only (texel, at the end): the returned radius stays the
+    // measured one, so the floor's share of the kernel pays no slope bias. Round 1 made the floor the
+    // lower bound of the measured radius, under the slope clamp below; but a floor matters exactly
+    // where the source is tiny, and there the bisection grid (1/32 of the whole depth range) cannot
+    // resolve a contact gap: the measured gap is the dither, and the clamp flipped the kernel between
+    // one texel and the floor from pixel to pixel (20 % steps in half-texel bands at contact edges).
+    // Paying slope bias for the floor instead would pass blockers that sit closer than that bias on
+    // a grazing receiver; bounding it by the receiver's incidence costs a register across the whole
+    // search (0.25 ms per 16 lights at 4K, measured). The surface model's own offset already covers
+    // taps four texels out (SPOT_BIAS_REACH_TEXELS), which is the floor's maximum.
     float low = clamp(soft_shadow_min_radius, 1.0, cap);
     float pr = 1.0;
     float lever_near = max(1.0 - m.w * m.z, SPOT_METRIC_MIN_LEVER);   // blocker at the near plane (d_b = 0)
@@ -777,10 +750,10 @@ float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, vec4 m, out vec2 t
         }
         float gap = stc.z - tap.z + max(0.5 * (lo + hi) - shift, 0.0);   // d_r - d_b
         float lever = max(1.0 - m.w * (m.z - (stc.z - gap)), SPOT_METRIC_MIN_LEVER);
-        pr = clamp(k_max * gap / lever, low, cap);
+        pr = clamp(k_max * gap / lever, 1.0, cap);
         pr = min(pr, 1.0 + SPOT_METRIC_SLOPE_SHARE * gap / max(g_spot_widen_stc, 1.e-12));
     }
-    texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;
+    texel = max(max(pr, low) * shape, vec2(1.0)) / proj_shadow_res;   // [SoftShadow floor] the kernel; pr stays the measured radius
     return pr;
 }
 
@@ -848,8 +821,8 @@ float pcfSpotShadowSurface(sampler2DShadow shadowMap, vec4 stc, vec2 pos_screen,
 
     if (soft_shadow_enable != 0 || projector_softness > 0.0)
     {
-        // [SoftShadow anchor] Noise model 2: this sample's noise comes from its place in the map.
-        if (soft_shadow_noise_model == 2) g_spot_noise = softShadowAnchored(stc.xy * proj_shadow_res);
+        // [SoftShadow still] Noise model 2: this sample's kernels take no per-pixel term.
+        g_spot_still = soft_shadow_noise_model == 2;
         // [SoftShadow metric] A slot with a metric (RenderSpotShadowPenumbraModel 1) takes the
         // metric search and kernel; x or y <= 0 (setting off, or no upload) runs the old
         // statements below, unchanged.
@@ -918,7 +891,7 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
     if (g_spot_bias_mode == 1)
     {
         float surface = pcfSpotShadowSurface(shadowMap, stc, pos_screen, projector_softness);
-        g_spot_noise = -1.0;   // [SoftShadow anchor] the anchored noise ends with its own sample
+        g_spot_still = false;   // [SoftShadow still] ends with its own sample
         return surface;
     }
     if (detail && stc.w <= 1.e-4) return 1.0;
@@ -955,11 +928,6 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
         vec2 texel = pr / proj_shadow_res;
         texel.y *= 1.5;
         float shadow = 0.0;
-        // [SoftShadow anchor] Noise model 2 on a rig light that keeps its own Detail receiver
-        // (RenderSpotShadowBiasModel 1): the kernel is not moved by the screen at all, neither by
-        // the per-pixel rotation nor by the view-space sawtooth. `detail` is never set for a
-        // zero-normal caller, and the shaft program's rim keeps the legacy statements.
-        bool still = detail && soft_shadow_noise_model == 2 && projvol_rim_strength <= 0.0;
 
         if (soft_shadow_vogel != 0)
         {
@@ -970,7 +938,6 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
             float inv_n = 1.0 / float(taps);
             float phi = 6.2831853 * fract(52.9829189 *
                         fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
-            if (still) phi = 0.0;   // [SoftShadow anchor]
             for (int i = 0; i < SOFT_SHADOW_VOGEL_MAX; ++i)
             {
                 if (i >= taps) break;
@@ -985,7 +952,6 @@ float pcfSpotShadow(sampler2DShadow shadowMap, vec4 stc, float bias_scale, vec2 
         else
         {
             float jit = fract(pos_screen.y * 0.666666666);
-            if (still) jit = 0.5;   // [SoftShadow anchor]
             for (int i = 0; i < 12; ++i)
             {
                 vec2 o = SOFT_SHADOW_DISK[i] * texel;
@@ -1552,7 +1518,6 @@ vec4 spotSurfaceReceiver(vec3 pos, vec3 norm, int index)
     mat4 m = shadow_matrix[4+index];
     g_spot_bias_stc = SPOT_BIAS_DEPTH_QUANTUM;
     g_spot_widen_stc = 0.0;
-    g_spot_cell = 0.0;
     vec4 lp0 = m*vec4(pos,1.0);
     if (lp0.w <= 1.e-4) return lp0;   // pcfSpotShadowSurface: outside the map, lit
     vec3 n = normalize(norm);
@@ -1574,17 +1539,6 @@ vec4 spotSurfaceReceiver(vec3 pos, vec3 norm, int index)
     float texel = max(2.0*w0/(length(2.0*ru-rw)*proj_shadow_res.x),
                       2.0*w0/(length(2.0*rv-rw)*proj_shadow_res.y));
     float reach = SPOT_BIAS_REACH_TEXELS*texel;
-    // [SoftShadow anchor] The noise cell of noise model 2: this receiver's screen pixel, as map
-    // texels. One pixel is view depth * 2 tan(fov/2) / screen height metres across the view ray
-    // (inv_proj[1][1] = tan(fov/2)) and that over the cosine of the view incidence along the
-    // surface (capped at 4x, like the slope terms here); `texel` is the map's metres per texel.
-    // Models 0 and 1 never read it and do not pay for it.
-    if (soft_shadow_noise_model == 2)
-    {
-        float pixel = abs(pos.z*inv_proj[1][1])*2.0/max(screen_res.y,1.0);
-        pixel /= max(abs(dot(n,pos))/max(length(pos),1.e-6),0.25);
-        g_spot_cell = log2(clamp(SOFT_NOISE_CELL_PIXELS*pixel/max(texel,1.e-9),1.0,4096.0));
-    }
     float ceiling = max(0.25*spot_shadow_offset,g_spot_bias_floor);
     // View depth is 1/(a*z_ndc + b) with a = inv_proj[2][3], so one 24-bit depth step (2^-23 in
     // z_ndc) moves the reconstructed receiver |pos.z| * |pos| * |a| * 2^-23 metres along its view ray.

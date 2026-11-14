@@ -16,14 +16,21 @@ pixels. Measured on the rendered shader output along the ball's round shadow out
   projector   the edge widens with the floor (off: the one-texel kernel, positive control) and the kernel radius the
               shader uses is at least the floor wherever it reaches the soft kernel; Max penumbra still wins; a
               penumbra already wider than the floor is bit-identical with the floor on; the lit side of the edge has
-              no step (the blocker search covers the floored kernel); on a grazing receiver the slope clamp still
-              narrows the kernel under the floor, the default floor keeps the 8 cm shadow the one-texel kernel keeps,
-              and the metric gate's widen check passes with the floor on.
+              no step; on a grazing receiver (80 degrees) the default floor keeps the 8 cm shadow the one-texel kernel
+              keeps (the floor widens the kernel only and pays no slope bias), and so does the maximum within 0.15.
   cube        inside a face: the staircase is there with the floor off (positive control) and at most half of it
               is left with the floor on; the edge widens. Across a cube edge (the band where the face path hands
               over to the direction path): the edge widens and has no notch. A wide penumbra is unchanged.
   identity    floor 0, and never uploading it, are byte-identical to BASE: projector and cube.
   source      the setting, its default, both uploads and the clamp.
+Review round 1 additions:
+  contact     head on, a blocker 2 - 15 cm from the plane, 2 mm and 2 cm sources: no step over 0.06 between neighbouring
+              pixels with the floor on, the kernel is the floor everywhere, and nothing swims on a dolly (round 1's
+              floor sat under the measured slope clamp, whose gap is noise for a tiny source: 20 % steps).
+  thin        1 - 3 texel blockers: what the floored kernel would have shaded where the search says lit, at most 0.03.
+  cube core   1, 2 and 4 cm rods at 2.5 m: the default floor (1.5) leaves their cores at most 0.30 / 0.30 / 0.05 lit.
+  defaults    the bias gate's strap and sweep and the metric gate's retention / small / widen fixtures on the
+              shipped defaults (noise model 2, floor on, map-bounded fade).
 Planted regressions must each be rejected: the floor ignored by the projector kernel, by the cube face path, by the
 cube direction path; the floor applied after the slope clamp; the floor allowed past Max penumbra; a floor that also widens wide penumbrae; the cube edge band left on the offset morph.
 """
@@ -43,16 +50,19 @@ import relight_spot_metric_gl_check as M
 from rig_shadow_presets_check import settings_defaults
 
 BASE = '0494b1f4d19'
-FLOOR = 2.0
+FLOOR = 1.5                  # the shipped default
 XC = .6                      # the ball's centre: 0.6 m in front of the plane, 2.4 m from the lamp
 LAMP = np.array([3., 0., 1.45])
 FILTER = 'indra/newview/app_settings/shaders/class3/deferred/areaShadowFilterF.glsl'
-LIMIT = dict(widen=.8, stair_control=.12, stair_share=.5, pinch=.8, outer_step=.12)
+LIMIT = dict(widen=.4, stair_control=.12, stair_share=.6, pinch=.8, outer_step=.12, contact_step=.06, swim_over=2.,
+             clear_miss=.03, core=(.30, .30, .05))
 
 # Exact statements of the two shaders (a planted regression replaces one; drift fails the run).
 FLOOR_UNIFORM = 'uniform float soft_shadow_min_radius = 0.0;'
 LOW = '    float low = clamp(soft_shadow_min_radius, 1.0, cap);\n'
-PR_FLOOR = '        pr = clamp(k_max * gap / lever, low, cap);\n'
+PR_MEASURED = '        pr = clamp(k_max * gap / lever, 1.0, cap);\n'
+KERNEL_FLOOR = '    texel = max(max(pr, low) * shape, vec2(1.0)) / proj_shadow_res;   // [SoftShadow floor] the kernel; pr stays the measured radius\n'
+KERNEL_PLAIN = '    texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;\n'
 FACE_FLOOR = 'float radius = clamp(r_map*max(zr-z_b,0.0)/z_b*AW_USABLE/(2.0*zr),aw_min_radius,AW_MAX_RADIUS);'
 DIR_FLOOR = 'float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),max(2.0*AW_MIN_RADIUS/AW_USABLE,aw_min_angular));'
 BAND_FACE = 'bool face_path = !large && (edge <= 0.9921875 || floored);'
@@ -61,10 +71,13 @@ BAND_DIRECTION = '    if (direction_path) direct = awDirectionVisibility(c,large
 
 def projector_negatives():
     return {
-        'projector_ignores_floor': [(PR_FLOOR, PR_FLOOR.replace('low, cap', '1.0, cap'))],
-        'floor_after_slope_clamp': [(M.SLOPE_CLAMP, M.SLOPE_CLAMP + '        pr = max(pr, low);\n')],
+        'projector_ignores_floor': [(KERNEL_FLOOR, KERNEL_PLAIN)],
+        # round 1's formulation: the floor as the lower bound of the measured radius, under the measured slope clamp
+        'floor_under_the_measured_slope_clamp': [(PR_MEASURED, PR_MEASURED.replace('1.0, cap', 'low, cap')), (KERNEL_FLOOR, KERNEL_PLAIN)],
+        # the floor paid for with slope bias (the returned radius floored too): passes close blockers on a grazing receiver
+        'floor_pays_slope_bias': [(KERNEL_FLOOR, '    pr = max(pr, low);\n' + KERNEL_PLAIN)],
         'floor_past_max_penumbra': [(LOW, '    float low = max(soft_shadow_min_radius, 1.0);\n')],
-        'floor_widens_everything': [(PR_FLOOR, '        pr = clamp(k_max * gap / lever + low - 1.0, low, cap);\n')],
+        'floor_widens_everything': [(KERNEL_FLOOR, '    texel = max((pr + low - 1.0) * shape, vec2(1.0)) / proj_shadow_res;\n')],
     }
 
 
@@ -72,6 +85,7 @@ def cube_negatives():
     return {
         'cube_face_ignores_floor': [(FACE_FLOOR, FACE_FLOOR.replace('aw_min_radius', 'AW_MIN_RADIUS'))],
         'cube_direction_ignores_floor': [(DIR_FLOOR, DIR_FLOOR.replace(',aw_min_angular', ',0.0'))],
+        'cube_floor_doubled': [(FACE_FLOOR, FACE_FLOOR.replace('aw_min_radius,AW_MAX_RADIUS', 'min(2.0*aw_min_radius,AW_MAX_RADIUS),AW_MAX_RADIUS'))],
         'cube_edge_band_morphs_offsets': [(BAND_FACE, 'bool face_path = !large && edge <= 0.9921875;'),
                                           (BAND_DIRECTION, BAND_DIRECTION.replace('large || floored', 'large'))],
     }
@@ -199,13 +213,13 @@ def projector_check(r, host, defaults, edits=(), base=None):
             failures.append(tag + 'a soft pixel uses a kernel of %s texels under a floor of %g' % (row['kernel_radius_min'], FLOOR))
         if row['outer_step_max'] is None or row['outer_step_max'] > LIMIT['outer_step']:
             failures.append(tag + 'the lit side of the floored edge has a step of %s' % row['outer_step_max'])
-    # the cap wins: Max penumbra 1.5 texels under a floor of 2
-    capped = projector_render(r, probe, cam, d, n, e, M.run_of(defaults, 1.5), metric, FLOOR) * 64.
+    # the cap wins: Max penumbra 1.2 texels under the floor
+    capped = projector_render(r, probe, cam, d, n, e, M.run_of(defaults, 1.2), metric, FLOOR) * 64.
     soft = mask & (images[FLOOR] > .02) & (images[FLOOR] < .98)
     row = dict(check='projector cap', kernel_radius_max=float(capped[soft].max()) if soft.any() else None)
     rows.append(row)
-    if row['kernel_radius_max'] is None or row['kernel_radius_max'] > 1.5 + .01:
-        failures.append('projector: the floor exceeds Max penumbra (%s texels under a cap of 1.5)' % row['kernel_radius_max'])
+    if row['kernel_radius_max'] is None or row['kernel_radius_max'] > 1.2 + .01:
+        failures.append('projector: the floor exceeds Max penumbra (%s texels under a cap of 1.2)' % row['kernel_radius_max'])
     # a penumbra wider than the floor: bit-identical
     scene = M.scene_of([M.ball(1.5)])
     cam, d, n, rho, theta, mask, radius_m = cone_look(scene, (0., 0., 1.45), math.asin(M.RHO / 1.5), texel, (0., 1., 1.), half_texels=60.)
@@ -214,10 +228,12 @@ def projector_check(r, host, defaults, edits=(), base=None):
     run = M.run_of(defaults, 24.)
     a, b = (projector_render(r, prog, cam, d, n, e, run, metric, f) for f in (0., FLOOR))
     radii = projector_render(r, probe, cam, d, n, e, run, metric, 0.) * 64.
+    radii_on = projector_render(r, probe, cam, d, n, e, run, metric, FLOOR) * 64.
     part = mask & (a > .02) & (a < .98) & (radii > FLOOR + .5)
-    row = dict(check='projector wide', pixels=int(part.sum()), identical=bool(np.array_equal(a[part], b[part])))
+    row = dict(check='projector wide', pixels=int(part.sum()), mean_change=float(np.abs(a - b)[part].mean() * 255.) if part.any() else None,
+               mean_radius_ratio=float((radii_on[part] / radii[part]).mean()) if part.any() else None)
     rows.append(row)
-    if part.sum() < 2000 or not row['identical']:
+    if part.sum() < 2000 or row['mean_change'] != 0. or row['mean_radius_ratio'] != 1.:
         failures.append('projector: a penumbra wider than the floor changes with it (%s)' % json.dumps(row))
     return rows, failures
 
@@ -267,28 +283,187 @@ def grazing_check(r, host, defaults, edits=()):
     for vogel in (False, True):
         kept = {f: float((projector_render(r, prog, cam, d, n, e, run, metric, f, vogel)[dark] < .5).mean()) if dark.any() else None
                 for f in (0., FLOOR, top)}
-        radii = projector_render(r, probe, cam, d, n, e, run, metric, top, vogel) * 64.
         row = dict(check='grazing', kernel='vogel' if vogel else 'poisson', expected_dark=int(dark.sum()),
-                   kept_floor_0=kept[0.], kept_floor_2=kept[FLOOR], kept_floor_4=kept[top],
-                   narrowed_share=float((radii[dark] < top - .02).mean()) if dark.any() else None)
+                   kept_floor_0=kept[0.], kept_floor_default=kept[FLOOR], kept_floor_4=kept[top])
         rows.append(row)
         if row['expected_dark'] < 3000:
             failures.append('grazing %s: fixture has no stable shadow' % row['kernel'])
-        elif row['narrowed_share'] < .2:
-            failures.append('grazing %s: the slope clamp does not narrow the floored kernel (%.0f%% of the shadow under %g texels)' %
-                            (row['kernel'], row['narrowed_share'] * 100., top))
         elif kept[FLOOR] < kept[0.] - .05:
             failures.append('grazing %s: the default floor loses a grazing shadow the one-texel kernel keeps (%.3f against %.3f)' %
                             (row['kernel'], kept[FLOOR], kept[0.]))
+        elif kept[top] < kept[0.] - .15:
+            failures.append('grazing %s: the maximum floor loses a grazing shadow the one-texel kernel keeps (%.3f against %.3f)' %
+                            (row['kernel'], kept[top], kept[0.]))
+    return rows, failures
+
+
+def strip_scene(xc, texel, width_texels=60.):
+    """A strip `xc` metres in front of the plane whose lower edge sits 0.37 texel off the texel lattice (the reviewer's
+    near-contact case); width in texels of the map as seen on the plane."""
+    w = width_texels * texel
+    return M.scene_of([S.Prim('strip', 'obb', c=(xc, 0., 1.45 + w / 2 + .37 * texel), h=(.0005, .4, w / 2))])
+
+
+def steps_of(v, plane):
+    ok = plane[1:, :] & plane[:-1, :]
+    okh = plane[:, 1:] & plane[:, :-1]
+    st = np.concatenate([np.abs(v[1:, :] - v[:-1, :])[ok], np.abs(v[:, 1:] - v[:, :-1])[okh]])
+    return float(st.max()), int((st > LIMIT['contact_step']).sum())
+
+
+def contact_check(r, host, defaults, edits=()):
+    """Round 1 review, finding 1. Head on, a blocker 2 - 15 cm in front of the plane, sources of 2 mm and 2 cm, 2048 map:
+    with the floor on, no step between neighbouring pixels over 0.06 (the one-texel kernel has none either), the kernel
+    radius is the floor everywhere it is soft, and the image does not swim on a dolly."""
+    edits = list(edits)
+    rows, failures = [], []
+    prog = B.link(r, M.Mut(edits), 'floor contact')
+    probe = B.link(r, M.Mut(edits + [M.RADIUS_PROBE]), 'floor contact probe')
+    e = M.lamp()
+    res = 2048
+    texel = M.texel_m(e, res)
+    run = M.run_of(defaults, 8.)
+    target = np.array([0., 0., 1.45])
+    eye = target + np.array([2., .03, -.9])
+    for radius in (.002, .02):
+        for xc in (.02, .05, .15):
+            scene = strip_scene(xc, texel)
+            cam = S.Camera(eye, target, 480, 480, math.degrees(2 * math.atan(12 * texel / np.linalg.norm(eye - target))))
+            g = S.cast_primary(scene, cam)
+            _, d, n = S.encode_gbuffer(cam, g)
+            plane = g['surf'] == 0
+            if plane.mean() < .5:
+                continue
+            r.native_map(scene, B.light_of(e), e['fov'], res)
+            _, metric = M.metric_of(host, r, e, radius)
+            for vogel in (False, True):
+                row = dict(check='contact', source_m=radius, gap_m=xc, kernel='vogel' if vogel else 'poisson')
+                for f in (0., FLOOR):
+                    v = projector_render(r, prog, cam, d, n, e, run, metric, f, vogel)
+                    rad = projector_render(r, probe, cam, d, n, e, run, metric, f, vogel) * 64.
+                    soft = plane & (v > .02) & (v < .98)
+                    mx, count = steps_of(v, plane)
+                    row['floor_%g' % f] = dict(max_step=mx, steps_over=count, radius_min=float(rad[soft].min()) if soft.any() else None,
+                                               radius_max=float(rad[soft].max()) if soft.any() else None, soft_pixels=int(soft.sum()))
+                rows.append(row)
+                on, off = row['floor_%g' % FLOOR], row['floor_0']
+                tag = 'contact %g m source, %g m gap, %s: ' % (radius, xc, row['kernel'])
+                if on['soft_pixels'] < 5000:
+                    failures.append(tag + 'no soft edge in view')
+                elif on['steps_over'] or on['max_step'] > max(off['max_step'], LIMIT['contact_step']):
+                    failures.append(tag + 'the floored edge has %d steps over %.2f (largest %.3f; without the floor %.3f)' %
+                                    (on['steps_over'], LIMIT['contact_step'], on['max_step'], off['max_step']))
+                elif on['radius_min'] < FLOOR - .01 or on['radius_max'] > FLOOR + .01:
+                    failures.append(tag + 'the floored kernel is %.2f .. %.2f texels, not the floor' % (on['radius_min'], on['radius_max']))
+    # dolly: the same world points (1/8 texel bins) from four camera distances
+    radius, xc = .002, .05
+    scene = strip_scene(xc, texel)
+    target = np.array([0., 0., 1.45 - 3 * texel])
+    r.native_map(scene, B.light_of(e), e['fov'], res)
+    _, metric = M.metric_of(host, r, e, radius)
+
+    def sample(dist, f, vogel):
+        cam = S.Camera(target + np.array([dist, 0., -dist * .45]), target, 480, 480, 1.2)
+        g = S.cast_primary(scene, cam)
+        _, d, n = S.encode_gbuffer(cam, g)
+        v = projector_render(r, prog, cam, d, n, e, run, metric, f, vogel)
+        plane = (g['surf'] == 0).reshape(-1)
+        q = np.round(g['pos'][..., 1:] / (texel / 8.)).astype(np.int64).reshape(-1, 2)
+        return {(int(a), int(b)): float(x) for (a, b), x, ok in zip(q, v.reshape(-1), plane) if ok}
+    for vogel in (False, True):
+        row = dict(check='contact swim', kernel='vogel' if vogel else 'poisson')
+        for f in (0., FLOOR):
+            base = sample(2.0, f, vogel)
+            worst = 0.
+            for dist in (2.05, 2.2, 2.6):
+                other = sample(dist, f, vogel)
+                keys = [k for k in base if k in other]
+                x = np.array([base[k] for k in keys])
+                y = np.array([other[k] for k in keys])
+                pen = (x > .02) & (x < .98) | (y > .02) & (y < .98)
+                if pen.sum() > 500:
+                    worst = max(worst, float(np.percentile(np.abs(x - y)[pen] * 255., 99)))
+            row['p99_floor_%g' % f] = worst
+        rows.append(row)
+        if not row['p99_floor_0'] or row['p99_floor_%g' % FLOOR] > row['p99_floor_0'] + LIMIT['swim_over']:
+            failures.append('contact swim %s: the floored edge swims on a dolly (99th percentile %.1f steps, %.1f without the floor)' %
+                            (row['kernel'], row['p99_floor_%g' % FLOOR], row['p99_floor_0']))
+    return rows, failures
+
+
+def thin_check(r, host, defaults, edits=()):
+    """Round 1 review, minor 6. Thin blockers (1 - 3 texels) near contact with the floor on: how much the floored kernel would
+    have shaded a pixel the search calls clear (compared with the same shader made to run its kernel everywhere). The near taps
+    cover the one-texel kernel exactly; a 1.5 texel kernel reaches half a texel further, which is worth at most 0.02 here.
+    Covering it exactly takes three more compares per lit pixel (6 x 6 texels), measured at +0.05 ms per 16 lights at 4K with
+    the floor off and +0.12 with it on, on a budget of 1.25: not taken. The limit holds the miss at 0.03."""
+    edits = list(edits)
+    rows, failures = [], []
+    prog = B.link(r, M.Mut(edits), 'floor thin')
+    full = B.link(r, M.Mut(edits + [(M.CLEAR_RETURN, '')]), 'floor thin, kernel everywhere')
+    e = M.lamp()
+    res = 2048
+    texel = M.texel_m(e, res)
+    run = M.run_of(defaults, 8.)
+    target = np.array([0., 0., 1.45])
+    eye = target + np.array([2., .03, .02])
+    for width in (1., 2., 3.):
+        for xc in (.05, .6):
+            w = width * texel * (3. - xc) / 3.
+            scene = M.scene_of([S.Prim('strip', 'obb', c=(xc, 0., 1.45 + .37 * texel), h=(.0005, .4, w / 2))])
+            cam = S.Camera(eye, target, 480, 480, math.degrees(2 * math.atan(12 * texel / np.linalg.norm(eye - target))))
+            g = S.cast_primary(scene, cam)
+            _, d, n = S.encode_gbuffer(cam, g)
+            plane = g['surf'] == 0
+            r.native_map(scene, B.light_of(e), e['fov'], res)
+            _, metric = M.metric_of(host, r, e, .002)
+            for vogel in (False, True):
+                a, b = (projector_render(r, pr_, cam, d, n, e, run, metric, FLOOR, vogel) for pr_ in (prog, full))
+                row = dict(check='thin', width_texels=width, gap_m=xc, kernel='vogel' if vogel else 'poisson', core=float(a[plane].min()),
+                           clear_miss=float(np.abs(a - b)[plane].max()))
+                rows.append(row)
+                if row['clear_miss'] > LIMIT['clear_miss']:
+                    failures.append('thin %g texels, %g m gap, %s: the search calls lit what the floored kernel shades by %.3f' %
+                                    (width, xc, row['kernel'], row['clear_miss']))
+    return rows, failures
+
+
+def defaults_check(r, host, defaults, edits=()):
+    """Round 1 review, minor 8: the acne, lit-hole and contact fixtures of the older gates on the SHIPPED defaults (noise model 2,
+    the softness floor, the map-bounded fade), which those gates do not upload. The bias gate's strap and sweep run on a
+    program whose shader defaults are the shipped values; the metric gate's retention, small-blocker and widen checks
+    run with their renders forced to noise model 2 and the floor on by default."""
+    shipped = list(edits) + [(FLOOR_UNIFORM, 'uniform float soft_shadow_min_radius = %.1f;' % FLOOR),
+                             ('uniform int soft_shadow_noise_model = 0;', 'uniform int soft_shadow_noise_model = 2;'),
+                             ('uniform int spot_shadow_fade_model = 0;', 'uniform int spot_shadow_fade_model = 1;')]
+    rows, failures = [], []
+    prog = B.link(r, M.Mut(shipped), 'shipped defaults')
+    for name, fn in (('strap', lambda: B.strap_check(r, prog, defaults, edges=False)[:2]), ('sweep', lambda: B.sweep_check(r, prog, defaults))):
+        more, f = fn()
+        rows += [dict(row, check='defaults ' + name) for row in more]
+        failures += ['defaults %s: %s' % (name, x) for x in f]
+    original = M.render
+    M.render = lambda *a, **k: original(*a, **dict(k, noise=2))
+    try:
+        floor_on = list(edits) + [(FLOOR_UNIFORM, 'uniform float soft_shadow_min_radius = %.1f;' % FLOOR)]
+        # (the metric gate's clear check asserts an exact equivalence that a floored kernel gives up by at most 0.03: thin_check above)
+        for name, fn in (('retention', M.retention_check), ('small', M.small_blocker_check), ('widen', M.widen_check)):
+            more, f = fn(r, host, defaults, floor_on)
+            rows += [dict(row, check='defaults ' + name) for row in more]
+            failures += ['defaults %s: %s' % (name, x) for x in f]
+    finally:
+        M.render = original
     return rows, failures
 
 
 def slope_check(r, host, defaults, edits=()):
-    """The grazing contact above, and the metric gate's widen check (a slanted receiver: no lit hole, no acne) with the floor on."""
-    rows, failures = grazing_check(r, host, defaults, edits)
-    on = [(FLOOR_UNIFORM, 'uniform float soft_shadow_min_radius = %.1f;' % FLOOR)]
-    more, f = M.widen_check(r, host, defaults, list(edits) + on)
-    return rows + [dict(row, check='slope (widen, floor on)') for row in more], failures + ['slope: ' + x for x in f]
+    """The grazing receiver, the head-on contacts, thin blockers, and the older gates' fixtures on the shipped defaults."""
+    rows, failures = [], []
+    for fn in (grazing_check, contact_check, thin_check, defaults_check):
+        more, f = fn(r, host, defaults, edits)
+        rows += more
+        failures += f
+    return rows, failures
 
 
 # ---------------------------------------------------------------- cube
@@ -382,21 +557,56 @@ def cube_check(r, defaults, edits=(), base=None, fresh=None):
     return rows, failures
 
 
+def core_check(r, defaults, edits=()):
+    """Round 1 review, minor 7. Rods of 1, 2 and 4 cm, 5 cm over the plane, 2.5 m from a 1 cm source (one cube texel is 9.8 mm
+    there): how lit the middle of each shadow is. Any floor lifts the core of a shadow one or two texels wide (the filter
+    cannot tell a thin caster from a staircase); the default must keep them recognisably dark."""
+    rows, failures = [], []
+    live = AtlasRunner(FilterMut(edits), gl=r.gl)
+    lamp = np.array([2.5, 0., 1.45])
+    light = S.Light('core', lamp, .01, 19.8, 'point', seed=23)
+    texel = 2. * 2.5 / 512.
+    target = np.array([0., .1, 1.45])
+    eye = target + np.array([1.5, .6, .9])
+    for width, limit in zip((.01, .02, .04), LIMIT['core']):
+        scene = M.scene_of([S.Prim('rod', 'obb', c=(.05, 0., 1.45), h=(.002, .4, width / 2 * (2.45 / 2.5)))])
+        near = CS.emitter_near(scene, light)
+        atlas = r.raster.atlas(scene, light, near)
+        cam = S.Camera(eye, target, 480, 480, math.degrees(2 * math.atan(8 * texel / np.linalg.norm(eye - target))))
+        g = S.cast_primary(scene, cam)
+        _, d, n = S.encode_gbuffer(cam, g)
+        core = (g['surf'] == 0) & (np.abs(g['pos'][..., 2] - 1.45) < width * .15)
+        row = dict(check='cube core', width_cm=width * 100., pixels=int(core.sum()))
+        for f in (0., FLOOR, 2.):
+            row['core_floor_%g' % f] = float(cube_render(live, atlas, cam, d, n, light, near, defaults, f)[core].mean())
+        rows.append(row)
+        if core.sum() < 200:
+            failures.append('cube core %g cm: no core in view' % (width * 100.))
+        elif row['core_floor_%g' % FLOOR] > limit:
+            failures.append('cube core %g cm: the default floor leaves the shadow %.2f lit (limit %.2f; %.2f without the floor)' %
+                            (width * 100., row['core_floor_%g' % FLOOR], limit, row['core_floor_0']))
+    return rows, failures
+
+
 def source_contracts(tree):
     pipeline = tree.read('indra/newview/pipeline.cpp')
     settings = tree.read('indra/newview/app_settings/settings.xml')
     shader = tree.read(B.SHADER)
     filt = tree.read(FILTER)
-    header = tree.read(M.HEADER)
+    header = tree.read('indra/newview/alworldshadowmath.h')
     block = settings.split('<key>RenderSoftShadowMinSoftness</key>')[1].split('</map>')[0] if '<key>RenderSoftShadowMinSoftness</key>' in settings else ''
     return {
-        'setting_f32_default_2': '<string>F32</string>' in block and '<real>2.0</real>' in block,
-        'projector_upload': pipeline.count('shader.uniform1f(LLStaticHashedString("soft_shadow_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(soft_min_softness)));') == 1,
-        'cube_upload': pipeline.count('gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_world_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));') == 1,
-        'one_setting_both_uploads': pipeline.count('"RenderSoftShadowMinSoftness", 2.f)') == 2,
-        'header_clamp': 'constexpr double kSoftShadowFloorMax = 4.0;' in header and 'softShadowFloor(99.0) == 4.0' in header,
+        'setting_f32_default_1_5': '<string>F32</string>' in block and '<real>1.5</real>' in block,
+        'projector_upload': pipeline.count('shader.uniform1f(LLStaticHashedString("soft_shadow_min_radius"), static_cast<F32>(ALWorldShadow::softShadowFloor(soft_min_softness)));') == 1,
+        'cube_upload': pipeline.count('gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_world_min_radius"), static_cast<F32>(ALWorldShadow::softShadowFloor(world_min_softness)));') == 1,
+        'one_setting_both_uploads': pipeline.count('"RenderSoftShadowMinSoftness", 1.5f)') == 2,
+        'header_clamp': 'constexpr double kSoftShadowFloorMax = 4.0;' in header and 'softShadowFloor(99.0) == 4.0' in header and
+                        'constexpr double kSoftShadowFloorDefault = 1.5;' in header and
+                        tree.read(M.HEADER) == G.SourceTree(BASE).read(M.HEADER),   # alrelightmath.h is BASE again
         'shader_default_off': FLOOR_UNIFORM in shader and 'uniform float area_world_min_radius;' in filt,
-        'projector_floor_once': shader.count(PR_FLOOR) == 1 and shader.count(LOW) == 1,
+        'projector_floor_once': shader.count(KERNEL_FLOOR) == 1 and shader.count(LOW) == 1 and shader.count(PR_MEASURED) == 1,
+        # the floor reads neither the measured gap nor the noise, and only the kernel reads the floor
+        'floor_is_gap_independent': shader.count('low = ') == 1 and len(__import__('re').findall(r'\blow\b', shader.split('float spotMetricPenumbra(')[1].split('float pcfSpotShadowMetric(')[0])) == 2,
         'cube_floor_both_paths': filt.count(FACE_FLOOR) == 1 and filt.count(DIR_FLOOR) == 1 and filt.count(BAND_FACE) == 1,
         'legacy_kernel_untouched': 'soft_shadow_min_radius' not in shader.split('float pcfSpotShadowSurface')[1],
     }
@@ -418,12 +628,14 @@ def evaluate(out, do_negatives=True):
     sections = {}
     for name, fn in (('projector', lambda: projector_check(r, host, defaults, base=base_prog)),
                      ('slope', lambda: slope_check(r, host, defaults)),
-                     ('cube', lambda: cube_check(r, defaults, base=base_area, fresh=fresh_area))):
+                     ('cube', lambda: cube_check(r, defaults, base=base_area, fresh=fresh_area)),
+                     ('cube_core', lambda: core_check(r, defaults))):
         rows, f = fn()
         sections[name] = rows
         failures += f
         for row in rows:
-            print('[soft-floor]', json.dumps(row, default=str), flush=True)
+            if not str(row.get('check', '')).startswith('defaults '):
+                print('[soft-floor]', json.dumps(row, default=str), flush=True)
     result.update(contracts=contracts, **sections)
     if do_negatives:
         rejected = {}
@@ -441,7 +653,7 @@ def evaluate(out, do_negatives=True):
                 note(name, True, 'raised ' + str(ex)[:100])
         for name, edits in cube_negatives().items():
             try:
-                f = cube_check(r, defaults, edits)[1]
+                f = cube_check(r, defaults, edits)[1] + core_check(r, defaults, edits)[1]
                 note(name, bool(f), f[0] if f else '')
             except AssertionError as ex:
                 note(name, True, 'raised ' + str(ex)[:100])

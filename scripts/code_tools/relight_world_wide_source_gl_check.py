@@ -52,7 +52,7 @@ BLOCK = S.Prim('block', 'obb', c=(1.5, 0., .5), h=(.05, .05, .5))
 LIMIT = dict(control_error=3., error_share=.5, step=.025, control_step=.035, retention=.9)
 
 COUNT = ('        filter_taps = clamp(int(ceil(float(AW_FILTER_TAPS)*texels*texels/(AW_MAX_RADIUS*AW_MAX_RADIUS))),AW_FILTER_TAPS/2,'
-         'min(area_world_wide_taps,AW_WIDE_TAPS_MAX));\n')
+         'clamp(area_world_wide_taps,AW_FILTER_TAPS/2,AW_WIDE_TAPS_MAX));\n')
 GATE = '    if (large && area_world_wide_taps > 0)\n'
 MAXIMUM = 'const int AW_WIDE_TAPS_MAX = 128;'
 REFERENCE = [(COUNT, '        filter_taps = 512;\n'), (MAXIMUM, 'const int AW_WIDE_TAPS_MAX = 512;')]
@@ -62,7 +62,7 @@ def negatives():
     return {
         'count_left_at_16': [(COUNT, '')],
         'count_does_not_follow_the_disk': [(COUNT, '        filter_taps = AW_FILTER_TAPS;\n')],
-        'maximum_ignored': [(COUNT, COUNT.replace('min(area_world_wide_taps,AW_WIDE_TAPS_MAX)', 'AW_WIDE_TAPS_MAX'))],
+        'maximum_ignored': [(COUNT, COUNT.replace('clamp(area_world_wide_taps,AW_FILTER_TAPS/2,AW_WIDE_TAPS_MAX)', 'AW_WIDE_TAPS_MAX'))],
     }
 
 
@@ -173,7 +173,7 @@ def contact_check(r, live):
     dark[floor_px] = umbra(pts)
     lit = np.zeros(floor_px.shape, bool)
     lit[floor_px] = np.hypot(pts[:, 0] - 1.5, pts[:, 1]) > 1.2
-    for taps, floor in ((0, 0.), (DEFAULT, 0.), (DEFAULT, 2.)):
+    for taps, floor in ((0, 0.), (DEFAULT, 0.), (DEFAULT, F.FLOOR)):   # the last row: the shipped defaults
         v = render(live, atlas, cam, d, n, light, near, taps, floor=floor)
         row = dict(check='contact', wide_taps=taps, softness_floor=floor, umbra_pixels=int(dark.sum()),
                    kept=float((v[dark] < .5).mean()) if dark.any() else None, mean_in_umbra=float(v[dark].mean()) if dark.any() else None,
@@ -202,6 +202,8 @@ def scope_check(r, live, base=None, fresh=None):
     atlas = r.raster.atlas(scene, wide, near)
     c32, c128 = render(live, atlas, cam, d, n, wide, near, 32), render(live, atlas, cam, d, n, wide, near, 128)
     row['maximum_changes_the_image'] = bool(not np.array_equal(c32, c128))
+    # a maximum under the old count is the old count, not an inverted clamp
+    row['below_16_is_16'] = bool(np.array_equal(render(live, atlas, cam, d, n, wide, near, 5), render(live, atlas, cam, d, n, wide, near, 16)))
     if base is not None:
         ref = render(base, atlas, cam, d, n, wide, near, None, floor=None)
         row['never_uploaded_is_base'] = bool(np.array_equal(render(fresh, atlas, cam, d, n, wide, near, None, floor=None), ref))
@@ -209,6 +211,8 @@ def scope_check(r, live, base=None, fresh=None):
     rows.append(row)
     if not row['small_source_identical'] or row['small_source_soft_pixels'] < 1000:
         failures.append('scope: a 0.10 m source changes with the setting (%s)' % json.dumps(row))
+    if not row['below_16_is_16']:
+        failures.append('scope: a maximum under 16 does not render as 16')
     if not row['maximum_changes_the_image']:
         failures.append('scope: the maximum is ignored (32 and 128 render the same)')
     if base is not None and not (row['never_uploaded_is_base'] and row['zero_is_base']):
@@ -223,7 +227,11 @@ def source_contracts(tree):
     block = settings.split('<key>RenderAreaShadowWorldWideTaps</key>')[1].split('</map>')[0] if '<key>RenderAreaShadowWorldWideTaps</key>' in settings else ''
     return {
         'setting_u32_default_64': '<string>U32</string>' in block and '<integer>64</integer>' in block,
-        'upload_clamped_to_128': pipeline.count('gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_wide_taps"), (S32)llmin((U32)world_wide_taps, 128U));') == 1 and
+        # review round 1: the upload is 0 or 16..128 (alrelightmath.h wideSourceTaps, static_asserted), and the shader's own
+        # clamp has min <= max for any value
+        'upload_clamped_to_0_or_16_128': pipeline.count('gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_wide_taps"), ALWorldShadow::wideSourceTaps(world_wide_taps));') == 1 and
+            'wideSourceTaps(0) == 0 && wideSourceTaps(1) == 16 && wideSourceTaps(15) == 16 && wideSourceTaps(64) == 64' in tree.read('indra/newview/alworldshadowmath.h') and
+            'clamp(area_world_wide_taps,AW_FILTER_TAPS/2,AW_WIDE_TAPS_MAX)' in filt and
             pipeline.count('static LLCachedControl<U32> world_wide_taps(gSavedSettings, "RenderAreaShadowWorldWideTaps", 64);') == 1,
         'shader_default_is_old': 'uniform int area_world_wide_taps;' in filt and filt.count(COUNT) == 1 and filt.count(GATE) == 1,
         'rotation_stays_in_the_world': 'gl_FragCoord' not in filt.split('float awDirectionVisibility(')[1].split('float awVisibility(')[0],

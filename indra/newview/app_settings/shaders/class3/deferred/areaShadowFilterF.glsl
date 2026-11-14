@@ -921,7 +921,7 @@ float awDirectionVisibility(int c, float blend)
     if (large && area_world_wide_taps > 0)
     {
         float texels = radius*(0.5*AW_USABLE);   // the disk's radius in on-axis texels
-        filter_taps = clamp(int(ceil(float(AW_FILTER_TAPS)*texels*texels/(AW_MAX_RADIUS*AW_MAX_RADIUS))),AW_FILTER_TAPS/2,min(area_world_wide_taps,AW_WIDE_TAPS_MAX));
+        filter_taps = clamp(int(ceil(float(AW_FILTER_TAPS)*texels*texels/(AW_MAX_RADIUS*AW_MAX_RADIUS))),AW_FILTER_TAPS/2,clamp(area_world_wide_taps,AW_FILTER_TAPS/2,AW_WIDE_TAPS_MAX));
     }
     float lit = 0.0;
     float front_lit = 0.0;

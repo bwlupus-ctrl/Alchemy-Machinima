@@ -21168,7 +21168,7 @@
   <key>RenderSoftShadowNoiseModel</key>
   <map>
     <key>Comment</key>
-    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 2 (default) = steady: model 1, but a projector's noise is anchored to its own shadow map instead of the screen pixel, so a penumbra does not boil when the camera moves; the default 12-tap kernel is centred (no jitter) and rig lights with Detail shadows get the same still kernel. The sun keeps model 1. 1 = hygiene with a per-pixel screen hash: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements (a view-space sawtooth that slides with the camera).</string>
+    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 2 (default) = steady: model 1, but projector shadows on lit surfaces use no per-pixel noise at all (the default 12-tap kernel is centred, kernel rotations are fixed per light), so a penumbra does not boil when the camera moves. The sun keeps model 1; rig lights with Detail shadows keep their own kernel unless RenderSpotShadowBiasModel is 2. 1 = hygiene with a per-pixel screen hash: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements (a view-space sawtooth that slides with the camera).</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
@@ -21212,13 +21212,13 @@
   <key>RenderSoftShadowMinSoftness</key>
   <map>
     <key>Comment</key>
-    <string>Minimum shadow softness: the least filter radius of a local light's soft shadow, in texels of that light's own shadow map (world cube shadows, and projector shadows with the metric penumbra, RenderSpotShadowPenumbraModel 1). A light with a very small source (World light size 0.01 m) has a penumbra far under one texel, and its shadow then shows the map's texels as a blocky outline (worst on the 512-texel cube faces). 2 (default) = no edge narrower than about two texels; 0 = off (the old one-texel kernels); capped at 4. Max penumbra still wins, and a projector kernel still narrows at a grazing contact.</string>
+    <string>Minimum shadow softness: the least filter radius of a local light's soft shadow, in texels of that light's own shadow map (world cube shadows, and projector shadows with the metric penumbra, RenderSpotShadowPenumbraModel 1). A light with a very small source (World light size 0.01 m) has a penumbra far under one texel, and its shadow then shows the map's texels as a blocky outline (worst on the 512-texel cube faces). 1.5 (default) halves the staircase; higher is smoother but also lifts the core of shadows only one or two texels wide (at 2 such a core is 40 percent lit, at 1.5 about 25); 0 = off (the old one-texel kernels); capped at 4. Max penumbra still wins, and a projector kernel still narrows at a grazing contact.</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>F32</string>
     <key>Value</key>
-    <real>2.0</real>
+    <real>1.5</real>
   </map>
   <key>RenderSpotShadowPenumbraModel</key>
   <map>
