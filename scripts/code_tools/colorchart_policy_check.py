@@ -162,10 +162,15 @@ using LLVector3d=LLVector3;
 struct LLQuaternion{};
 namespace glm {struct mat4 {explicit mat4(float){}};}
 namespace ALColorChartData {constexpr int WIDTH=880,HEIGHT=736;}
+struct ChartTable {int width,height;};
+static ChartTable chartTable(){return {ALColorChartData::WIDTH,ALColorChartData::HEIGHT};}
 struct LLRenderTarget {
  bool complete=false;
+ U32 width=0,height=0;
  bool isComplete()const{return complete;}
- bool allocate(int,int,int,bool){++allocations;complete=!fail_alloc;return complete;}
+ U32 getWidth()const{return width;}
+ U32 getHeight()const{return height;}
+ bool allocate(int w,int h,int,bool){++allocations;width=U32(w);height=U32(h);complete=!fail_alloc;return complete;}
  void release(){complete=false;}
 };
 struct LLPipeline {

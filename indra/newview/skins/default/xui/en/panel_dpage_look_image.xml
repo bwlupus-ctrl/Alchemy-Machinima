@@ -413,6 +413,7 @@
                 <combo_box name="color_chart_mode" control_name="AlchemyColorChartMode">
                     <combo_box.item name="color_chart_mode_item_0" label="Unlit" value="0" />
                     <combo_box.item name="color_chart_mode_item_1" label="Lit" value="1" />
+                    <combo_box.item name="color_chart_mode_item_2" label="Log calibration" value="2" />
                     <combo_box.drop_down_button image_color="KitControlBg" image_overlay="KitIcon_chevron_down_10_16" image_overlay_alignment="right" image_overlay_color="KitIconTint" image_pressed="Kit_RoundRect4" image_selected="Kit_RoundRect4" image_unselected="Kit_RoundRect4" pad_right="6" />
                     <combo_box.combo_editor bg_color="KitInputBg" text_color="KitText" use_bg_color="true" />
                 </combo_box>

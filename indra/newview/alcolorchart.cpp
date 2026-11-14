@@ -1,6 +1,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alcolorchart.h"
 #include "alcolorchartdata.h"
+#include "alcolorchartlogdata.h"
 #include "llagent.h"
 #include "llapp.h"
 #include "llbutton.h"
@@ -20,6 +21,7 @@
 #include "llvolumemgr.h"
 #include "pipeline.h"
 #include <cmath>
+#include <cstring>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace
@@ -31,10 +33,64 @@ const LLStaticHashedString EXPOSED("chart_exposed");
 const LLStaticHashedString VIEWPORT("chart_viewport");
 ALColorChart* sChart = nullptr;
 
-bool unlit()
+S32 chartMode()
 {
     static LLCachedControl<S32> mode(gSavedSettings, "AlchemyColorChartMode", 0);
-    return mode() == 0;
+    return mode();
+}
+
+// Mode 2 (Log calibration) is always drawn unlit: its wedge reaches +6 stops,
+// which an 8-bit Lit texture cannot hold.
+bool unlit()
+{
+    const S32 mode = chartMode();
+    return mode == 0 || mode == 2;
+}
+
+struct ChartTable
+{
+    const ALColorChartData::Patch* patches;
+    S32 count;
+    S32 width;
+    S32 height;
+    F32 aspect;
+    bool full_frame;
+};
+
+ChartTable chartTable()
+{
+    if (chartMode() == 2)
+    {
+        return { ALColorChartLogData::PATCHES, ALColorChartLogData::COUNT, ALColorChartLogData::WIDTH,
+                 ALColorChartLogData::HEIGHT, ALColorChartLogData::ASPECT, true };
+    }
+    return { ALColorChartData::PATCHES, ALColorChartData::COUNT, ALColorChartData::WIDTH,
+             ALColorChartData::HEIGHT, ALColorChartData::ASPECT, false };
+}
+
+// Camera placement half-extents in NDC. Log calibration fills the frame
+// (centred, fitted inside it) so scopes see large patches; Size and Anchor
+// apply to the ColorChecker layout only.
+void cameraExtent(const ChartTable& table, F32& half_x, F32& half_y, F32& centre_y)
+{
+    const F32 view_aspect = llmax(LLViewerCamera::getInstance()->getAspect(), .01f);
+    if (table.full_frame)
+    {
+        half_y = .96f;
+        half_x = half_y * table.aspect / view_aspect;
+        if (half_x > .96f)
+        {
+            half_y *= .96f / half_x;
+            half_x = .96f;
+        }
+        centre_y = 0.f;
+        return;
+    }
+    static LLCachedControl<F32> size(gSavedSettings, "AlchemyColorChartSize", .25f);
+    static LLCachedControl<S32> anchor(gSavedSettings, "AlchemyColorChartAnchor", 0);
+    half_y = llclamp(size(), .10f, .60f);
+    half_x = half_y * table.aspect / view_aspect;
+    centre_y = anchor() == 1 ? -.45f : 0.f;
 }
 
 // The caller first verifies that final presentation is on the window.
@@ -209,17 +265,16 @@ void ALColorChart::cameraTransform(LLVector3d& position, LLQuaternion& rotation,
     const auto* camera = LLViewerCamera::getInstance();
     const F32 distance = llmax(2.f, camera->getNear() + .1f);
     const F32 tangent = tanf(camera->getView() * .5f);
-    static LLCachedControl<F32> size(gSavedSettings, "AlchemyColorChartSize", .25f);
-    static LLCachedControl<S32> anchor_setting(gSavedSettings, "AlchemyColorChartAnchor", 0);
-    const F32 fraction = llclamp(size(), .10f, .60f);
-    const F32 anchor = anchor_setting() == 1 ? -.45f : 0.f;
+    const ChartTable table = chartTable();
+    F32 half_x = 0.f, fraction = 0.f, anchor = 0.f;
+    cameraExtent(table, half_x, fraction, anchor);
     const LLVector3 centre = camera->getOrigin() + camera->getAtAxis() * distance +
         camera->getUpAxis() * (anchor * distance * tangent);
     position = gAgent.getPosGlobalFromAgent(centre);
     // Right-handed basis. The plan's (-at, +left, +up) has determinant -1.
     rotation = LLQuaternion(-camera->getAtAxis(), -camera->getLeftAxis(), camera->getUpAxis());
     const F32 height = 2.f * fraction * distance * tangent;
-    scale = LLVector3(.01f, height * ALColorChartData::ASPECT, height);
+    scale = LLVector3(.01f, height * table.aspect, height);
 }
 
 void ALColorChart::pinHere()
@@ -365,7 +420,7 @@ void ALColorChart::idle()
 void ALColorChart::drawChart(LLRenderTarget* dst, const glm::mat4& projection,
     const glm::mat4& modelview, bool exposed, LLRenderTarget* encoded, bool atlas, bool screen_sample)
 {
-    using namespace ALColorChartData;
+    const ChartTable table = chartTable();
     glm::mat4 matrix(1.f);
     if (!atlas)
     {
@@ -381,12 +436,11 @@ void ALColorChart::drawChart(LLRenderTarget* dst, const glm::mat4& projection,
         }
         else
         {
-            static LLCachedControl<F32> size(gSavedSettings, "AlchemyColorChartSize", .25f);
-            static LLCachedControl<S32> anchor(gSavedSettings, "AlchemyColorChartAnchor", 0);
-            const F32 fraction = llclamp(size(), .10f, .60f);
-            matrix[0][0] = fraction * ASPECT / LLViewerCamera::getInstance()->getAspect();
-            matrix[1][1] = fraction;
-            matrix[3][1] = anchor() == 1 ? -.45f : 0.f;
+            F32 half_x = 0.f, half_y = 0.f, centre_y = 0.f;
+            cameraExtent(table, half_x, half_y, centre_y);
+            matrix[0][0] = half_x;
+            matrix[1][1] = half_y;
+            matrix[3][1] = centre_y;
         }
         mLastMatrix = matrix;
         mLastDrawFrame = LLFrameTimer::getFrameCount();
@@ -444,12 +498,13 @@ void ALColorChart::drawChart(LLRenderTarget* dst, const glm::mat4& projection,
         quad(-1.f, -1.f, 2.f, 2.f);
         if (!encoded)
         {
-            for (const auto& patch : PATCHES)
+            for (S32 index = 0; index < table.count; ++index)
             {
-                const F32 x = 2.f * static_cast<F32>(patch.rect[0]) / static_cast<F32>(WIDTH) - 1.f;
-                const F32 y = 2.f * static_cast<F32>(patch.rect[1]) / static_cast<F32>(HEIGHT) - 1.f;
-                const F32 width = 2.f * static_cast<F32>(patch.rect[2]) / static_cast<F32>(WIDTH);
-                const F32 height = 2.f * static_cast<F32>(patch.rect[3]) / static_cast<F32>(HEIGHT);
+                const auto& patch = table.patches[index];
+                const F32 x = 2.f * static_cast<F32>(patch.rect[0]) / static_cast<F32>(table.width) - 1.f;
+                const F32 y = 2.f * static_cast<F32>(patch.rect[1]) / static_cast<F32>(table.height) - 1.f;
+                const F32 width = 2.f * static_cast<F32>(patch.rect[2]) / static_cast<F32>(table.width);
+                const F32 height = 2.f * static_cast<F32>(patch.rect[3]) / static_cast<F32>(table.height);
                 shader.uniform3fv(COLOUR, 1, patch.linear);
                 quad(x, y, width, height);
             }
@@ -489,10 +544,18 @@ void ALColorChart::renderLegacy(LLRenderTarget* dst, const glm::mat4& projection
     }
     // Legacy encodes BEFORE optics. Encode a separate float chart with the
     // production Exposure + Camera stages, using optional private programs.
+    const ChartTable table = chartTable();
+    if (mLinear.isComplete() &&
+        (mLinear.getWidth() != static_cast<U32>(table.width) || mLinear.getHeight() != static_cast<U32>(table.height)))
+    {
+        // Layout switched (ColorChecker <-> Log calibration): the atlas follows the table size.
+        mLinear.release();
+        mExposed.release();
+    }
     if (!mLinear.isComplete())
     {
-        if (!mLinear.allocate(ALColorChartData::WIDTH, ALColorChartData::HEIGHT, GL_RGBA32F, false) ||
-            !mExposed.allocate(ALColorChartData::WIDTH, ALColorChartData::HEIGHT, GL_RGBA32F, false))
+        if (!mLinear.allocate(table.width, table.height, GL_RGBA32F, false) ||
+            !mExposed.allocate(table.width, table.height, GL_RGBA32F, false))
         {
             mLinear.release();
             mExposed.release();
@@ -555,13 +618,19 @@ void ALColorChart::debugReadback()
     }
     const auto& rect = gViewerWindow->getWorldViewRectRaw();
     ScopedReadbackState saved_state;
-    for (const auto& patch : ALColorChartData::PATCHES)
+    const ChartTable table = chartTable();
+    for (S32 index = 0; index < table.count; ++index)
     {
+        const auto& patch = table.patches[index];
+        if (!strncmp(patch.name, "Ramp ", 5))
+        {
+            continue; // 112 narrow slices; the wedge reads the same curve
+        }
         const F32 patch_x = static_cast<F32>(patch.rect[0]) + static_cast<F32>(patch.rect[2]) * .5f;
         const F32 patch_y = static_cast<F32>(patch.rect[1]) + static_cast<F32>(patch.rect[3]) * .5f;
         const glm::vec4 clip = mLastMatrix * glm::vec4(
-            2.f * patch_x / static_cast<F32>(ALColorChartData::WIDTH) - 1.f,
-            2.f * patch_y / static_cast<F32>(ALColorChartData::HEIGHT) - 1.f, 0.f, 1.f);
+            2.f * patch_x / static_cast<F32>(table.width) - 1.f,
+            2.f * patch_y / static_cast<F32>(table.height) - 1.f, 0.f, 1.f);
         if (clip.w <= 0.f || fabsf(clip.x) >= clip.w || fabsf(clip.y) >= clip.w || fabsf(clip.z) >= clip.w)
         {
             LL_INFOS("ColorChart") << "INCONCLUSIVE " << patch.name << " centre outside camera clip volume"
