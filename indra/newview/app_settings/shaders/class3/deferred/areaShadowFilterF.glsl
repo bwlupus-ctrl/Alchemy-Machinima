@@ -20,6 +20,15 @@ uniform uvec4 area_world_seed;    // per channel: light UUID hash (the rotation'
 // A source of a few millimetres leaves the filter at AW_MIN_RADIUS, 0.7 texel: the outline of the shadow is then the 512-texel face's staircase
 // (12 mm steps at 3 m). 0 (also a program that never receives it) = off: AW_MIN_RADIUS and a search of one texel, the bytes of a build without it.
 uniform float area_world_min_radius;
+// [Softbox taps] RenderAreaShadowWorldWideTaps: the most filter taps a source wider than 0.25 m may use. Such a source's disk grows with its
+// radius (up to 12 r / 0.1 texels) while its tap count was HALVED (16): at World light size 0.30 that is 16 taps over a 36 texel disk, 16
+// texels apart, each a one-texel compare. With the rotation fixed in the world (it must be: a per-pixel turn would boil with the camera) every
+// tap draws its own hard copy of the blocker's edge, and a wide penumbra is 16 nested outlines, 6 % apart (the curved bands around a shaded
+// lamp's pool). The count now follows the disk's area at the density of a small source (32 taps at 12 texels), up to this maximum. The
+// blocker search is unchanged (more search taps measured no difference). 0 (also a program that never receives it) = the old count,
+// the bytes of a build without it.
+uniform int area_world_wide_taps;
+const int AW_WIDE_TAPS_MAX = 128;
 uniform vec3 area_world_rot[3];   // ROWS of the view -> agent rotation (the columns of the view matrix's 3x3): agent = (dot(r0,v), dot(r1,v), dot(r2,v))
 uniform sampler2D area_world_atlas; // D32F atlas, 1632 x 1088 per light, compare mode NONE
 uniform int area_world_debug;     // diagnostic (RenderAreaShadowWorldDebug), 0 = normal: 1 world visibility only, 2 face / 5, 3 receiver depth minus atlas depth
@@ -909,6 +918,11 @@ float awDirectionVisibility(int c, float blend)
     radius = min(radius,max_angular);
     float old_radius = clamp(r_map*max(zr-z_b*zr/dist,0.0)/(z_b*zr/dist)*AW_USABLE/(2.0*zr),aw_min_radius,AW_MAX_RADIUS)*(2.0*zr/(AW_USABLE*dist));
     int filter_taps = large ? AW_FILTER_TAPS/2 : AW_FILTER_TAPS;
+    if (large && area_world_wide_taps > 0)
+    {
+        float texels = radius*(0.5*AW_USABLE);   // the disk's radius in on-axis texels
+        filter_taps = clamp(int(ceil(float(AW_FILTER_TAPS)*texels*texels/(AW_MAX_RADIUS*AW_MAX_RADIUS))),AW_FILTER_TAPS/2,min(area_world_wide_taps,AW_WIDE_TAPS_MAX));
+    }
     float lit = 0.0;
     float front_lit = 0.0;
     for (int k = 0; k < filter_taps; ++k)

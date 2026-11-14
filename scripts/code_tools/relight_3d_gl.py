@@ -431,6 +431,9 @@ class AreaRunner:
             # that gave it once states it on every run.
             if world is not None and 'min_radius' in world:
                 gl.uf[1](gl.loc(fr, b'area_world_min_radius'), float(world['min_radius']))
+            # RenderAreaShadowWorldWideTaps, likewise only when the caller's world gives 'wide_taps'.
+            if world is not None and 'wide_taps' in world:
+                gl.ui(gl.loc(fr, b'area_world_wide_taps'), int(world['wide_taps']))
             gl.u3fv(gl.loc(fr, b'area_world_rot'), 3, wrot.ctypes.data_as(C.POINTER(gl.F)))
             gl.ui(gl.loc(fr, b'area_world_atlas'), 4)
             gl.active(0x84C3)

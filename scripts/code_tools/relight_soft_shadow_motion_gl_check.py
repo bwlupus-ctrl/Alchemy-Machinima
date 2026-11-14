@@ -203,7 +203,7 @@ SCREEN_HASH = '    return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.0
 ANCHOR_VALUE = '    return abs(n * 2.0 - 1.0);\n'
 ANCHOR_SET = '        if (soft_shadow_noise_model == 2) g_spot_noise = softShadowAnchored(stc.xy * proj_shadow_res);\n'
 ANCHOR_CLEAR = '        g_spot_noise = -1.0;   // [SoftShadow anchor] the anchored noise ends with its own sample\n'
-CELL = '    g_spot_cell = log2(clamp(SOFT_NOISE_CELL_PIXELS*pixel/max(texel,1.e-9),1.0,4096.0));\n'
+CELL = '        g_spot_cell = log2(clamp(SOFT_NOISE_CELL_PIXELS*pixel/max(texel,1.e-9),1.0,4096.0));\n'
 BILINEAR = '    return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);\n'
 TURN = 'const float SOFT_NOISE_TURN = 0.0625;'
 CENTRED = '    if (g_spot_noise >= 0.0) return 0.5;   // [SoftShadow anchor] the centred disk\n'
@@ -226,7 +226,7 @@ NO_KERNEL = [(KERNEL_PHI, '        float phi = slot_phase;\n'), (KERNEL_JIT, '0.
 def negatives():
     return {
         'anchor_from_screen_pixel': [(ANCHOR_SET, ANCHOR_SET.replace('stc.xy * proj_shadow_res', 'gl_FragCoord.xy'))],
-        'cell_ignores_pixel_footprint': [(CELL, '    g_spot_cell = 0.0;\n')],
+        'cell_ignores_pixel_footprint': [(CELL, '        g_spot_cell = 0.0;\n')],
         'cell_not_interpolated': [(BILINEAR, '    return h.x;\n')],
         'full_turn_rotation': [(TURN, 'const float SOFT_NOISE_TURN = 1.0;')],
         'poisson_jitter_kept': [(CENTRED, '    if (g_spot_noise >= 0.0) return g_spot_noise;\n')],

@@ -31797,6 +31797,9 @@ void LLPipeline::renderAreaShadows(S32 limit, F32 light_scale, bool actor_only,
                 // [SoftShadow floor] The same setting on the cube filter, texels of the cube face.
                 static LLCachedControl<F32> world_min_softness(gSavedSettings, "RenderSoftShadowMinSoftness", 2.f);
                 gAreaShadowFilterProgram.uniform1f(LLStaticHashedString("area_world_min_radius"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));
+                // [Softbox taps] The most filter taps a source wider than 0.25 m may use (0 = the old 16).
+                static LLCachedControl<U32> world_wide_taps(gSavedSettings, "RenderAreaShadowWorldWideTaps", 64);
+                gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_wide_taps"), (S32)llmin((U32)world_wide_taps, 128U));
                 gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString("area_world_rot"),3,world_rot);
                 static LLCachedControl<S32> world_debug(gSavedSettings, "RenderAreaShadowWorldDebug", 0);
                 gAreaShadowFilterProgram.uniform1i(LLStaticHashedString("area_world_debug"),world_any ? llclamp(static_cast<S32>(world_debug),0,3) : 0);

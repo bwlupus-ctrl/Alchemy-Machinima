@@ -21198,6 +21198,17 @@
     <key>Value</key>
     <integer>1</integer>
   </map>
+  <key>RenderAreaShadowWorldWideTaps</key>
+  <map>
+    <key>Comment</key>
+    <string>World shadows of a light wider than 0.25 m (World light size, or its prim): the most filter taps its soft edge may use. Such a light's filter disk grows with its size while it used to get half the taps (16), so a wide penumbra showed as curved bands, 16 nested copies of the blocker's edge. The tap count now follows the disk's area up to this maximum. 64 (default) = steps of about 1.6 percent; 128 = smoother, about twice the cost on the pixels inside such a penumbra; 0 = the old 16 taps. Lights of 0.25 m or less are not affected.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>64</integer>
+  </map>
   <key>RenderSoftShadowMinSoftness</key>
   <map>
     <key>Comment</key>

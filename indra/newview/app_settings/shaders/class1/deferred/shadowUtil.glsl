@@ -1578,9 +1578,13 @@ vec4 spotSurfaceReceiver(vec3 pos, vec3 norm, int index)
     // texels. One pixel is view depth * 2 tan(fov/2) / screen height metres across the view ray
     // (inv_proj[1][1] = tan(fov/2)) and that over the cosine of the view incidence along the
     // surface (capped at 4x, like the slope terms here); `texel` is the map's metres per texel.
-    float pixel = abs(pos.z*inv_proj[1][1])*2.0/max(screen_res.y,1.0);
-    pixel /= max(abs(dot(n,pos))/max(length(pos),1.e-6),0.25);
-    g_spot_cell = log2(clamp(SOFT_NOISE_CELL_PIXELS*pixel/max(texel,1.e-9),1.0,4096.0));
+    // Models 0 and 1 never read it and do not pay for it.
+    if (soft_shadow_noise_model == 2)
+    {
+        float pixel = abs(pos.z*inv_proj[1][1])*2.0/max(screen_res.y,1.0);
+        pixel /= max(abs(dot(n,pos))/max(length(pos),1.e-6),0.25);
+        g_spot_cell = log2(clamp(SOFT_NOISE_CELL_PIXELS*pixel/max(texel,1.e-9),1.0,4096.0));
+    }
     float ceiling = max(0.25*spot_shadow_offset,g_spot_bias_floor);
     // View depth is 1/(a*z_ndc + b) with a = inv_proj[2][3], so one 24-bit depth step (2^-23 in
     // z_ndc) moves the reconstructed receiver |pos.z| * |pos| * |a| * 2^-23 metres along its view ray.

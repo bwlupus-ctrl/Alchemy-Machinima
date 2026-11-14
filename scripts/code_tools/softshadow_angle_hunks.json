@@ -1,6 +1,6 @@
 {
   "base": "0494b1f4d19",
-  "description": "Steady soft shadows (camera-angle stability): the RenderSoftShadowNoiseModel upload clamp and default (2 = noise anchored to the projector map), the soft shadow softness floor uploads (RenderSoftShadowMinSoftness) and the world shadow near-clip guard (the status-line warning when a cube's near plane reaches an avatar; no rendering change). No other pipeline change.",
+  "description": "Steady soft shadows (camera-angle stability): the RenderSoftShadowNoiseModel upload clamp and default (2 = noise anchored to the projector map), the soft shadow softness floor uploads (RenderSoftShadowMinSoftness), the wide-source tap count upload (RenderAreaShadowWorldWideTaps) and the world shadow near-clip guard (the status-line warning when a cube's near plane reaches an avatar; no rendering change). No other pipeline change.",
   "files": {
     "pipeline.cpp": [
       {
@@ -17,7 +17,7 @@
       },
       {
         "before": "                gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString(\"area_world_seed\"),1,world_seed);\n                gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString(\"area_world_rot\"),3,world_rot);\n",
-        "after": "                gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString(\"area_world_seed\"),1,world_seed);\n                // [SoftShadow floor] The same setting on the cube filter, texels of the cube face.\n                static LLCachedControl<F32> world_min_softness(gSavedSettings, \"RenderSoftShadowMinSoftness\", 2.f);\n                gAreaShadowFilterProgram.uniform1f(LLStaticHashedString(\"area_world_min_radius\"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));\n                gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString(\"area_world_rot\"),3,world_rot);\n"
+        "after": "                gAreaShadowFilterProgram.uniform4uiv(LLStaticHashedString(\"area_world_seed\"),1,world_seed);\n                // [SoftShadow floor] The same setting on the cube filter, texels of the cube face.\n                static LLCachedControl<F32> world_min_softness(gSavedSettings, \"RenderSoftShadowMinSoftness\", 2.f);\n                gAreaShadowFilterProgram.uniform1f(LLStaticHashedString(\"area_world_min_radius\"), static_cast<F32>(ALRelight::softShadowFloor(world_min_softness)));\n                // [Softbox taps] The most filter taps a source wider than 0.25 m may use (0 = the old 16).\n                static LLCachedControl<U32> world_wide_taps(gSavedSettings, \"RenderAreaShadowWorldWideTaps\", 64);\n                gAreaShadowFilterProgram.uniform1i(LLStaticHashedString(\"area_world_wide_taps\"), (S32)llmin((U32)world_wide_taps, 128U));\n                gAreaShadowFilterProgram.uniform3fv(LLStaticHashedString(\"area_world_rot\"),3,world_rot);\n"
       },
       {
         "before": "{\n    static LLCachedControl<bool> cubes(gSavedSettings, \"RenderAreaShadowCubeMaps\", false);\n",

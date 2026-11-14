@@ -212,7 +212,7 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
-SOFTSHADOW_ANGLE_DIGEST = "dc65efc82740e08deeb173abca604c215ea6329e60a9370ceb59c6cfe6c93af4"
+SOFTSHADOW_ANGLE_DIGEST = "3d63dfd18da759bce0f5d8713b53026fe762e121ccb643bbf1e34f836fcd8380"
 SOFTSHADOW_ANGLE_BASE = "0494b1f4d19"
 
 
@@ -235,7 +235,7 @@ def reverse_softshadow_angle(source, name):
                                      SOFTSHADOW_ANGLE_DIGEST, "reviewed soft shadow angle")
 
 
-SOFTSHADOW_ANGLE_SHADER_DIGEST = "f9785c4913d7e33a5dd7546c0c20d9ca48cb66a4110c3db7e07ecdca89aa2e66"
+SOFTSHADOW_ANGLE_SHADER_DIGEST = "aebaba1935a4b15b2a7cef8cadda617a9a6c4c1dc441cf60ea1854640e1e91b6"
 
 
 def reverse_softshadow_angle_shader(source):
@@ -260,6 +260,36 @@ def reverse_softshadow_angle_shader(source):
         assert source.count(hunk["after"]) == 1, "soft shadow angle shader hunk"
         source = source.replace(hunk["after"], hunk["before"], 1)
     assert source == original, "soft shadow angle shader reversal must reproduce its exact baseline"
+    return source
+
+
+SOFTSHADOW_FLOOR_FILTER_DIGEST = "23940f2b732f6e8801e4e2ad9463d2353914d2a9b769fdb771a9887a495cc174"
+
+
+def reverse_softshadow_floor_filter(source):
+    """Peel the reviewed minimum-softness edits of class3/deferred/areaShadowFilterF.glsl (RenderSoftShadowMinSoftness on
+    the world cube filter: the area_world_min_radius uniform, the floored radii of the face and direction paths, and the
+    one-call-site path choice that cross-fades results in the cube edge band when the floor is on). For gates that pin
+    that shader to an older reference. Idempotent: skipped when none of its hunks is present. Exact: every pinned hunk
+    must be present once and reversing them must reproduce the 0494b1f4d19 file byte for byte."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "softshadow_floor_filter_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_FLOOR_FILTER_DIGEST, ("reviewed soft shadow floor filter", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == SOFTSHADOW_ANGLE_BASE, "soft shadow floor filter base"
+    assert set(allowed["files"]) == {"areaShadowFilterF.glsl"}, "soft shadow floor filter scope"
+    hunks = allowed["files"]["areaShadowFilterF.glsl"]
+    if not any(hunk["after"] in source for hunk in hunks):
+        return source
+    path = "indra/newview/app_settings/shaders/class3/deferred/areaShadowFilterF.glsl"
+    original = subprocess.check_output(["git", "show", allowed["base"] + ":" + path]).decode("utf-8").replace("\r\n", "\n")
+    for hunk in hunks:
+        assert original.count(hunk["before"]) == 1, "soft shadow floor filter baseline hunk"
+        assert source.count(hunk["after"]) == 1, "soft shadow floor filter hunk"
+        source = source.replace(hunk["after"], hunk["before"], 1)
+    assert source == original, "soft shadow floor filter reversal must reproduce its exact baseline"
     return source
 
 
