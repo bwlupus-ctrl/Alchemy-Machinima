@@ -153,6 +153,8 @@ LLFrameTimer gAssetStorageLogTime;
 // Rendering stuff
 void render_ui(F32 zoom_factor = 1.f, int subfield = 0);
 void swap();
+// [FrameHitch] True once swap() ran the VBO pool sweep before this frame's present (see clean_vbo_pool_before_present()).
+static bool sVBOPoolSweptBeforePresent = false;
 void render_hud_attachments();
 void render_ui_3d();
 void render_ui_2d();
@@ -1280,10 +1282,15 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
     // RenderVBOPoolCleanAtFrameEnd: the swap is done and the cull references are released,
     // so this is a safe point to run the VBO pool's expiry sweep (not mid-rebuild).
+    // [FrameHitch] Only when swap() did not already run it before the present (see
+    // clean_vbo_pool_before_present()): a sweep here sits between SwapBuffers and the next
+    // frame's time sample, and its glDeleteBuffers is where the driver's present wait landed.
+    if (!sVBOPoolSweptBeforePresent)
     {
         static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
         LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);
     }
+    sVBOPoolSweptBeforePresent = false;
 
     display_stats();
 
@@ -1977,8 +1984,33 @@ void render_ui(F32 zoom_factor, int subfield)
     }
 }
 
+// [FrameHitch] RenderVBOPoolCleanBeforePresent: run the frame-end VBO pool expiry sweep BEFORE the
+// present instead of after it. SwapBuffers returns at once (about 1.3 ms measured); the wait for the
+// vblank is taken by the next GL call that has to synchronise with the driver. Normally that is the
+// first render-target bind of the next frame, about 1 ms after the frame's time sample, so frame time
+// is sampled at an even phase. The post-swap sweep's glDeleteBuffers took that wait about once a
+// second instead (18-26 ms, Tracy 11/14: 31 of 31 hitches), BEFORE the frame boundary: that frame
+// read 56-61 ms, the next 9-16 ms, and the evenly spaced presents showed a jump then a near repeat.
+// Before the present the driver is already in step with this frame, so the same call is cheap.
+// Off, or RenderVBOPoolCleanAtFrameEnd off: nothing here, the sweep stays where it was.
+static void clean_vbo_pool_before_present()
+{
+    static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
+    static LLCachedControl<bool> vbo_clean_before_present(gSavedSettings, "RenderVBOPoolCleanBeforePresent", true);
+    if (vbo_clean_at_frame_end && vbo_clean_before_present)
+    {
+        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("vbo pool sweep (pre-swap)");
+        LLVertexBuffer::endOfFrameCleanPool(true);
+        sVBOPoolSweptBeforePresent = true;
+    }
+}
+
 void swap()
 {
+    // [FrameHitch] Nothing that can synchronise with the driver may run between the present and the
+    // next frame's time sample: do the VBO pool sweep now (frame_cadence_check.py guards this).
+    clean_vbo_pool_before_present();
+
     // [FrameLimiter] Pace the present itself, so the present interval is the cap
     // interval whatever the work before the swap cost. Cap off: just the swap (no wait; the
     // swap is recorded exactly as before); each present in a frame is paced. The wait runs before the swap

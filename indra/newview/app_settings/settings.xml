@@ -23531,6 +23531,17 @@
       <key>Value</key>
       <integer>1</integer>
     </map>
+	<key>RenderVBOPoolCleanBeforePresent</key>
+    <map>
+      <key>Comment</key>
+      <string>With RenderVBOPoolCleanAtFrameEnd on, run the VBO pool expiry sweep just before the frame is presented instead of just after. After the present, its buffer delete could take the driver's wait for the display (about 20 ms at a 30 fps cap) before the next frame started, so one frame ran long and the next short and motion stepped unevenly (a jump, then a near repeat). FALSE = sweep after the present, as before.</string>
+      <key>Persist</key>
+      <integer>1</integer>
+      <key>Type</key>
+      <string>Boolean</string>
+      <key>Value</key>
+      <integer>1</integer>
+    </map>
 	<key>RenderVolumeLODFactor</key>
     <map>
       <key>Comment</key>
