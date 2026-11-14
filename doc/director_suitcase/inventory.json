@@ -5,12 +5,14 @@
     "counts": {
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
-      "GENERATED": 736,
+      "GENERATED": 738,
       "HOOK": 563,
       "OWNED": 941,
-      "TOOLING": 522
+      "TOOLING": 523
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,7 +25,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "629773404a71f0b7744b51a9fff33ba4f26b000d16473e3c8bc77d5f590cf4c7",
+        "csv_sha256": "853fa985cc5aa4c2019028695f6aabf343b528ff7c269e9a9c78039142dcc865",
         "director_rules": {
           "known_legacy": 0,
           "links": 18,
@@ -194,10 +196,10 @@
       },
       "wiring_rows": 2320
     },
-    "head_source_tree": "1cca036c7187a1faa31c01d40dbd29da22a696be",
+    "head_source_tree": "af77b5099644aff0a9f769f05df649c70812795f",
     "hook_files": 563,
     "hunks": 3582,
-    "input_sha256": "e2596fc4158e2d7ece993ce3bc447e3a2a5489169607d6517313ec60b8baf19b",
+    "input_sha256": "2f38d36b6d24b87097902d4a089020ba8d0c19a62f6ffaba644f79e2b945fd2b",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -4818,6 +4820,19 @@
       "git_status": "A",
       "layer": 3,
       "path": "doc/XINPUT_GAMEPAD_DPAD_TRIGGERS_BRIEF.md",
+      "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "doc/colour_chart_log_reference.md",
       "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
     },
     {
@@ -13585,7 +13600,9 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "sensor"
+      ],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -13603,7 +13620,9 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [],
+      "candidate_features_from_subjects": [
+        "sensor"
+      ],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -13633,6 +13652,21 @@
       "git_status": "A",
       "layer": 10,
       "path": "indra/newview/alcolorchartdata.h",
+      "reason": "generator output; runtime XUI must be regenerated and shipped"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "looks"
+      ],
+      "git_status": "A",
+      "layer": 10,
+      "path": "indra/newview/alcolorchartlogdata.h",
       "reason": "generator output; runtime XUI must be regenerated and shipped"
     },
     {
@@ -42144,6 +42178,21 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/colorchart_gen.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "looks"
+      ],
+      "git_status": "A",
+      "layer": 10,
+      "path": "scripts/code_tools/colorchart_log_gen.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

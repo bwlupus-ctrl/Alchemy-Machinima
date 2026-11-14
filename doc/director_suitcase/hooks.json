@@ -8051,6 +8051,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8065,10 +8069,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8108,6 +8108,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8122,10 +8126,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8159,6 +8159,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8173,10 +8177,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8209,6 +8209,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8223,10 +8227,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8263,6 +8263,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8277,10 +8281,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8313,6 +8313,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8327,10 +8331,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8363,6 +8363,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8377,10 +8381,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8415,6 +8415,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8429,10 +8433,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8469,6 +8469,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8483,10 +8487,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8519,6 +8519,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8533,10 +8537,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8569,6 +8569,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8583,10 +8587,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8619,6 +8619,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8633,10 +8637,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8669,6 +8669,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8683,10 +8687,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8720,6 +8720,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8734,10 +8738,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8770,6 +8770,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8784,10 +8788,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8837,6 +8837,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8851,10 +8855,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -8908,6 +8908,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8922,10 +8926,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -8958,6 +8958,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -8972,10 +8976,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -9006,6 +9006,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9020,10 +9024,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9056,6 +9056,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9070,10 +9074,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -9109,6 +9109,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9123,10 +9127,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -9159,6 +9159,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9173,10 +9177,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9207,6 +9207,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9221,10 +9225,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9255,6 +9255,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9269,10 +9273,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9305,6 +9305,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9319,10 +9323,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -9356,6 +9356,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9370,10 +9374,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -9404,6 +9404,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9418,10 +9422,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9452,6 +9452,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9466,10 +9470,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9502,6 +9502,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9516,10 +9520,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -9550,6 +9550,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9564,10 +9568,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9598,6 +9598,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9612,10 +9616,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9646,6 +9646,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9660,10 +9664,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9694,6 +9694,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9708,10 +9712,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9742,6 +9742,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9756,10 +9760,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9790,6 +9790,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9804,10 +9808,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9838,6 +9838,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9852,10 +9856,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9886,6 +9886,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9900,10 +9904,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9934,6 +9934,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9948,10 +9952,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -9982,6 +9982,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -9996,10 +10000,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10030,6 +10030,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10044,10 +10048,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10078,6 +10078,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10092,10 +10096,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10126,6 +10126,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10140,10 +10144,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10174,6 +10174,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10188,10 +10192,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10222,6 +10222,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10236,10 +10240,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10270,6 +10270,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10284,10 +10288,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10318,6 +10318,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10332,10 +10336,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -10366,6 +10366,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10380,10 +10384,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10414,6 +10414,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10428,10 +10432,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10467,6 +10467,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10481,10 +10485,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -10523,6 +10523,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10537,10 +10541,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -10575,6 +10575,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10589,10 +10593,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "mixed/perf-review",
@@ -10623,6 +10623,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10637,10 +10641,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10671,6 +10671,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10685,10 +10689,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10719,6 +10719,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10733,10 +10737,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10769,6 +10769,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10783,10 +10787,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -10819,6 +10819,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10833,10 +10837,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -10869,6 +10869,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10883,10 +10887,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10917,6 +10917,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10931,10 +10935,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -10965,6 +10965,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -10979,10 +10983,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11013,6 +11013,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11027,10 +11031,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11061,6 +11061,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11075,10 +11079,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11109,6 +11109,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11123,10 +11127,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11157,6 +11157,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11171,10 +11175,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11205,6 +11205,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11219,10 +11223,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11253,6 +11253,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11267,10 +11271,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11301,6 +11301,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11315,10 +11319,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11349,6 +11349,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11363,10 +11367,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11397,6 +11397,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11411,10 +11415,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11447,6 +11447,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11461,10 +11465,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -11498,6 +11498,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11512,10 +11516,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -11546,6 +11546,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11560,10 +11564,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11594,6 +11594,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11608,10 +11612,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11642,6 +11642,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11656,10 +11660,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11690,6 +11690,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11704,10 +11708,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "unknown-review",
@@ -11752,6 +11752,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11766,10 +11770,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -11806,6 +11806,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
             },
@@ -11820,10 +11824,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -11855,10 +11855,14 @@
           "head_end": 32597,
           "head_start": 32234,
           "id": "indra/newview/app_settings/settings.xml@32234,364",
-          "patch": "         <key>Value</key>\n         <integer>1</integer>\n     </map>\n-    <key>MediaAutoPlayHuds</key>\n+    <key>AlchemyWeatherShelterUpdateHz</key>\n     <map>\n         <key>Comment</key>\n-        <string>Automatically play HUD media</string>\n+        <string>Update rate: advanced world shelter map control.</string>\n         <key>Persist</key>\n         <integer>1</integer>\n         <key>Type</key>\n-        <string>Boolean</string>\n+        <string>U32</string>\n         <key>Value</key>\n+        <integer>30</integer>\n+    </map>\n+    <key>AlchemyWeatherShelterBias</key>\n+    <map>\n+        <key>Comment</key>\n+        <string>Bias: advanced world shelter map control.</string>\n+        <key>Persist</key>\n         <integer>1</integer>\n+        <key>Type</key>\n+        <string>F32</string>\n+        <key>Value</key>\n+        <real>0.12</real>\n     </map>\n-    <key>MediaFirstClickInteract</key>\n+    <key>AlchemyWeatherShelterSoftness</key>\n     <map>\n-      <key>Comment</key>\n-      <string>This setting controls which media (once loaded) does not require a first click to focus before interaction can begin. This allows clicks to be passed directly to media bypassing the focus click requirement. This setting is a bitfield, precomputed values are as follows: Disabled=0; Worn HUDs only=1; Owned objects=2; Friend objects=4; Group objects=8; Landowner objects=16; Any object=32767; All MOAP=32768. For complete details see lltoolpie.h enum MediaFirstClickTypes.</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>S32</string>\n-      <key>Value</key>\n-      <integer>31</integer>\n+        <key>Comment</key>\n+        <string>Softness: advanced world shelter map control.</string>\n+        <key>Persist</key>\n+        <integer>1</integer>\n+        <key>Type</key>\n+        <string>F32</string>\n+        <key>Value</key>\n+        <real>0.35</real>\n     </map>\n-    <key>EnableSelectionHints</key>\n+    <key>AlchemyWeatherShelterDebug</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to send editing hints to animate the arm when editing an object.</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>1</integer>\n+        <key>Comment</key>\n+        <string>Show shelter: advanced world shelter map control.</string>\n+        <key>Persist</key>\n+        <integer>1</integer>\n+        <key>Type</key>\n+        <string>Boolean</string>\n+        <key>Value</key>\n+        <integer>0</integer>\n     </map>\n-    <key>EnableLookAtTarget</key>\n+    <key>AlchemyColorChartShow</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to animate the avatar head and send look at targets when moving the cursor or focusing on objects</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>1</integer>\n+        <key>Comment</key><string>Show session-only colour reference. Never include in scene/setup/export.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>Boolean</string>\n+        <key>Value</key><integer>0</integer>\n     </map>\n-    <key>LimitLookAtTarget</key>\n+    <key>AlchemyColorChartMode</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to clamp the look at targets around the avatar head before sending</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>0</integer>\n+        <key>Comment</key><string>Colour chart mode: 0 Unlit exact reference, 1 Lit matte prop.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n     </map>\n-    <key>LimitLookAtTargetDistance</key>\n+    <key>AlchemyColorChartPlacement</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Distance to limit look at target to</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>F32</string>\n-      <key>Value</key>\n-      <integer>2</integer>\n+        <key>Comment</key><string>Colour chart placement: 0 Camera, 1 Pinned. Transform is session-only.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n     </map>\n-    <key>PurgeDiskCacheOnStartup</key>\n+    <key>AlchemyColorChartSize</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to LRU purge the disk cache during startup on main thread</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>0</integer>\n+        <key>Comment</key><string>Colour chart fraction of frame height (0.10 to 0.60).</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.25</real>\n     </map>\n-    <key>ScriptEditorDisableSyntaxHighlight</key>\n+    <key>AlchemyColorChartAnchor</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Disable syntax highlighting in script editor for performance testing</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>0</integer>\n+        <key>Comment</key><string>Colour chart camera anchor: 0 Centre, 1 Lower third.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>AlchemyColorChartForceShaderFailure</key>\n+    <map>\n+        <key>Comment</key><string>Developer-only failure control: 0 normal, 1 chart shader, 2 legacy atlas encoder. Re-enable chart or reload shaders to retry.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>AlchemyColorChartDebugReadback</key>\n+    <map>\n+        <key>Comment</key><string>Developer-only backbuffer patch readback; requires an in-world run.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>Boolean</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>POVBlinkCloseMs</key>\n+    <map>\n+        <key>Comment</key><string>Time to close the lids in milliseconds. Quintic easing starts and ends smoothly.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>90</real>\n+    </map>\n+    <key>POVBlinkHoldMs</key>\n+    <map>\n+        <key>Comment</key><string>Time at maximum blink depth before opening. Hold closed stays shut until released.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>40</real>\n+    </map>\n+    <key>POVBlinkOpenMs</key>\n+    <map>\n+        <key>Comment</key><string>Time to reopen the lids in milliseconds, slower than closure by default.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>180</real>\n+    </map>\n+    <key>POVBlinkDepth</key>\n+    <map>\n+        <key>Comment</key><string>Maximum closure: 1 completely covers the frame; lower values leave a droopy opening.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>1</real>\n+    </map>\n+    <key>POVBlinkCurve</key>\n+    <map>\n+        <key>Comment</key><string>Arch of the top and bottom lid edges. Aspect-correct in units of frame height.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.35</real>\n+    </map>\n+    <key>POVBlinkSoftness</key>\n+    <map>\n+        <key>Comment</key><string>Feather width at the lid edges. Fully closed Dark lids always cover the whole frame.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.02</real>\n+    </map>\n+    <key>POVBlinkDarken</key>\n+    <map>\n+        <key>Comment</key><string>Darkens the remaining image as the lids close, especially near the gap.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.35</real>\n+    </map>\n+    <key>POVBlinkBlur</key>\n+    <map>\n+        <key>Comment</key><string>Cheap four-tap blur near the lid edges and across the closing image. Only runs during a blink.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.4</real>\n+    </map>\n+    <key>POVBlinkStyle</key>\n+    <map>\n+        <key>Comment</key><string>Dark gives soft dark lids and a subtle lash shadow. Warm transmits a faint red-orange glow and a little scene colour.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>U32</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>POVBlinkAuto</key>\n+    <map>\n+        <key>Comment</key><string>Blink naturally at random intervals. At least 650 ms fully open between blinks.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>Boolean</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>POVBlinkRate</key>\n+    <map>\n+        <key>Comment</key><string>Target blinks per minute. Natural random intervals and a fully open refractory gap can reduce the actual rate.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>15</real>\n+    </map>\n+    <key>POVBlinkPadTap</key>\n+    <map>\n+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>U32</string>\n+        <key>Value</key><integer>64</integer>\n+    </map>\n+    <key>POVBlinkPadHold</key>\n+    <map>\n+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>U32</string>\n+        <key>Value</key><integer>64</integer>\n+    </map>\n+    <key>ActorKeyEnabled</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Enabled. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeySubjects</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Subjects. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyIncludeClones</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: IncludeClones. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyIncludeAnimesh</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: IncludeAnimesh. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyMode</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Mode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyColorPreset</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ColorPreset. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyColor</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Color. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Color3</string>\n+      <key>Value</key><array><real>0</real><real>0.6941176470588235</real><real>0.25098039215686274</real></array>\n+    </map>\n+    <key>ActorKeyMatteInvert</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: MatteInvert. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyFeather</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Feather. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>1.5</real>\n+    </map>\n+    <key>ActorKeyChoke</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Choke. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>0.0</real>\n+    </map>\n+    <key>ActorKeyEdgeMode</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: EdgeMode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyAlphaCoverage</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: AlphaCoverage. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyHideHUD</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: HideHUD. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyShadow</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Shadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyShadowIsolation</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowIsolation. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyShadowStrength</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowStrength. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>0.5</real>\n+    </map>\n+    <key>ActorKeyShadowCascades</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowCascades. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>2</integer>\n+    </map>\n+    <key>ActorKeyShadowSoftness</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowSoftness. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>0.5</real>\n+    </map>\n+    <key>ActorKeyMatteShadow</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: MatteShadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyShadowSelfTest</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowSelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeySelfTest</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: SelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyCoverBias</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: CoverBias. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>-8.0</real>\n+    </map>\n+    <key>ActorKeyGlassSource</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: GlassSource. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyDebugView</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: DebugView. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyDebugFailPreflight</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: DebugFailPreflight. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n     </map>\n-  <key>ScriptEditorDisableSyntaxHighlight</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Disable syntax highlighting in script editor for performance testing</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <!-- <FSPoser> -->\n-  <key>FSPoserSaveExternalFileAlso</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to save to an external format (like BVH or ANIM) file as well when saving a pose.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <key>FSPoserPelvisUnlockedForBvhSave</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether the mPelvis joint should be position/rotationally locked when a BVH is created.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <key>FSPoserOnSaveConfirmOverwrite</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to confirm overwriting a save file.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <key>FSPoserShowBoneHighlights</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to highlight a bone with the debug beacon on selection from the UI.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>1</integer>\n-  </map>\n-  <key>FSPoserStopPosingWhenClosed</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to stop animating with the poser when the poser window is closed.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>1</integer>\n-  </map>\n-  <key>FSPoserTrackpadSensitivity</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>The relative sensitivity of the poser trackpad.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>F32</string>\n-    <key>Value</key>\n-    <real>0.5</real>\n-  </map>\n-  <!-- </FSPoser> -->\n </map>\n </llsd>\n",
+          "patch": "         <key>Value</key>\n         <integer>1</integer>\n     </map>\n-    <key>MediaAutoPlayHuds</key>\n+    <key>AlchemyWeatherShelterUpdateHz</key>\n     <map>\n         <key>Comment</key>\n-        <string>Automatically play HUD media</string>\n+        <string>Update rate: advanced world shelter map control.</string>\n         <key>Persist</key>\n         <integer>1</integer>\n         <key>Type</key>\n-        <string>Boolean</string>\n+        <string>U32</string>\n         <key>Value</key>\n+        <integer>30</integer>\n+    </map>\n+    <key>AlchemyWeatherShelterBias</key>\n+    <map>\n+        <key>Comment</key>\n+        <string>Bias: advanced world shelter map control.</string>\n+        <key>Persist</key>\n         <integer>1</integer>\n+        <key>Type</key>\n+        <string>F32</string>\n+        <key>Value</key>\n+        <real>0.12</real>\n     </map>\n-    <key>MediaFirstClickInteract</key>\n+    <key>AlchemyWeatherShelterSoftness</key>\n     <map>\n-      <key>Comment</key>\n-      <string>This setting controls which media (once loaded) does not require a first click to focus before interaction can begin. This allows clicks to be passed directly to media bypassing the focus click requirement. This setting is a bitfield, precomputed values are as follows: Disabled=0; Worn HUDs only=1; Owned objects=2; Friend objects=4; Group objects=8; Landowner objects=16; Any object=32767; All MOAP=32768. For complete details see lltoolpie.h enum MediaFirstClickTypes.</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>S32</string>\n-      <key>Value</key>\n-      <integer>31</integer>\n+        <key>Comment</key>\n+        <string>Softness: advanced world shelter map control.</string>\n+        <key>Persist</key>\n+        <integer>1</integer>\n+        <key>Type</key>\n+        <string>F32</string>\n+        <key>Value</key>\n+        <real>0.35</real>\n     </map>\n-    <key>EnableSelectionHints</key>\n+    <key>AlchemyWeatherShelterDebug</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to send editing hints to animate the arm when editing an object.</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>1</integer>\n+        <key>Comment</key>\n+        <string>Show shelter: advanced world shelter map control.</string>\n+        <key>Persist</key>\n+        <integer>1</integer>\n+        <key>Type</key>\n+        <string>Boolean</string>\n+        <key>Value</key>\n+        <integer>0</integer>\n     </map>\n-    <key>EnableLookAtTarget</key>\n+    <key>AlchemyColorChartShow</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to animate the avatar head and send look at targets when moving the cursor or focusing on objects</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>1</integer>\n+        <key>Comment</key><string>Show session-only colour reference. Never include in scene/setup/export.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>Boolean</string>\n+        <key>Value</key><integer>0</integer>\n     </map>\n-    <key>LimitLookAtTarget</key>\n+    <key>AlchemyColorChartMode</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to clamp the look at targets around the avatar head before sending</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>0</integer>\n+        <key>Comment</key><string>Colour chart mode: 0 Unlit exact reference, 1 Lit matte prop, 2 Log calibration (unlit full-frame grey wedge, log ramp and gamut patches; values in doc/colour_chart_log_reference.md).</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n     </map>\n-    <key>LimitLookAtTargetDistance</key>\n+    <key>AlchemyColorChartPlacement</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Distance to limit look at target to</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>F32</string>\n-      <key>Value</key>\n-      <integer>2</integer>\n+        <key>Comment</key><string>Colour chart placement: 0 Camera, 1 Pinned. Transform is session-only.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n     </map>\n-    <key>PurgeDiskCacheOnStartup</key>\n+    <key>AlchemyColorChartSize</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Whether or not to LRU purge the disk cache during startup on main thread</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>0</integer>\n+        <key>Comment</key><string>Colour chart fraction of frame height (0.10 to 0.60).</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.25</real>\n     </map>\n-    <key>ScriptEditorDisableSyntaxHighlight</key>\n+    <key>AlchemyColorChartAnchor</key>\n     <map>\n-      <key>Comment</key>\n-      <string>Disable syntax highlighting in script editor for performance testing</string>\n-      <key>Persist</key>\n-      <integer>1</integer>\n-      <key>Type</key>\n-      <string>Boolean</string>\n-      <key>Value</key>\n-      <integer>0</integer>\n+        <key>Comment</key><string>Colour chart camera anchor: 0 Centre, 1 Lower third.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>AlchemyColorChartForceShaderFailure</key>\n+    <map>\n+        <key>Comment</key><string>Developer-only failure control: 0 normal, 1 chart shader, 2 legacy atlas encoder. Re-enable chart or reload shaders to retry.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>S32</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>AlchemyColorChartDebugReadback</key>\n+    <map>\n+        <key>Comment</key><string>Developer-only backbuffer patch readback; requires an in-world run.</string>\n+        <key>Persist</key><integer>0</integer>\n+        <key>Type</key><string>Boolean</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>POVBlinkCloseMs</key>\n+    <map>\n+        <key>Comment</key><string>Time to close the lids in milliseconds. Quintic easing starts and ends smoothly.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>90</real>\n+    </map>\n+    <key>POVBlinkHoldMs</key>\n+    <map>\n+        <key>Comment</key><string>Time at maximum blink depth before opening. Hold closed stays shut until released.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>40</real>\n+    </map>\n+    <key>POVBlinkOpenMs</key>\n+    <map>\n+        <key>Comment</key><string>Time to reopen the lids in milliseconds, slower than closure by default.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>180</real>\n+    </map>\n+    <key>POVBlinkDepth</key>\n+    <map>\n+        <key>Comment</key><string>Maximum closure: 1 completely covers the frame; lower values leave a droopy opening.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>1</real>\n+    </map>\n+    <key>POVBlinkCurve</key>\n+    <map>\n+        <key>Comment</key><string>Arch of the top and bottom lid edges. Aspect-correct in units of frame height.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.35</real>\n+    </map>\n+    <key>POVBlinkSoftness</key>\n+    <map>\n+        <key>Comment</key><string>Feather width at the lid edges. Fully closed Dark lids always cover the whole frame.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.02</real>\n+    </map>\n+    <key>POVBlinkDarken</key>\n+    <map>\n+        <key>Comment</key><string>Darkens the remaining image as the lids close, especially near the gap.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.35</real>\n+    </map>\n+    <key>POVBlinkBlur</key>\n+    <map>\n+        <key>Comment</key><string>Cheap four-tap blur near the lid edges and across the closing image. Only runs during a blink.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>0.4</real>\n+    </map>\n+    <key>POVBlinkStyle</key>\n+    <map>\n+        <key>Comment</key><string>Dark gives soft dark lids and a subtle lash shadow. Warm transmits a faint red-orange glow and a little scene colour.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>U32</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>POVBlinkAuto</key>\n+    <map>\n+        <key>Comment</key><string>Blink naturally at random intervals. At least 650 ms fully open between blinks.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>Boolean</string>\n+        <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>POVBlinkRate</key>\n+    <map>\n+        <key>Comment</key><string>Target blinks per minute. Natural random intervals and a fully open refractory gap can reduce the actual rate.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>F32</string>\n+        <key>Value</key><real>15</real>\n+    </map>\n+    <key>POVBlinkPadTap</key>\n+    <map>\n+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>U32</string>\n+        <key>Value</key><integer>64</integer>\n+    </map>\n+    <key>POVBlinkPadHold</key>\n+    <map>\n+        <key>Comment</key><string>POV blink XInput button mask. Default L3 (64), free with this fork's Xbox Defaults. Shared mapping: tap on release, hold after 180 ms. Conflicting legacy joystick actions block blink; hover the Director pad selector to see which action uses the button. F9 or pad blink releases UI Hold.</string>\n+        <key>Persist</key><integer>1</integer>\n+        <key>Type</key><string>U32</string>\n+        <key>Value</key><integer>64</integer>\n+    </map>\n+    <key>ActorKeyEnabled</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Enabled. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeySubjects</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Subjects. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyIncludeClones</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: IncludeClones. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyIncludeAnimesh</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: IncludeAnimesh. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyMode</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Mode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyColorPreset</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ColorPreset. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyColor</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Color. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Color3</string>\n+      <key>Value</key><array><real>0</real><real>0.6941176470588235</real><real>0.25098039215686274</real></array>\n+    </map>\n+    <key>ActorKeyMatteInvert</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: MatteInvert. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyFeather</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Feather. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>1.5</real>\n+    </map>\n+    <key>ActorKeyChoke</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Choke. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>0.0</real>\n+    </map>\n+    <key>ActorKeyEdgeMode</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: EdgeMode. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyAlphaCoverage</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: AlphaCoverage. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyHideHUD</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: HideHUD. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyShadow</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: Shadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>1</integer>\n+    </map>\n+    <key>ActorKeyShadowIsolation</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowIsolation. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyShadowStrength</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowStrength. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>0.5</real>\n+    </map>\n+    <key>ActorKeyShadowCascades</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowCascades. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>2</integer>\n+    </map>\n+    <key>ActorKeyShadowSoftness</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowSoftness. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>0.5</real>\n+    </map>\n+    <key>ActorKeyMatteShadow</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: MatteShadow. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>Boolean</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyShadowSelfTest</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: ShadowSelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeySelfTest</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: SelfTest. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyCoverBias</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: CoverBias. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>F32</string>\n+      <key>Value</key><real>-8.0</real>\n+    </map>\n+    <key>ActorKeyGlassSource</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: GlassSource. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>1</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyDebugView</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: DebugView. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n+    </map>\n+    <key>ActorKeyDebugFailPreflight</key>\n+    <map>\n+      <key>Comment</key><string>Actor chroma key: DebugFailPreflight. Design ACTOR_CHROMA_KEY_DESIGN Part A; WP0 setting.</string>\n+      <key>Persist</key><integer>0</integer>\n+      <key>Type</key><string>U32</string>\n+      <key>Value</key><integer>0</integer>\n     </map>\n-  <key>ScriptEditorDisableSyntaxHighlight</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Disable syntax highlighting in script editor for performance testing</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <!-- <FSPoser> -->\n-  <key>FSPoserSaveExternalFileAlso</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to save to an external format (like BVH or ANIM) file as well when saving a pose.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <key>FSPoserPelvisUnlockedForBvhSave</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether the mPelvis joint should be position/rotationally locked when a BVH is created.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <key>FSPoserOnSaveConfirmOverwrite</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to confirm overwriting a save file.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>0</integer>\n-  </map>\n-  <key>FSPoserShowBoneHighlights</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to highlight a bone with the debug beacon on selection from the UI.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>1</integer>\n-  </map>\n-  <key>FSPoserStopPosingWhenClosed</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>Whether to stop animating with the poser when the poser window is closed.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>Boolean</string>\n-    <key>Value</key>\n-    <integer>1</integer>\n-  </map>\n-  <key>FSPoserTrackpadSensitivity</key>\n-  <map>\n-    <key>Comment</key>\n-    <string>The relative sensitivity of the poser trackpad.</string>\n-    <key>Persist</key>\n-    <integer>1</integer>\n-    <key>Type</key>\n-    <string>F32</string>\n-    <key>Value</key>\n-    <real>0.5</real>\n-  </map>\n-  <!-- </FSPoser> -->\n </map>\n </llsd>\n",
           "purpose": "Comment evidence: <FSPoser> --> </FSPoser> -->",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
             {
               "commit": "cda1ba52ac6",
               "subject": "Frame hitch: run the VBO pool sweep before the present, not after"
@@ -11874,10 +11878,6 @@
             {
               "commit": "7a32f523911",
               "subject": "Shadows: wide lights stop banding in World shadows; older gates reconciled"
-            },
-            {
-              "commit": "007947b2d6d",
-              "subject": "Shadows: minimum shadow softness (no texel-sized edges from tiny lights)"
             }
           ],
           "scope": "creative-candidate",
@@ -76595,6 +76595,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76609,10 +76613,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76652,6 +76652,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76666,10 +76670,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76704,6 +76704,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76718,10 +76722,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76766,6 +76766,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76780,10 +76784,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76821,6 +76821,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76835,10 +76839,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76879,6 +76879,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76893,10 +76897,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76932,6 +76932,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -76946,10 +76950,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -76992,6 +76992,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77006,10 +77010,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77054,6 +77054,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77068,10 +77072,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77116,6 +77116,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77130,10 +77134,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77179,6 +77179,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77193,10 +77197,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77249,6 +77249,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77263,10 +77267,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77307,10 +77307,14 @@
           "head_end": 1297,
           "head_start": 678,
           "id": "indra/newview/skins/default/xui/en/floater_lightbox_settings.xml@678,620",
-          "patch": " \t\t\t\tdecimal_digits=\"2\"\n \t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"1.0\"\n-\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tmax_val=\"1\"\n+\t\t\t\tmin_val=\"0\"\n \t\t\t\twidth=\"55\"\n-\t\t\t\tincrement=\".1\"\n-\t\t\t\tname=\"tonemapper_dynamic_spinner7\" />-->\n-\t\t</panel>\n-\t\t<!--Rendering Panel-->\n-\t\t<panel\n-\t\t\tlabel=\"Rendering\"\n-\t\t\tlayout=\"topleft\"\n-\t\t\tname=\"render_settings\">\n-\t\t\t<!--Probe Detail-->\n+\t\t\t\tincrement=\"0.01\"\n+\t\t\t\tname=\"lpm_contrast_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDContrast\" />\n \t\t\t<text\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"120\"\n+\t\t\t\tleft=\"30\"\n+\t\t\t\ttop_pad=\"5\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Controls the maximum probe type allowed to render. Static Only overrides Dynamic probe setting. Realtime updates the nearest Dynamic probe every other frame, extremely demanding.\"\n-\t\t\t\tvalue=\"Probe Detail:\" />\n-\t\t\t<combo_box\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tname=\"lpm_satr_label\" value=\"R Saturation:\" />\n+\t\t\t<slider_bar\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Controls the maximum probe type allowed to render. Static Only overrides Dynamic probe setting. Realtime updates the nearest Dynamic probe every other frame, extremely demanding.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeDetail\"\n-\t\t\t\tname=\"probeDetail_combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Static Only\"\n-\t\t\t\t\tname=\"probeDetail_static\"\n-\t\t\t\t\tvalue=\"0\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Static + Dynamic\"\n-\t\t\t\t\tname=\"probeDetail_dynamic\"\n-\t\t\t\t\tvalue=\"1\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Realtime\"\n-\t\t\t\t\tname=\"probeDetail_realtime\"\n-\t\t\t\t\tvalue=\"2\" />\n-\t\t\t</combo_box>\n-\t\t\t<!--Probe Coverage-->\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tname=\"lpm_satr_slider\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationR\" />\n+\t\t\t<spinner\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tname=\"lpm_satr_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationR\" />\n \t\t\t<text\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"120\"\n+\t\t\t\tleft=\"30\"\n+\t\t\t\ttop_pad=\"5\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Controls reflection probe usage. Autoprobes are generated by the viewer in a 'best effort' placement. Setting this to Manual + Terrain or Manual Only may help overly dark areas that don't have Manual Probes.\"\n-\t\t\t\tvalue=\"Probe Coverage:\" />\n-\t\t\t<combo_box\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tname=\"lpm_satg_label\" value=\"G Saturation:\" />\n+\t\t\t<slider_bar\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Controls reflection probe usage. Autoprobes are generated by the viewer in a 'best effort' placement. Setting this to Manual + Terrain or Manual Only may help overly dark areas that don't have Manual Probes.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeLevel\"\n-\t\t\t\tname=\"probeCoverage_combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"None/Sky Probe\"\n-\t\t\t\t\tname=\"probeCoverage_none\"\n-\t\t\t\t\tvalue=\"0\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Manual Only\"\n-\t\t\t\t\tname=\"probeCoverage_manual\"\n-\t\t\t\t\tvalue=\"1\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Manual + Terrain\"\n-\t\t\t\t\tname=\"probeCoverage_terrain\"\n-\t\t\t\t\tvalue=\"2\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Everything\"\n-\t\t\t\t\tname=\"probeCoverage_everything\"\n-\t\t\t\t\tvalue=\"3\" />\n-\t\t\t</combo_box>\n-\t\t\t\n-\t\t\t<check_box\n-\t\t\t\tfollows=\"left|top\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tname=\"lpm_satg_slider\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationG\" />\n+\t\t\t<spinner\n+\t\t\t\ttop_pad=\"-20\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"8\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"80\"\n-\t\t\t\tlayout=\"topleft\"\n-\t\t\t\tlabel=\"Screen Space Reflections\"\n-\t\t\t\ttool_tip=\"Enable Screen Space Reflections (Expensive!)\"\n-\t\t\t\tcontrol_name=\"RenderScreenSpaceReflections\" />\n-\t\t\t<combo_box\n-\t\t\t\tenabled_control=\"RenderScreenSpaceReflections\"\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Quality of SSR, can get really expensive!\"\n-\t\t\t\tcontrol_name=\"RenderScreenSpaceReflectionGlossySamples\"\n-\t\t\t\tname=\"SSR_combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Low (4 Samples)\"\n-\t\t\t\t\tname=\"SSR_Low\"\n-\t\t\t\t\tvalue=\"4\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Medium (8 Samples)\"\n-\t\t\t\t\tname=\"SSR_Medium\"\n-\t\t\t\t\tvalue=\"8\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"High (16 Samples)\"\n-\t\t\t\t\tname=\"SSR_High\"\n-\t\t\t\t\tvalue=\"16\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Ultra (32 Samples)\"\n-\t\t\t\t\tname=\"SSR_Ultra\"\n-\t\t\t\t\tvalue=\"32\" />\n-\t\t\t</combo_box>\n-\t\t\t<check_box\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tname=\"lpm_satg_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationG\" />\n+\t\t\t<text\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"8\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"80\"\n+\t\t\t\tleft=\"30\"\n+\t\t\t\ttop_pad=\"5\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tlabel=\"Mirrors\"\n-\t\t\t\ttool_tip=\"Enable Mirrors\"\n-\t\t\t\tcontrol_name=\"RenderMirrors\" />\n-\t\t\t<combo_box\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tname=\"lpm_satb_label\" value=\"B Saturation:\" />\n+\t\t\t<slider_bar\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Quality of Mirrors\"\n-\t\t\t\tcontrol_name=\"RenderHeroProbeResolution\"\n-\t\t\t\tname=\"Mirror_Res_Combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Low (256px)\"\n-\t\t\t\t\tname=\"Mirror_Low\"\n-\t\t\t\t\tvalue=\"256\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Medium (512px)\"\n-\t\t\t\t\tname=\"Mirror_Medium\"\n-\t\t\t\t\tvalue=\"512\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"High (1024px)\"\n-\t\t\t\t\tname=\"Mirror_High\"\n-\t\t\t\t\tvalue=\"1024\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Ultra (2048px)\"\n-\t\t\t\t\tname=\"Mirror_Ultra\"\n-\t\t\t\t\tvalue=\"2048\" />\n-\t\t\t</combo_box>\n-\t\t\t<text\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tname=\"lpm_satb_slider\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationB\" />\n+\t\t\t<spinner\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tname=\"lpm_satb_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationB\" />\n+\t\t\t\t<!-- [S-Log3] Capture controls (tonemap type 8 only). Gated\n+\t\t\t\t     visible/hidden in ALFloaterLightBox::updateTonemapper(). -->\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"5\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_curve_label\"\n+\t\t\t\t\ttool_tip=\"Which standard log curve to encode. Grade with the matching CST in post.\"\n+\t\t\t\t\tvalue=\"Log curve:\" />\n+\t\t\t\t<combo_box\n+\t\t\t\t\tallow_text_entry=\"false\"\n+\t\t\t\t\ttool_tip=\"Which standard log curve to encode. Grade with the matching CST in post.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogCurve\"\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"16\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-2\"\n+\t\t\t\t\tmax_chars=\"128\"\n+\t\t\t\t\tname=\"slog_curve_combo\"\n+\t\t\t\t\ttop_delta=\"-2\">\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Log3\" name=\"slog3\" value=\"0\" />\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Log2\" name=\"slog2\" value=\"1\" />\n+\t\t\t\t\t<combo_box.item label=\"ARRI LogC3\" name=\"logc3\" value=\"2\" />\n+\t\t\t\t\t<combo_box.item label=\"Cineon / DPX\" name=\"cineon\" value=\"3\" />\n+\t\t\t\t</combo_box>\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_gamut_label\"\n+\t\t\t\t\ttool_tip=\"Linear camera gamut before the log curve. Standard pairs: S-Log3 with S-Gamut3 or S-Gamut3.Cine; LogC3 with ARRI Wide Gamut 3. Cineon and S-Log2: use Rec.709 unless your tool expects otherwise. Choose the matching camera input in Resolve CST, Magic Bullet Looks OCIO-ACES or Vegas ACES media colour space. Apply only one input transform.\"\n+\t\t\t\t\tvalue=\"Log gamut:\" />\n+\t\t\t\t<combo_box\n+\t\t\t\t\tallow_text_entry=\"false\"\n+\t\t\t\t\ttool_tip=\"Linear camera gamut before the log curve. Standard pairs: S-Log3 with S-Gamut3 or S-Gamut3.Cine; LogC3 with ARRI Wide Gamut 3. Cineon and S-Log2: use Rec.709 unless your tool expects otherwise. Choose the matching camera input in Resolve CST, Magic Bullet Looks OCIO-ACES or Vegas ACES media colour space. Apply only one input transform.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogGamut\"\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"16\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-2\"\n+\t\t\t\t\tmax_chars=\"128\"\n+\t\t\t\t\tname=\"slog_gamut_combo\"\n+\t\t\t\t\ttop_delta=\"-2\">\n+\t\t\t\t\t<combo_box.item label=\"Rec.709 (legacy)\" name=\"gamut_0\" value=\"0\" />\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Gamut3\" name=\"gamut_1\" value=\"1\" />\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Gamut3.Cine\" name=\"gamut_2\" value=\"2\" />\n+\t\t\t\t\t<combo_box.item label=\"ARRI Wide Gamut 3\" name=\"gamut_3\" value=\"3\" />\n+\t\t\t\t</combo_box>\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"128\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_purity_label\"\n+\t\t\t\t\ttool_tip=\"How pure SL colours may get in log footage, like a real camera sensor. 0.90 = camera-like; 1.00 = original. Greys and brightness are unchanged.\"\n+\t\t\t\t\tvalue=\"Sensor purity:\" />\n+\t\t\t\t<slider_bar\n+\t\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\t\theight=\"20\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"1.00\"\n+\t\t\t\t\tmin_val=\"0.60\"\n+\t\t\t\t\tleft_delta=\"128\"\n+\t\t\t\t\tright=\"-55\"\n+\t\t\t\t\tname=\"slog_purity_slider\"\n+\t\t\t\t\ttool_tip=\"How pure SL colours may get in log footage, like a real camera sensor. 0.90 = camera-like; 1.00 = original. Greys and brightness are unchanged.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogPurity\" />\n+\t\t\t\t<spinner\n+\t\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tlabel_width=\"0\"\n+\t\t\t\t\tright=\"-1\"\n+\t\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\t\tfollows=\"top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"1.00\"\n+\t\t\t\t\tmin_val=\"0.60\"\n+\t\t\t\t\twidth=\"55\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tname=\"slog_purity_spinner\"\n+\t\t\t\t\ttool_tip=\"How pure SL colours may get in log footage, like a real camera sensor. 0.90 = camera-like; 1.00 = original. Greys and brightness are unchanged.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogPurity\" />\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_range_label\"\n+\t\t\t\t\ttool_tip=\"Full or Legal/Video (SMPTE narrow) code range. Must match the Data Levels of your grade CST.\"\n+\t\t\t\t\tvalue=\"Encoding range:\" />\n+\t\t\t\t<combo_box\n+\t\t\t\t\tallow_text_entry=\"false\"\n+\t\t\t\t\ttool_tip=\"Full or Legal/Video (SMPTE narrow) code range. Must match the Data Levels of your grade CST.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogRange\"\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"16\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-2\"\n+\t\t\t\t\tmax_chars=\"128\"\n+\t\t\t\t\tname=\"slog_range_combo\"\n+\t\t\t\t\ttop_delta=\"-2\">\n+\t\t\t\t\t<combo_box.item label=\"Full\" name=\"full\" value=\"0\" />\n+\t\t\t\t\t<combo_box.item label=\"Legal / Video\" name=\"legal\" value=\"1\" />\n+\t\t\t\t</combo_box>\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_toe_label\"\n+\t\t\t\t\ttool_tip=\"Shadow toe/pedestal lift for 8-bit shadow protection. 0 = off. Needs a matching inverse in the grade.\"\n+\t\t\t\t\tvalue=\"Shadow toe:\" />\n+\t\t\t\t<slider_bar\n+\t\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\t\theight=\"20\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"0.3\"\n+\t\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-55\"\n+\t\t\t\t\tname=\"slog_toe_slider\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogToe\" />\n+\t\t\t\t<spinner\n+\t\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tlabel_width=\"0\"\n+\t\t\t\t\tright=\"-1\"\n+\t\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\t\tfollows=\"top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"0.3\"\n+\t\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\t\twidth=\"55\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tname=\"slog_toe_spinner\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogToe\" />\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"5\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_ev_label\"\n+\t\t\t\t\ttool_tip=\"Exposure offset (EV stops) applied before the log curve, on top of the Exposure control above.\"\n+\t\t\t\t\tvalue=\"EV offset:\" />\n+\t\t\t\t<slider_bar\n+\t\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\t\theight=\"20\"\n+\t\t\t\t\tincrement=\"0.1\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"8.0\"\n+\t\t\t\t\tmin_val=\"-8.0\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-55\"\n+\t\t\t\t\tname=\"slog_ev_slider\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogEV\" />\n+\t\t\t\t<spinner\n+\t\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tlabel_width=\"0\"\n+\t\t\t\t\tright=\"-1\"\n+\t\t\t\t\tdecimal_digits=\"1\"\n+\t\t\t\t\tfollows=\"top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"8.0\"\n+\t\t\t\t\tmin_val=\"-8.0\"\n+\t\t\t\t\twidth=\"55\"\n+\t\t\t\t\tincrement=\"0.1\"\n+\t\t\t\t\tname=\"slog_ev_spinner\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogEV\" />\n+                <check_box name=\"color_chart_show\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartShow\" label=\"Colour chart\" left=\"15\" top_pad=\"12\" width=\"380\" height=\"20\" tool_tip=\"Reads through Sensor purity: set purity to 1.00 when you want the chart to match the published values exactly in Magic Bullet. Unlit bypasses optics; disable CineSensorNoiseEnabled for a clean read. Pinned Unlit draws without depth test, over occluders. Session-only.\" />\n+                <text name=\"color_chart_mode_label\" follows=\"left|top\" layout=\"topleft\" left=\"15\" top_pad=\"6\" width=\"100\" height=\"20\" value=\"Mode\" />\n+                <combo_box name=\"color_chart_mode\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartMode\" left=\"120\" top_pad=\"-20\" width=\"275\" height=\"20\" tool_tip=\"Reads through Sensor purity: set purity to 1.00 when you want the chart to match the published values exactly in Magic Bullet. Unlit bypasses optics; disable CineSensorNoiseEnabled for a clean read. Pinned Unlit draws without depth test, over occluders. Session-only.\">\n+                    <combo_box.item label=\"Unlit\" value=\"0\" /><combo_box.item label=\"Lit\" value=\"1\" />\n+                </combo_box>\n+                <text name=\"color_chart_placement_label\" follows=\"left|top\" layout=\"topleft\" left=\"15\" top_pad=\"6\" width=\"100\" height=\"20\" value=\"Placement\" />\n+                <combo_box name=\"color_chart_placement\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartPlacement\" left=\"120\" top_pad=\"-20\" width=\"155\" height=\"20\" tool_tip=\"Reads through Sensor purity: set purity to 1.00 when you want the chart to match the published values exactly in Magic Bullet. Unlit bypasses optics; disable CineSensorNoiseEnabled for a clean read. Pinned Unlit draws without depth test, over occluders. Session-only.\">\n+                    <combo_box.item label=\"Camera\" value=\"0\" /><combo_box.item label=\"Pinned\" value=\"1\" />\n+                </combo_box>\n+                <button name=\"color_chart_pin\" follows=\"left|top\" layout=\"topleft\" label=\"Pin here\" left=\"285\" top_pad=\"-20\" width=\"110\" height=\"20\" tool_tip=\"Freeze the current camera placement in the set.\">\n+                    <button.commit_callback function=\"LightBox.ColorChartPin\" />\n+                </button>\n+                <slider name=\"color_chart_size\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartSize\" label=\"Size\" label_width=\"105\" left=\"15\" top_pad=\"6\" width=\"380\" height=\"20\" min_val=\"0.10\" max_val=\"0.60\" increment=\"0.01\" decimal_digits=\"2\" tool_tip=\"Fraction of frame height.\" />\n+                <text name=\"color_chart_anchor_label\" follows=\"left|top\" layout=\"topleft\" left=\"15\" top_pad=\"6\" width=\"100\" height=\"20\" value=\"Anchor\" />\n+                <combo_box name=\"color_chart_anchor\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartAnchor\" left=\"120\" top_pad=\"-20\" width=\"275\" height=\"20\" tool_tip=\"Camera placement anchor.\">\n+                    <combo_box.item label=\"Centre\" value=\"0\" /><combo_box.item label=\"Lower third\" value=\"1\" />\n+                </combo_box>\n+\t\t\t\t<panel class=\"panel_lens_looks\" filename=\"panel_lens_looks.xml\" follows=\"left|top|right\" layout=\"topleft\" left=\"0\" name=\"lens_looks_shared\" top_pad=\"10\" width=\"418\"/>\n+            <!--<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text1\"\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"29\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"110\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering.\"\n-\t\t\t\tvalue=\"Update Rate Delay:\" />\n+\t\t\t\tvalue=\"TonemapD1:\" />\n \t\t\t<slider\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n-\t\t\t\tcontrol_name=\"RenderHeroProbeUpdateRate\"\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-18\"\n \t\t\t\theight=\"20\"\n-\t\t\t\tincrement=\"1\"\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"4\"\n-\t\t\t\tmin_val=\"1\"\n-\t\t\t\tleft=\"140\"\n-\t\t\t\tright=\"-56\"\n-\t\t\t\tname=\"mirrorUpdateRateSlider\"\n-\t\t\t\ttool_tip=\"Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering.\"\n-\t\t\t\tshow_text=\"false\" />\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider1\" />\n \t\t\t<spinner\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-20\"\n \t\t\t\theight=\"15\"\n \t\t\t\tlabel_width=\"0\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\tdecimal_digits=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n \t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"4\"\n-\t\t\t\tmin_val=\"1\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n \t\t\t\twidth=\"55\"\n-\t\t\t\tincrement=\"1\"\n-\t\t\t\tcontrol_name=\"RenderHeroProbeUpdateRate\"\n-\t\t\t\ttool_tip=\"Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering.\"\n-\t\t\t\tname=\"mirrorUpdateRateSpinner\" />\n-\t\t\t<!--Probe Draw Distance-->\n-\t\t\t<!--\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner1\" />\n \t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text2\"\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"145\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"(Default: 64m) Maximum object distance to be considered for a reflection probe. Higher distances will allow probes to be more accurate to a scene at the cost of generation time and/or performance.\"\n-\t\t\t\tvalue=\"Probe Draw Distance:\" />\n-\t\t\t<slider_bar\n+\t\t\t\tvalue=\"TonemapD2:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-18\"\n \t\t\t\theight=\"20\"\n-\t\t\t\tincrement=\"64\"\n+\t\t\t\tincrement=\".1\"\n \t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"512\"\n-\t\t\t\tmin_val=\"64\"\n-\t\t\t\tleft=\"160\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n \t\t\t\tright=\"-55\"\n-\t\t\t\tname=\"probeDist_slider\"\n-\t\t\t\ttool_tip=\"(Default: 64m) Maximum object distance to be considered for a reflection probe. Higher distances will allow probes to be more accurate to a scene at the cost of generation time and/or performance.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeDrawDistance\" />\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider2\" />\n \t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-20\"\n \t\t\t\theight=\"15\"\n \t\t\t\tlabel_width=\"0\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\tdecimal_digits=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n \t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"512\"\n-\t\t\t\tmin_val=\"64\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n \t\t\t\twidth=\"55\"\n-\t\t\t\tincrement=\"64\"\n-\t\t\t\tname=\"probeDist_spinner\"\n-\t\t\t\ttool_tip=\"(Default: 64m) Maximum object distance to be considered for a reflection probe. Higher distances will allow probes to be more accurate to a scene at the cost of generation time and/or performance.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeDrawDistance\" />-->\n-\t\t\t<view_border\n-\t\t\t\tbevel_style=\"none\"\n-\t\t\t\theight=\"0\"\n-\t\t\t\tlayout=\"topleft\"\n-\t\t\t\tleft=\"0\"\n-\t\t\t\tname=\"cost_text_border\"\n-\t\t\t\ttop_pad=\"14\"\n-\t\t\t\twidth=\"500\" />\n-\t\t\t<!--Anti-Aliasing-->\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner2\" />\n \t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text3\"\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"7\"\n-\t\t\t\twidth=\"140\"\n-\t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Controls Anti-Aliasing Quality\"\n-\t\t\t\tvalue=\"Anti-Aliasing:\" />\n-\t\t\t<!-- <check_box\n-\t\t\t\tfollows=\"left|top\"\n-\t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"115\"\n-\t\t\t\ttop_pad=\"-14\"\n-\t\t\t\twidth=\"80\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tlabel=\"Use SMAA\"\n-\t\t\t\ttool_tip=\"Toggles using Subpixel Morphological AA instead of Fast Approximate AA. SMAA in most situations results in a less blurry image vs FXAA\"\n-\t\t\t\tcontrol_name=\"AlchemyRenderSMAA\" /> -->\n-\t\t\t<combo_box\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tvalue=\"TonemapD3:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider3\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner3\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text4\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD4:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider4\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner4\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text5\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD5:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider5\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner5\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text6\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD6:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider6\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner6\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text7\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD7:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider7\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner7\" />-->\n+\t\t</panel>\n+\t\t<!--Rendering Panel-->\n+\t\t<panel\n+\t\t\tfollows=\"all\"\n+\t\t\tlabel=\"Rendering\"\n+\t\t\tlayout=\"topleft\"\n+\t\t\tname=\"render_settings\">\n+\t\t\t<scroll_container\n+\t\t\t\tfollows=\"all\"\n+\t\t\t\theight=\"806\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tleft=\"0\"\n+\t\t\t\tname=\"render_settings_scroll\"\n+\t\t\t\topaque=\"false\"\n+\t\t\t\treserve_scroll_corner=\"false\"\n+\t\t\t\ttop=\"0\"\n+\t\t\t\twidth=\"420\">\n+\t\t\t\t<panel\n+\t\t\t\t\tbackground_visible=\"false\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\theight=\"890\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft=\"0\"\n+\t\t\t\t\tname=\"render_settings_scroll_content\"\n+\t\t\t\t\ttop=\"0\"\n+\t\t\t\t\twidth=\"400\">\n+\t\t\t<!--Probe Detail-->\n+\t\t\t<text\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"10\"\n+\t\t\t\ttop_pad=\"6\"\n+\t\t\t\twidth=\"120\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\ttool_tip=\"Controls the maximum probe type allowed to render. Static Only overrides Dynamic probe setting. Realtime updates the nearest Dynamic probe every other frame, extremely demanding.\"\n+\t\t\t\tvalue=\"Probe Detail:\" />\n+\t\t\t<combo_box\n+\t\t\t\tfollows=\"top|left\"\n \t\t\t\tlayout=\"topleft\"\n \t\t\t\theight=\"16\"\n \t\t\t\twidth=\"150\"\n",
+          "patch": " \t\t\t\tdecimal_digits=\"2\"\n \t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"1.0\"\n-\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tmax_val=\"1\"\n+\t\t\t\tmin_val=\"0\"\n \t\t\t\twidth=\"55\"\n-\t\t\t\tincrement=\".1\"\n-\t\t\t\tname=\"tonemapper_dynamic_spinner7\" />-->\n-\t\t</panel>\n-\t\t<!--Rendering Panel-->\n-\t\t<panel\n-\t\t\tlabel=\"Rendering\"\n-\t\t\tlayout=\"topleft\"\n-\t\t\tname=\"render_settings\">\n-\t\t\t<!--Probe Detail-->\n+\t\t\t\tincrement=\"0.01\"\n+\t\t\t\tname=\"lpm_contrast_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDContrast\" />\n \t\t\t<text\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"120\"\n+\t\t\t\tleft=\"30\"\n+\t\t\t\ttop_pad=\"5\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Controls the maximum probe type allowed to render. Static Only overrides Dynamic probe setting. Realtime updates the nearest Dynamic probe every other frame, extremely demanding.\"\n-\t\t\t\tvalue=\"Probe Detail:\" />\n-\t\t\t<combo_box\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tname=\"lpm_satr_label\" value=\"R Saturation:\" />\n+\t\t\t<slider_bar\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Controls the maximum probe type allowed to render. Static Only overrides Dynamic probe setting. Realtime updates the nearest Dynamic probe every other frame, extremely demanding.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeDetail\"\n-\t\t\t\tname=\"probeDetail_combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Static Only\"\n-\t\t\t\t\tname=\"probeDetail_static\"\n-\t\t\t\t\tvalue=\"0\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Static + Dynamic\"\n-\t\t\t\t\tname=\"probeDetail_dynamic\"\n-\t\t\t\t\tvalue=\"1\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Realtime\"\n-\t\t\t\t\tname=\"probeDetail_realtime\"\n-\t\t\t\t\tvalue=\"2\" />\n-\t\t\t</combo_box>\n-\t\t\t<!--Probe Coverage-->\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tname=\"lpm_satr_slider\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationR\" />\n+\t\t\t<spinner\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tname=\"lpm_satr_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationR\" />\n \t\t\t<text\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"120\"\n+\t\t\t\tleft=\"30\"\n+\t\t\t\ttop_pad=\"5\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Controls reflection probe usage. Autoprobes are generated by the viewer in a 'best effort' placement. Setting this to Manual + Terrain or Manual Only may help overly dark areas that don't have Manual Probes.\"\n-\t\t\t\tvalue=\"Probe Coverage:\" />\n-\t\t\t<combo_box\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tname=\"lpm_satg_label\" value=\"G Saturation:\" />\n+\t\t\t<slider_bar\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Controls reflection probe usage. Autoprobes are generated by the viewer in a 'best effort' placement. Setting this to Manual + Terrain or Manual Only may help overly dark areas that don't have Manual Probes.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeLevel\"\n-\t\t\t\tname=\"probeCoverage_combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"None/Sky Probe\"\n-\t\t\t\t\tname=\"probeCoverage_none\"\n-\t\t\t\t\tvalue=\"0\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Manual Only\"\n-\t\t\t\t\tname=\"probeCoverage_manual\"\n-\t\t\t\t\tvalue=\"1\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Manual + Terrain\"\n-\t\t\t\t\tname=\"probeCoverage_terrain\"\n-\t\t\t\t\tvalue=\"2\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Everything\"\n-\t\t\t\t\tname=\"probeCoverage_everything\"\n-\t\t\t\t\tvalue=\"3\" />\n-\t\t\t</combo_box>\n-\t\t\t\n-\t\t\t<check_box\n-\t\t\t\tfollows=\"left|top\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tname=\"lpm_satg_slider\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationG\" />\n+\t\t\t<spinner\n+\t\t\t\ttop_pad=\"-20\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"8\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"80\"\n-\t\t\t\tlayout=\"topleft\"\n-\t\t\t\tlabel=\"Screen Space Reflections\"\n-\t\t\t\ttool_tip=\"Enable Screen Space Reflections (Expensive!)\"\n-\t\t\t\tcontrol_name=\"RenderScreenSpaceReflections\" />\n-\t\t\t<combo_box\n-\t\t\t\tenabled_control=\"RenderScreenSpaceReflections\"\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Quality of SSR, can get really expensive!\"\n-\t\t\t\tcontrol_name=\"RenderScreenSpaceReflectionGlossySamples\"\n-\t\t\t\tname=\"SSR_combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Low (4 Samples)\"\n-\t\t\t\t\tname=\"SSR_Low\"\n-\t\t\t\t\tvalue=\"4\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Medium (8 Samples)\"\n-\t\t\t\t\tname=\"SSR_Medium\"\n-\t\t\t\t\tvalue=\"8\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"High (16 Samples)\"\n-\t\t\t\t\tname=\"SSR_High\"\n-\t\t\t\t\tvalue=\"16\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Ultra (32 Samples)\"\n-\t\t\t\t\tname=\"SSR_Ultra\"\n-\t\t\t\t\tvalue=\"32\" />\n-\t\t\t</combo_box>\n-\t\t\t<check_box\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tname=\"lpm_satg_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationG\" />\n+\t\t\t<text\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"8\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"80\"\n+\t\t\t\tleft=\"30\"\n+\t\t\t\ttop_pad=\"5\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tlabel=\"Mirrors\"\n-\t\t\t\ttool_tip=\"Enable Mirrors\"\n-\t\t\t\tcontrol_name=\"RenderMirrors\" />\n-\t\t\t<combo_box\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tname=\"lpm_satb_label\" value=\"B Saturation:\" />\n+\t\t\t<slider_bar\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\theight=\"16\"\n-\t\t\t\twidth=\"150\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\ttop_pad=\"-16\"\n-\t\t\t\tmax_chars=\"128\"\n-\t\t\t\tallow_text_entry=\"false\"\n-\t\t\t\ttool_tip=\"Quality of Mirrors\"\n-\t\t\t\tcontrol_name=\"RenderHeroProbeResolution\"\n-\t\t\t\tname=\"Mirror_Res_Combo\">\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Low (256px)\"\n-\t\t\t\t\tname=\"Mirror_Low\"\n-\t\t\t\t\tvalue=\"256\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Medium (512px)\"\n-\t\t\t\t\tname=\"Mirror_Medium\"\n-\t\t\t\t\tvalue=\"512\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"High (1024px)\"\n-\t\t\t\t\tname=\"Mirror_High\"\n-\t\t\t\t\tvalue=\"1024\" />\n-\t\t\t\t<combo_box.item\n-\t\t\t\t\tlabel=\"Ultra (2048px)\"\n-\t\t\t\t\tname=\"Mirror_Ultra\"\n-\t\t\t\t\tvalue=\"2048\" />\n-\t\t\t</combo_box>\n-\t\t\t<text\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tname=\"lpm_satb_slider\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationB\" />\n+\t\t\t<spinner\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"2\"\n+\t\t\t\tmin_val=\"-2\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\"0.1\"\n+\t\t\t\tname=\"lpm_satb_spinner\"\n+\t\t\t\tcontrol_name=\"AlchemyToneMapAMDSaturationB\" />\n+\t\t\t\t<!-- [S-Log3] Capture controls (tonemap type 8 only). Gated\n+\t\t\t\t     visible/hidden in ALFloaterLightBox::updateTonemapper(). -->\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"5\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_curve_label\"\n+\t\t\t\t\ttool_tip=\"Which standard log curve to encode. Grade with the matching CST in post.\"\n+\t\t\t\t\tvalue=\"Log curve:\" />\n+\t\t\t\t<combo_box\n+\t\t\t\t\tallow_text_entry=\"false\"\n+\t\t\t\t\ttool_tip=\"Which standard log curve to encode. Grade with the matching CST in post.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogCurve\"\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"16\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-2\"\n+\t\t\t\t\tmax_chars=\"128\"\n+\t\t\t\t\tname=\"slog_curve_combo\"\n+\t\t\t\t\ttop_delta=\"-2\">\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Log3\" name=\"slog3\" value=\"0\" />\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Log2\" name=\"slog2\" value=\"1\" />\n+\t\t\t\t\t<combo_box.item label=\"ARRI LogC3\" name=\"logc3\" value=\"2\" />\n+\t\t\t\t\t<combo_box.item label=\"Cineon / DPX\" name=\"cineon\" value=\"3\" />\n+\t\t\t\t</combo_box>\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_gamut_label\"\n+\t\t\t\t\ttool_tip=\"Linear camera gamut before the log curve. Standard pairs: S-Log3 with S-Gamut3 or S-Gamut3.Cine; LogC3 with ARRI Wide Gamut 3. Cineon and S-Log2: use Rec.709 unless your tool expects otherwise. Choose the matching camera input in Resolve CST, Magic Bullet Looks OCIO-ACES or Vegas ACES media colour space. Apply only one input transform.\"\n+\t\t\t\t\tvalue=\"Log gamut:\" />\n+\t\t\t\t<combo_box\n+\t\t\t\t\tallow_text_entry=\"false\"\n+\t\t\t\t\ttool_tip=\"Linear camera gamut before the log curve. Standard pairs: S-Log3 with S-Gamut3 or S-Gamut3.Cine; LogC3 with ARRI Wide Gamut 3. Cineon and S-Log2: use Rec.709 unless your tool expects otherwise. Choose the matching camera input in Resolve CST, Magic Bullet Looks OCIO-ACES or Vegas ACES media colour space. Apply only one input transform.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogGamut\"\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"16\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-2\"\n+\t\t\t\t\tmax_chars=\"128\"\n+\t\t\t\t\tname=\"slog_gamut_combo\"\n+\t\t\t\t\ttop_delta=\"-2\">\n+\t\t\t\t\t<combo_box.item label=\"Rec.709 (legacy)\" name=\"gamut_0\" value=\"0\" />\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Gamut3\" name=\"gamut_1\" value=\"1\" />\n+\t\t\t\t\t<combo_box.item label=\"Sony S-Gamut3.Cine\" name=\"gamut_2\" value=\"2\" />\n+\t\t\t\t\t<combo_box.item label=\"ARRI Wide Gamut 3\" name=\"gamut_3\" value=\"3\" />\n+\t\t\t\t</combo_box>\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"128\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_purity_label\"\n+\t\t\t\t\ttool_tip=\"How pure SL colours may get in log footage, like a real camera sensor. 0.90 = camera-like; 1.00 = original. Greys and brightness are unchanged.\"\n+\t\t\t\t\tvalue=\"Sensor purity:\" />\n+\t\t\t\t<slider_bar\n+\t\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\t\theight=\"20\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"1.00\"\n+\t\t\t\t\tmin_val=\"0.60\"\n+\t\t\t\t\tleft_delta=\"128\"\n+\t\t\t\t\tright=\"-55\"\n+\t\t\t\t\tname=\"slog_purity_slider\"\n+\t\t\t\t\ttool_tip=\"How pure SL colours may get in log footage, like a real camera sensor. 0.90 = camera-like; 1.00 = original. Greys and brightness are unchanged.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogPurity\" />\n+\t\t\t\t<spinner\n+\t\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tlabel_width=\"0\"\n+\t\t\t\t\tright=\"-1\"\n+\t\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\t\tfollows=\"top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"1.00\"\n+\t\t\t\t\tmin_val=\"0.60\"\n+\t\t\t\t\twidth=\"55\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tname=\"slog_purity_spinner\"\n+\t\t\t\t\ttool_tip=\"How pure SL colours may get in log footage, like a real camera sensor. 0.90 = camera-like; 1.00 = original. Greys and brightness are unchanged.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogPurity\" />\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_range_label\"\n+\t\t\t\t\ttool_tip=\"Full or Legal/Video (SMPTE narrow) code range. Must match the Data Levels of your grade CST.\"\n+\t\t\t\t\tvalue=\"Encoding range:\" />\n+\t\t\t\t<combo_box\n+\t\t\t\t\tallow_text_entry=\"false\"\n+\t\t\t\t\ttool_tip=\"Full or Legal/Video (SMPTE narrow) code range. Must match the Data Levels of your grade CST.\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogRange\"\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"16\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-2\"\n+\t\t\t\t\tmax_chars=\"128\"\n+\t\t\t\t\tname=\"slog_range_combo\"\n+\t\t\t\t\ttop_delta=\"-2\">\n+\t\t\t\t\t<combo_box.item label=\"Full\" name=\"full\" value=\"0\" />\n+\t\t\t\t\t<combo_box.item label=\"Legal / Video\" name=\"legal\" value=\"1\" />\n+\t\t\t\t</combo_box>\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"7\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_toe_label\"\n+\t\t\t\t\ttool_tip=\"Shadow toe/pedestal lift for 8-bit shadow protection. 0 = off. Needs a matching inverse in the grade.\"\n+\t\t\t\t\tvalue=\"Shadow toe:\" />\n+\t\t\t\t<slider_bar\n+\t\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\t\theight=\"20\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"0.3\"\n+\t\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-55\"\n+\t\t\t\t\tname=\"slog_toe_slider\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogToe\" />\n+\t\t\t\t<spinner\n+\t\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tlabel_width=\"0\"\n+\t\t\t\t\tright=\"-1\"\n+\t\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\t\tfollows=\"top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"0.3\"\n+\t\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\t\twidth=\"55\"\n+\t\t\t\t\tincrement=\"0.01\"\n+\t\t\t\t\tname=\"slog_toe_spinner\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogToe\" />\n+\t\t\t\t<text\n+\t\t\t\t\tfollows=\"left|top\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tleft=\"30\"\n+\t\t\t\t\ttop_pad=\"5\"\n+\t\t\t\t\twidth=\"100\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tname=\"slog_ev_label\"\n+\t\t\t\t\ttool_tip=\"Exposure offset (EV stops) applied before the log curve, on top of the Exposure control above.\"\n+\t\t\t\t\tvalue=\"EV offset:\" />\n+\t\t\t\t<slider_bar\n+\t\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\t\theight=\"20\"\n+\t\t\t\t\tincrement=\"0.1\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"8.0\"\n+\t\t\t\t\tmin_val=\"-8.0\"\n+\t\t\t\t\tleft_delta=\"100\"\n+\t\t\t\t\tright=\"-55\"\n+\t\t\t\t\tname=\"slog_ev_slider\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogEV\" />\n+\t\t\t\t<spinner\n+\t\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\t\theight=\"15\"\n+\t\t\t\t\tlabel_width=\"0\"\n+\t\t\t\t\tright=\"-1\"\n+\t\t\t\t\tdecimal_digits=\"1\"\n+\t\t\t\t\tfollows=\"top|right\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tmax_val=\"8.0\"\n+\t\t\t\t\tmin_val=\"-8.0\"\n+\t\t\t\t\twidth=\"55\"\n+\t\t\t\t\tincrement=\"0.1\"\n+\t\t\t\t\tname=\"slog_ev_spinner\"\n+\t\t\t\t\tcontrol_name=\"AlchemyToneMapSLogEV\" />\n+                <check_box name=\"color_chart_show\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartShow\" label=\"Colour chart\" left=\"15\" top_pad=\"12\" width=\"380\" height=\"20\" tool_tip=\"Reads through Sensor purity: set purity to 1.00 when you want the chart to match the published values exactly in Magic Bullet. Unlit bypasses optics; disable CineSensorNoiseEnabled for a clean read. Pinned Unlit draws without depth test, over occluders. Session-only.\" />\n+                <text name=\"color_chart_mode_label\" follows=\"left|top\" layout=\"topleft\" left=\"15\" top_pad=\"6\" width=\"100\" height=\"20\" value=\"Mode\" />\n+                <combo_box name=\"color_chart_mode\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartMode\" left=\"120\" top_pad=\"-20\" width=\"275\" height=\"20\" tool_tip=\"Reads through Sensor purity: set purity to 1.00 when you want the chart to match the published values exactly in Magic Bullet. Unlit bypasses optics; disable CineSensorNoiseEnabled for a clean read. Pinned Unlit draws without depth test, over occluders. Session-only.\">\n+                    <combo_box.item label=\"Unlit\" value=\"0\" /><combo_box.item label=\"Lit\" value=\"1\" /><combo_box.item label=\"Log calibration\" value=\"2\" />\n+                </combo_box>\n+                <text name=\"color_chart_placement_label\" follows=\"left|top\" layout=\"topleft\" left=\"15\" top_pad=\"6\" width=\"100\" height=\"20\" value=\"Placement\" />\n+                <combo_box name=\"color_chart_placement\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartPlacement\" left=\"120\" top_pad=\"-20\" width=\"155\" height=\"20\" tool_tip=\"Reads through Sensor purity: set purity to 1.00 when you want the chart to match the published values exactly in Magic Bullet. Unlit bypasses optics; disable CineSensorNoiseEnabled for a clean read. Pinned Unlit draws without depth test, over occluders. Session-only.\">\n+                    <combo_box.item label=\"Camera\" value=\"0\" /><combo_box.item label=\"Pinned\" value=\"1\" />\n+                </combo_box>\n+                <button name=\"color_chart_pin\" follows=\"left|top\" layout=\"topleft\" label=\"Pin here\" left=\"285\" top_pad=\"-20\" width=\"110\" height=\"20\" tool_tip=\"Freeze the current camera placement in the set.\">\n+                    <button.commit_callback function=\"LightBox.ColorChartPin\" />\n+                </button>\n+                <slider name=\"color_chart_size\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartSize\" label=\"Size\" label_width=\"105\" left=\"15\" top_pad=\"6\" width=\"380\" height=\"20\" min_val=\"0.10\" max_val=\"0.60\" increment=\"0.01\" decimal_digits=\"2\" tool_tip=\"Fraction of frame height.\" />\n+                <text name=\"color_chart_anchor_label\" follows=\"left|top\" layout=\"topleft\" left=\"15\" top_pad=\"6\" width=\"100\" height=\"20\" value=\"Anchor\" />\n+                <combo_box name=\"color_chart_anchor\" follows=\"left|top\" layout=\"topleft\" control_name=\"AlchemyColorChartAnchor\" left=\"120\" top_pad=\"-20\" width=\"275\" height=\"20\" tool_tip=\"Camera placement anchor.\">\n+                    <combo_box.item label=\"Centre\" value=\"0\" /><combo_box.item label=\"Lower third\" value=\"1\" />\n+                </combo_box>\n+\t\t\t\t<panel class=\"panel_lens_looks\" filename=\"panel_lens_looks.xml\" follows=\"left|top|right\" layout=\"topleft\" left=\"0\" name=\"lens_looks_shared\" top_pad=\"10\" width=\"418\"/>\n+            <!--<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text1\"\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"29\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"110\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering.\"\n-\t\t\t\tvalue=\"Update Rate Delay:\" />\n+\t\t\t\tvalue=\"TonemapD1:\" />\n \t\t\t<slider\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n-\t\t\t\tcontrol_name=\"RenderHeroProbeUpdateRate\"\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-18\"\n \t\t\t\theight=\"20\"\n-\t\t\t\tincrement=\"1\"\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"4\"\n-\t\t\t\tmin_val=\"1\"\n-\t\t\t\tleft=\"140\"\n-\t\t\t\tright=\"-56\"\n-\t\t\t\tname=\"mirrorUpdateRateSlider\"\n-\t\t\t\ttool_tip=\"Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering.\"\n-\t\t\t\tshow_text=\"false\" />\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider1\" />\n \t\t\t<spinner\n-\t\t\t\tenabled_control=\"RenderMirrors\"\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-20\"\n \t\t\t\theight=\"15\"\n \t\t\t\tlabel_width=\"0\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\tdecimal_digits=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n \t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"4\"\n-\t\t\t\tmin_val=\"1\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n \t\t\t\twidth=\"55\"\n-\t\t\t\tincrement=\"1\"\n-\t\t\t\tcontrol_name=\"RenderHeroProbeUpdateRate\"\n-\t\t\t\ttool_tip=\"Sets how many rendered frames mirrors should wait to update. Can improve average FPS at the cost of jittering.\"\n-\t\t\t\tname=\"mirrorUpdateRateSpinner\" />\n-\t\t\t<!--Probe Draw Distance-->\n-\t\t\t<!--\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner1\" />\n \t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text2\"\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"6\"\n-\t\t\t\twidth=\"145\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"(Default: 64m) Maximum object distance to be considered for a reflection probe. Higher distances will allow probes to be more accurate to a scene at the cost of generation time and/or performance.\"\n-\t\t\t\tvalue=\"Probe Draw Distance:\" />\n-\t\t\t<slider_bar\n+\t\t\t\tvalue=\"TonemapD2:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-18\"\n \t\t\t\theight=\"20\"\n-\t\t\t\tincrement=\"64\"\n+\t\t\t\tincrement=\".1\"\n \t\t\t\tfollows=\"left|top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"512\"\n-\t\t\t\tmin_val=\"64\"\n-\t\t\t\tleft=\"160\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n \t\t\t\tright=\"-55\"\n-\t\t\t\tname=\"probeDist_slider\"\n-\t\t\t\ttool_tip=\"(Default: 64m) Maximum object distance to be considered for a reflection probe. Higher distances will allow probes to be more accurate to a scene at the cost of generation time and/or performance.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeDrawDistance\" />\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider2\" />\n \t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n \t\t\t\ttop_pad=\"-20\"\n \t\t\t\theight=\"15\"\n \t\t\t\tlabel_width=\"0\"\n-\t\t\t\tright=\"-2\"\n-\t\t\t\tdecimal_digits=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n \t\t\t\tfollows=\"top|right\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tmax_val=\"512\"\n-\t\t\t\tmin_val=\"64\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n \t\t\t\twidth=\"55\"\n-\t\t\t\tincrement=\"64\"\n-\t\t\t\tname=\"probeDist_spinner\"\n-\t\t\t\ttool_tip=\"(Default: 64m) Maximum object distance to be considered for a reflection probe. Higher distances will allow probes to be more accurate to a scene at the cost of generation time and/or performance.\"\n-\t\t\t\tcontrol_name=\"RenderReflectionProbeDrawDistance\" />-->\n-\t\t\t<view_border\n-\t\t\t\tbevel_style=\"none\"\n-\t\t\t\theight=\"0\"\n-\t\t\t\tlayout=\"topleft\"\n-\t\t\t\tleft=\"0\"\n-\t\t\t\tname=\"cost_text_border\"\n-\t\t\t\ttop_pad=\"14\"\n-\t\t\t\twidth=\"500\" />\n-\t\t\t<!--Anti-Aliasing-->\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner2\" />\n \t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text3\"\n \t\t\t\tfollows=\"left|top\"\n \t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"10\"\n-\t\t\t\ttop_pad=\"7\"\n-\t\t\t\twidth=\"140\"\n-\t\t\t\tlayout=\"topleft\"\n-\t\t\t\ttool_tip=\"Controls Anti-Aliasing Quality\"\n-\t\t\t\tvalue=\"Anti-Aliasing:\" />\n-\t\t\t<!-- <check_box\n-\t\t\t\tfollows=\"left|top\"\n-\t\t\t\theight=\"15\"\n-\t\t\t\tleft=\"115\"\n-\t\t\t\ttop_pad=\"-14\"\n-\t\t\t\twidth=\"80\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n \t\t\t\tlayout=\"topleft\"\n-\t\t\t\tlabel=\"Use SMAA\"\n-\t\t\t\ttool_tip=\"Toggles using Subpixel Morphological AA instead of Fast Approximate AA. SMAA in most situations results in a less blurry image vs FXAA\"\n-\t\t\t\tcontrol_name=\"AlchemyRenderSMAA\" /> -->\n-\t\t\t<combo_box\n-\t\t\t\tfollows=\"top|left\"\n+\t\t\t\tvalue=\"TonemapD3:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider3\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner3\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text4\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD4:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider4\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner4\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text5\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD5:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider5\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner5\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text6\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD6:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider6\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner6\" />\n+\t\t\t<text\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_text7\"\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"15\"\n+\t\t\t\ttop_pad=\"12\"\n+\t\t\t\twidth=\"100\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tvalue=\"TonemapD7:\" />\n+\t\t\t<slider\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-18\"\n+\t\t\t\theight=\"20\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\tleft_delta=\"100\"\n+\t\t\t\tright=\"-55\"\n+\t\t\t\tshow_text=\"false\"\n+\t\t\t\tname=\"tonemapper_dynamic_slider7\" />\n+\t\t\t<spinner\n+\t\t\t\tvisible=\"false\"\n+\t\t\t\ttop_pad=\"-20\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tlabel_width=\"0\"\n+\t\t\t\tright=\"-1\"\n+\t\t\t\tdecimal_digits=\"2\"\n+\t\t\t\tfollows=\"top|right\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tmax_val=\"1.0\"\n+\t\t\t\tmin_val=\"0.0\"\n+\t\t\t\twidth=\"55\"\n+\t\t\t\tincrement=\".1\"\n+\t\t\t\tname=\"tonemapper_dynamic_spinner7\" />-->\n+\t\t</panel>\n+\t\t<!--Rendering Panel-->\n+\t\t<panel\n+\t\t\tfollows=\"all\"\n+\t\t\tlabel=\"Rendering\"\n+\t\t\tlayout=\"topleft\"\n+\t\t\tname=\"render_settings\">\n+\t\t\t<scroll_container\n+\t\t\t\tfollows=\"all\"\n+\t\t\t\theight=\"806\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\tleft=\"0\"\n+\t\t\t\tname=\"render_settings_scroll\"\n+\t\t\t\topaque=\"false\"\n+\t\t\t\treserve_scroll_corner=\"false\"\n+\t\t\t\ttop=\"0\"\n+\t\t\t\twidth=\"420\">\n+\t\t\t\t<panel\n+\t\t\t\t\tbackground_visible=\"false\"\n+\t\t\t\t\tfollows=\"left|top|right\"\n+\t\t\t\t\theight=\"890\"\n+\t\t\t\t\tlayout=\"topleft\"\n+\t\t\t\t\tleft=\"0\"\n+\t\t\t\t\tname=\"render_settings_scroll_content\"\n+\t\t\t\t\ttop=\"0\"\n+\t\t\t\t\twidth=\"400\">\n+\t\t\t<!--Probe Detail-->\n+\t\t\t<text\n+\t\t\t\tfollows=\"left|top\"\n+\t\t\t\theight=\"15\"\n+\t\t\t\tleft=\"10\"\n+\t\t\t\ttop_pad=\"6\"\n+\t\t\t\twidth=\"120\"\n+\t\t\t\tlayout=\"topleft\"\n+\t\t\t\ttool_tip=\"Controls the maximum probe type allowed to render. Static Only overrides Dynamic probe setting. Realtime updates the nearest Dynamic probe every other frame, extremely demanding.\"\n+\t\t\t\tvalue=\"Probe Detail:\" />\n+\t\t\t<combo_box\n+\t\t\t\tfollows=\"top|left\"\n \t\t\t\tlayout=\"topleft\"\n \t\t\t\theight=\"16\"\n \t\t\t\twidth=\"150\"\n",
           "purpose": "Comment evidence: Rendering Panel--> Probe Detail--> Probe Coverage--> [S-Log3] Capture controls (tonemap type 8 only). Gated <text Probe Draw Distance-->  Anti-Aliasing--> <check_box Rendering Panel--> Probe Detail-->",
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
+            {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
             {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
@@ -77326,10 +77330,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77503,6 +77503,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77517,10 +77521,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77742,6 +77742,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77756,10 +77760,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -77980,6 +77980,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -77994,10 +77998,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -78045,6 +78045,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -78059,10 +78063,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -78110,6 +78110,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -78124,10 +78128,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "creative-candidate",
@@ -78185,6 +78185,10 @@
           "range_note": "includes three context lines; count=0 is deletion anchor",
           "recent_file_subjects": [
             {
+              "commit": "1ca905c7f14",
+              "subject": "Colour chart: Log calibration mode (S-Log3 grey wedge, log ramp, gamut)"
+            },
+            {
               "commit": "148442e419c",
               "subject": "Shadows: projector shadow slots up to 16 (Max Spot Shadows)"
             },
@@ -78199,10 +78203,6 @@
             {
               "commit": "ddd15904eac",
               "subject": "Colour chart prop: client-only 24-patch reference chart (Unlit exact / Lit), camera or pinned"
-            },
-            {
-              "commit": "4a33abb351f",
-              "subject": "Lightbox settings: fit scroll documents (Log gamut rows + oversized separators)"
             }
           ],
           "scope": "mixed/perf-review",

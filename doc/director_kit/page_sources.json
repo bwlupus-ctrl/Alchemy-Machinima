@@ -200928,7 +200928,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/alcolorchart.cpp",
-              "line": 157,
+              "line": 219,
               "class": "ALColorChart",
               "function": "bind",
               "wired_class": "ALColorChart",

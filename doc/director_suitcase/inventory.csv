@@ -325,6 +325,7 @@ doc/WEATHER_LIGHTNING_QUALITY_DEEP_RESEARCH.md,A,GENERATED,"[""weather""]",8,"do
 doc/WEATHER_RAIN_3D_SPLASH_DEEP_RESEARCH.md,A,GENERATED,"[""weather""]",8,"documentation/evidence/render; regenerate or retain as reference, not source integration","[""path/prefix""]",[],False
 doc/WEATHER_RAIN_OCCLUSION_MAP_DEEP_RESEARCH.md,A,GENERATED,"[""weather""]",8,"documentation/evidence/render; regenerate or retain as reference, not source integration","[""path/prefix""]",[],False
 doc/XINPUT_GAMEPAD_DPAD_TRIGGERS_BRIEF.md,A,GENERATED,"[""camera""]",3,"documentation/evidence/render; regenerate or retain as reference, not source integration","[""path/prefix""]",[],False
+doc/colour_chart_log_reference.md,A,GENERATED,"[""unknown""]",99,"documentation/evidence/render; regenerate or retain as reference, not source integration",[],[],False
 doc/compliance/TPVP_AUDIT_2026-10-18.md,A,GENERATED,"[""unknown""]",99,"documentation/evidence/render; regenerate or retain as reference, not source integration",[],[],False
 doc/contributions.txt,M,GENERATED,"[""unknown""]",99,"documentation/evidence/render; regenerate or retain as reference, not source integration",[],[],False
 doc/director_kit/AO_BITMASK_INTEGRATION_PLAN.md,A,GENERATED,"[""director-shell""]",2,"documentation/evidence/render; regenerate or retain as reference, not source integration","[""path/prefix""]",[],False
@@ -873,9 +874,10 @@ indra/newview/alclientheight.cpp,A,OWNED,"[""actor-bar"", ""composition""]",3,"a
 indra/newview/alclientheight.h,A,OWNED,"[""actor-bar"", ""clones"", ""composition""]",3,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""composition""]",False
 indra/newview/alclientheightmodel.h,A,OWNED,"[""clones"", ""composition""]",3,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""composition""]",False
 indra/newview/alcloneqol.h,A,OWNED,"[""clones""]",4,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""clones"", ""crowd""]",False
-indra/newview/alcolorchart.cpp,A,OWNED,"[""capture-sidecar"", ""looks"", ""sensor""]",6,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]",[],False
-indra/newview/alcolorchart.h,A,OWNED,"[""capture-sidecar"", ""looks"", ""sensor""]",6,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]",[],False
+indra/newview/alcolorchart.cpp,A,OWNED,"[""capture-sidecar"", ""looks"", ""sensor""]",6,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""sensor""]",False
+indra/newview/alcolorchart.h,A,OWNED,"[""capture-sidecar"", ""looks"", ""sensor""]",6,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""sensor""]",False
 indra/newview/alcolorchartdata.h,A,GENERATED,"[""looks""]",10,generator output; runtime XUI must be regenerated and shipped,"[""path/prefix""]",[],False
+indra/newview/alcolorchartlogdata.h,A,GENERATED,"[""looks""]",10,generator output; runtime XUI must be regenerated and shipped,"[""path/prefix""]",[],False
 indra/newview/alcontactstab.h,A,OWNED,"[""actor-path""]",3,"absent at local base; drop-in source unit, dependencies still required","[""owned source / hook delta identifiers and comments""]",[],False
 indra/newview/alcoverpolicy.h,A,OWNED,"[""unknown""]",99,"absent at local base; drop-in source unit, dependencies still required",[],[],False
 indra/newview/aldanceball.cpp,A,OWNED,"[""actor-bar"", ""actor-path"", ""clones"", ""crowd"", ""director-shell""]",2,"absent at local base; drop-in source unit, dependencies still required","[""path/prefix"", ""owned source / hook delta identifiers and comments""]","[""clones"", ""director-shell"", ""sensor""]",False
@@ -2447,6 +2449,7 @@ scripts/code_tools/clone_stay_in_place_check.py,A,TOOLING,"[""clones""]",4,gener
 scripts/code_tools/clone_stay_in_place_mover_hunks.json,A,TOOLING,"[""clones""]",4,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/colorchart_check.py,A,TOOLING,"[""looks""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/colorchart_gen.py,A,TOOLING,"[""looks""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
+scripts/code_tools/colorchart_log_gen.py,A,TOOLING,"[""looks""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/colorchart_policy_check.py,A,TOOLING,"[""looks""]",10,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/director_actor_bar_check.py,A,TOOLING,"[""actor-bar"", ""director-shell""]",2,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False
 scripts/code_tools/director_all_off_check.py,A,TOOLING,"[""director-shell""]",2,generator/check/fixture/build tooling; carry validation separately,"[""path/prefix""]",[],False

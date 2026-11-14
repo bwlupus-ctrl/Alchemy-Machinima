@@ -556,6 +556,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## generated runtime
 
 - `indra/newview/alcolorchartdata.h`
+- `indra/newview/alcolorchartlogdata.h`
 - `indra/newview/alfloaterlightbox.cpp`
 - `indra/newview/alfloaterlightbox.h`
 - `indra/newview/allenslooks_vnd_mean.h`

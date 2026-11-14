@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "629773404a71f0b7744b51a9fff33ba4f26b000d16473e3c8bc77d5f590cf4c7",
+  "csv_sha256": "853fa985cc5aa4c2019028695f6aabf343b528ff7c269e9a9c78039142dcc865",
   "interactive_rows": 2185,
   "generated_kit_pages": [
    "frame_orbit_tab",
@@ -68805,6 +68805,10 @@
     {
      "label": "Lit",
      "value": 1
+    },
+    {
+     "label": "Log calibration",
+     "value": 2
     }
    ],
    "test_value_resolved": 1
@@ -69055,7 +69059,7 @@
    "increment": null,
    "callbacks": "LightBox.ColorChartPin",
    "owner": "ALColorChart::bind",
-   "evidence": "cpp other-class alcolorchart.cpp:157 ALColorChart::bind",
+   "evidence": "cpp other-class alcolorchart.cpp:219 ALColorChart::bind",
    "notes": [
     "UNWIRED in v1: expected to fail until wired"
    ]
