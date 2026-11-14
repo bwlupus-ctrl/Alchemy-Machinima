@@ -15,6 +15,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <limits>
 #include <string>
 #include <vector>
@@ -684,6 +685,59 @@ inline std::string worldShadowReport(State state, unsigned rendered, const std::
     }
     if (out.empty()) out = worldShadowText(State::Pinned);
     return out;
+}
+// Minimum shadow softness (RenderSoftShadowMinSoftness) as uploaded: the least kernel radius of the world cube filter and of the
+// metric projector kernel, in texels of the light's own shadow map. 0 or less = off (the kernels' own minimum: 0.7 texel on a cube
+// face, one texel on a projector map). Capped at 4 texels: past that it is a blur of every contact shadow, not a guard against
+// texel-sized edges. Not a number = the default. The default is 1.5, not 2: any floor lifts the core of a shadow only one or two
+// texels wide (a blur cannot tell a staircase from a thin caster); on a 512-texel cube face 1.5 halves the staircase and leaves
+// such a core at 0.24, 2 leaves it at 0.40 (relight_soft_shadow_floor_gl_check.py). Kept in this header because
+// LLPipeline::renderAreaShadows is compiled standalone by relight_vcam_dispatch_check.py with exactly the headers it already uses.
+constexpr double kSoftShadowFloorDefault = 1.5;
+constexpr double kSoftShadowFloorMax = 4.0;
+constexpr double softShadowFloor(double setting)
+{
+    return setting != setting ? kSoftShadowFloorDefault
+         : setting <= 0.0 ? 0.0 : (setting < kSoftShadowFloorMax ? setting : kSoftShadowFloorMax);
+}
+static_assert(softShadowFloor(0.0) == 0.0 && softShadowFloor(-3.0) == 0.0 && softShadowFloor(2.0) == 2.0 &&
+              softShadowFloor(0.5) == 0.5 && softShadowFloor(99.0) == 4.0, "soft shadow floor");
+// RenderAreaShadowWorldWideTaps as uploaded: 0 = off (the old count), anything else is at least the old count (16) and at most 128,
+// so the shader's clamp always has min <= max.
+constexpr int wideSourceTaps(unsigned setting)
+{
+    return setting == 0u ? 0 : (setting < 16u ? 16 : (setting > 128u ? 128 : static_cast<int>(setting)));
+}
+static_assert(wideSourceTaps(0) == 0 && wideSourceTaps(1) == 16 && wideSourceTaps(15) == 16 && wideSourceTaps(64) == 64 &&
+              wideSourceTaps(4000000000u) == 128, "wide source taps");
+// [Near clip guard] A cube's faces clip by axial depth, so everything inside the world-axis cube |x - light|inf < near casts no
+// world shadow. That is the point of the near plane for the lamp's own bulb or shade; it is damage when an actor stands in it (Near
+// clip saved at 1 m: every avatar within a metre of a lamp loses the shadow of the part inside, and which part changes as it moves).
+// The setting is not clamped lower: a deliberate large value keeps a wide lamp shade out, the per-light emitter rule may itself ask
+// for up to 1 m, and a silent clamp would change scenes that rely on either. Instead the World shadows status line says so, exactly
+// when it happens: a rendering cube whose near plane is past kNearClipWarn AND reaches into an avatar's bounds.
+constexpr double kNearClipWarn = 0.25;
+// Does the box [lo, hi] reach into the open cube of half-size nearPlane around p?
+inline bool nearCubeReaches(const double lo[3], const double hi[3], const double p[3], double nearPlane)
+{
+    if (!(nearPlane > 0.0)) return false;
+    for (int i = 0; i < 3; ++i)
+        if (!(lo[i] < p[i] + nearPlane && hi[i] > p[i] - nearPlane)) return false;
+    return true;
+}
+// A near plane worth a warning when a body is inside it: past the threshold only (the 5 cm default sits inside whoever wears the light).
+inline bool nearClipWarns(double nearPlane) { return std::isfinite(nearPlane) && nearPlane > kNearClipWarn; }
+// Which rule set this light's near plane: the Near clip setting (the floor), or the light's own emitter prim (emitterNearPlane raised
+// it past the setting to clear the prim, up to 1 m). The remedy differs: only the first is the Near clip slider.
+inline bool nearRaisedByEmitter(double nearPlane, double setting) { return nearPlane > ALWorldShadow::nearPlane(setting) + 1.e-4; }
+// The status line's sentence for one light (slot label as in worldShadowReport).
+inline std::string nearClipNote(double nearPlane, const std::string& label, bool byEmitter = false)
+{
+    char metres[32];
+    std::snprintf(metres, sizeof(metres), "%.2f", nearPlane);
+    const std::string head = std::string(byEmitter ? "The light prim of " : "Near clip ") + (byEmitter ? label + " hides everything within " : "") + metres +
+        (byEmitter ? " m of it, and an avatar is inside" : " m reaches an avatar at " + label) + ": the part inside casts no world shadow. ";
+    return head + (byEmitter ? "Use a smaller light prim or move it away." : "Lower Near clip.");
 }
 }
 #endif

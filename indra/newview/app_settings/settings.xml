@@ -21168,13 +21168,13 @@
   <key>RenderSoftShadowNoiseModel</key>
   <map>
     <key>Comment</key>
-    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 1 (default) = hygiene: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash instead of a view-space sawtooth that slid with the camera, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements.</string>
+    <string>Soft-shadow noise on lit surfaces (sun soft kernels and the projector surface model). 2 (default) = steady: model 1, but projector shadows on lit surfaces use no per-pixel noise at all (the default 12-tap kernel is centred, kernel rotations are fixed per light), so a penumbra does not boil when the camera moves. The sun keeps model 1; rig lights with Detail shadows keep their own kernel unless RenderSpotShadowBiasModel is 2. 1 = hygiene with a per-pixel screen hash: a different kernel rotation phase per projector slot and for the sun, the per-pixel rotation fades in only when the penumbra is wider than about 2.3 shadow-map texels (sharp shadows are grain-free), the Poisson kernel's jitter is a per-pixel hash, and the projector kernel is isotropic (no 1.5x stretch in map Y). 0 = the old statements (a view-space sawtooth that slides with the camera).</string>
     <key>Persist</key>
     <integer>1</integer>
     <key>Type</key>
     <string>U32</string>
     <key>Value</key>
-    <integer>1</integer>
+    <integer>2</integer>
   </map>
   <key>RenderSunLightProjectorDeadSamples</key>
   <map>
@@ -21197,6 +21197,28 @@
     <string>U32</string>
     <key>Value</key>
     <integer>1</integer>
+  </map>
+  <key>RenderAreaShadowWorldWideTaps</key>
+  <map>
+    <key>Comment</key>
+    <string>World shadows of a light wider than 0.25 m (World light size, or its prim): the most filter taps its soft edge may use. Such a light's filter disk grows with its size while it used to get half the taps (16), so a wide penumbra showed as curved bands, 16 nested copies of the blocker's edge. The tap count now follows the disk's area up to this maximum. 64 (default) = steps of about 1.6 percent; 128 = smoother, about twice the cost on the pixels inside such a penumbra; 0 = the old 16 taps. Lights of 0.25 m or less are not affected.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>U32</string>
+    <key>Value</key>
+    <integer>64</integer>
+  </map>
+  <key>RenderSoftShadowMinSoftness</key>
+  <map>
+    <key>Comment</key>
+    <string>Minimum shadow softness: the least filter radius of a local light's soft shadow, in texels of that light's own shadow map (world cube shadows, and projector shadows with the metric penumbra, RenderSpotShadowPenumbraModel 1). A light with a very small source (World light size 0.01 m) has a penumbra far under one texel, and its shadow then shows the map's texels as a blocky outline (worst on the 512-texel cube faces). 1.5 (default) halves the staircase; higher is smoother but also lifts the core of shadows only one or two texels wide (at 2 such a core is 40 percent lit, at 1.5 about 25); 0 = off (the old one-texel kernels); capped at 4. Above 1.5 a projector also runs its soft kernel on the lit pixels around a shadow (so thin shadows keep a smooth halo), which costs more. Max penumbra still wins, and a projector kernel still narrows at a grazing contact.</string>
+    <key>Persist</key>
+    <integer>1</integer>
+    <key>Type</key>
+    <string>F32</string>
+    <key>Value</key>
+    <real>1.5</real>
   </map>
   <key>RenderSpotShadowPenumbraModel</key>
   <map>

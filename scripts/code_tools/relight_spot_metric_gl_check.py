@@ -1003,8 +1003,13 @@ def timing_check(r, host, defaults, repeats=20, shapes=('passes', 'one pass'), c
 def layer_contracts(tree):
     """GLM round 1, finding 3: the metric layers end in an exact byte compare with BASE, and are really present."""
     from director_actor_bar_check import reverse_softshadow_metric, reverse_softshadow_metric_shader, reverse_softshadow_bias
-    pipeline = tree.read(PIPELINE).replace('\r\n', '\n')
-    shader = tree.read(SHADER).replace('\r\n', '\n')
+    from director_actor_bar_check import reverse_softshadow_angle, reverse_softshadow_angle_shader
+    # The steady soft shadow layers (softshadow_angle_hunks.json / softshadow_angle_shader_hunks.json: noise model 2, the
+    # softness floor, the near-clip guard) are newer, separately reviewed and digest-pinned. They are reversed first,
+    # exactly (each reverser asserts that it reproduces its own base byte for byte), and every contract below is stated on
+    # the result: this layer's hunks, and the planted edits that must be refused.
+    pipeline = reverse_softshadow_angle(tree.read(PIPELINE).replace('\r\n', '\n'), 'pipeline.cpp')
+    shader = reverse_softshadow_angle_shader(tree.read(SHADER).replace('\r\n', '\n'))
     base_pipeline = G.SourceTree(BASE).read(PIPELINE).replace('\r\n', '\n')
     base_shader = G.SourceTree(BASE).read(SHADER).replace('\r\n', '\n')
     root = Path(__file__).parent
@@ -1039,7 +1044,9 @@ CUBE_RADIUS = re.compile(r'const F32 source = area_source_radius\(volume\);(?:(?
 
 
 def source_contracts(tree, header_text=None, pipeline_text=None):
-    shader = tree.read(SHADER)
+    # The newer steady soft shadow layer of shadowUtil.glsl is reversed first, exactly (see layer_contracts).
+    from director_actor_bar_check import reverse_softshadow_angle_shader
+    shader = reverse_softshadow_angle_shader(tree.read(SHADER))
     base = G.SourceTree(BASE).read(SHADER)
     header = header_text if header_text is not None else tree.read(HEADER)
     pipeline = pipeline_text if pipeline_text is not None else tree.read(PIPELINE)
@@ -1138,7 +1145,7 @@ SEVEN_LEVELS = '''        float sep = 0.0;
         float gap = stc.z - tap.z + hi * sep / 6.0;
 '''
 SEARCH_PHI = 'softShadowPhi(search, g_spot_slot * SOFT_NOISE_SLOT_PHASE + SPOT_METRIC_SEARCH_PHASE)'
-METRIC_TEXEL = '    texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;\n'
+METRIC_TEXEL = '    texel = max(max(pr, low) * shape, vec2(1.0)) / proj_shadow_res;   // [SoftShadow floor] the kernel; pr stays the measured radius\n'
 METRIC_FILL = '    if (soft_shadow_fill_retire == 0 && soft_shadow_fill > 0.0 && shadow > 0.0)\n'
 LEGACY_KERNEL = ('        float pr = clamp(1.0 + softness * gap_scale,\n                          1.0, max(soft_shadow_max, 1.0));\n'
                  '        vec2 texel = pr / proj_shadow_res;\n        texel.y *= 1.5;\n')
@@ -1293,8 +1300,12 @@ def evaluate(out, do_negatives=True):
                     finally:
                         r.visibility = saved
             except AssertionError as ex:
-                caught = True   # a mutant that no longer links / runs cannot pass
+                # A mutant that no longer links / runs cannot pass. A mutation whose anchor text is gone was never planted:
+                # that is a broken gate, not a rejection.
+                caught = 'mutation drift' not in str(ex)
                 print('[spot-metric] mutant', name, 'raised', str(ex)[:120], flush=True)
+                if not caught:
+                    failures.append('planted regression could not be planted (anchor drift): ' + name)
             note(name, caught)
         for name, transform in upload_negatives().items():
             note(name, bool(formula_check(r, pr, host, defaults, upload=transform, quick=True)[1]))

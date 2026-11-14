@@ -8,7 +8,8 @@ from the rendered shader output of an analytic scene; planted shader regressions
               step is retired (projector surface model, sun legacy and units kernels), the profile
               across the edge is monotonic, and with the step restored the band is empty (positive
               control: the fixture really sees the old step).
-  Fix 3  RenderSoftShadowNoiseModel  (1 = hygiene, 0 = old statements)
+  Fix 3  RenderSoftShadowNoiseModel  (1 = hygiene, 0 = old statements; the default is now 2 = model 1 with the projector
+         noise anchored to the shadow map, a later layer with its own gate: relight_soft_shadow_motion_gl_check.py)
     phase     two projector slots with identical maps differ per pixel in the penumbra (and are
               identical with the old model); the sun's phase differs from every slot phase.
     fade      with a penumbra radius under 2 texels the result does not depend on the per-pixel
@@ -724,9 +725,9 @@ def source_contracts(tree):
         'phases_distinct': gap > .2,
         'frozen_classic_copies_untouched': all(tree.read(p) == G.SourceTree(BASE).read(p) for p in CLASSIC),
         'zero_normal_gate_unchanged': B.GATE in sample,
-        'settings_defaults': settings.get('RenderSoftShadowFillStep') in (0, False) and settings.get('RenderSoftShadowNoiseModel') == 1 and
+        'settings_defaults': settings.get('RenderSoftShadowFillStep') in (0, False) and settings.get('RenderSoftShadowNoiseModel') == 2 and
             settings.get('RenderSunLightProjectorDeadSamples') in (0, False),
-        'pipeline_uploads': pipeline.count('"RenderSoftShadowFillStep", false);') == 1 and pipeline.count('"RenderSoftShadowNoiseModel", 1);') == 1 and
+        'pipeline_uploads': pipeline.count('"RenderSoftShadowFillStep", false);') == 1 and pipeline.count('"RenderSoftShadowNoiseModel", 2);') == 1 and
             pipeline.count('"RenderSunLightProjectorDeadSamples", false);') == 1 and
             pipeline.count('LLStaticHashedString("soft_shadow_fill_retire")') == 1 and
             pipeline.count('LLStaticHashedString("soft_shadow_noise_model")') == 1 and
@@ -879,7 +880,8 @@ def evaluate(out, do_negatives=True):
                     fn = dict(phase=phase_check, fade=fade_check, camera=camera_check, isotropy=isotropy_check)[target]
                     caught = bool(fn(r, prog, defaults, edits.get('shadowUtil.glsl', ()))[1]) if target in ('fade', 'phase') else bool(fn(r, prog, defaults)[1])
             except AssertionError as ex:
-                caught = True   # a mutant that no longer links / runs cannot pass
+                # A mutant that no longer links / runs cannot pass; one whose anchor text is gone was never planted.
+                caught = 'mutation drift' not in str(ex)
                 print('[soft-quality] mutant', name, 'raised', str(ex)[:120], flush=True)
             rejected[name] = caught
             print('[soft-quality]', 'PASS rejected' if caught else 'FAIL survived', 'planted regression:', name, flush=True)

@@ -737,6 +737,7 @@ def source_contracts(tree):
     shaders = 'indra/newview/app_settings/shaders/'
     clip_body = function(pipeline, 'LLVector4 LLPipeline::nativeSpotShadowClip() const')
     upload = function(pipeline, 'void LLPipeline::bindSunShadowState(')
+    from director_actor_bar_check import reverse_softshadow_floor_filter
     untouched = ('class3/deferred/areaShadowF.glsl', 'class3/deferred/areaShadowFilterF.glsl', 'class3/deferred/spotLightF.glsl',
                  'class3/deferred/projectorVolumetricF.glsl', 'class1/deferred/froxelInjectF.glsl',
                  'class1/deferred/projectorVolumetricClassicShadowUtil.glsl', 'class1/deferred/projectorVolumetricClassicShadowUtil16.glsl')
@@ -758,7 +759,11 @@ def source_contracts(tree):
                                                shader.count('map_bounded') == sample.count('map_bounded') == 5,
         'conservative_samplers_untouched': 'map_bounded' not in function(shader, 'float pcfSpotShadowConservative(') +
                                            function(shader, 'float sampleSpotShadowConservative('),
-        'other_shaders_and_frozen_copies_untouched': all(tree.read(shaders + name) == G.SourceTree(BASE).read(shaders + name) for name in untouched),
+        # areaShadowFilterF.glsl carries one later, separately reviewed layer (the minimum softness of the world cube filter,
+        # softshadow_floor_filter_hunks.json, digest-pinned): it is reversed first, exactly, and must then be BASE like the rest.
+        'other_shaders_and_frozen_copies_untouched': all(
+            (reverse_softshadow_floor_filter(tree.read(shaders + name)) if name.endswith('areaShadowFilterF.glsl') else tree.read(shaders + name)) ==
+            G.SourceTree(BASE).read(shaders + name) for name in untouched),
         'handover_header_untouched': tree.read(header) == G.SourceTree(BASE).read(header),
         'setting_default_on': settings.get('RenderSpotShadowFadeModel') == 1,
         'pipeline_upload': pipeline.count('"RenderSpotShadowFadeModel", 1);') == 2 and

@@ -383,8 +383,10 @@ def validate_data(data: dict) -> None:
     # Shaft status and Test shafts add two searchable rows: 2519 -> 2521.
     # Four upstream performance A/B switches: 2521 -> 2525 (11/12).
     # Per-clone Stay in place adds one searchable switch: 2525 -> 2526 (11/13 integration).
-    if len(pages) != 40 or row_count != 2526:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2526")
+    # Minimum shadow softness: one persistent renderer slider on Light > Rim > Soft shadows, 2526 -> 2527 (11/13).
+    # Wide light taps: one persistent renderer spinner under it, 2527 -> 2528 (11/13).
+    if len(pages) != 40 or row_count != 2528:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2528")
     stay = [row for _, page in pages if page["name"] == "ghosts_tab"
             for card in page["cards"] if card["id"] == "pose"
             for row in card["rows"] if row.get("w") == "stay_in_place_check"]
@@ -2629,6 +2631,25 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        steady[0].get("bind") == "setting" and
                        steady[0].find("kit_switch").get("control_name") == "RenderShadowSlotHysteresis" and
                        b"shadow_slot_hysteresis" in outputs[out_dir / "director_kit_index.xml"]))
+        floor_rows = [row for row in steady_page.iter("kit_row")
+                      if row.get("setting") == "RenderSoftShadowMinSoftness"]
+        floor_slider = floor_rows[0].find("slider") if len(floor_rows) == 1 else None
+        checks.append(("Minimum softness is bound, searchable, ranged 0..4 and sits under Steady shadow slots",
+                       len(floor_rows) == 1 and floor_rows[0].get("label") == "Minimum softness (texels)" and
+                       floor_rows[0].get("bind") == "setting" and floor_slider is not None and
+                       floor_slider.get("control_name") == "RenderSoftShadowMinSoftness" and
+                       float(floor_slider.get("min_val")) == 0.0 and float(floor_slider.get("max_val")) == 4.0 and
+                       [row.get("setting") for row in steady_page.iter("kit_row")].index("RenderSoftShadowMinSoftness") ==
+                       [row.get("setting") for row in steady_page.iter("kit_row")].index("RenderShadowSlotHysteresis") + 1 and
+                       b"soft_shadow_min_softness" in outputs[out_dir / "director_kit_index.xml"]))
+        wide_rows = [row for row in steady_page.iter("kit_row")
+                     if row.get("setting") == "RenderAreaShadowWorldWideTaps"]
+        checks.append(("Wide light taps is bound, searchable and sits under Minimum softness",
+                       len(wide_rows) == 1 and wide_rows[0].get("label") == "Wide light taps" and
+                       wide_rows[0].get("bind") == "setting" and
+                       [row.get("setting") for row in steady_page.iter("kit_row")].index("RenderAreaShadowWorldWideTaps") ==
+                       [row.get("setting") for row in steady_page.iter("kit_row")].index("RenderSoftShadowMinSoftness") + 1 and
+                       b"area_shadow_world_wide_taps" in outputs[out_dir / "director_kit_index.xml"]))
         probe_page = ET.fromstring(outputs[out_dir / "panel_dpage_world_shadows_probes.xml"], parser=parser())
         probe_rows = [row for row in probe_page.iter("kit_row")
                       if row.get("setting") == "RenderReflectionProbeReachCull"]
