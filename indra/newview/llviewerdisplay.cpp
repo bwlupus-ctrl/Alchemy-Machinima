@@ -153,10 +153,13 @@ LLFrameTimer gAssetStorageLogTime;
 // Rendering stuff
 void render_ui(F32 zoom_factor = 1.f, int subfield = 0);
 void swap();
-// [FrameHitch] The frame (LLFrameTimer::getFrameCount()) in which swap() ran the VBO pool sweep before a present
-// (see clean_vbo_pool_before_present()). A frame stamp, not a flag: swap() is also called outside display()
-// (the forward snapshot path), and a flag set there would outlive its frame and cancel the next frame's sweep.
-static U32 sVBOPoolSweepFrame = U32_MAX;
+// [FrameHitch] sDisplaySerial counts display() calls (incremented on entry). sVBOPoolSweepSerial is the display()
+// call under which swap() ran the VBO pool sweep before a present (see clean_vbo_pool_before_present()).
+// A serial, not a flag and not the frame number: swap() is also called outside display() (the forward snapshot
+// path calls display() and then swap(), once per tile, all within one frame), so a flag set there outlived its
+// display() and a frame number made every tile after the first skip both sweeps. Each display() call owns one sweep.
+static U32 sDisplaySerial = 0;
+static U32 sVBOPoolSweepSerial = U32_MAX;
 void render_hud_attachments();
 void render_ui_3d();
 void render_ui_2d();
@@ -462,6 +465,8 @@ static void update_tp_display(bool minimized)
 // Paint the display!
 void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 {
+    ++sDisplaySerial; // [FrameHitch] a new display() call: its VBO pool sweep has not run yet
+
     LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("Render");
     LL_PROFILE_GPU_ZONE("Render");
 
@@ -1284,10 +1289,10 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
     // RenderVBOPoolCleanAtFrameEnd: the swap is done and the cull references are released,
     // so this is a safe point to run the VBO pool's expiry sweep (not mid-rebuild).
-    // [FrameHitch] Only when swap() did not already run it before a present in THIS frame (see
+    // [FrameHitch] Only when swap() did not already run it before a present in THIS display() call (see
     // clean_vbo_pool_before_present()): a sweep here sits between SwapBuffers and the next
     // frame's time sample, and its glDeleteBuffers is where the driver's present wait landed.
-    if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount())
+    if (sVBOPoolSweepSerial != sDisplaySerial)
     {
         static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
         LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);
@@ -1996,11 +2001,10 @@ void render_ui(F32 zoom_factor, int subfield)
 // Off, or RenderVBOPoolCleanAtFrameEnd off: nothing here, the sweep stays where it was.
 static void clean_vbo_pool_before_present()
 {
-    // Exactly once per frame: a second swap() in the same frame (the disconnected screen, a snapshot's
-    // own swap()) does not sweep again. The stamp is the frame number, so nothing has to clear it and it
-    // can never carry over into a later frame.
-    const U32 frame = LLFrameTimer::getFrameCount();
-    if (sVBOPoolSweepFrame == frame)
+    // Exactly once per display() call: a second swap() under the same display() (the disconnected screen)
+    // does not sweep again. The stamp is that call's serial, so nothing has to clear it and it can never
+    // carry over into a later display() (a snapshot tile's own swap() sweeps under that tile's serial).
+    if (sVBOPoolSweepSerial == sDisplaySerial)
     {
         return;
     }
@@ -2010,7 +2014,7 @@ static void clean_vbo_pool_before_present()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("vbo pool sweep (pre-swap)");
         LLVertexBuffer::endOfFrameCleanPool(true);
-        sVBOPoolSweepFrame = frame;
+        sVBOPoolSweepSerial = sDisplaySerial;
     }
 }
 

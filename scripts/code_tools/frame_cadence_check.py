@@ -21,19 +21,21 @@ Two halves:
 
 1. Source pins (--check). Exact pins; comments, whitespace and spacing around
    punctuation do not matter:
-   - clean_vbo_pool_before_present() is exactly: read the frame number, return
-     when that frame was already swept, both settings read, ONE block gated on
-     both that holds the Tracy zone, the sweep and the frame stamp, in that
-     order;
-   - "swept" is a frame stamp (sVBOPoolSweepFrame == LLFrameTimer::getFrameCount()),
-     never a flag that something has to clear: swap() is also called outside
-     display() (the forward snapshot path), and a flag set there outlived its
-     frame and cancelled the next frame's sweep;
+   - clean_vbo_pool_before_present() is exactly: return when this display()
+     call was already swept, both settings read, ONE block gated on both that
+     holds the Tracy zone, the sweep and the serial stamp, in that order;
+   - "swept" is a stamp of the display() call (sVBOPoolSweepSerial ==
+     sDisplaySerial, and display() starts with ++sDisplaySerial), never a flag
+     that something has to clear and never the frame number: swap() is also
+     called outside display() (the forward snapshot path: display(), then
+     swap(), once per tile, all in one frame). A flag set there outlived its
+     display(); a frame number made every tile after the first skip both
+     sweeps;
    - swap() is exactly: the helper call, then the paced present, then the flag
      for the next frame; nothing else, so nothing can follow the present there;
    - display() from its last swap() to display_stats() is exactly the known
      text, with the post-present sweep inside
-     if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount());
+     if (sVBOPoolSweepSerial != sDisplaySerial);
    - exact counts in the file (helper call 1, endOfFrameCleanPool 3, stamp
      assignments 2 = the initial value and the helper's stamp, swap() sites in
      display() 3), so a duplicate, a reset or a new site is a finding until it
@@ -61,9 +63,11 @@ Two halves:
                    a sweep zone that is not before its frame's Swap; or a pool
                    expiry that ran after the present
      INCONCLUSIVE  (exit 2) too few frames, no Swap zones, pre-swap sweep zones
-                   missing from the presented frames, or no pool expiry seen
-                   INSIDE a pre-swap sweep: the trace never exercised the path
-                   that stalled, so a clean tail proves nothing
+                   missing from the presented frames, no pool expiry seen
+                   INSIDE a pre-swap sweep (the trace never exercised the path
+                   that stalled, so a clean tail proves nothing), or a
+                   delete_buffers after the present that cannot be classified
+                   because the trace holds no cleanIfDue / timeout zones at all
      PASS          none of the above
    It also counts long-then-short frame pairs and says how many a tail explains.
 
@@ -111,14 +115,13 @@ POST_PRESENT_DENY = (
 
 # ---- exact pins (compared after norm(): comments stripped, whitespace collapsed, no space around punctuation) ----
 HELPER_PIN = (
-    'const U32 frame = LLFrameTimer::getFrameCount(); '
-    'if (sVBOPoolSweepFrame == frame) { return; } '
+    'if (sVBOPoolSweepSerial == sDisplaySerial) { return; } '
     'static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true); '
     'static LLCachedControl<bool> vbo_clean_before_present(gSavedSettings, "RenderVBOPoolCleanBeforePresent", true); '
     'if (vbo_clean_at_frame_end && vbo_clean_before_present) { '
     'LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("vbo pool sweep (pre-swap)"); '
     'LLVertexBuffer::endOfFrameCleanPool(true); '
-    'sVBOPoolSweepFrame = frame; }'
+    'sVBOPoolSweepSerial = sDisplaySerial; }'
 )
 SWAP_PIN = (
     'clean_vbo_pool_before_present(); '
@@ -130,7 +133,7 @@ SWAP_PIN = (
     'gDisplaySwapBuffers = true;'
 )
 TAIL_SWEEP_PIN = (
-    'if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount()) { '
+    'if (sVBOPoolSweepSerial != sDisplaySerial) { '
     'static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true); '
     'LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end); }'
 )
@@ -139,14 +142,21 @@ TAIL_PIN = (
     'LLAppViewer::instance()->pingMainloopTimeout("Display:FrameStats"); stop_glerror(); '
     + TAIL_SWEEP_PIN + ' display_stats();'
 )
-DECL_PIN = 'static U32 sVBOPoolSweepFrame = U32_MAX;'
+DECL_PIN = 'static U32 sDisplaySerial = 0; static U32 sVBOPoolSweepSerial = U32_MAX;'
+ENTRY_PIN = '++sDisplaySerial;'
 # regex (on the normalised file) -> exact count
 FILE_COUNTS = (
     (r"clean_vbo_pool_before_present\(", 2, "helper", "one definition and one call (in swap())"),
     (r"endOfFrameCleanPool\(", 3, "endOfFrameCleanPool", "the minimised path, the pre-present helper and the guarded post-present call"),
-    (r"sVBOPoolSweepFrame=(?!=)", 2, "stamp assignment", "the initial value and the helper's stamp; nothing may reset it"),
-    (r"sVBOPoolSweepFrame", 4, "stamp use", "declaration, helper test, helper stamp, display() test"),
-    (r"sVBOPoolSweptBeforePresent", 0, "old flag", "the per-frame bool is gone; a flag can outlive its frame"),
+    (r"sVBOPoolSweepSerial=(?!=)", 2, "stamp assignment", "the initial value and the helper's stamp; nothing may reset it"),
+    (r"sVBOPoolSweepSerial", 4, "stamp use", "declaration, helper test, helper stamp, display() test"),
+    (r"sDisplaySerial=(?!=)", 1, "serial assignment", "only its initial value; it is only ever incremented"),
+    (r"\+\+sDisplaySerial|sDisplaySerial\+\+|sDisplaySerial[-+]=|--sDisplaySerial|sDisplaySerial--", 1, "serial increment",
+     "once, at display() entry"),
+    (r"sDisplaySerial", 5, "serial use", "declaration, display() entry, helper test, helper stamp, display() test"),
+    (r"sVBOPoolSweptBeforePresent", 0, "old flag", "the per-frame bool is gone; a flag can outlive its display()"),
+    (r"sVBOPoolSweepFrame", 0, "old frame stamp",
+     "the frame-number stamp is gone; tiled snapshots repeat display() + swap() within one frame"),
 )
 DISPLAY_SWAP_SITES = 3
 
@@ -210,8 +220,8 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
     if helper is None:
         out.append(F + "clean_vbo_pool_before_present() is missing")
     elif norm(helper) != norm(HELPER_PIN):
-        out.append(F + "HELPER PIN: clean_vbo_pool_before_present() is not exactly [frame number; return when that frame "
-                       "was swept; both settings; one block gated on both holding the zone, the sweep and the frame stamp]")
+        out.append(F + "HELPER PIN: clean_vbo_pool_before_present() is not exactly [return when this display() call was "
+                       "swept; both settings; one block gated on both holding the zone, the sweep and the serial stamp]")
 
     swap = function_body(display_src, r"\nvoid\s+swap\s*\(\s*\)")
     if swap is None:
@@ -225,6 +235,8 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
         out.append(F + "display() is missing")
     else:
         d = norm(disp)
+        if not d.startswith(norm(ENTRY_PIN)):
+            out.append(F + "ENTRY PIN: display() must start with ++sDisplaySerial; (every display() call owns one sweep)")
         sites = len(re.findall(r"(?<![\w.>:])swap\(\);", d))
         if sites != DISPLAY_SWAP_SITES:
             out.append(F + f"SWAP SITES: display() calls swap() {sites} times, expected {DISPLAY_SWAP_SITES} (audit the new site)")
@@ -235,7 +247,7 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
             tail = d[last:]
             if not tail.startswith(norm(TAIL_PIN)):
                 out.append(F + "TAIL PIN: display() from its last swap() to display_stats() is not exactly the audited text "
-                               "(the post-present sweep must sit inside if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount()), "
+                               "(the post-present sweep must sit inside if (sVBOPoolSweepSerial != sDisplaySerial), "
                                "once, and nothing new may run there)")
             for bad in POST_PRESENT_DENY:
                 if bad in tail:
@@ -243,7 +255,7 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
 
     whole = norm(display_src)
     if whole.count(norm(DECL_PIN)) != 1:
-        out.append(F + "DECL PIN: the sweep stamp must be declared exactly once as 'static U32 sVBOPoolSweepFrame = U32_MAX;'")
+        out.append(F + "DECL PIN: expected exactly once 'static U32 sDisplaySerial = 0; static U32 sVBOPoolSweepSerial = U32_MAX;'")
     for pattern, want, name, why in FILE_COUNTS:
         got = len(re.findall(pattern, whole))
         if got != want:
@@ -401,6 +413,10 @@ def trace_verdict(rows, label="trace"):
         return 1, lines
 
     inconclusive = []
+    if other_deletes_after_present and not clean.zones and not timeouts:
+        inconclusive.append(f"{other_deletes_after_present} delete_buffers after the present cannot be classified: the trace holds no "
+                            f"cleanIfDue or vbo cache timeout zones at all, so they may be the pool sweep "
+                            f"(export -u -f cleanIfDue and -u -f timeout)")
     if len(swept_frames) < SWEEP_COVERAGE * len(swap_end):
         inconclusive.append(f"pre-swap sweep zones in only {len(swept_frames)} of {len(swap_end)} presented frames "
                             f"(an older build, the setting off, or not exported with -u -f sweep)")
@@ -468,23 +484,23 @@ def selftest() -> list[str]:
     settings_src = SETTINGS_XML.read_text(encoding="utf-8")
 
     HELPER_CALL = "    clean_vbo_pool_before_present();\n"
-    STAMP = "        sVBOPoolSweepFrame = frame;\n"
+    STAMP = "        sVBOPoolSweepSerial = sDisplaySerial;\n"
     HELPER_BLOCK = ("    if (vbo_clean_at_frame_end && vbo_clean_before_present)\n    {\n"
                     "        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY(\"vbo pool sweep (pre-swap)\");\n"
                     "        LLVertexBuffer::endOfFrameCleanPool(true);\n" + STAMP + "    }\n")
-    FRAME_READ = "    const U32 frame = LLFrameTimer::getFrameCount();\n"
-    EARLY_RETURN = "    if (sVBOPoolSweepFrame == frame)\n    {\n        return;\n    }\n"
-    TAIL_IF = "    if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount())\n"
+    ENTRY = "    ++sDisplaySerial;"
+    EARLY_RETURN = "    if (sVBOPoolSweepSerial == sDisplaySerial)\n    {\n        return;\n    }\n"
+    TAIL_IF = "    if (sVBOPoolSweepSerial != sDisplaySerial)\n"
     TAIL_BLOCK = (TAIL_IF + "    {\n"
                   "        static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, \"RenderVBOPoolCleanAtFrameEnd\", true);\n"
                   "        LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);\n    }\n")
-    DECL = "static U32 sVBOPoolSweepFrame = U32_MAX;\n"
+    DECL = "static U32 sDisplaySerial = 0;\nstatic U32 sVBOPoolSweepSerial = U32_MAX;\n"
     PRESENT_END = "        });\n    }\n    gDisplaySwapBuffers = true;\n"
     AFTER_TAIL = "    gShiftFrame = false;\n\n    if (gShaderProfileFrame)\n"
     LAST_SWAP = ("                // tail for the live A/B off path and deferred snapshots.\n"
                  "                swap();\n")
     for name, anchor in (("HELPER_CALL", HELPER_CALL), ("HELPER_BLOCK", HELPER_BLOCK), ("EARLY_RETURN", EARLY_RETURN),
-                         ("FRAME_READ", FRAME_READ), ("TAIL_BLOCK", TAIL_BLOCK), ("DECL", DECL),
+                         ("ENTRY", ENTRY), ("TAIL_BLOCK", TAIL_BLOCK), ("DECL", DECL),
                          ("PRESENT_END", PRESENT_END), ("AFTER_TAIL", AFTER_TAIL), ("LAST_SWAP", LAST_SWAP), ("STAMP", STAMP)):
         if display_src.count(anchor) != 1:
             out.append(f"selftest: mutation anchor {name} found {display_src.count(anchor)} times in llviewerdisplay.cpp (need 1)")
@@ -509,11 +525,21 @@ def selftest() -> list[str]:
     # path's own swap() set it after display()'s reset, so the next frame skipped both sweeps
     bool_flag = (display_src
                  .replace(DECL, "static bool sVBOPoolSweptBeforePresent = false;\n", 1)
-                 .replace(FRAME_READ, "", 1)
+                 .replace(ENTRY, "", 1)
                  .replace(EARLY_RETURN, "    if (sVBOPoolSweptBeforePresent)\n    {\n        return;\n    }\n", 1)
                  .replace(STAMP, "        sVBOPoolSweptBeforePresent = true;\n", 1)
                  .replace(TAIL_BLOCK, TAIL_BLOCK.replace(TAIL_IF, "    if (!sVBOPoolSweptBeforePresent)\n")
                           + "    sVBOPoolSweptBeforePresent = false;\n", 1))
+
+    # the round-2 design (the stamp is LLFrameTimer::getFrameCount()): tiled snapshots call display() and then swap()
+    # once per tile without the frame count advancing, so every tile after the first skipped both sweeps
+    frame_stamp = (display_src
+                   .replace(DECL, "static U32 sVBOPoolSweepFrame = U32_MAX;\n", 1)
+                   .replace(ENTRY, "    ;", 1)
+                   .replace(EARLY_RETURN, "    const U32 frame = LLFrameTimer::getFrameCount();\n"
+                                          "    if (sVBOPoolSweepFrame == frame)\n    {\n        return;\n    }\n", 1)
+                   .replace(STAMP, "        sVBOPoolSweepFrame = frame;\n", 1)
+                   .replace(TAIL_IF, "    if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount())\n", 1))
 
     # (name, display source, settings source, the finding that must catch it)
     negatives = [
@@ -527,16 +553,16 @@ def selftest() -> list[str]:
          sub(HELPER_BLOCK, "    if (vbo_clean_at_frame_end && vbo_clean_before_present)\n    {\n    }\n"
                            "    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY(\"vbo pool sweep (pre-swap)\");\n"
                            "    LLVertexBuffer::endOfFrameCleanPool(true);\n"
-                           "    sVBOPoolSweepFrame = frame;\n"), settings_src, "HELPER PIN"),
+                           "    sVBOPoolSweepSerial = sDisplaySerial;\n"), settings_src, "HELPER PIN"),
         ("helper ignores the new setting",
          sub("if (vbo_clean_at_frame_end && vbo_clean_before_present)", "if (vbo_clean_at_frame_end)"), settings_src, "HELPER PIN"),
         ("helper ignores RenderVBOPoolCleanAtFrameEnd",
          sub("if (vbo_clean_at_frame_end && vbo_clean_before_present)", "if (vbo_clean_before_present)"), settings_src, "HELPER PIN"),
         ("helper never stamps the frame", sub(STAMP, ""), settings_src, "HELPER PIN"),
         ("helper stamps the frame outside the gated block",
-         sub(STAMP + "    }\n", "    }\n    sVBOPoolSweepFrame = frame;\n"), settings_src, "HELPER PIN"),
-        ("helper stamps a value that is not this frame",
-         sub(STAMP, "        sVBOPoolSweepFrame = frame + 1;\n"), settings_src, "HELPER PIN"),
+         sub(STAMP + "    }\n", "    }\n    sVBOPoolSweepSerial = sDisplaySerial;\n"), settings_src, "HELPER PIN"),
+        ("helper stamps a value that is not this display() call",
+         sub(STAMP, "        sVBOPoolSweepSerial = sDisplaySerial + 1;\n"), settings_src, "HELPER PIN"),
         ("helper sweeps twice",
          sub("        LLVertexBuffer::endOfFrameCleanPool(true);\n",
              "        LLVertexBuffer::endOfFrameCleanPool(true);\n        LLVertexBuffer::endOfFrameCleanPool(true);\n"),
@@ -544,12 +570,20 @@ def selftest() -> list[str]:
         ("early return removed (not once per frame)", sub(EARLY_RETURN, ""), settings_src, "HELPER PIN"),
         ("helper called from a second place", after_tail("clean_vbo_pool_before_present();"), settings_src, "COUNT [helper]"),
         ("the round-1 bool flag (stale after a snapshot's own swap())", bool_flag, settings_src, "COUNT [old flag]"),
+        ("the round-2 frame-number stamp (tiled snapshots: display() + swap() repeat within one frame)", frame_stamp,
+         settings_src, "COUNT [old frame stamp]"),
+        ("serial not advanced at display() entry (every later display() looks swept)",
+         sub(ENTRY, "    ;"), settings_src, "ENTRY PIN"),
+        ("serial advanced somewhere else as well (swap() under a display() never matches its tail)",
+         sub(HELPER_CALL, HELPER_CALL + "    ++sDisplaySerial;\n"), settings_src, "COUNT [serial increment]"),
+        ("serial advanced at the end of display() instead of its entry",
+         after_tail("++sDisplaySerial;").replace(ENTRY, "    ;", 1), settings_src, "ENTRY PIN"),
         ("stamp reset at the end of display() (a flag again)",
-         after_tail("sVBOPoolSweepFrame = U32_MAX;"), settings_src, "COUNT [stamp assignment]"),
-        ("stamp is not a U32_MAX-initialised U32",
-         sub(DECL, "static U32 sVBOPoolSweepFrame = 0;\n"), settings_src, "DECL PIN"),
-        ("post-present test not tied to the frame number",
-         sub(TAIL_IF, "    if (sVBOPoolSweepFrame == U32_MAX)\n"), settings_src, "TAIL PIN"),
+         after_tail("sVBOPoolSweepSerial = U32_MAX;"), settings_src, "COUNT [stamp assignment]"),
+        ("stamp starts equal to the serial (a swap() before the first display() would not sweep)",
+         sub(DECL, "static U32 sDisplaySerial = 0;\nstatic U32 sVBOPoolSweepSerial = 0;\n"), settings_src, "DECL PIN"),
+        ("post-present test not tied to the display() serial",
+         sub(TAIL_IF, "    if (sVBOPoolSweepSerial == U32_MAX)\n"), settings_src, "TAIL PIN"),
         ("post-present sweep unguarded", sub(TAIL_IF, ""), settings_src, "TAIL PIN"),
         ("empty guard, then an unconditional post-present sweep",
          sub(TAIL_BLOCK, TAIL_IF + "    {\n    }\n"
@@ -586,7 +620,8 @@ def selftest() -> list[str]:
     # harmless spacing must not trip the pins
     spaced = (display_src.replace(HELPER_CALL, "    clean_vbo_pool_before_present ( ) ;\n", 1)
               .replace(LAST_SWAP, LAST_SWAP.replace("swap();", "swap ();"), 1)
-              .replace(STAMP, "        sVBOPoolSweepFrame=frame ;\n", 1))
+              .replace(STAMP, "        sVBOPoolSweepSerial=sDisplaySerial ;\n", 1)
+              .replace(ENTRY, "    ++ sDisplaySerial ;", 1))
     if spaced == display_src:
         out.append("selftest: the spacing variant did not apply")
     else:
@@ -619,6 +654,8 @@ def selftest() -> list[str]:
     expect("synthetic every sweep behind the present", all_behind, 1, "do not end before the start of their frame's Swap")
     expect("synthetic pool expiry after the present", synthetic_rows(pool_expiry_after_present_at=150), 1,
            "expiry ran after the present")
+    no_context = [r for r in synthetic_rows(pool_expiry_after_present_at=150) if r[2] not in (CLEAN, TIMEOUT)]
+    expect("synthetic post-present delete_buffers without cleanIfDue / timeout exports", no_context, 2, "cannot be classified")
     expect("synthetic no sweep zones", synthetic_rows(sweeps=False), 2, "pre-swap sweep zones in only")
     expect("synthetic sweep zones, no expiry", synthetic_rows(expiry=False), 2, "no pool expiry")
     half = [r for r in synthetic_rows() if not (r[2] == SWEEP and (r[0] // 33_335_333) % 2)]
