@@ -127,11 +127,17 @@ def sheet():
         'In Magic Bullet Looks set the input to **Sony S-Log3 - S-Gamut3** and check the',
         'grey wedge with the Looks scopes **before** adding any Look tool:',
         '',
-        '- 18% grey should sit at code 420: Sony quotes this as 41% IRE.',
-        '- Black 0% = code 95 (3.5% IRE) and White 90% = code 598 (61% IRE).',
-        '- **Levels check:** if black reads about 9% instead of 3.5% and 90% white about',
-        '  58% instead of 61%, something in the chain treats the video as full range where',
-        '  it should be legal (or the reverse). Check the clip levels in Vegas before grading.',
+        '- What Magic Bullet must receive is the code divided by 1023 (the "0-1" column):',
+        '  18% grey 0.411, Black 0% 0.093, White 90% 0.584. Read it with the Looks pixel',
+        '  readout or the parade with the Input tool switched off, or on the Vegas scopes',
+        '  with no FX on the clip.',
+        '- **Levels check (use the Black 0% patch; 18% grey barely moves):**',
+        '  - black 0.093 = levels correct;',
+        '  - black about 0.035 (white 0.610) = the video was expanded (full range read as legal);',
+        '  - black about 0.144 (white 0.563) = the video was squeezed (legal range read as full).',
+        '  Fix it in the clip or project levels in Vegas, not with the S-Curve.',
+        '- Sony\'s "41% / 3.5% / 61% IRE" figures are the same codes measured on a legal-range',
+        '  video scale; they are not what the 0-1 pixel values should read.',
         '- Each wedge step should be the same distance apart (about 77 codes per stop above',
         '  about -5 stops), and the bottom ramp should be a straight diagonal on the waveform.',
         '- After the input transform, the wedge should come out neutral (R = G = B).',
@@ -141,14 +147,14 @@ def sheet():
         '',
         '## Grey wedge (top row, left to right)',
         '',
-        '| Patch | Linear | 10-bit code | % full scale | IRE (legal range) |',
+        '| Patch | Linear | 10-bit code | 0-1 (what MBL reads) | Sony IRE (legal scale) |',
         '|---|---|---|---|---|',
     ]
     for name, group, value, _ in patches():
         if group == 'wedge':
             code = encode(value)[0]
             ire = (code * 1023. - 64.) / 876. * 100.
-            lines.append(f'| {name} | {value[0]:.5f} | {round(code * 1023)} | {code * 100:.1f} | {ire:.1f} |')
+            lines.append(f'| {name} | {value[0]:.5f} | {round(code * 1023)} | {code:.3f} | {ire:.1f} |')
     for group, title in (('anchor', 'Anchors, skin and memory colours (second row)'),
                          ('gamut', 'Gamut (third row: 100% saturation, then 50%)')):
         lines += ['', f'## {title}', '',
