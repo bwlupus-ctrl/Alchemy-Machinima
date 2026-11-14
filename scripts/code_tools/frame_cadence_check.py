@@ -19,18 +19,25 @@ evenly spaced: the picture jumped and then nearly repeated.
 
 Two halves:
 
-1. Source pins (--check). Exact, comment- and whitespace-insensitive pins:
-   - clean_vbo_pool_before_present() is exactly: early return when the frame was
-     already swept, both settings read, ONE block gated on both that holds the
-     Tracy zone, the sweep and the flag set, in that order;
+1. Source pins (--check). Exact pins; comments, whitespace and spacing around
+   punctuation do not matter:
+   - clean_vbo_pool_before_present() is exactly: read the frame number, return
+     when that frame was already swept, both settings read, ONE block gated on
+     both that holds the Tracy zone, the sweep and the frame stamp, in that
+     order;
+   - "swept" is a frame stamp (sVBOPoolSweepFrame == LLFrameTimer::getFrameCount()),
+     never a flag that something has to clear: swap() is also called outside
+     display() (the forward snapshot path), and a flag set there outlived its
+     frame and cancelled the next frame's sweep;
    - swap() is exactly: the helper call, then the paced present, then the flag
      for the next frame; nothing else, so nothing can follow the present there;
    - display() from its last swap() to display_stats() is exactly the known
-     text, with the post-present sweep inside if (!sVBOPoolSweptBeforePresent)
-     and the flag reset right after it;
-   - exact call counts in the file (helper call 1, endOfFrameCleanPool 3, flag
-     set 1, flag clear 2, swap() sites in display() 3), so a duplicate or a new
-     site is a finding until it is audited;
+     text, with the post-present sweep inside
+     if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount());
+   - exact counts in the file (helper call 1, endOfFrameCleanPool 3, stamp
+     assignments 2 = the initial value and the helper's stamp, swap() sites in
+     display() 3), so a duplicate, a reset or a new site is a finding until it
+     is audited;
    - nothing on the list of calls known to take the driver's present wait (a
      buffer delete, a render-target or framebuffer bind, a flush, a texture
      upload, a readback) between the last swap() and the end of display();
@@ -39,25 +46,32 @@ Two halves:
    trace check is the backstop for that.
 2. Trace check (--trace). Input: tracy-csvexport -u output, one or more files.
    Small exports are enough: -u -f doFrame, -u -f Swap, -u -f sweep,
-   -u -f delete_buffers, -u -f timeout. For every main-loop frame it measures
-   the POST-PRESENT TAIL (end of the frame's last "Swap" zone to the end of
-   LLAppViewer::doFrame). Verdicts:
+   -u -f cleanIfDue, -u -f delete_buffers, -u -f timeout. For every main-loop
+   frame it measures the POST-PRESENT TAIL (end of the frame's last "Swap" zone
+   to the end of LLAppViewer::doFrame).
+   POOL EXPIRY means the pool sweep only: a "vbo cache timeout" zone, or a
+   delete_buffers zone nested inside LLDefaultVBOPool::cleanIfDue, a
+   "vbo cache timeout" zone or the sweep zone. delete_buffers has other callers
+   (buffer destruction); those are not pool expiry and never fail the check by
+   themselves (the tail check still covers them if they stall).
+   A sweep zone is PRE-SWAP only when its whole interval ends before the start
+   of the first Swap zone of its frame.
+   Verdicts:
      FAIL          a tail over TAIL_FAIL_MS; a pre-swap sweep over SWEEP_FAIL_MS;
-                   or a pool expiry ("vbo cache timeout" / delete_buffers) that
-                   ran after the present
+                   a sweep zone that is not before its frame's Swap; or a pool
+                   expiry that ran after the present
      INCONCLUSIVE  (exit 2) too few frames, no Swap zones, pre-swap sweep zones
                    missing from the presented frames, or no pool expiry seen
                    INSIDE a pre-swap sweep: the trace never exercised the path
                    that stalled, so a clean tail proves nothing
-     PASS          none of the above: the sweep ran before the present, really
-                   expired buffers there, stayed cheap, and no frame stalled
-                   after its present
+     PASS          none of the above
    It also counts long-then-short frame pairs and says how many a tail explains.
 
 Selftest: the real 11/14 excerpt (frame_cadence_fixture.csv) must FAIL; a
-synthetic even trace with expiry inside the pre-swap sweep must PASS; planted
-tail, slow sweep and post-present expiry must FAIL; no sweep zones, sweep zones
-without expiry, an empty trace and a trace without Swap zones must be
+synthetic even trace with expiry inside the pre-swap sweep must PASS, also with
+an unrelated delete_buffers after the present; planted tail, slow sweep,
+misplaced sweep and post-present pool expiry must FAIL; no sweep zones, sweep
+zones without expiry, an empty trace and a trace without Swap zones must be
 INCONCLUSIVE; every source mutation must be caught by the finding named next to
 it (one mutation each).
 
@@ -95,15 +109,16 @@ POST_PRESENT_DENY = (
     "gGL.flush", "glFlush", ".flush(", "glClear(",
 )
 
-# ---- exact pins (comments stripped, whitespace collapsed) ----
+# ---- exact pins (compared after norm(): comments stripped, whitespace collapsed, no space around punctuation) ----
 HELPER_PIN = (
-    'if (sVBOPoolSweptBeforePresent) { return; } '
+    'const U32 frame = LLFrameTimer::getFrameCount(); '
+    'if (sVBOPoolSweepFrame == frame) { return; } '
     'static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true); '
     'static LLCachedControl<bool> vbo_clean_before_present(gSavedSettings, "RenderVBOPoolCleanBeforePresent", true); '
     'if (vbo_clean_at_frame_end && vbo_clean_before_present) { '
     'LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("vbo pool sweep (pre-swap)"); '
     'LLVertexBuffer::endOfFrameCleanPool(true); '
-    'sVBOPoolSweptBeforePresent = true; }'
+    'sVBOPoolSweepFrame = frame; }'
 )
 SWAP_PIN = (
     'clean_vbo_pool_before_present(); '
@@ -115,23 +130,23 @@ SWAP_PIN = (
     'gDisplaySwapBuffers = true;'
 )
 TAIL_SWEEP_PIN = (
-    'if (!sVBOPoolSweptBeforePresent) { '
+    'if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount()) { '
     'static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true); '
-    'LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end); } '
-    'sVBOPoolSweptBeforePresent = false;'
+    'LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end); }'
 )
 TAIL_PIN = (
     'swap(); } } if (!display_cleanup_done) { LLSpatialGroup::sNoDelete = false; gPipeline.clearReferences(); } } '
     'LLAppViewer::instance()->pingMainloopTimeout("Display:FrameStats"); stop_glerror(); '
     + TAIL_SWEEP_PIN + ' display_stats();'
 )
-# token -> exact count in the comment-stripped file
+DECL_PIN = 'static U32 sVBOPoolSweepFrame = U32_MAX;'
+# regex (on the normalised file) -> exact count
 FILE_COUNTS = (
-    ("clean_vbo_pool_before_present(", 2, "one definition and one call (in swap())"),
-    ("endOfFrameCleanPool(", 3, "the minimised path, the pre-present helper and the guarded post-present call"),
-    ("sVBOPoolSweptBeforePresent = true", 1, "set only by the pre-present helper"),
-    ("sVBOPoolSweptBeforePresent = false", 2, "the declaration and the reset at the end of display()"),
-    ("sVBOPoolSweptBeforePresent", 5, "declaration, helper test, helper set, display() test, display() reset"),
+    (r"clean_vbo_pool_before_present\(", 2, "helper", "one definition and one call (in swap())"),
+    (r"endOfFrameCleanPool\(", 3, "endOfFrameCleanPool", "the minimised path, the pre-present helper and the guarded post-present call"),
+    (r"sVBOPoolSweepFrame=(?!=)", 2, "stamp assignment", "the initial value and the helper's stamp; nothing may reset it"),
+    (r"sVBOPoolSweepFrame", 4, "stamp use", "declaration, helper test, helper stamp, display() test"),
+    (r"sVBOPoolSweptBeforePresent", 0, "old flag", "the per-frame bool is gone; a flag can outlive its frame"),
 )
 DISPLAY_SWAP_SITES = 3
 
@@ -161,7 +176,9 @@ def strip_comments(text: str) -> str:
 
 
 def norm(text: str) -> str:
-    return " ".join(strip_comments(text).split())
+    """Comments out, whitespace collapsed, no whitespace next to punctuation ('swap ();' == 'swap();')."""
+    t = " ".join(strip_comments(text).split())
+    return re.sub(r"\s*([^\w\s])\s*", r"\1", t)
 
 
 def setting_findings(settings_src: str) -> list[str]:
@@ -192,14 +209,14 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
     helper = function_body(display_src, r"static\s+void\s+clean_vbo_pool_before_present\s*\(\s*\)")
     if helper is None:
         out.append(F + "clean_vbo_pool_before_present() is missing")
-    elif norm(helper) != HELPER_PIN:
-        out.append(F + "HELPER PIN: clean_vbo_pool_before_present() is not exactly [early return when already swept; "
-                       "both settings; one block gated on both holding the zone, the sweep and the flag set]")
+    elif norm(helper) != norm(HELPER_PIN):
+        out.append(F + "HELPER PIN: clean_vbo_pool_before_present() is not exactly [frame number; return when that frame "
+                       "was swept; both settings; one block gated on both holding the zone, the sweep and the frame stamp]")
 
     swap = function_body(display_src, r"\nvoid\s+swap\s*\(\s*\)")
     if swap is None:
         out.append(F + "swap() is missing")
-    elif norm(swap) != SWAP_PIN:
+    elif norm(swap) != norm(SWAP_PIN):
         out.append(F + "SWAP PIN: swap() is not exactly [pre-present sweep; paced present; gDisplaySwapBuffers = true] "
                        "(the sweep must come first and once, and nothing may follow the present)")
 
@@ -216,19 +233,21 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
             out.append(F + "display() no longer calls swap() (re-audit this gate)")
         else:
             tail = d[last:]
-            if not tail.startswith(TAIL_PIN):
+            if not tail.startswith(norm(TAIL_PIN)):
                 out.append(F + "TAIL PIN: display() from its last swap() to display_stats() is not exactly the audited text "
-                               "(the post-present sweep must sit inside if (!sVBOPoolSweptBeforePresent), once, with the "
-                               "flag reset right after it, and nothing new may run there)")
+                               "(the post-present sweep must sit inside if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount()), "
+                               "once, and nothing new may run there)")
             for bad in POST_PRESENT_DENY:
                 if bad in tail:
                     out.append(F + f"DENY: display() calls {bad} after the last swap() (it can take the driver's present wait)")
 
-    whole = strip_comments(display_src)
-    for token, want, why in FILE_COUNTS:
-        got = whole.count(token)
+    whole = norm(display_src)
+    if whole.count(norm(DECL_PIN)) != 1:
+        out.append(F + "DECL PIN: the sweep stamp must be declared exactly once as 'static U32 sVBOPoolSweepFrame = U32_MAX;'")
+    for pattern, want, name, why in FILE_COUNTS:
+        got = len(re.findall(pattern, whole))
         if got != want:
-            out.append(F + f"COUNT: {token!r} appears {got} times, expected {want} ({why})")
+            out.append(F + f"COUNT [{name}]: found {got}, expected {want} ({why})")
     return out
 
 
@@ -237,8 +256,11 @@ def source_findings(display_src: str, settings_src: str) -> list[str]:
 FRAME = "LLAppViewer::doFrame"
 SWAP = "Swap"
 SWEEP = "vbo pool sweep (pre-swap)"
-EXPIRY = ("vbo cache timeout", "delete_buffers")
-WANTED = {FRAME, SWAP, SWEEP, *EXPIRY}
+CLEAN = "LLDefaultVBOPool::cleanIfDue"
+TIMEOUT = "vbo cache timeout"
+DELETE = "delete_buffers"
+WANTED = {FRAME, SWAP, SWEEP, CLEAN, TIMEOUT, DELETE}
+POOL_ZONES = (SWEEP, CLEAN, TIMEOUT, DELETE)
 
 
 def read_zones(paths, wanted):
@@ -260,6 +282,18 @@ def read_zones(paths, wanted):
     return rows
 
 
+class Intervals:
+    """Sorted zones; inside(t) = index of the zone holding time t, or -1 (zones of one name do not overlap)."""
+
+    def __init__(self, zones):
+        self.zones = sorted(set(zones))
+        self.starts = [s for s, _ in self.zones]
+
+    def inside(self, t):
+        k = bisect.bisect_right(self.starts, t) - 1
+        return k if k >= 0 and t < self.zones[k][0] + self.zones[k][1] else -1
+
+
 def trace_verdict(rows, label="trace"):
     """Returns (code, lines). code 0 PASS, 1 FAIL, 2 INCONCLUSIVE."""
     lines = []
@@ -274,13 +308,15 @@ def trace_verdict(rows, label="trace"):
         i = bisect.bisect_right(starts, t) - 1
         return i if i >= 0 and t < frames[i][0] + frames[i][1] else -1
 
-    swaps = sorted({(s, d) for s, d, n, th in rows if n == SWAP and th == main})
-    sweeps = sorted({(s, d) for s, d, n, th in rows if n == SWEEP and th == main})
-    expiry = sorted({(s, d) for s, d, n, th in rows if n in EXPIRY and th == main})
-    swap_end = {}
-    for s, d in swaps:
+    def zones(name):
+        return sorted({(s, d) for s, d, n, th in rows if n == name and th == main})
+
+    swap_first = {}   # frame -> start of its first Swap zone
+    swap_end = {}     # frame -> end of its last Swap zone
+    for s, d in zones(SWAP):
         i = frame_of(s)
         if i >= 0:
+            swap_first[i] = min(swap_first.get(i, s), s)
             swap_end[i] = max(swap_end.get(i, 0), s + d)
     if len(swap_end) < MIN_FRAMES // 2:
         return 2, [f"{label}: INCONCLUSIVE: {len(swap_end)} frames hold a Swap zone (need {MIN_FRAMES // 2}); export with -u -f Swap"]
@@ -289,31 +325,59 @@ def trace_verdict(rows, label="trace"):
     med = statistics.median(durs)
     tails = {i: (frames[i][0] + frames[i][1] - e) / 1e6 for i, e in swap_end.items()}
     bad_tail = sorted(i for i, t in tails.items() if t > TAIL_FAIL_MS)
-    bad_sweep = [d / 1e6 for _, d in sweeps if d / 1e6 > SWEEP_FAIL_MS]
     pairs = [i for i in range(len(durs) - 1) if durs[i] > 1.4 * med and durs[i + 1] < 0.65 * med]
     explained = [i for i in pairs if i in set(bad_tail)]
 
-    # where did the pool expiry run: inside a pre-swap sweep, or after the present?
-    sweep_starts = [s for s, _ in sweeps]
-    expiry_in_sweep = 0
-    expiry_after_present = 0
-    for s, d in expiry:
-        k = bisect.bisect_right(sweep_starts, s) - 1
-        if k >= 0 and s < sweeps[k][0] + sweeps[k][1]:
+    # sweep zones: pre-swap only when the whole zone ends before the first Swap of its frame
+    pre_sweeps = []
+    misplaced = 0
+    for s, d in zones(SWEEP):
+        i = frame_of(s)
+        if i < 0 or i not in swap_first:
+            continue                      # a frame that did not present: nothing to be before or after
+        if s + d <= swap_first[i]:
+            pre_sweeps.append((s, d, i))
+        else:
+            misplaced += 1
+    pre = Intervals([(s, d) for s, d, _ in pre_sweeps])
+    swept_frames = {i for _, _, i in pre_sweeps}
+    bad_sweep = [d / 1e6 for s, d, _ in pre_sweeps if d / 1e6 > SWEEP_FAIL_MS]
+
+    # pool expiry = the pool sweep only: a timeout zone, or a delete_buffers nested in the sweep's own zones
+    any_sweep = Intervals(zones(SWEEP))
+    clean = Intervals(zones(CLEAN))
+    timeouts = zones(TIMEOUT)
+    timeout_iv = Intervals(timeouts)
+    pool_expiry = [s for s, _ in timeouts]
+    other_deletes_after_present = 0
+    for s, d in zones(DELETE):
+        if clean.inside(s) >= 0 or timeout_iv.inside(s) >= 0 or any_sweep.inside(s) >= 0:
+            pool_expiry.append(s)
+        else:
+            i = frame_of(s)
+            if i in swap_first and s >= swap_first[i]:
+                other_deletes_after_present += 1
+    expiry_in_sweep = expiry_after_present = expiry_elsewhere = 0
+    for s in pool_expiry:
+        if pre.inside(s) >= 0:
             expiry_in_sweep += 1
             continue
         i = frame_of(s)
-        if i in swap_end and s >= swap_end[i]:
+        if i in swap_first and s >= swap_first[i]:
             expiry_after_present += 1
-    swept_frames = {frame_of(s) for s, _ in sweeps} & set(swap_end)
+        else:
+            expiry_elsewhere += 1
 
     tv = sorted(tails.values())
     lines.append(f"{label}: {len(frames)} frames, median {med:.1f} ms; post-present tail median {statistics.median(tv):.2f} ms, "
                  f"p99 {tv[int(len(tv) * 0.99)]:.2f} ms, max {tv[-1]:.2f} ms")
     lines.append(f"{label}: long-then-short frame pairs: {len(pairs)} ({len(explained)} explained by a post-present tail)")
     lines.append(f"{label}: pre-swap sweep zones in {len(swept_frames)} of {len(swap_end)} presented frames"
-                 + (f", max {max(d for _, d in sweeps) / 1e6:.2f} ms" if sweeps else ""))
-    lines.append(f"{label}: pool expiry zones: {expiry_in_sweep} inside a pre-swap sweep, {expiry_after_present} after the present")
+                 + (f", max {max(d for _, d, _ in pre_sweeps) / 1e6:.2f} ms" if pre_sweeps else "")
+                 + f"; sweep zones not before their frame's Swap: {misplaced}")
+    lines.append(f"{label}: pool expiry zones: {expiry_in_sweep} inside a pre-swap sweep, {expiry_after_present} after the present, "
+                 f"{expiry_elsewhere} elsewhere; other delete_buffers after the present (not pool expiry, not a finding): "
+                 f"{other_deletes_after_present}")
 
     fail = False
     if bad_tail:
@@ -325,6 +389,10 @@ def trace_verdict(rows, label="trace"):
         fail = True
         lines.append(f"{label}: FAIL: {len(bad_sweep)} pre-swap sweeps over {SWEEP_FAIL_MS:.0f} ms (worst {max(bad_sweep):.1f} ms): "
                      f"the stall moved in front of the present instead of going away")
+    if misplaced:
+        fail = True
+        lines.append(f"{label}: FAIL: {misplaced} sweep zones do not end before the start of their frame's Swap: "
+                     f"the sweep is not before the present")
     if expiry_after_present:
         fail = True
         lines.append(f"{label}: FAIL: the VBO pool expiry ran after the present {expiry_after_present} times "
@@ -337,9 +405,9 @@ def trace_verdict(rows, label="trace"):
         inconclusive.append(f"pre-swap sweep zones in only {len(swept_frames)} of {len(swap_end)} presented frames "
                             f"(an older build, the setting off, or not exported with -u -f sweep)")
     if expiry_in_sweep < MIN_EXPIRY_IN_SWEEP:
-        inconclusive.append("no pool expiry (vbo cache timeout / delete_buffers) ran inside a pre-swap sweep: the capture never "
-                            "exercised the path that stalled (capture longer with scene churn, and export -u -f delete_buffers "
-                            "and -u -f timeout)")
+        inconclusive.append("no pool expiry (vbo cache timeout, or delete_buffers inside the sweep) ran inside a pre-swap sweep: "
+                            "the capture never exercised the path that stalled (capture longer with scene churn, and export "
+                            "-u -f timeout, -u -f cleanIfDue and -u -f delete_buffers)")
     if inconclusive:
         for why in inconclusive:
             lines.append(f"{label}: INCONCLUSIVE: {why}")
@@ -349,7 +417,8 @@ def trace_verdict(rows, label="trace"):
     return 0, lines
 
 
-def synthetic_rows(frames=300, planted_tail_at=None, sweeps=True, expiry=True, expiry_after_present_at=None):
+def synthetic_rows(frames=300, planted_tail_at=None, sweeps=True, expiry=True, pool_expiry_after_present_at=None,
+                   misplaced_sweep_at=None, unrelated_delete_after_present_at=None):
     """An even 30 fps trace: [1 ms][22 ms wait][9 ms render][sweep][1.3 ms Swap], tail 0.02 ms."""
     rows = []
     t = 0
@@ -365,15 +434,28 @@ def synthetic_rows(frames=300, planted_tail_at=None, sweeps=True, expiry=True, e
         else:
             swap_start = t + dur - int(1.32 * ms)
         swap_dur = int(1.3 * ms)
+        after = swap_start + swap_dur           # 20 us of frame are left after the present
         rows.append((t, dur, FRAME, "1"))
         rows.append((swap_start, swap_dur, SWAP, "1"))
+
+        def sweep_at(at, length, with_expiry):
+            rows.append((at, length, SWEEP, "1"))
+            if with_expiry:
+                rows.append((at + 1_000, length - 2_000, CLEAN, "1"))
+                rows.append((at + 2_000, length - 4_000, TIMEOUT, "1"))
+                rows.append((at + 3_000, length - 6_000, DELETE, "1"))
+
         if sweeps:
-            rows.append((swap_start - 50_000, 20_000, SWEEP, "1"))
-            if expiry and i % 40 == 7:
-                rows.append((swap_start - 45_000, 10_000, "vbo cache timeout", "1"))
-                rows.append((swap_start - 44_000, 8_000, "delete_buffers", "1"))
-        if expiry_after_present_at is not None and i == expiry_after_present_at:
-            rows.append((swap_start + swap_dur + 2_000, 5_000, "delete_buffers", "1"))
+            if misplaced_sweep_at is not None and i == misplaced_sweep_at:
+                sweep_at(after + 1_000, 12_000, True)          # short, but behind the present
+            else:
+                sweep_at(swap_start - 50_000, 20_000, expiry and i % 40 == 7)
+        if pool_expiry_after_present_at is not None and i == pool_expiry_after_present_at:
+            rows.append((after + 1_000, 12_000, CLEAN, "1"))
+            rows.append((after + 2_000, 8_000, TIMEOUT, "1"))
+            rows.append((after + 3_000, 5_000, DELETE, "1"))
+        if unrelated_delete_after_present_at is not None and i == unrelated_delete_after_present_at:
+            rows.append((after + 2_000, 5_000, DELETE, "1"))   # a buffer destructor, not the pool sweep
         t += dur + 2_000
     return rows
 
@@ -386,22 +468,24 @@ def selftest() -> list[str]:
     settings_src = SETTINGS_XML.read_text(encoding="utf-8")
 
     HELPER_CALL = "    clean_vbo_pool_before_present();\n"
+    STAMP = "        sVBOPoolSweepFrame = frame;\n"
     HELPER_BLOCK = ("    if (vbo_clean_at_frame_end && vbo_clean_before_present)\n    {\n"
                     "        LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY(\"vbo pool sweep (pre-swap)\");\n"
-                    "        LLVertexBuffer::endOfFrameCleanPool(true);\n"
-                    "        sVBOPoolSweptBeforePresent = true;\n    }\n")
-    EARLY_RETURN = "    if (sVBOPoolSweptBeforePresent)\n    {\n        return;\n    }\n"
-    TAIL_BLOCK = ("    if (!sVBOPoolSweptBeforePresent)\n    {\n"
+                    "        LLVertexBuffer::endOfFrameCleanPool(true);\n" + STAMP + "    }\n")
+    FRAME_READ = "    const U32 frame = LLFrameTimer::getFrameCount();\n"
+    EARLY_RETURN = "    if (sVBOPoolSweepFrame == frame)\n    {\n        return;\n    }\n"
+    TAIL_IF = "    if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount())\n"
+    TAIL_BLOCK = (TAIL_IF + "    {\n"
                   "        static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, \"RenderVBOPoolCleanAtFrameEnd\", true);\n"
-                  "        LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);\n    }\n"
-                  "    sVBOPoolSweptBeforePresent = false;\n")
+                  "        LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);\n    }\n")
+    DECL = "static U32 sVBOPoolSweepFrame = U32_MAX;\n"
     PRESENT_END = "        });\n    }\n    gDisplaySwapBuffers = true;\n"
     AFTER_TAIL = "    gShiftFrame = false;\n\n    if (gShaderProfileFrame)\n"
     LAST_SWAP = ("                // tail for the live A/B off path and deferred snapshots.\n"
                  "                swap();\n")
     for name, anchor in (("HELPER_CALL", HELPER_CALL), ("HELPER_BLOCK", HELPER_BLOCK), ("EARLY_RETURN", EARLY_RETURN),
-                         ("TAIL_BLOCK", TAIL_BLOCK), ("PRESENT_END", PRESENT_END), ("AFTER_TAIL", AFTER_TAIL),
-                         ("LAST_SWAP", LAST_SWAP)):
+                         ("FRAME_READ", FRAME_READ), ("TAIL_BLOCK", TAIL_BLOCK), ("DECL", DECL),
+                         ("PRESENT_END", PRESENT_END), ("AFTER_TAIL", AFTER_TAIL), ("LAST_SWAP", LAST_SWAP), ("STAMP", STAMP)):
         if display_src.count(anchor) != 1:
             out.append(f"selftest: mutation anchor {name} found {display_src.count(anchor)} times in llviewerdisplay.cpp (need 1)")
     if out:
@@ -410,6 +494,9 @@ def selftest() -> list[str]:
     def sub(old, new):
         return display_src.replace(old, new, 1)
 
+    def after_tail(stmt):
+        return sub(AFTER_TAIL, "    gShiftFrame = false;\n    " + stmt + "\n\n    if (gShaderProfileFrame)\n")
+
     setting_at = settings_src.find(f"<key>{SETTING}</key>")
     setting_end = settings_src.find("</map>", setting_at)
     block = settings_src[setting_at:setting_end]
@@ -417,6 +504,16 @@ def selftest() -> list[str]:
     not_persisted = re.sub(r"(<key>Persist</key>\s*<integer>)1(</integer>)", r"\g<1>0\g<2>", block)
     if value_off == block or not_persisted == block:
         return ["selftest: could not build the settings mutations"]
+
+    # the round-1 design (a bool set by the helper and cleared at the end of display()): the forward snapshot
+    # path's own swap() set it after display()'s reset, so the next frame skipped both sweeps
+    bool_flag = (display_src
+                 .replace(DECL, "static bool sVBOPoolSweptBeforePresent = false;\n", 1)
+                 .replace(FRAME_READ, "", 1)
+                 .replace(EARLY_RETURN, "    if (sVBOPoolSweptBeforePresent)\n    {\n        return;\n    }\n", 1)
+                 .replace(STAMP, "        sVBOPoolSweptBeforePresent = true;\n", 1)
+                 .replace(TAIL_BLOCK, TAIL_BLOCK.replace(TAIL_IF, "    if (!sVBOPoolSweptBeforePresent)\n")
+                          + "    sVBOPoolSweptBeforePresent = false;\n", 1))
 
     # (name, display source, settings source, the finding that must catch it)
     negatives = [
@@ -430,53 +527,45 @@ def selftest() -> list[str]:
          sub(HELPER_BLOCK, "    if (vbo_clean_at_frame_end && vbo_clean_before_present)\n    {\n    }\n"
                            "    LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY(\"vbo pool sweep (pre-swap)\");\n"
                            "    LLVertexBuffer::endOfFrameCleanPool(true);\n"
-                           "    sVBOPoolSweptBeforePresent = true;\n"), settings_src, "HELPER PIN"),
+                           "    sVBOPoolSweepFrame = frame;\n"), settings_src, "HELPER PIN"),
         ("helper ignores the new setting",
          sub("if (vbo_clean_at_frame_end && vbo_clean_before_present)", "if (vbo_clean_at_frame_end)"), settings_src, "HELPER PIN"),
         ("helper ignores RenderVBOPoolCleanAtFrameEnd",
          sub("if (vbo_clean_at_frame_end && vbo_clean_before_present)", "if (vbo_clean_before_present)"), settings_src, "HELPER PIN"),
-        ("helper never marks the frame",
-         sub("        sVBOPoolSweptBeforePresent = true;\n", ""), settings_src, "HELPER PIN"),
-        ("helper marks the frame outside the gated block",
-         sub("        sVBOPoolSweptBeforePresent = true;\n    }\n", "    }\n    sVBOPoolSweptBeforePresent = true;\n"),
-         settings_src, "HELPER PIN"),
+        ("helper never stamps the frame", sub(STAMP, ""), settings_src, "HELPER PIN"),
+        ("helper stamps the frame outside the gated block",
+         sub(STAMP + "    }\n", "    }\n    sVBOPoolSweepFrame = frame;\n"), settings_src, "HELPER PIN"),
+        ("helper stamps a value that is not this frame",
+         sub(STAMP, "        sVBOPoolSweepFrame = frame + 1;\n"), settings_src, "HELPER PIN"),
         ("helper sweeps twice",
          sub("        LLVertexBuffer::endOfFrameCleanPool(true);\n",
              "        LLVertexBuffer::endOfFrameCleanPool(true);\n        LLVertexBuffer::endOfFrameCleanPool(true);\n"),
          settings_src, "HELPER PIN"),
         ("early return removed (not once per frame)", sub(EARLY_RETURN, ""), settings_src, "HELPER PIN"),
-        ("helper called from a second place",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    clean_vbo_pool_before_present();\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "COUNT: 'clean_vbo_pool_before_present('"),
-        ("post-present sweep unguarded",
-         sub("    if (!sVBOPoolSweptBeforePresent)\n", ""), settings_src, "TAIL PIN"),
+        ("helper called from a second place", after_tail("clean_vbo_pool_before_present();"), settings_src, "COUNT [helper]"),
+        ("the round-1 bool flag (stale after a snapshot's own swap())", bool_flag, settings_src, "COUNT [old flag]"),
+        ("stamp reset at the end of display() (a flag again)",
+         after_tail("sVBOPoolSweepFrame = U32_MAX;"), settings_src, "COUNT [stamp assignment]"),
+        ("stamp is not a U32_MAX-initialised U32",
+         sub(DECL, "static U32 sVBOPoolSweepFrame = 0;\n"), settings_src, "DECL PIN"),
+        ("post-present test not tied to the frame number",
+         sub(TAIL_IF, "    if (sVBOPoolSweepFrame == U32_MAX)\n"), settings_src, "TAIL PIN"),
+        ("post-present sweep unguarded", sub(TAIL_IF, ""), settings_src, "TAIL PIN"),
         ("empty guard, then an unconditional post-present sweep",
-         sub(TAIL_BLOCK, "    if (!sVBOPoolSweptBeforePresent)\n    {\n    }\n"
+         sub(TAIL_BLOCK, TAIL_IF + "    {\n    }\n"
                          "    static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, \"RenderVBOPoolCleanAtFrameEnd\", true);\n"
-                         "    LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);\n"
-                         "    sVBOPoolSweptBeforePresent = false;\n"), settings_src, "TAIL PIN"),
-        ("flag never reset", sub("    sVBOPoolSweptBeforePresent = false;\n", ""), settings_src, "TAIL PIN"),
-        ("flag reset before the post-present test",
-         sub(TAIL_BLOCK, "    sVBOPoolSweptBeforePresent = false;\n" + TAIL_BLOCK.replace("    sVBOPoolSweptBeforePresent = false;\n", "")),
-         settings_src, "TAIL PIN"),
+                         "    LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);\n"), settings_src, "TAIL PIN"),
         ("a second post-present sweep later in display()",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    LLVertexBuffer::endOfFrameCleanPool(true);\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "COUNT: 'endOfFrameCleanPool('"),
+         after_tail("LLVertexBuffer::endOfFrameCleanPool(true);"), settings_src, "COUNT [endOfFrameCleanPool]"),
         ("a render-target bind after the last swap()",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    gPipeline.mRT->deferredScreen.bindTarget();\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "DENY: display() calls bindTarget"),
+         after_tail("gPipeline.mRT->deferredScreen.bindTarget();"), settings_src, "DENY: display() calls bindTarget"),
         ("a framebuffer bind after the last swap()",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    glBindFramebuffer(GL_FRAMEBUFFER, 0);\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "DENY: display() calls BindFramebuffer"),
-        ("gGL.flush() after the last swap()",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    gGL.flush();\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "DENY: display() calls gGL.flush"),
+         after_tail("glBindFramebuffer(GL_FRAMEBUFFER, 0);"), settings_src, "DENY: display() calls BindFramebuffer"),
+        ("gGL.flush() after the last swap()", after_tail("gGL.flush();"), settings_src, "DENY: display() calls gGL.flush"),
         ("a buffer flush after the last swap()",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    LLVertexBuffer::flushBuffers();\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "DENY: display() calls flushBuffers"),
+         after_tail("LLVertexBuffer::flushBuffers();"), settings_src, "DENY: display() calls flushBuffers"),
         ("a buffer delete after the last swap()",
-         sub(AFTER_TAIL, "    gShiftFrame = false;\n    glDeleteBuffers(1, &gFrameHitchSelftestName);\n\n    if (gShaderProfileFrame)\n"),
-         settings_src, "DENY: display() calls glDeleteBuffers"),
+         after_tail("glDeleteBuffers(1, &gFrameHitchSelftestName);"), settings_src, "DENY: display() calls glDeleteBuffers"),
         ("a bind right after the last swap()",
          sub(LAST_SWAP, LAST_SWAP + "                gPipeline.mRT->deferredScreen.bindTarget();\n"), settings_src, "TAIL PIN"),
         ("a new swap() site in display()",
@@ -494,6 +583,17 @@ def selftest() -> list[str]:
         if not any(want in g for g in got):
             out.append(f"selftest: planted negative NOT caught by [{want}]: {name} (findings: {got})")
 
+    # harmless spacing must not trip the pins
+    spaced = (display_src.replace(HELPER_CALL, "    clean_vbo_pool_before_present ( ) ;\n", 1)
+              .replace(LAST_SWAP, LAST_SWAP.replace("swap();", "swap ();"), 1)
+              .replace(STAMP, "        sVBOPoolSweepFrame=frame ;\n", 1))
+    if spaced == display_src:
+        out.append("selftest: the spacing variant did not apply")
+    else:
+        got = source_findings(spaced, settings_src)
+        if got:
+            out.append(f"selftest: harmless spacing around punctuation must not be a finding: {got}")
+
     # traces
     def expect(label, rows, code_want, needle=None):
         code, lines = trace_verdict(rows, label)
@@ -506,10 +606,19 @@ def selftest() -> list[str]:
     else:
         expect("fixture 11/14", read_zones([FIXTURE], WANTED), 1, "between the present and the end")
     expect("synthetic even", synthetic_rows(), 0, "PASS")
+    expect("synthetic unrelated delete_buffers after the present",
+           synthetic_rows(unrelated_delete_after_present_at=150), 0, "PASS")
     expect("synthetic planted tail", synthetic_rows(planted_tail_at=120), 1, "between the present and the end")
-    slow = [(s, 9_000_000 if n == SWEEP and 5_000_000_000 < s < 5_040_000_000 else d, n, th) for s, d, n, th in synthetic_rows()]
+    # one sweep takes 9 ms and still ends where it did, before the present
+    slow = [(s + d - 9_000_000, 9_000_000, n, th) if n == SWEEP and 5_000_000_000 < s < 5_040_000_000 else (s, d, n, th)
+            for s, d, n, th in synthetic_rows()]
     expect("synthetic slow sweep", slow, 1, "pre-swap sweeps over")
-    expect("synthetic expiry after the present", synthetic_rows(expiry_after_present_at=150), 1, "expiry ran after the present")
+    expect("synthetic misplaced sweep (short, behind the present)",
+           synthetic_rows(misplaced_sweep_at=150), 1, "do not end before the start of their frame's Swap")
+    all_behind = [(s + 1_351_000, d // 2, n, th) if n in POOL_ZONES else (s, d, n, th) for s, d, n, th in synthetic_rows()]
+    expect("synthetic every sweep behind the present", all_behind, 1, "do not end before the start of their frame's Swap")
+    expect("synthetic pool expiry after the present", synthetic_rows(pool_expiry_after_present_at=150), 1,
+           "expiry ran after the present")
     expect("synthetic no sweep zones", synthetic_rows(sweeps=False), 2, "pre-swap sweep zones in only")
     expect("synthetic sweep zones, no expiry", synthetic_rows(expiry=False), 2, "no pool expiry")
     half = [r for r in synthetic_rows() if not (r[2] == SWEEP and (r[0] // 33_335_333) % 2)]

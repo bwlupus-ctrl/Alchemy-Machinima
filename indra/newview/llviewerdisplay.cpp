@@ -153,8 +153,10 @@ LLFrameTimer gAssetStorageLogTime;
 // Rendering stuff
 void render_ui(F32 zoom_factor = 1.f, int subfield = 0);
 void swap();
-// [FrameHitch] True once swap() ran the VBO pool sweep before this frame's present (see clean_vbo_pool_before_present()).
-static bool sVBOPoolSweptBeforePresent = false;
+// [FrameHitch] The frame (LLFrameTimer::getFrameCount()) in which swap() ran the VBO pool sweep before a present
+// (see clean_vbo_pool_before_present()). A frame stamp, not a flag: swap() is also called outside display()
+// (the forward snapshot path), and a flag set there would outlive its frame and cancel the next frame's sweep.
+static U32 sVBOPoolSweepFrame = U32_MAX;
 void render_hud_attachments();
 void render_ui_3d();
 void render_ui_2d();
@@ -1282,15 +1284,14 @@ void display(bool rebuild, F32 zoom_factor, int subfield, bool for_snapshot)
 
     // RenderVBOPoolCleanAtFrameEnd: the swap is done and the cull references are released,
     // so this is a safe point to run the VBO pool's expiry sweep (not mid-rebuild).
-    // [FrameHitch] Only when swap() did not already run it before the present (see
+    // [FrameHitch] Only when swap() did not already run it before a present in THIS frame (see
     // clean_vbo_pool_before_present()): a sweep here sits between SwapBuffers and the next
     // frame's time sample, and its glDeleteBuffers is where the driver's present wait landed.
-    if (!sVBOPoolSweptBeforePresent)
+    if (sVBOPoolSweepFrame != LLFrameTimer::getFrameCount())
     {
         static LLCachedControl<bool> vbo_clean_at_frame_end(gSavedSettings, "RenderVBOPoolCleanAtFrameEnd", true);
         LLVertexBuffer::endOfFrameCleanPool(vbo_clean_at_frame_end);
     }
-    sVBOPoolSweptBeforePresent = false;
 
     display_stats();
 
@@ -1995,9 +1996,11 @@ void render_ui(F32 zoom_factor, int subfield)
 // Off, or RenderVBOPoolCleanAtFrameEnd off: nothing here, the sweep stays where it was.
 static void clean_vbo_pool_before_present()
 {
-    // Exactly once per frame: a second swap() in the same frame (the disconnected screen presents
-    // and the frame then presents again) does not sweep again. display() clears the flag at its end.
-    if (sVBOPoolSweptBeforePresent)
+    // Exactly once per frame: a second swap() in the same frame (the disconnected screen, a snapshot's
+    // own swap()) does not sweep again. The stamp is the frame number, so nothing has to clear it and it
+    // can never carry over into a later frame.
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (sVBOPoolSweepFrame == frame)
     {
         return;
     }
@@ -2007,7 +2010,7 @@ static void clean_vbo_pool_before_present()
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_DISPLAY("vbo pool sweep (pre-swap)");
         LLVertexBuffer::endOfFrameCleanPool(true);
-        sVBOPoolSweptBeforePresent = true;
+        sVBOPoolSweepFrame = frame;
     }
 }
 
