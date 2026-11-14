@@ -711,12 +711,11 @@ void ALColorChart::debugReadback()
             }
         }
         const bool noisy = mLastSensor && gSavedSettings.getBOOL("CineSensorNoiseEnabled");
-        // Simulate sensor keeps its full-well/ADC clip without noise; the S-Log3
-        // model does not include it, so bright patches cannot be judged.
-        const F64 patch_gain = llclamp(gSavedSettings.getF32("RenderExposure"), .5f, 4.f) *
-            exp2(llclamp(gSavedSettings.getF32("AlchemyToneMapSLogEV"), -8.f, 8.f));
-        const bool sensor_clip = mLastSensor && gSavedSettings.getBOOL("CineSensorEnabled") &&
-            llmax(patch.linear[0], llmax(patch.linear[1], patch.linear[2])) * patch_gain > 1.;
+        // Simulate sensor keeps an ISO-dependent full-well/ADC clip (before Log EV)
+        // even without noise; the S-Log3 model above does not include it. The log
+        // table reaches +6 stops, so with the sensor on none of it can be judged.
+        // The ColorChecker table keeps its previous verdicts.
+        const bool sensor_clip = mLastSensor && table.full_frame && gSavedSettings.getBOOL("CineSensorEnabled");
         const F64 tolerance = .25 / 1023. + .5 / (LLRender::s10bitBackBuffer ? 1023. : 255.);
         F64 error = 0.;
         bool finite = true;
