@@ -34591,6 +34591,26 @@
   },
   {
     "change": "added",
+    "comment": "With RenderVBOPoolCleanAtFrameEnd on, run the VBO pool expiry sweep just before the frame is presented instead of just after. After the present, its buffer delete could take the driver's wait for the display (about 20 ms at a 30 fps cap) before the next frame started, so one frame ran long and the next short and motion stepped unevenly (a jump, then a near repeat). FALSE = sweep after the present, as before.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderVBOPoolCleanBeforePresent",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "Enable the VRAM budget governor (adaptive texture-residency cap enforcement, incl. during capture). Off = original behavior: full quality, no cap enforcement.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,
