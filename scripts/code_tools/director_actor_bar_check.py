@@ -235,7 +235,7 @@ def reverse_softshadow_angle(source, name):
                                      SOFTSHADOW_ANGLE_DIGEST, "reviewed soft shadow angle")
 
 
-SOFTSHADOW_ANGLE_SHADER_DIGEST = "b7479f59a128760e152ac893cfefe9c98194a6159df8cc63a496a989bd3a377a"
+SOFTSHADOW_ANGLE_SHADER_DIGEST = "e2cbb4586a937aded8d02cdf8a150652144311cdc27c15bb4fa9521a549b399a"
 
 
 def reverse_softshadow_angle_shader(source):

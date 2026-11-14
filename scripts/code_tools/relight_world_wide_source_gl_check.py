@@ -270,7 +270,7 @@ def evaluate(out, do_negatives=True):
                 f = run_checks(r, edits)[1]
                 caught, why = bool(f), f[0] if f else ''
             except AssertionError as ex:
-                caught, why = True, 'raised ' + str(ex)[:100]
+                caught, why = 'mutation drift' not in str(ex), 'raised ' + str(ex)[:100]   # an anchor that is gone is not a rejection
             rejected[name] = caught
             print('[wide-source]', 'PASS rejected' if caught else 'FAIL survived', 'planted regression:', name, '|', why[:170], flush=True)
             if not caught:

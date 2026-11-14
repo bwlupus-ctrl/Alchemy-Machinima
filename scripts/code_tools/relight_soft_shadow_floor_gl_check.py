@@ -27,7 +27,8 @@ Review round 1 additions:
   contact     head on, a blocker 2 - 15 cm from the plane, 2 mm and 2 cm sources: no step over 0.06 between neighbouring
               pixels with the floor on, the kernel is the floor everywhere, and nothing swims on a dolly (round 1's
               floor sat under the measured slope clamp, whose gap is noise for a tiny source: 20 % steps).
-  thin        1 - 3 texel blockers: what the floored kernel would have shaded where the search says lit, at most 0.03.
+  thin        1 - 3 texel blockers: what the floored kernel would have shaded where the search says lit: at most 0.03 at
+              the default floor, and nothing at 2 and 4 (above 1.5 the lit early-out is off).
   cube core   1, 2 and 4 cm rods at 2.5 m: the default floor (1.5) leaves their cores at most 0.30 / 0.30 / 0.05 lit.
   defaults    the bias gate's strap and sweep and the metric gate's retention / small / widen fixtures on the
               shipped defaults (noise model 2, floor on, map-bounded fade).
@@ -63,6 +64,7 @@ LOW = '    float low = clamp(soft_shadow_min_radius, 1.0, cap);\n'
 PR_MEASURED = '        pr = clamp(k_max * gap / lever, 1.0, cap);\n'
 KERNEL_FLOOR = '    texel = max(max(pr, low) * shape, vec2(1.0)) / proj_shadow_res;   // [SoftShadow floor] the kernel; pr stays the measured radius\n'
 KERNEL_PLAIN = '    texel = max(pr * shape, vec2(1.0)) / proj_shadow_res;\n'
+CLEAR_RULE = '    clear = !found && low <= 1.5;\n'
 FACE_FLOOR = 'float radius = clamp(r_map*max(zr-z_b,0.0)/z_b*AW_USABLE/(2.0*zr),aw_min_radius,AW_MAX_RADIUS);'
 DIR_FLOOR = 'float radius = max(r_map*max(dist-z_b,0.0)/(z_b*dist),max(2.0*AW_MIN_RADIUS/AW_USABLE,aw_min_angular));'
 BAND_FACE = 'bool face_path = !large && (edge <= 0.9921875 || floored);'
@@ -77,6 +79,7 @@ def projector_negatives():
         # the floor paid for with slope bias (the returned radius floored too): passes close blockers on a grazing receiver
         'floor_pays_slope_bias': [(KERNEL_FLOOR, '    pr = max(pr, low);\n' + KERNEL_PLAIN)],
         'floor_past_max_penumbra': [(LOW, '    float low = max(soft_shadow_min_radius, 1.0);\n')],
+        'lit_early_out_at_any_floor': [(CLEAR_RULE, '    clear = !found;\n')],
         'floor_widens_everything': [(KERNEL_FLOOR, '    texel = max((pr + low - 1.0) * shape, vec2(1.0)) / proj_shadow_res;\n')],
     }
 
@@ -418,13 +421,15 @@ def thin_check(r, host, defaults, edits=()):
             r.native_map(scene, B.light_of(e), e['fov'], res)
             _, metric = M.metric_of(host, r, e, .002)
             for vogel in (False, True):
-                a, b = (projector_render(r, pr_, cam, d, n, e, run, metric, FLOOR, vogel) for pr_ in (prog, full))
-                row = dict(check='thin', width_texels=width, gap_m=xc, kernel='vogel' if vogel else 'poisson', core=float(a[plane].min()),
-                           clear_miss=float(np.abs(a - b)[plane].max()))
-                rows.append(row)
-                if row['clear_miss'] > LIMIT['clear_miss']:
-                    failures.append('thin %g texels, %g m gap, %s: the search calls lit what the floored kernel shades by %.3f' %
-                                    (width, xc, row['kernel'], row['clear_miss']))
+                # the default floor (lit early-out kept, miss bounded), and 2 and 4 (no early-out: the kernel runs everywhere)
+                for floor, limit in ((FLOOR, LIMIT['clear_miss']), (2., 0.), (4., 0.)):
+                    a, b = (projector_render(r, pr_, cam, d, n, e, M.run_of(defaults, 8.), metric, floor, vogel) for pr_ in (prog, full))
+                    row = dict(check='thin', floor=floor, width_texels=width, gap_m=xc, kernel='vogel' if vogel else 'poisson',
+                               core=float(a[plane].min()), clear_miss=float(np.abs(a - b)[plane].max()))
+                    rows.append(row)
+                    if row['clear_miss'] > limit:
+                        failures.append('thin %g texels, %g m gap, %s, floor %g: the search calls lit what the floored kernel shades by %.3f' %
+                                        (width, xc, row['kernel'], floor, row['clear_miss']))
     return rows, failures
 
 
@@ -604,9 +609,9 @@ def source_contracts(tree):
                         'constexpr double kSoftShadowFloorDefault = 1.5;' in header and
                         tree.read(M.HEADER) == G.SourceTree(BASE).read(M.HEADER),   # alrelightmath.h is BASE again
         'shader_default_off': FLOOR_UNIFORM in shader and 'uniform float area_world_min_radius;' in filt,
-        'projector_floor_once': shader.count(KERNEL_FLOOR) == 1 and shader.count(LOW) == 1 and shader.count(PR_MEASURED) == 1,
+        'projector_floor_once': shader.count(KERNEL_FLOOR) == 1 and shader.count(LOW) == 1 and shader.count(PR_MEASURED) == 1 and shader.count(CLEAR_RULE) == 1,
         # the floor reads neither the measured gap nor the noise, and only the kernel reads the floor
-        'floor_is_gap_independent': shader.count('low = ') == 1 and len(__import__('re').findall(r'\blow\b', shader.split('float spotMetricPenumbra(')[1].split('float pcfSpotShadowMetric(')[0])) == 2,
+        'floor_is_gap_independent': shader.count('low = ') == 1 and len(__import__('re').findall(r'\blow\b', shader.split('float spotMetricPenumbra(')[1].split('float pcfSpotShadowMetric(')[0])) == 3,   # its definition, the lit early-out's bound and the kernel
         'cube_floor_both_paths': filt.count(FACE_FLOOR) == 1 and filt.count(DIR_FLOOR) == 1 and filt.count(BAND_FACE) == 1,
         'legacy_kernel_untouched': 'soft_shadow_min_radius' not in shader.split('float pcfSpotShadowSurface')[1],
     }
@@ -650,13 +655,13 @@ def evaluate(out, do_negatives=True):
                 f = projector_check(r, host, defaults, edits)[1] + slope_check(r, host, defaults, edits)[1]
                 note(name, bool(f), f[0] if f else '')
             except AssertionError as ex:
-                note(name, True, 'raised ' + str(ex)[:100])
+                note(name, 'mutation drift' not in str(ex), 'raised ' + str(ex)[:100])   # an anchor that is gone is not a rejection
         for name, edits in cube_negatives().items():
             try:
                 f = cube_check(r, defaults, edits)[1] + core_check(r, defaults, edits)[1]
                 note(name, bool(f), f[0] if f else '')
             except AssertionError as ex:
-                note(name, True, 'raised ' + str(ex)[:100])
+                note(name, 'mutation drift' not in str(ex), 'raised ' + str(ex)[:100])   # an anchor that is gone is not a rejection
         result['planted_negatives'] = rejected
     result.update(passed=not failures, failures=failures, gpu=r.gl.renderer)
     (out / 'results.json').write_text(json.dumps(result, indent=2, default=str) + '\n', encoding='utf-8')

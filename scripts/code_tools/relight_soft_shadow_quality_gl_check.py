@@ -880,7 +880,8 @@ def evaluate(out, do_negatives=True):
                     fn = dict(phase=phase_check, fade=fade_check, camera=camera_check, isotropy=isotropy_check)[target]
                     caught = bool(fn(r, prog, defaults, edits.get('shadowUtil.glsl', ()))[1]) if target in ('fade', 'phase') else bool(fn(r, prog, defaults)[1])
             except AssertionError as ex:
-                caught = True   # a mutant that no longer links / runs cannot pass
+                # A mutant that no longer links / runs cannot pass; one whose anchor text is gone was never planted.
+                caught = 'mutation drift' not in str(ex)
                 print('[soft-quality] mutant', name, 'raised', str(ex)[:120], flush=True)
             rejected[name] = caught
             print('[soft-quality]', 'PASS rejected' if caught else 'FAIL survived', 'planted regression:', name, flush=True)

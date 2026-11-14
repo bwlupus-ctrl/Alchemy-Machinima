@@ -240,8 +240,9 @@ uniform int soft_shadow_fill_retire = 0;
 //     steps per frame on the Poisson kernel, 10-12 on the Vogel kernel; the legacy sawtooth of
 //     model 0 slides instead, 1-3 steps, and displaces the edge by up to half a kernel). So:
 //     The per-pixel hash is replaced by its mean, 0.5, in softShadowIGN (the one statement):
-//       - the Vogel rotation and the metric search rotation are the slot's phase plus half a turn
-//         faded in with the kernel radius, a function of the shadow alone;
+//       - the Vogel rotation and the metric search rotation are the slot's phase alone
+//         (softShadowPhi: a turn that followed the kernel radius would draw fixed contours across a
+//         penumbra, with no per-pixel term left to hide them);
 //       - the Poisson disk is centred. Its X jitter moves the whole 12-tap disk by up to half its
 //         radius: against a 72-tap reference that is the largest error of the kernel in any form;
 //       - the metric search's bisection grid is shifted by half a step, the same everywhere.
@@ -268,6 +269,7 @@ float softShadowIGN()
 // Vogel base rotation. Model 0: the per-pixel interleaved-gradient angle, as always.
 float softShadowPhi(float radius_texels, float phase)
 {
+    if (g_spot_still) return phase;   // [SoftShadow still] no turn that follows the radius either
     float phi = 6.2831853 * softShadowIGN();
     return soft_shadow_noise_model != 0 ? phase + phi * smoothstep(2.0, 3.5, radius_texels) : phi;
 }
@@ -737,8 +739,12 @@ float spotMetricPenumbra(sampler2DShadow shadowMap, vec3 stc, vec4 m, out vec2 t
     if (spotMetricSearchTap(shadowMap, stc, vec3( 0.28868,  0.00000, 0.28868), turn, spread, search, t) < 0.5) { tap = t; how = 0.5; }
     t = vec3(block + vec2(column.x, 0.0), stc.z);
     if (textureLod(shadowMap, t, 0.0) < 0.875) { tap = t; how = 0.875; }
-    clear = how == 0.0;
-    if (!clear)
+    // [SoftShadow floor] The near taps prove "fully lit" for a kernel of up to 1.5 texels (the default floor: the
+    // miss is under 0.03). A wider floor runs its kernel on the pixels where nothing was found, too: a thin
+    // caster's halo would otherwise be cut off where the search stops seeing it.
+    bool found = how != 0.0;
+    clear = !found && low <= 1.5;
+    if (found)
     {
         float lo = 0.0;
         float hi = min(limit, max(tap.z, 0.0));

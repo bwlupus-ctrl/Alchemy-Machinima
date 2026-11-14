@@ -42,7 +42,8 @@ Asserted (Poisson = the default kernel, and Vogel; metric and legacy penumbra):
 Reported, not asserted (attribution): which noise term of model 1 carries the flicker (kernel, metric search rotation,
 bisection shift), on a penumbra the cap does not saturate.
 Planted regressions must each be rejected: model 2 left on the screen hash, model 1 made still, the still flag
-left set for the next sampler, the flag set outside the surface kernel's soft branch.
+left set for the next sampler, the flag set outside the surface kernel's soft branch, a Vogel turn that follows the
+radius. A mutation whose anchor text is gone fails the gate.
 """
 import argparse
 import json
@@ -205,6 +206,7 @@ LIMIT = dict(control=3., whole=.05, over_model0=.05, over_floor=1., band_share=.
 # Exact statements of shadowUtil.glsl (a planted regression or a probe replaces one; drift fails the run).
 SCREEN_HASH = '    return fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));\n'
 STILL_IGN = '    if (g_spot_still) return 0.5;\n'
+STILL_PHI = '    if (g_spot_still) return phase;   // [SoftShadow still] no turn that follows the radius either\n'
 STILL_SET = '        g_spot_still = soft_shadow_noise_model == 2;\n'
 STILL_CLEAR = '        g_spot_still = false;   // [SoftShadow still] ends with its own sample\n'
 LEGACY_JIT = '            float jit = fract(pos_screen.y * 0.666666666);\n'
@@ -227,6 +229,7 @@ def negatives():
         'model2_never_selected': [(STILL_SET, STILL_SET.replace('== 2', '== 3'))],
         'model1_made_still': [(STILL_SET, STILL_SET.replace('== 2', '!= 0'))],
         'still_flag_left_set': [(STILL_CLEAR, '')],
+        'vogel_turn_follows_the_radius': [(STILL_PHI, '')],
         'still_flag_set_for_every_sampler': [('bool g_spot_still = false;', 'bool g_spot_still = true;')],
     }
 
@@ -281,6 +284,16 @@ def noise_check(r, host, defaults, edits=()):
             part = (views[0][1]['surf'] == 0) & (a > .02) & (a < .98)
             row['model%d_depends_on_hash' % model] = float((np.abs(a - b)[part] > 1e-6).mean()) if part.any() else None
             row['pixels'] = int(part.sum())
+        # the rotation of model 2 is the phase alone: moving the radius fade of the rotation changes nothing (it does for model 1)
+        if case['vogel']:
+            faded = B.link(r, M.Mut(list(edits) + [(Q.PHI, Q.PHI.replace('smoothstep(2.0, 3.5, radius_texels)', 'smoothstep(1.0, 1.5, radius_texels) * 0.5'))]), 'still, other fade')
+            for model in (1, 2):
+                a, b = (frames_of(r, prog, views, e, run, metric, case, model)[0][2] for prog in (live, faded))
+                row['model%d_depends_on_radius_turn' % model] = float((np.abs(a - b)[part] > 1e-6).mean()) if part.any() else None
+            if row['model1_depends_on_radius_turn'] < .2:
+                failures.append('still %s: positive control failed, the radius fade does not turn model 1 here' % case['name'])
+            if row['model2_depends_on_radius_turn'] != 0.:
+                failures.append('still %s: the Vogel kernel of model 2 turns with the kernel radius (%.3f of the penumbra)' % (case['name'], row['model2_depends_on_radius_turn']))
         rows.append(row)
         if row['pixels'] < 2000 or row['model1_depends_on_hash'] < .5:
             failures.append('still %s: positive control failed, model 1 does not read the hash here (%s)' % (case['name'], json.dumps(row)))
@@ -403,7 +416,8 @@ def reach_contracts(pipeline, shader, base_shader):
         'still_flag_set_once_in_the_surface_soft_branch': shader.count('g_spot_still = soft_shadow_noise_model == 2;') == 1 and
             soft.count(STILL_SET) == 1 and shader.count('g_spot_still = ') == 3 and shader.count(STILL_CLEAR) == 1 and
             'bool g_spot_still = false;' in shader and shader.count('pcfSpotShadowSurface(') == 2,
-        'still_flag_read_once': shader.count('if (g_spot_still)') == 1 and STILL_IGN in body_of(shader, 'float softShadowIGN()'),
+        'still_flag_read_twice': shader.count('if (g_spot_still)') == 2 and STILL_IGN in body_of(shader, 'float softShadowIGN()') and
+            STILL_PHI in body_of(shader, 'float softShadowPhi('),
         'no_new_shader_inputs': all(count(shader, token) == count(base_shader, token) for token in
                                     (r'gl_FragCoord', r'screen_res', r'inv_proj', r'dFd[xy]', r'fwidth')) and
             sorted(re.findall(r'^uniform [^;]+;', shader, re.M)) == sorted(re.findall(r'^uniform [^;]+;', base_shader, re.M) +
@@ -496,7 +510,7 @@ def evaluate(out, do_negatives=True):
                     caught = not all(source_contracts(M.Mut(edits)).values())
                     why = 'source contract'
             except AssertionError as ex:
-                caught, why = True, 'raised ' + str(ex)[:100]
+                caught, why = 'mutation drift' not in str(ex), 'raised ' + str(ex)[:100]   # an anchor that is gone is not a rejection
             rejected[name] = caught
             print('[soft-motion]', 'PASS rejected' if caught else 'FAIL survived', 'planted regression:', name, '|', why[:160], flush=True)
             if not caught:
