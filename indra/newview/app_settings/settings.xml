@@ -32287,7 +32287,7 @@
     </map>
     <key>AlchemyColorChartMode</key>
     <map>
-        <key>Comment</key><string>Colour chart mode: 0 Unlit exact reference, 1 Lit matte prop.</string>
+        <key>Comment</key><string>Colour chart mode: 0 Unlit exact reference, 1 Lit matte prop, 2 Log calibration (unlit full-frame grey wedge, log ramp and gamut patches; values in doc/colour_chart_log_reference.md).</string>
         <key>Persist</key><integer>1</integer>
         <key>Type</key><string>S32</string>
         <key>Value</key><integer>0</integer>
