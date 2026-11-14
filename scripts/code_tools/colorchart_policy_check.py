@@ -183,7 +183,7 @@ struct LLPipeline {
 static bool unlit(){return true;}
 struct ALColorChart {
  LLRenderTarget mLinear,mExposed;
- bool mShaderResourcesRequested=false,mAtlasFailed=false,mPinned=false,mCheckRegionPin=false,mLastSensor=false;
+ bool mShaderResourcesRequested=false,mAtlasFailed=false,mPinned=false,mPinFullFrame=false,mCheckRegionPin=false,mLastSensor=false;
  U64 mShaderGeneration=0;
  U32 mLastDrawFrame=0,mReadbackFrame=0;
  LLVector3d mPosition;

@@ -57,15 +57,20 @@ struct ChartTable
     bool full_frame;
 };
 
-ChartTable chartTable()
+ChartTable chartTableFor(bool log_layout)
 {
-    if (chartMode() == 2)
+    if (log_layout)
     {
         return { ALColorChartLogData::PATCHES, ALColorChartLogData::COUNT, ALColorChartLogData::WIDTH,
                  ALColorChartLogData::HEIGHT, ALColorChartLogData::ASPECT, true };
     }
     return { ALColorChartData::PATCHES, ALColorChartData::COUNT, ALColorChartData::WIDTH,
              ALColorChartData::HEIGHT, ALColorChartData::ASPECT, false };
+}
+
+ChartTable chartTable()
+{
+    return chartTableFor(chartMode() == 2);
 }
 
 // Camera placement half-extents in NDC. Log calibration fills the frame
@@ -196,6 +201,7 @@ void ALColorChart::shutdownSession()
     {
         sChart->releaseResources();
         sChart->mPinned = false;
+        sChart->mPinFullFrame = false;
         sChart->mCheckRegionPin = false;
         sChart->mPosition = LLVector3d::zero;
         sChart->mRotation = LLQuaternion();
@@ -277,6 +283,26 @@ void ALColorChart::cameraTransform(LLVector3d& position, LLQuaternion& rotation,
     scale = LLVector3(.01f, height * table.aspect, height);
 }
 
+// A pin keeps its position and rotation across a layout switch. Its height
+// is rescaled by the two layouts' camera sizes and its width follows the
+// active table, so neither chart is stretched by the other's shape.
+LLVector3 ALColorChart::pinnedScale() const
+{
+    const ChartTable table = chartTable();
+    F32 height = mScale.mV[2];
+    if (table.full_frame != mPinFullFrame)
+    {
+        F32 half_x = 0.f, pinned_half_y = 0.f, active_half_y = 0.f, centre_y = 0.f;
+        cameraExtent(chartTableFor(mPinFullFrame), half_x, pinned_half_y, centre_y);
+        cameraExtent(table, half_x, active_half_y, centre_y);
+        if (pinned_half_y > 0.f)
+        {
+            height *= active_half_y / pinned_half_y;
+        }
+    }
+    return LLVector3(mScale.mV[0], height * table.aspect, height);
+}
+
 void ALColorChart::pinHere()
 {
     if (!gAgent.getRegion() || gDisconnected)
@@ -296,6 +322,7 @@ void ALColorChart::pinHere()
         cameraTransform(mPosition, mRotation, mScale);
     }
     mPinned = true;
+    mPinFullFrame = chartTable().full_frame;
     gSavedSettings.setS32("AlchemyColorChartPlacement", 1); // ui-draw-lint: allow(setting-write) User pin action or one-time initialisation of a requested pin, never an unconditional tick write.
 }
 
@@ -402,7 +429,7 @@ void ALColorChart::idle()
     }
     LLVector3d position = mPosition;
     LLQuaternion rotation = mRotation;
-    LLVector3 scale = mScale;
+    LLVector3 scale = mPinned ? pinnedScale() : mScale;
     if (!mPinned)
     {
         cameraTransform(position, rotation, scale);
@@ -427,8 +454,9 @@ void ALColorChart::drawChart(LLRenderTarget* dst, const glm::mat4& projection,
         if (mPinned)
         {
             const LLVector3 centre = gAgent.getPosAgentFromGlobal(mPosition);
-            const LLVector3 horizontal = LLVector3(0.f, mScale.mV[1] * .5f, 0.f) * mRotation;
-            const LLVector3 vertical = LLVector3(0.f, 0.f, mScale.mV[2] * .5f) * mRotation;
+            const LLVector3 pinned = pinnedScale();
+            const LLVector3 horizontal = LLVector3(0.f, pinned.mV[1] * .5f, 0.f) * mRotation;
+            const LLVector3 vertical = LLVector3(0.f, 0.f, pinned.mV[2] * .5f) * mRotation;
             matrix[0] = glm::vec4(horizontal.mV[0], horizontal.mV[1], horizontal.mV[2], 0.f);
             matrix[1] = glm::vec4(vertical.mV[0], vertical.mV[1], vertical.mV[2], 0.f);
             matrix[3] = glm::vec4(centre.mV[0], centre.mV[1], centre.mV[2], 1.f);
@@ -683,6 +711,12 @@ void ALColorChart::debugReadback()
             }
         }
         const bool noisy = mLastSensor && gSavedSettings.getBOOL("CineSensorNoiseEnabled");
+        // Simulate sensor keeps its full-well/ADC clip without noise; the S-Log3
+        // model does not include it, so bright patches cannot be judged.
+        const F64 patch_gain = llclamp(gSavedSettings.getF32("RenderExposure"), .5f, 4.f) *
+            exp2(llclamp(gSavedSettings.getF32("AlchemyToneMapSLogEV"), -8.f, 8.f));
+        const bool sensor_clip = mLastSensor && gSavedSettings.getBOOL("CineSensorEnabled") &&
+            llmax(patch.linear[0], llmax(patch.linear[1], patch.linear[2])) * patch_gain > 1.;
         const F64 tolerance = .25 / 1023. + .5 / (LLRender::s10bitBackBuffer ? 1023. : 255.);
         F64 error = 0.;
         bool finite = true;
@@ -691,14 +725,15 @@ void ALColorChart::debugReadback()
             finite = finite && std::isfinite(pixel[channel]);
             error = llmax(error, fabs(static_cast<F64>(pixel[channel]) - expected[channel]));
         }
-        const char* verdict = !supported || noisy || !finite ? "INCONCLUSIVE " :
+        const char* verdict = !supported || noisy || sensor_clip || !finite ? "INCONCLUSIVE " :
             error <= tolerance ? "PASS " : "FAIL ";
         LL_INFOS("ColorChart") << verdict << (mLastSensor ? "Sensor " : "Legacy ") << patch.name
             << " code=" << pixel[0] << "," << pixel[1] << "," << pixel[2]
             << " expected=" << (supported ? "Sony S-Log3 model " : "unsupported settings ")
             << expected[0] << "," << expected[1] << "," << expected[2]
             << " error=" << pixel[0] - expected[0] << "," << pixel[1] - expected[1] << "," << pixel[2] - expected[2]
-            << " tolerance=" << tolerance << " noise=" << noisy << " finite=" << finite
+            << " tolerance=" << tolerance << " noise=" << noisy << " sensor_clip=" << sensor_clip
+            << " finite=" << finite
             << " exposure=" << gSavedSettings.getF32("RenderExposure")
             << " EV=" << gSavedSettings.getF32("AlchemyToneMapSLogEV") << LL_ENDL;
     }

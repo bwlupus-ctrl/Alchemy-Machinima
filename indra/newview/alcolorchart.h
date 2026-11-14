@@ -33,6 +33,7 @@ private:
     void releaseResources();
     bool ensureShaders(bool legacy);
     void cameraTransform(LLVector3d& position, LLQuaternion& rotation, LLVector3& scale) const;
+    LLVector3 pinnedScale() const;
     void buildTexture();
     void drawChart(LLRenderTarget* dst, const glm::mat4& projection, const glm::mat4& modelview,
                    bool exposed, LLRenderTarget* encoded = nullptr, bool atlas = false, bool screen_sample = false);
@@ -44,6 +45,7 @@ private:
     LLQuaternion mRotation;
     LLVector3 mScale;
     bool mPinned = false;
+    bool mPinFullFrame = false; // layout the pin was made in
     bool mCheckRegionPin = false;
     bool mShaderResourcesRequested = false;
     bool mAtlasFailed = false;
