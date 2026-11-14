@@ -179,6 +179,7 @@
    "v1_sources": ["panel_cine_light_rig.xml"],
    "root_class": "panel_rig_rim", "root_name": "light_rim_tab_logic",
    "preset": {"mode": "provider", "provider": "rig_rim"},
+   "watch_extra": ["RenderSoftShadowNoiseModel", "RenderSpotShadowPenumbraModel", "RenderSpotShadowBiasModel", "RenderSoftShadowFillStep", "RenderSunLightProjectorDeadSamples", "RenderSpotShadowFadeModel"],
    "selector_settings": {"per_light_rim": "DirectorV2SelectedLight"},
    "card_enables": {"rim_wrap": "cine_rimq_wrap_enable"},
    "add_rows": [

@@ -1256,7 +1256,8 @@ private:
 
 // Soft shadow presets (Light > Rim > Soft shadows card). Owns SHADOW settings only: never the rim values (the Rim page
 // has its own CineRigRim* preset) and never the master switches (Soft shadows, Quality, Work budget). Built-ins set
-// exactly the keys they list; a saved preset stores the whole owned set below (director_presets/soft_shadows.xml).
+// exactly the keys they list (every non-legacy built-in sets ALL the 11/13 fix switches to their shipped defaults, so it
+// also undoes Before 11/13); a saved preset stores the whole owned set below (director_presets/soft_shadows.xml).
 const std::vector<std::string>& softShadowPresetSettings()
 {
     static const std::vector<std::string> keys = {
@@ -1281,19 +1282,23 @@ const std::vector<SoftShadowBuiltIn>& softShadowBuiltIns()
     static const std::vector<SoftShadowBuiltIn> presets = {
         { "stable", "Stable filming",
           "For moving cameras: small world light size, steady shadow slots, 8 shadowed lights, World shadows on, steady noise, "
-          "minimum softness 2, 64 wide-light taps.",
+          "minimum softness 1.5, 64 wide-light taps.",
           LLSD().with("RenderLocalLightDefaultRadius", 0.10).with("RenderLocalLightSizeFromPrim", false)
               .with("RenderShadowSlotHysteresis", true).with("RenderAreaShadowLights", 8)
               .with("RenderAreaShadowWorldNear", 0.05).with("RenderAreaShadowCubeMaps", true)
-              .with("RenderSoftShadowNoiseModel", 2).with("RenderSoftShadowMinSoftness", 2.0)
-              .with("RenderAreaShadowWorldWideTaps", 64).with("RenderSpotShadowPenumbraModel", 1) },
+              .with("RenderSoftShadowNoiseModel", 2).with("RenderSoftShadowMinSoftness", 1.5)
+              .with("RenderAreaShadowWorldWideTaps", 64).with("RenderSpotShadowPenumbraModel", 1)
+              .with("RenderSpotShadowBiasModel", 1).with("RenderSoftShadowFillStep", false)
+              .with("RenderSunLightProjectorDeadSamples", false).with("RenderSpotShadowFadeModel", 1) },
         { "crisp", "Crisp contact",
           "For close-up stills: World light size 3 cm, 8 shadowed lights, World shadows on, steady noise, minimum softness 1.",
           LLSD().with("RenderLocalLightDefaultRadius", 0.03).with("RenderLocalLightSizeFromPrim", false)
               .with("RenderShadowSlotHysteresis", true).with("RenderAreaShadowLights", 8)
               .with("RenderAreaShadowWorldNear", 0.05).with("RenderAreaShadowCubeMaps", true)
               .with("RenderSoftShadowNoiseModel", 2).with("RenderSoftShadowMinSoftness", 1.0)
-              .with("RenderAreaShadowWorldWideTaps", 64).with("RenderSpotShadowPenumbraModel", 1) },
+              .with("RenderAreaShadowWorldWideTaps", 64).with("RenderSpotShadowPenumbraModel", 1)
+              .with("RenderSpotShadowBiasModel", 1).with("RenderSoftShadowFillStep", false)
+              .with("RenderSunLightProjectorDeadSamples", false).with("RenderSpotShadowFadeModel", 1) },
         { "legacy", "Before 11/13",
           "A/B: the soft-shadow fix switches of 11/13 set to their old behaviour (bias, fill step, noise, dead samples, fade, "
           "penumbra, minimum softness, wide taps). Everything else is left alone.",
@@ -1302,11 +1307,13 @@ const std::vector<SoftShadowBuiltIn>& softShadowBuiltIns()
               .with("RenderSpotShadowFadeModel", 0).with("RenderSpotShadowPenumbraModel", 0)
               .with("RenderSoftShadowMinSoftness", 0.0).with("RenderAreaShadowWorldWideTaps", 0) },
         { "performance", "Performance",
-          "For heavy scenes: 4 shadowed lights, World shadows off, no extra wide-light taps, steady noise, minimum softness 2. "
+          "For heavy scenes: 4 shadowed lights, World shadows off, no extra wide-light taps, steady noise, minimum softness 1.5. "
           "World light size is left alone.",
           LLSD().with("RenderAreaShadowLights", 4).with("RenderAreaShadowCubeMaps", false)
               .with("RenderAreaShadowWorldWideTaps", 0).with("RenderSoftShadowNoiseModel", 2)
-              .with("RenderSoftShadowMinSoftness", 2.0) } };
+              .with("RenderSoftShadowMinSoftness", 1.5).with("RenderSpotShadowPenumbraModel", 1)
+              .with("RenderSpotShadowBiasModel", 1).with("RenderSoftShadowFillStep", false)
+              .with("RenderSunLightProjectorDeadSamples", false).with("RenderSpotShadowFadeModel", 1) } };
     return presets;
 }
 
