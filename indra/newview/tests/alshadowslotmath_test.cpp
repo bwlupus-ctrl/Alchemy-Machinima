@@ -698,4 +698,91 @@ template<> template<> void shadow_slot_object::test<27>()
     for(unsigned i=0;i<15;++i) ensure_equals("earlier owners unchanged",chosen[i],static_cast<int>(i+1));
 }
 
+// [SlotUndrawn] An owner the main pass did not draw: held for 0.2 s of continuous absence, then released.
+template<> template<> void shadow_slot_object::test<28>()
+{
+    for (unsigned fps : {30u, 60u})
+    {
+        ALShadowSlot::UndrawnHold<int> state;
+        for (unsigned i = 0; i < fps / 5; ++i)
+            ensure_equals("held below 0.2 s at either frame rate",
+                ALShadowSlot::undrawnOwner(state, 7, double(i) / fps, i).tier, int(ALShadowSlot::UndrawnHeldTier));
+        const auto late = ALShadowSlot::undrawnOwner(state, 7, 0.201, fps / 5);
+        ensure_equals("released after 0.2 s", late.tier, int(ALShadowSlot::UndrawnReleasedTier));
+        ensure_equals("keeps the owner's identity", late.id, 7);
+        ensure_equals("another owner starts its own clock",
+            ALShadowSlot::undrawnOwner(state, 8, 0.21, fps / 5 + 1).tier, int(ALShadowSlot::UndrawnHeldTier));
+    }
+    ALShadowSlot::UndrawnHold<int> state;
+    for (unsigned i = 0; i < 10; ++i) ALShadowSlot::undrawnOwner(state, 7, i * 0.033, i);
+    ensure_equals("released", ALShadowSlot::undrawnOwner(state, 7, 0.33, 10).tier, int(ALShadowSlot::UndrawnReleasedTier));
+    state = {}; // the caller clears the clock on the first frame the owner is drawn again
+    ensure_equals("a return to the view restarts the absence",
+        ALShadowSlot::undrawnOwner(state, 7, 0.40, 12).tier, int(ALShadowSlot::UndrawnHeldTier));
+    ensure("both tiers bracket every real tier",
+        ALShadowSlot::UndrawnHeldTier > 3 && ALShadowSlot::UndrawnReleasedTier < 0);
+    // Slow frames (Codex r1): at 2, 1 and 0.5 fps an owner that left for good is still released.
+    for (double period : {0.5, 1.0, 2.0})
+    {
+        ALShadowSlot::UndrawnHold<int> slow;
+        int tier = ALShadowSlot::UndrawnHeldTier;
+        for (unsigned i = 0; i < 6; ++i) tier = ALShadowSlot::undrawnOwner(slow, 7, i * period, i).tier;
+        ensure_equals("released at a low frame rate", tier, int(ALShadowSlot::UndrawnReleasedTier));
+    }
+    // One long stall: a light absent for a single (slow) frame is still held; the next frame releases it.
+    ALShadowSlot::UndrawnHold<int> stall;
+    ALShadowSlot::undrawnOwner(stall, 7, 0.0, 0);
+    ensure_equals("one stall frame does not release",
+        ALShadowSlot::undrawnOwner(stall, 7, 0.9, 1).tier, int(ALShadowSlot::UndrawnHeldTier));
+    ensure_equals("the following frame releases",
+        ALShadowSlot::undrawnOwner(stall, 7, 1.0, 2).tier, int(ALShadowSlot::UndrawnReleasedTier));
+}
+
+// [SlotUndrawn] The two tiers through the production reconciliation.
+template<> template<> void shadow_slot_object::test<29>()
+{
+    using Light = ALShadowSlot::Light<int>;
+    const Light held{1, 0.0, ALShadowSlot::UndrawnHeldTier}, released{1, 0.0, ALShadowSlot::UndrawnReleasedTier};
+    {
+        // Spare slots: nobody else wants the slot, so the absent owner stays the target in both tiers.
+        std::array<Light, 2> owners{{held, {2, 50.0, 1}}}, ranked{{{2, 50.0, 1}, {}}};
+        std::array<ALShadowSlot::Challenge<int>, 2> states{};
+        auto chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, 0.0, 1);
+        ensure_equals("unchallenged held owner stays", chosen[0], 1);
+        owners[0] = released;
+        for (unsigned i = 1; i < 90; ++i) chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, i / 30.0, 1 + i);
+        ensure_equals("unchallenged released owner stays for good", chosen[0], 1);
+        ensure_equals("drawn owner untouched", chosen[1], 2);
+    }
+    {
+        // More lights than slots: no challenger takes a held slot however strong; a released slot goes at once.
+        std::array<Light, 2> owners{{held, {2, 50.0, 1}}}, ranked{{{3, 1.e9, 3}, {2, 50.0, 1}}};
+        std::array<ALShadowSlot::Challenge<int>, 2> states{};
+        auto chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, 0.0, 1);
+        for (unsigned i = 1; i < 90; ++i) chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, i / 30.0, 1 + i);
+        ensure_equals("held owner keeps its slot against any challenger", chosen[0], 1);
+        owners[0] = released;
+        chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, 3.1, 92);
+        ensure_equals("released owner yields without a second hold", chosen[0], 3);
+        ensure_equals("drawn stock winner untouched", chosen[1], 2);
+    }
+    {
+        // An empty slot is filled first: the only challenger must not evict a released owner.
+        std::array<Light, 2> owners{{released, {}}}, ranked{{{3, 100.0, 1}, {}}};
+        std::array<ALShadowSlot::Challenge<int>, 2> states{};
+        const auto chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, 0.0, 1);
+        ensure_equals("challenger takes the empty slot", chosen[1], 3);
+        ensure_equals("released owner keeps its slot", chosen[0], 1);
+    }
+    {
+        // A released slot goes before any drawn owner is challenged, and targets stay unique.
+        std::array<Light, 2> owners{{{2, 100.0, 1}, released}}, ranked{{{3, 1000.0, 1}, {4, 900.0, 1}}};
+        std::array<ALShadowSlot::Challenge<int>, 2> states{};
+        const auto chosen = ALShadowSlot::retainOwners(owners, ranked, 2, states, 0.0, 1);
+        ensure_equals("strongest challenger takes the released slot", chosen[1], 3);
+        ensure_equals("drawn owner still holds against the next challenger", chosen[0], 2);
+        ensure("unique targets", chosen[0] != chosen[1]);
+    }
+}
+
 }

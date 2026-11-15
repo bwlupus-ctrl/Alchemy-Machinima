@@ -107,8 +107,8 @@ struct LLViewerObject{virtual ~LLViewerObject()=default;LLUUID id;bool dead=fals
  const LLUUID& getID()const{return id;}bool isDead()const{return dead;}virtual void markDead(){dead=true;}
  LLViewerObject* getRootEdit(){return root?root:this;}const auto& getChildren()const{return children;}};
 struct LLVOVolume;
-struct LLDrawable{enum{FORCE_INVISIBLE=1};LLVOVolume* volume;bool dead=false;
- LLVOVolume* getVOVolume(){return volume;}bool isDead(){return dead;}void setState(int){}};
+struct LLDrawable{enum{FORCE_INVISIBLE=1,LIGHT=2};LLVOVolume* volume;bool dead=false;
+ LLVOVolume* getVOVolume(){return volume;}bool isDead(){return dead;}void setState(int){}bool isState(int)const{return true;}};
 struct LLVOVolume:LLViewerObject{bool mIsLocalOnly=false,mbCanSelect=true,enabled=false;float color=0,intensity=0,radius=10,falloff=.75;
  LLPointer<LLDrawable> mDrawable;void setIsLight(bool v){enabled=v;}void setLightIntensity(float v){if(enabled)intensity=v;}
  void setLightSRGBColor(float v){if(enabled)color=v;}void setLightRadius(float v){if(enabled)radius=v;}
@@ -138,7 +138,7 @@ struct Settings{bool master=false,declined=false;int engine=1,writes=0;LLControl
 LLSD LLControlVariable::getValue(){return LLSD(gSavedSettings.master);}
 void LLControlVariable::setValue(LLSD v,bool){if(masterWriteSignal.callback)masterWriteSignal.callback(this);bool changed=gSavedSettings.master!=v.asBoolean();gSavedSettings.master=v.asBoolean();++gSavedSettings.writes;if(changed)gSavedSettings.notify();}
 
-template<class T>struct LLCachedControl{T value;LLCachedControl(Settings&,const char*,T v):value(v){}operator T(){return value;}};
+template<class T>struct LLCachedControl{T value;LLCachedControl(Settings&,const char*,T v):value(v){}operator T(){return value;}T operator()(){return value;}};
 struct LLEventTimer{inline static std::vector<LLEventTimer*> timers;LLEventTimer(float){timers.push_back(this);}
  virtual ~LLEventTimer(){std::erase(timers,this);}virtual bool tick()=0;
  static void updateClass(){auto snapshot=timers;for(auto* t:snapshot)if(t->tick())delete t;}};
@@ -157,6 +157,7 @@ struct LLPipeline{
  LLPointer<LLDrawable> mShadowSpotLight[2],mTargetShadowSpotLight[2];float mSpotLightFade[2]={1,1};
  LLRenderTarget mSpotShadow[2];bool mProjVolHistoryValid=true,mFroxelHistoryValid=true,mProjVolVariantFailed=false;
  std::array<ALShadowSlot::Challenge<LLUUID>,2> mSpotChallenge{};
+ std::array<ALShadowSlot::UndrawnHold<LLUUID>,2> mSpotUndrawnHold{}; // [SlotUndrawn] RenderShadowSlotUndrawnHold (fixture default: on)
  struct Auction{LLPointer<LLDrawable> drawable;ALShadowSlot::Light<LLUUID> light;};
  std::array<Auction,2> mSpotAuctionMain{};std::array<LLPointer<LLDrawable>,2> mSpotAuctionEligible{};
  std::array<ALShadowSlot::Light<LLUUID>,2> mSpotAuctionOwnerScores{};U32 mSpotAuctionFrame=0;

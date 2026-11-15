@@ -182,6 +182,8 @@ def reverse_spot_shadows_16(source, name):
     """Peel the exact 16-slot ceiling layer before all older pipeline pins."""
     import hashlib
     import json
+    # Newest first: pipeline.h reaches this function without the soft shadow chain (idempotent for pipeline.cpp).
+    source = reverse_shadow_slot_undrawn(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "spot_shadows_16_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SPOT_SHADOWS_16_DIGEST, "16-slot allowance pin"
@@ -212,6 +214,29 @@ def reverse_shaft_slot_merge(source, name):
                                      SHAFT_SLOT_MERGE_DIGEST, "reviewed shaft slot merge")
 
 
+SHADOW_SLOT_UNDRAWN_DIGEST = "4c933003f263bef973bf4058129184a68cb868892da75f8ab4ccc3abe3bdc771"
+SHADOW_SLOT_UNDRAWN_BASE = "bfd5857ee64"
+
+
+def reverse_shadow_slot_undrawn(source, name):
+    """Peel the newest pipeline layer (projector shadow slots: an undrawn owner keeps its slot, and the slot-change
+    log) before the steady soft shadow layer (reverse_softshadow_angle calls this first). Idempotent: skipped when
+    none of its hunks is present; the pinned digest is checked every time. Exact: reversing the hunks must reproduce
+    the complete bfd5857ee64 pipeline.cpp / pipeline.h, so any other edit still fails."""
+    import hashlib
+    import json
+    source = source.replace("\r\n", "\n")
+    raw = (Path(__file__).parent / "shadow_slot_undrawn_hunks.json").read_bytes().replace(b"\r\n", b"\n")
+    assert hashlib.sha256(raw).hexdigest() == SHADOW_SLOT_UNDRAWN_DIGEST, ("shadow slot undrawn hold", "allowance pin")
+    allowed = json.loads(raw)
+    assert allowed["base"] == SHADOW_SLOT_UNDRAWN_BASE, "shadow slot undrawn hold base"
+    assert set(allowed["files"]) == {"pipeline.cpp", "pipeline.h"}, "shadow slot undrawn hold scope"
+    if name not in allowed["files"] or not any(hunk["after"] in source for hunk in allowed["files"][name]):
+        return source
+    return reverse_feature_allowance(source, name, "shadow_slot_undrawn_hunks.json",
+                                     SHADOW_SLOT_UNDRAWN_DIGEST, "shadow slot undrawn hold")
+
+
 SOFTSHADOW_ANGLE_DIGEST = "3d7b8e22c6a499a17e154e786bcb3c09e26d941b964d598518f14297b597b18a"
 SOFTSHADOW_ANGLE_BASE = "0494b1f4d19"
 
@@ -223,6 +248,8 @@ def reverse_softshadow_angle(source, name):
     reversing the reviewed hunks must reproduce the complete 0494b1f4d19 file."""
     import hashlib
     import json
+    # Newest first: the undrawn-owner slot hold (pipeline.cpp and pipeline.h) is peeled exactly to its own base.
+    source = reverse_shadow_slot_undrawn(source, name)
     source = source.replace("\r\n", "\n")
     raw = (Path(__file__).parent / "softshadow_angle_hunks.json").read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == SOFTSHADOW_ANGLE_DIGEST, ("reviewed soft shadow angle", "allowance pin")

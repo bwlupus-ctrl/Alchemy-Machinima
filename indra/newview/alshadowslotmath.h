@@ -117,6 +117,37 @@ template<class ID, std::size_t N> inline std::array<ID, N> retainOwners(
     return chosen;
 }
 
+// [SlotUndrawn] An owner the main lighting pass did not draw this frame (its light volume left
+// the view) is not a vacancy on the spot. retainOwners sees it as an owner of one of two tiers:
+//   held     (absent < 0.2 s, continuous): above every real tier, so no challenger takes the slot;
+//   released (absent >= 0.2 s): below every real tier, so it yields to the first challenger left
+//            AFTER the empty slots are filled, and before any drawn owner is challenged.
+// With no challenger either tier keeps the slot (retain() returns true for a null challenger),
+// so the owner stays the target and its fade stays where it is: a light that returns to the
+// view is shadowed on its first frame instead of fading in again.
+enum : int { UndrawnHeldTier = 1 << 20, UndrawnReleasedTier = -(1 << 20) };
+// The absence is timed from the owner's first undrawn frame and never restarts on slow frames
+// (a gap-resetting clock would hold an owner that left for good forever below ~2.5 fps). The caller
+// restarts it by clearing the state on the first frame the owner is drawn again. Release needs
+// 0.2 s AND two further frames, so a single long stall cannot release a light absent for one frame.
+// A non-finite or backwards clock releases (yielding only to a waiting light, never hogging).
+template<class ID> struct UndrawnHold
+{
+    ID owner{};
+    double first = 0.0;
+    std::uint32_t firstFrame = 0;
+    bool tracking = false;
+};
+template<class ID> inline Light<ID> undrawnOwner(UndrawnHold<ID>& state, const ID& owner,
+    double now, std::uint32_t frame)
+{
+    if (state.owner != owner || !state.tracking)
+    { state = {}; state.owner = owner; state.first = now; state.firstFrame = frame; state.tracking = true; }
+    const bool released = !finite(now) || !finite(state.first) || now < state.first ||
+        (now - state.first >= 0.2 && frame - state.firstFrame >= 2u);
+    return {owner, 0.0, released ? UndrawnReleasedTier : UndrawnHeldTier};
+}
+
 // First native frame after a hard cut follows the stock auction/fade even when
 // its prior auction stamp was invalidated. Stable-spots and OFF remain exact bypasses.
 inline bool retainNativeFrame(bool enabled, bool stable, bool& seed)

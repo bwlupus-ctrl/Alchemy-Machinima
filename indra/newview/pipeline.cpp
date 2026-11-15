@@ -30554,6 +30554,7 @@ void LLPipeline::resetShadowSlotHistory()
 void LLPipeline::resetShadowSlotTimers()
 {
     mSpotChallenge = {};
+    mSpotUndrawnHold = {}; // [SlotUndrawn]
     for (auto& release : mWorldNativeRelease) release = {};
 }
 
@@ -31877,6 +31878,7 @@ void LLPipeline::renderDeferredLighting(ActorMaskViewSource source)
         for (auto& eligible : mSpotAuctionEligible) eligible = NULL;
         mSpotAuctionMain = {};
         mSpotAuctionOwnerScores = {};
+        mSpotAuctionDrawn = 0; // [SlotLog]
         mSpotAuctionFrame = gFrameCount; // Pure live-main view test above; independent of soft shadows being enabled.
         static LLCachedControl<bool> slot_hysteresis(gSavedSettings, "RenderShadowSlotHysteresis", true);
         static LLCachedControl<bool> stable_spots(gSavedSettings, "BDMergeStableSpotShadows", false);
@@ -34142,6 +34144,7 @@ F32 LLPipeline::setupSpotLight(LLGLSLShader& shader, LLDrawable* drawablep)
         LLDrawable* potential = drawablep;
         //determine if this light is higher priority than one of the existing spot shadows
         F32 m_pri = volume->getSpotLightPriority();
+        if (isLiveMainAreaShadowPass()) ++mSpotAuctionDrawn; // [SlotLog] read by logSpotShadowSlots only
         if (isLiveMainAreaShadowPass() && s_idx >= 0 && (m_pri > 0.f || volume->isCineRigEmitter()))
         {
             mSpotAuctionEligible[s_idx] = drawablep;
@@ -34209,6 +34212,124 @@ S32 LLPipeline::spotShadowTier(LLVOVolume* volume) const
         isUserShaftSlotPromoted(volume));
 }
 
+// [SlotLog] RenderShadowSlotLog (off by default). Called once per main frame after the native slot update. Logs every change of a
+// projector shadow slot against the previous frame: the owner, whether it is still wanted (target), and the starts and ends of its
+// shadow fade, each with the reason, and whether the light was drawn by the last main lighting pass (drawn=Y: the change is on
+// screen). Every 5 s one SUMMARY line states a verdict, so a recording can be matched against it. Reads state only.
+void LLPipeline::logSpotShadowSlots(U32 num_spots, bool retained)
+{
+    const F64 now = LLTimer::getTotalSeconds();
+    const bool recent_auction = mSpotAuctionFrame == gFrameCount || mSpotAuctionFrame == gFrameCount - 1u;
+    num_spots = llmin(num_spots, (U32)MAX_SPOT_SHADOWS);
+    std::array<SpotSlotLogEntry, MAX_SPOT_SHADOWS> current{};
+    for (U32 i = 0; i < num_spots; ++i)
+    {
+        LLDrawable* owner = mShadowSpotLight[i];
+        LLVOVolume* volume = owner ? owner->getVOVolume() : nullptr;
+        if (!volume) continue;
+        current[i].owner = volume->getID();
+        current[i].fade = mSpotLightFade[i];
+        for (U32 j = 0; j < num_spots; ++j)
+            if (mTargetShadowSpotLight[j] == owner) { current[i].target = true; break; }
+    }
+    if (!mSpotSlotLogValid)
+    {
+        mSpotSlotLog = current;
+        mSpotSlotLogValid = true;
+        mSpotSlotLogChanges = mSpotSlotLogVisible = mSpotSlotLogCandidates = 0;
+        mSpotSlotLogWindow = now;
+        static LLCachedControl<bool> undrawn_hold(gSavedSettings, "RenderShadowSlotUndrawnHold", true);
+        LL_INFOS("ShadowSlotLog") << "[SlotLog] START slots=" << num_spots << " steady=" << (retained ? "Y" : "N")
+            << " undrawn_hold=" << (undrawn_hold() ? "Y" : "N")
+            << " candidates=" << mSpotAuctionDrawn << LL_ENDL;
+        return;
+    }
+    mSpotSlotLogCandidates = llmax(mSpotSlotLogCandidates, mSpotAuctionDrawn);
+    const auto slot_of = [&](const std::array<SpotSlotLogEntry, MAX_SPOT_SHADOWS>& slots, const LLUUID& id) -> S32
+    {
+        if (id.notNull())
+            for (U32 i = 0; i < num_spots; ++i)
+                if (slots[i].owner == id) return (S32)i;
+        return -1;
+    };
+    for (U32 i = 0; i < num_spots; ++i)
+    {
+        const SpotSlotLogEntry& was = mSpotSlotLog[i];
+        const SpotSlotLogEntry& is = current[i];
+        LLDrawable* owner = mShadowSpotLight[i];
+        LLVOVolume* volume = owner ? owner->getVOVolume() : nullptr;
+        // Drawn by the last live main lighting pass: the only state in which a change of this slot is on screen.
+        const bool drawn = recent_auction && owner && mSpotAuctionEligible[i] == owner;
+        const char* event = nullptr;
+        const char* reason = "";
+        if (was.owner != is.owner)
+        {
+            event = "OWNER";
+            reason = was.owner.isNull() ? "empty slot filled"
+                : is.owner.isNull() ? "owner removed (deleted, no longer a projector, or actor slot released)"
+                : was.fade <= 0.f ? "handed over after the old owner's fade-out"
+                : "replaced without a fade (deleted owner or actor slot released)";
+        }
+        else if (is.owner.notNull() && was.target != is.target)
+        {
+            event = is.target ? "TARGET-REGAINED" : "TARGET-LOST";
+            if (is.target) reason = "wanted again";
+            else if (!volume || owner->isDead()) reason = "owner gone";
+            else if (isProjectorShadowSuppressed(volume)) reason = "Cast Shadows off";
+            else if (!recent_auction) reason = "no main lighting pass";
+            else if (!drawn) reason = "not drawn (outside the view, culled or switched off)";
+            else reason = "outranked";
+        }
+        else if (is.owner.notNull() && was.fade != is.fade)
+        {
+            if (was.fade >= 1.f) event = "FADE-OUT-START";
+            else if (was.fade <= 0.f) event = "FADE-IN-START";
+            else if (is.fade >= 1.f) event = "FADE-IN-DONE";
+            else if (is.fade <= 0.f) event = "FADE-OUT-DONE";
+            if (event) reason = is.target ? "owner wanted" : "owner not wanted";
+        }
+        if (!event) continue;
+        ++mSpotSlotLogChanges;
+        if (drawn) ++mSpotSlotLogVisible;
+        std::ostringstream out;
+        out << "[SlotLog] f=" << gFrameCount << " slot=" << i << " " << event
+            << " light=" << is.owner << " old=" << was.owner
+            << " old_slot=" << slot_of(mSpotSlotLog, is.owner) << " new_slot=" << slot_of(current, is.owner)
+            << " reason=\"" << reason << "\" fade=" << was.fade << "->" << is.fade
+            << " target=" << (is.target ? "Y" : "N") << " drawn=" << (drawn ? "Y" : "N")
+            << " candidates=" << mSpotAuctionDrawn << "/" << num_spots;
+        if (volume)
+            out << " pri=" << volume->getSpotLightPriority() << " radius=" << volume->getLightRadius();
+        // The light that is waiting for this slot, when one is: a target no slot holds yet.
+        for (U32 j = 0; j < num_spots && !is.target; ++j)
+        {
+            LLDrawable* target = mTargetShadowSpotLight[j];
+            LLVOVolume* wanted = target ? target->getVOVolume() : nullptr;
+            if (!wanted) continue;
+            bool held = false;
+            for (U32 k = 0; k < num_spots; ++k) held = held || mShadowSpotLight[k] == target;
+            if (held) continue;
+            out << " waiting=" << wanted->getID() << " waiting_pri=" << wanted->getSpotLightPriority();
+            break;
+        }
+        LL_INFOS("ShadowSlotLog") << out.str() << LL_ENDL;
+    }
+    mSpotSlotLog = current;
+    if (now - mSpotSlotLogWindow >= 5.0)
+    {
+        const bool scarce = mSpotSlotLogCandidates > num_spots;
+        const char* verdict = mSpotSlotLogVisible ? "CHURN (slots or fades changed on drawn lights: a pop seen in this window is slot assignment)"
+            : mSpotSlotLogChanges ? "QUIET (changes only on lights outside the view: nothing on screen)"
+            : "STABLE (no slot or fade change: a flicker seen in this window is NOT slot assignment)";
+        LL_INFOS("ShadowSlotLog") << "[SlotLog] SUMMARY 5s changes=" << mSpotSlotLogChanges << " on_drawn_lights=" << mSpotSlotLogVisible
+            << " max_candidates=" << mSpotSlotLogCandidates << " slots=" << num_spots
+            << " scarce=" << (scarce ? "Y (more shadow-casting projectors in view than slots)" : "N")
+            << " steady=" << (retained ? "Y" : "N") << " verdict=" << verdict << LL_ENDL;
+        mSpotSlotLogChanges = mSpotSlotLogVisible = mSpotSlotLogCandidates = 0;
+        mSpotSlotLogWindow = now;
+    }
+}
+
 void LLPipeline::snapshotSpotShadowAuction()
 {
     if (!isLiveMainAreaShadowPass()) return;
@@ -34231,6 +34352,13 @@ void LLPipeline::retainSpotShadowOwners()
     std::array<ALShadowSlot::Light<LLUUID>, MAX_SPOT_SHADOWS> owners{}, ranked{};
     const bool recent_auction = mSpotAuctionFrame == gFrameCount || mSpotAuctionFrame == gFrameCount - 1u;
     if (!recent_auction) { mSpotChallenge = {}; return; } // Keep the stock targets/owners after skipped or secondary lighting.
+    // [SlotUndrawn] RenderShadowSlotUndrawnHold. The auction only sees projectors the main lighting pass drew, and that pass
+    // frustum-culls each light's box (1.5 x radius) against the camera. An owner that leaves the view by a zoom or a pan was a
+    // vacancy on the spot: its fade ran to zero even with spare slots, so on its return it lit the scene unshadowed and faded
+    // in again (0.25 - 1 s), and with more projectors than slots the slot went to another light at once. ON: such an owner
+    // stays an owner (ALShadowSlot::undrawnOwner). OFF: the statements below are today's.
+    static LLCachedControl<bool> undrawn_hold(gSavedSettings, "RenderShadowSlotUndrawnHold", true);
+    const F64 undrawn_now = LLTimer::getTotalSeconds();
     for (U32 i = 0; i < count; ++i)
     {
         LLDrawable* target = mSpotAuctionMain[i].drawable;
@@ -34250,6 +34378,15 @@ void LLPipeline::retainSpotShadowOwners()
             mShadowSpotLight[i] = NULL;
             mSpotLightFade[i] = 0.f;
         }
+        // [SlotUndrawn] Live, still a light, Cast Shadows on, and absent from this auction: not drawn by the main pass.
+        // A suppressed or switched-off owner keeps the stock eviction above (its shadow must fade while it is still lit).
+        // An actor-only rig light keeps it too: [ActorMask] actor shadows only borrow spare slots and release at once.
+        else if (undrawn_hold() && volume && mSpotAuctionEligible[i] != owner && owner->isState(LLDrawable::LIGHT) &&
+                 !isProjectorShadowSuppressed(volume) &&
+                 !(ALCineLightRigManager::anyActorOnly() && ALCineLightRigManager::instance().actorOnlyBits(volume->getID())))
+            owners[i] = ALShadowSlot::undrawnOwner(mSpotUndrawnHold[i], volume->getID(), undrawn_now, gFrameCount);
+        if (owners[i].tier != ALShadowSlot::UndrawnHeldTier && owners[i].tier != ALShadowSlot::UndrawnReleasedTier)
+            mSpotUndrawnHold[i] = {}; // [SlotUndrawn] drawn, empty or evicted: the absence clock restarts
     }
     const auto chosen = ALShadowSlot::retainOwners(owners, ranked, count, mSpotChallenge, LLTimer::getTotalSeconds(), gFrameCount);
     std::array<LLPointer<LLDrawable>, MAX_SPOT_SHADOWS> targets{};
@@ -37906,6 +38043,11 @@ void LLPipeline::generateSunShadow(LLCamera& camera, bool clip_only)
                     }
                 }
             }
+
+            // [SlotLog] Off by default: one cached bool per frame. Reads the slot state only.
+            static LLCachedControl<bool> slot_log(gSavedSettings, "RenderShadowSlotLog", false);
+            if (slot_log()) logSpotShadowSlots(num_spots, retain_slots);
+            else mSpotSlotLogValid = false;
         }
 
         // this should never happen

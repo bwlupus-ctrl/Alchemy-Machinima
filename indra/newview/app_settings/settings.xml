@@ -22344,6 +22344,20 @@
         <key>Type</key><string>Boolean</string>
         <key>Value</key><integer>1</integer>
     </map>
+    <key>RenderShadowSlotUndrawnHold</key>
+    <map>
+        <key>Comment</key><string>Projector shadows: a light that leaves the camera view (zoom or pan) keeps its shadow slot and its shadow fade instead of losing them at once. It keeps them for good while no other light needs the slot, and for 0.2 seconds once one does, so a light that comes back into view is shadowed on its first frame instead of fading in again. Needs Steady shadow slots (RenderShadowSlotHysteresis). Off restores the old behaviour.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
+    <key>RenderShadowSlotLog</key>
+    <map>
+        <key>Comment</key><string>Diagnostic, off by default: log every projector shadow-slot change (tag ShadowSlotLog: light id, old and new slot, reason, fade, whether the light is in view) and a verdict line every 5 seconds (STABLE, QUIET or CHURN). Changes nothing on screen.</string>
+        <key>Persist</key><integer>0</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>0</integer>
+    </map>
     <key>RenderAreaShadowLights</key>
     <map>
         <key>Comment</key><string>Number of shadowed lights (1-8). The most important lights (bright, large, close) get them, whether or not they have a native SL shadow map.</string>
