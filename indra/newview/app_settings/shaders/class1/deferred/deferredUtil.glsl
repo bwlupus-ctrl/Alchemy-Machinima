@@ -990,6 +990,7 @@ void localLightPbr(vec3 diffuseColor, vec3 specularColor,
 uniform vec2 relight_limits; // near floor (m), maximum physical boost
 uniform float relight_highlight_scale; // specular radius only; .w is a shadow channel
 uniform float relight_legacy_exponent; // same exponent used to build the gloss LUT
+uniform float relight_continuous_source; // RenderLocalLightContinuousSource: 1 = sized diffuse is continuous through the source sphere; 0 = pre-11/14 step (A/B)
 // [RelightQ] Karis 2013 eqs. 10/14; Lagarde & de Rousiers 2014 sphere/disk
 // illuminance. No history, random samples, visibility or render-state work.
 vec3 relightUnit(vec3 v, vec3 fallback)
@@ -1074,7 +1075,20 @@ float relightSphere(float c, float s2)
 float relightRatio(vec3 n, vec3 lv, float radius)
 {
     float d2 = dot(lv,lv);
-    if (d2 < radius*radius) return 1.0; // full hemisphere, no centre singularity
+    if (d2 < radius*radius)
+    {
+        // Inside the source. Legacy (switch off): the full hemisphere, 1, for every normal; the clipped
+        // formula below gives (1 + N.L)/2 just outside, so the term stepped at d == radius (by up to 1 on
+        // faces turned away) and that edge flickered on distant, sub-pixel sources.
+        if (relight_continuous_source < 0.5) return 1.0;
+        // Continuous: the clipped formula below with s2 held at 1 (the source covers the half space on
+        // the centre's side), which is exactly (1 + N.L)/2: the same value the formula reaches just
+        // outside, so nothing steps at d == radius.
+        // Centre guard: N.L = dot(n,lv)/d has no direction at d == 0. Dividing by max(d, 0.1 mm) lets
+        // N.L fall linearly to 0 inside that core, so the term tends to 1/2 for every normal: no NaN,
+        // no fallback direction, and no jump to a different value at the centre itself.
+        return clamp(0.5 + 0.5*dot(n,lv)/max(sqrt(d2), 1.e-4), 0.0, 1.0);
+    }
     float s2 = min(1.0, radius*radius/max(d2, 1.e-12));
     float c = dot(n, relightUnit(lv,n));
     // Fully visible sphere: return N.L directly, without multiply/divide roundoff.

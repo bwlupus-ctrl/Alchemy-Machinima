@@ -1,6 +1,8 @@
 """Run production light-shape TUT assertions without building the viewer.
 
 --math-ref HEAD runs the new assertions against the pre-fix production header.
+--plant-step reintroduces the pre-11/14 step inside a sized source (diffuseRatio == 1) in a COPY of the
+header and passes only if the assertions then fail (test<49>, RenderLocalLightContinuousSource).
 Output and compiler artifacts stay in this worktree's .tmp/light_shape directory.
 """
 import argparse
@@ -12,15 +14,21 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def check(math_ref=None):
-    out = ROOT / '.tmp/light_shape' / ('math_before' if math_ref else 'math_after')
+PLANT_FROM = 'return continuous_source ? std::clamp(0.5 + 0.5*cosine*std::min(distance/kSourceCentreCore, 1.0), 0.0, 1.0) : 1.0;'
+
+
+def check(math_ref=None, plant_step=False):
+    out = ROOT / '.tmp/light_shape' / ('math_planted' if plant_step else 'math_before' if math_ref else 'math_after')
     out.mkdir(parents=True, exist_ok=True)
     header = Path('indra/newview/alrelightmath.h')
     text = (subprocess.check_output(['git', 'show', math_ref+':'+header.as_posix()], cwd=ROOT, text=True)
             if math_ref else (ROOT/header).read_text())
+    if plant_step:
+        assert text.count(PLANT_FROM) == 1, 'the continuous-source expression to plant the old step into'
+        text = text.replace(PLANT_FROM, 'return 1.0;')
     (out/'alrelightmath.h').write_text(text)
     tests = (ROOT/'indra/newview/tests/alrelightmath_test.cpp').read_text()
-    numbers = [*range(1, 10), 44, 45]
+    numbers = [*range(1, 10), 44, 45, 49]
     bodies = []
     for number in numbers:
         match = re.search(r'template<> template<> void relight_object::test<'+str(number)+r'>\(\)', tests)
@@ -66,4 +74,10 @@ std::printf("[shape-math] %s: %d failures\\n",tut::failures ? "FAIL" : "PASS",tu
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--math-ref')
-    raise SystemExit(check(parser.parse_args().math_ref))
+    parser.add_argument('--plant-step', action='store_true')
+    args = parser.parse_args()
+    result = check(args.math_ref, args.plant_step)
+    if args.plant_step:
+        print('[shape-math] planted step %s' % ('DETECTED (PASS)' if result else 'NOT detected (FAIL)'))
+        raise SystemExit(0 if result else 1)
+    raise SystemExit(result)

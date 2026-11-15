@@ -84,10 +84,19 @@ inline double sphere(double cosine, double sin2)
     const double sy = std::sqrt(std::max(1.0-y*y, 0.0));
     return std::clamp((c*std::acos(y)-x*sint*sy)*s2 + std::atan2(sint*sy, x), 0.0, pi);
 }
-inline double diffuseRatio(double cosine, double radius, double distance)
+// Inside the source (distance < radius), mirror of relightRatio (deferredUtil.glsl):
+//   continuous (RenderLocalLightContinuousSource, the default): the clipped-sphere formula below with s2
+//     held at 1, which is exactly (1 + cosine)/2: the value that formula reaches just outside, so nothing
+//     steps on the source's surface. Centre guard: within kSourceCentreCore of the centre the cosine is
+//     scaled by distance/core, so the term tends to 1/2 for every normal (finite, no undefined direction).
+//   legacy (false; pre-11/14, kept for A/B): 1 everywhere inside, a step of up to 1 at distance == radius
+//     that flickered on distant sub-pixel sources.
+constexpr double kSourceCentreCore = 1.e-4; // metres; the shader's max(d, 1.e-4)
+inline double diffuseRatio(double cosine, double radius, double distance, bool continuous_source = true)
 {
     if (radius <= 0.0) return std::max(cosine, 0.0);
-    if (distance < radius) return 1.0; // full hemisphere, also at the centre
+    if (distance < radius)
+        return continuous_source ? std::clamp(0.5 + 0.5*cosine*std::min(distance/kSourceCentreCore, 1.0), 0.0, 1.0) : 1.0;
     const double s2 = std::min(1.0, radius*radius/std::max(distance*distance, 1.e-12));
     if (cosine >= std::sqrt(s2)) return cosine;
     return sphere(cosine, s2) / (3.14159265358979323846 * std::max(s2, 1.e-20));
