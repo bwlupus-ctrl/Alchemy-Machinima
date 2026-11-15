@@ -117,6 +117,28 @@ template<class ID, std::size_t N> inline std::array<ID, N> retainOwners(
     return chosen;
 }
 
+// [SlotUndrawn] An owner the main lighting pass did not draw this frame (its light volume left
+// the view) is not a vacancy on the spot. retainOwners sees it as an owner of one of two tiers:
+//   held     (absent < 0.2 s, continuous): above every real tier, so no challenger takes the slot;
+//   released (absent >= 0.2 s): below every real tier, so it yields to the first challenger left
+//            AFTER the empty slots are filled, and before any drawn owner is challenged.
+// With no challenger either tier keeps the slot (retain() returns true for a null challenger),
+// so the owner stays the target and its fade stays where it is: a light that returns to the
+// view is shadowed on its first frame instead of fading in again.
+enum : int { UndrawnHeldTier = 1 << 20, UndrawnReleasedTier = -(1 << 20) };
+template<class ID> struct UndrawnHold
+{
+    ID owner{};
+    ContinuousHold hold;
+};
+template<class ID> inline Light<ID> undrawnOwner(UndrawnHold<ID>& state, const ID& owner,
+    double now, std::uint32_t frame)
+{
+    if (state.owner != owner) { state = {}; state.owner = owner; }
+    const bool released = state.hold.reached(true, now, frame, 0.2);
+    return {owner, 0.0, released ? UndrawnReleasedTier : UndrawnHeldTier};
+}
+
 // First native frame after a hard cut follows the stock auction/fade even when
 // its prior auction stamp was invalidated. Stable-spots and OFF remain exact bypasses.
 inline bool retainNativeFrame(bool enabled, bool stable, bool& seed)

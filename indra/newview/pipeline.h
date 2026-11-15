@@ -2031,6 +2031,21 @@ public:
     U32 mSpotAuctionFrame = 0;
     void snapshotSpotShadowAuction();
     std::array<ALShadowSlot::Challenge<LLUUID>, MAX_SPOT_SHADOWS> mSpotChallenge;
+    // [SlotUndrawn] RenderShadowSlotUndrawnHold: absence clock of an owner the main pass did not draw.
+    std::array<ALShadowSlot::UndrawnHold<LLUUID>, MAX_SPOT_SHADOWS> mSpotUndrawnHold{};
+    // [SlotLog] RenderShadowSlotLog: last frame's slot state and a 5 s verdict window. Diagnostics only.
+    struct SpotSlotLogEntry
+    {
+        LLUUID owner;
+        bool target = false;
+        F32 fade = 0.f;
+    };
+    std::array<SpotSlotLogEntry, MAX_SPOT_SHADOWS> mSpotSlotLog{};
+    bool mSpotSlotLogValid = false;
+    U32 mSpotSlotLogChanges = 0, mSpotSlotLogVisible = 0, mSpotSlotLogCandidates = 0;
+    F64 mSpotSlotLogWindow = 0.0;
+    U32 mSpotAuctionDrawn = 0; // Projectors the live main pass offered to the slot auction this frame.
+    void logSpotShadowSlots(U32 num_spots, bool retained);
     S32 spotShadowTier(LLVOVolume* volume) const;
     void retainSpotShadowOwners();
 

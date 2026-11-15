@@ -51,6 +51,9 @@ import relight_spot_metric_gl_check as M
 from rig_shadow_presets_check import settings_defaults
 
 BASE = '0494b1f4d19'
+# alrelightmath.h last changed legitimately in the 11/14 continuous-source fix (light-step, review r3);
+# this gate's own changes must still leave it exactly as that commit has it.
+RELIGHT_HEADER_BASE = '9b8d1173006'
 FLOOR = 1.5                  # the shipped default
 XC = .6                      # the ball's centre: 0.6 m in front of the plane, 2.4 m from the lamp
 LAMP = np.array([3., 0., 1.45])
@@ -607,7 +610,7 @@ def source_contracts(tree):
         'one_setting_both_uploads': pipeline.count('"RenderSoftShadowMinSoftness", 1.5f)') == 2,
         'header_clamp': 'constexpr double kSoftShadowFloorMax = 4.0;' in header and 'softShadowFloor(99.0) == 4.0' in header and
                         'constexpr double kSoftShadowFloorDefault = 1.5;' in header and
-                        tree.read(M.HEADER) == G.SourceTree(BASE).read(M.HEADER),   # alrelightmath.h is BASE again
+                        tree.read(M.HEADER) == G.SourceTree(RELIGHT_HEADER_BASE).read(M.HEADER),   # alrelightmath.h unchanged since its last reviewed change
         'shader_default_off': FLOOR_UNIFORM in shader and 'uniform float area_world_min_radius;' in filt,
         'projector_floor_once': shader.count(KERNEL_FLOOR) == 1 and shader.count(LOW) == 1 and shader.count(PR_MEASURED) == 1 and shader.count(CLEAR_RULE) == 1,
         # the floor reads neither the measured gap nor the noise, and only the kernel reads the floor
