@@ -2214,6 +2214,27 @@ bool ALCineLightRigManager::restore(const LLSD& data, bool scene_load)
         mBlobs[(*it)["slot"].asInteger()] = ParamBlob::fromLLSD(*it);
         if (scene_load) mBlobs[(*it)["slot"].asInteger()].mLitGroup = (*it)["lit_group"].asString();
     }
+    if (!scene_load)
+    {
+        // Login restores only the user's own rig. Extra rigs A-D keep their
+        // authored light settings but come back free, as the constructor
+        // leaves them: off, unanchored, no object target, no group, no
+        // shaft/hero flags. Scene loads (above) restore their own assignments.
+        for (S32 i = 1; i < SLOT_COUNT; ++i)
+        {
+            mBlobs[i].mEnabled = false;
+            mBlobs[i].mAnchor.setNull();
+            mBlobs[i].mObjectTarget.setNull();
+            mBlobs[i].mGroupEnabled = false;
+            mBlobs[i].mGroupSlots = 0;
+            mBlobs[i].mLitGroup.clear();
+            for (S32 light = 0; light < ALCineLightRigModel::LIGHT_COUNT; ++light)
+            {
+                mBlobs[i].mShaftEnabled[light] = false;
+                mBlobs[i].mHeroEnabled[light] = false;
+            }
+        }
+    }
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         mBlobs[i].applyRigState(mInstances[i]);

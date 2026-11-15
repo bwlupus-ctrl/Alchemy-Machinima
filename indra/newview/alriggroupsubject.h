@@ -25,6 +25,13 @@ inline ALRigBorrowChoice alRigBorrowChoice(const std::array<LLUUID, 4>& subjects
     for (S32 slot = 0; slot < 4; ++slot)
         if (!enabled[slot] && subjects[slot].isNull() && anchors[slot].isNull())
             { result.mSlot = slot; return result; }
+    // No slot is free: reuse the least recently used rig that is switched OFF,
+    // even if it is anchored or Subject-bound. An ON rig is never taken here.
+    S32 off_lru = -1;
+    for (S32 slot = 0; slot < 4; ++slot)
+        if (!enabled[slot] && (off_lru < 0 || used[slot] < used[off_lru]))
+            off_lru = slot;
+    if (off_lru >= 0) { result.mSlot = off_lru; return result; }
     for (S32 slot = 1; slot < 4; ++slot)
         if (used[slot] < used[result.mReplacement]) result.mReplacement = slot;
     return result;
