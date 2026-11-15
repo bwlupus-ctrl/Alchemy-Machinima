@@ -55,6 +55,23 @@ def valid_contract(source, page, manager):
     return True
 
 
+NL = chr(10)
+LOAD = 'if (!scene_load || mLoginRecovery)' + NL + '    {'  # login, or automatic crash recovery at login
+
+
+def valid_login_solo(manager):
+    """Login restore (scene_load false) must free every extra rig: off, no anchor/target/group/flags."""
+    body = function(manager, 'bool ALCineLightRigManager::restore(')
+    start = body.find(LOAD)
+    if start < 0: return False
+    end = body.index('applyRigState', start)
+    free = body[start:end]
+    need = ('mBlobs[i].mEnabled = false;', 'mBlobs[i].mAnchor.setNull();', 'mBlobs[i].mObjectTarget.setNull();',
+            'mBlobs[i].mGroupEnabled = false;', 'mBlobs[i].mGroupSlots = 0;', 'mBlobs[i].mLitGroup.clear();',
+            'mBlobs[i].mShaftEnabled[light] = false;', 'mBlobs[i].mHeroEnabled[light] = false;', 'i = 1;')
+    return all(n in free for n in need)
+
+
 def check_contract(root, source=None):
     source = source or (root/'indra/newview/alpanelcinelightrig.cpp').read_text(encoding='utf8')
     page = (root/'indra/newview/alkitpage.cpp').read_text(encoding='utf8')
@@ -79,6 +96,35 @@ def check_contract(root, source=None):
     ]
     for bad in bad_pages:
         assert not valid_contract(source, bad, manager), 'planted bound/unguarded On escaped'
+    assert valid_login_solo(manager), 'login must free the extra rigs'
+    pad = ' ' * 12
+    for label, bad in {
+        'extra rigs restored at login': manager.replace(LOAD, 'if (false)' + NL + '    {'),
+        'anchor kept at login': manager.replace(pad + 'mBlobs[i].mAnchor.setNull();' + NL, '', 1),
+        'enabled kept at login': manager.replace(pad + 'mBlobs[i].mEnabled = false;' + NL + pad + 'mBlobs[i].mAnchor.setNull();', pad + 'mBlobs[i].mAnchor.setNull();', 1),
+        'group kept at login': manager.replace('mBlobs[i].mGroupSlots = 0;' + NL + pad + 'mBlobs[i].mLitGroup.clear();', 'mBlobs[i].mLitGroup.clear();', 1),
+        'extras start from slot 0': manager.replace('for (S32 i = 1; i < SLOT_COUNT; ++i)' + NL + '        {' + NL + pad + 'mBlobs[i].mEnabled', 'for (S32 i = 0; i < SLOT_COUNT; ++i)' + NL + '        {' + NL + pad + 'mBlobs[i].mEnabled', 1),
+    }.items():
+        assert bad != manager, 'planted ' + label + ' did not apply'
+        assert not valid_login_solo(bad), 'planted ' + label + ' escaped'
+    # Automatic crash recovery at login frees the extras too (Codex r1), and only around that call.
+    director = (root/'indra/newview/llfloaterdirector.cpp').read_text(encoding='utf8')
+    AUTO = ('ALCineLightRigManager::instance().setLoginRecovery(true);' + NL +
+            '        const S32 result = restoreCrashBackup(path);' + NL +
+            '        ALCineLightRigManager::instance().setLoginRecovery(false);')
+    def valid_recovery(text): return text.count(AUTO) == 1 and text.count('setLoginRecovery(true)') == 1
+    assert valid_recovery(director), 'automatic login recovery must free the extra rigs'
+    for label, bad in {
+        'recovery restores extras': director.replace(AUTO, '        const S32 result = restoreCrashBackup(path);'),
+        'recovery flag left on': director.replace('ALCineLightRigManager::instance().setLoginRecovery(false);', ''),
+        'recovery flag on everywhere': director + NL + 'void bad(){ALCineLightRigManager::instance().setLoginRecovery(true);}',
+    }.items():
+        assert bad != director and not valid_recovery(bad), 'planted ' + label + ' escaped'
+    assert not valid_login_solo(manager.replace('if (!scene_load || mLoginRecovery)', 'if (!scene_load)')), 'planted login-only cleanup escaped'
+    # A reused rig drops the previous actor's group mask (Codex r1).
+    give = function(manager, 'void ALCineLightRigManager::giveActorRig(')
+    assert 'rig.setGroupSlots(0);' in give, 'reused rig must clear the group mask'
+    assert 'rig.setGroupSlots(0);' not in function(manager.replace('    rig.setGroupSlots(0); // [LoginSolo]', '    // [LoginSolo]'), 'void ALCineLightRigManager::giveActorRig('), 'planted group mask kept escaped'
     print('PASS: precise borrow chip/On, Replace-first, canonical lifetime checks, follow/edit/remove and no Subject writes; 11 planted controls')
 
 
@@ -112,8 +158,8 @@ def run_unit(root):
     tests = '\n'.join(line for line in tests.splitlines() if not line.startswith('#include'))
     prefix = '#include "linden_common.h"\n#include "lltut.h"\nnamespace tut { test_runner_singleton runner; }\n'
     main = '''
-int main(){auto r=tut::rig_group_subject_tests.run_test(1);
- if(r.result!=tut::test_result::ok){std::cerr<<r.message;return 1;}
+int main(){for(int t=1;t<=2;++t){auto r=tut::rig_group_subject_tests.run_test(t);
+ if(r.result!=tut::test_result::ok){std::cerr<<r.message;return 1;}}
  std::cout<<"PASS: actual alriggroupsubject TUT borrow selection test\\n";}
 '''
     flags, libs = viewer_native_flags()
@@ -128,6 +174,7 @@ int main(){auto r=tut::rig_group_subject_tests.run_test(1);
         'borrow_writes_subject': ('    ALRigBorrowChoice result;', '    const_cast<std::array<LLUUID,4>&>(subjects)[0]=actor;\n    ALRigBorrowChoice result;'),
         'ignores_own_anchor': ('if (anchors[slot] == actor)', 'if (false)'),
         'takes_busy_rig': ('!enabled[slot] && subjects[slot].isNull() && anchors[slot].isNull()', 'subjects[slot].isNull()'),
+        'replaces_on_rig_while_off_exists': ('if (!enabled[slot] && (off_lru < 0', 'if ((off_lru < 0'),
         'silent_replace': ('    return result;\n}', '    result.mSlot=result.mReplacement; return result;\n}'),
     }
     for label, (old,new) in negatives.items():

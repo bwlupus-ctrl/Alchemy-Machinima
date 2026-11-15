@@ -1476,6 +1476,10 @@ public:
     void appendLiveProbeSignature(ALCineLiveProbeRefresh::Signature& sig,
                                   F32 move_m) const;
     bool liveProbeAnimating() const;
+    // [LoginSolo] An automatic Director crash recovery at login is a scene load that the
+    // user did not ask for: while it runs, the extra rigs come back free exactly as at a
+    // plain login. An explicit restore (offer accepted, menu) keeps its assignments.
+    void setLoginRecovery(bool login) { mLoginRecovery = login; }
 
 private:
     ALCineLightRigManager();
@@ -1536,6 +1540,7 @@ private:
     std::map<LLUUID, std::weak_ptr<const LLUUID>> mBorrowPicks;
     U64 mBorrowCastRevision = ~U64(0);
     bool mBorrowAnchorsDirty = true;
+    bool mLoginRecovery = false; // [LoginSolo] see setLoginRecovery
     std::array<U64, SLOT_COUNT> mHistoryEpoch{};
     boost::signals2::scoped_connection mCastConnection;
     std::array<LLUUID, 4> mEnrolledAnchors{};

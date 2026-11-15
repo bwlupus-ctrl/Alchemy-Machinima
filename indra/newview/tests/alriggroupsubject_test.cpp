@@ -47,4 +47,42 @@ template<> template<> void rig_group_subject_object::test<1>()
         ensure("selection itself never anchors", anchors[slot].isNull());
     }
 }
+
+template<> template<> void rig_group_subject_object::test<2>()
+{
+    const LLUUID self("00000000-0000-0000-0000-000000000001");
+    const LLUUID actor("00000000-0000-0000-0000-000000000002");
+    const LLUUID other("00000000-0000-0000-0000-000000000003");
+    std::array<LLUUID, 4> subjects{}, anchors{};
+    std::array<bool, 4> enabled{};
+    std::array<U64, 4> used{4, 2, 1, 3};
+    auto choose = [&]() { return alRigBorrowChoice(subjects, anchors, enabled, used, self, actor); };
+    // Every rig is busy with another actor, but all are switched off.
+    subjects.fill(other); anchors.fill(other); enabled.fill(false);
+    ensure_equals("off anchored rig reused, LRU among off rigs", choose().mSlot, 2);
+    enabled[2] = true;
+    ensure_equals("ON rig never chosen while an off one exists", choose().mSlot, 1);
+    enabled[1] = true;
+    ensure_equals("next LRU off rig", choose().mSlot, 3);
+    anchors[3].setNull();
+    ensure_equals("off Subject-only rig reused", choose().mSlot, 3);
+    enabled[3] = true;
+    ensure_equals("one off rig left", choose().mSlot, 0);
+    enabled[0] = true;
+    ensure_equals("all four ON asks", choose().mSlot, -1);
+    ensure_equals("all ON offers LRU replacement", choose().mReplacement, 2);
+    // Own anchor and own Subject still win before any reuse.
+    enabled.fill(false);
+    anchors[3] = actor;
+    ensure_equals("own anchor wins over LRU off rig", choose().mSlot, 3);
+    anchors[3] = other; anchors[0].setNull(); subjects[0] = actor;
+    ensure_equals("own Subject wins over LRU off rig", choose().mSlot, 0);
+    enabled.fill(true);
+    ensure_equals("own Subject wins even when all ON", choose().mSlot, 0);
+    std::array<LLUUID, 4> before = subjects;
+    subjects.fill(other); anchors.fill(other); enabled.fill(false);
+    before = subjects;
+    choose();
+    ensure("reuse never writes Subjects", before == subjects);
+}
 }

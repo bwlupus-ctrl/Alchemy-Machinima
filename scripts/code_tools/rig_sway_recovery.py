@@ -125,6 +125,7 @@ public:
     U64 mUseClock = 0; std::array<U64,4> mLastUsed{};
     std::array<LLUUID,4> mEnrolledAnchors{};
     std::map<LLUUID,LLUUID> mBorrowRekeys;std::map<LLUUID,std::weak_ptr<const LLUUID>> mBorrowPicks;U64 mBorrowCastRevision=~U64(0);bool mBorrowAnchorsDirty=true;void refreshBorrowAnchors();
+    bool mLoginRecovery=false;  // [LoginSolo] production member read by restore()
     std::array<U64,5> mHistoryEpoch{};
     void touchSlot(Slot); void pruneRemovedAnchors();
     void rewriteActorReferences(const LLUUID&,const LLUUID&);
