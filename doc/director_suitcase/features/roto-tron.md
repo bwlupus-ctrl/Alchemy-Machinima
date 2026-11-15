@@ -134,7 +134,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 ## hooks
 
 - {"path": "indra/newview/CMakeLists.txt", "hunks": ["indra/newview/CMakeLists.txt@335,124", "indra/newview/CMakeLists.txt@1301,184"]}
-- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3497", "indra/newview/app_settings/settings.xml@5341,241", "indra/newview/app_settings/settings.xml@5968,527", "indra/newview/app_settings/settings.xml@6617,14888", "indra/newview/app_settings/settings.xml@21507,1113", "indra/newview/app_settings/settings.xml@25876,1573", "indra/newview/app_settings/settings.xml@27450,153", "indra/newview/app_settings/settings.xml@29557,2466"]}
+- {"path": "indra/newview/app_settings/settings.xml", "hunks": ["indra/newview/app_settings/settings.xml@2,3497", "indra/newview/app_settings/settings.xml@5341,241", "indra/newview/app_settings/settings.xml@5968,527", "indra/newview/app_settings/settings.xml@6617,14888", "indra/newview/app_settings/settings.xml@21507,1120", "indra/newview/app_settings/settings.xml@25883,1573", "indra/newview/app_settings/settings.xml@27457,153", "indra/newview/app_settings/settings.xml@29564,2466"]}
 - {"path": "indra/newview/llappviewer.cpp", "hunks": ["indra/newview/llappviewer.cpp@72,35", "indra/newview/llappviewer.cpp@2653,53", "indra/newview/llappviewer.cpp@5377,24"]}
 - {"path": "indra/newview/llviewercontrol.cpp", "hunks": ["indra/newview/llviewercontrol.cpp@1293,18"]}
 - {"path": "indra/newview/alchatcommand.cpp", "hunks": ["indra/newview/alchatcommand.cpp@57,31", "indra/newview/alchatcommand.cpp@372,747"]}
@@ -170,7 +170,7 @@ Candidate associations require review. Includes/calls are discovery edges, not a
 - {"path": "indra/llrender/llrendertarget.cpp", "hunks": ["indra/llrender/llrendertarget.cpp@838,124"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl@37,29", "indra/newview/app_settings/shaders/class1/deferred/avatarF.glsl@69,45"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@41,41", "indra/newview/app_settings/shaders/class1/deferred/bumpF.glsl@84,79"]}
-- {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140"]}
+- {"path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1159"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl@40,17", "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskF.glsl@63,24"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl@37,39", "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskIndexedF.glsl@79,56"]}
 - {"path": "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl", "hunks": ["indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl@33,41", "indra/newview/app_settings/shaders/class1/deferred/diffuseAlphaMaskNoColorF.glsl@75,56"]}

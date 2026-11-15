@@ -33098,6 +33098,26 @@
   },
   {
     "change": "added",
+    "comment": "Sized local lights: keep the diffuse term continuous across the surface of the light source, so a surface inside the World light size no longer jumps to full brightness (the jump flickered on distant lights). TRUE = continuous (default). FALSE = pre-11/14 hard step inside sized sources, for A/B. No effect on unsized lights (size 0) or with Light shape off.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "unknown"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderLocalLightContinuousSource",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "World and legacy rig source radius in metres (0 to 1).",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

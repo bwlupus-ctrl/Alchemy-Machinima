@@ -11946,10 +11946,10 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@22754,831",
-          "indra/newview/app_settings/settings.xml@23721,362",
-          "indra/newview/app_settings/settings.xml@29412,100",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@22761,831",
+          "indra/newview/app_settings/settings.xml@23728,362",
+          "indra/newview/app_settings/settings.xml@29419,100",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24613,10 +24613,10 @@
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6496,120",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@27604,98",
-          "indra/newview/app_settings/settings.xml@28137,229",
-          "indra/newview/app_settings/settings.xml@29557,2466",
-          "indra/newview/app_settings/settings.xml@32234,364"
+          "indra/newview/app_settings/settings.xml@27611,98",
+          "indra/newview/app_settings/settings.xml@28144,229",
+          "indra/newview/app_settings/settings.xml@29564,2466",
+          "indra/newview/app_settings/settings.xml@32241,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -36495,7 +36495,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -49060,8 +49060,8 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@32024,209",
-          "indra/newview/app_settings/settings.xml@32234,364"
+          "indra/newview/app_settings/settings.xml@32031,209",
+          "indra/newview/app_settings/settings.xml@32241,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -72880,7 +72880,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@25876,1573"
+          "indra/newview/app_settings/settings.xml@25883,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -89905,10 +89905,10 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@22754,831",
-          "indra/newview/app_settings/settings.xml@23721,362",
-          "indra/newview/app_settings/settings.xml@29412,100",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@22761,831",
+          "indra/newview/app_settings/settings.xml@23728,362",
+          "indra/newview/app_settings/settings.xml@29419,100",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -95981,11 +95981,11 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1113",
-          "indra/newview/app_settings/settings.xml@28763,648",
-          "indra/newview/app_settings/settings.xml@29557,2466",
-          "indra/newview/app_settings/settings.xml@32024,209",
-          "indra/newview/app_settings/settings.xml@32234,364"
+          "indra/newview/app_settings/settings.xml@21507,1120",
+          "indra/newview/app_settings/settings.xml@28770,648",
+          "indra/newview/app_settings/settings.xml@29564,2466",
+          "indra/newview/app_settings/settings.xml@32031,209",
+          "indra/newview/app_settings/settings.xml@32241,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -115426,9 +115426,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@25876,1573",
-          "indra/newview/app_settings/settings.xml@28027,109",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@25883,1573",
+          "indra/newview/app_settings/settings.xml@28034,109",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -119850,7 +119850,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -128344,13 +128344,13 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1113",
-          "indra/newview/app_settings/settings.xml@22622,76",
-          "indra/newview/app_settings/settings.xml@22754,831",
-          "indra/newview/app_settings/settings.xml@23666,54",
-          "indra/newview/app_settings/settings.xml@24194,164",
-          "indra/newview/app_settings/settings.xml@29557,2466",
-          "indra/newview/app_settings/settings.xml@32234,364"
+          "indra/newview/app_settings/settings.xml@21507,1120",
+          "indra/newview/app_settings/settings.xml@22629,76",
+          "indra/newview/app_settings/settings.xml@22761,831",
+          "indra/newview/app_settings/settings.xml@23673,54",
+          "indra/newview/app_settings/settings.xml@24201,164",
+          "indra/newview/app_settings/settings.xml@29564,2466",
+          "indra/newview/app_settings/settings.xml@32241,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -128830,8 +128830,8 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140",
-          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@2022,12"
+          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1159",
+          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@2041,12"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl"
       },
@@ -143634,6 +143634,7 @@
       "scripts/code_tools/relight_area_check.py",
       "scripts/code_tools/relight_area_policy_check.py",
       "scripts/code_tools/relight_contact_check.py",
+      "scripts/code_tools/relight_continuous_source_gl_check.py",
       "scripts/code_tools/relight_cost_check.py",
       "scripts/code_tools/relight_cube_off_check.py",
       "scripts/code_tools/relight_dots_gl_check.py",
@@ -144769,9 +144770,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1113",
-          "indra/newview/app_settings/settings.xml@22710,43",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@21507,1120",
+          "indra/newview/app_settings/settings.xml@22717,43",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -145156,8 +145157,8 @@
         "hunks": [
           "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@1,4",
           "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@23,11",
-          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140",
-          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@2052,121"
+          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1159",
+          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@2071,121"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl"
       },
@@ -161308,10 +161309,10 @@
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1113",
-          "indra/newview/app_settings/settings.xml@25876,1573",
-          "indra/newview/app_settings/settings.xml@27450,153",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@21507,1120",
+          "indra/newview/app_settings/settings.xml@25883,1573",
+          "indra/newview/app_settings/settings.xml@27457,153",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -161590,7 +161591,7 @@
       },
       {
         "hunks": [
-          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140"
+          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1159"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl"
       },
@@ -175491,10 +175492,10 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@3511,1055",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1113",
-          "indra/newview/app_settings/settings.xml@22754,831",
-          "indra/newview/app_settings/settings.xml@25876,1573",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@21507,1120",
+          "indra/newview/app_settings/settings.xml@22761,831",
+          "indra/newview/app_settings/settings.xml@25883,1573",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -175726,7 +175727,7 @@
           "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@576,7",
           "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@588,23",
           "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@646,7",
-          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1140"
+          "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl@869,1159"
         ],
         "path": "indra/newview/app_settings/shaders/class1/deferred/deferredUtil.glsl"
       },
@@ -204720,8 +204721,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1113",
-          "indra/newview/app_settings/settings.xml@29557,2466"
+          "indra/newview/app_settings/settings.xml@21507,1120",
+          "indra/newview/app_settings/settings.xml@29564,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -218633,9 +218634,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@29557,2466",
-          "indra/newview/app_settings/settings.xml@32024,209",
-          "indra/newview/app_settings/settings.xml@32234,364"
+          "indra/newview/app_settings/settings.xml@29564,2466",
+          "indra/newview/app_settings/settings.xml@32031,209",
+          "indra/newview/app_settings/settings.xml@32241,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
