@@ -22519,6 +22519,13 @@
         <key>Type</key><string>F32</string>
         <key>Value</key><real>1</real>
     </map>
+    <key>RenderLocalLightContinuousSource</key>
+    <map>
+        <key>Comment</key><string>Sized local lights: keep the diffuse term continuous across the surface of the light source, so a surface inside the World light size no longer jumps to full brightness (the jump flickered on distant lights). TRUE = continuous (default). FALSE = pre-11/14 hard step inside sized sources, for A/B. No effect on unsized lights (size 0) or with Light shape off.</string>
+        <key>Persist</key><integer>1</integer>
+        <key>Type</key><string>Boolean</string>
+        <key>Value</key><integer>1</integer>
+    </map>
     <key>RenderLocalLightNearFloor</key>
     <map>
         <key>Comment</key><string>Minimum physical falloff distance in metres.</string>

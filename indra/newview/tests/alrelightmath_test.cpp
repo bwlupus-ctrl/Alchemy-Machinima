@@ -185,7 +185,8 @@ template<> template<> void relight_object::test<6>()
     {
         close("point exact legacy angular term",ALRelight::diffuseRatio(cosine,0,10),std::max(cosine,0.0),0);
         close("small source ratio limit",ALRelight::diffuseRatio(cosine,1.e-5,10),std::max(cosine,0.0),1.e-6);
-        close("inside hemisphere",ALRelight::diffuseRatio(cosine,1,.5),1);
+        // The pre-11/14 value inside a source, now behind the A/B switch (RenderLocalLightContinuousSource off).
+        close("inside hemisphere (legacy switch)",ALRelight::diffuseRatio(cosine,1,.5,false),1,0);
     }
     ensure("horizon wrap survives",ALRelight::diffuseRatio(-.1,1,2)>0);
     close("behind cap dark",ALRelight::diffuseRatio(-1,1,2),0);
@@ -195,6 +196,73 @@ template<> template<> void relight_object::test<6>()
         for (double cosine : {-1.0,-.8,-.5})
             close("legacy fully hidden sphere diffuse",ALRelight::diffuseRatio(cosine,radius,2),0,0);
 
+}
+// [Continuous source] The sized diffuse term has no step on the source's surface and no undefined centre.
+// Fails on the pre-11/14 header (inside == 1): the left limit at distance == radius was 1 for every normal.
+template<> template<> void relight_object::test<49>()
+{
+    using ALRelight::diffuseRatio;
+    double worst_step=0;
+    // Includes sources smaller than the 0.1 mm core (Codex r1): the core must end inside the source.
+    // Under kMinContinuousRadius (10 um) the inside branch is skipped (Codex r2): the plain formula runs
+    // everywhere, which is continuous at the surface and (1 + N.L)/2 inside down to its own 1 um guard.
+    for (double radius : {2.e-6,5.e-6,1.e-5,5.e-5,1.5e-4,.03,.1,.45,1.0})
+        for (double cosine : {-1.0,-.9,-.5,-.2,0.0,.3,.7,.9,1.0})
+        {
+            const double core=ALRelight::sourceCentreCore(radius);
+            ensure("core ends inside the source",core<radius);
+            // Left and right limits at the surface agree with each other and with (1 + N.L)/2.
+            const double left=diffuseRatio(cosine,radius,radius*(1-1.e-10));
+            const double right=diffuseRatio(cosine,radius,radius*(1+1.e-10));
+            worst_step=std::max(worst_step,std::abs(left-right));
+            close("continuous at the source surface",left,right,1.e-4);
+            close("surface value is the half-covered hemisphere",left,.5*(1+cosine),1.e-4);
+            // The centre: finite, the same for every normal, and the limit of its neighbourhood.
+            const bool has_core=radius>=ALRelight::kMinContinuousRadius;
+            if (has_core)
+            {
+                close("centre value",diffuseRatio(cosine,radius,0),.5,0);
+                close("continuous toward the centre",diffuseRatio(cosine,radius,core*1.e-8),.5,1.e-8);
+            }
+            // Inside, outside the 0.1 mm core: the half-covered hemisphere for this normal, at every distance.
+            for (int i=1;i<=64;++i)
+            {
+                const double distance=has_core ? core+(radius-core)*i/64.5 : 1.e-6+(radius-1.e-6)*i/64.5;
+                close("inside is (1 + N.L)/2",diffuseRatio(cosine,radius,distance),.5*(1+cosine),1.e-15);
+            }
+            // Inside the core: bounded, monotone from 1/2 to that value, no jump between neighbouring distances.
+            if (has_core) {
+            double previous=diffuseRatio(cosine,radius,0);
+            for (int i=1;i<=64;++i)
+            {
+                const double distance=core*i/64, value=diffuseRatio(cosine,radius,distance);
+                ensure("core bounded",std::isfinite(value) && value>=0 && value<=1);
+                ensure("core monotone along a ray",cosine>=0 ? value+1.e-15>=previous : value<=previous+1.e-15);
+                ensure("core has no jump between neighbouring distances",std::abs(value-previous)<=.5/64+1.e-12);
+                previous=value;
+            }
+            close("core joins the inside value",previous,.5*(1+cosine),1.e-15);
+            }
+            // Whole sphere at the horizon: dark from both sides.
+            if (cosine==-1.0) close("hidden at the surface",left,0,1.e-9);
+            // The A/B switch: OFF is the old value exactly inside, and nothing differs outside the source.
+            for (double distance : {0.0,radius*.25,radius*.999})
+                close("switch off reproduces the old inside value",diffuseRatio(cosine,radius,distance,false),1,0);
+            for (double distance : {radius,radius*1.0001,radius*2,radius*40})
+                close("switch does not reach outside the source",diffuseRatio(cosine,radius,distance,false),
+                      diffuseRatio(cosine,radius,distance,true),0);
+        }
+    ensure("surface step is far below the old one",worst_step<1.e-4);
+    // Mirror parity below the shader's 1 um direction guard (Codex r3): relightUnit falls back to n, so N.L = 1.
+    close("direction guard: tiny source, sub-micron receiver",diffuseRatio(-.5,2.e-6,5.e-7,true),1,0);
+    close("direction guard: sized source, outside branch",diffuseRatio(-.5,5.e-7,9.e-7,true),1,0);
+    // Unsized lights never see the switch.
+    for (double cosine : {-1.0,-.2,0.0,.2,1.0})
+        for (double distance : {0.0,.05,10.0})
+        {
+            close("unsized on",diffuseRatio(cosine,0,distance,true),std::max(cosine,0.0),0);
+            close("unsized off",diffuseRatio(cosine,0,distance,false),std::max(cosine,0.0),0);
+        }
 }
 template<> template<> void relight_object::test<7>()
 {

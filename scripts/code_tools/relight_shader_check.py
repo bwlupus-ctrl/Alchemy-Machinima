@@ -401,6 +401,9 @@ for light in [(0,0,2),(1,0,2),(2,0,-.2),(0,0,-2)]:
 print('[RelightQ] runtime master PASS',runtime_checks,
       'production forward readbacks: on/off/on, stale shapes, exact legacy and disabled limits; no relink',flush=True)
 
+# [Continuous source] No step in the sized diffuse term at the source's surface; A/B switch exact.
+exec(compile(Path(__file__).with_name('relight_continuous_source_gl_check.py').read_text(),
+             'relight_continuous_source_gl_check.py', 'exec'))
 # Rig-key regression uses this same WGL context, production linker and target.
 exec(compile(Path(__file__).with_name('relight_shape_gl_check.py').read_text(),
              'relight_shape_gl_check.py', 'exec'))

@@ -285,6 +285,14 @@ void ALCineRigRim::bindAnimated(LLGLSLShader& shader)
         const F32 value = scale();
         shader.uniform1f(highlight_scale, std::isfinite(value) ? llclamp(value, 0.f, 1.f) : 1.f);
     }
+    // 1 = sized diffuse stays continuous through the source sphere; 0 = the pre-11/14 step (A/B).
+    // A live uniform like the limits above: toggling never recompiles a shader.
+    static const LLStaticHashedString continuous_source("relight_continuous_source");
+    if (shape_enabled() && shader.getUniformLocation(continuous_source) >= 0)
+    {
+        static LLCachedControl<bool> continuous(gSavedSettings, "RenderLocalLightContinuousSource", true);
+        shader.uniform1f(continuous_source, continuous() ? 1.f : 0.f);
+    }
     static const LLStaticHashedString legacy_exponent("relight_legacy_exponent");
     if (shape_enabled() && shader.getUniformLocation(legacy_exponent) >= 0)
     {
