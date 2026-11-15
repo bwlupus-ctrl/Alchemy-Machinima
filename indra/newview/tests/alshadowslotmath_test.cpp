@@ -721,6 +721,21 @@ template<> template<> void shadow_slot_object::test<28>()
         ALShadowSlot::undrawnOwner(state, 7, 0.40, 12).tier, int(ALShadowSlot::UndrawnHeldTier));
     ensure("both tiers bracket every real tier",
         ALShadowSlot::UndrawnHeldTier > 3 && ALShadowSlot::UndrawnReleasedTier < 0);
+    // Slow frames (Codex r1): at 2, 1 and 0.5 fps an owner that left for good is still released.
+    for (double period : {0.5, 1.0, 2.0})
+    {
+        ALShadowSlot::UndrawnHold<int> slow;
+        int tier = ALShadowSlot::UndrawnHeldTier;
+        for (unsigned i = 0; i < 6; ++i) tier = ALShadowSlot::undrawnOwner(slow, 7, i * period, i).tier;
+        ensure_equals("released at a low frame rate", tier, int(ALShadowSlot::UndrawnReleasedTier));
+    }
+    // One long stall: a light absent for a single (slow) frame is still held; the next frame releases it.
+    ALShadowSlot::UndrawnHold<int> stall;
+    ALShadowSlot::undrawnOwner(stall, 7, 0.0, 0);
+    ensure_equals("one stall frame does not release",
+        ALShadowSlot::undrawnOwner(stall, 7, 0.9, 1).tier, int(ALShadowSlot::UndrawnHeldTier));
+    ensure_equals("the following frame releases",
+        ALShadowSlot::undrawnOwner(stall, 7, 1.0, 2).tier, int(ALShadowSlot::UndrawnReleasedTier));
 }
 
 // [SlotUndrawn] The two tiers through the production reconciliation.

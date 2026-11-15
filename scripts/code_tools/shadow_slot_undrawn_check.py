@@ -57,7 +57,7 @@ def check_wiring(pipe, header, settings, math):
     assert "std::array<ALShadowSlot::UndrawnHold<LLUUID>, MAX_SPOT_SHADOWS> mSpotUndrawnHold{};" in header
     # Pure helper: held above, released below every real tier (alshaftdecision.h: 0..3).
     assert "enum : int { UndrawnHeldTier = 1 << 20, UndrawnReleasedTier = -(1 << 20) };" in math
-    assert "const bool released = state.hold.reached(true, now, frame, 0.2);" in math
+    assert "(now - state.first >= 0.2 && frame - state.firstFrame >= 2u);" in math  # wall 0.2 s AND two frames, no gap reset
     assert "return {owner, 0.0, released ? UndrawnReleasedTier : UndrawnHeldTier};" in math
     # The diagnostic log: off by default, not persisted, read-only, and outside the reconciliation.
     log_block = settings[settings.index("<key>RenderShadowSlotLog</key>"):]
@@ -319,9 +319,14 @@ def native():
         "old_behaviour_vacancy": (ret, "    return {};", True, True),
         "never_held": (ret, "    return {owner, 0.0, UndrawnReleasedTier};", True, True),
         "never_released": (ret, "    return {owner, 0.0, UndrawnHeldTier};", True, True),
-        "no_hold_time": ("state.hold.reached(true, now, frame, 0.2);", "state.hold.reached(true, now, frame, 0.0);", True, True),
-        "ten_second_hold": ("state.hold.reached(true, now, frame, 0.2);", "state.hold.reached(true, now, frame, 10.0);", True, True),
-        "shared_clock": ("    if (state.owner != owner) { state = {}; state.owner = owner; }\n    const bool released", "    const bool released", True, False),
+        # The two-frame minimum still holds a zero-second mutant for two frames, so the 30 fps frame model
+        # can pass; the TUT timing assertions (held below 0.2 s at 30/60 fps) must and do reject it.
+        "no_hold_time": ("(now - state.first >= 0.2 &&", "(now - state.first >= 0.0 &&", True, False),
+        "ten_second_hold": ("(now - state.first >= 0.2 &&", "(now - state.first >= 10.0 &&", True, True),
+        "shared_clock": ("    if (state.owner != owner || !state.tracking)", "    if (!state.tracking)", True, False),
+        "slow_frames_never_release": ("(now - state.first >= 0.2 && frame - state.firstFrame >= 2u)",
+                                      "(now - state.first >= 0.2 && frame - state.firstFrame >= 2u && false)", True, True),
+        "single_stall_releases": ("frame - state.firstFrame >= 2u", "frame - state.firstFrame >= 0u", True, False),
         "held_below_real_tiers": ("UndrawnHeldTier = 1 << 20,", "UndrawnHeldTier = 1,", True, False),
         "released_above_world": ("UndrawnReleasedTier = -(1 << 20)", "UndrawnReleasedTier = 2", True, False),
     }

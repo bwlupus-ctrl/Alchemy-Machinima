@@ -126,16 +126,25 @@ template<class ID, std::size_t N> inline std::array<ID, N> retainOwners(
 // so the owner stays the target and its fade stays where it is: a light that returns to the
 // view is shadowed on its first frame instead of fading in again.
 enum : int { UndrawnHeldTier = 1 << 20, UndrawnReleasedTier = -(1 << 20) };
+// The absence is timed from the owner's first undrawn frame and never restarts on slow frames
+// (a gap-resetting clock would hold an owner that left for good forever below ~2.5 fps). The caller
+// restarts it by clearing the state on the first frame the owner is drawn again. Release needs
+// 0.2 s AND two further frames, so a single long stall cannot release a light absent for one frame.
+// A non-finite or backwards clock releases (yielding only to a waiting light, never hogging).
 template<class ID> struct UndrawnHold
 {
     ID owner{};
-    ContinuousHold hold;
+    double first = 0.0;
+    std::uint32_t firstFrame = 0;
+    bool tracking = false;
 };
 template<class ID> inline Light<ID> undrawnOwner(UndrawnHold<ID>& state, const ID& owner,
     double now, std::uint32_t frame)
 {
-    if (state.owner != owner) { state = {}; state.owner = owner; }
-    const bool released = state.hold.reached(true, now, frame, 0.2);
+    if (state.owner != owner || !state.tracking)
+    { state = {}; state.owner = owner; state.first = now; state.firstFrame = frame; state.tracking = true; }
+    const bool released = !finite(now) || !finite(state.first) || now < state.first ||
+        (now - state.first >= 0.2 && frame - state.firstFrame >= 2u);
     return {owner, 0.0, released ? UndrawnReleasedTier : UndrawnHeldTier};
 }
 
