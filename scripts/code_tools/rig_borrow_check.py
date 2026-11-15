@@ -56,7 +56,7 @@ def valid_contract(source, page, manager):
 
 
 NL = chr(10)
-LOAD = 'if (!scene_load)' + NL + '    {'
+LOAD = 'if (!scene_load || mLoginRecovery)' + NL + '    {'  # login, or automatic crash recovery at login
 
 
 def valid_login_solo(manager):
@@ -107,6 +107,24 @@ def check_contract(root, source=None):
     }.items():
         assert bad != manager, 'planted ' + label + ' did not apply'
         assert not valid_login_solo(bad), 'planted ' + label + ' escaped'
+    # Automatic crash recovery at login frees the extras too (Codex r1), and only around that call.
+    director = (root/'indra/newview/llfloaterdirector.cpp').read_text(encoding='utf8')
+    AUTO = ('ALCineLightRigManager::instance().setLoginRecovery(true);' + NL +
+            '        const S32 result = restoreCrashBackup(path);' + NL +
+            '        ALCineLightRigManager::instance().setLoginRecovery(false);')
+    def valid_recovery(text): return text.count(AUTO) == 1 and text.count('setLoginRecovery(true)') == 1
+    assert valid_recovery(director), 'automatic login recovery must free the extra rigs'
+    for label, bad in {
+        'recovery restores extras': director.replace(AUTO, '        const S32 result = restoreCrashBackup(path);'),
+        'recovery flag left on': director.replace('ALCineLightRigManager::instance().setLoginRecovery(false);', ''),
+        'recovery flag on everywhere': director + NL + 'void bad(){ALCineLightRigManager::instance().setLoginRecovery(true);}',
+    }.items():
+        assert bad != director and not valid_recovery(bad), 'planted ' + label + ' escaped'
+    assert not valid_login_solo(manager.replace('if (!scene_load || mLoginRecovery)', 'if (!scene_load)')), 'planted login-only cleanup escaped'
+    # A reused rig drops the previous actor's group mask (Codex r1).
+    give = function(manager, 'void ALCineLightRigManager::giveActorRig(')
+    assert 'rig.setGroupSlots(0);' in give, 'reused rig must clear the group mask'
+    assert 'rig.setGroupSlots(0);' not in function(manager.replace('    rig.setGroupSlots(0); // [LoginSolo]', '    // [LoginSolo]'), 'void ALCineLightRigManager::giveActorRig('), 'planted group mask kept escaped'
     print('PASS: precise borrow chip/On, Replace-first, canonical lifetime checks, follow/edit/remove and no Subject writes; 11 planted controls')
 
 

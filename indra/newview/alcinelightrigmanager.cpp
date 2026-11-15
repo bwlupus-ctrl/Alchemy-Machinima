@@ -634,6 +634,7 @@ void ALCineLightRigManager::giveActorRig(Slot slot, const LLUUID& actor)
     rig.setAnchor(next);
     rig.setObjectTarget(LLUUID::null);
     rig.setGroupEnabled(false);
+    rig.setGroupSlots(0); // [LoginSolo] a reused rig must not carry the previous actor's group mask
     rig.setLitGroup(std::string());
     auto& blob = mBlobs[slotIndex(slot)];
     blob.captureRigState(rig);
@@ -2214,9 +2215,10 @@ bool ALCineLightRigManager::restore(const LLSD& data, bool scene_load)
         mBlobs[(*it)["slot"].asInteger()] = ParamBlob::fromLLSD(*it);
         if (scene_load) mBlobs[(*it)["slot"].asInteger()].mLitGroup = (*it)["lit_group"].asString();
     }
-    if (!scene_load)
+    if (!scene_load || mLoginRecovery)
     {
-        // Login restores only the user's own rig. Extra rigs A-D keep their
+        // Login restores only the user's own rig (also when a crash backup is restored
+        // automatically at login, which arrives here as a scene load). Extra rigs A-D keep their
         // authored light settings but come back free, as the constructor
         // leaves them: off, unanchored, no object target, no group, no
         // shaft/hero flags. Scene loads (above) restore their own assignments.

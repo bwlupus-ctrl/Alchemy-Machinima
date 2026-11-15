@@ -6374,7 +6374,12 @@ void LLFloaterDirector::offerSceneRecovery()
     case ALDirectorQol::LoginAction::RESTORE_AUTO:
     {
         const std::string when = backupWhenLabel(path);
-        restoreResultToast(restoreCrashBackup(path), when, true);
+        // [LoginSolo] Automatic recovery is not a scene the user loaded: only their own rig
+        // carries over, the extra rigs come back free.
+        ALCineLightRigManager::instance().setLoginRecovery(true);
+        const S32 result = restoreCrashBackup(path);
+        ALCineLightRigManager::instance().setLoginRecovery(false);
+        restoreResultToast(result, when, true);
         return;
     }
     case ALDirectorQol::LoginAction::OFFER:
