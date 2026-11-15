@@ -33967,6 +33967,46 @@
   },
   {
     "change": "added",
+    "comment": "Diagnostic, off by default: log every projector shadow-slot change (tag ShadowSlotLog: light id, old and new slot, reason, fade, whether the light is in view) and a verdict line every 5 seconds (STABLE, QUIET or CHURN). Changes nothing on screen.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "0",
+    "duplicate_note": "",
+    "features": [
+      "rig"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderShadowSlotLog",
+    "persisted": "0",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
+    "comment": "Projector shadows: a light that leaves the camera view (zoom or pan) keeps its shadow slot and its shadow fade instead of losing them at once. It keeps them for good while no other light needs the slot, and for 0.2 seconds once one does, so a light that comes back into view is shadowed on its first frame instead of fading in again. Needs Steady shadow slots (RenderShadowSlotHysteresis). Off restores the old behaviour.",
+    "declaration_count_base": 0,
+    "declaration_count_head": 1,
+    "default": "1",
+    "duplicate_note": "",
+    "features": [
+      "rig"
+    ],
+    "file": "indra/newview/app_settings/settings.xml",
+    "head_declarations": [],
+    "name": "RenderShadowSlotUndrawnHold",
+    "persisted": "1",
+    "previous_default": null,
+    "saved_in_scenes": "unknown; structured blocks/dynamic ownership require review",
+    "scene_evidence": [],
+    "scope": "review feature ownership",
+    "type": "Boolean"
+  },
+  {
+    "change": "added",
     "comment": "[Vogel A/B] Vogel-disk soft-shadow tap count (8-32; default 16). Number of shadow-map samples in the Vogel PCF kernel when RenderShadowSoftVogel is on. Higher = smoother penumbra grain at higher shadow-sampling cost; clamped to 32. Ignored when RenderShadowSoftVogel is off.",
     "declaration_count_base": 0,
     "declaration_count_head": 1,

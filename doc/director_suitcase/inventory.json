@@ -8,7 +8,7 @@
       "GENERATED": 738,
       "HOOK": 563,
       "OWNED": 941,
-      "TOOLING": 524
+      "TOOLING": 526
     },
     "dirty_product_inputs": [],
     "evidence": {
@@ -118,7 +118,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3924,
+        "settings_declared": 3926,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -194,10 +194,10 @@
       },
       "wiring_rows": 2320
     },
-    "head_source_tree": "68795774734a6cdf90ae4e7b150c808afb8e1f05",
+    "head_source_tree": "7c57547a96a1ef8d6ef8aa6c7e472351bae8669a",
     "hook_files": 563,
-    "hunks": 3582,
-    "input_sha256": "e0063001ca6372af230bd08625f6f3992e2b86f86ffbcb15240f8fd0c4eca84f",
+    "hunks": 3586,
+    "input_sha256": "77a0f6f1abf77037a5ca2287c59a91c6c9f39398506ab72f86fc2efaa13b859c",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -205,7 +205,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2082
+    "settings": 2084
   },
   "paths": [
     {
@@ -45734,6 +45734,32 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/shadow_slot_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shadow_slot_undrawn_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/shadow_slot_undrawn_hunks.json",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

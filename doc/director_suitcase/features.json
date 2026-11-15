@@ -707,8 +707,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32155,430"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32215,372"
         ],
         "path": "indra/newview/pipeline.cpp"
       }
@@ -10337,6 +10337,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -10655,6 +10656,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -11946,10 +11948,10 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@22761,831",
-          "indra/newview/app_settings/settings.xml@23728,362",
-          "indra/newview/app_settings/settings.xml@29419,100",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@22775,831",
+          "indra/newview/app_settings/settings.xml@23742,362",
+          "indra/newview/app_settings/settings.xml@29433,100",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -12079,8 +12081,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@164,12",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32988,698"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@33202,154"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -22723,6 +22725,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -23041,6 +23044,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -24613,10 +24617,10 @@
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6496,120",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@27611,98",
-          "indra/newview/app_settings/settings.xml@28144,229",
-          "indra/newview/app_settings/settings.xml@29564,2466",
-          "indra/newview/app_settings/settings.xml@32241,364"
+          "indra/newview/app_settings/settings.xml@27625,98",
+          "indra/newview/app_settings/settings.xml@28158,229",
+          "indra/newview/app_settings/settings.xml@29578,2466",
+          "indra/newview/app_settings/settings.xml@32255,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -24764,13 +24768,13 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,30320"
+          "indra/newview/pipeline.cpp@1704,30322"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
-          "indra/newview/pipeline.h@2009,294"
+          "indra/newview/pipeline.h@2009,309"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -34709,6 +34713,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -35027,6 +35032,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -36495,7 +36501,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -36602,9 +36608,10 @@
           "indra/newview/pipeline.cpp@1374,61",
           "indra/newview/pipeline.cpp@1439,15",
           "indra/newview/pipeline.cpp@1567,106",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32155,430",
-          "indra/newview/pipeline.cpp@32988,698"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32215,372",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@33357,331"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -36615,8 +36622,8 @@
           "indra/newview/pipeline.h@814,100",
           "indra/newview/pipeline.h@1431,31",
           "indra/newview/pipeline.h@1569,414",
-          "indra/newview/pipeline.h@2009,294",
-          "indra/newview/pipeline.h@2722,194"
+          "indra/newview/pipeline.h@2009,309",
+          "indra/newview/pipeline.h@2737,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -46155,6 +46162,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -46473,6 +46481,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -49060,8 +49069,8 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@32031,209",
-          "indra/newview/app_settings/settings.xml@32241,364"
+          "indra/newview/app_settings/settings.xml@32045,209",
+          "indra/newview/app_settings/settings.xml@32255,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -49339,12 +49348,13 @@
           "indra/newview/pipeline.cpp@128,11",
           "indra/newview/pipeline.cpp@144,14",
           "indra/newview/pipeline.cpp@164,12",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@33821,222",
-          "indra/newview/pipeline.cpp@34649,955",
-          "indra/newview/pipeline.cpp@35880,344",
-          "indra/newview/pipeline.cpp@39945,153"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32990,180",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@33823,222",
+          "indra/newview/pipeline.cpp@34786,955",
+          "indra/newview/pipeline.cpp@36017,344",
+          "indra/newview/pipeline.cpp@40087,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -70852,6 +70862,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -71170,6 +71181,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -72880,7 +72892,7 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@25883,1573"
+          "indra/newview/app_settings/settings.xml@25897,1573"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -81155,7 +81167,7 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@92,17",
-          "indra/newview/pipeline.cpp@1704,30320"
+          "indra/newview/pipeline.cpp@1704,30322"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -88592,6 +88604,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -88910,6 +88923,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -89905,10 +89919,10 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@22761,831",
-          "indra/newview/app_settings/settings.xml@23728,362",
-          "indra/newview/app_settings/settings.xml@29419,100",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@22775,831",
+          "indra/newview/app_settings/settings.xml@23742,362",
+          "indra/newview/app_settings/settings.xml@29433,100",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -95981,11 +95995,11 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1120",
-          "indra/newview/app_settings/settings.xml@28770,648",
-          "indra/newview/app_settings/settings.xml@29564,2466",
-          "indra/newview/app_settings/settings.xml@32031,209",
-          "indra/newview/app_settings/settings.xml@32241,364"
+          "indra/newview/app_settings/settings.xml@21507,1134",
+          "indra/newview/app_settings/settings.xml@28784,648",
+          "indra/newview/app_settings/settings.xml@29578,2466",
+          "indra/newview/app_settings/settings.xml@32045,209",
+          "indra/newview/app_settings/settings.xml@32255,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -96287,8 +96301,8 @@
       {
         "hunks": [
           "indra/newview/pipeline.cpp@110,8",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32155,430"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32215,372"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -96296,7 +96310,7 @@
         "hunks": [
           "indra/newview/pipeline.h@226,357",
           "indra/newview/pipeline.h@1569,414",
-          "indra/newview/pipeline.h@2009,294"
+          "indra/newview/pipeline.h@2009,309"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -113292,6 +113306,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -113610,6 +113625,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -115426,9 +115442,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@25883,1573",
-          "indra/newview/app_settings/settings.xml@28034,109",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@25897,1573",
+          "indra/newview/app_settings/settings.xml@28048,109",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -115476,7 +115492,7 @@
       },
       {
         "hunks": [
-          "indra/newview/pipeline.cpp@1704,30320"
+          "indra/newview/pipeline.cpp@1704,30322"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -118512,6 +118528,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -118830,6 +118847,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -119850,7 +119868,7 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -128344,13 +128362,13 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1120",
-          "indra/newview/app_settings/settings.xml@22629,76",
-          "indra/newview/app_settings/settings.xml@22761,831",
-          "indra/newview/app_settings/settings.xml@23673,54",
-          "indra/newview/app_settings/settings.xml@24201,164",
-          "indra/newview/app_settings/settings.xml@29564,2466",
-          "indra/newview/app_settings/settings.xml@32241,364"
+          "indra/newview/app_settings/settings.xml@21507,1134",
+          "indra/newview/app_settings/settings.xml@22643,76",
+          "indra/newview/app_settings/settings.xml@22775,831",
+          "indra/newview/app_settings/settings.xml@23687,54",
+          "indra/newview/app_settings/settings.xml@24215,164",
+          "indra/newview/app_settings/settings.xml@29578,2466",
+          "indra/newview/app_settings/settings.xml@32255,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -128540,20 +128558,21 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@187,7",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32664,53",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@35880,344",
-          "indra/newview/pipeline.cpp@37989,1087",
-          "indra/newview/pipeline.cpp@39945,153"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32666,53",
+          "indra/newview/pipeline.cpp@32990,180",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@36017,344",
+          "indra/newview/pipeline.cpp@38131,1087",
+          "indra/newview/pipeline.cpp@40087,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
       {
         "hunks": [
           "indra/newview/pipeline.h@226,357",
-          "indra/newview/pipeline.h@2009,294",
-          "indra/newview/pipeline.h@2323,34"
+          "indra/newview/pipeline.h@2009,309",
+          "indra/newview/pipeline.h@2338,34"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -142535,6 +142554,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -142853,6 +142873,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -144770,9 +144791,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1120",
-          "indra/newview/app_settings/settings.xml@22717,43",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@21507,1134",
+          "indra/newview/app_settings/settings.xml@22731,43",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -144922,22 +144943,23 @@
           "indra/newview/pipeline.cpp@1233,11",
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32155,430",
-          "indra/newview/pipeline.cpp@32599,38",
-          "indra/newview/pipeline.cpp@32664,53",
-          "indra/newview/pipeline.cpp@32748,37",
-          "indra/newview/pipeline.cpp@32786,17",
-          "indra/newview/pipeline.cpp@32804,20",
-          "indra/newview/pipeline.cpp@32849,18",
-          "indra/newview/pipeline.cpp@32884,27",
-          "indra/newview/pipeline.cpp@32913,30",
-          "indra/newview/pipeline.cpp@32965,18",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@34126,303",
-          "indra/newview/pipeline.cpp@34431,11",
-          "indra/newview/pipeline.cpp@37629,359",
-          "indra/newview/pipeline.cpp@37989,1087"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32215,372",
+          "indra/newview/pipeline.cpp@32601,38",
+          "indra/newview/pipeline.cpp@32666,53",
+          "indra/newview/pipeline.cpp@32750,37",
+          "indra/newview/pipeline.cpp@32788,17",
+          "indra/newview/pipeline.cpp@32806,20",
+          "indra/newview/pipeline.cpp@32851,18",
+          "indra/newview/pipeline.cpp@32886,27",
+          "indra/newview/pipeline.cpp@32915,30",
+          "indra/newview/pipeline.cpp@32967,18",
+          "indra/newview/pipeline.cpp@32990,180",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@34128,438",
+          "indra/newview/pipeline.cpp@34568,11",
+          "indra/newview/pipeline.cpp@37766,364",
+          "indra/newview/pipeline.cpp@38131,1087"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -144953,9 +144975,9 @@
           "indra/newview/pipeline.h@1484,20",
           "indra/newview/pipeline.h@1506,62",
           "indra/newview/pipeline.h@1569,414",
-          "indra/newview/pipeline.h@2009,294",
-          "indra/newview/pipeline.h@2323,34",
-          "indra/newview/pipeline.h@2722,194"
+          "indra/newview/pipeline.h@2009,309",
+          "indra/newview/pipeline.h@2338,34",
+          "indra/newview/pipeline.h@2737,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -145714,6 +145736,8 @@
       "RenderProbeDirtySunDeg",
       "RenderReflectionProbeReachCull",
       "RenderShadowSlotHysteresis",
+      "RenderShadowSlotLog",
+      "RenderShadowSlotUndrawnHold",
       "RenderSpotShadowPenumbraModel",
       "RenderWorldShadowHiddenBodyCasts",
       "TronPresetAlsoRigRim",
@@ -159038,6 +159062,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -159356,6 +159381,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -161309,10 +161335,10 @@
           "indra/newview/app_settings/settings.xml@5341,241",
           "indra/newview/app_settings/settings.xml@5968,527",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1120",
-          "indra/newview/app_settings/settings.xml@25883,1573",
-          "indra/newview/app_settings/settings.xml@27457,153",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@21507,1134",
+          "indra/newview/app_settings/settings.xml@25897,1573",
+          "indra/newview/app_settings/settings.xml@27471,153",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -161406,17 +161432,18 @@
           "indra/newview/pipeline.cpp@1068,7",
           "indra/newview/pipeline.cpp@1351,21",
           "indra/newview/pipeline.cpp@1374,61",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32155,430",
-          "indra/newview/pipeline.cpp@32599,38",
-          "indra/newview/pipeline.cpp@32664,53",
-          "indra/newview/pipeline.cpp@32748,37",
-          "indra/newview/pipeline.cpp@32804,20",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@34126,303",
-          "indra/newview/pipeline.cpp@37629,359",
-          "indra/newview/pipeline.cpp@37989,1087",
-          "indra/newview/pipeline.cpp@39945,153"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32215,372",
+          "indra/newview/pipeline.cpp@32601,38",
+          "indra/newview/pipeline.cpp@32666,53",
+          "indra/newview/pipeline.cpp@32750,37",
+          "indra/newview/pipeline.cpp@32806,20",
+          "indra/newview/pipeline.cpp@32990,180",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@34128,438",
+          "indra/newview/pipeline.cpp@37766,364",
+          "indra/newview/pipeline.cpp@38131,1087",
+          "indra/newview/pipeline.cpp@40087,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -161427,8 +161454,8 @@
           "indra/newview/pipeline.h@814,100",
           "indra/newview/pipeline.h@1027,42",
           "indra/newview/pipeline.h@1484,20",
-          "indra/newview/pipeline.h@2009,294",
-          "indra/newview/pipeline.h@2406,58"
+          "indra/newview/pipeline.h@2009,309",
+          "indra/newview/pipeline.h@2421,58"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -173565,6 +173592,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -173883,6 +173911,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -175492,10 +175521,10 @@
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@3511,1055",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1120",
-          "indra/newview/app_settings/settings.xml@22761,831",
-          "indra/newview/app_settings/settings.xml@25883,1573",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@21507,1134",
+          "indra/newview/app_settings/settings.xml@22775,831",
+          "indra/newview/app_settings/settings.xml@25897,1573",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -175610,15 +175639,16 @@
         "hunks": [
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32155,430",
-          "indra/newview/pipeline.cpp@32719,13",
-          "indra/newview/pipeline.cpp@32748,37",
-          "indra/newview/pipeline.cpp@32804,20",
-          "indra/newview/pipeline.cpp@32849,18",
-          "indra/newview/pipeline.cpp@32965,18",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@37989,1087"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32215,372",
+          "indra/newview/pipeline.cpp@32721,13",
+          "indra/newview/pipeline.cpp@32750,37",
+          "indra/newview/pipeline.cpp@32806,20",
+          "indra/newview/pipeline.cpp@32851,18",
+          "indra/newview/pipeline.cpp@32967,18",
+          "indra/newview/pipeline.cpp@32990,180",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@38131,1087"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -175626,8 +175656,8 @@
         "hunks": [
           "indra/newview/pipeline.h@226,357",
           "indra/newview/pipeline.h@1027,42",
-          "indra/newview/pipeline.h@2009,294",
-          "indra/newview/pipeline.h@2323,34"
+          "indra/newview/pipeline.h@2009,309",
+          "indra/newview/pipeline.h@2338,34"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -184151,6 +184181,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -184469,6 +184500,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -185678,9 +185710,9 @@
           "indra/newview/pipeline.cpp@335,106",
           "indra/newview/pipeline.cpp@722,16",
           "indra/newview/pipeline.cpp@961,88",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@34126,303"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@33357,331",
+          "indra/newview/pipeline.cpp@34128,438"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -185691,8 +185723,8 @@
           "indra/newview/pipeline.h@721,90",
           "indra/newview/pipeline.h@814,100",
           "indra/newview/pipeline.h@1569,414",
-          "indra/newview/pipeline.h@2564,14",
-          "indra/newview/pipeline.h@2722,194"
+          "indra/newview/pipeline.h@2579,14",
+          "indra/newview/pipeline.h@2737,194"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -190470,6 +190502,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -190788,6 +190821,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -204721,8 +204755,8 @@
       {
         "hunks": [
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@21507,1120",
-          "indra/newview/app_settings/settings.xml@29564,2466"
+          "indra/newview/app_settings/settings.xml@21507,1134",
+          "indra/newview/app_settings/settings.xml@29578,2466"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -204822,26 +204856,29 @@
           "indra/newview/pipeline.cpp@302,32",
           "indra/newview/pipeline.cpp@577,71",
           "indra/newview/pipeline.cpp@928,32",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@32064,30",
-          "indra/newview/pipeline.cpp@32115,16",
-          "indra/newview/pipeline.cpp@32155,430",
-          "indra/newview/pipeline.cpp@32599,38",
-          "indra/newview/pipeline.cpp@32748,37",
-          "indra/newview/pipeline.cpp@32786,17",
-          "indra/newview/pipeline.cpp@32988,698",
-          "indra/newview/pipeline.cpp@33698,15",
-          "indra/newview/pipeline.cpp@33759,15",
-          "indra/newview/pipeline.cpp@33821,222",
-          "indra/newview/pipeline.cpp@34126,303",
-          "indra/newview/pipeline.cpp@34498,36",
-          "indra/newview/pipeline.cpp@34542,7",
-          "indra/newview/pipeline.cpp@34553,41",
-          "indra/newview/pipeline.cpp@36417,47",
-          "indra/newview/pipeline.cpp@36863,78",
-          "indra/newview/pipeline.cpp@37629,359",
-          "indra/newview/pipeline.cpp@37989,1087",
-          "indra/newview/pipeline.cpp@39945,153"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@32066,30",
+          "indra/newview/pipeline.cpp@32117,16",
+          "indra/newview/pipeline.cpp@32201,7",
+          "indra/newview/pipeline.cpp@32215,372",
+          "indra/newview/pipeline.cpp@32601,38",
+          "indra/newview/pipeline.cpp@32750,37",
+          "indra/newview/pipeline.cpp@32788,17",
+          "indra/newview/pipeline.cpp@32990,180",
+          "indra/newview/pipeline.cpp@33202,154",
+          "indra/newview/pipeline.cpp@33357,331",
+          "indra/newview/pipeline.cpp@33700,15",
+          "indra/newview/pipeline.cpp@33761,15",
+          "indra/newview/pipeline.cpp@33823,222",
+          "indra/newview/pipeline.cpp@34128,438",
+          "indra/newview/pipeline.cpp@34635,36",
+          "indra/newview/pipeline.cpp@34679,7",
+          "indra/newview/pipeline.cpp@34690,41",
+          "indra/newview/pipeline.cpp@36554,47",
+          "indra/newview/pipeline.cpp@37000,78",
+          "indra/newview/pipeline.cpp@37766,364",
+          "indra/newview/pipeline.cpp@38131,1087",
+          "indra/newview/pipeline.cpp@40087,153"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -204856,9 +204893,9 @@
           "indra/newview/pipeline.h@1027,42",
           "indra/newview/pipeline.h@1431,31",
           "indra/newview/pipeline.h@1569,414",
-          "indra/newview/pipeline.h@2009,294",
-          "indra/newview/pipeline.h@2406,58",
-          "indra/newview/pipeline.h@2689,32"
+          "indra/newview/pipeline.h@2009,309",
+          "indra/newview/pipeline.h@2421,58",
+          "indra/newview/pipeline.h@2704,32"
         ],
         "path": "indra/newview/pipeline.h"
       },
@@ -216650,6 +216687,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -216968,6 +217006,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
@@ -218634,9 +218673,9 @@
         "hunks": [
           "indra/newview/app_settings/settings.xml@2,3497",
           "indra/newview/app_settings/settings.xml@6617,14888",
-          "indra/newview/app_settings/settings.xml@29564,2466",
-          "indra/newview/app_settings/settings.xml@32031,209",
-          "indra/newview/app_settings/settings.xml@32241,364"
+          "indra/newview/app_settings/settings.xml@29578,2466",
+          "indra/newview/app_settings/settings.xml@32045,209",
+          "indra/newview/app_settings/settings.xml@32255,364"
         ],
         "path": "indra/newview/app_settings/settings.xml"
       },
@@ -218697,8 +218736,8 @@
           "indra/newview/pipeline.cpp@28,48",
           "indra/newview/pipeline.cpp@225,16",
           "indra/newview/pipeline.cpp@1214,16",
-          "indra/newview/pipeline.cpp@1704,30320",
-          "indra/newview/pipeline.cpp@34649,955"
+          "indra/newview/pipeline.cpp@1704,30322",
+          "indra/newview/pipeline.cpp@34786,955"
         ],
         "path": "indra/newview/pipeline.cpp"
       },
@@ -227547,6 +227586,7 @@
           "ALShadowSlot::retainNativeFrame",
           "ALShadowSlot::retainOwners",
           "ALShadowSlot::spareChannel",
+          "ALShadowSlot::undrawnOwner",
           "ALShaftDecision::observe",
           "ALShaftDecision::outranks",
           "ALShaftDecision::promoted",
@@ -227865,6 +227905,7 @@
           "LLPipeline::lineSegmentIntersectParticle",
           "LLPipeline::loadProjVolDustMap",
           "LLPipeline::logRelightTake",
+          "LLPipeline::logSpotShadowSlots",
           "LLPipeline::mainSunShadowsPublishedThisIteration",
           "LLPipeline::manualWorldShadowPickList",
           "LLPipeline::markGLRebuild",
