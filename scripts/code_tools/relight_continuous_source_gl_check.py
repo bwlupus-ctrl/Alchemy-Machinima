@@ -124,7 +124,7 @@ def cs_continuity(built):
                         failures.append((name+' step at d == radius', radius, cosine, physical, a, b))
             # Sources smaller than the 0.1 mm core (Codex r1): the core is capped at half the radius, so
             # the surface limits still agree. A core fixed at 0.1 mm steps here (0.75 -> 1 at N.L 1).
-            for tiny in (5.e-5, 1.e-5):
+            for tiny in (5.e-5, 1.e-5, 2.e-6, 5.e-7):  # the last two skip the inside branch (under 10 um)
                 left = cs_sample(built, direction*tiny*(1-CS_EDGE), tiny, 1)
                 right = cs_sample(built, direction*tiny*(1+CS_EDGE), tiny, 1)
                 if not (np.all(np.isfinite(left)) and np.all(np.isfinite(right))) or \

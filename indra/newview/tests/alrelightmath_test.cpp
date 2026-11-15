@@ -204,8 +204,9 @@ template<> template<> void relight_object::test<49>()
     using ALRelight::diffuseRatio;
     double worst_step=0;
     // Includes sources smaller than the 0.1 mm core (Codex r1): the core must end inside the source.
-    // Smallest is 2 um: below ~1 um the unchanged outside formula's max(d*d, 1e-12) guard already applies.
-    for (double radius : {2.e-6,1.e-5,5.e-5,1.5e-4,.03,.1,.45,1.0})
+    // Under kMinContinuousRadius (10 um) the inside branch is skipped (Codex r2): the plain formula runs
+    // everywhere, which is continuous at the surface and (1 + N.L)/2 inside down to its own 1 um guard.
+    for (double radius : {2.e-6,5.e-6,1.e-5,5.e-5,1.5e-4,.03,.1,.45,1.0})
         for (double cosine : {-1.0,-.9,-.5,-.2,0.0,.3,.7,.9,1.0})
         {
             const double core=ALRelight::sourceCentreCore(radius);
@@ -217,15 +218,20 @@ template<> template<> void relight_object::test<49>()
             close("continuous at the source surface",left,right,1.e-4);
             close("surface value is the half-covered hemisphere",left,.5*(1+cosine),1.e-4);
             // The centre: finite, the same for every normal, and the limit of its neighbourhood.
-            close("centre value",diffuseRatio(cosine,radius,0),.5,0);
-            close("continuous toward the centre",diffuseRatio(cosine,radius,core*1.e-8),.5,1.e-8);
+            const bool has_core=radius>=ALRelight::kMinContinuousRadius;
+            if (has_core)
+            {
+                close("centre value",diffuseRatio(cosine,radius,0),.5,0);
+                close("continuous toward the centre",diffuseRatio(cosine,radius,core*1.e-8),.5,1.e-8);
+            }
             // Inside, outside the 0.1 mm core: the half-covered hemisphere for this normal, at every distance.
             for (int i=1;i<=64;++i)
             {
-                const double distance=core+(radius-core)*i/64.5;
+                const double distance=has_core ? core+(radius-core)*i/64.5 : 1.e-6+(radius-1.e-6)*i/64.5;
                 close("inside is (1 + N.L)/2",diffuseRatio(cosine,radius,distance),.5*(1+cosine),1.e-15);
             }
             // Inside the core: bounded, monotone from 1/2 to that value, no jump between neighbouring distances.
+            if (has_core) {
             double previous=diffuseRatio(cosine,radius,0);
             for (int i=1;i<=64;++i)
             {
@@ -236,6 +242,7 @@ template<> template<> void relight_object::test<49>()
                 previous=value;
             }
             close("core joins the inside value",previous,.5*(1+cosine),1.e-15);
+            }
             // Whole sphere at the horizon: dark from both sides.
             if (cosine==-1.0) close("hidden at the surface",left,0,1.e-9);
             // The A/B switch: OFF is the old value exactly inside, and nothing differs outside the source.

@@ -1075,7 +1075,10 @@ float relightSphere(float c, float s2)
 float relightRatio(vec3 n, vec3 lv, float radius)
 {
     float d2 = dot(lv,lv);
-    if (d2 < radius*radius)
+    // Continuous mode skips the inside branch for sources under 10 um: there the unchanged formula below
+    // already gives (1 + N.L)/2 inside (s2 clamps to 1) down to its own 1 um direction guard, so there is
+    // no surface to join. Switch off: exactly the legacy condition.
+    if (d2 < radius*radius && (relight_continuous_source < 0.5 || radius >= 1.e-5))
     {
         // Inside the source. Legacy (switch off): the full hemisphere, 1, for every normal; the clipped
         // formula below gives (1 + N.L)/2 just outside, so the term stepped at d == radius (by up to 1 on

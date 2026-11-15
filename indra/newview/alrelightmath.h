@@ -93,11 +93,12 @@ inline double sphere(double cosine, double sin2)
 //   legacy (false; pre-11/14, kept for A/B): 1 everywhere inside, a step of up to 1 at distance == radius
 //     that flickered on distant sub-pixel sources.
 constexpr double kSourceCentreCore = 1.e-4; // metres; the shader's clamp(0.5*radius, 1.e-12, 1.e-4)
+constexpr double kMinContinuousRadius = 1.e-5; // metres; the shader's radius >= 1.e-5 (inside branch, switch on)
 inline double sourceCentreCore(double radius) { return std::clamp(0.5*radius, 1.e-12, kSourceCentreCore); }
 inline double diffuseRatio(double cosine, double radius, double distance, bool continuous_source = true)
 {
     if (radius <= 0.0) return std::max(cosine, 0.0);
-    if (distance < radius)
+    if (distance < radius && (!continuous_source || radius >= kMinContinuousRadius))
         return continuous_source ? std::clamp(0.5 + 0.5*cosine*std::min(distance/sourceCentreCore(radius), 1.0), 0.0, 1.0) : 1.0;
     const double s2 = std::min(1.0, radius*radius/std::max(distance*distance, 1.e-12));
     if (cosine >= std::sqrt(s2)) return cosine;
