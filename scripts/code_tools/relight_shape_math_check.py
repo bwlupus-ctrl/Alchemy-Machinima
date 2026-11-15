@@ -14,7 +14,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 
 
-PLANT_FROM = 'return continuous_source ? std::clamp(0.5 + 0.5*cosine*std::min(distance/kSourceCentreCore, 1.0), 0.0, 1.0) : 1.0;'
+PLANT_FROM = 'return continuous_source ? std::clamp(0.5 + 0.5*cosine*std::min(distance/sourceCentreCore(radius), 1.0), 0.0, 1.0) : 1.0;'
 
 
 def check(math_ref=None, plant_step=False):

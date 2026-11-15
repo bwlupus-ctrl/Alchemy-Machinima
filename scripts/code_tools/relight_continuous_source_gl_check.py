@@ -122,6 +122,14 @@ def cs_continuity(built):
                     scale = max(a, b)/max(float(left[0]), float(right[0]), 1.e-6)
                     if abs(a-b) > CS_TOLERANCE*scale+1.e-6:
                         failures.append((name+' step at d == radius', radius, cosine, physical, a, b))
+            # Sources smaller than the 0.1 mm core (Codex r1): the core is capped at half the radius, so
+            # the surface limits still agree. A core fixed at 0.1 mm steps here (0.75 -> 1 at N.L 1).
+            for tiny in (5.e-5, 1.e-5):
+                left = cs_sample(built, direction*tiny*(1-CS_EDGE), tiny, 1)
+                right = cs_sample(built, direction*tiny*(1+CS_EDGE), tiny, 1)
+                if not (np.all(np.isfinite(left)) and np.all(np.isfinite(right))) or \
+                        abs(float(left[0])-float(right[0])) > CS_TOLERANCE:
+                    failures.append(('tiny source step at d == radius', tiny, cosine, float(left[0]), float(right[0])))
             # The centre and its neighbourhood: finite, 1/2, continuous.
             centre = cs_sample(built, (0, 0, 0), radius, 1)
             if not np.all(np.isfinite(centre)) or centre[0] != .5:

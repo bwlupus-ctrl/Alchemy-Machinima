@@ -203,9 +203,13 @@ template<> template<> void relight_object::test<49>()
 {
     using ALRelight::diffuseRatio;
     double worst_step=0;
-    for (double radius : {.03,.1,.45,1.0})
+    // Includes sources smaller than the 0.1 mm core (Codex r1): the core must end inside the source.
+    // Smallest is 2 um: below ~1 um the unchanged outside formula's max(d*d, 1e-12) guard already applies.
+    for (double radius : {2.e-6,1.e-5,5.e-5,1.5e-4,.03,.1,.45,1.0})
         for (double cosine : {-1.0,-.9,-.5,-.2,0.0,.3,.7,.9,1.0})
         {
+            const double core=ALRelight::sourceCentreCore(radius);
+            ensure("core ends inside the source",core<radius);
             // Left and right limits at the surface agree with each other and with (1 + N.L)/2.
             const double left=diffuseRatio(cosine,radius,radius*(1-1.e-10));
             const double right=diffuseRatio(cosine,radius,radius*(1+1.e-10));
@@ -214,18 +218,18 @@ template<> template<> void relight_object::test<49>()
             close("surface value is the half-covered hemisphere",left,.5*(1+cosine),1.e-4);
             // The centre: finite, the same for every normal, and the limit of its neighbourhood.
             close("centre value",diffuseRatio(cosine,radius,0),.5,0);
-            close("continuous toward the centre",diffuseRatio(cosine,radius,1.e-12),.5,1.e-8);
+            close("continuous toward the centre",diffuseRatio(cosine,radius,core*1.e-8),.5,1.e-8);
             // Inside, outside the 0.1 mm core: the half-covered hemisphere for this normal, at every distance.
             for (int i=1;i<=64;++i)
             {
-                const double distance=ALRelight::kSourceCentreCore+(radius-ALRelight::kSourceCentreCore)*i/64.5;
+                const double distance=core+(radius-core)*i/64.5;
                 close("inside is (1 + N.L)/2",diffuseRatio(cosine,radius,distance),.5*(1+cosine),1.e-15);
             }
             // Inside the core: bounded, monotone from 1/2 to that value, no jump between neighbouring distances.
             double previous=diffuseRatio(cosine,radius,0);
             for (int i=1;i<=64;++i)
             {
-                const double distance=ALRelight::kSourceCentreCore*i/64, value=diffuseRatio(cosine,radius,distance);
+                const double distance=core*i/64, value=diffuseRatio(cosine,radius,distance);
                 ensure("core bounded",std::isfinite(value) && value>=0 && value<=1);
                 ensure("core monotone along a ray",cosine>=0 ? value+1.e-15>=previous : value<=previous+1.e-15);
                 ensure("core has no jump between neighbouring distances",std::abs(value-previous)<=.5/64+1.e-12);

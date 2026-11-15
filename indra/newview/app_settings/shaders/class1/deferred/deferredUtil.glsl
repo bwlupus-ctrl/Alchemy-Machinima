@@ -1084,10 +1084,12 @@ float relightRatio(vec3 n, vec3 lv, float radius)
         // Continuous: the clipped formula below with s2 held at 1 (the source covers the half space on
         // the centre's side), which is exactly (1 + N.L)/2: the same value the formula reaches just
         // outside, so nothing steps at d == radius.
-        // Centre guard: N.L = dot(n,lv)/d has no direction at d == 0. Dividing by max(d, 0.1 mm) lets
+        // Centre guard: N.L = dot(n,lv)/d has no direction at d == 0. Dividing by max(d, core) lets
         // N.L fall linearly to 0 inside that core, so the term tends to 1/2 for every normal: no NaN,
-        // no fallback direction, and no jump to a different value at the centre itself.
-        return clamp(0.5 + 0.5*dot(n,lv)/max(sqrt(d2), 1.e-4), 0.0, 1.0);
+        // no fallback direction, and no jump to a different value at the centre itself. The core is
+        // 0.1 mm, capped at half the radius so it always ends inside the source (a tiny source would
+        // otherwise step at its own surface).
+        return clamp(0.5 + 0.5*dot(n,lv)/max(sqrt(d2), clamp(0.5*radius, 1.e-12, 1.e-4)), 0.0, 1.0);
     }
     float s2 = min(1.0, radius*radius/max(d2, 1.e-12));
     float c = dot(n, relightUnit(lv,n));
