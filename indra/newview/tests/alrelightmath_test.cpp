@@ -253,6 +253,9 @@ template<> template<> void relight_object::test<49>()
                       diffuseRatio(cosine,radius,distance,true),0);
         }
     ensure("surface step is far below the old one",worst_step<1.e-4);
+    // Mirror parity below the shader's 1 um direction guard (Codex r3): relightUnit falls back to n, so N.L = 1.
+    close("direction guard: tiny source, sub-micron receiver",diffuseRatio(-.5,2.e-6,5.e-7,true),1,0);
+    close("direction guard: sized source, outside branch",diffuseRatio(-.5,5.e-7,9.e-7,true),1,0);
     // Unsized lights never see the switch.
     for (double cosine : {-1.0,-.2,0.0,.2,1.0})
         for (double distance : {0.0,.05,10.0})

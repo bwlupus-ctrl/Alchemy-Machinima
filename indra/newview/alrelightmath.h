@@ -101,8 +101,10 @@ inline double diffuseRatio(double cosine, double radius, double distance, bool c
     if (distance < radius && (!continuous_source || radius >= kMinContinuousRadius))
         return continuous_source ? std::clamp(0.5 + 0.5*cosine*std::min(distance/sourceCentreCore(radius), 1.0), 0.0, 1.0) : 1.0;
     const double s2 = std::min(1.0, radius*radius/std::max(distance*distance, 1.e-12));
-    if (cosine >= std::sqrt(s2)) return cosine;
-    return sphere(cosine, s2) / (3.14159265358979323846 * std::max(s2, 1.e-20));
+    // The shader's relightUnit(lv,n) has no direction when d^2 <= 1e-12 and falls back to n, so N.L = 1 there.
+    const double c = distance*distance <= 1.e-12 ? 1.0 : cosine;
+    if (c >= std::sqrt(s2)) return c;
+    return sphere(c, s2) / (3.14159265358979323846 * std::max(s2, 1.e-20));
 }
 // ---------------------------------------------------------------------------------------- shadow source size
 // One source radius (metres) for every local-light shadow path. `authored` is LLPipeline's
