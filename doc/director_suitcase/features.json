@@ -94302,6 +94302,12 @@
       },
       {
         "file": "indra/newview/CMakeLists.txt",
+        "line": 1320,
+        "source": "indra/newview/alcinelightrigmanager.h",
+        "text": "alcinelightrigmanager.h"
+      },
+      {
+        "file": "indra/newview/CMakeLists.txt",
         "line": 190,
         "source": "indra/newview/aldanceball.cpp",
         "text": "aldanceball.cpp"
@@ -96487,6 +96493,7 @@
       "indra/newview/alcinecamobjectlockui.h",
       "indra/newview/alcinelightrig.cpp",
       "indra/newview/alcinelightrigmanager.cpp",
+      "indra/newview/alcinelightrigmanager.h",
       "indra/newview/aldanceball.cpp",
       "indra/newview/aldirectoractorchoice.cpp",
       "indra/newview/aldirectoractorchoice.h",
@@ -97994,6 +98001,22 @@
           "LLSD::emptyArray",
           "LLSD::emptyMap",
           "LLViewerCamera::getInstance"
+        ],
+        "unresolved_includes": []
+      },
+      "indra/newview/alcinelightrigmanager.h": {
+        "includes": [
+          "indra/newview/alcinelightrig.h"
+        ],
+        "qualified_call_candidates": [
+          "ALCineLightRigModel::effectiveActorOnly",
+          "ALCineLightRigParamBlob::fromLLSD",
+          "ALCineLightRigParamBlob::toLLSD",
+          "ALCineLightRigPersistence::readFX",
+          "ALCineLightRigPersistence::writeFX",
+          "ALCineRigRim::makeParams",
+          "LLSD::emptyArray",
+          "LLSD::emptyMap"
         ],
         "unresolved_includes": []
       },

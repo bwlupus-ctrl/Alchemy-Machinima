@@ -2,7 +2,7 @@
  "meta": {
   "generator": "scripts/code_tools/director_functional_manifest.py",
   "csv": "doc/director_kit/wiring/wiring_table.csv",
-  "csv_sha256": "853fa985cc5aa4c2019028695f6aabf343b528ff7c269e9a9c78039142dcc865",
+  "csv_sha256": "cd058ed6535125117a3f493b1b7d1c83c9cdbb676dc219df65e2ec75c92a4e5c",
   "interactive_rows": 2185,
   "generated_kit_pages": [
    "frame_orbit_tab",

@@ -66,7 +66,7 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 88 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 337 | 60 | 204 |
+| [director-shell](features/director-shell.md) | 2 | 338 | 60 | 204 |
 | [actor-bar](features/actor-bar.md) | 3 | 77 | 14 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 109 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 80 | 33 | 493 |
