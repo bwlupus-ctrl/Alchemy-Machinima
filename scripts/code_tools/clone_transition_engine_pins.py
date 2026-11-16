@@ -6,10 +6,8 @@ reverse_engine_layer() peels exactly the engine hunks recorded in clone_transiti
 by digest) and requires the result to equal base a49168443e7. An unreviewed edit in the same files still fails
 the older gates.
 
-HOOKING (needs the render workstream's module, so it is a REQUEST in REPORT_ENGINE.md): add to
-clone_transition_pins.reverse_clone_transition, before its own work,
-    from clone_transition_engine_pins import reverse_engine_layer
-    source = reverse_engine_layer(source, path)
+HOOKED: clone_transition_pins.reverse_clone_transition calls reverse_engine_layer first (the two layers cover
+disjoint files, so the order is immaterial; regenerate BOTH manifests after any edit).
 
 Maintenance: after an intentional edit of a covered file run
     python scripts/code_tools/clone_transition_engine_pins.py --regen
@@ -62,6 +60,8 @@ def reverse_engine_layer(source, path):
     original = _git_base(key)
     if source == original:
         return source
+    if not any(h['after'] in source for h in files[key]):
+        return source   # already peeled by an outer call of the chain (or never had this layer): older layers judge it
     expected = original
     for hunk in files[key]:
         assert expected.count(hunk['before']) == 1, ('clone transition engine baseline hunk', key)

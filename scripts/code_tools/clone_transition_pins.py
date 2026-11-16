@@ -22,7 +22,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 BASE = 'a49168443e7'
 MANIFEST = Path(__file__).with_name('clone_transition_render_hunks.json')
-MANIFEST_SHA256 = 'ab45c6a825eb20027d941b60dee0b88cabda5f78e7b0dd6515882fdc631999d2'
+MANIFEST_SHA256 = '424707e0892fec0adec7590ddd5d131c9561b1cab95a34943d1ff77a386ddddb'
 # Files this layer may touch. Everything else is "unchanged by this layer".
 COVERED_PREFIXES = (
     'indra/newview/app_settings/shaders/',
@@ -88,6 +88,9 @@ def _load():
 def reverse_clone_transition(source, path):
     """Peel the transition render layer off `source` (a covered file's current text). Paths not in the
     manifest, and sources that are already unchanged, pass through untouched."""
+    # Chain: the engine layer (workstream E) covers a disjoint file set; peel it first (no-op for render-covered paths).
+    from clone_transition_engine_pins import reverse_engine_layer
+    source = reverse_engine_layer(source, path)
     if not MANIFEST.exists() or MANIFEST_SHA256.strip('0') == '':
         return source
     files = _load()

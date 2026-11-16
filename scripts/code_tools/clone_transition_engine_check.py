@@ -245,6 +245,47 @@ def check_contract(files: dict[str, str]) -> list[str]:
     return problems
 
 
+def check_seams(files: dict[str, str], tree: dict[str, str]) -> list[str]:
+    """Integration seams between the engine (manager) and the render side. The render side draws each half
+    with the params the manager hands out; the two halves of one transition must be COMPLEMENTARY and share one
+    BodyFrame, or a point is kept by both halves / neither (the 'ghost body' failure)."""
+    problems = []
+    m = files["manager"]
+    native = body(m, "ALCloneTransitions::nativeParamsFor(")
+    layers = body(m, "ALCloneTransitions::studioLayersFor(")
+    if not native or not layers:
+        return ["nativeParamsFor / studioLayersFor not found in alclonetransitions.cpp"]
+    # native half: OUTGOING only for entity -> overlay look, otherwise INCOMING
+    if not re.search(r"KIND_ENTITY_TO_OVERLAY_LOOK\s*\?\s*ALCloneTransition::SIDE_OUTGOING\s*:\s*ALCloneTransition::SIDE_INCOMING", native):
+        problems.append("nativeParamsFor: native half must be SIDE_OUTGOING for entity->overlay look and SIDE_INCOMING for the reverse kind")
+
+    def case(kind):
+        mm = re.search(r"case ALCloneTransition::" + kind + r":(.*?)break;", layers, re.S)
+        return mm.group(1) if mm else ""
+    l2l, e2o, o2e = case("KIND_LOOK_TO_LOOK"), case("KIND_ENTITY_TO_OVERLAY_LOOK"), case("KIND_OVERLAY_LOOK_TO_ENTITY")
+    if not (re.search(r"layer\[0\]\.params\.side = ALCloneTransition::SIDE_OUTGOING", l2l)
+            and re.search(r"layer\[1\]\.params\.side = ALCloneTransition::SIDE_INCOMING", l2l) and "count = 2" in l2l):
+        problems.append("studioLayersFor: Look->Look must give two layers, outgoing (fromLook) then incoming (toLook)")
+    if not (re.search(r"layer\[0\]\.params\.side = ALCloneTransition::SIDE_INCOMING", e2o) and "attachedPlacement = true" in e2o):
+        problems.append("studioLayersFor: entity->overlay look Studio layer must be SIDE_INCOMING with attached placement")
+    if not (re.search(r"layer\[0\]\.params\.side = ALCloneTransition::SIDE_OUTGOING", o2e) and "attachedPlacement = true" in o2e):
+        problems.append("studioLayersFor: overlay look->entity Studio layer must be SIDE_OUTGOING with attached placement")
+    # one frame source: both halves are built from the SAME per-record params (frame filled by fillFrame only)
+    if "it->second.params" not in native or "it->second.params" not in layers:
+        problems.append("native and Studio halves must both be built from the one per-record params (shared BodyFrame)")
+    if m.count("rootAgent[") != 1:
+        problems.append("BodyFrame must be written in exactly one place (fillFrame)")
+    for name in ("llactormover.cpp", "lldrawpool.cpp", "pipeline.cpp", "lldirectorcast.cpp"):
+        if re.search(r"\brootAgent\b|BodyFrame\s+\w+\s*[;=]", tree.get(name, "")):
+            problems.append(name + " builds its own BodyFrame; the frame comes from ALCloneTransitions only")
+    am = tree.get("llactormover.cpp", "")
+    first = am.find("studioLayersFor(inst.mId, layers)")
+    judge = am.find("inst.mOverlayLook < 0 && layers.count == 0")
+    if first < 0 or judge < 0 or first > judge:
+        problems.append("renderStudioGhosts must query studioLayersFor before judging inst.mOverlayLook")
+    return problems
+
+
 def load_files() -> tuple[dict[str, str], dict[str, str]]:
     xui = NV / "skins/default/xui/en"
     files = {
@@ -269,7 +310,7 @@ def load_files() -> tuple[dict[str, str], dict[str, str]]:
 
 def all_problems(files, tree) -> list[str]:
     return (check_table(files) + check_overlay_look(files["studio"]) + check_session_only(files, tree)
-            + check_ui(files) + check_contract(files))
+            + check_ui(files) + check_contract(files) + check_seams(files, tree))
 
 
 def main() -> int:
@@ -287,12 +328,12 @@ def main() -> int:
     for p in problems:
         failures.append(p)
     print(("PASS" if not problems else "FAIL") + f" source lifecycle checks ({len(TABLE)} table rows + shutdown order + overlay-look recovery + session-only + UI + contract)")
-    # the scene-load call site lives in lldirectorcast.cpp (render workstream owns it): report, do not hide.
-    if "ALCloneTransitions::onSceneReplaced" in tree.get("lldirectorcast.cpp", ""):
-        print("PASS scene load / cast clear call site present in lldirectorcast.cpp")
-    else:
-        print("EXTERNAL-PENDING scene load / cast clear: ALCloneTransitions::onSceneReplaced() is implemented; the call at the top of "
-              "LLDirectorCast::applySceneData (lldirectorcast.cpp, render-owned) is requested in REPORT_ENGINE.md")
+    # the scene-load call site lives in lldirectorcast.cpp (integrated): first statement of applySceneData
+    scene_body = body(tree.get("lldirectorcast.cpp", ""), "void LLDirectorCast::applySceneData(")
+    hook_ok = scene_body.lstrip("{\n ").startswith("ALCloneTransitions::onSceneReplaced();")
+    print(("PASS" if hook_ok else "FAIL") + " scene load / cast clear: onSceneReplaced() is the first statement of LLDirectorCast::applySceneData")
+    if not hook_ok:
+        failures.append("lldirectorcast.cpp applySceneData must call ALCloneTransitions::onSceneReplaced() first")
 
     # ---------------- planted negatives: each MUST fail ----------------
     negatives = []
@@ -342,6 +383,27 @@ def main() -> int:
     f6 = dict(files)
     f6["alloff"] = mutate(files["alloff"], "    ALCloneTransitions::onAllOff(!ALGhostStudio::instance().getShowAll());\n", "")
     negatives.append(("ALL OFF row not wired", bool(check_table(f6)), ""))
+
+    # seam negatives
+    f7 = dict(files)
+    f7["manager"] = mutate(files["manager"], "KIND_ENTITY_TO_OVERLAY_LOOK\n            ? ALCloneTransition::SIDE_OUTGOING : ALCloneTransition::SIDE_INCOMING",
+                           "KIND_ENTITY_TO_OVERLAY_LOOK\n            ? ALCloneTransition::SIDE_INCOMING : ALCloneTransition::SIDE_OUTGOING")
+    negatives.append(("native half sides swapped (a1 / reverse)", bool(check_seams(f7, tree)), ""))
+    f8 = dict(files)
+    f8["manager"] = mutate(files["manager"], "out.layer[1].params = params; out.layer[1].params.side = ALCloneTransition::SIDE_INCOMING;",
+                           "out.layer[1].params = params; out.layer[1].params.side = ALCloneTransition::SIDE_OUTGOING;")
+    negatives.append(("Look->Look layers not complementary", bool(check_seams(f8, tree)), ""))
+    f9 = dict(files)
+    f9["manager"] = mutate(files["manager"], "        out.layer[0].look = rec->fromLook;\n        out.layer[0].params = params; out.layer[0].params.side = ALCloneTransition::SIDE_OUTGOING;\n        break;\n    default:",
+                           "        out.layer[0].look = rec->fromLook;\n        out.layer[0].params = params; out.layer[0].params.side = ALCloneTransition::SIDE_INCOMING;\n        break;\n    default:")
+    negatives.append(("reverse kind Studio layer not outgoing", bool(check_seams(f9, tree)), ""))
+    tree9 = dict(tree)
+    tree9["llactormover.cpp"] = tree["llactormover.cpp"] + "\nstatic void planted(){ ALCloneTransition::BodyFrame f; f.rootAgent[0] = 1.f; }\n"
+    negatives.append(("render side builds its own BodyFrame", bool(check_seams(files, tree9)), ""))
+    tree10 = dict(tree)
+    tree10["lldirectorcast.cpp"] = tree["lldirectorcast.cpp"].replace("    ALCloneTransitions::onSceneReplaced();", "    ", 1)
+    sb = body(tree10["lldirectorcast.cpp"], "void LLDirectorCast::applySceneData(")
+    negatives.append(("scene load hook missing", not sb.lstrip("{\n ").startswith("ALCloneTransitions::onSceneReplaced();"), ""))
 
     for label, failed_as_planted, detail in negatives:
         print(("PASS " if failed_as_planted else "FAIL ") + "planted negative fails as planted: " + label)

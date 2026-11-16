@@ -2847,6 +2847,7 @@ LLSD LLDirectorCast::sceneData() const
 
 void LLDirectorCast::applySceneData(const LLSD& data)
 {
+    ALCloneTransitions::onSceneReplaced(); // clone transitions are session-only: roll back before membership is replaced
     // replace membership wholesale; a running transport is the caller's
     // problem (the console cuts before loading). Queued staggered starts and
     // group delays belong to the outgoing cast, so both reset here.

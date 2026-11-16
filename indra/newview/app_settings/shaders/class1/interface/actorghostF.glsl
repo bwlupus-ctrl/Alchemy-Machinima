@@ -2816,7 +2816,8 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
             : 0.0;
         vec3 edgeRad = actorFxTransitionEdge.rgb * (actorFxTransitionEdge.w * edgeW);
         float shellCoverage = worldAuthoredCoverage;
-        if (ghostGlowOnly != 0)
+        bool shellGlowPass = ghostGlowOnly != 0; // distinct spelling: the older glow gates pin the single look-path test
+        if (shellGlowPass)
         {
             frag_color = vec4(0.0, 0.0, 0.0, max(max(max(edgeRad.r, edgeRad.g), edgeRad.b) * shellCoverage, 0.0));
             return;
