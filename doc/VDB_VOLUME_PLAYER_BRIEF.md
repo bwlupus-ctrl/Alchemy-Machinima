@@ -1,10 +1,12 @@
 # Volume Player — animated smoke & fire from Blender (VDB) in the viewer — design brief
 
-**Date:** 2026-11-16
-**Status:** DESIGN ONLY. Nothing implemented, nothing built, **not yet adversarially reviewed**.
-**Process (per `CLAUDE.md`):** an Opus adversarial review of this brief first; then Codex implements
-(`--write`, `--prompt-file`), Opus reviews the code, loop to 0 must-fix, Claude builds once, the user
-tests in-world. Codex never builds.
+**Date:** 2026-11-16 (rev 2, after adversarial review round 1)
+**Status:** DESIGN ONLY. Nothing implemented, nothing built.
+**Review:** round 1 (independent Opus) found 4 must-fix, 12 should-fix and 10 nits; all applied in rev
+2. Claude re-verified the depth-buffer and alpha-channel findings in the code. The rev-2 edits aren't
+re-reviewed; the code-review loop must attack §5.4 (depth copy, composite and blend state) first.
+**Process (per `CLAUDE.md`):** Codex implements (`--write`, `--prompt-file`), Opus reviews the code, loop
+to 0 must-fix, Claude builds once, the user tests in-world. Codex never builds.
 
 > **BASE.** `file:line` references are from branch `ccr-221def9f-h17t1m` at `89520b4`, which contains
 > `origin/fix/animesh-clone-pose-polish`. Re-anchor against any unpushed local work.
@@ -16,12 +18,12 @@ tests in-world. Codex never builds.
 > "Is SL able to play vdb files like in Blender?" … "smoke and fire, animated sequences, build a doc
 > for codex."
 
-Play **animated smoke and fire simulations made in Blender** (Mantaflow bakes, which Blender stores as
-OpenVDB `.vdb` files, one per frame) **inside the viewer**:
+Play **animated smoke and fire simulations made in Blender** (Mantaflow bakes, stored as OpenVDB `.vdb`,
+one per frame) **inside the viewer**:
 
 - placed in the world;
-- lit by the scene;
-- fire glows;
+- lit consistently with the scene;
+- fire glows (including bloom);
 - playback stays in step with the take (Temporal Capture).
 
 **Client-only:** only this viewer sees it, like Local Mesh and Local Animation. Second Life has no
@@ -32,22 +34,17 @@ volume asset type, and this feature never uploads anything.
 ## 2. Decision D1 — how `.vdb` gets in (read first; it changes the build)
 
 The viewer has **no OpenVDB support** today (no `openvdb`, `tbb` or `blosc` in `indra/vcpkg.json`; no
-mention in the source). Two routes:
+mention in the source).
 
-| | **A. Read `.vdb` directly** | **B. Blender exporter → viewer format (recommended for v1)** |
+| | **A. Read `.vdb` directly** | **B. Blender exporter → viewer format (default)** |
 |---|---|---|
-| User flow | Point the viewer at the Blender cache folder | One extra click in Blender: run the bundled exporter on the cache, then load the result |
-| New dependencies | vcpkg `openvdb` (pulls TBB, Blosc, Boost pieces, Imath) on Windows, macOS and Linux | **None.** The exporter runs inside Blender, using Blender's bundled OpenVDB Python module; the viewer reader uses zlib, which is already a dependency (`indra/vcpkg.json:48`) |
-| Build risk | High: a large C++ dependency set, possible Boost version clash with the viewer's own | Low |
-| Load speed | Each frame decoded and resampled at play time | Frames pre-resampled and quantised once, so the viewer just inflates and uploads |
-| Fidelity | Full sparse VDB | Dense grid at a chosen resolution (default 128³), which is plenty for the camera distances in SL |
+| User flow | Point the viewer at the Blender cache folder | One extra step in Blender: run the bundled exporter, then load the result |
+| New dependencies | vcpkg `openvdb` (pulls TBB, Blosc, Boost pieces, Imath) on all three platforms | **None.** Blender does the VDB reading; the viewer reader uses zlib, already a dependency (`indra/vcpkg.json:48`) |
+| Build risk | High (a large dependency set, possible Boost clash) | Low |
+| Load speed | Decode and resample at play time | Pre-resampled, quantised frames: inflate and upload |
 
-**Default: B.** A is listed as a later option (§10). **Codex must not add OpenVDB to vcpkg without the
-user choosing A.**
-
-**Verify item for B:** the exact name of Blender's bundled OpenVDB Python module in the user's Blender
-version (`pyopenvdb` in older releases, `openvdb` in newer ones). The exporter must try both and fail
-with a clear message if neither imports.
+**Default: B.** A is a later option (§10). **Codex must not add OpenVDB to vcpkg without the user
+choosing A.**
 
 ---
 
@@ -55,71 +52,99 @@ with a clear message if neither imports.
 
 | Fact | Where |
 |---|---|
-| 3D textures are supported by the render layer. | `llrender/llrender.h:79` (`TT_TEXTURE_3D`), `llrender/llrender.cpp:88, 491` |
-| A colour-grading LUT is already uploaded as a 3D texture with `glTexImage3D`. | `newview/pipeline.cpp:2769-2778` |
-| A **hardened** 3D-texture loader exists for the projector-shaft dust volume: bounds-checked file reads, `glGetError` after upload, delete on any failure, so it degrades to "effect off", never a partial texture. **The precedent to copy.** | `pipeline.cpp:2800-2950` (`loadProjVolDustMap`) |
-| Volumetrics composite onto the **linear HDR scene buffer in `renderFinalize`**: after bloom generation, before `colorCorrect` (tonemap), additive in place on `mRT->screen`. Froxel volumetrics then projector shafts run here. | `pipeline.cpp:21884-21896` |
-| The froxel pass's master-gate pattern: off, or a cube-map capture, or the program not compiled → no allocation, no passes. | `pipeline.cpp:19371-19390` |
-| Local fog volumes: up to 8 analytic box/ellipsoid volumes, a saved bank, a `tick(presentation_time)`, and injection into the coarse froxel grid. Too coarse for detailed smoke, but the UI and bank precedent. | `newview/allocalfogmanager.h` |
-| Local assets loaded from disk, client-only, with a registry, a scroll-list feed and live reload: Local Mesh and Local Animation. | `newview/lllocalmesh.h:209-350`, `newview/lllocalanim.h` |
-| VRAM accounting for raw GL textures: `LLImageGLMemory::alloc_tex_image / free_tex_image`, which feeds the budget governor. Memory pressure: `BDMergeMemoryBudget::isCritical()`. | `llrender/llimagegl.h:51-63`; `newview/bdmergememorybudget.h` |
-| The presentation clock, and the rule for following Temporal Capture: advance by the presentation delta only while `drives(LLTemporalFeature::ANIMATION)`, otherwise by wall delta (the Ghost Studio motion clock, `ALGhostStudio::advanceMotionClock`). | `newview/llpresentationtime.h`; `newview/alghoststudio.cpp` |
-| Kelvin → linear RGB (Planckian) maths already exists in the light rig model; reuse its method for the fire colour LUT. | `newview/alcinelightrigmodel.cpp` (`planckianLinearRGB`) |
+| 3D textures are supported. **There is no 1D texture type**, so use an N×1 2D texture for LUTs. | `llrender/llrender.h:74-81` |
+| A colour LUT is already uploaded with `glTexImage3D`. A **hardened** 3D loader (bounds-checked reads, `glGetError` drain, delete on failure → effect off) exists for the projector dust volume: **the precedent.** | `newview/pipeline.cpp:2769-2778`; `:2800-2950` |
+| `glTexStorage3D` is **null below GL 4.2** (macOS is 4.1). `glTexSubImage3D` is loaded. So allocate once with `glTexImage3D(nullptr)`, then update with `glTexSubImage3D`. | `llrender/llgl.cpp:2192-2206`, `:1712` |
+| `LLImageGLMemory::alloc_tex_image(w, h, fmt, count, mips)` records base bytes × `count`. It asserts **unit 0** and reads the texture bound through `gGL`. `GL_RGB8` is counted at 24 bpp, though drivers usually pad it to 32 (inference). | `llrender/llimagegl.h:51-63`; `llimagegl.cpp:134, 146-151, 480` |
+| **VRAM** headroom: `LLViewerTexture::sFreeVRAMMegabytes`. `BDMergeMemoryBudget` is **system RAM** (physical/commit/process), not VRAM. | `newview/llviewertexture.cpp:680`; `newview/bdmergememorybudget.h:14-19` |
+| The thread pool's `General` queue defaults to **1 thread**, shared with GLTF material decode. | `app_settings/settings.xml:23511`; `newview/llgltfmateriallist.cpp:555` |
+| `renderFinalize` asserts `!gCubeSnapshot`, its only caller is `render_ui`, and the Prism aux view never calls it. So it runs for the **main view only**: mirrors and VCam feeds will not show volumes. | `pipeline.cpp:21731`; `llviewerdisplay.cpp:1632`; `llprismlens.cpp:7589` |
+| `renderFinalize` captures matrices at entry ("post passes alter GL state"). Post passes use `get_current_modelview()` / `get_current_projection()`. It **disables `GL_CULL_FACE`**. | `pipeline.cpp:21741`, `:20155`, `:21789` |
+| The volumetric composite point: luminance/exposure and bloom generation, then `renderFroxelVolumetrics`, then `renderProjectorVolumetric`, then the bloom feed (`feedProjectorVolumetricBloom`), then `colorCorrect`. All on linear HDR `mRT->screen`. | `pipeline.cpp:21827-21829`, `:21880`, `:21894-21906`, `:21927` |
+| **The scene depth at that point is NOT opaque-only.** Rigged alpha (hair) always writes depth, pre-water alpha writes depth, and with `RenderDepthOfField` on a final pass writes all post-water alpha with alpha ≥ 0.33 (glass, particles) to depth. | `newview/lldrawpoolalpha.cpp:289-307`, `:321-330`; depth shared at `pipeline.cpp:1323` |
+| **The scene alpha channel carries prim glow** to the legacy glow extract on the non-HDR path, so a composite must not write alpha. The froxel apply's blend: `blendFunc(BF_ONE, BF_SOURCE_ALPHA)`, `setColorMask(true, false)`, restored after. **Copy it.** | `postDeferredGammaCorrect.glsl:65`; `glowExtractF.glsl:61`; `pipeline.cpp:19978-20007` |
+| The froxel apply composites `L_fog + scene·T_fog` against scene depth; the integrated froxel volume (`mFroxelIntegrated`) is available when `mFroxelIntegratedValid`. | `pipeline.cpp:19371-19390`, `:19973-20007` |
+| The scene's sun and ambient go through `calcAtmosphericVarsLinear`: sRGB→linear sunlight × `sky_sunlight_scale` / `sunlight_hdr_scale` × EnvIntensity sun EV × tint, and grey ambient × ambient EV × tint, with auto-adjust. Raw `getSunlightColor()` / `getTotalAmbient()` skip all of that. | `class1/windlight/atmosphericsFuncs.glsl:201-243`; `llsettingsvo.cpp:965-1023`; `llsettingssky.h:243, 314` |
+| The Ghost Studio motion clock: a once-per-generation advance by presentation delta while Temporal Capture drives a feature, else wall delta. The precedent for the volume clock. | `newview/alghoststudio.cpp:1915-1929` |
+| Local fog stores **agent-space** `LLVector3` centres, which break after a region crossing. Don't copy that; store `LLVector3d` global. | `newview/allocalfogmanager.h:39` |
+| Debug and UI overlays are drawn gated on UI visibility and `RENDER_DEBUG_FEATURE_UI` (`render_actor_path_guides`). | `pipeline.cpp:21745-21747` |
 
 ---
 
 ## 4. The file format — `.alvol` (route B)
 
-A small, versioned, little-endian container. **Every field is validated before use** (copy the dust
-loader's discipline).
+Versioned and little-endian. **Every field is validated before use.**
 
 ```
-Header (fixed):
-  magic        "ALVOL\0\0\1"         8 bytes
-  version      u32 = 1
-  dims         u32 x, y, z           each 8..256
-  channels     u32 bitmask           bit0 density, bit1 emission (flame), bit2 temperature
-  frame_count  u32                   1..4096
-  fps          f32                   1..120 (the Blender scene fps)
-  voxel_size   f32 metres            > 0, finite
-  bbox_min     f32 x3 metres         object space of the bake
-  per-channel range  f32 min,max     the dequantisation range for each present channel
-Frame table (frame_count entries):
-  offset       u64                   absolute file offset of the frame chunk
-  size         u32                   compressed byte size
-  emission_total     f32             sum of emission (used by Phase 2's fire light; CPU, no readback)
-  emission_centroid  f32 x3          emission-weighted centre, object space
-  emission_kelvin    f32             emission-weighted mean colour temperature
-Frame chunk:
-  zlib stream → dense u8 array, channel-interleaved, x fastest
+Header:
+  magic             "ALVOL\0\0\1"         8 bytes
+  version           u32 = 1
+  header_size       u32                   bytes, including the per-channel ranges
+  table_entry_size  u32                   bytes per frame-table entry (>= v1 size; extra bytes skipped)
+  flags             u32                   bit0 sqrt-companded density (exporter default ON)
+  channels          u32                   bit0 density, bit1 flame; v1 requires density (flame optional)
+  dims              u32 x, y, z           each 8..256
+  frame_count       u32                   1..4096
+  fps               f32                   1..120
+  fire_kelvin_min   f32, fire_kelvin_max f32  flame 0..1 -> colour temperature (1000..4000 K, min < max)
+  ranges            f32 min,max per present channel, in bit order (count = popcount(channels))
+Frame table (frame_count entries, table_entry_size each):
+  offset            u64
+  size              u32                   compressed bytes
+  bbox_min          f32 x3, bbox_max f32 x3   this frame's grid box, metres, in the volume's local frame
+  emission_total    f32
+  emission_centroid f32 x3                emission-weighted centre, local frame
+  emission_kelvin   f32                   emission-weighted mean colour temperature
+Frame chunk: zlib stream -> dense u8, 2 bytes per voxel (density, flame; flame 0 if absent), x fastest
 ```
 
-- The reader rejects:
-  - a bad magic or a version other than 1;
-  - out-of-range dims or channels;
-  - offsets or sizes outside the file;
-  - a frame table that isn't strictly increasing;
-  - a decompressed size ≠ `x·y·z·channel_count`;
-  - any non-finite float.
-- **u8 quantisation:** smoke density banding at u8 is acceptable because density is integrated along
-  rays. The exporter applies a per-channel range and optional sqrt companding (header flag — reserve one
-  in `channels` bit 8).
+**The reader rejects:**
+
+- a bad magic or a version other than 1;
+- `header_size` or `table_entry_size` smaller than v1's;
+- dims, channels or flags out of range;
+- `range.min ≥ max`, `fire_kelvin_min ≥ max`, or any non-finite float;
+- `offset[0] <` end of table, `offset[i] + size[i] > offset[i+1]`, or `offset + size > file size`;
+- a bbox with min ≥ max on any axis.
+
+**Inflate rules:** inflate into a **fixed buffer of exactly** `x·y·z·2` bytes (computed in u64; the max
+is 256³·2 = 32 MiB) and require `Z_STREAM_END` with exactly that output.
+
+**Quantisation:** u8 with **sqrt companding** of density by default (flag bit0), because integration
+along rays does not remove quantisation contours, and wisps below 1/255 of the range would vanish
+linearly. A u16 density is a future flag.
 
 ### 4.1 The exporter (`scripts/blender/export_alvol.py`, a Blender add-on or text-editor script)
 
-- Input: the domain object with a Mantaflow cache (or a folder of `.vdb` files), a frame range, a target
-  resolution (max axis, default 128) and channels.
-- For each frame:
-  - read the grids `density`, `flame` and `temperature` (and `heat` as an alias), via Blender's OpenVDB
-    Python module;
-  - resample to the target dense grid (trilinear) across the **union bounding box of the whole
-    sequence**, so the grid doesn't jump between frames;
-  - quantise, deflate and write;
-  - compute the emission stats for the frame table.
-- Output: one `.alvol` file plus a log line per frame.
-- **The test asset generator** (`scripts/blender/make_test_alvol.py`, plain Python 3, no Blender needed)
-  writes a procedural puff/flame sequence. This lets the viewer side be built and tested without
-  Blender.
+**Input:** the fluid domain object, a frame range, a target resolution (max axis, default 128).
+
+**Reading the grids**, in order of preference:
+
+1. **Blender's own fluid API** for the current frame: `FluidDomainSettings` `density_grid` and
+   `flame_grid` (stepping the frame). Inference: no extra module needed. Verify on the user's Blender
+   version.
+2. **Blender's bundled OpenVDB Python module** (`openvdb` or `pyopenvdb` — try both) on the cache's
+   `.vdb` files.
+
+If neither works, fail with a clear message naming both.
+
+**Coordinates:**
+
+- Honour each frame's **grid transform and the domain object's world matrix**. Mantaflow adaptive
+  domains move and resize per frame.
+- Write **a per-frame bbox** in the frame table (not a union box, which wastes resolution).
+- The volume's local frame is the domain's local frame at the first frame.
+- **Array order:** OpenVDB `copyToArray` fills `[i, j, k]`, so z is fastest. **Transpose to x-fastest**
+  for GL.
+
+**Fire colour:** `heat` is Mantaflow's buoyancy temperature, **not** fire colour, so never alias it.
+Colour comes from `flame` (0..1), mapped to `fire_kelvin_min..max` (defaults 1000 K / 3500 K; also read
+from the domain's flame settings if exposed).
+
+**Also emitted:** the per-frame emission stats, and a log line per frame.
+
+**Test generator:** `scripts/blender/make_test_alvol.py` (plain Python 3, no Blender, no numpy) writes a
+procedural puff/flame sequence, plus a checker that re-reads and validates it.
 
 ---
 
@@ -130,132 +155,145 @@ Frame chunk:
 `ALVolumePlayer` (singleton, `newview/alvolumeplayer.{h,cpp}`) owns up to **4 instances**. Each instance
 has:
 
-- the source file, the parsed header and the frame table;
-- placement: world position, rotation, uniform scale, and an optional **attach** to an object or avatar
-  joint (follows it each frame);
-- playback: play/pause, loop / once / ping-pong, speed, start offset, frame blend on/off;
-- look: density scale, smoke albedo colour, absorption, anisotropy `g`, fire EV, fire temperature
-  remap, emission colour mode (blackbody or tint);
-- quality: preset, which sets resolution scale, steps and light steps.
+- the file, the parsed header and the frame table;
+- placement: **global** position (`LLVector3d`), rotation, uniform scale, and an optional **attach**
+  (object or avatar joint, re-read each frame). A culled or impostored avatar's joints stop updating, so
+  an attached volume holds its last pose; that's stated.
+- playback: play/pause, loop / once / ping-pong, speed, start offset, frame blend;
+- look: density scale, smoke albedo, absorption, anisotropy `g`, fire EV, ambient-match gain;
+- a quality preset.
 
-**Pure maths in `newview/alvolumemath.h`** (header-only, TUT): header validation, frame index from time,
-the ray/box intersection, the Henyey-Greenstein phase, the blackbody LUT generator and dequantisation.
+**Pure maths in `newview/alvolumemath.h`** (header-only, TUT): header and frame-table validation, frame
+index from time, ray/box, the Henyey-Greenstein phase, the blackbody LUT generator, sqrt-companding
+decode.
 
-### 5.2 Clock
+### 5.2 Clock and take sync
 
-- Each instance keeps its own clock, advanced exactly like `ALGhostStudio::advanceMotionClock`: by
-  presentation delta while Temporal Capture drives ANIMATION, else wall delta. So slow motion slows the
-  fire.
-- Frame position = `start_offset + clock·fps·speed`, mapped by loop mode. **With frame blend on**, the
-  shader samples frames ⌊p⌋ and ⌊p⌋+1 and mixes them by the fraction. That keeps slow motion smooth
-  instead of steppy, at the cost of a second 3D texture fetch per sample.
+- Per instance, advanced once per presentation generation, like `advanceMotionClock`: by presentation
+  delta while Temporal Capture drives **PARTICLES or ANIMATION** (smoke and fire are effects, so follow
+  either; verify the enum names in `lltemporalframecontext.h`), else wall delta.
+- **Restart all** button, plus an optional **restart on capture start**, so a take always begins at the
+  sequence's frame 0 plus its offset.
+- Frame position = `offset + clock · fps · speed`, mapped by loop mode. **Frame blend** samples frames ⌊p⌋
+  and ⌊p⌋+1 and mixes them by the fraction, so slow motion is smooth.
 
 ### 5.3 Streaming and memory
 
-- **Worker thread** (the viewer's thread pool, as other decode work uses): inflate frames ahead into a CPU
-  ring of decoded frames.
-- **Main thread:** upload at most `VolumeUploadsPerFrame` (default 2) into a **GPU ring** of `R` 3D
-  textures (default 8 slots, minimum 3 when frame blend is on). Use `glTexSubImage3D` into existing
-  storage, never re-allocating per frame.
-- **Accounting:** every 3D texture is registered with `LLImageGLMemory::alloc_tex_image` / `free_tex_image`
-  so the VRAM governor sees it.
-- **Under `BDMergeMemoryBudget::isCritical()`:** shrink the ring to its minimum and log it.
-- **Late frame** (not resident when needed): hold the nearest resident earlier frame. Log
-  `[Volume] late frame N (held M)` once per second with counts. Never stall the main thread.
-- **Preload for recording:** a per-instance button decodes and uploads **all** frames if they fit the
-  budget, so a captured take has no late frames. Refuse with a clear message if it doesn't fit, giving
-  the bytes needed and the bytes available.
-- **Sizes**, to show in the UI: 128³ × 2 channels × u8 = 4 MiB per frame on the GPU. 8 slots = 32 MiB.
-  A 240-frame preload at 128³ = 960 MiB.
+- **Decode thread:** a **dedicated, bounded** worker (one thread, a queue of at most `RingSlots`
+  frames). **Not** the shared `General` queue (1 thread, shared with material decode).
+  - Read files with `LLFile::fopen` off-thread, as the dust loader does.
+  - Inflate into a CPU ring.
+  - Under `BDMergeMemoryBudget::isCritical()` (system RAM), shrink the CPU ring to its minimum and log it.
+- **GPU ring:** `RingSlots` 3D textures per instance (default 8; **minimum 4 with frame blend on**, so a
+  slot sampled last frame is never rewritten this frame).
+  - **Format: `GL_RG8`** (density, flame), always 2 channels.
+  - Allocate each slot once: `bindManual(TT_TEXTURE_3D)` on **unit 0**, then `glTexImage3D(nullptr)`,
+    then `alloc_tex_image(x, y, GL_RG8, z)`. Free with `LLImageGL::deleteTextures`, and unbind every
+    `TT_TEXTURE_3D` unit afterwards.
+- **Uploads** (main thread): `glTexSubImage3D` into a free slot, **capped by bytes per frame**
+  (`VolumeUploadBytesPerFrame`, default 8 MiB). Save and restore `GL_UNPACK_ALIGNMENT`, set to 1 because
+  rows are 2·x bytes.
+- **VRAM budget:** the GPU ring and preload key off `LLViewerTexture::sFreeVRAMMegabytes`.
+  - **Preload for recording** decodes and uploads every frame only if the total ≤ `PreloadVramFraction`
+    (default 50%) of free VRAM. Otherwise refuse, stating the bytes needed and available.
+  - **Warn in the UI** that a large preload makes the texture governor discard world textures, because the
+    3D textures are accounted against the same budget.
+- **Late frame:** hold the nearest resident earlier frame, never stall. Log `[Volume] late frames N` per
+  second.
+- **Sizes**, to show in the UI: 128³ × RG8 = 4 MiB per frame; 8 slots = 32 MiB; a 240-frame preload =
+  960 MiB.
 
-### 5.4 Rendering (the new pass)
+### 5.4 Rendering
 
-**Where:** a new `LLPipeline::renderVolumePlayer(LLRenderTarget* target)`, called in `renderFinalize`
-**immediately before `renderFroxelVolumetrics`** (`pipeline.cpp:21894`). Same composite point: linear
-HDR, pre-tonemap, after bloom generation (so fire doesn't skew auto-exposure; see the bloom note in
-§5.6).
+**1. Opaque depth copy** (new, gated). The scene depth at the composite point includes depth-writing
+alpha, and changes with DoF (§3). So:
 
-**Gate:** feature off, no visible instance, `gCubeSnapshot`, or the program not compiled → return with
-no allocation, no state change. The froxel gate pattern.
+- At the end of `renderDeferredLighting` (before post-deferred alpha), **only when at least one volume
+  instance is visible**, copy the deferred depth into a new `mVolumeOpaqueDepth` target (a depth blit or
+  a fullscreen copy).
+- That gives smoke a stable, predictable occluder: opaque geometry only.
+- Shared-pipeline change: it must be fully inert when off (no allocation, no blit), and the review must
+  check FBO, draw-buffer and depth state restoration (`CLAUDE.md` rule 1).
 
-**Algorithm per instance:**
+**2. Sun-transmittance volume** (per instance; rebuilt only when the frame or the sun direction changes
+by more than ~0.5°):
 
-1. **Coverage:** rasterise the instance's oriented box, back faces, so it works with the camera inside
-   it, into a **half-resolution** target (`RGBA16F`: in-scattered light rgb + transmittance a).
-2. **Ray:** for each pixel, intersect the view ray with the box in object space (pure function). March
-   from entry to `min(exit, opaque scene depth)`.
-   - The step is `voxel_size · step_scale`, with a hard cap of `MaxSteps` (preset: 64 / 96 / 160).
-   - **Jitter** the start by a **spatial** blue-noise / hash value of integer `gl_FragCoord` only. No
-     frame counter and no time, so re-renders of a frame are identical (the determinism rule from
-     `doc/CINEMATIC_SSGI_DESIGN.md` §6).
-3. **At each sample:**
-   - density `σ = density_scale · d`, extinction `σt = σ · (absorption + scattering)`;
-   - **sun:** colour and direction from the current sky (CPU, as uniforms) × the HG phase(`g`) ×
-     **self-shadow**, from a short march toward the sun (`LightSteps`: 4 / 6 / 10) through the same volume;
-   - **ambient:** the sky ambient colour (CPU, `getTotalAmbient`-equivalent) × a cheap occlusion
-     estimate from the local density;
-   - **emission:** `fire_ev` × emission × blackbody(temperature) from a 1D LUT texture (1000–3500 K,
-     built on the CPU with the rig's Planckian method), or a tint;
-   - accumulate front-to-back. Early-out when transmittance < 0.01.
-4. **Upsample:** depth-aware bilateral upsample to full resolution (the same approach as the projector
-   volumetrics' half-resolution march).
-5. **Composite:** `scene = scene · T + L`. **The blend state must be explicitly set and restored**
-   (`CLAUDE.md` rule 1: never inherit blend state).
+- A low-resolution 3D texture (64³, R8) of transmittance toward the sun.
+- Computed by rendering each slice with `glFramebufferTextureLayer` and a short march through the
+  density.
+- The per-pixel cost then becomes one fetch instead of a nested march (the reviewer's arithmetic: about
+  3,200 fetches per pixel otherwise).
 
-**Instances overlap:** v1 renders instances in back-to-front order of box centre and composites each.
-Interpenetrating volumes are approximate (stated, L4).
+**3. The pass `LLPipeline::renderVolumePlayer(LLRenderTarget* target)`**:
 
-### 5.5 Lighting in Phase 2 (stated now, not built in Phase 1)
+- **Where:** called in `renderFinalize` **after `renderProjectorVolumetric`** (`pipeline.cpp:21896`) and
+  **before the bloom feed**, so fire can feed bloom (§5.5).
+- **Gate:** run only when `mRT == &mMainRT && !sPrismLensRender`, the feature is on, and an instance is
+  visible. Otherwise return with no allocation and no state change.
+- **Matrices:** `get_current_modelview()` / `get_current_projection()`, not the `gGL` stack.
+- **Coverage:** a **fullscreen triangle with the scissor set to the box's projected screen rectangle**.
+  Culling stays off (no `glCullFace` change). Enable scissor explicitly with a scoped guard and restore
+  its rectangle afterwards (the projector pass changes it).
+- **March** (half-resolution target `mVolumeHalf`, `RGBA16F`, a new target, not the projector's):
+  - the ray is intersected with the box in local space, from entry to `min(exit, mVolumeOpaqueDepth)`;
+  - **step** = voxel size × step scale, capped at MaxSteps (64 / 96 / 160);
+  - **jitter:** spatial only (a hash of integer `gl_FragCoord`), so re-renders are identical;
+  - **at each sample:**
+    - `σ = density_scale · decode(d)`;
+    - sun = `sunlight` × phase(`g`) × sun-transmittance;
+    - ambient = `amblit` × `ambient_match` × a local occlusion estimate;
+    - emission = `fire_ev` × flame × blackbody LUT (an N×1 2D texture);
+    - accumulate front to back, early-out at T < 0.01.
+  - **Sun and ambient come from `calcAtmosphericVarsLinear`**, so the program is built as an atmospherics
+    shader with the same includes and uniforms as the deferred passes. They therefore follow the sky,
+    HDR scale, EnvIntensity and tints exactly as surfaces do. Probe irradiance is **not** sampled in v1,
+    so smoke may not exactly match probe-lit surfaces next to it; the ambient-match gain compensates
+    (L6).
+  - **Fog and haze at the smoke:** when `mFroxelIntegratedValid`, attenuate and add the integrated
+    froxel fog **at the smoke's front depth**, and apply windlight haze (atten/additive) at that depth,
+    so distant smoke reads hazed like everything else.
+- **Upsample:** depth-aware bilateral upsample (against `mVolumeOpaqueDepth`).
+- **Composite:** `scene = scene·T + L`, using **exactly the froxel apply's state**:
+  `blendFunc(BF_ONE, BF_SOURCE_ALPHA)`, `setColorMask(true, false)` (never write scene alpha; it carries
+  prim glow on the non-HDR path), then restore `BT_ALPHA` and `setColorMask(true, true)`.
+- **Multiple instances:** composite back to front by box centre. Interpenetration is approximate (L4).
 
-- **Fire lights the scene:** one client-only point light per fire instance. It sits at the frame
-  table's emission centroid; its colour comes from `emission_kelvin` and its intensity from
-  `emission_total`, with a user gain. **CPU data, so no GPU readback.**
-  - Use the light rig's local-emitter pattern (`LLVOVolume` made client-side) and its gate exemptions.
-- **Local lights on smoke:** the nearest 4 local lights as uniforms, unshadowed.
-- **Sun shadow map on smoke:** sample the sun cascades at sample points, so smoke in a building's shadow
-  goes dark. First verify the shadow maps are still valid at the `renderFinalize` composite point
-  (inference).
+### 5.5 Fire bloom (Phase 1)
 
-### 5.6 Interactions and exclusions (v1)
+"Fire glows" is part of the ask. After compositing, feed a scaled copy of the **fire emission only** into
+the bloom pyramid base, mirroring `feedProjectorVolumetricBloom` (`pipeline.cpp:21906`), gated by a
+`FireBloom` gain (default on). HDR path only.
 
-- **Views:** only the **main view** gets volumes. Excluded: reflection-probe captures and hero mirrors
-  (`gCubeSnapshot`), Prism/VCam feeds (`sPrismLensRender`), HUDs, impostors, water reflection (an
-  explicit predicate like the Relight brief's).
-- **Alpha** (hair, glass, particles) is drawn before the composite point, so **smoke is drawn over alpha
-  that is in front of it** (L1). The same limitation the projector shafts have today.
-- **Depth of field** uses opaque depth, so smoke blurs with what's behind it (L2).
-- **Bloom:** fire doesn't feed bloom in v1, because the bloom pyramid is generated before this pass. An
-  optional "fire glow" feed is a Phase 2 item, mirroring `feedProjectorVolumetricBloom`.
-- **Exposure:** fire is not metered (composited after luminance), so it won't pump auto-exposure.
-  Intended.
-- **S-Log3 capture:** fire values are linear HDR; the S-Log3 colour-stage brief's shoulder handles hot
-  fire cores.
-- **ReShade bridge:** volumes are not in the G-buffer, so RTGI and other bridge effects don't see them.
-- **Shadows cast by smoke onto the scene:** not in v1 (L3).
+### 5.6 Interactions and exclusions
+
+- **Main view only** (§3): mirrors, reflection probes and VCam/Prism feeds show no volumes.
+- **Alpha in front of smoke** (hair, glass, particles) is drawn **under** the smoke (L1).
+- **Depth of field** uses scene depth, so smoke blurs with what's behind it (L2).
+- **Exposure:** the composite runs after luminance metering, so a frame full of fire won't change
+  exposure. **Use manual EV** for fire-heavy shots (stated in the UI tooltip).
+- **On-lens filters and the ReShade raw capture** run before this pass, so smoke and fire **bypass**
+  Graduated ND, Night Mask and the bridge's raw capture (L7).
+- **Non-HDR path:** there's no tonemap, so bright fire clips flat. Fire EV is clamped to keep emission
+  ≤ 1 on that path; documented.
+- **S-Log3:** linear HDR fire; the S-Log3 colour-stage brief's shoulder handles hot cores.
 
 ---
 
-## 6. UI — "Volume Player" floater
+## 6. UI — "Volume Player" floater (Me menu, and the Director Console's World group)
 
-Opened from the Me menu (next to Lightbox) and the Director Console's World group.
-
-- **List:** loaded instances, with Load… (file picker for `.alvol`), Duplicate, Remove, and a visibility
-  check.
+- **List:** Load… (`.alvol`), Duplicate, Remove, visibility.
 - **Placement:**
-  - numeric position, rotation and scale;
-  - **Place at camera focus**, **Place at my avatar's feet**, **Attach to selected object** (with a joint
-    picker for avatars);
-  - a bounding-box gizmo while the floater is open (display-only; never drawn in captures).
-- **Playback:** Play/Pause, Restart, Loop mode, Speed, Start offset, Frame blend, Preload for recording
-  (with a memory readout).
-- **Look:** density, smoke colour, absorption, anisotropy, fire EV, fire temperature min/max, emission
-  mode.
-- **Quality:** a preset (Low / Medium / High / Cinematic). Live readouts: resident frames, late frames,
-  GPU ms.
-- Reset buttons per control (the weather-panel idiom). **Prove there's no overlap or clipping by rect
-  arithmetic.**
-- **Persistence:** a saved bank (file path, placement, playback and look per instance) like the
-  local-fog bank. A missing file loads as a disabled entry with a warning, never a crash.
+  - numeric global position, rotation and scale;
+  - Place at camera focus / at my avatar's feet / Attach to selected object (joint picker for avatars);
+  - a **bounding-box gizmo drawn in the UI overlay** (gated like `render_actor_path_guides`), never into
+    `mRT->screen`.
+- **Playback:** Play/Pause, Restart, **Restart all**, Restart on capture start, Loop mode, Speed, Start
+  offset, Frame blend, **Preload for recording** (memory readout and governor warning).
+- **Look:** density, smoke colour, absorption, anisotropy, fire EV, fire bloom, ambient match.
+- **Quality:** a preset, plus readouts of resident and late frames and GPU ms.
+- Per-control reset buttons. **Prove there's no overlap or clipping by rect arithmetic.**
+- **Persistence:** a saved bank (file path, **global** placement, playback, look). A missing file loads
+  as a disabled entry with a warning.
 
 ---
 
@@ -263,62 +301,61 @@ Opened from the Me menu (next to Lightbox) and the Director Console's World grou
 
 | Key | Default | Notes |
 |---|---|---|
-| `AlchemyVolumePlayerEnabled` | true | master gate (no instances = no cost anyway) |
-| `AlchemyVolumeRingSlots` | 8 | 3–64; GPU frames resident per instance |
-| `AlchemyVolumeUploadsPerFrame` | 2 | 1–8 |
+| `AlchemyVolumePlayerEnabled` | true | master gate |
+| `AlchemyVolumeRingSlots` | 8 | 4–64 |
+| `AlchemyVolumeUploadBytesPerFrame` | 8388608 | 1–64 MiB |
+| `AlchemyVolumePreloadVramFraction` | 0.5 | 0.1–0.8 |
 | `AlchemyVolumeMaxInstances` | 4 | hard cap |
-| `AlchemyVolumeHalfRes` | true | half-resolution march |
-| `AlchemyVolumeVerify` | true | periodic verdict logging (§8) |
+| `AlchemyVolumeHalfRes` | true | |
+| `AlchemyVolumeVerify` | true | periodic verdicts |
 
 ---
 
-## 8. Instrumentation — the log states a verdict (`[Volume]`)
+## 8. Instrumentation (`[Volume]`)
 
-- **Load:** `loaded <file>: 128x96x128, 240 frames @24 fps, channels density+flame, 4.0 MiB/frame ->
-  PASS`. Otherwise `FAIL: <reason>`, naming the exact field and value that failed validation.
-- **Per second, while playing:** resident / ring, late frames, uploads, upload ms, march GPU ms (a Tracy
-  zone plus a timer query), and a memory-critical flag.
-- **Determinism harness:** render the same frame twice at a fixed resolution and diff. `PASS` or `FAIL`.
-- **Preload:** `preloaded 240/240 frames, 960 MiB -> PASS`, or `REFUSED: needs X, budget Y`.
+Each item ends in a PASS, FAIL or REFUSED verdict.
+
+- **Load:** `loaded <file>: 128x96x128, 240 frames @24 fps, density+flame, sqrt, 4.0 MiB/frame -> PASS`.
+  On failure, `FAIL: <field>=<value> (<rule>)`.
+- **Per second while playing:** resident / ring, late frames, upload bytes, sun-volume rebuilds, march
+  GPU ms (Tracy zone plus a timer query).
+- **Off path:** `[Volume] inactive: no depth copy, no pass` once when the last instance is hidden.
+- **Determinism harness:** the same frame twice at a fixed resolution, diffed. PASS or FAIL.
+- **Preload:** `preloaded 240/240, 960 MiB of 2400 MiB free -> PASS`, or `REFUSED: needs X, allowed Y`.
 
 ---
 
 ## 9. Tests
 
-**TUT (`newview/tests/alvolumemath_test.cpp`, registered like the other header-only tests).** Use
-literals; each test must fail if the thing it tests is broken.
+**TUT (`newview/tests/alvolumemath_test.cpp`).** Literals; each test must fail if broken.
 
-- **Header validation:** every reject case in §4, plus a valid minimal header that passes. A fuzz loop
-  over random byte flips never crashes and never accepts an out-of-bounds offset.
-- **Frame index:**
-  - loop, once and ping-pong at speed 1, 0.5 and 2;
-  - a negative or NaN clock gives frame 0;
-  - the frame-blend fraction is in [0, 1);
-  - ping-pong never repeats an end frame twice in a row.
-- **Ray/box:** camera outside, inside, grazing, parallel to a face, behind; a non-finite input never
-  produces NaN.
-- **HG phase:** integrates to 1 over the sphere; `g = 0` is isotropic; the sign of `g` favours
-  forward/back.
-- **Blackbody LUT:** 1000 K is red-dominant; 6500 K is near-white with green normalised; monotonic blue
-  growth with temperature.
-- **Dequantisation:** endpoints exact; the sqrt companding round-trips within one code.
+- **Validation:** every reject rule in §4, a valid header passing, and `header_size` and
+  `table_entry_size` larger than v1 (forward-compatible) being accepted. A fuzz loop of byte flips never
+  crashes and never accepts an out-of-bounds or overlapping offset.
+- **Frame index:** loop, once and ping-pong at speeds 1, 0.5 and 2; a negative or NaN clock gives frame 0;
+  the blend fraction is in [0, 1); ping-pong never repeats an end frame twice in a row.
+- **Ray/box:** outside, inside, grazing, parallel, behind; never NaN.
+- **HG phase:** integrates to 1; `g = 0` is isotropic.
+- **Blackbody LUT:** 1000 K is red-dominant; 3500 K is warmer than 6500 K; monotonic blue growth.
+- **Companding:** decode(encode(x)) within one code across [0, 1]; 0 and 1 exact.
 
-**Exporter.** `make_test_alvol.py` writes a known sequence, and a Python checker re-reads it,
-validating the header and the frame table. Run without Blender in CI-like conditions.
+**Exporter.** `make_test_alvol.py` plus its checker (no Blender). In Blender, a 10-frame Mantaflow fire
+test exports with the transposed axis order verified by an asymmetric test shape. A plume rising along
++Z must rise along +Z in the viewer.
 
 **In-world, outcomes stated in advance:**
 
-1. Load the test puff. It appears at the camera focus, animates, and loops cleanly. The log shows load
-   PASS.
-2. Walk into it: no clipping at the box faces (back-face coverage), and the scene behind is visible
-   through thin smoke.
-3. An opaque wall through the volume: smoke stops at the wall (depth test).
-4. Temporal Capture at 0.25×: the fire slows to quarter speed; frame blend on keeps it smooth.
-5. Preload a 240-frame bake, then record: 0 late frames in the log.
-6. Feature off, or no instances: an image diff against the baseline is identical (prove the off path is
-   inert).
-7. A Blender Mantaflow fire bake, exported with the exporter, reads as fire: glowing core, smoke above,
-   lit by the sun.
+1. Load the test puff. It appears at the camera focus, animates, and loops cleanly. Load PASS.
+2. Camera inside the volume: it renders (fullscreen coverage), with no box-face clipping.
+3. A wall through the volume: smoke stops at the wall. **A window pane in front of the smoke does not cut
+   it** (opaque-depth copy), and toggling DoF doesn't change the smoke.
+4. Prim glow on a nearby object is unchanged with smoke on and off (alpha channel untouched).
+5. Temporal Capture at 0.25×: the fire slows to quarter speed, and frame blend keeps it smooth.
+6. Preload a 240-frame bake, then record: 0 late frames.
+7. Feature off or no instances: the image diff against the baseline is identical, and the log says no
+   depth copy and no pass.
+8. A Blender fire bake exported with the tool: glowing core with bloom, smoke rising above it, lit by the
+   sun **with the same tint and strength as nearby surfaces**, hazed at distance like the scene.
 
 ---
 
@@ -326,40 +363,69 @@ validating the header and the frame table. Run without Blender in CI-like condit
 
 | Phase | Delivers |
 |---|---|
-| **1** | Format + exporter + test generator; reader with validation; streaming and preload; clock; placement, attach and UI; the half-resolution raymarch with sun, self-shadow, ambient and fire emission; composite; bank; verdicts; TUT. **A complete, usable smoke-and-fire player.** |
-| **2** | Fire lights the scene; local lights on smoke; sun shadow map on smoke; fire bloom feed. |
-| **3** | Alpha-aware compositing; VCam/probe views; smoke casting shadows; route A (direct `.vdb`) if the user wants it. |
+| **1** | Format, exporter, test generator; validated reader; dedicated decode thread; GPU ring and preload; clock and take sync; placement, attach and UI; opaque-depth copy; sun-transmittance volume; half-res march with atmospherics-consistent sun and ambient, fog and haze, fire emission; composite; **fire bloom feed**; bank; verdicts; TUT. A complete smoke-and-fire player. |
+| **2** | Fire lights the scene: one client-only point light from the frame table's emission centroid, Kelvin and total, using the rig's local-emitter pattern and gate exemptions. Local lights on smoke; the sun shadow map on smoke (first verify it's still valid at the composite point); probe irradiance for ambient. |
+| **3** | Alpha-aware compositing; volumes in VCam/mirror views; smoke casting shadows; route A (direct `.vdb`) if wanted. |
 
 ---
 
 ## 11. Known limitations (stated, not hidden)
 
-- **L1 — Alpha:** smoke draws over alpha geometry (hair, glass, particles) that is in front of it.
-- **L2 — Depth of field:** DoF treats smoke as part of the background.
-- **L3 — Shadows:** smoke casts no shadow onto the scene.
-- **L4 — Overlapping volumes:** interpenetrating volumes composite approximately (sorted by box
-  centre).
-- **L5 — Resolution:** a dense 128³ grid loses the finest wisps of a high-resolution bake; raise the
-  export resolution (up to 256³, at 8× the memory) for close-ups.
-- **L6 — Client-only:** other people never see it.
+- **L1 — Alpha:** hair, glass and particles in front of smoke are drawn under it.
+- **L2 — Depth of field:** smoke blurs with the background behind it.
+- **L3 — Shadows:** smoke casts no shadow on the scene.
+- **L4 — Overlaps:** interpenetrating volumes composite approximately.
+- **L5 — Resolution:** a dense 128³ grid loses the finest wisps; export at up to 256³ for close-ups (8×
+  the memory).
+- **L6 — Ambient:** smoke may not exactly match probe-lit surfaces until Phase 2 samples probes; use the
+  ambient-match gain.
+- **L7 — On-lens filters:** smoke bypasses Graduated ND, Night Mask and the ReShade raw capture.
+- **L8 — Views:** main view only (no mirrors, probes or VCam feeds).
+- **L9 — Client-only:** other people never see it.
 
 ---
 
-## 12. Off-limits for the implementer
+## 12. Off-limits
 
 - **No OpenVDB / TBB / Blosc in vcpkg** unless the user picks route A.
-- **G-buffer layout, the ReShade bridge ABI, existing volumetric passes:** froxel, projector shafts and
-  local fog are read-only precedents.
-- **Shared GL state:** every state the new pass touches is set explicitly and restored. Review it against
-  the beauty pass and the feature-off path.
+- **G-buffer layout and the ReShade bridge ABI.**
+- **Existing volumetric passes** (froxel, projector shafts, local fog) are read-only precedents. The only
+  shared-pipeline additions are the gated depth copy and the new pass call.
+- **Shared GL state:** every state touched (blend, colour mask, scissor and its rectangle, depth test,
+  FBO and draw buffers, unpack alignment, texture units) is set explicitly and restored. Review it against
+  the beauty pass and the off path.
 - Never build. Claude builds after review convergence.
 
 ---
 
 ## 13. Open decisions (defaults chosen)
 
-- **D1 — Route:** B (Blender exporter). A later.
-- **D2 — Default export resolution:** 128 on the longest axis.
-- **D3 — Instance cap:** 4.
-- **D4 — Frame blend default:** on.
-- **D5 — Where the floater lives:** the Me menu plus the Director World group.
+- **D1 — Route:** B. A later.
+- **D2 — Export resolution:** 128 on the longest axis.
+- **D3 — Instances:** at most 4.
+- **D4 — Frame blend:** on.
+- **D5 — Floater location:** the Me menu plus the Director World group.
+
+---
+
+## Appendix — review round 1 disposition (applied in rev 2)
+
+| # | Finding | Disposition |
+|---|---|---|
+| M1 | Scene depth includes depth-writing alpha and changes with DoF | Gated opaque-depth copy; L1 rewritten; test 3 |
+| M2 | Composite must not write scene alpha (prim glow) | Exact froxel blend and colour-mask pattern |
+| M3 | Back-face coverage needs `glCullFace`, which leaks | Fullscreen triangle, scissored; culling untouched |
+| M4 | CPU sun/ambient won't match the scene | Atmospherics shader with `calcAtmosphericVarsLinear`; L6 |
+| S1 | Composite order vs froxel fog, projector shafts and haze | After shafts; fog and haze at the smoke front |
+| S2 | Nested light march too costly | Sun-transmittance volume |
+| S3 | RAM vs VRAM budgets confused | `sFreeVRAMMegabytes` for GPU; `isCritical` for CPU; preload cap and warning |
+| S4 | The `General` queue is 1 thread and shared | Dedicated bounded decode thread |
+| S5 | Upload cap by count; alignment; 3-slot reuse | Byte cap; `UNPACK_ALIGNMENT` 1 saved and restored; minimum 4 slots |
+| S6 | Channel and format inconsistency | `RG8` always |
+| S7 | Format growth and validation holes | `header_size`, `table_entry_size`, `flags`, overlap and inflate rules |
+| S8 | u8 rationale wrong | sqrt companding by default |
+| S9 | Exporter: axis order, `heat` ≠ fire temperature, transforms, fallback | Transposed; flame→Kelvin; per-frame bbox and transforms; fluid API first |
+| S10 | Agent-space placement; attach freeze | Global `LLVector3d`; freeze stated |
+| S11 | Fire glow deferred against the ask | Bloom feed in Phase 1 |
+| S12 | No take-start anchor; drive bit | Restart all / on capture start; PARTICLES or ANIMATION |
+| Nits | Matrices, no 1D texture, accounting, no `TexStorage`, new half-res target, filter bypass, exposure, dead exclusion flags, gizmo, non-HDR | All applied |
