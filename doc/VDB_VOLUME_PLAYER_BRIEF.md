@@ -1,10 +1,10 @@
 # Volume Player — animated smoke & fire from Blender (VDB) in the viewer — design brief
 
-**Date:** 2026-11-16 (rev 2, after adversarial review round 1)
+**Date:** 2026-11-16 (rev 3: the user chose route A — OpenVDB in the build)
 **Status:** DESIGN ONLY. Nothing implemented, nothing built.
 **Review:** round 1 (independent Opus) found 4 must-fix, 12 should-fix and 10 nits; all applied in rev
-2. Claude re-verified the depth-buffer and alpha-channel findings in the code. The rev-2 edits aren't
-re-reviewed; the code-review loop must attack §5.4 (depth copy, composite and blend state) first.
+2. Rev 3 switches to route A (OpenVDB in the build, §2A) at the user's request. Claude fetched the
+vcpkg port facts at the pinned baseline. Rev 3 is under review round 2.
 **Process (per `CLAUDE.md`):** Codex implements (`--write`, `--prompt-file`), Opus reviews the code, loop
 to 0 must-fix, Claude builds once, the user tests in-world. Codex never builds.
 
@@ -31,20 +31,82 @@ volume asset type, and this feature never uploads anything.
 
 ---
 
-## 2. Decision D1 — how `.vdb` gets in (read first; it changes the build)
+## 2. Decision D1 — **route A chosen** (user, 2026-11-16): the viewer reads `.vdb` directly
 
-The viewer has **no OpenVDB support** today (no `openvdb`, `tbb` or `blosc` in `indra/vcpkg.json`; no
-mention in the source).
+> "We would have to add it to the build if possible."
 
-| | **A. Read `.vdb` directly** | **B. Blender exporter → viewer format (default)** |
+**Architecture:** the viewer reads Blender's `.vdb` cache files with **OpenVDB**. On first load it
+**imports** them into the `.alvol` frame cache (§4), and from then on streams that cache. So:
+
+- the user loads Blender's output directly (a folder or the first `.vdb` of a sequence);
+- the import is slow once (progress bar, cancellable); later loads are instant;
+- the streaming and rendering design (§5) is unchanged and never touches OpenVDB at play time;
+- the Blender exporter script (§4.2) stays as an **optional** fallback, for machines where an import
+  fails.
+
+### 2A. Adding OpenVDB to the build — facts and plan
+
+**What the pinned vcpkg baseline provides.** These facts were fetched from `microsoft/vcpkg` at the
+viewer's `builtin-baseline` `cae2989df743645fb2510971b7a45febd9a2c361`
+(`indra/vcpkg.json:2`):
+
+| Port | Version | Its dependencies |
 |---|---|---|
-| User flow | Point the viewer at the Blender cache folder | One extra step in Blender: run the bundled exporter, then load the result |
-| New dependencies | vcpkg `openvdb` (pulls TBB, Blosc, Boost pieces, Imath) on all three platforms | **None.** Blender does the VDB reading; the viewer reader uses zlib, already a dependency (`indra/vcpkg.json:48`) |
-| Build risk | High (a large dependency set, possible Boost clash) | Low |
-| Load speed | Decode and resample at play time | Pre-resampled, quantised frames: inflate and upload |
+| `openvdb` | 12.0.1 (`supports: !xbox`) | `blosc`, `boost-any`, `boost-date-time`, `boost-interprocess`, `boost-iostreams`, `boost-ptr-container`, `boost-system`, `boost-thread`, `boost-uuid`, `imath`, `openexr`, `tbb` |
+| `blosc` | 1.21.6 | `lz4`, `snappy`, `zlib`, `zstd` |
+| `tbb` | 2023.0.0 (`!uwp`) | — |
+| `openexr` | 3.4.13 | `imath`, `libdeflate`, `openjph` |
+| `imath` | 3.2.2 | — |
 
-**Default: B.** A is a later option (§10). **Codex must not add OpenVDB to vcpkg without the user
-choosing A.**
+- **Optional features:** `nanovdb` requires **CUDA**, `ax` requires LLVM and isn't on Windows, and
+  `tools` requires GLEW/GLFW. **Use none of them: base `openvdb` only.**
+- **Boost:** the viewer already takes Boost from the **same baseline**, so the extra modules resolve to
+  the same Boost version. There's no version clash (this corrects rev 2's "possible Boost clash").
+  `zlib` resolves to the viewer's overlay port (`indra/vcpkg/ports/zlib`), like every other consumer.
+- **Port options as configured:** `USE_EXR=ON`, `USE_IMATH_HALF=ON`, Python module off, unit tests off.
+
+**Linkage.** Every viewer triplet sets `VCPKG_LIBRARY_LINKAGE static`. Windows also sets
+`VCPKG_CRT_LINKAGE static` (`indra/vcpkg/triplets/*.cmake`).
+
+- OpenVDB, Blosc, Imath and Boost link statically like everything else.
+- **TBB is the risk.** oneTBB discourages static linking. Plan:
+  1. Try static first.
+  2. If it fails to build or link on any platform, add a per-port override in the triplets
+     (`if(PORT MATCHES "tbb") set(VCPKG_LIBRARY_LINKAGE dynamic) endif()`). The triplets already do this
+     for `hunspell` on macOS, so that's the precedent. Then ship the TBB runtime (`tbb12.dll` / `.dylib`
+     / `.so`) through `viewer_manifest.py`.
+  3. Record which option was used, per platform, in the commit message and in `doc/BUILD.md`.
+
+**Trimming (verify item).** The port turns on `USE_EXR`, which OpenVDB's *tools* use, not the core
+reader. An **overlay port** in `indra/vcpkg/ports/openvdb` could set `USE_EXR=OFF` and drop the
+`openexr` dependency, saving OpenEXR, OpenJPH and libdeflate. Build the base port first. Try the overlay
+only if the base port's footprint or build time is a problem, and only if the core compiles without EXR.
+
+**CMake.** A new `indra/cmake/OpenVDB.cmake` in the style of the other dependency modules:
+
+- `find_package(OpenVDB CONFIG REQUIRED)`; the port's wrapper sets `OPENVDB_USE_STATIC_LIBS`;
+- an interface target that `newview` links;
+- a CMake option `USE_OPENVDB` (default ON). When it's OFF, the importer compiles out and the UI says
+  "VDB import not available in this build; use the Blender exporter". So a platform that can't build it
+  isn't blocked.
+
+**Runtime integration rules:**
+
+- `openvdb::initialize()` is called **once**, lazily, under a once-flag, on the import thread, before
+  the first file is opened.
+- OpenVDB operations use TBB internally. Run the import on the **dedicated volume thread** and wrap it
+  in `tbb::global_control(max_allowed_parallelism, VolumeImportThreads)` (default 2), so TBB never spins
+  up one thread per core and competes with the viewer's own pools.
+- **Every OpenVDB call is wrapped in `try/catch (const std::exception&)`.** OpenVDB throws on bad or
+  unsupported files; any exception fails that import with a `[Volume] import FAIL` verdict, never a crash.
+- **Untrusted input:** OpenVDB is not a hardened parser. Users load their own files, but state "only load
+  VDB files you trust" in the UI. Before resampling, **cap the active voxel count** (default 64 M) and
+  the bounding box.
+- **Licences:** OpenVDB, TBB (Apache-2.0), Blosc, OpenEXR, Imath (BSD) and their dependencies must be
+  added to the viewer's third-party licence notices (the About box / licences file).
+
+**Build footprint** (inference, to be measured): +10–25 MB executable, and a noticeably longer first
+vcpkg build (TBB, OpenEXR, Blosc and OpenVDB from source). Report the actual numbers in the build report.
 
 ---
 
@@ -71,7 +133,7 @@ choosing A.**
 
 ---
 
-## 4. The file format — `.alvol` (route B)
+## 4. The frame cache format — `.alvol` (written by the importer, §4.1)
 
 Versioned and little-endian. **Every field is validated before use.**
 
@@ -114,7 +176,50 @@ is 256³·2 = 32 MiB) and require `Z_STREAM_END` with exactly that output.
 along rays does not remove quantisation contours, and wisps below 1/255 of the range would vanish
 linearly. A u16 density is a future flag.
 
-### 4.1 The exporter (`scripts/blender/export_alvol.py`, a Blender add-on or text-editor script)
+### 4.1 The importer (route A, `newview/alvolumeimport.{h,cpp}`, compiled only with `USE_OPENVDB`)
+
+**Input:** a folder, or one `.vdb` from a numbered sequence; the importer finds the sequence by its
+trailing frame number.
+
+- Mantaflow names its caches `fluid_data_####.vdb` (the base grids) and `fluid_noise_####.vdb`
+  (high-resolution noise). If both exist, **prefer noise** for density and flame. Inference: verify the
+  names and folders against the user's Blender version.
+
+**Grids:**
+
+- `density` (required);
+- `flame` (optional) — if absent, fire is off;
+- **never `heat`:** it's buoyancy temperature, not flame colour.
+
+Grid names are matched case-insensitively, and the found names are logged.
+
+**Per frame:**
+
+1. Open the file and read only the needed grids by name (`openvdb::io::File::readGrid`).
+2. Compute the active-voxel bbox in **bake space**, via each grid's own transform (grids may move and
+   resize per frame).
+3. Resample into the dense target grid (default 128 on the longest axis of that frame's box) with
+   `openvdb::tools::GridSampler` (trilinear), x-fastest.
+4. Quantise (sqrt-companded density), deflate, and append to the `.alvol` cache.
+5. Compute the frame-table emission stats.
+
+**The volume's local frame is bake space.** Placement in SL is the user's, so the bake's world location
+doesn't matter. Only consistency across frames does.
+
+**Cache:**
+
+- The `.alvol` is written next to a viewer cache entry, keyed by a hash of (source paths, file sizes,
+  mtimes, import settings). A changed source re-imports.
+- The write is atomic: write a temp file, then rename. A cancelled or failed import leaves no partial
+  cache.
+
+**Fire colour:** flame 0..1 maps to `fire_kelvin_min..max` from the import settings (default 1000 K /
+3500 K), stored in the header. The Blender domain's settings aren't in the VDB.
+
+**Progress:** frames done / total, ETA, Cancel. Runs on the dedicated volume thread (§5.3), never the
+main thread.
+
+### 4.2 The Blender exporter (optional fallback: `scripts/blender/export_alvol.py`)
 
 **Input:** the fluid domain object, a frame range, a target resolution (max axis, default 128).
 
@@ -345,16 +450,22 @@ test exports with the transposed axis order verified by an asymmetric test shape
 
 **In-world, outcomes stated in advance:**
 
-1. Load the test puff. It appears at the camera focus, animates, and loops cleanly. Load PASS.
-2. Camera inside the volume: it renders (fullscreen coverage), with no box-face clipping.
-3. A wall through the volume: smoke stops at the wall. **A window pane in front of the smoke does not cut
+0. **Build:** a clean configure on Windows (and on macOS/Linux when available) pulls the new ports, links,
+   and the log shows `[Volume] openvdb 12.0.1 initialised -> PASS` on first use. With `USE_OPENVDB=OFF`,
+   the build succeeds and the UI shows the "not available" message.
+1. **Import** a Blender Mantaflow fire cache folder: a progress bar, then playback. A second load of the
+   same folder skips the import (the cache is hit). Touching one `.vdb` re-imports. Cancelling leaves no
+   partial cache.
+2. Load the test puff. It appears at the camera focus, animates, and loops cleanly. Load PASS.
+3. Camera inside the volume: it renders (fullscreen coverage), with no box-face clipping.
+4. A wall through the volume: smoke stops at the wall. **A window pane in front of the smoke does not cut
    it** (opaque-depth copy), and toggling DoF doesn't change the smoke.
-4. Prim glow on a nearby object is unchanged with smoke on and off (alpha channel untouched).
-5. Temporal Capture at 0.25×: the fire slows to quarter speed, and frame blend keeps it smooth.
-6. Preload a 240-frame bake, then record: 0 late frames.
-7. Feature off or no instances: the image diff against the baseline is identical, and the log says no
+5. Prim glow on a nearby object is unchanged with smoke on and off (alpha channel untouched).
+6. Temporal Capture at 0.25×: the fire slows to quarter speed, and frame blend keeps it smooth.
+7. Preload a 240-frame bake, then record: 0 late frames.
+8. Feature off or no instances: the image diff against the baseline is identical, and the log says no
    depth copy and no pass.
-8. A Blender fire bake exported with the tool: glowing core with bloom, smoke rising above it, lit by the
+9. A Blender fire bake exported with the tool: glowing core with bloom, smoke rising above it, lit by the
    sun **with the same tint and strength as nearby surfaces**, hazed at distance like the scene.
 
 ---
@@ -363,9 +474,10 @@ test exports with the transposed axis order verified by an asymmetric test shape
 
 | Phase | Delivers |
 |---|---|
-| **1** | Format, exporter, test generator; validated reader; dedicated decode thread; GPU ring and preload; clock and take sync; placement, attach and UI; opaque-depth copy; sun-transmittance volume; half-res march with atmospherics-consistent sun and ambient, fog and haze, fire emission; composite; **fire bloom feed**; bank; verdicts; TUT. A complete smoke-and-fire player. |
+| **0** | **OpenVDB in the build** (§2A): vcpkg dependency, the `OpenVDB.cmake` module, `USE_OPENVDB` option, TBB linkage resolved on all three platforms, licences, footprint measured. A tiny `[Volume] openvdb <version> initialised` self-test at first use. Landed and built **before** Phase 1 code depends on it. |
+| **1** | Importer (§4.1) + `.alvol` cache, format, optional exporter, test generator; validated reader; dedicated decode thread; GPU ring and preload; clock and take sync; placement, attach and UI; opaque-depth copy; sun-transmittance volume; half-res march with atmospherics-consistent sun and ambient, fog and haze, fire emission; composite; **fire bloom feed**; bank; verdicts; TUT. A complete smoke-and-fire player. |
 | **2** | Fire lights the scene: one client-only point light from the frame table's emission centroid, Kelvin and total, using the rig's local-emitter pattern and gate exemptions. Local lights on smoke; the sun shadow map on smoke (first verify it's still valid at the composite point); probe irradiance for ambient. |
-| **3** | Alpha-aware compositing; volumes in VCam/mirror views; smoke casting shadows; route A (direct `.vdb`) if wanted. |
+| **3** | Alpha-aware compositing; volumes in VCam/mirror views; smoke casting shadows; NanoVDB/GPU-sparse rendering for higher resolutions. |
 
 ---
 
@@ -387,7 +499,10 @@ test exports with the transposed axis order verified by an asymmetric test shape
 
 ## 12. Off-limits
 
-- **No OpenVDB / TBB / Blosc in vcpkg** unless the user picks route A.
+- **OpenVDB features:** base `openvdb` only. **No `nanovdb`** (CUDA), **no `ax`** (LLVM), **no `tools`**
+  (GLEW/GLFW). No change to other ports' versions; the baseline stays pinned.
+- **OpenVDB stays off the render thread and out of play time:** it's used only by the importer, on the
+  volume thread.
 - **G-buffer layout and the ReShade bridge ABI.**
 - **Existing volumetric passes** (froxel, projector shafts, local fog) are read-only precedents. The only
   shared-pipeline additions are the gated depth copy and the new pass call.
@@ -400,7 +515,11 @@ test exports with the transposed axis order verified by an asymmetric test shape
 
 ## 13. Open decisions (defaults chosen)
 
-- **D1 — Route:** B. A later.
+- **D1 — Route:** **A (chosen by the user)**: direct `.vdb` import into the `.alvol` cache. The
+  exporter is an optional fallback.
+- **D6 — TBB linkage:** static first; a per-port dynamic override plus shipping the TBB runtime if static
+  fails.
+- **D7 — Trim OpenEXR via an overlay port:** only if the base port's footprint is a problem.
 - **D2 — Export resolution:** 128 on the longest axis.
 - **D3 — Instances:** at most 4.
 - **D4 — Frame blend:** on.
