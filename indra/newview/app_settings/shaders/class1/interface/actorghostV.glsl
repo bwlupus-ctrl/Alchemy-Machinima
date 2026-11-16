@@ -55,6 +55,10 @@ out vec4 vary_vertex_color;
 // Stable pre-skin/local position shared with native Actor FX dissolve. Using
 // eye/world position here would make the field swim when the actor animates.
 out vec3 vary_object_position;
+// Clone transition coordinate (PLAN 3.1): final skinned position (before Slice/Interlace/Jitter) into body space.
+uniform vec4 actorFxTransition;      // x = style (0 = off)
+uniform mat4 transitionEyeToBody;
+out vec3 vary_transition_pos;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -164,6 +168,7 @@ void main()
     vec4 pos = modelview_matrix * vec4(position.xyz, 1.0);
     vary_normal = normal_matrix * normal;
 #endif
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
 #ifdef HAS_SKIN
     cloneFxVertex(pos, 1, rest);
 #else

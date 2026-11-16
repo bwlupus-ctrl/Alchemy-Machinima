@@ -20,3 +20,8 @@ bool actorFxDissolveDiscard(vec3 object_position)
 {
     return false;
 }
+
+bool actorFxTransitionDiscard()
+{
+    return false;
+}

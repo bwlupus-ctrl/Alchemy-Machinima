@@ -2463,9 +2463,15 @@ def look_turn_findings(src: dict[str, str], cpp: str) -> list[str]:
             sub(animation, "Recent Animations") is None:
         out.append("menu_ghost_clone.xml: Animation must hold Back to live, Restart animation, Flip left/right, Speed and Recent")
     appearance = sub(root, "Appearance")
-    if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Look", "Fade out", "Fade in"] or \
+    # Clone transitions (11/16): "Transition to..." sits beside Swap source; the expected list is re-pinned with it.
+    if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Transition to...", "Look", "Fade out", "Fade in"] or \
             sub(appearance, "Swap Source") is None:
-        out.append("menu_ghost_clone.xml: Appearance must hold Swap source, Look, Fade out and Fade in")
+        out.append("menu_ghost_clone.xml: Appearance must hold Swap source, Transition to..., Look, Fade out and Fade in")
+    elif (lambda node: node is None or [(c.get("name"), call(c)) for c in node if c.tag == "menu_item_call"] != [
+            ("Transition Look", ("GhostClone.TransitionTo", "look")),
+            ("Transition Overlay Look", ("GhostClone.TransitionTo", "overlay_look")),
+            ("Transition Normal Look", ("GhostClone.TransitionTo", "normal"))])(sub(appearance, "Transition To")):
+        out.append("menu_ghost_clone.xml: Transition to... must hold Look..., Overlay look... and Normal look, each calling GhostClone.TransitionTo")
     elif [(call(c), [(e.get("function"), e.get("parameter")) for e in c if e.tag.endswith("on_enable")])
           for c in appearance if c.tag == "menu_item_call"] != [
             (("GhostClone.Fade", "out"), [("GhostClone.EnableFade", "out")]),

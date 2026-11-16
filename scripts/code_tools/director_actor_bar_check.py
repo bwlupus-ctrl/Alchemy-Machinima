@@ -83,6 +83,8 @@ def reverse_clear_anim_mover(source, name):
     if name not in ("llactormover.cpp", "llactormover.h"):
         return source
     source = source.replace("\r\n", "\n")
+    from clone_transition_pins import reverse_clone_transition  # newest layer first (clone transitions, render)
+    source = reverse_clone_transition(source, name)
     source = reverse_hot_gaze_query_mover(source, name)
     source = reverse_gaze_nearby_mover(source, name)
     import json
@@ -159,6 +161,8 @@ def reverse_feature_allowance(source, name, filename, digest, label):
     """Reverse one pinned layer, then require its entire historical baseline."""
     import hashlib
     import json
+    from clone_transition_pins import reverse_clone_transition  # newest layer first (clone transitions, render)
+    source = reverse_clone_transition(source, name)
     raw = (Path(__file__).parent / filename).read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(raw).hexdigest() == digest, (label, "allowance pin")
     allowed = json.loads(raw)
@@ -590,6 +594,8 @@ def reverse_qol_allowance(path, source):
     """Exact reviewed feature delta; unrelated content remains baseline guarded."""
     import hashlib
     import json
+    from clone_transition_pins import reverse_clone_transition  # newest layer first (clone transitions, render)
+    source = reverse_clone_transition(source, path)
     raw = (Path(__file__).parent / "clone_qol_renderer_hunks.json").read_text(encoding="utf-8").replace("\r\n", "\n").encode()
     assert hashlib.sha256(raw).hexdigest() == "1537cae0db0e2597e140d50937a7eb768afb729365bf2a095ae4b7fbe2aa7a0e", "QoL allowance pin"
     allowance = json.loads(raw)

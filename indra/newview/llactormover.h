@@ -40,6 +40,7 @@
 #include "m4math.h"         // frozen attachment matrices (GhostDrawParams)
 #include "alghostclearanim.h" // [ClearAnim] ParkedStore
 #include "llghostcoverage.h" // [GhostDeferred] per-category clone coverage mask
+#include "alclonetransition.h" // [CloneTransition] RenderParams in GhostDrawParams
 #include "alghostanimmirrormath.h" // Directed mirror gaze observer
 #include "algazehot.h"
 #include "algazemotor.h"    // per-actor coordinated gaze motor state (spec 6A)
@@ -885,13 +886,17 @@ public:
     // readiness query is fail-open (false unless both body + rigid-eye world
     // actorghost programs linked). Call the draw once for solid and once for
     // blend so the shared proxy queue can interleave authored alpha correctly.
+    // [CloneTransition] `shell` (non-null, active) selects the EFFECT SHELL: additive edge only, no style
+    // required, no depth write, never a prime. Null = the ordinary Actor FX replay.
     bool canRenderSystemActorGhost(LLVOAvatar* avatar,
-                                   const LLUUID& style_id) const;
+                                   const LLUUID& style_id,
+                                   const ALCloneTransition::RenderParams* shell = nullptr) const;
     bool renderSystemActorGhost(LLVOAvatar* avatar,
                                 const LLUUID& style_id,
                                 bool blend_sweep,
                                 bool depth_only = false,
-                                bool depth_available = false);
+                                bool depth_available = false,
+                                const ALCloneTransition::RenderParams* shell = nullptr);
 
     // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------
     // Refresh each roster actor's cached impostor snapshot (a billboard image of
@@ -1204,6 +1209,12 @@ public:
         // no coverage info -> the classic full draw, byte-identical.
         GhostCoverageMask mDeferredCoverage = GHOST_COVERAGE_NONE;
         GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;
+        // [CloneTransition] Native/overlay transition mask for this draw (PLAN 3.1-3.3). Default
+        // (inactive) is byte-identical to no transition: every program bind resets the uniforms.
+        ALCloneTransition::RenderParams mTransition;
+        // [CloneTransition] Effect shell (PLAN 3.3): additive edge only. A dedicated flag, never a look
+        // (look 10 Layer would make the replay own native beauty). Never writes depth or colour of the body.
+        bool mEffectOnly = false;
         // [AvatarSilhouette] 0=beauty, 1=coverage Phase A, 2=coverage Phase B.
         U8 mSilCoverPhase = 0;
         const CoverPolicy* mCoverPolicy = nullptr; // coverage replay only; never beauty
@@ -1819,6 +1830,11 @@ private:
         bool mCoverageReplacement = false;
         bool mPBRReady = false;
         bool mDepthPrimed = false;
+        // [CloneTransition] EFFECT SHELL item (PLAN 3.3). Not a style proxy: it never owns native beauty,
+        // never primes depth, never contributes matte coverage, and is invisible to the "replay active /
+        // ready" queries (the native treatment of the body must keep running underneath it).
+        bool mEffectShell = false;
+        ALCloneTransition::RenderParams mTransition;
     };
     void buildSharedActorStyleQueue();
     bool renderSharedActorStyleProxyItem(SharedActorStyleProxy& proxy,

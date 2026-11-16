@@ -3,6 +3,7 @@
 
 #include "alavatarlightresponse.h"
 #include "alcinelightrigmanager.h"
+#include "alclonetransitions.h"
 #include "alghoststudio.h"
 #include "aldirectorswitcher.h"
 #include "alsettingsundohistory.h"
@@ -285,6 +286,9 @@ bool reset(std::string& message)
     apply(root, false);
     S32 skipped = 0;
     applyActors(root["actors"], false, skipped);
+    // [CloneTransition] D9: a running transition snaps to its end, unless ALL OFF hid the clones (then it
+    // rolls back). The ALL OFF feature list holds no clone-visibility setting; ask the Studio rather than assume.
+    ALCloneTransitions::onAllOff(!ALGhostStudio::instance().getShowAll());
     ALAvatarLightResponse::instance().clearForDirector();
     message = "ALL OFF: features off; Personal Lighting and Avatar Light Response reset";
     return true;

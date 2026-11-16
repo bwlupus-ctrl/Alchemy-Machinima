@@ -52,6 +52,9 @@ out vec4 vertex_color;
 out vec4 vary_cur_clip;
 out vec4 vary_last_clip;
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -73,6 +76,7 @@ void main()
     // [BDMerge A5.4-1b] Skinned/rigged path (see velocityV.glsl note).
     mat4 cur_mat = getObjectSkinnedTransform();
     vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(mv_pos.xyz, 1.0)).xyz : vec3(0.0);
     gl_Position = projection_matrix * mv_pos;                        // jittered raster
 
     vary_cur_clip = projection_matrix_unjittered * mv_pos;          // un-jittered
@@ -80,6 +84,7 @@ void main()
     vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);
 #else
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);   // jittered raster
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);
 
     vary_cur_clip  = projection_matrix_unjittered * modelview_matrix * vec4(position.xyz, 1.0);
     vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);

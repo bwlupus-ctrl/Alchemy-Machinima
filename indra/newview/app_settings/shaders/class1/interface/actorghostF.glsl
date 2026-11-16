@@ -577,6 +577,75 @@ vec2 ghostTronSeams(vec3 dPx, vec3 dPy)
 
 uniform float ghostFadeProgress;
 
+// Clone transition (PLAN 3.1-3.3): same field/seed/p as the native mask, evaluated on the body-space
+// transition coordinate. Style 0 (reset every bind) keeps every existing draw byte-identical.
+uniform vec4 actorFxTransition;      // x style (0 off), y p, z side (0 out / 1 in), w direction
+uniform vec4 actorFxTransition2;     // x body height (m), y edge width (field units)
+uniform vec4 actorFxTransitionEdge;  // rgb linear edge colour, w edge intensity
+uniform int ghostEffectOnly;         // effect shell: additive edge only (never a look)
+// seed: two exact 16-bit halves in actorFxTransition2.zw (float uniforms only: no uint uniform path)
+uint ctSeed() { return uint(actorFxTransition2.z + 0.5) | (uint(actorFxTransition2.w + 0.5) << 16); }
+in vec3 vary_transition_pos;
+// BEGIN CLONE TRANSITION FIELD (exact port of alclonetransition.h fieldValue/keeps; gate: clone_transition_render_check.py)
+float ctHash3(ivec3 c, uint seed)
+{
+    uint h = seed * 747796405u + 2891336453u;
+    h ^= uint(c.x) * 0x8da6b343u; h ^= uint(c.y) * 0xd8163841u; h ^= uint(c.z) * 0xcb1ab31fu;
+    h = (h ^ (h >> 16)) * 0x7feb352du;
+    h = (h ^ (h >> 15)) * 0x846ca68bu;
+    h ^= h >> 16;
+    return float(h >> 8) * (1.0 / 16777216.0);
+}
+float ctLerp(float a, float b, float t) { return a + (b - a) * t; }
+float ctValueNoise(vec3 pos, float cell, uint seed)
+{
+    vec3 q = pos / cell;
+    vec3 f = floor(q);
+    ivec3 i = ivec3(f);
+    vec3 t = q - f;
+    vec3 u = t * t * (3.0 - 2.0 * t);
+    float c000 = ctHash3(i + ivec3(0, 0, 0), seed), c100 = ctHash3(i + ivec3(1, 0, 0), seed);
+    float c010 = ctHash3(i + ivec3(0, 1, 0), seed), c110 = ctHash3(i + ivec3(1, 1, 0), seed);
+    float c001 = ctHash3(i + ivec3(0, 0, 1), seed), c101 = ctHash3(i + ivec3(1, 0, 1), seed);
+    float c011 = ctHash3(i + ivec3(0, 1, 1), seed), c111 = ctHash3(i + ivec3(1, 1, 1), seed);
+    float x00 = ctLerp(c000, c100, u.x), x10 = ctLerp(c010, c110, u.x);
+    float x01 = ctLerp(c001, c101, u.x), x11 = ctLerp(c011, c111, u.x);
+    return ctLerp(ctLerp(x00, x10, u.y), ctLerp(x01, x11, u.y), u.z);
+}
+// style: 1 Dissolve, 2 Wipe, 3 Crossfade. direction: 0 up, 1 down.
+float ctField(int style, vec3 pos, uint seed, float body_height, int direction)
+{
+    if (style == 1)
+    {
+        float n = 0.65 * ctValueNoise(pos, 0.11, seed) + 0.35 * ctValueNoise(pos, 0.037, seed ^ 0x5bd1e995u);
+        return clamp((n - 0.15) / 0.70, 0.0, 0.99999);
+    }
+    if (style == 2)
+    {
+        float h = max(body_height, 0.1);
+        float z = clamp(pos.z / h, 0.0, 0.99999);
+        return direction == 1 ? 0.99999 - z : z;
+    }
+    if (style == 3)
+    {
+        ivec3 cell = ivec3(floor(pos / 0.015));
+        return min(ctHash3(cell, seed), 0.99999);
+    }
+    return 0.0;
+}
+// side: 0 outgoing keeps f >= p, 1 incoming keeps f < p.
+bool ctKeeps(int side, float field, float p)
+{
+    return side == 0 ? field >= p : field < p;
+}
+// END CLONE TRANSITION FIELD
+float ctEdgeWeight(int style, float field, float p, float width)
+{
+    if (style == 3 || style == 0 || p <= 0.0 || p >= 1.0) return 0.0;
+    float dd = abs(field - p);
+    return dd < width ? 1.0 - dd / width : 0.0;
+}
+
 float cloneFadeCoverage(float progress)
 {
     if (progress <= 0.0) return 1.0;
@@ -642,6 +711,14 @@ void main()
     vec3 fwP = abs(oPx) + abs(oPy);
 #endif
     if (safeStudioLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;
+    // Clone transition mask: precedence is transition OR existing coverage (both discard).
+    float ctFieldValue = 0.0;
+    if (actorFxTransition.x > 0.5)
+    {
+        ctFieldValue = ctField(int(actorFxTransition.x + 0.5), vary_transition_pos, ctSeed(),
+                               actorFxTransition2.x, int(actorFxTransition.w + 0.5));
+        if (!ctKeeps(int(actorFxTransition.z + 0.5), ctFieldValue, actorFxTransition.y)) discard;
+    }
 #ifndef GHOST_WORLD_PASS
     // Matrix taps use the gradients captured above every discard. Preserve
     // the historical sampler/footprint arithmetic for every existing look.
@@ -2727,6 +2804,30 @@ else if (ghostLook == 84) // Studio: Source -- typed 5x7 terminal cells
         // Output-side: all nonlinear look, dissolve, signal and radiance work
         // above is part of the styled result and is scaled exactly once here.
         rgb *= silKeep;
+    }
+    if (ghostEffectOnly != 0)
+    {
+        // Clone transition effect shell (PLAN 3.3): ADDITIVE edge only. Never lights the body, never
+        // writes depth, never contributes matte coverage. Outside the edge band the radiance is zero,
+        // so the additive blend leaves every other pixel untouched.
+        float edgeW = actorFxTransition.x > 0.5
+            ? ctEdgeWeight(int(actorFxTransition.x + 0.5), ctFieldValue, actorFxTransition.y,
+                           actorFxTransition2.y)
+            : 0.0;
+        vec3 edgeRad = actorFxTransitionEdge.rgb * (actorFxTransitionEdge.w * edgeW);
+        float shellCoverage = worldAuthoredCoverage;
+        if (ghostGlowOnly != 0)
+        {
+            frag_color = vec4(0.0, 0.0, 0.0, max(max(max(edgeRad.r, edgeRad.g), edgeRad.b) * shellCoverage, 0.0));
+            return;
+        }
+        // Transmittance only (no in-scatter): the native beauty underneath already carries the haze.
+        vec3 foggedEdge = applySkyAndWaterFog(vary_position, getAdditiveColor(), getAtmosAttenuation(),
+                                              vec4(edgeRad, 1.0)).rgb;
+        vec3 foggedNone = applySkyAndWaterFog(vary_position, getAdditiveColor(), getAtmosAttenuation(),
+                                              vec4(vec3(0.0), 1.0)).rgb;
+        frag_color = vec4(max(foggedEdge - foggedNone, vec3(0.0)), shellCoverage);
+        return;
     }
     if (ghostGlowOnly != 0)
     {

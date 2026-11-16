@@ -17,6 +17,10 @@ out vec2 vary_texcoord0;
 out vec3 vary_position;
 out vec3 vary_normal;
 out vec3 vary_object_position;
+// Clone transition coordinate (PLAN 3.1): final skinned position (before Slice/Interlace/Jitter) into body space.
+uniform vec4 actorFxTransition;      // x = style (0 = off)
+uniform mat4 transitionEyeToBody;
+out vec3 vary_transition_pos;
 flat out int vary_texture_index;
 out vec4 vary_vertex_color;
 
@@ -94,6 +98,7 @@ void cloneFxVertex(inout vec4 pos, int body, vec3 rest)
 void main()
 {
     vec4 pos = modelview_matrix * vec4(position, 1.0);
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
     cloneFxVertex(pos, 2, position); // Slice follows the head slab; looks stay joint-local
     vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0.0, 1.0)).xy;
     vary_position = pos.xyz;

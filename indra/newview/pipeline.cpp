@@ -29353,6 +29353,9 @@ bool drawSilCoverBatch(LLDrawInfo& di, const SilCoverPass& pass,
     if (pass.rigged && !uploadGhostPalette(di)) return false;
     shader.uniform1f(LLStaticHashedString("sil_clone_progress"),
         sDrawingGhostProxy ? 1.f-sDrawingGhostProxy->mFadeAlpha : 0.f);
+    // [CloneTransition] the native transition mask reaches silhouette cover / chroma key (PLAN 3.4).
+    LLRenderPass::uploadCloneTransition(shader,
+        LLDirectorCast::instance().transitionCoverageFor(di.mActorFxOwner, di.mActorFxFallbackOwner));
 
     const bool pbr_slots = pass.pbr && di.mGLTFMaterialList.size() > 1;
     const bool bump = pass.pass == LLRenderPass::PASS_BUMP || pass.pass == LLRenderPass::PASS_BUMP_RIGGED;

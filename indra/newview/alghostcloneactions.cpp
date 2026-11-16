@@ -15,6 +15,7 @@
 
 #include "alghostcloneactions.h"
 #include "alghostanimmirrormath.h"
+#include "alclonetransitions.h"
 
 #include "alghostanimdrop.h"
 #include "alghostclonemenulogic.h"
@@ -144,6 +145,8 @@ void setOverlayStyle(const std::vector<LLUUID>& rows, S32 style)
     if (!ALGhostStudio::isOverlayStyle(style)) return;
     for (const LLUUID& id : instances(rows))
     {
+        // [CloneTransition] A look edit during RUNNING rolls the transition back first (D18).
+        ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK);
         if (ALGhostStudio::Instance* inst =
                 ALGhostStudio::instance().getInstance(id))
         {
@@ -994,4 +997,110 @@ bool restoreDirectedMirror(const std::vector<FlipBefore>& state)
     }
     return any;
 }
+
+// ---- Transition to... ----------------------------------------------------------------------------
+namespace
+{
+S32 sPendingTransitionTarget = TRANSITION_TARGET_NORMAL;
+U64 sPendingTransitionRevision = 0;
+}
+
+TransitionResult transitionTo(const std::vector<LLUUID>& rows, const TransitionRequest& request)
+{
+    TransitionResult result;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    if (rows.empty())
+    {
+        result.mStatus = "Select a clone first";
+        return result;
+    }
+    if (hasExpandedMember(rows))
+    {
+        result.mStatus = "Transition acts on a whole clone or group: select the group header or a single clone";
+        return result;
+    }
+    const std::vector<LLUUID> ids = instances(rows);
+    if (ids.empty())
+    {
+        result.mStatus = "Select a clone first";
+        return result;
+    }
+    if (S32(ids.size()) > ALCloneTransition::MAX_RUNNING)
+    {
+        result.mStatus = "Transitions run on up to 2 clones at a time";
+        return result;
+    }
+    std::vector<LLUUID> started;
+    for (const LLUUID& id : ids)
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        std::string why;
+        if (!inst)
+        {
+            why = "Clone is not available";
+        }
+        else
+        {
+            ALCloneTransition::Request rq;
+            rq.style = request.mStyle;
+            rq.duration = request.mDuration;
+            rq.ease = request.mEase;
+            rq.direction = request.mDirection;
+            if (inst->mKind == ALGhostStudio::BACKING_OVERLAY)
+            {
+                rq.kind = ALCloneTransition::KIND_LOOK_TO_LOOK;
+                rq.fromLook = ALGhostStudio::resolveOverlayStyle(inst->mStyle);
+                rq.toLook = request.mTarget;
+                if (request.mTarget == TRANSITION_TARGET_NORMAL) why = "Pick a look: Normal look applies to entity clones";
+            }
+            else if (request.mTarget == TRANSITION_TARGET_NORMAL)
+            {
+                rq.kind = ALCloneTransition::KIND_OVERLAY_LOOK_TO_ENTITY;
+            }
+            else
+            {
+                rq.kind = ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK;
+                rq.toLook = request.mTarget;
+            }
+            if (why.empty()) ALCloneTransitions::instance().start(id, rq, why);
+        }
+        if (!why.empty())
+        {
+            for (const LLUUID& done : started) ALCloneTransitions::instance().cancel(done); // all or nothing
+            result.mStarted = 0;
+            result.mStatus = why;
+            return result;
+        }
+        started.push_back(id);
+    }
+    result.mStarted = S32(started.size());
+    return result;
+}
+
+bool cancelTransition(const std::vector<LLUUID>& rows)
+{
+    bool any = false;
+    if (!ALCloneTransitions::instanceExists()) return false;
+    for (const LLUUID& id : instances(rows)) any = ALCloneTransitions::instance().cancel(id) || any;
+    return any;
+}
+
+std::string transitionStatus(const std::vector<LLUUID>& rows)
+{
+    if (!ALCloneTransitions::instanceExists()) return std::string();
+    for (const LLUUID& id : instances(rows))
+    {
+        const std::string text = ALCloneTransitions::instance().statusFor(id);
+        if (!text.empty()) return text;
+    }
+    return std::string();
+}
+
+void requestTransitionTarget(S32 target)
+{
+    sPendingTransitionTarget = target;
+    ++sPendingTransitionRevision;
+}
+S32 pendingTransitionTarget() { return sPendingTransitionTarget; }
+U64 pendingTransitionRevision() { return sPendingTransitionRevision; }
 }

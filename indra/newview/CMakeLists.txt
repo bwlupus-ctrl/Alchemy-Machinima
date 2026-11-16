@@ -383,6 +383,8 @@ set(viewer_SOURCE_FILES
     alweatherclock.cpp
     alweatheruimodel.cpp
     alsensormodel.cpp
+    alclonetransition.cpp
+    alclonetransitions.cpp
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp
@@ -1349,6 +1351,8 @@ set(viewer_HEADER_FILES
     alweatheruimodel.h
     alsensormodel.h
     alsensorsettings.h
+    alclonetransition.h
+    alclonetransitions.h
     alghostgroupmodel.h
     alghostrotation.h
     alghostinteractionstate.h
@@ -2899,6 +2903,7 @@ if (BUILD_TESTING)
     alweatherclock.cpp
     alweatheruimodel.cpp
     alsensormodel.cpp
+    alclonetransition.cpp # [CloneTransition] pure maths + lifecycle state machine
     alghostgroupmodel.cpp
     alghostinteractionstate.cpp
     alghostplacementresolver.cpp

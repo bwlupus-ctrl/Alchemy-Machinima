@@ -1,0 +1,740 @@
+{
+ "base": "a49168443e7",
+ "description": "clone-transition render layer (workstream R)",
+ "files": {
+  "indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveF.glsl": [
+   {
+    "after": "uniform vec4 actorFxParams0;\nuniform vec4 actorFxParams1;\nuniform float actorFxDissolveProgress;\n\n// Clone transition native mask (PLAN 3.2). Independent of actorFxEnabled and every Actor FX\n// look: style 0 (the per-draw reset value) makes ctTransitionDiscard a uniform-only no-op.\n//   actorFxTransition  x = style (0 off, 1 Dissolve, 2 Wipe, 3 Crossfade), y = p, z = side, w = direction\n//   actorFxTransition2 x = body height (m), y = edge width (field units), zw = seed lo/hi 16 bits\nuniform vec4 actorFxTransition;\nuniform vec4 actorFxTransition2;\n// seed: two exact 16-bit halves in actorFxTransition2.zw (float uniforms only: no uint uniform path)\nuint ctSeed() { return uint(actorFxTransition2.z + 0.5) | (uint(actorFxTransition2.w + 0.5) << 16); }\nin vec3 vary_transition_pos;   // body-space transition coordinate (vertex shaders, final skinned position)\n\n// BEGIN CLONE TRANSITION FIELD (exact port of alclonetransition.h fieldValue/keeps; gate: clone_transition_render_check.py)\nfloat ctHash3(ivec3 c, uint seed)\n{\n    uint h = seed * 747796405u + 2891336453u;\n    h ^= uint(c.x) * 0x8da6b343u; h ^= uint(c.y) * 0xd8163841u; h ^= uint(c.z) * 0xcb1ab31fu;\n    h = (h ^ (h >> 16)) * 0x7feb352du;\n    h = (h ^ (h >> 15)) * 0x846ca68bu;\n    h ^= h >> 16;\n    return float(h >> 8) * (1.0 / 16777216.0);\n}\nfloat ctLerp(float a, float b, float t) { return a + (b - a) * t; }\nfloat ctValueNoise(vec3 pos, float cell, uint seed)\n{\n    vec3 q = pos / cell;\n    vec3 f = floor(q);\n    ivec3 i = ivec3(f);\n    vec3 t = q - f;\n    vec3 u = t * t * (3.0 - 2.0 * t);\n    float c000 = ctHash3(i + ivec3(0, 0, 0), seed), c100 = ctHash3(i + ivec3(1, 0, 0), seed);\n    float c010 = ctHash3(i + ivec3(0, 1, 0), seed), c110 = ctHash3(i + ivec3(1, 1, 0), seed);\n    float c001 = ctHash3(i + ivec3(0, 0, 1), seed), c101 = ctHash3(i + ivec3(1, 0, 1), seed);\n    float c011 = ctHash3(i + ivec3(0, 1, 1), seed), c111 = ctHash3(i + ivec3(1, 1, 1), seed);\n    float x00 = ctLerp(c000, c100, u.x), x10 = ctLerp(c010, c110, u.x);\n    float x01 = ctLerp(c001, c101, u.x), x11 = ctLerp(c011, c111, u.x);\n    return ctLerp(ctLerp(x00, x10, u.y), ctLerp(x01, x11, u.y), u.z);\n}\n// style: 1 Dissolve, 2 Wipe, 3 Crossfade. direction: 0 up, 1 down.\nfloat ctField(int style, vec3 pos, uint seed, float body_height, int direction)\n{\n    if (style == 1)\n    {\n        float n = 0.65 * ctValueNoise(pos, 0.11, seed) + 0.35 * ctValueNoise(pos, 0.037, seed ^ 0x5bd1e995u);\n        return clamp((n - 0.15) / 0.70, 0.0, 0.99999);\n    }\n    if (style == 2)\n    {\n        float h = max(body_height, 0.1);\n        float z = clamp(pos.z / h, 0.0, 0.99999);\n        return direction == 1 ? 0.99999 - z : z;\n    }\n    if (style == 3)\n    {\n        ivec3 cell = ivec3(floor(pos / 0.015));\n        return min(ctHash3(cell, seed), 0.99999);\n    }\n    return 0.0;\n}\n// side: 0 outgoing keeps f >= p, 1 incoming keeps f < p.\nbool ctKeeps(int side, float field, float p)\n{\n    return side == 0 ? field >= p : field < p;\n}\n// END CLONE TRANSITION FIELD\n\n\nfloat cloneFadeCoverage(float progress)",
+    "before": "uniform vec4 actorFxParams0;\nuniform vec4 actorFxParams1;\nuniform float actorFxDissolveProgress;\n\n\nfloat cloneFadeCoverage(float progress)"
+   },
+   {
+    "after": "    return field - threshold;\n}\n\n// Shared entry for beauty (called from actorFxTronPrime in actorFxF.glsl) and every shadow /\n// velocity / depth program (called from actorFxDissolveDiscard below). Never reads\n// actorFxEnabled: the mask is independent of the Actor FX treatment (replay disables it).\nbool actorFxTransitionDiscard()\n{\n    if (actorFxTransition.x < 0.5)\n    {\n        return false;\n    }\n    float f = ctField(int(actorFxTransition.x + 0.5), vary_transition_pos, ctSeed(),\n                      actorFxTransition2.x, int(actorFxTransition.w + 0.5));\n    return !ctKeeps(int(actorFxTransition.z + 0.5), f, actorFxTransition.y);\n}\n\nbool actorFxDissolveDiscard(vec3 object_position)\n{\n    // Transition first: a pixel is discarded if the transition OR the existing coverage discards it.\n    if (actorFxTransitionDiscard())\n    {\n        return true;\n    }\n    // Keep every non-Dissolve fragment on the uniform-only fast path.\n    if (!actorFxDissolveEnabled())\n    {",
+    "before": "    return field - threshold;\n}\n\nbool actorFxDissolveDiscard(vec3 object_position)\n{\n    // Keep every non-Dissolve fragment on the uniform-only fast path.\n    if (!actorFxDissolveEnabled())\n    {"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/alchemy/actorFxDissolveFallbackF.glsl": [
+   {
+    "after": "\nbool actorFxDissolveDiscard(vec3 object_position)\n{\n    return false;\n}\n\nbool actorFxTransitionDiscard()\n{\n    return false;\n}\n",
+    "before": "\nbool actorFxDissolveDiscard(vec3 object_position)\n{\n    return false;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/alchemy/actorFxF.glsl": [
+   {
+    "after": "\n// Shared with shadow and glow programs; implemented by actorFxDissolveF.glsl.\nfloat actorFxDissolveCoverage(vec3 object_position);\nbool actorFxTransitionDiscard(); // clone transition mask (PLAN 3.2), same module\nin vec3 vary_actor_fx_position;\n\nfloat actorFxBeautyDissolveCoverage()",
+    "before": "\n// Shared with shadow and glow programs; implemented by actorFxDissolveF.glsl.\nfloat actorFxDissolveCoverage(vec3 object_position);\nin vec3 vary_actor_fx_position;\n\nfloat actorFxBeautyDissolveCoverage()"
+   },
+   {
+    "after": "        actorFxTronDpx    = dFdx(vary_actor_fx_position);\n        actorFxTronDpy    = dFdy(vary_actor_fx_position);\n        actorFxTronPrimed = true;\n    }\n    // Clone transition native mask: the one shared beauty entry (every Actor FX program calls\n    // this first), BEFORE any treatment early-out. Uniform-guarded (style 0 = no-op) and\n    // independent of actorFxEnabled, so it also runs while shared replay disables the treatment.\n    if (actorFxTransitionDiscard())\n    {\n        discard;\n    }\n}\n",
+    "before": "        actorFxTronDpx    = dFdx(vary_actor_fx_position);\n        actorFxTronDpy    = dFdy(vary_actor_fx_position);\n        actorFxTronPrimed = true;\n    }\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/avatar/avatarActorGhostV.glsl": [
+   {
+    "after": "out vec3 vary_position;\nout vec3 vary_normal;\nout vec3 vary_object_position;\n// Clone transition coordinate (PLAN 3.1): final skinned position (before Slice/Interlace/Jitter) into body space.\nuniform vec4 actorFxTransition;      // x = style (0 = off)\nuniform mat4 transitionEyeToBody;\nout vec3 vary_transition_pos;\nflat out int vary_texture_index;\nout vec4 vary_vertex_color;\n",
+    "before": "out vec3 vary_position;\nout vec3 vary_normal;\nout vec3 vary_object_position;\nflat out int vary_texture_index;\nout vec4 vary_vertex_color;\n"
+   },
+   {
+    "after": "    pos.z = dot(skin[2], offsetPos);\n#endif\n\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n    cloneFxVertex(pos, 1, position);\n    vary_texcoord0 = texcoord0;\n    vary_position = pos.xyz;",
+    "before": "    pos.z = dot(skin[2], offsetPos);\n#endif\n\n    cloneFxVertex(pos, 1, position);\n    vary_texcoord0 = texcoord0;\n    vary_position = pos.xyz;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_actor_fx_normal;\nout vec3 vary_actor_fx_eye_position;\n#endif",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nout vec3 vary_actor_fx_normal;\nout vec3 vary_actor_fx_eye_position;\n#endif"
+   },
+   {
+    "after": "    vary_actor_fx_position = position;\n    vary_actor_fx_normal = norm;\n    vary_actor_fx_eye_position = pos.xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n\n    gl_Position = projection_matrix * pos;",
+    "before": "    vary_actor_fx_position = position;\n    vary_actor_fx_normal = norm;\n    vary_actor_fx_eye_position = pos.xyz;\n#endif\n\n    gl_Position = projection_matrix * pos;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/avatar/eyeballActorGhostV.glsl": [
+   {
+    "after": "out vec3 vary_position;\nout vec3 vary_normal;\nout vec3 vary_object_position;\n// Clone transition coordinate (PLAN 3.1): final skinned position (before Slice/Interlace/Jitter) into body space.\nuniform vec4 actorFxTransition;      // x = style (0 = off)\nuniform mat4 transitionEyeToBody;\nout vec3 vary_transition_pos;\nflat out int vary_texture_index;\nout vec4 vary_vertex_color;\n",
+    "before": "out vec3 vary_position;\nout vec3 vary_normal;\nout vec3 vary_object_position;\nflat out int vary_texture_index;\nout vec4 vary_vertex_color;\n"
+   },
+   {
+    "after": "void main()\n{\n    vec4 pos = modelview_matrix * vec4(position, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n    cloneFxVertex(pos, 2, position); // Slice follows the head slab; looks stay joint-local\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0.0, 1.0)).xy;\n    vary_position = pos.xyz;",
+    "before": "void main()\n{\n    vec4 pos = modelview_matrix * vec4(position, 1.0);\n    cloneFxVertex(pos, 2, position); // Slice follows the head slab; looks stay joint-local\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0.0, 1.0)).xy;\n    vary_position = pos.xyz;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_actor_fx_normal;\nout vec3 vary_actor_fx_eye_position;\n#endif",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nout vec3 vary_actor_fx_normal;\nout vec3 vary_actor_fx_eye_position;\n#endif"
+   },
+   {
+    "after": "    vary_actor_fx_position = position;\n    vary_actor_fx_normal = norm;\n    vary_actor_fx_eye_position = pos.xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n\n    calcAtmospherics(pos.xyz);",
+    "before": "    vary_actor_fx_position = position;\n    vary_actor_fx_normal = norm;\n    vary_actor_fx_eye_position = pos.xyz;\n#endif\n\n    calcAtmospherics(pos.xyz);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/actorFxGlowV.glsl": [
+   {
+    "after": "in vec2 texcoord0;\n\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_position;\nout vec4 vertex_color;\nout vec2 vary_texcoord0;",
+    "before": "in vec2 texcoord0;\n\nout vec3 vary_actor_fx_position;\nout vec3 vary_position;\nout vec4 vertex_color;\nout vec2 vary_texcoord0;"
+   },
+   {
+    "after": "#endif\n\n    vary_position = pos.xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0.0, 1.0)).xy;\n    vertex_color = diffuse_color;\n}",
+    "before": "#endif\n\n    vary_position = pos.xyz;\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0, 0.0, 1.0)).xy;\n    vertex_color = diffuse_color;\n}"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/actorFxPbrGlowV.glsl": [
+   {
+    "after": "in vec2 texcoord0;\n\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_position;\nout vec4 vertex_color;\nout vec2 base_color_texcoord;",
+    "before": "in vec2 texcoord0;\n\nout vec3 vary_actor_fx_position;\nout vec3 vary_position;\nout vec4 vertex_color;\nout vec2 base_color_texcoord;"
+   },
+   {
+    "after": "    vary_position = (modelview_matrix * vec4(position, 1.0)).xyz;\n#endif\n\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n    base_color_texcoord = texture_transform(texcoord0,\n        texture_base_color_transform, texture_matrix0);\n    vertex_color = diffuse_color;",
+    "before": "    vary_position = (modelview_matrix * vec4(position, 1.0)).xyz;\n#endif\n\n    base_color_texcoord = texture_transform(texcoord0,\n        texture_base_color_transform, texture_matrix0);\n    vertex_color = diffuse_color;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/actorMaskAvatarV.glsl": [
+   {
+    "after": "#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\n// clone transition coordinate: unguarded, silCoverF (no HAS_ACTOR_FX) consumes it too\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nin vec3 normal;\nin vec2 texcoord0;\n#ifdef AVATAR_CLOTH",
+    "before": "#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec3 normal;\nin vec2 texcoord0;\n#ifdef AVATAR_CLOTH"
+   },
+   {
+    "after": "    vary_normal = norm;\n\n    vary_position = pos.xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n    gl_Position = projection_matrix * pos;\n}\n",
+    "before": "    vary_normal = norm;\n\n    vary_position = pos.xyz;\n    gl_Position = projection_matrix * pos;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/actorMaskEyesV.glsl": [
+   {
+    "after": "#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\n// clone transition coordinate: unguarded, silCoverF (no HAS_ACTOR_FX) consumes it too\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nin vec3 normal;\nin vec2 texcoord0;\n",
+    "before": "#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec3 normal;\nin vec2 texcoord0;\n"
+   },
+   {
+    "after": "    //transform vertex\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    vary_normal = normalize(normal_matrix * normal);",
+    "before": "    //transform vertex\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    vary_normal = normalize(normal_matrix * normal);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/actorMaskV.glsl": [
+   {
+    "after": "in vec4 diffuse_color;\nin int texture_index;\nout vec3 vary_position;\n// clone transition coordinate (silCoverF)\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec2 vary_texcoord0;\nout vec4 vertex_color;\nflat out int mask_slot;",
+    "before": "in vec4 diffuse_color;\nin int texture_index;\nout vec3 vary_position;\nout vec2 vary_texcoord0;\nout vec4 vertex_color;\nflat out int mask_slot;"
+   },
+   {
+    "after": "    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n#endif\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n    mask_slot = mask_indexed != 0 ? texture_index : 0;\n#ifdef MASK_PBR\n    int mi = mask_material_slots != 0 ? mask_slot : 0;",
+    "before": "    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n#endif\n    mask_slot = mask_indexed != 0 ? texture_index : 0;\n#ifdef MASK_PBR\n    int mi = mask_material_slots != 0 ? mask_slot : 0;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\n\n#ifdef USE_INDEXED_TEX",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\n\n#ifdef USE_INDEXED_TEX"
+   },
+   {
+    "after": "\n    vary_norm = norm;\n    vary_position = pos.xyz;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n\n#ifdef USE_VERTEX_COLOR\n    vertex_color = diffuse_color;",
+    "before": "\n    vary_norm = norm;\n    vary_position = pos.xyz;\n\n#ifdef USE_VERTEX_COLOR\n    vertex_color = diffuse_color;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl": [
+   {
+    "after": "\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\nvoid main()\n{",
+    "before": "\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid main()\n{"
+   },
+   {
+    "after": "    pos.y = dot(trans[1], pos_in);\n    pos.z = dot(trans[2], pos_in);\n    pos.w = 1.0;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n\n    norm.x = dot(trans[0].xyz, normal);\n    norm.y = dot(trans[1].xyz, normal);",
+    "before": "    pos.y = dot(trans[1], pos_in);\n    pos.z = dot(trans[2], pos_in);\n    pos.w = 1.0;\n\n    norm.x = dot(trans[0].xyz, normal);\n    norm.y = dot(trans[1].xyz, normal);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec3 normal;\nin vec4 diffuse_color;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec3 normal;\nin vec4 diffuse_color;"
+   },
+   {
+    "after": "#endif\n    //transform vertex\n    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n#endif\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n",
+    "before": "#endif\n    //transform vertex\n    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl": [
+   {
+    "after": "in vec3 normal;\nin vec2 texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\nvoid main()\n{",
+    "before": "in vec3 normal;\nin vec2 texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid main()\n{"
+   },
+   {
+    "after": "    pos.y = dot(trans[1], pos_in);\n    pos.z = dot(trans[2], pos_in);\n    pos.w = 1.0;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n\n    norm.x = dot(trans[0].xyz, normal);\n    norm.y = dot(trans[1].xyz, normal);",
+    "before": "    pos.y = dot(trans[1], pos_in);\n    pos.z = dot(trans[2], pos_in);\n    pos.w = 1.0;\n\n    norm.x = dot(trans[0].xyz, normal);\n    norm.y = dot(trans[1].xyz, normal);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec3 normal;\nin vec2 texcoord0;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec3 normal;\nin vec2 texcoord0;"
+   },
+   {
+    "after": "    vary_normal = norm;\n\n    vary_position = pos.xyz;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    gl_Position = projection_matrix * pos;\n}\n",
+    "before": "    vary_normal = norm;\n\n    vary_position = pos.xyz;\n    gl_Position = projection_matrix * pos;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/avatarVelocityV.glsl": [
+   {
+    "after": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec2 vary_texcoord0;\nout vec4 vertex_color;\n",
+    "before": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\nout vec2 vary_texcoord0;\nout vec4 vertex_color;\n"
+   },
+   {
+    "after": "    mat4 cur_skin = getSkinnedTransform();\n    vec4 cur_view = vec4(pos * cur_skin);       // row-vector convention, see avatarV.glsl\n    cur_view.w = 1.0;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(cur_view.xyz, 1.0)).xyz : vec3(0.0);\n\n    mat4 last_skin = getLastSkinnedTransform();\n    vec4 last_view = vec4(pos * last_skin);",
+    "before": "    mat4 cur_skin = getSkinnedTransform();\n    vec4 cur_view = vec4(pos * cur_skin);       // row-vector convention, see avatarV.glsl\n    cur_view.w = 1.0;\n\n    mat4 last_skin = getLastSkinnedTransform();\n    vec4 last_view = vec4(pos * last_skin);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "    vec3 t = normalize(normal_matrix * tangent.xyz);\n#endif\n\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n#endif\n    vec3 b = cross(n, t) * tangent.w;\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n",
+    "before": "    vec3 t = normalize(normal_matrix * tangent.xyz);\n#endif\n\n    vec3 b = cross(n, t) * tangent.w;\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/diffuseNoColorV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec3 normal;\nin vec2 texcoord0;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec3 normal;\nin vec2 texcoord0;"
+   },
+   {
+    "after": "    //transform vertex\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n#endif\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    vary_normal = normalize(normal_matrix * normal);",
+    "before": "    //transform vertex\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    vary_normal = normalize(normal_matrix * normal);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "    vary_normal = normalize(normal_matrix * normal);\n#endif\n\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n#endif\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    passTextureIndex();",
+    "before": "    vary_normal = normalize(normal_matrix * normal);\n#endif\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    passTextureIndex();"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#ifndef HAS_SKIN\nuniform mat4 modelview_matrix;   // rigid path: eye position for the transition coordinate\n#endif\n#endif\nin vec4 emissive;\nin vec4 diffuse_color;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 emissive;\nin vec4 diffuse_color;"
+   },
+   {
+    "after": "    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n#endif\n\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vary_material_index = texture_index;\n    vary_texcoord0 = texcoord0;\n    vertex_color = emissive;",
+    "before": "    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n#endif\n\n    vary_material_index = texture_index;\n    vary_texcoord0 = texcoord0;\n    vertex_color = emissive;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nvoid passTextureIndex();\nin vec4 emissive;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nvoid passTextureIndex();\nin vec4 emissive;"
+   },
+   {
+    "after": "    vec4 pos = (modelview_matrix * vec4(position.xyz, 1.0));\n#endif\n\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    calcAtmospherics(pos.xyz);",
+    "before": "    vec4 pos = (modelview_matrix * vec4(position.xyz, 1.0));\n#endif\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    calcAtmospherics(pos.xyz);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nvoid passTextureIndex();\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nvoid passTextureIndex();\nin vec3 normal;"
+   },
+   {
+    "after": "#endif\n\n    vary_position = pos.xyz;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    vary_texcoord1 = norm;",
+    "before": "#endif\n\n    vary_position = pos.xyz;\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n\n    vary_texcoord1 = norm;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nvoid passTextureIndex();\nin vec4 diffuse_color;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nvoid passTextureIndex();\nin vec4 diffuse_color;"
+   },
+   {
+    "after": "#endif\n\n    vary_position = pos.xyz;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n",
+    "before": "#endif\n\n    vary_position = pos.xyz;\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "#endif\n#endif\n\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n\n#if !defined(HAS_SKIN)",
+    "before": "#endif\n#endif\n\n    vertex_color = diffuse_color;\n\n#if !defined(HAS_SKIN)"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl": [
+   {
+    "after": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#ifndef HAS_SKIN\nuniform mat4 modelview_matrix;   // rigid path: eye position for the transition coordinate\n#endif\n\nvoid main()\n{",
+    "before": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid main()\n{"
+   },
+   {
+    "after": "    vec4 pos = modelview_projection_matrix * vec4(position.xyz, 1.0);\n#endif\n\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((mat * pre_pos).xyz, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    post_pos = pos;\n    gl_Position = pos;\n",
+    "before": "    vec4 pos = modelview_projection_matrix * vec4(position.xyz, 1.0);\n#endif\n\n    post_pos = pos;\n    gl_Position = pos;\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/materialV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "#endif //HAS_NORMAL_MAP\n#endif //HAS_SKIN\n\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n\n#if !defined(HAS_SKIN)",
+    "before": "#endif //HAS_NORMAL_MAP\n#endif //HAS_SKIN\n\n    vertex_color = diffuse_color;\n\n#if !defined(HAS_SKIN)"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl": [
+   {
+    "after": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#ifndef HAS_SKIN\nuniform mat4 modelview_matrix;   // rigid path: eye position for the transition coordinate\n#endif\n\nvoid main()\n{",
+    "before": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid main()\n{"
+   },
+   {
+    "after": "    vec4 pos = modelview_projection_matrix * pre_pos;\n#endif\n\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((mat * pre_pos).xyz, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    post_pos = pos;\n    gl_Position = pos;\n",
+    "before": "    vec4 pos = modelview_projection_matrix * pre_pos;\n#endif\n\n    post_pos = pos;\n    gl_Position = pos;\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl": [
+   {
+    "after": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#ifndef HAS_SKIN\nuniform mat4 modelview_matrix;   // rigid path: eye position for the transition coordinate\n#endif\n\nvoid passTextureIndex();\n",
+    "before": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid passTextureIndex();\n"
+   },
+   {
+    "after": "#endif\n\n\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((mat * pre_pos).xyz, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    post_pos = pos;\n\n    gl_Position = pos;",
+    "before": "#endif\n\n\n    post_pos = pos;\n\n    gl_Position = pos;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "    vary_sign = transformed_tangent.w;\n    vary_normal = n;\n\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n\n#if !defined(HAS_SKIN)",
+    "before": "    vary_sign = transformed_tangent.w;\n    vary_normal = n;\n\n    vertex_color = diffuse_color;\n\n#if !defined(HAS_SKIN)"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 emissive;\nin vec4 diffuse_color;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 emissive;\nin vec4 diffuse_color;"
+   },
+   {
+    "after": "    emissive_texcoord   = texture_transform(texcoord0, em, ident);\n\n    vertex_emissive = emissive;\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n}\n",
+    "before": "    emissive_texcoord   = texture_transform(texcoord0, em, ident);\n\n    vertex_emissive = emissive;\n    vertex_color = diffuse_color;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 emissive;\nin vec4 diffuse_color;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 emissive;\nin vec4 diffuse_color;"
+   },
+   {
+    "after": "    emissive_texcoord = texture_transform(texcoord0, texture_emissive_transform, texture_matrix0);\n\n    vertex_emissive = emissive;\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n}\n",
+    "before": "    emissive_texcoord = texture_transform(texcoord0, texture_emissive_transform, texture_matrix0);\n\n    vertex_emissive = emissive;\n    vertex_color = diffuse_color;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "    vary_sign = transformed_tangent.w;\n    vary_normal = n;\n\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n}\n",
+    "before": "    vary_sign = transformed_tangent.w;\n    vary_normal = n;\n\n    vertex_color = diffuse_color;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\nin vec4 diffuse_color;\nin vec3 normal;"
+   },
+   {
+    "after": "    vary_sign = transformed_tangent.w;\n    vary_normal = n;\n\n#ifdef HAS_ACTOR_FX\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n#endif\n    vertex_color = diffuse_color;\n}\n",
+    "before": "    vary_sign = transformed_tangent.w;\n    vary_normal = n;\n\n    vertex_color = diffuse_color;\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl": [
+   {
+    "after": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#ifndef HAS_SKIN\nuniform mat4 modelview_matrix;   // rigid path: eye position for the transition coordinate\n#endif\n\nvoid passTextureIndex();\n",
+    "before": "out vec4 vertex_color;\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid passTextureIndex();\n"
+   },
+   {
+    "after": "#endif\n\n\n#ifdef HAS_SKIN\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((mat * pre_pos).xyz, 1.0)).xyz : vec3(0.0);\n#else\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n#endif\n    post_pos = pos;\n\n    gl_Position = pos;",
+    "before": "#endif\n\n\n    post_pos = pos;\n\n    gl_Position = pos;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl": [
+   {
+    "after": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nuniform mat4 modelview_matrix;\n\nuniform vec3 box_center;\nuniform vec3 box_size;",
+    "before": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\n\nuniform vec3 box_center;\nuniform vec3 box_size;"
+   },
+   {
+    "after": "    vec3 p = position*box_size+box_center;\n    vary_actor_fx_position = p;\n    vec4 pos = modelview_projection_matrix*vec4(p.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(p.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n\n    gl_Position = pos;\n}",
+    "before": "    vec3 p = position*box_size+box_center;\n    vary_actor_fx_position = p;\n    vec4 pos = modelview_projection_matrix*vec4(p.xyz, 1.0);\n\n    gl_Position = pos;\n}"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/shadowSkinnedV.glsl": [
+   {
+    "after": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\nmat4 getObjectSkinnedTransform();\n",
+    "before": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\n\nmat4 getObjectSkinnedTransform();\n"
+   },
+   {
+    "after": "\n    mat = modelview_matrix * mat;\n    vec4 pos = (mat*vec4(position.xyz, 1.0));\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n    pos = projection_matrix*pos;\n\n    gl_Position = pos;",
+    "before": "\n    mat = modelview_matrix * mat;\n    vec4 pos = (mat*vec4(position.xyz, 1.0));\n    pos = projection_matrix*pos;\n\n    gl_Position = pos;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/shadowV.glsl": [
+   {
+    "after": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nuniform mat4 modelview_matrix;\n\nvoid main()\n{\n    vary_actor_fx_position = position;\n    //transform vertex\n    gl_Position = modelview_projection_matrix*vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n}\n",
+    "before": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\n\nvoid main()\n{\n    vary_actor_fx_position = position;\n    //transform vertex\n    gl_Position = modelview_projection_matrix*vec4(position.xyz, 1.0);\n}\n"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrDepthV.glsl": [
+   {
+    "after": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_position;\n\n#if SHARED_ACTOR_FX_ALPHA_MODE == SHARED_ACTOR_FX_ALPHA_MASK",
+    "before": "\nin vec3 position;\nout vec3 vary_actor_fx_position;\nout vec3 vary_position;\n\n#if SHARED_ACTOR_FX_ALPHA_MODE == SHARED_ACTOR_FX_ALPHA_MASK"
+   },
+   {
+    "after": "    gl_Position = modelview_projection_matrix * vec4(position, 1.0);\n#endif\n    vary_position = pos.xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n\n#if SHARED_ACTOR_FX_ALPHA_MODE == SHARED_ACTOR_FX_ALPHA_MASK\n    vec4 base_transform[2];",
+    "before": "    gl_Position = modelview_projection_matrix * vec4(position, 1.0);\n#endif\n    vary_position = pos.xyz;\n\n#if SHARED_ACTOR_FX_ALPHA_MODE == SHARED_ACTOR_FX_ALPHA_MASK\n    vec4 base_transform[2];"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrGlowV.glsl": [
+   {
+    "after": "\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\n\nout vec2 base_color_texcoord;",
+    "before": "\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\n\nout vec2 base_color_texcoord;"
+   },
+   {
+    "after": "#else\n    vec3 n = normal_matrix * normal;\n#endif\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n#endif\n    float n_len2 = dot(n, n);\n    vary_normal = n_len2 > 1e-12\n        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);",
+    "before": "#else\n    vec3 n = normal_matrix * normal;\n#endif\n    float n_len2 = dot(n, n);\n    vary_normal = n_len2 > 1e-12\n        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrSyntheticGlowV.glsl": [
+   {
+    "after": "#endif\n\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_position;\nout vec3 vary_normal;\nout vec4 vertex_color;",
+    "before": "#endif\n\nout vec3 vary_actor_fx_position;\nout vec3 vary_position;\nout vec3 vary_normal;\nout vec4 vertex_color;"
+   },
+   {
+    "after": "#else\n    vec3 n = normal_matrix * normal;\n#endif\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n    float n_len2 = dot(n, n);\n    vary_normal = n_len2 > 1e-12\n        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);",
+    "before": "#else\n    vec3 n = normal_matrix * normal;\n#endif\n    float n_len2 = dot(n, n);\n    vary_normal = n_len2 > 1e-12\n        ? n * inversesqrt(n_len2) : vec3(0.0, 0.0, 1.0);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/sharedActorFxPbrV.glsl": [
+   {
+    "after": "\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n#endif\n\nout vec3 vary_position;",
+    "before": "\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\n#endif\n\nout vec3 vary_position;"
+   },
+   {
+    "after": "#endif\n\n    gl_Position = vert;\n#ifdef HAS_ACTOR_FX\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);\n#endif\n    vary_fragcoord = vert.xyz;\n    // LLFetchedGLTFMaterial::bind supplies four independent KHR transforms for\n    // scalar replay. Indexed batches supply the same values as uniform arrays;",
+    "before": "#endif\n\n    gl_Position = vert;\n    vary_fragcoord = vert.xyz;\n    // LLFetchedGLTFMaterial::bind supplies four independent KHR transforms for\n    // scalar replay. Indexed batches supply the same values as uniform arrays;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/silCoverF.glsl": [
+   {
+    "after": "uniform vec2 sil_cover;\nuniform int sil_blended;\nuniform float sil_clone_progress;\n// Clone transition native mask (PLAN 3.4): chroma key / silhouette cover must see the same holes as beauty.\nuniform vec4 actorFxTransition;   // x style (0 off), y p, z side, w direction\nuniform vec4 actorFxTransition2;  // x body height\n// seed: two exact 16-bit halves in actorFxTransition2.zw (float uniforms only: no uint uniform path)\nuint ctSeed() { return uint(actorFxTransition2.z + 0.5) | (uint(actorFxTransition2.w + 0.5) << 16); }\nin vec3 vary_transition_pos;\n// BEGIN CLONE TRANSITION FIELD (exact port of alclonetransition.h fieldValue/keeps; gate: clone_transition_render_check.py)\nfloat ctHash3(ivec3 c, uint seed)\n{\n    uint h = seed * 747796405u + 2891336453u;\n    h ^= uint(c.x) * 0x8da6b343u; h ^= uint(c.y) * 0xd8163841u; h ^= uint(c.z) * 0xcb1ab31fu;\n    h = (h ^ (h >> 16)) * 0x7feb352du;\n    h = (h ^ (h >> 15)) * 0x846ca68bu;\n    h ^= h >> 16;\n    return float(h >> 8) * (1.0 / 16777216.0);\n}\nfloat ctLerp(float a, float b, float t) { return a + (b - a) * t; }\nfloat ctValueNoise(vec3 pos, float cell, uint seed)\n{\n    vec3 q = pos / cell;\n    vec3 f = floor(q);\n    ivec3 i = ivec3(f);\n    vec3 t = q - f;\n    vec3 u = t * t * (3.0 - 2.0 * t);\n    float c000 = ctHash3(i + ivec3(0, 0, 0), seed), c100 = ctHash3(i + ivec3(1, 0, 0), seed);\n    float c010 = ctHash3(i + ivec3(0, 1, 0), seed), c110 = ctHash3(i + ivec3(1, 1, 0), seed);\n    float c001 = ctHash3(i + ivec3(0, 0, 1), seed), c101 = ctHash3(i + ivec3(1, 0, 1), seed);\n    float c011 = ctHash3(i + ivec3(0, 1, 1), seed), c111 = ctHash3(i + ivec3(1, 1, 1), seed);\n    float x00 = ctLerp(c000, c100, u.x), x10 = ctLerp(c010, c110, u.x);\n    float x01 = ctLerp(c001, c101, u.x), x11 = ctLerp(c011, c111, u.x);\n    return ctLerp(ctLerp(x00, x10, u.y), ctLerp(x01, x11, u.y), u.z);\n}\n// style: 1 Dissolve, 2 Wipe, 3 Crossfade. direction: 0 up, 1 down.\nfloat ctField(int style, vec3 pos, uint seed, float body_height, int direction)\n{\n    if (style == 1)\n    {\n        float n = 0.65 * ctValueNoise(pos, 0.11, seed) + 0.35 * ctValueNoise(pos, 0.037, seed ^ 0x5bd1e995u);\n        return clamp((n - 0.15) / 0.70, 0.0, 0.99999);\n    }\n    if (style == 2)\n    {\n        float h = max(body_height, 0.1);\n        float z = clamp(pos.z / h, 0.0, 0.99999);\n        return direction == 1 ? 0.99999 - z : z;\n    }\n    if (style == 3)\n    {\n        ivec3 cell = ivec3(floor(pos / 0.015));\n        return min(ctHash3(cell, seed), 0.99999);\n    }\n    return 0.0;\n}\n// side: 0 outgoing keeps f >= p, 1 incoming keeps f < p.\nbool ctKeeps(int side, float field, float p)\n{\n    return side == 0 ? field >= p : field < p;\n}\n// END CLONE TRANSITION FIELD\nfloat silCloneCoverage(float progress)\n{\n    if (progress <= 0.0) return 1.0;",
+    "before": "uniform vec2 sil_cover;\nuniform int sil_blended;\nuniform float sil_clone_progress;\nfloat silCloneCoverage(float progress)\n{\n    if (progress <= 0.0) return 1.0;"
+   },
+   {
+    "after": "{\n    mirrorClip(vary_position);\n    if (sil_clone_progress > 0.0 && silCloneCoverage(sil_clone_progress) < 0.0) discard;\n    if (actorFxTransition.x > 0.5)\n    {\n        float tf = ctField(int(actorFxTransition.x + 0.5), vary_transition_pos, ctSeed(),\n                           actorFxTransition2.x, int(actorFxTransition.w + 0.5));\n        if (!ctKeeps(int(actorFxTransition.z + 0.5), tf, actorFxTransition.y)) discard;\n    }\n#ifdef SIL_COVER_SYSTEM\n    float alpha = texture(diffuseMap, vary_texcoord0).a;\n    if (alpha < minimum_alpha) discard;",
+    "before": "{\n    mirrorClip(vary_position);\n    if (sil_clone_progress > 0.0 && silCloneCoverage(sil_clone_progress) < 0.0) discard;\n#ifdef SIL_COVER_SYSTEM\n    float alpha = texture(diffuseMap, vary_texcoord0).a;\n    if (alpha < minimum_alpha) discard;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/treeShadowSkinnedV.glsl": [
+   {
+    "after": "\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\nmat4 getObjectSkinnedTransform();\n",
+    "before": "\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nmat4 getObjectSkinnedTransform();\n"
+   },
+   {
+    "after": "    mat = modelview_matrix * mat;\n\n    vec4 pos = mat * vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n    gl_Position = projection_matrix * pos;\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;",
+    "before": "    mat = modelview_matrix * mat;\n\n    vec4 pos = mat * vec4(position.xyz, 1.0);\n    gl_Position = projection_matrix * pos;\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/treeShadowV.glsl": [
+   {
+    "after": "\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nuniform mat4 modelview_matrix;\n\nvoid main()\n{\n    vary_actor_fx_position = position;\n    //transform vertex\n    gl_Position = modelview_projection_matrix*vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n}",
+    "before": "\nout vec2 vary_texcoord0;\nout vec3 vary_actor_fx_position;\n\nvoid main()\n{\n    vary_actor_fx_position = position;\n    //transform vertex\n    gl_Position = modelview_projection_matrix*vec4(position.xyz, 1.0);\n\n    vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;\n}"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/velocityAlphaIndexedV.glsl": [
+   {
+    "after": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();",
+    "before": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();"
+   },
+   {
+    "after": "#ifdef HAS_SKIN\n    mat4 cur_mat = getObjectSkinnedTransform();\n    vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(mv_pos.xyz, 1.0)).xyz : vec3(0.0);\n    gl_Position = projection_matrix * mv_pos;\n    vary_cur_clip = projection_matrix_unjittered * mv_pos;\n    mat4 last_mat = getLastObjectSkinnedTransform();\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix\n                   * last_mat * vec4(position.xyz, 1.0);\n#else\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n    vary_cur_clip = projection_matrix_unjittered * modelview_matrix\n                  * vec4(position.xyz, 1.0);\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix",
+    "before": "#ifdef HAS_SKIN\n    mat4 cur_mat = getObjectSkinnedTransform();\n    vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);\n    gl_Position = projection_matrix * mv_pos;\n    vary_cur_clip = projection_matrix_unjittered * mv_pos;\n    mat4 last_mat = getLastObjectSkinnedTransform();\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix\n                   * last_mat * vec4(position.xyz, 1.0);\n#else\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);\n    vary_cur_clip = projection_matrix_unjittered * modelview_matrix\n                  * vec4(position.xyz, 1.0);\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/velocityAlphaV.glsl": [
+   {
+    "after": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();",
+    "before": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();"
+   },
+   {
+    "after": "    // [BDMerge A5.4-1b] Skinned/rigged path (see velocityV.glsl note).\n    mat4 cur_mat = getObjectSkinnedTransform();\n    vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(mv_pos.xyz, 1.0)).xyz : vec3(0.0);\n    gl_Position = projection_matrix * mv_pos;                        // jittered raster\n\n    vary_cur_clip = projection_matrix_unjittered * mv_pos;          // un-jittered\n    mat4 last_mat = getLastObjectSkinnedTransform();\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);\n#else\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);   // jittered raster\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n\n    vary_cur_clip  = projection_matrix_unjittered * modelview_matrix * vec4(position.xyz, 1.0);\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);",
+    "before": "    // [BDMerge A5.4-1b] Skinned/rigged path (see velocityV.glsl note).\n    mat4 cur_mat = getObjectSkinnedTransform();\n    vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);\n    gl_Position = projection_matrix * mv_pos;                        // jittered raster\n\n    vary_cur_clip = projection_matrix_unjittered * mv_pos;          // un-jittered\n    mat4 last_mat = getLastObjectSkinnedTransform();\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);\n#else\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);   // jittered raster\n\n    vary_cur_clip  = projection_matrix_unjittered * modelview_matrix * vec4(position.xyz, 1.0);\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/deferred/velocityV.glsl": [
+   {
+    "after": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();",
+    "before": "out vec4 vary_cur_clip;\nout vec4 vary_last_clip;\nout vec3 vary_actor_fx_position;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();"
+   },
+   {
+    "after": "    // limb velocity, camera velocity still correct via last_modelview).\n    mat4 cur_mat = getObjectSkinnedTransform();\n    vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(mv_pos.xyz, 1.0)).xyz : vec3(0.0);\n    gl_Position = projection_matrix * mv_pos;                        // jittered raster\n\n    vary_cur_clip = projection_matrix_unjittered * mv_pos;          // un-jittered\n    mat4 last_mat = getLastObjectSkinnedTransform();\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);\n#else\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);   // jittered raster\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);\n\n    vary_cur_clip  = projection_matrix_unjittered * modelview_matrix * vec4(position.xyz, 1.0);\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);",
+    "before": "    // limb velocity, camera velocity still correct via last_modelview).\n    mat4 cur_mat = getObjectSkinnedTransform();\n    vec4 mv_pos = modelview_matrix * cur_mat * vec4(position.xyz, 1.0);\n    gl_Position = projection_matrix * mv_pos;                        // jittered raster\n\n    vary_cur_clip = projection_matrix_unjittered * mv_pos;          // un-jittered\n    mat4 last_mat = getLastObjectSkinnedTransform();\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_mat * vec4(position.xyz, 1.0);\n#else\n    gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);   // jittered raster\n\n    vary_cur_clip  = projection_matrix_unjittered * modelview_matrix * vec4(position.xyz, 1.0);\n    vary_last_clip = last_projection_matrix_unjittered * last_modelview_matrix * last_object_matrix * vec4(position.xyz, 1.0);"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/interface/actorghostF.glsl": [
+   {
+    "after": "\nuniform float ghostFadeProgress;\n\n// Clone transition (PLAN 3.1-3.3): same field/seed/p as the native mask, evaluated on the body-space\n// transition coordinate. Style 0 (reset every bind) keeps every existing draw byte-identical.\nuniform vec4 actorFxTransition;      // x style (0 off), y p, z side (0 out / 1 in), w direction\nuniform vec4 actorFxTransition2;     // x body height (m), y edge width (field units)\nuniform vec4 actorFxTransitionEdge;  // rgb linear edge colour, w edge intensity\nuniform int ghostEffectOnly;         // effect shell: additive edge only (never a look)\n// seed: two exact 16-bit halves in actorFxTransition2.zw (float uniforms only: no uint uniform path)\nuint ctSeed() { return uint(actorFxTransition2.z + 0.5) | (uint(actorFxTransition2.w + 0.5) << 16); }\nin vec3 vary_transition_pos;\n// BEGIN CLONE TRANSITION FIELD (exact port of alclonetransition.h fieldValue/keeps; gate: clone_transition_render_check.py)\nfloat ctHash3(ivec3 c, uint seed)\n{\n    uint h = seed * 747796405u + 2891336453u;\n    h ^= uint(c.x) * 0x8da6b343u; h ^= uint(c.y) * 0xd8163841u; h ^= uint(c.z) * 0xcb1ab31fu;\n    h = (h ^ (h >> 16)) * 0x7feb352du;\n    h = (h ^ (h >> 15)) * 0x846ca68bu;\n    h ^= h >> 16;\n    return float(h >> 8) * (1.0 / 16777216.0);\n}\nfloat ctLerp(float a, float b, float t) { return a + (b - a) * t; }\nfloat ctValueNoise(vec3 pos, float cell, uint seed)\n{\n    vec3 q = pos / cell;\n    vec3 f = floor(q);\n    ivec3 i = ivec3(f);\n    vec3 t = q - f;\n    vec3 u = t * t * (3.0 - 2.0 * t);\n    float c000 = ctHash3(i + ivec3(0, 0, 0), seed), c100 = ctHash3(i + ivec3(1, 0, 0), seed);\n    float c010 = ctHash3(i + ivec3(0, 1, 0), seed), c110 = ctHash3(i + ivec3(1, 1, 0), seed);\n    float c001 = ctHash3(i + ivec3(0, 0, 1), seed), c101 = ctHash3(i + ivec3(1, 0, 1), seed);\n    float c011 = ctHash3(i + ivec3(0, 1, 1), seed), c111 = ctHash3(i + ivec3(1, 1, 1), seed);\n    float x00 = ctLerp(c000, c100, u.x), x10 = ctLerp(c010, c110, u.x);\n    float x01 = ctLerp(c001, c101, u.x), x11 = ctLerp(c011, c111, u.x);\n    return ctLerp(ctLerp(x00, x10, u.y), ctLerp(x01, x11, u.y), u.z);\n}\n// style: 1 Dissolve, 2 Wipe, 3 Crossfade. direction: 0 up, 1 down.\nfloat ctField(int style, vec3 pos, uint seed, float body_height, int direction)\n{\n    if (style == 1)\n    {\n        float n = 0.65 * ctValueNoise(pos, 0.11, seed) + 0.35 * ctValueNoise(pos, 0.037, seed ^ 0x5bd1e995u);\n        return clamp((n - 0.15) / 0.70, 0.0, 0.99999);\n    }\n    if (style == 2)\n    {\n        float h = max(body_height, 0.1);\n        float z = clamp(pos.z / h, 0.0, 0.99999);\n        return direction == 1 ? 0.99999 - z : z;\n    }\n    if (style == 3)\n    {\n        ivec3 cell = ivec3(floor(pos / 0.015));\n        return min(ctHash3(cell, seed), 0.99999);\n    }\n    return 0.0;\n}\n// side: 0 outgoing keeps f >= p, 1 incoming keeps f < p.\nbool ctKeeps(int side, float field, float p)\n{\n    return side == 0 ? field >= p : field < p;\n}\n// END CLONE TRANSITION FIELD\nfloat ctEdgeWeight(int style, float field, float p, float width)\n{\n    if (style == 3 || style == 0 || p <= 0.0 || p >= 1.0) return 0.0;\n    float dd = abs(field - p);\n    return dd < width ? 1.0 - dd / width : 0.0;\n}\n\nfloat cloneFadeCoverage(float progress)\n{\n    if (progress <= 0.0) return 1.0;",
+    "before": "\nuniform float ghostFadeProgress;\n\nfloat cloneFadeCoverage(float progress)\n{\n    if (progress <= 0.0) return 1.0;"
+   },
+   {
+    "after": "    vec3 fwP = abs(oPx) + abs(oPy);\n#endif\n    if (safeStudioLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;\n    // Clone transition mask: precedence is transition OR existing coverage (both discard).\n    float ctFieldValue = 0.0;\n    if (actorFxTransition.x > 0.5)\n    {\n        ctFieldValue = ctField(int(actorFxTransition.x + 0.5), vary_transition_pos, ctSeed(),\n                               actorFxTransition2.x, int(actorFxTransition.w + 0.5));\n        if (!ctKeeps(int(actorFxTransition.z + 0.5), ctFieldValue, actorFxTransition.y)) discard;\n    }\n#ifndef GHOST_WORLD_PASS\n    // Matrix taps use the gradients captured above every discard. Preserve\n    // the historical sampler/footprint arithmetic for every existing look.",
+    "before": "    vec3 fwP = abs(oPx) + abs(oPy);\n#endif\n    if (safeStudioLook && ghostFadeProgress > 0.0 && cloneFadeCoverage(ghostFadeProgress) < 0.0) discard;\n#ifndef GHOST_WORLD_PASS\n    // Matrix taps use the gradients captured above every discard. Preserve\n    // the historical sampler/footprint arithmetic for every existing look."
+   },
+   {
+    "after": "        // above is part of the styled result and is scaled exactly once here.\n        rgb *= silKeep;\n    }\n    if (ghostEffectOnly != 0)\n    {\n        // Clone transition effect shell (PLAN 3.3): ADDITIVE edge only. Never lights the body, never\n        // writes depth, never contributes matte coverage. Outside the edge band the radiance is zero,\n        // so the additive blend leaves every other pixel untouched.\n        float edgeW = actorFxTransition.x > 0.5\n            ? ctEdgeWeight(int(actorFxTransition.x + 0.5), ctFieldValue, actorFxTransition.y,\n                           actorFxTransition2.y)\n            : 0.0;\n        vec3 edgeRad = actorFxTransitionEdge.rgb * (actorFxTransitionEdge.w * edgeW);\n        float shellCoverage = worldAuthoredCoverage;\n        if (ghostGlowOnly != 0)\n        {\n            frag_color = vec4(0.0, 0.0, 0.0, max(max(max(edgeRad.r, edgeRad.g), edgeRad.b) * shellCoverage, 0.0));\n            return;\n        }\n        // Transmittance only (no in-scatter): the native beauty underneath already carries the haze.\n        vec3 foggedEdge = applySkyAndWaterFog(vary_position, getAdditiveColor(), getAtmosAttenuation(),\n                                              vec4(edgeRad, 1.0)).rgb;\n        vec3 foggedNone = applySkyAndWaterFog(vary_position, getAdditiveColor(), getAtmosAttenuation(),\n                                              vec4(vec3(0.0), 1.0)).rgb;\n        frag_color = vec4(max(foggedEdge - foggedNone, vec3(0.0)), shellCoverage);\n        return;\n    }\n    if (ghostGlowOnly != 0)\n    {\n        // The caller only schedules this pass for the frozen signature list.",
+    "before": "        // above is part of the styled result and is scaled exactly once here.\n        rgb *= silKeep;\n    }\n    if (ghostGlowOnly != 0)\n    {\n        // The caller only schedules this pass for the frozen signature list."
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/interface/actorghostV.glsl": [
+   {
+    "after": "// Stable pre-skin/local position shared with native Actor FX dissolve. Using\n// eye/world position here would make the field swim when the actor animates.\nout vec3 vary_object_position;\n// Clone transition coordinate (PLAN 3.1): final skinned position (before Slice/Interlace/Jitter) into body space.\nuniform vec4 actorFxTransition;      // x = style (0 = off)\nuniform mat4 transitionEyeToBody;\nout vec3 vary_transition_pos;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();",
+    "before": "// Stable pre-skin/local position shared with native Actor FX dissolve. Using\n// eye/world position here would make the field swim when the actor animates.\nout vec3 vary_object_position;\n\n#ifdef HAS_SKIN\nmat4 getObjectSkinnedTransform();"
+   },
+   {
+    "after": "    vec4 pos = modelview_matrix * vec4(position.xyz, 1.0);\n    vary_normal = normal_matrix * normal;\n#endif\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#ifdef HAS_SKIN\n    cloneFxVertex(pos, 1, rest);\n#else",
+    "before": "    vec4 pos = modelview_matrix * vec4(position.xyz, 1.0);\n    vary_normal = normal_matrix * normal;\n#endif\n#ifdef HAS_SKIN\n    cloneFxVertex(pos, 1, rest);\n#else"
+   }
+  ],
+  "indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl": [
+   {
+    "after": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nuniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl\nuniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)\nout vec3 vary_transition_pos;\nout vec3 vary_actor_fx_normal;\nout vec3 vary_actor_fx_eye_position;\n#endif",
+    "before": "in vec3 position;\n#ifdef HAS_ACTOR_FX\nout vec3 vary_actor_fx_position;\nout vec3 vary_actor_fx_normal;\nout vec3 vary_actor_fx_eye_position;\n#endif"
+   },
+   {
+    "after": "    vary_actor_fx_position = position;\n    vary_actor_fx_normal = norm;\n    vary_actor_fx_eye_position = pos.xyz;\n    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);\n#endif\n\n    calcAtmospherics(pos.xyz);",
+    "before": "    vary_actor_fx_position = position;\n    vary_actor_fx_normal = norm;\n    vary_actor_fx_eye_position = pos.xyz;\n#endif\n\n    calcAtmospherics(pos.xyz);"
+   }
+  ],
+  "indra/newview/llactormover.cpp": [
+   {
+    "after": "\n#include \"alghostattachmentenumerator.h\"\n#include \"alghoststudio.h\"          // [GhostStudio] free-standing ghost instances\n#include \"alclonetransitions.h\"       // [CloneTransition] render-facing queries\n#include \"alclonetransitionrender.h\"\n#include \"aoengine.h\"               // self Director turns use the enabled AO turn state\n#include \"llclonefidelityaudit.h\"   // [CloneFidelity] early-capture hooks in the harvest\n#include \"altoolghostedit.h\"        // [R2-3] selected-ghost ring gates on the edit tool",
+    "before": "\n#include \"alghostattachmentenumerator.h\"\n#include \"alghoststudio.h\"          // [GhostStudio] free-standing ghost instances\n#include \"aoengine.h\"               // self Director turns use the enabled AO turn state\n#include \"llclonefidelityaudit.h\"   // [CloneFidelity] early-capture hooks in the harvest\n#include \"altoolghostedit.h\"        // [R2-3] selected-ghost ring gates on the edit tool"
+   },
+   {
+    "after": "static LLStaticHashedString sGhostAlphaCutoffMode(\"ghostAlphaCutoffMode\");\nstatic LLStaticHashedString sGhostWorldLinear(\"ghostWorldLinear\");\nstatic LLStaticHashedString sGhostGlowOnly(\"ghostGlowOnly\");\nstatic LLStaticHashedString sGhostEffectOnly(\"ghostEffectOnly\"); // [CloneTransition] effect shell\nstatic LLStaticHashedString sGhostFragOffset(\"ghostFragOffset\");\nstatic LLStaticHashedString sGhostScreenSize(\"ghostScreenSize\");\nstatic LLStaticHashedString sGhostScreenOrigin(\"ghostScreenOrigin\");",
+    "before": "static LLStaticHashedString sGhostAlphaCutoffMode(\"ghostAlphaCutoffMode\");\nstatic LLStaticHashedString sGhostWorldLinear(\"ghostWorldLinear\");\nstatic LLStaticHashedString sGhostGlowOnly(\"ghostGlowOnly\");\nstatic LLStaticHashedString sGhostFragOffset(\"ghostFragOffset\");\nstatic LLStaticHashedString sGhostScreenSize(\"ghostScreenSize\");\nstatic LLStaticHashedString sGhostScreenOrigin(\"ghostScreenOrigin\");"
+   },
+   {
+    "after": "            sh->uniform1i(indexed, 0);\n            sh->uniform1i(material_slots, 0);\n            sh->uniform1i(vec3_position, 0);\n            // [CloneTransition] chroma key / silhouette cover must see the same holes as beauty.\n            LLRenderPass::uploadCloneTransition(*sh, gp.mTransition);\n        }\n        else if (gp.mWorldLinear)\n        {",
+    "before": "            sh->uniform1i(indexed, 0);\n            sh->uniform1i(material_slots, 0);\n            sh->uniform1i(vec3_position, 0);\n        }\n        else if (gp.mWorldLinear)\n        {"
+   },
+   {
+    "after": "            {\n                sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);\n            }\n            // [CloneTransition] mask + effect shell flag, reset on every bind (inactive = zeros).\n            LLRenderPass::uploadCloneTransition(*sh, gp.mTransition);\n            sh->uniform1i(sGhostEffectOnly, gp.mEffectOnly ? 1 : 0);\n            sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);\n            if (!gp.mWorldLinear)\n            {",
+    "before": "            {\n                sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);\n            }\n            sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);\n            if (!gp.mWorldLinear)\n            {"
+   },
+   {
+    "after": "        const S32 subset = coverage_blended ? SWEEP_BLEND : SWEEP_SOLID;\n        draw_batches(subset, true, false, true);\n        draw_static(subset, true, false, true);\n    }\n    else if (gp.mEffectOnly)\n    {\n        // [CloneTransition] EFFECT SHELL (PLAN 3.3). Additive edge over the retained native lit body:\n        // colour = edge * coverage + dst, no depth write, GL_LEQUAL against NATIVE depth, and NEVER a\n        // depth prime. Without native depth the shell is skipped (the mask runs alone). The shell\n        // never adds matte coverage and never replaces the body's RGB outside the edge band.\n        if (gp.mNativeDepthAvailable && !gp.mDepthOnly && !gp.mKeyFill && gp.mWorldLinear)\n        {\n            {\n                LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);\n                LLGLEnable blend(GL_BLEND);\n                gGL.setColorMask(true, true);\n                gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,\n                              LLRender::BF_ZERO, LLRender::BF_ONE);\n                draw_batches(SWEEP_ALL, true, false, true);\n                draw_static(SWEEP_ALL, true, false, true);\n            }\n            {\n                // bloom: the same edge, alpha-only (Tron precedent)\n                ScopedSharedActorHDRDrawBuffer hdr_only(true);\n                LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);\n                LLGLEnable blend(GL_BLEND);\n                gGL.setColorMask(true, true);\n                gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,\n                              LLRender::BF_ONE, LLRender::BF_ONE);\n                glow_only = true;\n                apply_program(shader);\n                draw_batches(SWEEP_ALL, true, false, true);\n                draw_static(SWEEP_ALL, true, false, true);\n                glow_only = false;\n                apply_program(shader); // never leak glow-only into the next item\n            }\n        }\n        else\n        {\n            complete = false;   // shell unavailable: fail open (the mask still runs natively)\n        }\n    }\n    else\n    {",
+    "before": "        const S32 subset = coverage_blended ? SWEEP_BLEND : SWEEP_SOLID;\n        draw_batches(subset, true, false, true);\n        draw_static(subset, true, false, true);\n    }\n    else\n    {"
+   },
+   {
+    "after": "    }\n}\n\nstatic bool studio_entity_overlay_wanted(ALGhostStudio& studio);   // [CloneTransition] defined with renderStudioGhosts\n\nvoid LLActorMover::collectGhostBatches()\n{\n    // Shared Actor FX is strictly same-frame. Clear first so every early return",
+    "before": "    }\n}\n\nvoid LLActorMover::collectGhostBatches()\n{\n    // Shared Actor FX is strictly same-frame. Clear first so every early return"
+   },
+   {
+    "after": "            path_ghosts = floaterp && floaterp->getVisible();\n        }\n    }\n    // [CloneTransition] entity clones drawn as an overlay (overlay look / running a1) and bodies with a\n    // running transition need their batches harvested even though they are not overlay sources.\n    const bool studio = ALGhostStudio::instance().anyEnabled()\n        || studio_entity_overlay_wanted(ALGhostStudio::instance())\n        || ALCloneTransitions::anyRunning();\n    LLDirectorCast& director_cast = LLDirectorCast::instance();\n    bool actor_styles = actor_style_wants_shared_replay(\n        director_cast.getRenderActorStyle(LLUUID::null));",
+    "before": "            path_ghosts = floaterp && floaterp->getVisible();\n        }\n    }\n    const bool studio = ALGhostStudio::instance().anyEnabled();\n    LLDirectorCast& director_cast = LLDirectorCast::instance();\n    bool actor_styles = actor_style_wants_shared_replay(\n        director_cast.getRenderActorStyle(LLUUID::null));"
+   },
+   {
+    "after": "            if (av && !av->isDead())\n            {\n                wanted.insert(av);\n            }\n        }\n        // [CloneTransition] entity bodies: steady overlay look, or a running transition (native mask /\n        // effect shell / a1 overlay half all read the harvested descriptors).\n        ALGhostStudio& entity_studio = ALGhostStudio::instance();\n        for (const ALGhostStudio::Instance& inst : entity_studio.getInstances())\n        {\n            if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;\n            LLVOAvatar* body = entity_studio.resolveEntityClone(inst.mId);\n            if (!body || body->isDead()) continue;\n            if (inst.mOverlayLook >= 0\n                || (ALCloneTransitions::anyRunning()\n                    && ALCloneTransitions::instance().shellParamsFor(body->getID()).active))\n            {\n                wanted.insert(body);\n            }\n        }\n    }",
+    "before": "            if (av && !av->isDead())\n            {\n                wanted.insert(av);\n            }\n        }\n    }"
+   },
+   {
+    "after": "\nvoid LLActorMover::releaseStudioKeyPrograms() { sStudioKeyPrograms.reset(); }\n\n// [CloneTransition] ENTITY clones drawn by the Studio overlay: a steady overlay look (Instance::mOverlayLook)\n// or a running a1 transition. Cheap: a scan of the instance list, and nothing at all unless one exists.\nstatic bool studio_entity_overlay_wanted(ALGhostStudio& studio)\n{\n    for (const ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE || !studio.isVisible(inst)) continue;\n        if (inst.mOverlayLook >= 0) return true;\n        if (ALCloneTransitions::anyRunning())\n        {\n            ALCloneTransitions::StudioLayers layers;\n            ALCloneTransitions::instance().studioLayersFor(inst.mId, layers);\n            if (layers.count > 0) return true;\n        }\n    }\n    return false;\n}\n\nvoid LLActorMover::renderStudioGhosts()\n{\n    static U64 invocation = 0;",
+    "before": "\nvoid LLActorMover::releaseStudioKeyPrograms() { sStudioKeyPrograms.reset(); }\n\nvoid LLActorMover::renderStudioGhosts()\n{\n    static U64 invocation = 0;"
+   },
+   {
+    "after": "    if (!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() || sStudioKeyBegin != ALActorChromaKey::finalizeSerial())\n        scene_caches.begin(gSnapshot, pose_now);\n    ALGhostStudio& studio = ALGhostStudio::instance();\n    const bool entity_overlay = studio_entity_overlay_wanted(studio);\n    if (!studio.anyEnabled() && !entity_overlay)\n    {\n        return;\n    }",
+    "before": "    if (!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() || sStudioKeyBegin != ALActorChromaKey::finalizeSerial())\n        scene_caches.begin(gSnapshot, pose_now);\n    ALGhostStudio& studio = ALGhostStudio::instance();\n    if (!studio.anyEnabled())\n    {\n        return;\n    }"
+   },
+   {
+    "after": "        // [GhostDeferred] which overlay categories this clone's harvested\n        // geometry actually CONTAINS (zero for non-clone styles -- unused)\n        GhostCoverageMask mPresent = GHOST_COVERAGE_NONE;\n        // [CloneTransition] ENTITY clone drawn as an overlay of its own body (attached placement), and\n        // the transition layers of this frame (count 0 = the instance's ordinary single draw).\n        bool mEntity = false;\n        ALCloneTransitions::StudioLayers mLayers;\n    };\n    std::vector<StudioItem> items;\n    bool phase2 = false;\n    for (ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);\n        // [CloneTransition] an ENTITY clone qualifies only through an overlay look or a running a1\n        // transition; every other entity clone is untouched (byte-identical to before).\n        const bool entity_inst = inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE;\n        ALCloneTransitions::StudioLayers layers;\n        if (ALCloneTransitions::anyRunning())\n        {\n            ALCloneTransitions::instance().studioLayersFor(inst.mId, layers);\n        }\n        if ((inst.mKind != ALGhostStudio::BACKING_OVERLAY && !entity_inst) || !studio.isVisible(inst)\n            || (ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame() && !(inst.mAlpha > 0.f) && !entity_inst)\n            || !(inst.mFadeAlpha > 0.f))\n        {\n            continue;\n        }\n        if (entity_inst && inst.mOverlayLook < 0 && layers.count == 0)\n        {\n            continue;   // an ordinary entity clone: the native body draws it, nothing for the overlay\n        }\n        LLVOAvatar* av = entity_inst ? studio.resolveEntityClone(inst.mId)\n                                     : ALGhostStudio::resolveOverlayAvatar(inst);\n        if (!av || av->isDead())\n        {\n            continue;",
+    "before": "        // [GhostDeferred] which overlay categories this clone's harvested\n        // geometry actually CONTAINS (zero for non-clone styles -- unused)\n        GhostCoverageMask mPresent = GHOST_COVERAGE_NONE;\n    };\n    std::vector<StudioItem> items;\n    bool phase2 = false;\n    for (ALGhostStudio::Instance& inst : studio.getInstances())\n    {\n        inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);\n        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)\n            || (ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame() && !(inst.mAlpha > 0.f))\n            || !(inst.mFadeAlpha > 0.f))\n        {\n            continue;\n        }\n        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);\n        if (!av || av->isDead())\n        {\n            continue;"
+   },
+   {
+    "after": "                }\n            }\n        }\n        // [CloneTransition] attached placement for an ENTITY body: identity rotation, scale 1, foot = the\n        // body's own presented root (do NOT apply the clone scale again: the vertices are already scaled).\n        LLVector3 foot_agent = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);\n        if (entity_inst)\n        {\n            F32 entity_p2f = av->getPelvisToFoot();\n            entity_p2f = llfinite(entity_p2f) ? llmax(0.f, entity_p2f) : 0.f;\n            const LLVector3 entity_root = av->getRootJoint() ? av->getRootJoint()->getWorldPosition() : foot_agent;\n            foot_agent.set(entity_root.mV[VX], entity_root.mV[VY], entity_root.mV[VZ] - entity_p2f);\n        }\n        if (layers.count > 0)\n        {\n            for (S32 k = 0; k < layers.count && k < 2; ++k)\n                phase2 |= studio_phase2_look(ALGhostStudio::remapRetiredOverlayStyle(layers.layer[k].look));\n        }\n        else if (entity_inst)\n        {\n            phase2 |= studio_phase2_look(ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook));\n        }\n        phase2 |= !entity_inst && inst.mAlpha > 0.f && studio_phase2_look(inst.mStyle);\n        items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics, foot_agent, present,\n                          entity_inst, layers });\n    }\n    if (items.empty())\n    {",
+    "before": "                }\n            }\n        }\n        phase2 |= inst.mAlpha > 0.f && studio_phase2_look(inst.mStyle);\n        items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics,\n                          gAgent.getPosAgentFromGlobal(inst.mFootGlobal), present });\n    }\n    if (items.empty())\n    {"
+   },
+   {
+    "after": "                       > (b.mFootAgent - cam_pos).magVecSquared();\n              });\n\n    // [CloneTransition] one iteration per Studio layer: Look->Look and a1 draw the SAME body twice (look A\n    // outgoing / look B incoming, same coordinate, complementary masks); everything else draws once.\n    for (const StudioItem& item_in : items)\n    for (S32 layer_index = 0; layer_index < (item_in.mLayers.count > 0 ? item_in.mLayers.count : 1); ++layer_index)\n    {\n        const StudioItem& item = item_in;\n        const ALGhostStudio::Instance& inst = *item.mInst;\n        const bool layered = item.mLayers.count > 0;\n        const S32 look_id = layered\n            ? ALGhostStudio::remapRetiredOverlayStyle(item.mLayers.layer[layer_index].look)\n            : (item.mEntity ? ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook) : inst.mStyle);\n        const F32 draw_alpha = item.mEntity ? 1.f : inst.mAlpha;\n        const auto key_policy = ALActorChromaKey::sActive ? ALActorChromaKey::studioPolicy(inst.mId)\n            : ALActorChromaKey::StudioPolicy::Look;\n        if (key_policy == ALActorChromaKey::StudioPolicy::Skip) continue;",
+    "before": "                       > (b.mFootAgent - cam_pos).magVecSquared();\n              });\n\n    for (const StudioItem& item : items)\n    {\n        const ALGhostStudio::Instance& inst = *item.mInst;\n        const auto key_policy = ALActorChromaKey::sActive ? ALActorChromaKey::studioPolicy(inst.mId)\n            : ALActorChromaKey::StudioPolicy::Look;\n        if (key_policy == ALActorChromaKey::StudioPolicy::Skip) continue;"
+   },
+   {
+    "after": "        // otherwise drawGeometryGhost colors just the uncovered categories.\n        // Frozen / culled / failed clones read zero coverage -> full overlay.\n        GhostCoverageMask coverage = GHOST_COVERAGE_NONE;\n        if (look_id == GHOST_STYLE_CLONE)\n        {\n            coverage = gPipeline.getGhostDeferredCoverageThisFrame(inst.mId);\n            if ((item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)",
+    "before": "        // otherwise drawGeometryGhost colors just the uncovered categories.\n        // Frozen / culled / failed clones read zero coverage -> full overlay.\n        GhostCoverageMask coverage = GHOST_COVERAGE_NONE;\n        if (inst.mStyle == GHOST_STYLE_CLONE)\n        {\n            coverage = gPipeline.getGhostDeferredCoverageThisFrame(inst.mId);\n            if ((item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)"
+   },
+   {
+    "after": "            gp.mPivotFootAgent = inst.mCadenceFootAgent;\n            gp.mFrozenPalettes = &inst.mCadencePalettes;\n        }\n        if (item.mEntity)\n        {\n            // [CloneTransition] ATTACHED placement (PLAN 2.3): the entity's own body, drawn from its own\n            // skinning palette: identity extra rotation, scale 1 (the vertices already carry the clone\n            // scale), foot = the body's presented root. Same frame as the native half.\n            gp.mRotation = LLQuaternion();\n            gp.mScale = 1.f;\n            gp.mHavePivot = false;\n            gp.mFrozenPalettes = nullptr;\n            gp.mFrozenAttachMats = nullptr;\n        }\n        if (layered)\n        {\n            gp.mTransition = item.mLayers.layer[layer_index].params;\n        }\n        gp.mShimmerSpeed     = inst.mShimmerSpeed;\n        gp.mShimmerIntensity = inst.mShimmerIntensity;\n        gp.mPixelSize        = inst.mPixelSize;",
+    "before": "            gp.mPivotFootAgent = inst.mCadenceFootAgent;\n            gp.mFrozenPalettes = &inst.mCadencePalettes;\n        }\n        gp.mShimmerSpeed     = inst.mShimmerSpeed;\n        gp.mShimmerIntensity = inst.mShimmerIntensity;\n        gp.mPixelSize        = inst.mPixelSize;"
+   },
+   {
+    "after": "        gp.mDeferredCoverage = coverage;\n        gp.mPresentCoverage  = item.mPresent;\n        gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]\n        gp.mIsClone = look_id == GHOST_STYLE_CLONE;\n\n        F32 radius = 0.f;\n        auto instance_frame = studio_prepare_item(look_id, draw_alpha, phase2,\n            [&]()\n            {\n                if (!item.mAv->getRootJoint() || !item.mFootAgent.isFinite()) return false;\n                radius = phase2_radius(item);\n                return LLViewerCamera::getInstance()->sphereInFrustum(item.mFootAgent, radius) != 0;\n            },\n            [&]() { return *look_frame; });\n        if (look_id == GHOST_STYLE_DATAMOSH && instance_frame)\n        {\n            StudioMotion& previous = motion[inst.mId];\n            const glm::vec4 clip = clip_from_agent * glm::vec4(item.mFootAgent.mV[VX],",
+    "before": "        gp.mDeferredCoverage = coverage;\n        gp.mPresentCoverage  = item.mPresent;\n        gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]\n        gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;\n\n        F32 radius = 0.f;\n        auto instance_frame = studio_prepare_item(inst.mStyle, inst.mAlpha, phase2,\n            [&]()\n            {\n                if (!item.mAv->getRootJoint() || !item.mFootAgent.isFinite()) return false;\n                radius = phase2_radius(item);\n                return LLViewerCamera::getInstance()->sphereInFrustum(item.mFootAgent, radius) != 0;\n            },\n            [&]() { return *look_frame; });\n        if (inst.mStyle == GHOST_STYLE_DATAMOSH && instance_frame)\n        {\n            StudioMotion& previous = motion[inst.mId];\n            const glm::vec4 clip = clip_from_agent * glm::vec4(item.mFootAgent.mV[VX],"
+   },
+   {
+    "after": "            instance_frame->mVelocity = studio_screen_velocity(previous, *view, item.mAv->getID(),\n                item.mAv, pose_now, inst.mFootGlobal, screen, valid);\n        }\n        studio_draw_item(look_id, draw_alpha, instance_frame.has_value(),\n            instance_frame ? &*instance_frame : nullptr,\n            [&]() -> LLImageGL*\n            {",
+    "before": "            instance_frame->mVelocity = studio_screen_velocity(previous, *view, item.mAv->getID(),\n                item.mAv, pose_now, inst.mFootGlobal, screen, valid);\n        }\n        studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),\n            instance_frame ? &*instance_frame : nullptr,\n            [&]() -> LLImageGL*\n            {"
+   },
+   {
+    "after": "            [&](const StudioLookFrame* inputs)\n            {\n                drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,\n                    llclamp(draw_alpha, 0.f, 1.f) * inst.mFadeAlpha,\n                    ALGhostStudio::resolveOverlayStyle(look_id), gp,\n                    item.mStatic, nullptr, inputs);\n            });\n    }",
+    "before": "            [&](const StudioLookFrame* inputs)\n            {\n                drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,\n                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,\n                    ALGhostStudio::resolveOverlayStyle(inst.mStyle), gp,\n                    item.mStatic, nullptr, inputs);\n            });\n    }"
+   },
+   {
+    "after": "// Keep this a two-sweep API so the shared proxy scheduler can submit SOLID at\n// the opaque boundary and BLEND in its ordered alpha stage.\nbool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,\n                                             const LLUUID& style_id,\n                                             const ALCloneTransition::RenderParams* shell) const\n{\n    if ((ALDerenderList::keepsAvatarLive(avatar) || LLGhostAvatar::isRenderHidden(avatar))) return false;\n    if (!avatar || avatar->isDead() || avatar->isControlAvatar()",
+    "before": "// Keep this a two-sweep API so the shared proxy scheduler can submit SOLID at\n// the opaque boundary and BLEND in its ordered alpha stage.\nbool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,\n                                             const LLUUID& style_id) const\n{\n    if ((ALDerenderList::keepsAvatarLive(avatar) || LLGhostAvatar::isRenderHidden(avatar))) return false;\n    if (!avatar || avatar->isDead() || avatar->isControlAvatar()"
+   },
+   {
+    "after": "        return false;\n    }\n\n    if (shell && shell->active)\n    {\n        return true;   // [CloneTransition] the shell needs no Actor FX style\n    }\n    const LLDirectorCast::ActorStyle& style =\n        LLDirectorCast::instance().getRenderActorStyle(style_id);\n    return style.mEnabled",
+    "before": "        return false;\n    }\n\n    const LLDirectorCast::ActorStyle& style =\n        LLDirectorCast::instance().getRenderActorStyle(style_id);\n    return style.mEnabled"
+   },
+   {
+    "after": "    body_shader.uniform2fv(sSilCover, 1, cover.mV);\n    body_shader.uniform1i(sSilBlended, phase != 0 ? 1 : 0);\n    body_shader.setMinimumAlpha(phase != 0 ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);\n    // [CloneTransition] chroma key / silhouette cover sees the same transition holes as beauty.\n    const ALCloneTransition::RenderParams& sil_transition =\n        LLDirectorCast::instance().transitionCoverageFor(avatar->getID());\n    LLRenderPass::uploadCloneTransition(body_shader, sil_transition);\n    if (LLPipeline::RenderAvatarCloth)\n    {\n        LLMatrix4 rot_mat;",
+    "before": "    body_shader.uniform2fv(sSilCover, 1, cover.mV);\n    body_shader.uniform1i(sSilBlended, phase != 0 ? 1 : 0);\n    body_shader.setMinimumAlpha(phase != 0 ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);\n    if (LLPipeline::RenderAvatarCloth)\n    {\n        LLMatrix4 rot_mat;"
+   },
+   {
+    "after": "        eye_shader.uniform2fv(sSilCover, 1, cover.mV);\n        eye_shader.uniform1i(sSilBlended, 0);\n        eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);\n        LLRenderPass::uploadCloneTransition(eye_shader, sil_transition);\n        if (!key) draws += avatar->renderRigid() ? 1 : 0;\n        else\n        {",
+    "before": "        eye_shader.uniform2fv(sSilCover, 1, cover.mV);\n        eye_shader.uniform1i(sSilBlended, 0);\n        eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);\n        if (!key) draws += avatar->renderRigid() ? 1 : 0;\n        else\n        {"
+   },
+   {
+    "after": "                                          const LLUUID& style_id,\n                                          bool blend_sweep,\n                                          bool depth_only,\n                                          bool depth_available,\n                                          const ALCloneTransition::RenderParams* shell)\n{\n    const bool effect_shell = shell && shell->active;\n    if (!canRenderSystemActorGhost(avatar, style_id, shell))\n    {\n        return false;\n    }\n\n    // [CloneTransition] the shell replays with a synthetic textured Layer style (alpha cutouts only; its\n    // RGB is replaced by the additive edge in actorghostF). Never an authored Actor FX style.\n    LLDirectorCast::ActorStyle shell_style;\n    if (effect_shell)\n    {\n        shell_style.mEnabled = true;\n        shell_style.mMode = LLDirectorCast::ACTOR_STYLE_LAYER;\n        shell_style.mStyle = static_cast<S32>(LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK);\n        shell_style.mAlpha = 1.f;\n    }\n    const LLDirectorCast::ActorStyle& style = effect_shell\n        ? shell_style : LLDirectorCast::instance().getRenderActorStyle(style_id);\n    // [CloneTransition] the native mask applies to the replay of a transitioning body too.\n    const ALCloneTransition::RenderParams& transition_params = effect_shell\n        ? *shell : LLDirectorCast::instance().transitionCoverageFor(avatar->getID());\n    const S32 look = llclamp(\n        style.mStyle,\n        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),",
+    "before": "                                          const LLUUID& style_id,\n                                          bool blend_sweep,\n                                          bool depth_only,\n                                          bool depth_available)\n{\n    if (!canRenderSystemActorGhost(avatar, style_id))\n    {\n        return false;\n    }\n\n    const LLDirectorCast::ActorStyle& style =\n        LLDirectorCast::instance().getRenderActorStyle(style_id);\n    const S32 look = llclamp(\n        style.mStyle,\n        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),"
+   },
+   {
+    "after": "        shader.uniform2f(sGhostAlpha, 1.f, 1.f);\n        shader.uniform1i(sGhostWorldLinear, 1);\n        shader.uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);\n        LLRenderPass::uploadCloneTransition(shader, transition_params);\n        shader.uniform1i(sGhostEffectOnly, effect_shell ? 1 : 0);\n        shader.uniform2fv(sGhostFragOffset, 1, frag_offset.mV);\n        shader.uniform2fv(sGhostScreenSize, 1, screen_size.mV);\n        shader.uniform1f(sGhostDissolveProgress, gp.mDissolveProgress);",
+    "before": "        shader.uniform2f(sGhostAlpha, 1.f, 1.f);\n        shader.uniform1i(sGhostWorldLinear, 1);\n        shader.uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);\n        shader.uniform2fv(sGhostFragOffset, 1, frag_offset.mV);\n        shader.uniform2fv(sGhostScreenSize, 1, screen_size.mV);\n        shader.uniform1f(sGhostDissolveProgress, gp.mDissolveProgress);"
+   },
+   {
+    "after": "        // alpha (bloom) untouched -- the glow_only replay below owns the\n        // suit's bloom and the trailing restores put the split blend back.\n        // Cover and every other look keep the blend state above.\n        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,\n                      LLRender::BF_ZERO, LLRender::BF_ONE);\n    }\n    if (effect_shell)\n    {\n        // Additive only: colour = edge * coverage + dst; HDR alpha (bloom) untouched here, the shell's own\n        // glow replay publishes it. No depth write (write_solid_depth is false for a non-replacing style).\n        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,\n                      LLRender::BF_ZERO, LLRender::BF_ONE);\n    }",
+    "before": "        // alpha (bloom) untouched -- the glow_only replay below owns the\n        // suit's bloom and the trailing restores put the split blend back.\n        // Cover and every other look keep the blend state above.\n        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,\n                      LLRender::BF_ZERO, LLRender::BF_ONE);\n    }"
+   },
+   {
+    "after": "    // layout, so replay them through their own actorghost permutations. This is\n    // the same geometry/coverage path as beauty, now with RGB preserved and the\n    // animated treatment energy accumulated into HDR bloom alpha only.\n    if (!depth_only && (effect_shell || LLRenderPass::actorFxLookNeedsSyntheticBloom(look)))\n    {\n        ScopedSharedActorHDRDrawBuffer hdr_only(true);\n        LLGLDepthTest glow_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);",
+    "before": "    // layout, so replay them through their own actorghost permutations. This is\n    // the same geometry/coverage path as beauty, now with RGB preserved and the\n    // animated treatment energy accumulated into HDR bloom alpha only.\n    if (!depth_only && LLRenderPass::actorFxLookNeedsSyntheticBloom(look))\n    {\n        ScopedSharedActorHDRDrawBuffer hdr_only(true);\n        LLGLDepthTest glow_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);"
+   },
+   {
+    "after": "        add_actor(member.mId);\n    }\n\n    // [CloneTransition] EFFECT SHELL items (PLAN 3.3): one per entity body with a running transition that has\n    // an edge (Dissolve / Wipe). Not Cast-gated, not style-gated. Fails open: any unprovable descriptor drops\n    // the shell for this body this frame and the native mask runs alone.\n    if (ALCloneTransitions::anyRunning())\n    {\n        ALGhostStudio& shell_studio = ALGhostStudio::instance();\n        for (const ALGhostStudio::Instance& inst : shell_studio.getInstances())\n        {\n            if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;\n            LLVOAvatar* avatar = shell_studio.resolveEntityClone(inst.mId);\n            if (!avatar || avatar->isDead()) continue;\n            const ALCloneTransition::RenderParams& shell =\n                ALCloneTransitions::instance().shellParamsFor(avatar->getID());\n            if (!shell.active || shell.style == ALCloneTransition::STYLE_CROSSFADE\n                || shell.style == ALCloneTransition::STYLE_NONE) continue;\n            if (!actor_visible_in_main_cull(avatar)\n                || !added_wearers.insert(avatar->getID()).second)\n            {\n                continue;\n            }\n\n            SharedActorStyleProxy proxy;\n            proxy.mEffectShell = true;\n            proxy.mActive = true;\n            proxy.mStyleId = avatar->getID();\n            proxy.mWearerId = avatar->getID();\n            proxy.mAvatar = avatar;\n            proxy.mTransition = shell;\n            bool shell_complete = true;\n            if (const std::vector<GhostBatch>* harvested = ghostBatchesFor(avatar->getID()))\n            {\n                for (const GhostBatch& batch : *harvested)\n                {\n                    LLDrawInfo* info = batch.mInfo;\n                    LLSpatialGroup* group = batch.mGroup;\n                    if (!info || !group || group->isDead()) { shell_complete = false; continue; }\n                    if (ghost_pass_is_glow(batch.mPass)) continue;   // glow duplicates base geometry\n                    if (!group->isVisible()\n                        || (LLPipeline::sUseOcclusion && group->isOcclusionState(LLSpatialGroup::OCCLUDED))\n                        || !gPipeline.hasRenderType(batch.mPass))\n                    {\n                        continue;\n                    }\n                    LLVOAvatar* drawing_avatar = info->mAvatar.get();\n                    if (!drawing_avatar || drawing_avatar->isDead()) { shell_complete = false; continue; }\n                    if (!shared_rigged_descriptor_ready(batch)) { shell_complete = false; continue; }\n                    proxy.mBatches.push_back(batch);\n                }\n            }\n            if (const std::vector<GhostStaticFace>* harvested = ghostStaticFacesFor(avatar->getID()))\n            {\n                for (const GhostStaticFace& source_face : *harvested)\n                {\n                    LLFace* face = source_face.mFace;\n                    LLDrawable* drawable = face ? face->getDrawable() : nullptr;\n                    LLSpatialGroup* group = drawable ? drawable->getSpatialGroup() : nullptr;\n                    if (!face || !drawable || drawable->isDead() || !group || group->isDead())\n                    {\n                        shell_complete = false;\n                        continue;\n                    }\n                    if (!drawable->isVisible() || !group->isVisible()\n                        || (LLPipeline::sUseOcclusion && group->isOcclusionState(LLSpatialGroup::OCCLUDED))\n                        || !gPipeline.hasRenderType(face->getPoolType()))\n                    {\n                        continue;\n                    }\n                    if (!shared_static_descriptor_ready(source_face)) { shell_complete = false; continue; }\n                    proxy.mStaticFaces.push_back(source_face);\n                }\n            }\n            const bool system_shell = !avatar->isControlAvatar()\n                && canRenderSystemActorGhost(avatar, avatar->getID(), &shell);\n            if (!shell_complete\n                || (!proxy.mBatches.empty() && !gWorldSkinnedActorGhostProgram.mProgramObject)\n                || (!proxy.mStaticFaces.empty() && !gWorldActorGhostProgram.mProgramObject)\n                || (!system_shell && proxy.mBatches.empty() && proxy.mStaticFaces.empty())\n                || gWorldSkinnedActorGhostProgram.getUniformLocation(sGhostEffectOnly) < 0)\n            {\n                continue;   // shell unavailable here: the mask alone still reads\n            }\n            proxy.mFootAgent = avatar->getRenderPosition();\n            F32 pelvis_to_foot = avatar->getPelvisToFoot();\n            if (!llfinite(pelvis_to_foot)) pelvis_to_foot = 0.f;\n            proxy.mFootAgent.mV[VZ] -= llmax(0.f, pelvis_to_foot);\n            proxy.mAlphaDepth = avatar->calcRiggedAlphaDepth();\n            if (!proxy.mFootAgent.isFinite() || !llfinite(proxy.mAlphaDepth)) continue;\n            proxy.mPart = ESharedActorStylePart::ACTOR_SOLID;\n            mSharedActorStyleProxies.push_back(std::move(proxy));\n        }\n    }\n\n    std::stable_sort(mSharedActorStyleProxies.begin(),\n                     mSharedActorStyleProxies.end(),\n        [](const SharedActorStyleProxy& lhs,",
+    "before": "        add_actor(member.mId);\n    }\n\n    std::stable_sort(mSharedActorStyleProxies.begin(),\n                     mSharedActorStyleProxies.end(),\n        [](const SharedActorStyleProxy& lhs,"
+   },
+   {
+    "after": "            || (proxy.mStyleId.isNull() && proxy.mAvatar\n                && proxy.mAvatar->isSelf()\n                && (actor_id.isNull() || actor_id == gAgentID));\n        if (proxy.mActive && !proxy.mEffectShell && matches)\n        {\n            return true;\n        }",
+    "before": "            || (proxy.mStyleId.isNull() && proxy.mAvatar\n                && proxy.mAvatar->isSelf()\n                && (actor_id.isNull() || actor_id == gAgentID));\n        if (proxy.mActive && matches)\n        {\n            return true;\n        }"
+   },
+   {
+    "after": "            || (proxy.mStyleId.isNull() && proxy.mAvatar\n                && proxy.mAvatar->isSelf()\n                && (actor_id.isNull() || actor_id == gAgentID));\n        if (proxy.mActive && !proxy.mEffectShell && proxy.mPBRReady && matches)\n        {\n            return true;\n        }",
+    "before": "            || (proxy.mStyleId.isNull() && proxy.mAvatar\n                && proxy.mAvatar->isSelf()\n                && (actor_id.isNull() || actor_id == gAgentID));\n        if (proxy.mActive && proxy.mPBRReady && matches)\n        {\n            return true;\n        }"
+   },
+   {
+    "after": "            || (proxy.mStyleId.isNull() && proxy.mAvatar\n                && proxy.mAvatar->isSelf()\n                && (actor_id.isNull() || actor_id == gAgentID));\n        if (proxy.mSuppressNativeBeauty && !proxy.mEffectShell && matches)\n        {\n            return true;\n        }",
+    "before": "            || (proxy.mStyleId.isNull() && proxy.mAvatar\n                && proxy.mAvatar->isSelf()\n                && (actor_id.isNull() || actor_id == gAgentID));\n        if (proxy.mSuppressNativeBeauty && matches)\n        {\n            return true;\n        }"
+   },
+   {
+    "after": "        {\n            continue;\n        }\n        proxy.mDepthPrimed = !proxy.mEffectShell && renderSharedActorStyleProxyItem(proxy, true);\n    }\n}\n",
+    "before": "        {\n            continue;\n        }\n        proxy.mDepthPrimed = renderSharedActorStyleProxyItem(proxy, true);\n    }\n}\n"
+   },
+   {
+    "after": "bool LLActorMover::renderSharedActorStyleProxyItem(\n    SharedActorStyleProxy& proxy, bool depth_only)\n{\n    if (proxy.mEffectShell)\n    {\n        // [CloneTransition] effect shell: its own tiny dispatch (never the style machinery above).\n        if (depth_only || !proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead()\n            || ALDerenderList::keepsAvatarLive(proxy.mAvatar) || LLGhostAvatar::isRenderHidden(proxy.mAvatar))\n        {\n            return false;\n        }\n        struct ShellReplayScope\n        {\n            explicit ShellReplayScope(bool& flag) : mFlag(flag) { mFlag = true; }\n            ~ShellReplayScope() { mFlag = false; }\n            bool& mFlag;\n        } shell_scope(mRenderingSharedActorStyle);\n        LLGLSLShader* saved_shell_shader = LLGLSLShader::sCurBoundShaderPtr;\n        const U32 saved_shell_unit = gGL.getCurrentTexUnitIndex();\n        GhostDrawParams shell_params;\n        shell_params.mWorldLinear = true;\n        shell_params.mEffectOnly = true;\n        shell_params.mTransition = proxy.mTransition;\n        shell_params.mNativeDepthAvailable = true;   // native beauty is NOT suppressed: its depth is the surface\n        shell_params.mPhase = 0.f;\n        const LLColor4 shell_tint(1.f, 1.f, 1.f, 1.f);\n        bool shell_complete = true;\n        if (!proxy.mAvatar->isControlAvatar())\n        {\n            shell_complete &= renderSystemActorGhost(proxy.mAvatar, proxy.mStyleId, false, false, true,\n                                                     &proxy.mTransition);\n            shell_complete &= renderSystemActorGhost(proxy.mAvatar, proxy.mStyleId, true, false, true,\n                                                     &proxy.mTransition);\n        }\n        if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())\n        {\n            bool geometry_complete = true;\n            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent, shell_tint, 1.f,\n                              GHOST_STYLE_CLONE, shell_params, &proxy.mStaticFaces, &geometry_complete);\n            shell_complete &= geometry_complete;\n        }\n        gGL.flush();\n        LLVertexBuffer::unbind();\n        if (saved_shell_shader && saved_shell_shader->mProgramObject) saved_shell_shader->bind();\n        else LLGLSLShader::unbind();\n        gGL.getTexUnit(saved_shell_unit)->activate();\n        return shell_complete;\n    }\n    if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||\n        (ALDerenderList::keepsAvatarLive(proxy.mAvatar) || LLGhostAvatar::isRenderHidden(proxy.mAvatar)))\n    {",
+    "before": "bool LLActorMover::renderSharedActorStyleProxyItem(\n    SharedActorStyleProxy& proxy, bool depth_only)\n{\n    if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||\n        (ALDerenderList::keepsAvatarLive(proxy.mAvatar) || LLGhostAvatar::isRenderHidden(proxy.mAvatar)))\n    {"
+   },
+   {
+    "after": "    params.mPhase =\n        (F32)(proxy.mWearerId.mData[0] | (proxy.mWearerId.mData[1] << 8))\n        * (F_TWO_PI / 65536.f);\n    // [CloneTransition] the native mask follows the body into its Actor FX replay (same resolver).\n    params.mTransition = LLDirectorCast::instance().transitionCoverageFor(proxy.mWearerId);\n\n    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;\n    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();",
+    "before": "    params.mPhase =\n        (F32)(proxy.mWearerId.mData[0] | (proxy.mWearerId.mData[1] << 8))\n        * (F_TWO_PI / 65536.f);\n\n    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;\n    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();"
+   },
+   {
+    "after": "    if (!hasSharedActorStyleProxies()) return;\n    for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)\n    {\n        if (!proxy.mActive || proxy.mEffectShell || !proxy.mAvatar || proxy.mAvatar->isDead() ||\n            (proxy.mBatches.empty() && proxy.mStaticFaces.empty()\n             && proxy.mPBRCommands.empty()))\n        {\n            continue;   // [CloneTransition] the shell never adds matte coverage\n        }\n        if ((phase == 0 && proxy.mPart != ESharedActorStylePart::ACTOR_SOLID) ||\n            (phase != 0 && proxy.mPart == ESharedActorStylePart::SYSTEM_BLEND))",
+    "before": "    if (!hasSharedActorStyleProxies()) return;\n    for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)\n    {\n        if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||\n            (proxy.mBatches.empty() && proxy.mStaticFaces.empty()\n             && proxy.mPBRCommands.empty()))\n        {\n            continue;\n        }\n        if ((phase == 0 && proxy.mPart != ESharedActorStylePart::ACTOR_SOLID) ||\n            (phase != 0 && proxy.mPart == ESharedActorStylePart::SYSTEM_BLEND))"
+   },
+   {
+    "after": "        params.mLightResponseKey = proxy.mWearerId;\n        params.mSilCoverPhase = phase == 0 ? 1 : 2;\n        params.mCoverPolicy = &policy;\n        params.mTransition = LLDirectorCast::instance().transitionCoverageFor(proxy.mWearerId); // [CloneTransition]\n        if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())\n        {\n            bool complete = true;",
+    "before": "        params.mLightResponseKey = proxy.mWearerId;\n        params.mSilCoverPhase = phase == 0 ? 1 : 2;\n        params.mCoverPolicy = &policy;\n        if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())\n        {\n            bool complete = true;"
+   }
+  ],
+  "indra/newview/llactormover.h": [
+   {
+    "after": "#include \"m4math.h\"         // frozen attachment matrices (GhostDrawParams)\n#include \"alghostclearanim.h\" // [ClearAnim] ParkedStore\n#include \"llghostcoverage.h\" // [GhostDeferred] per-category clone coverage mask\n#include \"alclonetransition.h\" // [CloneTransition] RenderParams in GhostDrawParams\n#include \"alghostanimmirrormath.h\" // Directed mirror gaze observer\n#include \"algazehot.h\"\n#include \"algazemotor.h\"    // per-actor coordinated gaze motor state (spec 6A)",
+    "before": "#include \"m4math.h\"         // frozen attachment matrices (GhostDrawParams)\n#include \"alghostclearanim.h\" // [ClearAnim] ParkedStore\n#include \"llghostcoverage.h\" // [GhostDeferred] per-category clone coverage mask\n#include \"alghostanimmirrormath.h\" // Directed mirror gaze observer\n#include \"algazehot.h\"\n#include \"algazemotor.h\"    // per-actor coordinated gaze motor state (spec 6A)"
+   },
+   {
+    "after": "    // readiness query is fail-open (false unless both body + rigid-eye world\n    // actorghost programs linked). Call the draw once for solid and once for\n    // blend so the shared proxy queue can interleave authored alpha correctly.\n    // [CloneTransition] `shell` (non-null, active) selects the EFFECT SHELL: additive edge only, no style\n    // required, no depth write, never a prime. Null = the ordinary Actor FX replay.\n    bool canRenderSystemActorGhost(LLVOAvatar* avatar,\n                                   const LLUUID& style_id,\n                                   const ALCloneTransition::RenderParams* shell = nullptr) const;\n    bool renderSystemActorGhost(LLVOAvatar* avatar,\n                                const LLUUID& style_id,\n                                bool blend_sweep,\n                                bool depth_only = false,\n                                bool depth_available = false,\n                                const ALCloneTransition::RenderParams* shell = nullptr);\n\n    // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------\n    // Refresh each roster actor's cached impostor snapshot (a billboard image of",
+    "before": "    // readiness query is fail-open (false unless both body + rigid-eye world\n    // actorghost programs linked). Call the draw once for solid and once for\n    // blend so the shared proxy queue can interleave authored alpha correctly.\n    bool canRenderSystemActorGhost(LLVOAvatar* avatar,\n                                   const LLUUID& style_id) const;\n    bool renderSystemActorGhost(LLVOAvatar* avatar,\n                                const LLUUID& style_id,\n                                bool blend_sweep,\n                                bool depth_only = false,\n                                bool depth_available = false);\n\n    // ---- Pose/blocking ghosts: translucent REAL-avatar billboards -------------\n    // Refresh each roster actor's cached impostor snapshot (a billboard image of"
+   },
+   {
+    "after": "        // no coverage info -> the classic full draw, byte-identical.\n        GhostCoverageMask mDeferredCoverage = GHOST_COVERAGE_NONE;\n        GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;\n        // [CloneTransition] Native/overlay transition mask for this draw (PLAN 3.1-3.3). Default\n        // (inactive) is byte-identical to no transition: every program bind resets the uniforms.\n        ALCloneTransition::RenderParams mTransition;\n        // [CloneTransition] Effect shell (PLAN 3.3): additive edge only. A dedicated flag, never a look\n        // (look 10 Layer would make the replay own native beauty). Never writes depth or colour of the body.\n        bool mEffectOnly = false;\n        // [AvatarSilhouette] 0=beauty, 1=coverage Phase A, 2=coverage Phase B.\n        U8 mSilCoverPhase = 0;\n        const CoverPolicy* mCoverPolicy = nullptr; // coverage replay only; never beauty",
+    "before": "        // no coverage info -> the classic full draw, byte-identical.\n        GhostCoverageMask mDeferredCoverage = GHOST_COVERAGE_NONE;\n        GhostCoverageMask mPresentCoverage  = GHOST_COVERAGE_NONE;\n        // [AvatarSilhouette] 0=beauty, 1=coverage Phase A, 2=coverage Phase B.\n        U8 mSilCoverPhase = 0;\n        const CoverPolicy* mCoverPolicy = nullptr; // coverage replay only; never beauty"
+   },
+   {
+    "after": "        bool mCoverageReplacement = false;\n        bool mPBRReady = false;\n        bool mDepthPrimed = false;\n        // [CloneTransition] EFFECT SHELL item (PLAN 3.3). Not a style proxy: it never owns native beauty,\n        // never primes depth, never contributes matte coverage, and is invisible to the \"replay active /\n        // ready\" queries (the native treatment of the body must keep running underneath it).\n        bool mEffectShell = false;\n        ALCloneTransition::RenderParams mTransition;\n    };\n    void buildSharedActorStyleQueue();\n    bool renderSharedActorStyleProxyItem(SharedActorStyleProxy& proxy,",
+    "before": "        bool mCoverageReplacement = false;\n        bool mPBRReady = false;\n        bool mDepthPrimed = false;\n    };\n    void buildSharedActorStyleQueue();\n    bool renderSharedActorStyleProxyItem(SharedActorStyleProxy& proxy,"
+   }
+  ],
+  "indra/newview/lldirectorcast.cpp": [
+   {
+    "after": "#include \"alavatarsubjectpicker.h\"\n#include \"alsteppedanim.h\"          // group rate offsets, per-actor override (de)serialisation\n#include \"alavatarlightresponse.h\" // [AvatarLightResponse]\n#include \"alclonetransitions.h\"       // transitionCoverageFor\n#include \"llagentdata.h\"             // gAgentID (stable even while self avatar is unavailable)\n#include \"llghostavatar.h\"          // LLGhostAvatar complete type for resolveEntityClone() upcast\n#include \"llactormover.h\"           // startAll/stopAll/placeAt (ACTION, marks)",
+    "before": "#include \"alavatarsubjectpicker.h\"\n#include \"alsteppedanim.h\"          // group rate offsets, per-actor override (de)serialisation\n#include \"alavatarlightresponse.h\" // [AvatarLightResponse]\n#include \"llagentdata.h\"             // gAgentID (stable even while self avatar is unavailable)\n#include \"llghostavatar.h\"          // LLGhostAvatar complete type for resolveEntityClone() upcast\n#include \"llactormover.h\"           // startAll/stopAll/placeAt (ACTION, marks)"
+   },
+   {
+    "after": "\n    resolved_id = primary;\n    return default_style;\n}\n\nconst ALCloneTransition::RenderParams& LLDirectorCast::transitionCoverageFor(\n    const LLUUID& owner, const LLUUID& fallback) const\n{\n    static const ALCloneTransition::RenderParams inactive;\n    if (!ALCloneTransitions::anyRunning())\n    {\n        return inactive;   // idle: one static load, no singleton, no lookups\n    }\n    const ALCloneTransitions& transitions = ALCloneTransitions::instance();\n    if (owner.notNull())\n    {\n        const ALCloneTransition::RenderParams& params = transitions.nativeParamsFor(owner);\n        if (params.active)\n        {\n            return params;\n        }\n    }\n    if (fallback.notNull() && fallback != owner)\n    {\n        const ALCloneTransition::RenderParams& params = transitions.nativeParamsFor(fallback);\n        if (params.active)\n        {\n            return params;\n        }\n    }\n    return inactive;\n}\n\nLLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)",
+    "before": "\n    resolved_id = primary;\n    return default_style;\n}\n\nLLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)"
+   }
+  ],
+  "indra/newview/lldirectorcast.h": [
+   {
+    "after": "#ifndef LL_LLDIRECTORCAST_H\n#define LL_LLDIRECTORCAST_H\n\n#include \"alclonetransition.h\"\n#include \"aldirectoractorchoice.h\"\n#include \"algazemath.h\"\n#include \"algazehotslots.h\"",
+    "before": "#ifndef LL_LLDIRECTORCAST_H\n#define LL_LLDIRECTORCAST_H\n\n#include \"aldirectoractorchoice.h\"\n#include \"algazemath.h\"\n#include \"algazehotslots.h\""
+   },
+   {
+    "after": "    // non-cast ids read as the disabled default and ignore writes.\n    const ActorStyle& getActorStyle(const LLUUID& id) const;\n    const ActorStyle& getRenderActorStyle(const LLUUID& id) const;\n    // Clone transitions (PLAN 3.2): THE resolver for the native transition mask, used by both renderer\n    // lookup paths (getRenderActorStyle callers and resolveStoredActorStyle callers) so a body and its\n    // attachments (owner, then wearer fallback) always agree. Inactive params while nothing runs.\n    const ALCloneTransition::RenderParams& transitionCoverageFor(const LLUUID& owner,\n                                                                  const LLUUID& fallback = LLUUID::null) const;\n    void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);\n    void              forgetCloneFade(const LLUUID& runtime_id);   // the clone's body is retired: drop its Studio-owned fade\n    void              setActorStyle(const LLUUID& id, const ActorStyle& style);",
+    "before": "    // non-cast ids read as the disabled default and ignore writes.\n    const ActorStyle& getActorStyle(const LLUUID& id) const;\n    const ActorStyle& getRenderActorStyle(const LLUUID& id) const;\n    void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);\n    void              forgetCloneFade(const LLUUID& runtime_id);   // the clone's body is retired: drop its Studio-owned fade\n    void              setActorStyle(const LLUUID& id, const ActorStyle& style);"
+   }
+  ],
+  "indra/newview/lldrawpool.cpp": [
+   {
+    "after": "#include \"llagentdata.h\"\n#include \"llframetimer.h\"\n#include \"altron.h\" // [TronT2] Actor FX \"Tron Suit\" (look 36) params\n#include \"alclonetransitionrender.h\" // clone transition uniform packing\n#include \"alclonetransitions.h\"\n#include \"alavatarlightresponse.h\" // [AvatarLightResponse]\n\n#include <algorithm>",
+    "before": "#include \"llagentdata.h\"\n#include \"llframetimer.h\"\n#include \"altron.h\" // [TronT2] Actor FX \"Tron Suit\" (look 36) params\n#include \"alavatarlightresponse.h\" // [AvatarLightResponse]\n\n#include <algorithm>"
+   },
+   {
+    "after": "const LLStaticHashedString sActorFxTronParams(\"actorFxTronParams\");\nconst LLStaticHashedString sActorFxTronParams2(\"actorFxTronParams2\");\nconst LLStaticHashedString sActorFxTronColor(\"actorFxTronColor\");\nconst LLStaticHashedString sActorFxTransition(\"actorFxTransition\");\nconst LLStaticHashedString sActorFxTransition2(\"actorFxTransition2\");\nconst LLStaticHashedString sActorFxTransitionEdge(\"actorFxTransitionEdge\");\nconst LLStaticHashedString sTransitionEyeToBody(\"transitionEyeToBody\");\n// Programs that currently hold a non-zero transition mask (reset on the next draw they get).\nstd::unordered_set<const LLGLSLShader*> sCloneTransitionDirty;\n// [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl\nconst LLStaticHashedString sAlrEnabled(\"alrEnabled\");\nconst LLStaticHashedString sAlrParams(\"alrParams\");",
+    "before": "const LLStaticHashedString sActorFxTronParams(\"actorFxTronParams\");\nconst LLStaticHashedString sActorFxTronParams2(\"actorFxTronParams2\");\nconst LLStaticHashedString sActorFxTronColor(\"actorFxTronColor\");\n// [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl\nconst LLStaticHashedString sAlrEnabled(\"alrEnabled\");\nconst LLStaticHashedString sAlrParams(\"alrParams\");"
+   },
+   {
+    "after": "}\n\n// static\nvoid LLRenderPass::uploadCloneTransition(LLGLSLShader& shader, const ALCloneTransition::RenderParams& params)\n{\n    float eye_to_body[16];\n    const bool want = params.active && params.style != ALCloneTransition::STYLE_NONE\n        && ALCloneTransitionRender::packEyeToBody(params, gGLModelView, eye_to_body);\n    if (!want)\n    {\n        if (sCloneTransitionDirty.empty()) return;          // idle: no GL calls, no hashing\n        const auto it = sCloneTransitionDirty.find(&shader);\n        if (it == sCloneTransitionDirty.end()) return;\n        sCloneTransitionDirty.erase(it);\n        const F32 zero[4] = {0.f, 0.f, 0.f, 0.f};\n        shader.uniform4fv(sActorFxTransition, 1, zero);     // style 0 makes every other uniform inert\n        return;\n    }\n    const ALCloneTransitionRender::Uniforms u = ALCloneTransitionRender::packUniforms(params);\n    shader.uniform4fv(sActorFxTransition, 1, u.transition);\n    shader.uniform4fv(sActorFxTransition2, 1, u.transition2);\n    shader.uniform4fv(sActorFxTransitionEdge, 1, u.edge);\n    shader.uniformMatrix4fv(sTransitionEyeToBody, 1, GL_FALSE, eye_to_body);\n    sCloneTransitionDirty.insert(&shader);\n}\n\nnamespace\n{\n// Native transition mask for one draw (PLAN 3.2): ONE resolver, shared by the UUID lookup path\n// (getRenderActorStyle) and the stored-owner path (resolveStoredActorStyle). Runs for every actor-fx\n// program draw, INCLUDING when shared replay disables the treatment.\nbool upload_native_clone_transition(const LLUUID& primary, const LLUUID& fallback)\n{\n    if (LLGLSLShader* shader = get_actor_fx_shader())\n    {\n        const ALCloneTransition::RenderParams& params =\n            LLDirectorCast::instance().transitionCoverageFor(primary, fallback);\n        LLRenderPass::uploadCloneTransition(*shader, params);\n        return params.active;\n    }\n    return false;\n}\n}\n\n// static\nvoid LLRenderPass::uploadActorFxDisabled()\n{\n    if (LLGLSLShader* shader = get_actor_fx_shader())",
+    "before": "}\n\n// static\nvoid LLRenderPass::uploadActorFxDisabled()\n{\n    if (LLGLSLShader* shader = get_actor_fx_shader())"
+   },
+   {
+    "after": "        // Actor-FX uniforms are program state and otherwise leak from the last\n        // styled attachment into unrelated world geometry using that program.\n        shader->uniform1i(sActorFxEnabled, 0);\n        // The clone-transition mask is program state too: an unowned draw resets it.\n        uploadCloneTransition(*shader, ALCloneTransition::RenderParams());\n    }\n    // [AvatarLightResponse] an unowned/disabled draw must also reset the response so it\n    // cannot leak from the last adjusted avatar drawn with this program.",
+    "before": "        // Actor-FX uniforms are program state and otherwise leak from the last\n        // styled attachment into unrelated world geometry using that program.\n        shader->uniform1i(sActorFxEnabled, 0);\n    }\n    // [AvatarLightResponse] an unowned/disabled draw must also reset the response so it\n    // cannot leak from the last adjusted avatar drawn with this program."
+   },
+   {
+    "after": "                                           bool allow_native_wire,\n                                           bool force_native)\n{\n    bool result = false;\n    if (!force_native && shared_actor_fx_replay_active(actor_id))\n    {\n        // Layer keeps the authored material as its base, but the treatment is\n        // supplied exactly once by the shared forward-alpha replay. Cover is\n        // normally skipped before reaching here; disabling is its safe fallback.\n        uploadActorFxDisabled();\n    }\n    else\n    {\n        // UUID callers and LLDrawInfo owners are canonicalized at their mutation /\n        // geometry-build boundaries; keep this per-draw path free of object lookup.\n        const LLDirectorCast::ActorStyle& style =\n            LLDirectorCast::instance().getRenderActorStyle(actor_id);\n        result = upload_actor_fx_style(actor_id, style, allow_native_wire);\n    }\n    // Clone transition mask: independent of the treatment above, uploaded EVEN when replay disabled it.\n    if (upload_native_clone_transition(actor_id, LLUUID::null) && LLActorMaskEligibility::sArmed)\n    {\n        // [ActorMask] a running transition changes native coverage exactly like Dissolve does.\n        LLActorMaskEligibility::instance().coverageChanged(actor_id.isNull() ? gAgentID : actor_id);\n    }\n    return result;\n}\n\n// static",
+    "before": "                                           bool allow_native_wire,\n                                           bool force_native)\n{\n    if (!force_native && shared_actor_fx_replay_active(actor_id))\n    {\n        // Layer keeps the authored material as its base, but the treatment is\n        // supplied exactly once by the shared forward-alpha replay. Cover is\n        // normally skipped before reaching here; disabling is its safe fallback.\n        uploadActorFxDisabled();\n        return false;\n    }\n\n    // UUID callers and LLDrawInfo owners are canonicalized at their mutation /\n    // geometry-build boundaries; keep this per-draw path free of object lookup.\n    const LLDirectorCast::ActorStyle& style =\n        LLDirectorCast::instance().getRenderActorStyle(actor_id);\n    return upload_actor_fx_style(actor_id, style, allow_native_wire);\n}\n\n// static"
+   },
+   {
+    "after": "            if (LLActorMaskEligibility::sArmed && actor_mask_native_changes_coverage(style))\n                LLActorMaskEligibility::instance().coverageChanged(params);\n            result = upload_actor_fx_style(owner, style, false);\n        }\n        // Clone transition mask: same resolver as the UUID path; attachments inherit the wearer's mask.\n        if (upload_native_clone_transition(params.mActorFxOwner, params.mActorFxFallbackOwner)\n            && LLActorMaskEligibility::sArmed)\n        {\n            LLActorMaskEligibility::instance().coverageChanged(params);   // [ActorMask] transition active\n        }\n    }\n    if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr; shader && shader->mFeatures.hasWeatherMaterial)",
+    "before": "            if (LLActorMaskEligibility::sArmed && actor_mask_native_changes_coverage(style))\n                LLActorMaskEligibility::instance().coverageChanged(params);\n            result = upload_actor_fx_style(owner, style, false);\n        }\n    }\n    if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr; shader && shader->mFeatures.hasWeatherMaterial)"
+   }
+  ],
+  "indra/newview/lldrawpool.h": [
+   {
+    "after": "class LLGLSLShader;\nclass LLMeshSkinInfo;\nclass LLFetchedGLTFMaterial;\nnamespace ALCloneTransition { struct RenderParams; }\n\n// [VelZFight] Preserve polygon-offset parameters around scoped velocity bias.\n// GL_POLYGON_OFFSET_FILL enablement remains owned by an adjacent LLGLEnable.",
+    "before": "class LLGLSLShader;\nclass LLMeshSkinInfo;\nclass LLFetchedGLTFMaterial;\n\n// [VelZFight] Preserve polygon-offset parameters around scoped velocity bias.\n// GL_POLYGON_OFFSET_FILL enablement remains owned by an adjacent LLGLEnable."
+   },
+   {
+    "after": "    static bool uploadActorFx(const LLDrawInfo& params,\n                              bool force_native = false);\n    static void uploadActorFxDisabled();\n    // Clone transitions (PLAN 3.2): upload the native transition mask for the CURRENT pass view to\n    // `shader` (actorFxTransition*, transitionEyeToBody). Inactive params reset a program that still\n    // holds a non-zero mask and are otherwise free (one empty-set test). Independent of Actor FX.\n    static void uploadCloneTransition(LLGLSLShader& shader, const ALCloneTransition::RenderParams& params);\n    // [AvatarLightResponse] Per-avatar Diffuse / Tame / Brightness / Glow trim\n    // (doc/AVATAR_LIGHT_RESPONSE_DESIGN.md section 5).  uploadActorFxStyleOnly\n    // is the style upload WITHOUT the response upload (shared-replay sites that",
+    "before": "    static bool uploadActorFx(const LLDrawInfo& params,\n                              bool force_native = false);\n    static void uploadActorFxDisabled();\n    // [AvatarLightResponse] Per-avatar Diffuse / Tame / Brightness / Glow trim\n    // (doc/AVATAR_LIGHT_RESPONSE_DESIGN.md section 5).  uploadActorFxStyleOnly\n    // is the style upload WITHOUT the response upload (shared-replay sites that"
+   }
+  ],
+  "indra/newview/pipeline.cpp": [
+   {
+    "after": "    if (pass.rigged && !uploadGhostPalette(di)) return false;\n    shader.uniform1f(LLStaticHashedString(\"sil_clone_progress\"),\n        sDrawingGhostProxy ? 1.f-sDrawingGhostProxy->mFadeAlpha : 0.f);\n    // [CloneTransition] the native transition mask reaches silhouette cover / chroma key (PLAN 3.4).\n    LLRenderPass::uploadCloneTransition(shader,\n        LLDirectorCast::instance().transitionCoverageFor(di.mActorFxOwner, di.mActorFxFallbackOwner));\n\n    const bool pbr_slots = pass.pbr && di.mGLTFMaterialList.size() > 1;\n    const bool bump = pass.pass == LLRenderPass::PASS_BUMP || pass.pass == LLRenderPass::PASS_BUMP_RIGGED;",
+    "before": "    if (pass.rigged && !uploadGhostPalette(di)) return false;\n    shader.uniform1f(LLStaticHashedString(\"sil_clone_progress\"),\n        sDrawingGhostProxy ? 1.f-sDrawingGhostProxy->mFadeAlpha : 0.f);\n\n    const bool pbr_slots = pass.pbr && di.mGLTFMaterialList.size() > 1;\n    const bool bump = pass.pass == LLRenderPass::PASS_BUMP || pass.pass == LLRenderPass::PASS_BUMP_RIGGED;"
+   }
+  ]
+ }
+}

@@ -44,6 +44,9 @@ out vec3 vary_position;
 in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 #endif
 in vec4 diffuse_color;
 in vec3 normal;
@@ -118,6 +121,13 @@ void main()
 #endif
 #endif
 
+#ifdef HAS_ACTOR_FX
+#ifdef HAS_SKIN
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos, 1.0)).xyz : vec3(0.0);
+#else
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);
+#endif
+#endif
     vertex_color = diffuse_color;
 
 #if !defined(HAS_SKIN)

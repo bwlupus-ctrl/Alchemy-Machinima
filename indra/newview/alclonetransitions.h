@@ -17,6 +17,9 @@
 #include "lluuid.h"
 #include "llsingleton.h"
 
+#include <memory>
+#include <string>
+
 class ALCloneTransitions : public LLSingleton<ALCloneTransitions>
 {
     LLSINGLETON(ALCloneTransitions);
@@ -40,10 +43,48 @@ public:
     struct StudioLayers { int32_t count = 0; bool attachedPlacement = false; StudioLayer layer[2]; };
     void studioLayersFor(const LLUUID& instance_id, StudioLayers& out) const;
 
-    // --- engine-facing (implemented in alclonetransitions.cpp by the engine work) -------------
-    // ... start / cancel / finalize / clock tick / shutdown: defined by the engine work.
+    // Steady-state overlay look of an ENTITY clone (Instance::mOverlayLook), -1 = none (draw the native
+    // body). A running transition is reported by studioLayersFor() instead; ask that first.
+    int32_t overlayLookFor(const LLUUID& instance_id) const;
+
+    // --- engine-facing (alclonetransitions.cpp) ----------------------------------------------
+    // Start one transition on a Studio instance. The kind is decided by the CALLER (the shared action
+    // ALGhostCloneActions::transitionTo). Returns false with `why` set on refusal (max 2 running, one per
+    // clone, bad duration, clone or body not available).
+    bool start(const LLUUID& instance_id, const ALCloneTransition::Request& request, std::string& why);
+    // The one finalize (idempotent). generation 0 = whichever record the clone has now.
+    bool finalize(const LLUUID& instance_id, ALCloneTransition::Reason reason, ALCloneTransition::Outcome outcome,
+                  U32 generation = 0);
+    // Cancel button / menu: ROLLBACK. True when something was running.
+    bool cancel(const LLUUID& instance_id);
+    bool isRunning(const LLUUID& instance_id) const;
+    // Status text for the page and menu ("Running 0.8 / 1.5 s", the last outcome, or empty).
+    std::string statusFor(const LLUUID& instance_id) const;
+
+    // Cancellation table hooks (PLAN 2.6). All are cheap no-ops unless a transition runs, and all are
+    // idempotent. `Edit` rolls back the clone's own transition first, then the caller applies its edit (D18).
+    static void cancelFor(const LLUUID& instance_id, ALCloneTransition::Reason reason);
+    static void cancelAllRunning(ALCloneTransition::Reason reason);
+    static void onSceneReplaced();                      // scene load / cast clear (call site: lldirectorcast.cpp, R-owned)
+    static void onAllOff(bool clones_hidden);           // ALL OFF: ROLLBACK when it hides clones, else snap to the end (D9)
+    static void onDisconnect();                         // logout / disconnect: DISCARD, restore
+    static void shutdown();                             // before disconnectViewer(): DISCARD, restore
+
+    // Per-frame (llappviewer.cpp): the clock tick (p snapshotted ONCE per frame, validity, teleport test, end)
+    // and, after every pose writer including Stay in place, the body frame refresh.
+    // True while a running OVERLAY_LOOK_TO_ENTITY transition needs the native body drawn (Studio body flags).
+    static bool keepsBodyShown(const LLUUID& instance_id);
+    static void tick();
+    static void refreshBodyFrames();
+
+    // One running transition as the UI sees it.
+    struct Snapshot { bool running = false; U32 generation = 0; int32_t kind = 0; F32 elapsed = 0.f, duration = 0.f; };
+    Snapshot snapshotFor(const LLUUID& instance_id) const;
 
 private:
+    ~ALCloneTransitions();
+    struct Impl;
+    std::unique_ptr<Impl> mImpl;
     static int32_t sRunning;
 };
 #endif

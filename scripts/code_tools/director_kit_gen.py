@@ -386,8 +386,10 @@ def validate_data(data: dict) -> None:
     # Minimum shadow softness: one persistent renderer slider on Light > Rim > Soft shadows, 2526 -> 2527 (11/13).
     # Wide light taps: one persistent renderer spinner under it, 2527 -> 2528 (11/13).
     # Shadow preset: one card-level kit_preset_strip row at the top of Light > Rim > Soft shadows (soft_shadows provider), 2528 -> 2529 (11/13).
-    if len(pages) != 40 or row_count != 2529:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2529")
+    # Clone transitions: the Clones page Transition card adds 8 searchable rows (Target, Style, Duration, Ease, Direction,
+    # Go, Cancel, Status), 2529 -> 2537 (11/16).
+    if len(pages) != 40 or row_count != 2537:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2537")
     stay = [row for _, page in pages if page["name"] == "ghosts_tab"
             for card in page["cards"] if card["id"] == "pose"
             for row in card["rows"] if row.get("w") == "stay_in_place_check"]

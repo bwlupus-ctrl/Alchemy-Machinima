@@ -70,6 +70,8 @@ struct LLGhostAvatar:LLVOAvatar{
 };
 std::set<const LLGhostAvatar*> LLGhostAvatar::sOffsetHotGazes;
 void set_entity_clone_visible(LLGhostAvatar*,bool,bool);
+namespace ALCloneTransition{enum Reason{R_COMPLETE,R_CANCEL,R_SWAP_SOURCE,R_FADE,R_DELETE,R_GROUP_DELETE,R_RECOVERY,R_SCENE_LOAD,R_SHOW_CLONES_OFF,R_SOLO,R_EDIT_LOCK};}
+struct ALCloneTransitions{static void cancelFor(LLUUID,ALCloneTransition::Reason){}static void cancelAllRunning(ALCloneTransition::Reason){}};   // clone transitions (11/16): Studio hooks; no transition runs here
 struct ALActorChoiceSource{LLUUID mId;std::string mLabel;};struct ALActorChoice{LLUUID mId;std::string mLabel,mSubjectLetters;U8 mSubjectMask=0;};
 std::vector<ALActorChoice> alBuildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ALActorChoiceSource>&);
 struct LLDirectorCast{
@@ -123,6 +125,7 @@ struct ALGhostStudio{
  std::vector<LLUUID> groupMembers(LLUUID id){return getInstance(id)?std::vector<LLUUID>{id}:std::vector<LLUUID>{};}
  struct Member{LLUUID mInstanceId;};struct Group{std::vector<Member>mMembers;};const Group* groupForMember(LLUUID)const{return nullptr;}
  bool isVisible(const Instance&i)const{return ALCloneQol::visible(mShowAll,i.mEnabled,mSolo,i.mSoloVisible);}
+ bool entityRenderOnly(const Instance&i)const{return mShowAll&&i.mEnabled&&mSolo&&!i.mSoloVisible;}   // production adds the overlay-look term; no overlay looks here
  @OVERLAY_STYLE_POLICY@
  static LLVOAvatar* resolveSourceAvatar(const Instance&i){return i.mSourceRemoved?nullptr:LLDirectorCast::instance().resolve(i.mSource);}
  static LLVOAvatar* resolveOverlayAvatar(const Instance&);

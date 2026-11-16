@@ -643,7 +643,13 @@
     "group_member_pinned_check": {"no_widget_history": true},
     "pose_rate_spinner": {"no_widget_history": true},
     "array_parameter_spinner": {"no_widget_history": true},
-    "array_formation_combo": {"no_widget_history": true}
+    "array_formation_combo": {"no_widget_history": true},
+    "transition_target_combo": {"no_widget_history": true},
+    "transition_style_combo": {"no_widget_history": true},
+    "transition_duration_spinner": {"no_widget_history": true},
+    "transition_ease_combo": {"no_widget_history": true},
+    "transition_direction_combo": {"no_widget_history": true},
+    "transition_status": {"no_widget_history": true}
    },
    "label_names": {}
   }

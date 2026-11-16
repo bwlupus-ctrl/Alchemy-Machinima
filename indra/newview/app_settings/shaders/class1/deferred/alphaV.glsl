@@ -37,6 +37,9 @@ invariant gl_Position; // [VelZFight] Keep alpha beauty depth reproducible.
 in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 #endif
 
 #ifdef USE_INDEXED_TEX
@@ -124,6 +127,9 @@ void main()
 
     vary_norm = norm;
     vary_position = pos.xyz;
+#ifdef HAS_ACTOR_FX
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
+#endif
 
 #ifdef USE_VERTEX_COLOR
     vertex_color = diffuse_color;

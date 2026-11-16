@@ -38,6 +38,9 @@ in int texture_index;
 
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 #endif
 
 out vec2 base_color_texcoord;
@@ -77,6 +80,9 @@ void main()
     vec3 n = (mat * vec4(normal.xyz + position.xyz, 1.0)).xyz - pos.xyz;
 #else
     vec3 n = normal_matrix * normal;
+#endif
+#ifdef HAS_ACTOR_FX
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);
 #endif
     float n_len2 = dot(n, n);
     vary_normal = n_len2 > 1e-12

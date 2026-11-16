@@ -28,6 +28,8 @@ def _manifest(filename, digest):
 
 
 def _reverse(source, path, filename, digest, predecessor, predecessor_digest, prefix=''):
+    from clone_transition_pins import reverse_clone_transition  # newest layer first (clone transitions, render)
+    source = reverse_clone_transition(source, path)
     layer = _manifest(filename, digest)
     prior = _manifest(predecessor, predecessor_digest)
     assert layer['integration_predecessors'] == [predecessor], (filename, 'layer order')

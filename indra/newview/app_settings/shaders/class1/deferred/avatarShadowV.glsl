@@ -31,6 +31,9 @@ in vec3 position;
 in vec3 normal;
 in vec2 texcoord0;
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 
 void main()
 {
@@ -44,6 +47,7 @@ void main()
     pos.y = dot(trans[1], pos_in);
     pos.z = dot(trans[2], pos_in);
     pos.w = 1.0;
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
 
     norm.x = dot(trans[0].xyz, normal);
     norm.y = dot(trans[1].xyz, normal);

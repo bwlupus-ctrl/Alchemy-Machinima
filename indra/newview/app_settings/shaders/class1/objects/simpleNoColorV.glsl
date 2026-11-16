@@ -34,6 +34,9 @@ uniform vec4 color;
 in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 out vec3 vary_actor_fx_normal;
 out vec3 vary_actor_fx_eye_position;
 #endif
@@ -59,6 +62,7 @@ void main()
     vary_actor_fx_position = position;
     vary_actor_fx_normal = norm;
     vary_actor_fx_eye_position = pos.xyz;
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
 #endif
 
     calcAtmospherics(pos.xyz);

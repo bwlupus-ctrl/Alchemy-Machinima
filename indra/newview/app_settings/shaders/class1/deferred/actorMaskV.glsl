@@ -16,6 +16,10 @@ in vec2 texcoord0;
 in vec4 diffuse_color;
 in int texture_index;
 out vec3 vary_position;
+// clone transition coordinate (silCoverF)
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 out vec2 vary_texcoord0;
 out vec4 vertex_color;
 flat out int mask_slot;
@@ -47,6 +51,7 @@ void main()
     vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);
 #endif
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);
     mask_slot = mask_indexed != 0 ? texture_index : 0;
 #ifdef MASK_PBR
     int mi = mask_material_slots != 0 ? mask_slot : 0;

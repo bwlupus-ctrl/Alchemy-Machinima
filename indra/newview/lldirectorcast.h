@@ -32,6 +32,7 @@
 #ifndef LL_LLDIRECTORCAST_H
 #define LL_LLDIRECTORCAST_H
 
+#include "alclonetransition.h"
 #include "aldirectoractorchoice.h"
 #include "algazemath.h"
 #include "algazehotslots.h"
@@ -356,6 +357,11 @@ public:
     // non-cast ids read as the disabled default and ignore writes.
     const ActorStyle& getActorStyle(const LLUUID& id) const;
     const ActorStyle& getRenderActorStyle(const LLUUID& id) const;
+    // Clone transitions (PLAN 3.2): THE resolver for the native transition mask, used by both renderer
+    // lookup paths (getRenderActorStyle callers and resolveStoredActorStyle callers) so a body and its
+    // attachments (owner, then wearer fallback) always agree. Inactive params while nothing runs.
+    const ALCloneTransition::RenderParams& transitionCoverageFor(const LLUUID& owner,
+                                                                  const LLUUID& fallback = LLUUID::null) const;
     void              setCloneFadeAlpha(const LLUUID& id, F32 alpha);
     void              forgetCloneFade(const LLUUID& runtime_id);   // the clone's body is retired: drop its Studio-owned fade
     void              setActorStyle(const LLUUID& id, const ActorStyle& style);
