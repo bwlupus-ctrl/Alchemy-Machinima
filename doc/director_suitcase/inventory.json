@@ -5,12 +5,58 @@
     "counts": {
       "EXCLUDED-OTHER": 63,
       "EXCLUDED-PERF": 20,
-      "GENERATED": 738,
-      "HOOK": 563,
-      "OWNED": 946,
-      "TOOLING": 533
+      "GENERATED": 740,
+      "HOOK": 564,
+      "OWNED": 974,
+      "TOOLING": 543
     },
-    "dirty_product_inputs": [],
+    "dirty_product_inputs": [
+      "indra/newview/skins/default/xui/en/director_kit_index.xml",
+      "indra/newview/skins/default/xui/en/floater_director_v2.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_keyframes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_operator.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_shot.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_camera_vcam.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_key.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_scene_options.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_capture_temporal.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_dance.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_ghosts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_groups.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_move.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_path.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_cast_props.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_diopter.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_filters.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_lens_focus.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_actors.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cine_light_rig.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_exposure.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_practicals.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_projector_shafts.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_actor_style.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_bloom_glow.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_image.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stepped.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_stylize.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_look_tron.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_animate.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_gaze_cues.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_polish.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_performance_switchboard.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_quick.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_settings_director_settings.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
+      "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
+      "scripts/code_tools/director_kit/gen_report.txt"
+    ],
     "evidence": {
       "functional_csv_hash_matches": true,
       "functional_meta": {
@@ -23,16 +69,17 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "5ccbf8757e07a9fbccf5ccb9285f5924ca50d804479ad633b0b8ce87a4f93b4f",
+        "csv_sha256": "b575c466a12cf7d2f43609a08756189078613afa836d6e3549baf33e178ee1d9",
         "director_rules": {
           "known_legacy": 0,
-          "links": 18,
-          "pages": 41,
+          "links": 19,
+          "pages": 42,
           "popovers": 6
         },
-        "entries": 4842,
+        "entries": 4952,
         "generated_kit_pages": [
           "frame_orbit_tab",
+          "keyframes_tab",
           "moves_tab",
           "operator_tab",
           "shot_tab",
@@ -73,10 +120,10 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2604,
+        "generated_kit_rows": 2662,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2192,
-        "pages": 40,
+        "interactive_rows": 2244,
+        "pages": 41,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
           "CineRigRimRoughnessSoften",
@@ -118,7 +165,7 @@
           "CineRigRimBgBackBias"
         ],
         "rim_presets": 40,
-        "settings_declared": 3926,
+        "settings_declared": 3927,
         "unknown_control_tags": {
           "slider_bar": 55
         },
@@ -128,10 +175,11 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 848
+        "xui_files": 849
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
+        "camera_group/keyframes_tab",
         "camera_group/moves_tab",
         "camera_group/operator_tab",
         "camera_group/shot_tab",
@@ -185,19 +233,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2328,
+        "independent_json_rows": 2386,
         "multi_page_settings": 21,
-        "owner_roots": 37,
-        "pages": 40,
-        "rows": 2328,
+        "owner_roots": 38,
+        "pages": 41,
+        "rows": 2386,
         "unresolved_rows": 87
       },
-      "wiring_rows": 2328
+      "wiring_rows": 2386
     },
-    "head_source_tree": "8fea0dba69a4f441c3cbe82fe693438a38a42440",
-    "hook_files": 563,
-    "hunks": 3597,
-    "input_sha256": "85ae9a73d2f72f6d769277b59fa9eb36b969b4304988fa5b14cc05e6c1f21bbc",
+    "head_source_tree": "ecaf0271efa6ce1e578cf45ae545c50864c3cf21",
+    "hook_files": 564,
+    "hunks": 3629,
+    "input_sha256": "7841d87ea41a39fa7d03ce969cc75ddb4d89e17931f4d17a77f874f09e323d37",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -205,7 +253,7 @@
     ],
     "opaque_shader_policy": "path inventory only; no source, textual hunks or content fingerprints for .fx/.fxh",
     "scope": "net committed local base..HEAD, plus this generator and declared output paths; no remote/stash history",
-    "settings": 2084
+    "settings": 2085
   },
   "paths": [
     {
@@ -7987,6 +8035,21 @@
       ],
       "git_status": "A",
       "layer": 2,
+      "path": "doc/director_kit/pages/keyframes_tab.md",
+      "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
       "path": "doc/director_kit/pages/light_cues_tab.md",
       "reason": "documentation/evidence/render; regenerate or retain as reference, not source integration"
     },
@@ -12590,10 +12653,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell",
-        "gaze",
-        "shafts-volumetrics"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -13517,6 +13577,34 @@
       "git_status": "A",
       "layer": 5,
       "path": "indra/newview/alcinerigrim.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alcleanframe.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "composition"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alcleantelemetry.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -16330,6 +16418,339 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera",
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframecamera.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframecamera.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframecodec.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframecore.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframecore.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframefit.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframefit.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "common-ui",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 1,
+      "path": "indra/newview/alkeyframehistoryadapter.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "common-ui"
+      ],
+      "git_status": "A",
+      "layer": 1,
+      "path": "indra/newview/alkeyframehistoryadapter.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "composition",
+        "gaze"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframeinputgate.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alkeyframelibrary.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframelibrary.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 9,
+      "path": "indra/newview/alkeyframeoverlay.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframeoverlay.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/alkeyframeparticles.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera",
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframeplayer.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframeplayer.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "common-ui"
+      ],
+      "git_status": "A",
+      "layer": 1,
+      "path": "indra/newview/alkeyframetimeline.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframetimeline.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframetransport.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "camera"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/alkeyframetransport.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alkeyframeviewer.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [
         "director-shell",
         "vcam"
@@ -18065,6 +18486,40 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "camera",
+        "clones",
+        "common-ui",
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 1,
+      "path": "indra/newview/alpanelkeyframes.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alpanelkeyframes.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [
         "director-shell",
         "gaze"
@@ -19772,6 +20227,39 @@
       "git_status": "A",
       "layer": 3,
       "path": "indra/newview/altoolghostplace.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones",
+        "common-ui",
+        "vcam",
+        "weather"
+      ],
+      "git_status": "A",
+      "layer": 1,
+      "path": "indra/newview/altoolkeyframeedit.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/altoolkeyframeedit.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -28178,9 +28666,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
-        "capture-sidecar",
         "clones",
-        "common-ui",
         "director-shell"
       ],
       "class": "OWNED",
@@ -29138,9 +29624,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -29767,8 +30251,7 @@
     {
       "candidate_features_from_subjects": [
         "camera",
-        "rig",
-        "weather"
+        "rig"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -30771,6 +31254,33 @@
       "git_status": "M",
       "layer": 99,
       "path": "indra/newview/llphysicsmotion.cpp",
+      "reason": "present at local base; adapt individual hunks, never copy wholesale"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "HOOK",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "actor-path",
+        "camera",
+        "capture-sidecar",
+        "clones",
+        "composition",
+        "director-shell",
+        "looks",
+        "rig",
+        "roto-tron",
+        "sensor",
+        "shafts-volumetrics",
+        "vcam",
+        "weather"
+      ],
+      "git_status": "M",
+      "layer": 2,
+      "path": "indra/newview/llpipelinelistener.cpp",
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
@@ -31834,9 +32344,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -31904,6 +32412,7 @@
         "actor-path",
         "capture-sidecar",
         "clones",
+        "composition",
         "crowd",
         "director-shell",
         "looks",
@@ -31950,7 +32459,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
         "gaze"
       ],
       "class": "HOOK",
@@ -32593,23 +33101,21 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones",
-        "director-shell",
-        "gaze"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "actor-bar",
         "actor-path",
         "camera",
         "clones",
         "composition",
         "crowd",
         "director-shell",
+        "gaze",
         "looks"
       ],
       "git_status": "M",
@@ -32910,7 +33416,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "director-shell",
         "shafts-volumetrics"
       ],
       "class": "HOOK",
@@ -36177,8 +36682,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "gaze",
-        "looks"
+        "gaze"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -37042,8 +37546,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "gaze",
-        "sensor"
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -37122,8 +37625,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "gaze",
-        "looks"
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -37413,7 +37915,6 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "looks",
         "sensor"
       ],
       "class": "HOOK",
@@ -37815,6 +38316,24 @@
       "git_status": "A",
       "layer": 2,
       "path": "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
+      "reason": "generator output; runtime XUI must be regenerated and shipped"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "GENERATED",
+      "deleted": false,
+      "feature_evidence": [
+        "path/prefix",
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell",
+        "roto-tron",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/skins/default/xui/en/panel_dpage_camera_keyframes.xml",
       "reason": "generator output; runtime XUI must be regenerated and shipped"
     },
     {
@@ -40501,6 +41020,32 @@
       "git_status": "A",
       "layer": 99,
       "path": "indra/newview/tests/alhidecursor_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/tests/alkeyframecore_native.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/tests/alkeyframefit_native.cpp",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {
@@ -44130,6 +44675,110 @@
       "git_status": "A",
       "layer": 99,
       "path": "scripts/code_tools/hot_slots_auto_fixture.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_contract_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_core_native_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_fit_native_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_input_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_lifecycle_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_page_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_runtime_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/keyframe_scene_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

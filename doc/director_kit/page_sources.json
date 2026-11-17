@@ -54697,7 +54697,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7114,
+              "line": 7119,
               "class": "LLFloaterDirector",
               "function": "onClickGroup",
               "wired_class": "LLFloaterDirector",
@@ -88437,7 +88437,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8075,
+              "line": 8080,
               "class": "LLFloaterDirector",
               "function": "refreshAnimateTab",
               "wired_class": "LLFloaterDirector",
@@ -89081,7 +89081,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7785,
+              "line": 7790,
               "class": "LLFloaterDirector",
               "function": "pasteAnimId",
               "wired_class": "LLFloaterDirector",
@@ -89666,7 +89666,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7957,
+              "line": 7962,
               "class": "LLFloaterDirector",
               "function": "onLocomotionMetadataCommit",
               "wired_class": "LLFloaterDirector",
@@ -89756,7 +89756,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7957,
+              "line": 7962,
               "class": "LLFloaterDirector",
               "function": "onLocomotionMetadataCommit",
               "wired_class": "LLFloaterDirector",
@@ -89846,7 +89846,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7957,
+              "line": 7962,
               "class": "LLFloaterDirector",
               "function": "onLocomotionMetadataCommit",
               "wired_class": "LLFloaterDirector",
@@ -106904,7 +106904,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8328,
+              "line": 8333,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -111626,7 +111626,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8329,
+              "line": 8334,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -114651,7 +114651,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8330,
+              "line": 8335,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -138003,7 +138003,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8332,
+              "line": 8337,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -138459,7 +138459,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8331,
+              "line": 8336,
               "class": "LLFloaterDirector",
               "function": "bindCameraSubjectRows",
               "wired_class": "LLFloaterDirector",
@@ -151153,7 +151153,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 295,
+              "line": 294,
               "class": "ALPanelKeyframes",
               "function": "refreshLibrary",
               "wired_class": "ALPanelKeyframes",
@@ -151164,7 +151164,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 384,
+              "line": 406,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151175,7 +151175,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 386,
+              "line": 408,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151186,7 +151186,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 417,
+              "line": 440,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151197,7 +151197,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 530,
+              "line": 553,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -151271,7 +151271,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 400,
+              "line": 423,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151282,7 +151282,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 528,
+              "line": 551,
               "class": "std",
               "function": "string",
               "wired_class": "ALPanelKeyframes",
@@ -151293,7 +151293,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 565,
+              "line": 588,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -151367,7 +151367,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 382,
+              "line": 404,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151441,7 +151441,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 396,
+              "line": 419,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151452,7 +151452,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 405,
+              "line": 428,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151526,7 +151526,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 396,
+              "line": 419,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151600,7 +151600,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 384,
+              "line": 406,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151674,7 +151674,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 396,
+              "line": 419,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151685,7 +151685,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 408,
+              "line": 431,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151759,7 +151759,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 415,
+              "line": 438,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -151833,7 +151833,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 543,
+              "line": 566,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -151844,7 +151844,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 561,
+              "line": 584,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152006,7 +152006,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 347,
+              "line": 369,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152080,7 +152080,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 347,
+              "line": 369,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152091,7 +152091,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 347,
+              "line": 369,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152165,7 +152165,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 346,
+              "line": 368,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152176,7 +152176,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 545,
+              "line": 568,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152250,7 +152250,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 342,
+              "line": 364,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152261,7 +152261,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 540,
+              "line": 563,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152272,7 +152272,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 540,
+              "line": 563,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152360,7 +152360,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 341,
+              "line": 363,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152371,7 +152371,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 539,
+              "line": 562,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152445,7 +152445,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 343,
+              "line": 365,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152456,7 +152456,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 531,
+              "line": 554,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152467,7 +152467,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 540,
+              "line": 563,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152555,7 +152555,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 344,
+              "line": 366,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152566,7 +152566,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 542,
+              "line": 565,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152640,7 +152640,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 345,
+              "line": 367,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152651,7 +152651,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 542,
+              "line": 565,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152662,7 +152662,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 542,
+              "line": 565,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152736,7 +152736,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 340,
+              "line": 362,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152747,7 +152747,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 529,
+              "line": 552,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152758,7 +152758,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 538,
+              "line": 561,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152846,7 +152846,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 440,
+              "line": 463,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152857,7 +152857,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 448,
+              "line": 471,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152868,7 +152868,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 565,
+              "line": 588,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -152942,7 +152942,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 440,
+              "line": 463,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152953,7 +152953,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 449,
+              "line": 472,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -152964,7 +152964,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 565,
+              "line": 588,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153047,7 +153047,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 439,
+              "line": 462,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153124,7 +153124,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 440,
+              "line": 463,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153135,7 +153135,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 450,
+              "line": 473,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153146,7 +153146,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 568,
+              "line": 591,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153220,7 +153220,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 440,
+              "line": 463,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153231,7 +153231,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 451,
+              "line": 474,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153242,7 +153242,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 548,
+              "line": 571,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153253,7 +153253,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 568,
+              "line": 591,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153327,7 +153327,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 440,
+              "line": 463,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153338,7 +153338,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 461,
+              "line": 484,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153349,7 +153349,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 548,
+              "line": 571,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153360,7 +153360,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 569,
+              "line": 592,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153434,7 +153434,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 441,
+              "line": 464,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153445,7 +153445,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 462,
+              "line": 485,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153456,7 +153456,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 569,
+              "line": 592,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153530,7 +153530,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 441,
+              "line": 464,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153541,7 +153541,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 463,
+              "line": 486,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153552,7 +153552,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 569,
+              "line": 592,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153626,7 +153626,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 348,
+              "line": 370,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153637,7 +153637,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 544,
+              "line": 567,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153648,7 +153648,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 580,
+              "line": 603,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153725,7 +153725,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 441,
+              "line": 464,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153736,7 +153736,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 476,
+              "line": 499,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153747,7 +153747,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 544,
+              "line": 567,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153758,7 +153758,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 547,
+              "line": 570,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153769,7 +153769,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 580,
+              "line": 603,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153780,7 +153780,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 586,
+              "line": 609,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153854,7 +153854,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 441,
+              "line": 464,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153865,7 +153865,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 477,
+              "line": 500,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -153876,7 +153876,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 544,
+              "line": 567,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153887,7 +153887,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 547,
+              "line": 570,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153898,7 +153898,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 580,
+              "line": 603,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -153972,7 +153972,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 585,
+              "line": 608,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154046,7 +154046,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 441,
+              "line": 464,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154057,7 +154057,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 478,
+              "line": 501,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154068,7 +154068,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 544,
+              "line": 567,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154079,7 +154079,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 581,
+              "line": 604,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154153,7 +154153,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 442,
+              "line": 465,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154164,7 +154164,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 479,
+              "line": 502,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154175,7 +154175,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 545,
+              "line": 568,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154186,7 +154186,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 581,
+              "line": 604,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154260,7 +154260,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 442,
+              "line": 465,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154271,7 +154271,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 480,
+              "line": 503,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154282,7 +154282,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 545,
+              "line": 568,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154293,7 +154293,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 581,
+              "line": 604,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154367,7 +154367,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 442,
+              "line": 465,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154378,7 +154378,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 481,
+              "line": 504,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154389,7 +154389,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 545,
+              "line": 568,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154400,7 +154400,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 581,
+              "line": 604,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154478,7 +154478,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 442,
+              "line": 465,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154489,7 +154489,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 487,
+              "line": 510,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154500,7 +154500,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 545,
+              "line": 568,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154511,7 +154511,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 582,
+              "line": 605,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154585,7 +154585,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 442,
+              "line": 465,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154596,7 +154596,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 504,
+              "line": 527,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154607,7 +154607,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 545,
+              "line": 568,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154685,7 +154685,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 443,
+              "line": 466,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154696,7 +154696,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 445,
+              "line": 468,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154707,7 +154707,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 503,
+              "line": 526,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154718,7 +154718,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154729,7 +154729,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 582,
+              "line": 605,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154805,7 +154805,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 318,
+              "line": 340,
               "class": "ALPanelKeyframes",
               "function": "refreshActors",
               "wired_class": "ALPanelKeyframes",
@@ -154816,7 +154816,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 376,
+              "line": 398,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154827,7 +154827,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 378,
+              "line": 400,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154838,7 +154838,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 379,
+              "line": 401,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154849,7 +154849,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154860,7 +154860,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 583,
+              "line": 606,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -154934,7 +154934,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 365,
+              "line": 387,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154945,7 +154945,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 371,
+              "line": 393,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -154956,7 +154956,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155037,7 +155037,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 443,
+              "line": 466,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155048,7 +155048,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 445,
+              "line": 468,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155059,7 +155059,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 464,
+              "line": 487,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155070,7 +155070,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155081,7 +155081,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 583,
+              "line": 606,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155157,7 +155157,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 318,
+              "line": 340,
               "class": "ALPanelKeyframes",
               "function": "refreshActors",
               "wired_class": "ALPanelKeyframes",
@@ -155168,7 +155168,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 325,
+              "line": 347,
               "class": "ALPanelKeyframes",
               "function": "refreshActors",
               "wired_class": "ALPanelKeyframes",
@@ -155179,7 +155179,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 376,
+              "line": 398,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155190,7 +155190,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155201,7 +155201,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155212,7 +155212,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 570,
+              "line": 593,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155286,7 +155286,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 365,
+              "line": 387,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155297,7 +155297,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155308,7 +155308,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155389,7 +155389,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 443,
+              "line": 466,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155400,7 +155400,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 445,
+              "line": 468,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155411,7 +155411,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 464,
+              "line": 487,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155422,7 +155422,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 466,
+              "line": 489,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155433,7 +155433,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155444,7 +155444,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 541,
+              "line": 564,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155455,7 +155455,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 577,
+              "line": 600,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155529,7 +155529,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 562,
+              "line": 585,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155603,7 +155603,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 543,
+              "line": 566,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155614,7 +155614,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 561,
+              "line": 584,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155688,7 +155688,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 353,
+              "line": 375,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155699,7 +155699,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 355,
+              "line": 377,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155710,7 +155710,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 531,
+              "line": 554,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155721,7 +155721,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 543,
+              "line": 566,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155795,7 +155795,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 353,
+              "line": 375,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155806,7 +155806,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 356,
+              "line": 378,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155817,7 +155817,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 531,
+              "line": 554,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155828,7 +155828,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 543,
+              "line": 566,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155902,7 +155902,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 353,
+              "line": 375,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155913,7 +155913,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 357,
+              "line": 379,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -155924,7 +155924,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 531,
+              "line": 554,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -155935,7 +155935,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 543,
+              "line": 566,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -156009,7 +156009,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 360,
+              "line": 382,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156020,7 +156020,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 532,
+              "line": 555,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -156107,7 +156107,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 423,
+              "line": 446,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156197,7 +156197,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 425,
+              "line": 448,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156282,7 +156282,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 428,
+              "line": 451,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156367,7 +156367,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 429,
+              "line": 452,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156452,7 +156452,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 429,
+              "line": 452,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156526,7 +156526,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 421,
+              "line": 444,
               "class": "ALPanelKeyframes",
               "function": "action",
               "wired_class": "ALPanelKeyframes",
@@ -156614,7 +156614,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 543,
+              "line": 566,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -156625,7 +156625,7 @@
             },
             {
               "file": "indra/newview/alpanelkeyframes.cpp",
-              "line": 562,
+              "line": 585,
               "class": "ALPanelKeyframes",
               "function": "refresh",
               "wired_class": "ALPanelKeyframes",
@@ -184201,7 +184201,7 @@
           "cpp": [
             {
               "file": "indra/newview/pipeline.cpp",
-              "line": 30884,
+              "line": 30887,
               "class": "LLPipeline",
               "function": "worldShadowPickChatLines",
               "wired_class": "LLFloaterDirector",
@@ -191368,7 +191368,7 @@
               "kind": "cpp",
               "reason": "reference is not in a class that owns/builds this page's XUI",
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 8924,
+              "line": 8929,
               "class": "LLFloaterDirector",
               "function": "showProjectorTrack",
               "wired_class": "LLFloaterDirector",
@@ -230568,7 +230568,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -230680,7 +230680,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -230774,7 +230774,7 @@
           "cpp": [
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -230903,7 +230903,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -230996,7 +230996,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231086,7 +231086,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231176,7 +231176,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231330,7 +231330,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231420,7 +231420,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231510,7 +231510,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231600,7 +231600,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231690,7 +231690,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231780,7 +231780,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231870,7 +231870,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -231970,7 +231970,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -232060,7 +232060,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
@@ -232150,7 +232150,7 @@
             },
             {
               "file": "indra/newview/llfloaterdirector.cpp",
-              "line": 7475,
+              "line": 7480,
               "class": "LLFloaterDirector",
               "function": "onActorStyleControlChanged",
               "wired_class": "LLFloaterDirector",
