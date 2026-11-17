@@ -308,7 +308,13 @@ void ALPanelKeyframes::switchSequence(ALKf::Sequence next)
     if(next.uid.empty()) next.uid=LLUUID::generateNewID().asString();
     std::string why;
     if(p.replaceSequence(std::move(next),why))
-    {mSessions[previous.uid]=std::move(previous);mTimeline->select(0);mMessage.clear();refreshLibrary();}
+    {
+        // File UIDs identify serialized content, not distinct unsaved sessions.
+        auto retained=LLUUID::generateNewID().asString();
+        while(mSessions.count(retained)) retained=LLUUID::generateNewID().asString();
+        mSessions.emplace(retained,std::move(previous));
+        mTimeline->select(0);mMessage.clear();refreshLibrary();
+    }
     else mMessage=why;
 }
 // ui-draw-lint: allow-function(raw-write) actor lists rebuild only on selection or actor-choice revision, from idle not draw

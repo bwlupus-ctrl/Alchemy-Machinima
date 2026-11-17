@@ -74,6 +74,7 @@ void ALKeyframeOverlay::draw()
     // Table A row 7, WP6: no GL or allocation before all recording/pass guards.
     if(!sBuffer || ALCleanFrame::active() || ALKeyframePlayer::instance().rlvHandbackActive() ||
        gSnapshot || gCubeSnapshot || LLPipeline::sPrismLensRender || LLPipeline::sReflectionRender ||
+       LLPipeline::sShadowRender || !gPipeline.isTagRecordView() ||
        !gViewerWindow || !gViewerWindow->getUIVisibility() ||
        !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI)) return;
     gGL.flush();

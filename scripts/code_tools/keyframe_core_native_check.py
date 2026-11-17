@@ -25,6 +25,9 @@ def check():
     assert clean.returncode == 0, 'clean executable fixtures failed'
     core, codec, adapter = SOURCES
     negatives = [
+        ('reject_large_aim', 'F8jump', 'F8jump crossing recovers within bound', [(core, 'double turn=angle(transport,Quat{});', 'double turn=angle(transport,Quat{});if(turn>150*degree) return presented;')]),
+        ('snap_large_aim', 'F8jump', 'F8jump crossing smooth bound', [(core, 'if(turn>720*degree*dt) transport=', 'if(false) transport=')]),
+        ('lose_gesture_boundary', 'F12cancel', 'F12cancel rekey keeps both history boundaries', [(core, 'if(gestureCurrent) mExpectedRevision=mGesture->revision;', '')]),
         ('raw_coincident_tangents', 'F2', 'F2 finite', [(core, 'if(nodes.empty() || length(v-nodes.back())>.001)', 'if(true)')]),
         ('uniform_u', 'F3', 'F3 cruise flat', [(core, 'arc.curve.at(arc.inverse(s))', 'arc.curve.at(u)')]),
         ('per_piece_slope_clamp', 'F5', 'F5 C1', [(core, 'auto a=c.knots[j-1],b=c.knots[j];double h=', 'auto a=c.knots[j-1],b=c.knots[j];a.slope=std::min(a.slope,(b.s-a.s)/(b.t-a.t));b.slope=std::min(b.slope,(b.s-a.s)/(b.t-a.t));double h=')]),
@@ -57,7 +60,7 @@ def check():
     clean = production_run(directory, originals, fixture, name='clean_after_negatives')
     print(clean.stdout + clean.stderr, end='', flush=True)
     assert clean.returncode == 0
-    print('PASS clean WP1 after 13 semantic negatives; kit arbitration INCONCLUSIVE until in-world')
+    print('PASS clean WP1 after 16 semantic negatives; kit arbitration INCONCLUSIVE until in-world')
 
 
 if __name__ == '__main__':

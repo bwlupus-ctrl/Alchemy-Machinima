@@ -29,7 +29,15 @@ public:
     bool allow(std::uint32_t key, std::string_view action, Phase phase, bool clean,
                bool cameraOnlyMove = false)
     {
-        if (mSwallowed.count(key) && denied(action, cameraOnlyMove)) return false;
+        if (mSwallowed.count(key))
+        {
+            // Only an action already started by this physical press may continue.
+            // A modifier/mode change must not create an action with no owned UP.
+            auto found=mStarted.find(key);
+            if (phase==Phase::Level && found!=mStarted.end())
+                for (const auto& entry:found->second) if(entry.name==action) return true;
+            return false;
+        }
         if (phase == Phase::Down && clean && denied(action, cameraOnlyMove))
         {
             mSwallowed.insert(key);

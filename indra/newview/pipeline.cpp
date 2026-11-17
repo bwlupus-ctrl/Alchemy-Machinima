@@ -26977,6 +26977,8 @@ void LLPipeline::FinalizeGuides::operator()(LLRenderTarget* target, U32 attachme
 void LLPipeline::renderActorPathGuides(LLRenderTarget* target, const glm::mat4& actor_path_projection,
     const glm::mat4& actor_path_modelview, U32 attachment)
 {
+    // All editing graphics, including tool handles, belong to the user view.
+    if (!isTagRecordView() || sReflectionRender || sShadowRender) return;
     if (!target || gCubeSnapshot || LLPipeline::sPrismLensRender ||
             !hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) ||
             !gViewerWindow->getUIVisibility())

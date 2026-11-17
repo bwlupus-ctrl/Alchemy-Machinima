@@ -597,10 +597,13 @@ Quat AimState::update(Vec3 forward,double roll,double dt)
     Vec3 old=presented.rotate({1,0,0});
     if(!(dt>0) || !number(dt)) return presented;
     if(dt>1) {if(std::abs(f.z)<std::cos(10*degree)) presented=levelAim(f,roll);return presented;}
-    if(angle(shortestArc(old,f),Quat{})>150*degree) return presented;
     constexpr double hmax=1./240;
     int n=int(std::ceil(dt/hmax)); double h=dt/n;
     Quat transport=shortestArc(old,f);
+    // A skipped near-target interval (or a target jump) must make progress,
+    // rather than reject the same opposite-facing sample forever.
+    double turn=angle(transport,Quat{});
+    if(turn>720*degree*dt) transport=slerp(Quat{},transport,720*degree*dt/turn);
     for(int j=1;j<=n;++j)
     {
         Vec3 step=slerp(Quat{},transport,double(j)/n).rotate(old);
@@ -726,12 +729,14 @@ void History::endGesture() {mGesture.reset();}
 void History::rekey(Sequence& live,const std::function<void(RefSlot&)>& rewrite)
 {
     bool current=live.revision==mExpectedRevision;
+    bool gestureCurrent=mGesture && mGesture->revision==mExpectedRevision;
     auto transform=[&](std::shared_ptr<const Sequence>& snapshot)
-    {auto copy=std::make_shared<Sequence>(*snapshot);rewriteRefs(*copy,rewrite);snapshot=std::move(copy);};
+    {auto copy=std::make_shared<Sequence>(*snapshot);rewriteRefs(*copy,rewrite);observe(*copy);snapshot=std::move(copy);};
     rewriteRefs(live,rewrite);
     observe(live);if(current) mExpectedRevision=live.revision;
     for(auto* stack:{&mUndo,&mRedo}) for(auto& step:*stack) {transform(step.before);transform(step.after);}
     if(mGesture) transform(mGesture);
+    if(gestureCurrent) mExpectedRevision=mGesture->revision;
 }
 std::size_t History::size(bool redo) const {return (redo?mRedo:mUndo).size();}
 void History::observe(const Sequence& s)

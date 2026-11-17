@@ -1411,7 +1411,6 @@ bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool rep
 
 bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 {
-    if(sCleanReleased[translated_key]) return true;
     if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     const auto hot = sHotGazeKeys.find(translated_key);
     if (hot != sHotGazeKeys.end())

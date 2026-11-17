@@ -53,6 +53,8 @@ def source_rules(files):
  if 'stamp.mKeyframes = ALKeyframePlayer::instance().revision();' not in f or 'mKeyframes == other.mKeyframes' not in h:errors.append('S3 scene stamp')
  if 'ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;' not in f:errors.append('S4 autosave deferred')
  if 'SCENE_VERSION   = 6;' not in f or 'block["payload_version"]=1' not in lib:errors.append('S5 independent payload version')
+ if not ('\n    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);\n    if (scene.has("keyframes"))' in load and
+  load.index('LLPrismLens::applySceneData')<load.index('ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);')<load.index('ALKeyframePlayer::instance().replaceSequence')):errors.append('S6 every validated scene releases keyframes')
  return errors
 
 def check():
@@ -70,6 +72,7 @@ def check():
  print('PASS negative [exec] premature_scene_mutation: '+result.stdout.strip(),flush=True)
  files={f:(NV/f).read_text(encoding='utf-8') for f in ('llfloaterdirector.cpp','llfloaterdirector.h','alkeyframelibrary.cpp')};assert not source_rules(files),source_rules(files)
  for file,before,after,assertion in [
+ ('llfloaterdirector.cpp','\n    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);\n    if (scene.has("keyframes"))','\n    if (scene.has("keyframes")) ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);\n    if (scene.has("keyframes"))','S6 every validated scene releases keyframes'),
  ('llfloaterdirector.cpp','if (scene.has("keyframes"))\n        ALKeyframePlayer::instance().replaceSequence','if (true)\n        ALKeyframePlayer::instance().replaceSequence','S2 absent session untouched'),
  ('llfloaterdirector.h','mKeyframes == other.mKeyframes','true','S3 scene stamp'),
  ('llfloaterdirector.cpp','ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;','ownsCamera()) return;','S4 autosave deferred'),
@@ -79,5 +82,5 @@ def check():
  # Move the validation call after Prism, without changing the production file.
  planted=dict(files);text=planted['llfloaterdirector.cpp'];a='ALKeyframeLibrary::loadScene(scene, keyframe_candidate, keyframe_reason)';b='LLPrismLens::applySceneData';text=text.replace(a,'__VALIDATE__',1).replace(b,a,1).replace('__VALIDATE__',b,1);planted['llfloaterdirector.cpp']=text;assert 'S1 validation before Prism' in source_rules(planted);print('PASS negative [src]: FAIL S1 validation before Prism',flush=True)
  clean=build(sources,'clean_after_negatives');print(clean.stdout,end='',flush=True);assert clean.returncode==0
- print('PASS clean scene after 1 executable and 5 source negatives')
+ print('PASS clean scene after 1 executable and 6 source negatives')
 if __name__=='__main__':check()

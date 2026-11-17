@@ -34,6 +34,7 @@
 #include "alcleanframe.h"
 #include "alcleantelemetry.h"
 #include "alkeyframeplayer.h"
+#include "alkeyframeinputgate.h"
 #include "lldirectorcast.h"
 #include "llactormover.h"
 #include "alactorchromakey.h"
@@ -317,6 +318,8 @@ bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame)
 
 namespace
 {
+// Gesture release is independent of binding UP (a key can start both PTT and a gesture).
+ALKeyframeInputGate sCleanGestures;
 
 // Drawn only in LLViewerWindow::draw() for the live UI composite. It is
 // deliberately absent from snapshot renders and is placed before mRootView so
@@ -3551,6 +3554,7 @@ void LLViewerWindow::draw()
 bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
 {
     if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
+    if (sCleanGestures.releaseKey(key)) return true;
     if (LLSetKeyBindDialog::recordKey(key, mask, false))
     {
         LL_DEBUGS() << "KeyUp handled by LLSetKeyBindDialog" << LL_ENDL;
@@ -3622,10 +3626,16 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
         if(mask==MASK_NONE && hotkeys && (key==KEY_F3 || key==KEY_F4))
         {
             auto& cast=LLDirectorCast::instance();
-            if(key==KEY_F4 || cast.isRunning() || cast.isCountingDown()) cast.cut(); else cast.action();
+            if(key==KEY_F4 || ALKeyframePlayer::instance().ownsCamera() || cast.isRunning() || cast.isCountingDown()) cast.cut(); else cast.action();
             return true;
         }
-        if(LLGestureMgr::instance().triggerGesture(key,mask) || gGestureList.trigger(key,mask)) return true;
+        if(LLGestureMgr::instance().triggerGesture(key,mask))
+        {
+            sCleanGestures.started(key,std::to_string(mask),[key,mask]()
+                {LLGestureMgr::instance().triggerGestureRelease(key,mask);},true);
+            return true;
+        }
+        if(gGestureList.trigger(key,mask)) return true;
         return false; // bindings retain normal avatar/voice/blink/hot-gaze routing
     } // functional self-test: real OS input is ignored
     // hide tooltips on keypress
@@ -6052,8 +6062,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
     // Hide all the UI widgets first and draw a frame
     bool prev_draw_ui = gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
 
-    const bool toggled_ui = (prev_draw_ui != show_ui);
-    if (toggled_ui)
+    if (prev_draw_ui != show_ui)
     {
         LLPipeline::toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
     }
@@ -6331,8 +6340,8 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
     gSnapshotNoPost = false;
     gDepthDirty = true;
 
-    // POST SNAPSHOT: restore exactly the raw bit we changed.
-    if (toggled_ui)
+    // POST SNAPSHOT: preserve stock's force-UI-on behavior outside the clean lease.
+    if (!gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
     {
         LLPipeline::toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
     }

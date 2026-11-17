@@ -319,6 +319,44 @@ void F8()
     for(int j=0;j<1000;++j) previous=evalCamera(t,c,0,resolver,EvalMode::Play,runtime).rotation;
     require(std::abs(angle(initial,previous)-30*degree)<1e-6,"F8 Play pole key roll");
 }
+void F8jump()
+{
+    // Pass through a fixed target fast enough to skip its entire blend zone.
+    // 180 degrees at 720 deg/s must recover within .25 s after leaving
+    // the 5 cm laid-pose blend zone (.025 s here), plus one frame.
+    for(int hz:{24,30,60,144})
+    {
+        auto t=track({{-1,0,0},{1,0,0}});t.settings.easeEnds=false;
+        t.keys[0].out.value=1;
+        for(auto& key:t.keys) key.aim.mode=AimMode::FollowLock;
+        t.lock.kind=RefKind::Point;t.lock.fallback={};auto c=cache(t);
+        FakeResolver resolver;ClientRuntime runtime;runtime.wallDelta=1./hz;
+        auto previous=evalCamera(t,c,0,resolver,EvalMode::Play,runtime).rotation;
+        for(int frame=1;frame<=hz;++frame)
+        {
+            double time=double(frame)/hz;
+            auto now=evalCamera(t,c,time,resolver,EvalMode::Play,runtime).rotation;
+            // Forward transport and roll correction each have a 720 deg/s ceiling.
+            require(finite(now)&&angle(previous,now)<=1440*degree/hz+1e-8,"F8jump crossing smooth bound");
+            if(time>=.5+.025+.25+1./hz)
+            {
+                require(dot(now.rotate({1,0,0}),Vec3{-1,0,0})>1-1e-8,"F8jump crossing recovers within bound");
+            }
+            previous=now;
+        }
+        for(double degrees:{151.,180.})
+        {
+            AimState aim;aim.initialized=true;auto old=aim.presented;
+            auto forward=axisAngle({0,0,1},degrees*degree).rotate({1,0,0});
+            for(int frame=0;frame<int(std::ceil(.25*hz))+1;++frame)
+            {
+                auto now=aim.update(forward,0,1./hz);
+                require(angle(old,now)<=1440*degree/hz+1e-8,"F8jump discontinuity smooth bound");old=now;
+            }
+            require(dot(old.rotate({1,0,0}),forward)>1-1e-8,"F8jump discontinuity recovers within bound");
+        }
+    }
+}
 void F9()
 {
     auto t=track({{0,0,0},{1,0,0},{2,0,0},{3,0,0}});t.settings.easeEnds=false;
@@ -403,6 +441,25 @@ void F12()
     History identity;Sequence ids;auto initial=ids;auto oldId=appendTrack(ids,t);identity.commit(initial,ids,"add",1);
     auto oldRevision=ids.revision;require(identity.replay(false,ids),"F12 identity undo");identity.discardRedo();
     require(appendTrack(ids,t)>oldId&&ids.revision>oldRevision,"F12 IDs and revisions never reused");
+}
+void F12cancel()
+{
+    // Both Escape and capture loss use this production cancellation path.
+    for(int exit=0;exit<2;++exit)
+    {
+        History h;Sequence live;auto t=track({{0,0,0}});
+        t.lock.kind=RefKind::Clone;t.lock.id[0]=1;appendTrack(live,t);
+        for(int i=0;i<3;++i) {auto before=live;live.name=std::to_string(i);++live.revision;h.commit(before,live,"edit",i+1);}
+        require(h.replay(false,live),"F12cancel setup redo");
+        auto saved=live;h.beginGesture(live);live.name="drag";++live.revision;++live.tracks[0].revision;
+        for(int id:{42,43}) h.rekey(live,[&](RefSlot& ref){if(ref.kind==RefKind::Clone)ref.id[0]=id;});
+        require(h.cancelGesture(live)&&live.name==saved.name&&live.tracks[0].lock.id[0]==43,"F12cancel restores rewritten gesture");
+        require(h.ready(false,h.sequence(false),live,false)&&h.ready(true,h.sequence(true),live,false),"F12cancel rekey keeps both history boundaries");
+        require(h.size(false)==2&&h.size(true)==1,"F12cancel redo retained");
+        auto revision=live.revision;
+        require(h.replay(true,live)&&live.name=="2"&&live.tracks[0].lock.id[0]==43&&live.revision>revision,"F12cancel redo works with fresh revision");
+        require(h.replay(false,live)&&h.replay(false,live)&&live.name=="0"&&live.tracks[0].lock.id[0]==43,"F12cancel undo works");
+    }
 }
 void F12b()
 {
@@ -504,6 +561,6 @@ int main(int argc,char** argv)
 {
     std::string selected=argc>1?argv[1]:"all";
     for(auto test:{std::pair{"F1",F1},{"F2",F2},{"F3",F3},{"F4",F4},{"F5",F5},{"F6",F6},{"F7",F7},
-                   {"F8",F8},{"F8time",F8time},{"F9",F9},{"F10",F10},{"F11",F11},{"F12",F12},{"F12b",F12b},{"F13",F13},{"F14",F14},{"B1",B1}})
+                   {"F8",F8},{"F8time",F8time},{"F8jump",F8jump},{"F9",F9},{"F10",F10},{"F11",F11},{"F12",F12},{"F12cancel",F12cancel},{"F12b",F12b},{"F13",F13},{"F14",F14},{"B1",B1}})
         if(selected=="all" || selected==test.first) {test.second();std::cout<<"PASS "<<test.first<<'\n';}
 }

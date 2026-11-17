@@ -5515,6 +5515,7 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
                              << LL_ENDL;
     }
 
+    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);
     if (scene.has("keyframes"))
         ALKeyframePlayer::instance().replaceSequence(std::move(keyframe_candidate), keyframe_reason);
 
