@@ -30,6 +30,7 @@
 #ifndef LL_PIPELINE_H
 #define LL_PIPELINE_H
 
+#include "alcleanframe.h"
 #include "llcamera.h"
 #include "llerror.h"
 #include "lldrawpool.h"
@@ -1088,7 +1089,8 @@ public:
     void addTrianglesDrawn(S32 index_count);
     void recordTrianglesDrawn();
 
-    bool hasRenderDebugFeatureMask(const U32 mask) const    { return bool(mRenderDebugFeatureMask & mask); }
+    bool hasRenderDebugFeatureMask(const U32 mask) const    { return bool(mRenderDebugFeatureMask & mask & ~(ALCleanFrame::active() ? RENDER_DEBUG_FEATURE_UI : 0u)); }
+    bool hasRawRenderDebugFeatureMask(const U32 mask) const; // WP3 supplies implementation
     bool hasRenderDebugMask(const U64 mask) const           { return bool(mRenderDebugMask & mask); }
     void setAllRenderDebugFeatures() { mRenderDebugFeatureMask = 0xffffffff; }
     void clearAllRenderDebugFeatures() { mRenderDebugFeatureMask = 0x0; }

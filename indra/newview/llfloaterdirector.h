@@ -374,6 +374,7 @@ private:
     bool          mSceneSaveAs = false;
     struct SceneChangeStamp
     {
+        U64 mKeyframes = 0;
         U64 mSettings = 0;
         U64 mCast = 1;
         U64 mPaths = 1;
@@ -383,7 +384,7 @@ private:
         U64 mWorldPicks = 0;     // [World Shadow pick] LLPipeline::worldShadowPickRevision(): the picks are scene data
         bool operator==(const SceneChangeStamp& other) const
         {
-            return mSettings == other.mSettings && mCast == other.mCast &&
+            return mKeyframes == other.mKeyframes && mSettings == other.mSettings && mCast == other.mCast &&
                    mPaths == other.mPaths && mPrism == other.mPrism &&
                    mRig == other.mRig && mLightResponse == other.mLightResponse &&
                    mWorldPicks == other.mWorldPicks;

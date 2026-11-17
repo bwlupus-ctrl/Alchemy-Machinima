@@ -141,7 +141,7 @@ template<> template<> void handover_object::test<6>()
     ensure("first transfer seeds", alSeedBoneLockFlycam(true, false, false, ECameraOwner::CINE));
     ensure("continuous flycam does not reseed", !alSeedBoneLockFlycam(true, true, false, ECameraOwner::FLYCAM));
     for (ECameraOwner owner : {ECameraOwner::RECORDER, ECameraOwner::PATH, ECameraOwner::PILOT,
-                              ECameraOwner::AGENT, ECameraOwner::CINE})
+                              ECameraOwner::AGENT, ECameraOwner::CINE, ECameraOwner::KEYFRAME})
         ensure("latched suspension cannot suppress re-entry seed", alSeedBoneLockFlycam(true, true, true, owner));
     for (bool userOrbit : {false, true})
     {

@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkeyframeplayer.h"
 
 #include "llcinematiccamera.h"
 
@@ -936,6 +937,7 @@ bool LLCinematicCamera::flycamHandoverActive() const
         LLViewerJoystick::getInstance()->canPresentFlycam());
     return decision.owner == ECameraOwner::FLYCAM && decision.handover &&
         !(gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera()) &&
+        !ALKeyframePlayer::instance().ownsCamera() && !ALKeyframePlayer::instance().rlvHandbackActive() &&
         !LLFlycamRecorder::instance().isPlaybackActive() &&
         !LLPathCamera::instance().isActive();
 }
@@ -1035,6 +1037,7 @@ bool LLCinematicCamera::isActiveOrbitAnchor(const LLUUID& avatar_id) const
     // Mirror the idle camera-owner precedence. An engaged flycam is not the
     // active driver while any higher-priority camera owns this frame.
     if ((gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera()) ||
+        ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive() ||
         LLFlycamRecorder::instance().isPlaybackActive() ||
         LLPathCamera::instance().isActive() || isActive())
     {

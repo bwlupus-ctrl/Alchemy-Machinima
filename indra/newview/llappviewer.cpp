@@ -25,6 +25,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkeyframeplayer.h"
 #include "alenvonlydiagnostics.h"
 #include "alvcammediafileio.h"
 #include <openssl/crypto.h>
@@ -1956,6 +1957,7 @@ void LLAppViewer::flushLFSIO()
 
 bool LLAppViewer::cleanup()
 {
+    ALKeyframePlayer::instance().shutdown();
     ALProjectorTracker::instance().clear();
     ALColorChart::shutdownSession(); // release chart GL resources before context shutdown
     ALMediaFile::beginShutdown(gSavedSettings.getBOOL("VCamMediaCacheKeepBetweenSessions"));
@@ -5659,6 +5661,8 @@ void LLAppViewer::idle()
     // opening chat.
     gViewerWindow->updateUI();
 
+    ALKeyframePlayer::instance().lifecycleCheck();
+
     if (gDisconnected || gTeleportDisplay || logoutRequestSent())
         ALProjectorTracker::instance().clear();
 
@@ -5942,6 +5946,8 @@ void LLAppViewer::idle()
             LLPresentationTime::currentFrame().presentation_time);
     }
 
+    ALKeyframePlayer::instance().lifecycleCheck();
+    ALKeyframePlayer::instance().advance(LLPresentationTime::currentFrame());
     const ECameraOwner previous_camera_owner = gCameraDispatchOwner;
     ++gCameraDispatchSerial;
     gCameraDispatchFlycamWrote = false;
@@ -5949,6 +5955,20 @@ void LLAppViewer::idle()
     {
         gCameraDispatchOwner = ECameraOwner::PILOT;
         gAgentPilot.moveCamera();
+    }
+    else if (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive())
+    {
+        if (ALKeyframePlayer::instance().rlvHandbackActive())
+        {
+            gCameraDispatchOwner = ECameraOwner::AGENT;
+            LLViewerJoystick::getInstance()->setCameraNeedsUpdate(true);
+            gAgentCamera.updateCamera();
+        }
+        else
+        {
+            gCameraDispatchOwner = ECameraOwner::KEYFRAME;
+            ALKeyframePlayer::instance().updateCamera();
+        }
     }
     else if (LLFlycamRecorder::instance().isPlaybackActive())
     {
@@ -6508,6 +6528,7 @@ void LLAppViewer::idleNetwork()
 
 void LLAppViewer::disconnectViewer()
 {
+    ALKeyframePlayer::instance().onDisconnect();
     ALCloneTransitions::onDisconnect(); // [CloneTransition] logout / disconnect: DISCARD, restore (idempotent)
     if (LLIMModel::instanceExists()) LLIMModel::instance().clearGroupChatSnoozes();
     if (LLPresentationTime::instanceExists())

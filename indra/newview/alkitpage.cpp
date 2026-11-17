@@ -2137,7 +2137,7 @@ void ALKitPage::undoOnPage(bool redo)
         if (owned == sequence && mOwnedReady && !mOwnedReady(redo, sequence))
         {
             LLNotificationsUtil::add("SystemMessageTip", LLSD().with("MESSAGE",
-                redo ? "Stop the walk to redo path edits" : "Stop the walk to undo path edits"));
+                redo ? mOwnedRedoBlocked : mOwnedUndoBlocked));
             return;
         }
         const bool grouped = (kit == sequence) + (owned == sequence) + (exposure == sequence) > 1;

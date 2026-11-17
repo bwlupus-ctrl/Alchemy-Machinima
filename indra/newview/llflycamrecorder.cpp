@@ -8,6 +8,7 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkeyframeplayer.h"
 
 #include "llflycamrecorder.h"
 #include "alavataranimationtime.h"
@@ -223,6 +224,7 @@ void LLFlycamRecorder::stopRecording()
 
 void LLFlycamRecorder::startPlayback(bool log_take)
 {
+    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::RECORDER);
     if (mState == STATE_RECORDING)
     {
         stopRecording();
@@ -308,6 +310,7 @@ void LLFlycamRecorder::clear()
 
 void LLFlycamRecorder::seek(F32 time)
 {
+    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::RECORDER);
     if (mKeys.empty())
     {
         return;
@@ -848,4 +851,28 @@ bool LLFlycamRecorder::loadFromFile(const std::string& filename)
     mStatus = llformat("Loaded %d keys (%.1f s)", getNumKeyframes(), getDuration());
     LL_INFOS("FlycamRecorder") << "Flycam take loaded from " << filename << LL_ENDL; // [DebugLogging] tagged
     return true;
+}
+
+namespace
+{
+ALKf::Pose kfTakePose(const LLVector3d& p,const LLQuaternion& q,F32 fov)
+{
+    ALKf::Pose pose{{p.mdV[0],p.mdV[1],p.mdV[2]},{q.mQ[3],q.mQ[0],q.mQ[1],q.mQ[2]},fov,0};
+    const auto forward=pose.rotation.rotate({1,0,0});
+    const auto up=ALKf::levelAim(forward,0).rotate({0,0,1}), actual=pose.rotation.rotate({0,0,1});
+    pose.roll=std::atan2(ALKf::dot(forward,ALKf::cross(up,actual)),ALKf::dot(up,actual));
+    return pose;
+}
+}
+ALKf::TakeSample LLFlycamRecorder::sample(std::size_t index) const
+{
+    const auto& key=mKeys.at(index);
+    return {key.mTime,kfTakePose(key.mPosGlobal,key.mRot,key.mFov)};
+}
+ALKf::Pose LLFlycamRecorder::evaluate(double time) const
+{
+    if(mKeys.empty()) return {};
+    LLVector3d p; LLQuaternion q; F32 fov;
+    evalPose(llclamp((F32)time,mKeys.front().mTime,mKeys.back().mTime),p,q,fov);
+    return kfTakePose(p,q,fov);
 }

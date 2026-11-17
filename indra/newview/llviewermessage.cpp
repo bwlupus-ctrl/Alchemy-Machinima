@@ -25,6 +25,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkeyframeplayer.h"
+#include "alkeyframeviewer.h"
 #include "alweatherbridge.h"
 #include "llviewermessage.h"
 
@@ -3999,17 +4001,19 @@ void process_kill_object(LLMessageSystem *mesgsys, void **user_data)
         ALProbeDirty::noteServerUpdate(id);
 
         LLViewerObject *objectp = gObjectList.findObject(id);
+// [SL:KB] - Patch: Appearance-TeleportAttachKill | Checked: Catznip-4.0
+        if ( objectp && (objectp->isAttachment()) && (!objectp->isTempAttachment()) && (LLAgent::TELEPORT_NONE != gAgent.getTeleportState()) &&
+             (gAgentAvatarp) && (objectp->permYouOwner()) && (gSavedSettings.getBOOL("BlockAttachmentKillsOnTeleport")) )
+        {
+            //gAgentAvatarp->addPendingDetach(objectp->getRootEdit()->getID());
+            continue;
+        }
+// [/SL:KB]
+        // Authoritative network deletion, including a UUID known only to VOCache.
+        // Never infer target removal from visibility eviction / killObject / markDead.
+        ALKeyframePlayer::instance().targetRemoved(ALKeyframeViewer::id(id));
         if (objectp)
         {
-// [SL:KB] - Patch: Appearance-TeleportAttachKill | Checked: Catznip-4.0
-                if ( (objectp->isAttachment()) && (!objectp->isTempAttachment()) && (LLAgent::TELEPORT_NONE != gAgent.getTeleportState()) &&
-                     (gAgentAvatarp) && (objectp->permYouOwner()) && (gSavedSettings.getBOOL("BlockAttachmentKillsOnTeleport")) )
-                {
-                    //gAgentAvatarp->addPendingDetach(objectp->getRootEdit()->getID());
-                    continue;
-                }
-// [/SL:KB]
-
             // Display green bubble on kill
             if ( gShowObjectUpdates )
             {

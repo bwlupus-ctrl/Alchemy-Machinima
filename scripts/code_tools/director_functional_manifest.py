@@ -106,6 +106,7 @@ MEDIA_RUNTIME_REASONS = {
 }
 
 CONTROL_TYPE = {
+    "keyframe_timeline": "viewport",
     "check_box": "toggle", "kit_switch": "toggle", "menu_item_check": "toggle",
     "slider": "slider", "spinner": "spinner", "compass_dial": "dial",
     "combo_box": "combo", "icons_combo_box": "combo", "radio_group": "radio",
@@ -618,6 +619,7 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
         r'\{\s*"([^"]+)"\s*,\s*&LLFloaterDirector::(bind[A-Za-z0-9_]+Page)\s*\}',
         director_cpp))
     binder_by_page.update({
+        "keyframes_tab": "ALPanelKeyframes::postBuild",
         "cine_light_rig_tab": "ALPanelCineLightRig::postBuild",
         "light_rim_tab": "ALRigRimController::attach",
         "vcam_tab": "ALPanelDirectorVCam::postBuild",
@@ -726,6 +728,8 @@ def build_kit_entries(kit_pages, rows, settings, page_meta):
                 "name": widget, "label": row.get("label", ""), "page": page,
                 "reset_of": None, "version": "v2",
             })
+            if page == "keyframes_tab" and widget in {"kf_playing", "kf_visit", "kf_playhead", "kf_timeline", "kf_make"}:
+                action, reason, hazards = "DEFER_INWORLD", "keyframe camera ownership and take fitting require the live fixture", ["requires_world"]
             if page == "vcam_tab" and widget in MEDIA_RUNTIME_REASONS and child is not None and exercise == "click":
                 # Exact native controls with real runtime dependencies. Missing
                 # widgets and generic SKIP/NO_EXERCISE rows remain untouched.
@@ -1389,7 +1393,7 @@ def synthetic_entries(xi, settings, csv_pairs, page_meta, presets, preset_writte
     kind_type = {"toggle": "toggle", "slider": "slider", "number": "spinner",
                  "combo": "combo", "segmented": "radio", "button": "button",
                  "color": "color", "text": "text", "readout": "readout"}
-    custom_type = {"vcam_monitor_header": "button", "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
+    custom_type = {"keyframe_timeline": "viewport", "vcam_monitor_header": "button", "vcam_monitor_strip": "button", "vcam_monitor_pager": "button",
                    "vcam_monitor_tile": "button", "vcam_camera_selector": "button",
                    "vcam_face_list": "list", "vcam_projector_list": "list", "panel": "container"}
     for card in vcam["cards"]:

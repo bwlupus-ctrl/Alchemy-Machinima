@@ -1,7 +1,7 @@
 # Takes — Director Kit page contract
 
 Page key: `takes_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (12/21 setting-bound rows; 13 C++-referenced rows).
+Computed class: **code-driven** (12/22 setting-bound rows; 13 C++-referenced rows).
 
 ## Real owners
 
@@ -35,12 +35,13 @@ Use the recorder's existing list, buttons, combos, sliders, and scrubber; do not
 | `record_play` / `btn_save` (Save file) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:253` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onSave()` (`indra/newview/alpanelflycamrecorder.cpp:82`) | none |
 | `record_play` / `btn_load` (Load file) | `button` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:263` | `ALTakesKitAdapter` command/model binding → wired in `ALPanelFlycamRecorder::postBuild()`; behavior `ALPanelFlycamRecorder::onLoad()` (`indra/newview/alpanelflycamrecorder.cpp:83`) | none |
 | `record_play` / `FlycamRecSampleRate` (Sample rate) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:239` | kit `slider` ↔ `FlycamRecSampleRate` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:83` `FlycamRecSampleRate` |
-| `playback` / `FlycamRecSpeed` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:156` | kit `slider` ↔ `FlycamRecSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:90` `FlycamRecSpeed` |
-| `playback` / `FlycamRecLoopMode` (At the end) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:166` | kit `combo` ↔ `FlycamRecLoopMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:95` `FlycamRecLoopMode` |
-| `playback` / `FlycamRecSmooth` (Smooth splines) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:181` | kit `toggle` ↔ `FlycamRecSmooth` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:104` `FlycamRecSmooth` |
-| `playback_anchor` / `FlycamRecAnchorMode` (Anchor to) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:191` | kit `combo` ↔ `FlycamRecAnchorMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:109` `FlycamRecAnchorMode` |
-| `playback_anchor` / `FlycamRecFollowAnchor` (Follow anchor) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:207` | kit `toggle` ↔ `FlycamRecFollowAnchor` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:119` `FlycamRecFollowAnchor` |
-| `playback_anchor` / `FlycamRecUseOperator` (Handheld layer) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:218` | kit `toggle` ↔ `FlycamRecUseOperator` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:122` `FlycamRecUseOperator` |
+| `record_play` / `takes_keyframes_link` (Make editable keyframes...) | none | kit-native action `link_to:camera_group/keyframes_tab`; no duplicate widget is required | none |
+| `playback` / `FlycamRecSpeed` (Speed) | `slider` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:156` | kit `slider` ↔ `FlycamRecSpeed` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:91` `FlycamRecSpeed` |
+| `playback` / `FlycamRecLoopMode` (At the end) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:166` | kit `combo` ↔ `FlycamRecLoopMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:96` `FlycamRecLoopMode` |
+| `playback` / `FlycamRecSmooth` (Smooth splines) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:181` | kit `toggle` ↔ `FlycamRecSmooth` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:105` `FlycamRecSmooth` |
+| `playback_anchor` / `FlycamRecAnchorMode` (Anchor to) | `combo_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:191` | kit `combo` ↔ `FlycamRecAnchorMode` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:110` `FlycamRecAnchorMode` |
+| `playback_anchor` / `FlycamRecFollowAnchor` (Follow anchor) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:207` | kit `toggle` ↔ `FlycamRecFollowAnchor` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:120` `FlycamRecFollowAnchor` |
+| `playback_anchor` / `FlycamRecUseOperator` (Handheld layer) | `check_box` `indra/newview/skins/default/xui/en/panel_flycam_recorder.xml:218` | kit `toggle` ↔ `FlycamRecUseOperator` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_camera_takes.xml:123` `FlycamRecUseOperator` |
 
 ## Adapter extraction
 

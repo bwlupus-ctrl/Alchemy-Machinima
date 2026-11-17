@@ -25,6 +25,9 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alcleantelemetry.h"
+#include "alkeyframeviewer.h"
 #include "alenvintensity.h"
 
 #include "alcinehaze.h"
@@ -1264,6 +1267,7 @@ void LLDrawPoolAlpha::renderActorFxEmissives(
 
 void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream, AttachmentFilter filter)
 {
+    ALCleanTelemetry::guard(ALCleanTelemetry::EffectGeometry,false);
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
     // [ActorMask] Every exit restores world, including depth-only/empty streams.
     const bool actor_only = ALCineLightRigManager::anyActorOnly() || ALEnvIntensity::envOnlyActive();
@@ -1529,6 +1533,10 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
             bool disable_cull = is_particle_or_hud_particle;
             LLGLDisable cull(disable_cull ? GL_CULL_FACE : 0);
 
+            // Actual draw-map consumption; cached rebuild classification, no face walk.
+            ALCleanTelemetry::guard(ALCleanTelemetry::EffectGeometry,is_particle_or_hud_particle);
+            if(ALCleanFrame::active() && is_particle_or_hud_particle && ALKeyframeViewer::particleGroupForbidden(group))
+                ALCleanTelemetry::submit(ALCleanTelemetry::EffectGeometry);
             LLSpatialGroup::drawmap_elem_t& draw_info = rigged ? group->mDrawMap[LLRenderPass::PASS_ALPHA_RIGGED] : group->mDrawMap[LLRenderPass::PASS_ALPHA];
 
             for (LLSpatialGroup::drawmap_elem_t::iterator k = draw_info.begin(); k != draw_info.end(); ++k)

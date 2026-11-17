@@ -5,15 +5,15 @@ Per-control rows: `doc/director_kit/wiring/wiring_table.csv`.
 
 Versions: **ORIG** = commit 9c25f75491a (git blobs); **V1** = working tree `floater_director.xml` + owner panels; **V2** = working tree `floater_director_v2.xml` + `panel_dpage_*.xml` + kit rows.
 
-Interactive controls: 2192 (of 2328 catalog rows; readout/text rows excluded from counts).
+Interactive controls: 2244 (of 2386 catalog rows; readout/text rows excluded from counts).
 
 ## Totals
 
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ORIG | 1612 | 1035 | 1 | 576 | 0 | 54 | 526 |
-| V1 | 1720 | 1089 | 1 | 630 | 0 | 55 | 417 |
-| V2 | 1993 | 1392 | 0 | 601 | 66 | 100 | 33 |
+| ORIG | 1612 | 1035 | 1 | 576 | 0 | 54 | 578 |
+| V1 | 1720 | 1089 | 1 | 630 | 0 | 55 | 469 |
+| V2 | 2044 | 1393 | 0 | 651 | 66 | 101 | 33 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
@@ -34,7 +34,8 @@ Interactive controls: 2192 (of 2328 catalog rows; readout/text rows excluded fro
 | moves_tab (Moves) | Camera | 16 | 14 | 14 | 11 | 3 | 2 | 0 | 0 |
 | operator_tab (Operator) | Camera | 69 | 69 | 69 | 67 | 1 | 0 | 1 | 0 |
 | frame_orbit_tab (Frame & Orbit) | Camera | 32 | 30 | 30 | 30 | 0 | 2 | 0 | 2 |
-| takes_tab (Takes) | Camera | 19 | 19 | 19 | 19 | 0 | 0 | 0 | 0 |
+| takes_tab (Takes) | Camera | 20 | 19 | 19 | 19 | 0 | 1 | 0 | 0 |
+| keyframes_tab (Keyframes) | Camera | 51 | 0 | 0 | 51 | 0 | 0 | 0 | 0 |
 | vcam_tab (VCam) | Camera | 2 | 2 | 2 | 1 | 0 | 0 | 1 | 1 |
 | focus_tab (Focus) | Lens | 17 | 14 | 14 | 16 | 0 | 1 | 0 | 1 |
 | filters_tab (Filters) | Lens | 48 | 29 | 29 | 43 | 3 | 2 | 0 | 0 |
@@ -62,7 +63,7 @@ Interactive controls: 2192 (of 2328 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 1964 mockup rows + 364 page_sources-only (page, widget) rows = 2328 controls. page_sources.json lists 2320 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Catalog = 2022 mockup rows + 364 page_sources-only (page, widget) rows = 2386 controls. page_sources.json lists 2386 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
 Of the page_sources-only rows, 360 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
@@ -73,8 +74,8 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3493 LLFloaterDirector::bindFrameOrbitPage |
-| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3486 LLFloaterDirector::bindFrameOrbitPage |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3495 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3488 LLFloaterDirector::bindFrameOrbitPage |
 
 ### vcam_tab (1)
 
@@ -86,7 +87,7 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2572 LLFloaterDirector::bindLensFocusPage |
+| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2574 LLFloaterDirector::bindLensFocusPage |
 
 ### atmosphere_tab (22)
 
@@ -152,18 +153,18 @@ Total: 0
 
 ### Element-name removals ORIG -> V1 (whole page closure, not only mockup rows)
 
-Names present in the ORIG page closure but absent from the V1 closure: 344 entries, 32 distinct names.
+Names present in the ORIG page closure but absent from the V1 closure: 352 entries, 32 distinct names.
 
 | Name | Tag | ORIG file:line | Pages | WT C++ literal refs | first ref |
 |---|---|---|---|---:|---|
-| `group_assign_combo` | combo_box | floater_director.xml:260 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `group_assign_lbl` | text | floater_director.xml:250 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `motion_start_group` | panel | panel_cinecam_params.xml:225 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `ps_preset_balanced` | combo_box.item | panel_projector_shafts.xml:8 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `ps_preset_clear` | combo_box.item | panel_projector_shafts.xml:11 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `ps_preset_fast` | combo_box.item | panel_projector_shafts.xml:7 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `ps_preset_hazy` | combo_box.item | panel_projector_shafts.xml:10 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
-| `straight_group` | panel | panel_actor_mover.xml:55 | 40 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `group_assign_combo` | combo_box | floater_director.xml:260 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `group_assign_lbl` | text | floater_director.xml:250 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `motion_start_group` | panel | panel_cinecam_params.xml:225 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `ps_preset_balanced` | combo_box.item | panel_projector_shafts.xml:8 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `ps_preset_clear` | combo_box.item | panel_projector_shafts.xml:11 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `ps_preset_fast` | combo_box.item | panel_projector_shafts.xml:7 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `ps_preset_hazy` | combo_box.item | panel_projector_shafts.xml:10 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
+| `straight_group` | panel | panel_actor_mover.xml:55 | 41 page(s): move_tab, groups_tab, path_tab, props_tab ... | 0 |  |
 | `display_gate_source` | check_box | floater_prism_manager.xml:624 | 1 page(s): vcam_tab | 0 |  |
 | `gate_active` | check_box | floater_prism_manager.xml:857 | 1 page(s): vcam_tab | 0 |  |
 | `gate_arm` | button | floater_prism_manager.xml:874 | 1 page(s): vcam_tab | 0 |  |
@@ -192,11 +193,11 @@ Names present in the ORIG page closure but absent from the V1 closure: 344 entri
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-kit=1, kit=19, none=33, xui=2139.
+- V2 resolution by source: alias-kit=1, kit=20, none=33, xui=2190.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
 - Launcher-stub pages (V2 opens V1 floater): none.
 - Interactive rows missing in ALL three versions (mockup-only, never implemented): 1.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2192 interactive.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2244 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 
@@ -205,7 +206,7 @@ Names present in the ORIG page closure but absent from the V1 closure: 344 entri
 - Static analysis only. A C++ match inside a FLOATER-owned postBuild (LLFloaterDirector) does not prove the V2 copy is wired; such V2 controls are flagged `V2_SUSPECT_FLOATER_SCOPED` unless the enclosing function mentions `DirectorUIV2`. This flag is conservative and needs in-world confirmation.
 - A panel class counts as instantiated for a V2 page only when its XML is embedded in that page closure (`LLPanelInjector` registration name = file stem).
 - Kit rows (V2 `kit_row`/`kit_switch` with `widget=`) have no per-widget C++; WIRED_SETTING means the bound setting is declared (kit binding is generic in alkit*.cpp), not that the in-world behaviour was checked.
-- Control universe = the mockup rows (2192 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
+- Control universe = the mockup rows (2244 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
 - ORIG page owners are the HEAD owner files that exist at ORIG; ORIG floater_director.xml is always searched. ORIG C++ is read from the commit; V1/V2 C++ is the working tree.
 - Callbacks count as WIRED only when the name is referenced (not just defined) in top-level indra/newview/*.cpp. Registry names are matched as literals or identifiers.
 - Widget literal hits require a getChild/findChild/childSet/setCommitCallback/Registrar token within 3 lines before (or 1 line after) the literal, and the enclosing class must be one of the page owner classes from page_sources.json.

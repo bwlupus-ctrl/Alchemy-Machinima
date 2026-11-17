@@ -314,6 +314,10 @@
          function="Floater.Toggle"
          parameter="flycam_recorder" />
       </menu_item_call>
+      <menu_item_call label="Play/Stop keyframes" name="keyframe_play_stop">
+        <menu_item_call.on_click function="Keyframes.PlayStop" />
+        <menu_item_call.on_enable function="Keyframes.CanPlayStop" />
+      </menu_item_call>
       <menu_item_call
        label="Flight Model &amp; Gamepad..."
        name="flight_model_gamepad_item_call">

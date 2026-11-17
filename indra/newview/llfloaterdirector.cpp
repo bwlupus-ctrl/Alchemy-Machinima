@@ -8,6 +8,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkeyframeplayer.h"
+#include "alkeyframelibrary.h"
 #include "alavataranimspeed.h"
 #include "alpresetlook.h"
 #include "alcolorchart.h"
@@ -5229,6 +5231,7 @@ LLSD LLFloaterDirector::captureSceneData()
     LLSD scene = LLDirectorCast::instanceExists()
         ? LLDirectorCast::instance().sceneData() : LLSD::emptyMap();
     scene["version"] = SCENE_VERSION;
+    scene["keyframes"] = ALKeyframeLibrary::saveScene(ALKeyframePlayer::instance().sequence());
     scene["scene_name"] = recoveryServiceState().mCurrentSceneName;
     if (LLPrismLens::instanceExists())
     {
@@ -5448,6 +5451,14 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
         return false;
     }
 
+    // Validate keyframes before the first Prism or scene mutation.
+    ALKf::Sequence keyframe_candidate;
+    std::string keyframe_reason;
+    if (!ALKeyframeLibrary::loadScene(scene, keyframe_candidate, keyframe_reason))
+    {
+        LL_WARNS("Director") << "Rejected keyframes: " << keyframe_reason << LL_ENDL;
+        return false;
+    }
     ALKitHistory::ScopedSuspend history_suspend;
     ALScopedPresetMaterializing preset_guard;
 
@@ -5503,6 +5514,10 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
                              << version << "; preserving live Prism configuration"
                              << LL_ENDL;
     }
+
+    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);
+    if (scene.has("keyframes"))
+        ALKeyframePlayer::instance().replaceSequence(std::move(keyframe_candidate), keyframe_reason);
 
     // A loaded scene starts from a clean transport and a released switcher.
     // Armed is deliberately not scene data: loading must not seize a camera.
@@ -5789,6 +5804,7 @@ LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp()
 {
     SceneChangeStamp stamp;
     stamp.mSettings = recoveryServiceState().mSettingsRevision;
+    stamp.mKeyframes = ALKeyframePlayer::instance().revision();
     if (LLDirectorCast::instanceExists())
         stamp.mCast = LLDirectorCast::instance().getSceneRevision();
     if (LLActorMover::instanceExists())
@@ -5883,6 +5899,11 @@ void LLFloaterDirector::updateSceneDirty()
 
 void LLFloaterDirector::idleSceneRecovery(bool force_write)
 {
+    // Periodic autosave is deferred while keyframes own the camera (Play, Visit/PREVIEW) or an RLV
+    // handback is active. The forced shutdown capture is never deferred: it is the last recovery
+    // save, and prepareRecoveryForShutdown() latches completion right after requesting it.
+    if (!force_write)
+        if (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;
     // Autosave ALWAYS runs on its timer and at shutdown: no recovery state can disable it.
     updateSceneDirty();
     RecoveryServiceState& service = recoveryServiceState();

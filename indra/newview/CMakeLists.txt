@@ -169,6 +169,18 @@ if (HAVOK)
 endif ()
 
 set(viewer_SOURCE_FILES
+    alkeyframetransport.cpp
+    alkeyframecamera.cpp
+    alkeyframeplayer.cpp
+    alkeyframelibrary.cpp
+    alkeyframecore.cpp
+    alkeyframecodec.cpp
+    alkeyframehistoryadapter.cpp
+    alkeyframefit.cpp
+    alkeyframetimeline.cpp
+    alkeyframeoverlay.cpp
+    altoolkeyframeedit.cpp
+    alpanelkeyframes.cpp
     ao.cpp
     bdmergememorybudget.cpp
     bdmergemeshpool.cpp
@@ -1214,6 +1226,22 @@ set(viewer_HEADER_FILES
     alsteppedanim.h
     alsteppedanimruntime.h
     alpanelsteppedanim.h
+    alcleanframe.h
+    alkeyframeviewer.h
+    alcleantelemetry.h
+    alkeyframeparticles.h
+    alkeyframecore.h
+    alkeyframetransport.h
+    alkeyframehistoryadapter.h
+    alkeyframefit.h
+    alkeyframecamera.h
+    alkeyframeplayer.h
+    alkeyframelibrary.h
+    alkeyframetimeline.h
+    alpanelkeyframes.h
+    alkeyframeoverlay.h
+    altoolkeyframeedit.h
+    alkeyframeinputgate.h
     alcameradispatch.h
     alcineflycamhandover.h
     allegacynotificationwellwindow.h

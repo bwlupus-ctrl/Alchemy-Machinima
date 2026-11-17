@@ -21,7 +21,8 @@ enum class ECameraOwner
     PATH,
     CINE,
     FLYCAM,
-    AGENT
+    AGENT,
+    KEYFRAME
 };
 
 // Arbitration below pilot/recorder/path. A missing Bone Lock anchor releases
