@@ -932,6 +932,9 @@ struct LLUUID
     bool operator==(const LLUUID& o) const { return std::equal(mData, mData + 16, o.mData); }
     bool operator!=(const LLUUID& o) const { return !(*this == o); }
 };
+// clone transitions (fix round 1): applyCrowdVariation cancels affected transitions before a look assignment; none runs here
+namespace ALCloneTransition { enum Reason { R_EDIT_LOCK }; }
+struct ALCloneTransitions { static bool anyRunning() { return false; } static void cancelFor(const LLUUID&, ALCloneTransition::Reason) {} };
 struct Settings
 {
     S32 mode = 0, direction = 0; F32 spread = 0.f;

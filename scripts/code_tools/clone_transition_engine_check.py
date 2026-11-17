@@ -129,8 +129,9 @@ TABLE = [
     ("R_SOLO", "studio", "ALGhostStudio::setSolo(", "ALCloneTransitions::cancelAllRunning(ALCloneTransition::R_SOLO)"),
     ("R_EDIT_LOCK (enable)", "studio", "ALGhostStudio::setInstanceEnabled(", "ALCloneTransition::R_EDIT_LOCK"),
     ("R_EDIT_LOCK (lockGroup)", "studio", "ALGhostStudio::lockGroup(", "ALCloneTransition::R_EDIT_LOCK"),
-    ("R_EDIT_LOCK (ungroup)", "studio", "ALGhostStudio::ungroup(", "ALCloneTransition::R_EDIT_LOCK"),
-    ("R_EDIT_LOCK (lock mode)", "studio", "ALGhostStudio::setLockMode(", "ALCloneTransition::R_EDIT_LOCK"),
+    ("R_EDIT_LOCK (ungroup)", "studio", "ALGhostStudio::ungroup(", "cancelGroupTransitions(id)"),
+    ("R_EDIT_LOCK (lock mode)", "studio", "ALGhostStudio::setLockMode(", "cancelGroupTransitions(id)"),
+    ("R_EDIT_LOCK (group helper cancels every member)", "studio", "ALGhostStudio::cancelGroupTransitions(", "ALCloneTransition::R_EDIT_LOCK"),
     ("R_EDIT_LOCK (look edit)", "actions", "void setOverlayStyle(", "ALCloneTransition::R_EDIT_LOCK"),
     ("R_CANCEL (button)", "panel", "ALPanelGhostStudio::postBuild(", "cancelTransition("),
     ("R_DISCONNECT", "viewer", "LLAppViewer::disconnectViewer(", "ALCloneTransitions::onDisconnect()"),
@@ -253,11 +254,14 @@ def check_seams(files: dict[str, str], tree: dict[str, str]) -> list[str]:
     m = files["manager"]
     native = body(m, "ALCloneTransitions::nativeParamsFor(")
     layers = body(m, "ALCloneTransitions::studioLayersFor(")
-    if not native or not layers:
-        return ["nativeParamsFor / studioLayersFor not found in alclonetransitions.cpp"]
-    # native half: OUTGOING only for entity -> overlay look, otherwise INCOMING
-    if not re.search(r"KIND_ENTITY_TO_OVERLAY_LOOK\s*\?\s*ALCloneTransition::SIDE_OUTGOING\s*:\s*ALCloneTransition::SIDE_INCOMING", native):
-        problems.append("nativeParamsFor: native half must be SIDE_OUTGOING for entity->overlay look and SIDE_INCOMING for the reverse kind")
+    start = body(m, "bool ALCloneTransitions::start(")
+    if not native or not layers or not start:
+        return ["nativeParamsFor / studioLayersFor / start not found in alclonetransitions.cpp"]
+    # native half (fixed ONCE at start(); S7: the getter never mutates): OUTGOING only for entity -> overlay look, otherwise INCOMING
+    if not re.search(r"extra\.params\.side\s*=\s*rq\.kind\s*==\s*ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK\s*\?\s*ALCloneTransition::SIDE_OUTGOING\s*:\s*ALCloneTransition::SIDE_INCOMING", start):
+        problems.append("start(): native half must be SIDE_OUTGOING for entity->overlay look and SIDE_INCOMING for the reverse kind")
+    if re.search(r"\.side\s*=[^=]", native):
+        problems.append("nativeParamsFor mutates the params (S7): the side is decided once in start()")
 
     def case(kind):
         mm = re.search(r"case ALCloneTransition::" + kind + r":(.*?)break;", layers, re.S)
@@ -286,10 +290,67 @@ def check_seams(files: dict[str, str], tree: dict[str, str]) -> list[str]:
     return problems
 
 
+def check_fix_r1(files: dict[str, str]) -> list[str]:
+    """Fix round 1 (review findings M1, M2, M6, M7, M8, S2, S6, S7): each rule is a source pattern on the production
+    files; every one has a planted negative in main() that must fail it."""
+    problems = []
+    m, studio, panel = files["manager"], files["studio"], files["panel"]
+    # M1: the running state is published BEFORE the visibility callback reads it
+    started = body(m, "void onStarted(")
+    pub = started.find("sRunning = mImpl->mMachine.running();")
+    if not started or pub < 0 or pub > started.find("ALGhostStudio::instance().reapplyEntityBodyFlags"):
+        problems.append("M1: Host::onStarted must publish sRunning BEFORE reapplyEntityBodyFlags (keepsBodyShown is gated on it)")
+    # M2: a duplicate start is refused before anything touches mExtras
+    start = body(m, "bool ALCloneTransitions::start(")
+    dup = start.find("if (mImpl->mMachine.find(instance_id)) {")
+    extras = start.find("mImpl->mExtras[instance_id] = extra")
+    if dup < 0 or extras < 0 or dup > extras:
+        problems.append("M2: start() must reject an already-running clone BEFORE writing mExtras")
+    if "setEnabledIfChanged(mTransitionGoBtn, have && !active)" not in panel:
+        problems.append("M2: Go must be disabled while the selected clone's transition runs")
+    # M6: system parts the Studio entity branch cannot draw refuse at start and at commit
+    if "system_parts_visible(ghost)" not in start:
+        problems.append("M6: start() does not refuse an entity whose system body / eyes are visible")
+    if "system_parts_visible(ghost)" not in body(m, "bool bodyValid("):
+        problems.append("M6: bodyValid (tick + commit re-check) does not re-test the visible system parts")
+    # M7: group edits cancel every member, snapshotted before the change
+    cg = body(studio, "void ALGhostStudio::cancelGroupTransitions(")
+    if "groupMembers(id)" not in cg or "mGroups.members(" not in cg:
+        problems.append("M7: cancelGroupTransitions must cancel groupMembers(id) and the full group member list")
+    for sig in ("ALGhostStudio::setLockMode(", "ALGhostStudio::ungroup("):
+        if "cancelGroupTransitions(id)" not in body(studio, sig):
+            problems.append("M7: %s does not cancel every group member" % sig)
+    lm = body(studio, "ALGhostStudio::setLockMode(")
+    if lm.find("cancelGroupTransitions(id)") < 0 or lm.find("cancelGroupTransitions(id)") > lm.find("mGroups.setMode("):
+        problems.append("M7: setLockMode changes the mode before cancelling the members")
+    # M8: a direct writer of Instance::mStyle (crowd look assignment) cancels first
+    cv = body(studio, "void ALGhostStudio::applyCrowdVariation(")
+    first_cancel = cv.find("ALCloneTransitions::cancelFor(")
+    if first_cancel < 0 or first_cancel > cv.find("inst.mStyle = "):
+        problems.append("M8: applyCrowdVariation writes mStyle without cancelling the affected transitions first")
+    # S2: bodyHeight derived per record
+    ff = body(m, "void fillFrame(")
+    if "params.bodyHeight" not in ff or "mBodySize" not in ff:
+        problems.append("S2: fillFrame does not derive bodyHeight from the body")
+    # S6: the idle per-frame scan is O(1)
+    if "!studio.anyEntityOverlayLook() && !ALCloneTransitions::anyRunning()" not in read(NV / "llactormover.cpp"):
+        problems.append("S6: studio_entity_overlay_wanted is not guarded by the O(1) overlay-look counter")
+    if "S32 mOverlayLookCount = 0;" not in files["studio_h"]:
+        problems.append("S6: overlay-look counter missing")
+    if "mOverlayLookCount" not in body(studio, "bool ALGhostStudio::setEntityOverlayLook(") or \
+            "mOverlayLookCount" not in body(studio, "void ALGhostStudio::removeInstance("):
+        problems.append("S6: counter not maintained by setEntityOverlayLook and removeInstance")
+    # S7: Machine::start range-checks the kind
+    if "rq.kind < KIND_LOOK_TO_LOOK || rq.kind > KIND_OVERLAY_LOOK_TO_ENTITY" not in read(NV / "alclonetransition.h"):
+        problems.append("S7: Machine::start does not range-check rq.kind")
+    return problems
+
+
 def load_files() -> tuple[dict[str, str], dict[str, str]]:
     xui = NV / "skins/default/xui/en"
     files = {
         "studio": read(NV / "alghoststudio.cpp"),
+        "studio_h": read(NV / "alghoststudio.h"),
         "actions": read(NV / "alghostcloneactions.cpp"),
         "actions_h": read(NV / "alghostcloneactions.h"),
         "panel": read(NV / "alpanelghoststudio.cpp"),
@@ -310,7 +371,7 @@ def load_files() -> tuple[dict[str, str], dict[str, str]]:
 
 def all_problems(files, tree) -> list[str]:
     return (check_table(files) + check_overlay_look(files["studio"]) + check_session_only(files, tree)
-            + check_ui(files) + check_contract(files) + check_seams(files, tree))
+            + check_ui(files) + check_contract(files) + check_seams(files, tree) + check_fix_r1(files))
 
 
 def main() -> int:
@@ -386,8 +447,8 @@ def main() -> int:
 
     # seam negatives
     f7 = dict(files)
-    f7["manager"] = mutate(files["manager"], "KIND_ENTITY_TO_OVERLAY_LOOK\n            ? ALCloneTransition::SIDE_OUTGOING : ALCloneTransition::SIDE_INCOMING",
-                           "KIND_ENTITY_TO_OVERLAY_LOOK\n            ? ALCloneTransition::SIDE_INCOMING : ALCloneTransition::SIDE_OUTGOING")
+    f7["manager"] = mutate(files["manager"], "KIND_ENTITY_TO_OVERLAY_LOOK\n        ? ALCloneTransition::SIDE_OUTGOING : ALCloneTransition::SIDE_INCOMING",
+                           "KIND_ENTITY_TO_OVERLAY_LOOK\n        ? ALCloneTransition::SIDE_INCOMING : ALCloneTransition::SIDE_OUTGOING")
     negatives.append(("native half sides swapped (a1 / reverse)", bool(check_seams(f7, tree)), ""))
     f8 = dict(files)
     f8["manager"] = mutate(files["manager"], "out.layer[1].params = params; out.layer[1].params.side = ALCloneTransition::SIDE_INCOMING;",
@@ -404,6 +465,36 @@ def main() -> int:
     tree10["lldirectorcast.cpp"] = tree["lldirectorcast.cpp"].replace("    ALCloneTransitions::onSceneReplaced();", "    ", 1)
     sb = body(tree10["lldirectorcast.cpp"], "void LLDirectorCast::applySceneData(")
     negatives.append(("scene load hook missing", not sb.lstrip("{\n ").startswith("ALCloneTransitions::onSceneReplaced();"), ""))
+
+    # ---- fix round 1 negatives ----
+    def neg_r1(label, key, old, new):
+        ff = dict(files)
+        ff[key] = mutate(files[key], old, new)
+        negatives.append((label, bool(check_fix_r1(ff)), ""))
+
+    neg_r1("M1: running state published after the callback", "manager",
+           "            sRunning = mImpl->mMachine.running();\n            // The reverse kind needs", "            // The reverse kind needs")
+    neg_r1("M2: duplicate start not rejected before mExtras", "manager",
+           "    if (mImpl->mMachine.find(instance_id)) { why = \"This clone already has a transition running; Cancel it first\"; return false; }\n", "")
+    neg_r1("M2: Go stays enabled while running", "panel", "setEnabledIfChanged(mTransitionGoBtn, have && !active);", "setEnabledIfChanged(mTransitionGoBtn, have);")
+    neg_r1("M6: start accepts a clone with visible system parts", "manager",
+           "        if (request.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost))\n        { why = SYSTEM_PARTS_REFUSAL; return false; }\n", "")
+    neg_r1("M6: commit does not re-test the system parts", "manager",
+           "if (r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost)) return false;", "")
+    neg_r1("M7: setLockMode cancels only one member", "studio",
+           "    cancelGroupTransitions(id); // [CloneTransition] group edit (D18): snapshot + cancel every member BEFORE the mode changes\n",
+           "    ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK);\n")
+    neg_r1("M8: crowd look assignment does not cancel", "studio",
+           "        for (const LLUUID& id : affected) ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK);\n", "")
+    neg_r1("S6: idle scan counter missing", "studio_h", "    S32 mOverlayLookCount = 0;", "    S32 mOverlayLookCountX = 0;")
+    neg_r1("S2: bodyHeight never derived", "manager", "        params.bodyHeight = height;\n", "")
+    native_negative("kind range check removed (native test 15)",
+                    "        if (rq.kind < KIND_LOOK_TO_LOOK || rq.kind > KIND_OVERLAY_LOOK_TO_ENTITY) { why = \"Unknown transition kind\"; return 0; }\n", "")
+    native_negative("M1: onStarted runs before the record is visible (native test 14)",
+                    "        mRecords.push_back(r);\n        mHost.onStarted(mRecords.back());",
+                    "        mHost.onStarted(r);\n        mRecords.push_back(r);")
+    native_negative("M2: duplicate start overwrites the running record (native test 15)",
+                    "        if (find(clone)) { why = \"This clone already has a transition running; Cancel it first\"; return 0; }\n", "")
 
     for label, failed_as_planted, detail in negatives:
         print(("PASS " if failed_as_planted else "FAIL ") + "planted negative fails as planted: " + label)

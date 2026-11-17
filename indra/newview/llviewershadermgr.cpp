@@ -1317,6 +1317,8 @@ void LLViewerShaderMgr::unloadShaders()
     // [ShadowDist P1] per-program shadow-uniform stamps are keyed by program
     // address; every program relinks from here, so forget them all.
     gPipeline.clearShadowUniformStamps();
+    // [CloneTransition] the per-program transition-mask dirty set is keyed by program address too.
+    LLRenderPass::forgetCloneTransitionPrograms();
 
     while (!LLGLSLShader::sInstances.empty())
     {

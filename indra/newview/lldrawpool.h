@@ -411,6 +411,9 @@ public:
     // `shader` (actorFxTransition*, transitionEyeToBody). Inactive params reset a program that still
     // holds a non-zero mask and are otherwise free (one empty-set test). Independent of Actor FX.
     static void uploadCloneTransition(LLGLSLShader& shader, const ALCloneTransition::RenderParams& params);
+    // Forget every program tracked as holding a non-zero transition mask. The set is keyed by program address;
+    // LLViewerShaderMgr::unloadShaders() calls this because every program is destroyed and relinked from there.
+    static void forgetCloneTransitionPrograms();
     // [AvatarLightResponse] Per-avatar Diffuse / Tame / Brightness / Glow trim
     // (doc/AVATAR_LIGHT_RESPONSE_DESIGN.md section 5).  uploadActorFxStyleOnly
     // is the style upload WITHOUT the response upload (shared-replay sites that

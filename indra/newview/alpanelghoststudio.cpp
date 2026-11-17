@@ -5534,7 +5534,7 @@ void ALPanelGhostStudio::refreshTransitionCard(const LLUUID& row_value, bool hav
     if (have && ALCloneTransitions::instanceExists())
         for (const LLUUID& id : ALGhostCloneActions::instances(rows))
             active = active || ALCloneTransitions::instance().isRunning(id);
-    setEnabledIfChanged(mTransitionGoBtn, have);
+    setEnabledIfChanged(mTransitionGoBtn, have && !active); // M2: Go is off while this clone's transition runs (Cancel first)
     setEnabledIfChanged(mTransitionCancelBtn, active);
     if (mTransitionDirection && mTransitionStyle)
         setEnabledIfChanged(mTransitionDirection, mTransitionStyle->getValue().asInteger() == ALCloneTransition::STYLE_WIPE);

@@ -1423,7 +1423,10 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                     SL_COVERAGE_ATTACHMENT, false, false, false, false);
             }
             // [ActorMask] Proxies own their binds; raw content survives them.
-            if (actor_only)
+            // [CloneTransition] The effect shell is an additive, unlit overlay: it never takes part in Actor Mask
+            // forward-light selection (it would otherwise resolve its avatar's owner byte and select a light set).
+            const bool shell_proxy = actor_mover.sharedActorStyleProxyIsShell(shared_proxy_index);
+            if (actor_only && !shell_proxy)
             {
                 const auto& registry = ALCineLightRigManager::instance();
                 const LLVOAvatar* avatar = actor_mover.sharedActorStyleProxyAvatar(shared_proxy_index);
@@ -1439,7 +1442,7 @@ void LLDrawPoolAlpha::renderAlpha(U32 mask, bool depth_only, EAlphaStream stream
                 gPipeline.selectForwardLightSet(byte, true);
             }
             actor_mover.renderSharedActorStyleProxy(shared_proxy_index++);
-            if (actor_only) gPipeline.selectForwardLightSet(0);
+            if (actor_only && !shell_proxy) gPipeline.selectForwardLightSet(0);
             if (publish_visible_diffuse)
             {
                 gGL.setIndexedDrawBufferGuardMask(

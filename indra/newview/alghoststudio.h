@@ -681,6 +681,9 @@ public:
     void reapplyEntityBodyFlags(const LLUUID& id);
     // [CloneTransition] COMMIT of a transition that ends in (look >= 0) or leaves (-1) an overlay look.
     bool setEntityOverlayLook(const LLUUID& id, S32 look);
+    // [CloneTransition] O(1): true while any entity clone has mOverlayLook >= 0 (counter kept by
+    // setEntityOverlayLook and removeInstance), so idle per-frame scans can skip the instance list.
+    bool anyEntityOverlayLook() const { return mOverlayLookCount > 0; }
     bool isDeleting(const LLUUID& actor) const;
     bool isPrivateOverlayRuntime(const LLUUID& actor) const;
     // Shared body identity for attachments and private overlay pose consumers.
@@ -872,6 +875,7 @@ public:
     S32       setLockMode(const LLUUID& id, ELockMode mode);
     S32       ungroup(const LLUUID& id);
     std::vector<LLUUID> groupMembers(const LLUUID& id) const;
+    void      cancelGroupTransitions(const LLUUID& id); // [CloneTransition] D18: cancel every member a group edit touches
     const ALGhostGroupModel::Group* groupForMember(const LLUUID& id) const;
     ALGhostGroupModel::Group* groupForMember(const LLUUID& id);
     bool      renameGroup(const LLUUID& id, const std::string& name);
@@ -1088,6 +1092,7 @@ private:
     std::vector<Instance> mInstances;
     mutable std::map<LLUUID, size_t> mStableIndex, mRuntimeIndex;
     mutable bool mIndicesDirty = true;
+    S32 mOverlayLookCount = 0; // [CloneTransition] entity clones with mOverlayLook >= 0 (see anyEntityOverlayLook)
     void rebuildIndices() const;
     void releaseOverlayHelper(const LLUUID& id);
     void releaseOverlayReference(const LLUUID& runtime);

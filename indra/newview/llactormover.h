@@ -850,6 +850,7 @@ public:
     size_t sharedActorStyleProxyCount() const;
     F32    sharedActorStyleProxyDepth(size_t index) const;
     LLVOAvatar* sharedActorStyleProxyAvatar(size_t index) const; // [ActorMask]
+    bool   sharedActorStyleProxyIsShell(size_t index) const;      // [CloneTransition] effect-shell provenance
     static bool actorMaskAvatarEligible(LLVOAvatar* avatar); // [ActorMask]
     U32 renderSystemActorMask(LLVOAvatar* avatar, U8 byte); // [ActorMask]
     U32 renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cover, U32 phase, bool key = false);

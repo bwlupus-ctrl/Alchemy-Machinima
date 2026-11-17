@@ -607,6 +607,12 @@ LLGLSLShader* get_actor_fx_shader()
 }
 
 // static
+void LLRenderPass::forgetCloneTransitionPrograms()
+{
+    sCloneTransitionDirty.clear();
+}
+
+// static
 void LLRenderPass::uploadCloneTransition(LLGLSLShader& shader, const ALCloneTransition::RenderParams& params)
 {
     float eye_to_body[16];

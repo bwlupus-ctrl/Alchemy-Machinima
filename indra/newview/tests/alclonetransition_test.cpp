@@ -37,7 +37,8 @@ struct DoubleHost
     std::function<void(const Record<Id>&)> onFinalizeCallback; // re-entrancy probe
     bool cloneValid(const Id& id) const { auto i = cloneOk.find(id); return i == cloneOk.end() || i->second; }
     bool bodyValid(const Record<Id>& r) const { auto i = bodyOk.find(r.clone); return i == bodyOk.end() || i->second; }
-    void onStarted(const Record<Id>& r) { ++started[r.clone]; log.push_back("start" + std::to_string(r.clone)); }
+    std::function<void(const Record<Id>&)> onStartCallback;     // started-order probe
+    void onStarted(const Record<Id>& r) { ++started[r.clone]; log.push_back("start" + std::to_string(r.clone)); if (onStartCallback) onStartCallback(r); }
     void onCommit(const Record<Id>& r) { ++commits[r.clone]; log.push_back("commit" + std::to_string(r.clone)); if (onFinalizeCallback) onFinalizeCallback(r); }
     void onRollback(const Record<Id>& r) { ++rollbacks[r.clone]; log.push_back("rollback" + std::to_string(r.clone)); if (onFinalizeCallback) onFinalizeCallback(r); }
     void onDiscard(const Record<Id>& r) { ++discards[r.clone]; log.push_back("discard" + std::to_string(r.clone)); if (onFinalizeCallback) onFinalizeCallback(r); }
@@ -359,5 +360,41 @@ void alclonetransition_object::test<13>()
     ensure("independent kinds", m.find(1)->kind == KIND_ENTITY_TO_OVERLAY_LOOK && m.find(2)->kind == KIND_LOOK_TO_LOOK);
     m.finalize(1, 0, R_CANCEL, OUT_ROLLBACK);
     ensure("other clone unaffected", m.find(2) && m.running() == 1);
+}
+
+// 14. Order: onStarted runs with the record ALREADY visible to the machine (running() == 1, find() works), so a host
+// that reads the published running state during the callback (keepsBodyShown) sees this transition (fix M1).
+template<> template<>
+void alclonetransition_object::test<14>()
+{
+    DoubleHost host;
+    Machine<Id, DoubleHost> m(host);
+    int seenRunning = -1; bool seenRecord = false;
+    host.onStartCallback = [&](const Record<Id>& r) { seenRunning = m.running(); seenRecord = m.find(r.clone) != nullptr; };
+    const char* why = nullptr;
+    ensure("start accepted", m.start(1, 10, request(KIND_OVERLAY_LOOK_TO_ENTITY), 1u, why) != 0);
+    ensure_equals("running published inside onStarted", seenRunning, 1);
+    ensure("record findable inside onStarted", seenRecord);
+}
+
+// 15. A refused request never modifies state (fix M2 / S7): an unknown kind, and a second start for a clone that is
+// already running, leave the running record and the host untouched.
+template<> template<>
+void alclonetransition_object::test<15>()
+{
+    DoubleHost host;
+    Machine<Id, DoubleHost> m(host);
+    const char* why = nullptr;
+    ensure("unknown kind refused", m.start(9, 90, request(7), 1u, why) == 0 && why && m.running() == 0);
+    ensure("negative kind refused", m.start(9, 90, request(-1), 1u, why) == 0 && m.running() == 0);
+    ensure_equals("no host callback for refusals", host.started.count(9), size_t(0));
+    const uint32_t gen = m.start(1, 10, request(KIND_ENTITY_TO_OVERLAY_LOOK, 2.0), 5u, why);
+    ensure("first start accepted", gen != 0);
+    m.tick(0.5);
+    ensure("duplicate refused", m.start(1, 10, request(KIND_ENTITY_TO_OVERLAY_LOOK, 4.0), 6u, why) == 0 && why);
+    const Record<Id>* r = m.find(1);
+    ensure("running record untouched by the refused duplicate",
+           r && r->generation == gen && r->duration == 2.0 && r->seed == 5u && r->elapsed == 0.5);
+    ensure_equals("onStarted not repeated", host.started[1], 1);
 }
 }

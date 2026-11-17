@@ -15,6 +15,9 @@ Proves, with numbers:
   (g) coordinate      packEyeToBody() reproduces bodyFromAgent() through an arbitrary view matrix
   (s) structure       every touched vertex shader writes the coordinate; one resolver; no actorFxEnabled==3; shell
                       never primes depth / never reuses look 10 / never adds matte coverage; Crossfade is object-space
+  (r1) fix round 1: M3/M4/M5/M9/M10/M11, S1/S3/S4/S5 source rules (each with a planted negative) and S8, a LINKED
+                      production avatar beauty + avatar shadow program with the transition module (uniforms active, off
+                      by default, type-mismatch planted negative fails to link)
   (f) PLANTED NEGATIVES that must FAIL: seed differs between halves; shell with a depth prime; effect_only
                       replaced by look 10; screen Bayer used for entity Crossfade in the shadow program.
 """
@@ -115,8 +118,8 @@ def structure_checks():
     check(shell_branch_ok(mover)[0], 'effect shell: ' + shell_branch_ok(mover)[1])
     check(shell_dispatch_ok(mover)[0], 'effect shell dispatch: ' + shell_dispatch_ok(mover)[1])
     check(shell_no_matte_ok(mover)[0], 'effect shell never adds matte coverage / depth prepass / replay-active queries: ' + shell_no_matte_ok(mover)[1])
-    check('uploadCloneTransition(*sh, gp.mTransition)' in mover and mover.count('uploadCloneTransition(') >= 5,
-          'Studio overlay, replay, silhouette cover and system-avatar programs all receive the transition uniforms')
+    check(mover.count('upload_ghost_transition_state(') >= 4 and mover.count('LLRenderPass::uploadCloneTransition(') >= 3,
+          'Studio overlay, replay, silhouette cover and system-avatar programs all receive the transition uniforms (ghost-family through ONE helper)')
     pipe = text(NV / 'pipeline.cpp')
     check('transitionCoverageFor(di.mActorFxOwner, di.mActorFxFallbackOwner)' in pipe, 'silhouette cover batches get the native transition mask')
     check('layered' in mover and 'studioLayersFor(inst.mId, layers)' in mover, 'Studio overlay draws one pass per transition layer (Look->Look dual draw)')
@@ -171,6 +174,121 @@ def shell_no_matte_ok(mover):
             'proxy.mEffectShell || !proxy.mAvatar']
     miss = [n for n in need if n not in mover]
     return (not miss), 'ok' if not miss else 'missing ' + str(miss)
+
+
+def fn_body(src, signature):
+    """Brace-matched body of the first definition whose line contains `signature`."""
+    i = src.index(signature)
+    j = src.index('{', i)
+    depth = 0
+    for k in range(j, len(src)):
+        if src[k] == '{':
+            depth += 1
+        elif src[k] == '}':
+            depth -= 1
+            if depth == 0:
+                return src[j:k + 1]
+    raise ValueError(signature)
+
+
+def r1_problems(mover, alpha, dp, mgr, pipe, mask):
+    """Fix round 1 source rules. Pure functions of the file texts so the planted negatives below can reuse them."""
+    bad = []
+    # M3: harvest keys on the NATIVE transition (Crossfade has no shell but its incoming Studio layer needs the body)
+    harvest = mover[mover.index('// [CloneTransition] entity bodies: steady overlay look, or a running transition'):]
+    harvest = harvest[:harvest.index('wanted.insert(body);')]
+    if 'nativeParamsFor(body->getID()).active' not in harvest or 'shellParamsFor' in harvest:
+        bad.append('M3: entity harvest must follow nativeParamsFor(...).active, not shellParamsFor')
+    # M4: Clone coverage is classified whenever ANY drawn layer is the Clone look, and the skip needs a classification
+    if 'needs_clone_coverage' not in mover or 'mPresentClassified && (item.mPresent & ~coverage)' not in mover or \
+            not re.search(r'for \(S32 k = 0; k < layers\.count && k < 2; \+\+k\)\s*needs_clone_coverage \|=', mover):
+        bad.append('M4: Clone coverage not classified for every layer / skip not guarded by the classification')
+    # M5: a transitioning clone never enters the deferred ghost queue
+    q = mover[mover.index('mGhostDeferredQueue.clear();'):]
+    q = q[:q.index('++mGhostDeferredCounters.mLiveInstancesConsidered;')]
+    if 'ALCloneTransitions::instance().isRunning(inst.mId)' not in q:
+        bad.append('M5: a running transition is not excluded from the deferred ghost queue')
+    # M9: the shell needs real native depth: Cover/Replace/Layer+Dissolve styles get no shell
+    shell_q = mover[mover.index('EFFECT SHELL items (PLAN 3.3)'):]
+    shell_q = shell_q[:shell_q.index('proxy.mEffectShell = true;')]
+    if 'ACTOR_STYLE_REPLACE' not in shell_q or 'getRenderActorStyle(avatar->getActorFxOwnerId())' not in shell_q:
+        bad.append('M9: shell scheduling does not check native-beauty suppression (Cover / Replace / Layer+Dissolve)')
+    # M10: every ghost-family bind that uploads the transition also sets ghostEffectOnly (one helper); no raw pairing left
+    helper = fn_body(mover, 'static void upload_ghost_transition_state(')
+    if 'sGhostEffectOnly' not in helper or 'uploadCloneTransition' not in helper:
+        bad.append('M10: the ghost transition helper must upload the mask AND ghostEffectOnly together')
+    raw = [m.start() for m in re.finditer(r'LLRenderPass::uploadCloneTransition\(', mover)]
+    outside = [i for i in raw if not (mover.index('static void upload_ghost_transition_state(') < i < mover.index('static void upload_ghost_transition_state(') + len(helper) + 120)]
+    for i in outside:
+        line = mover[mover.rfind('\n', 0, i) + 1:mover.index('\n', i)]
+        if 'body_shader' not in line and 'eye_shader' not in line:
+            bad.append('M10: ghost-family program uploads the transition without ghostEffectOnly: ' + line.strip()[:80])
+    # M11: shell invisible to Actor Mask forward selection
+    if 'sharedActorStyleProxyIsShell(shared_proxy_index)' not in alpha or \
+            not re.search(r'if \(actor_only && !shell_proxy\)\s*\{\s*const auto& registry', alpha):
+        bad.append('M11: alpha pool does not bypass Actor Mask forward selection for shell items')
+    if 'bool LLActorMover::sharedActorStyleProxyIsShell(' not in mover:
+        bad.append('M11: shell provenance accessor missing')
+    # S1: shader unload forgets the per-program dirty set
+    if 'LLRenderPass::forgetCloneTransitionPrograms();' not in mgr or 'sCloneTransitionDirty.clear();' not in dp:
+        bad.append('S1: the transition dirty set (keyed by program address) is not cleared on shader unload')
+    # S3: shell result never reaches coverage bookkeeping (caller discards it; depth prepass excludes shells)
+    if re.search(r'=\s*actor_mover\.renderSharedActorStyleProxy\(|if\s*\(\s*!?actor_mover\.renderSharedActorStyleProxy\(', alpha):
+        bad.append('S3: a caller consumes the shell dispatch result')
+    if '!proxy.mEffectShell && renderSharedActorStyleProxyItem(proxy, true)' not in mover:
+        bad.append('S3: depth prepass consumes the shell result')
+    # S4: the view-dependent matrix is packed from the CURRENT pass modelview on every active upload (no skip), and
+    # every shadow cascade / face sets that modelview before drawing
+    up = fn_body(dp, 'void LLRenderPass::uploadCloneTransition(')
+    after_reset = up.rindex('\n    }\n', 0, up.index('const ALCloneTransitionRender::Uniforms u'))
+    active_part = up[after_reset:]
+    if 'packEyeToBody(params, gGLModelView' not in up or 'return' in active_part:
+        bad.append('S4: uploadCloneTransition must pack transitionEyeToBody from gGLModelView and never skip the active upload')
+    if pipe.count('set_current_modelview(view[j])') < 2 or 'set_current_modelview(view[map_index])' not in pipe:
+        bad.append('S4: shadow cascades / spot faces no longer set the pass modelview')
+    # S5: coverageChanged is an idempotent bit-OR (safe per draw)
+    if 'mCoverageBits = static_cast<U8>(mCoverageBits |' not in mask:
+        bad.append('S5: coverageChanged is no longer an idempotent OR')
+    return bad
+
+
+def r1_sources():
+    return (text(NV / 'llactormover.cpp'), text(NV / 'lldrawpoolalpha.cpp'), text(NV / 'lldrawpool.cpp'),
+            text(NV / 'llviewershadermgr.cpp'), text(NV / 'pipeline.cpp'), text(NV / 'llactormaskeligibility.cpp'))
+
+
+def r1_checks():
+    srcs = r1_sources()
+    bad = r1_problems(*srcs)
+    check(not bad, 'fix round 1 source rules (M3 M4 M5 M9 M10 M11 S1 S3 S4 S5) %s' % bad)
+
+
+def r1_negatives():
+    mover, alpha, dp, mgr, pipe, mask = r1_sources()
+
+    def neg(label, which, old, new):
+        s = [mover, alpha, dp, mgr, pipe, mask]
+        assert s[which].count(old) >= 1, 'anchor missing: ' + old[:60]
+        s[which] = s[which].replace(old, new, 1)
+        check(bool(r1_problems(*s)), 'PLANTED NEGATIVE: ' + label)
+
+    neg('M3 harvest keyed on the shell again (Crossfade body not harvested)', 0,
+        'ALCloneTransitions::instance().nativeParamsFor(body->getID()).active', 'ALCloneTransitions::instance().shellParamsFor(body->getID()).active')
+    neg('M4 Clone coverage classified only for the original style', 0, 'for (S32 k = 0; k < layers.count && k < 2; ++k)\n            needs_clone_coverage |=',
+        'for (S32 k = 0; k < 0; ++k)\n            needs_clone_coverage |=')
+    neg('M4 skip not guarded by the classification', 0, 'item.mPresentClassified && (item.mPresent & ~coverage)', '(item.mPresent & ~coverage)')
+    neg('M5 transitioning clone submitted to the deferred queue', 0, 'ALCloneTransitions::instance().isRunning(inst.mId)', 'false')
+    neg('M9 shell scheduled for a Cover/Replace body', 0, 'native_style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE', 'false')
+    neg('M10 sil/key-fill bind uploads the transition without ghostEffectOnly', 0,
+        '            upload_ghost_transition_state(*sh, gp.mTransition, false);\n        }\n        else if (gp.mWorldLinear)',
+        '            LLRenderPass::uploadCloneTransition(*sh, gp.mTransition);\n        }\n        else if (gp.mWorldLinear)')
+    neg('M11 shell takes part in Actor Mask forward selection', 1, 'if (actor_only && !shell_proxy)\n            {\n                const auto& registry',
+        'if (actor_only)\n            {\n                const auto& registry')
+    neg('S1 dirty set not cleared on shader unload', 3, '    LLRenderPass::forgetCloneTransitionPrograms();\n', '')
+    neg('S3 a caller consumes the shell dispatch result', 1, '            actor_mover.renderSharedActorStyleProxy(shared_proxy_index++);\n            if (actor_only && !shell_proxy)',
+        '            if (!actor_mover.renderSharedActorStyleProxy(shared_proxy_index++)) {}\n            if (actor_only && !shell_proxy)')
+    neg('S4 active upload skipped for a "clean" program (stale per-pass view)', 2, '    const ALCloneTransitionRender::Uniforms u = ALCloneTransitionRender::packUniforms(params);',
+        '    if (sCloneTransitionDirty.count(&shader)) return;\n    const ALCloneTransitionRender::Uniforms u = ALCloneTransitionRender::packUniforms(params);')
 
 
 # ---------------------------------------------------------------------------------------------------------
@@ -412,6 +530,58 @@ def complement(h, dissolve_src, style, p, seed_a=777, seed_b=777):
     return ok
 
 
+def linked_program_checks(h):
+    """S8: LINK the real production avatar beauty program (deferred/avatarV+F) and the real avatar shadow program
+    (deferred/avatarShadowV+F) with their production module lists and the transition module. The compose lists
+    mirror LLShaderMgr::attachShaderFeatures for these programs (skin, atmospherics vars, texture util, global,
+    Actor FX dissolve + beauty, light response, srgb); the same lists built from the BASE sources are linked too,
+    so the composition itself is proven valid. Checks: link ok, the transition uniforms are ACTIVE in the linked
+    program and default to zero (transition off), and a planted stage-type mismatch fails to link."""
+    V, F = 0x8B31, 0x8B30
+    gl = h.gl
+    sk = 'class1/avatar/avatarSkinV.glsl'
+    beauty = [('class1/deferred/avatarV.glsl', V), ('class1/deferred/avatarF.glsl', F), (sk, V),
+              ('class1/windlight/atmosphericsVarsV.glsl', V), ('class1/deferred/textureUtilV.glsl', V),
+              ('class1/deferred/globalF.glsl', F), ('class1/alchemy/actorFxDissolveF.glsl', F),
+              ('class1/alchemy/actorFxF.glsl', F), ('class1/alchemy/avatarLightResponseF.glsl', F),
+              ('class1/environment/srgbF.glsl', F), ('class1/windlight/atmosphericsVarsF.glsl', F)]
+    shadow = [('class1/deferred/avatarShadowV.glsl', V), ('class1/deferred/avatarShadowF.glsl', F), (sk, V),
+              ('class1/objects/nonindexedTextureV.glsl', V), ('class1/alchemy/actorFxDissolveF.glsl', F)]
+    defs = '#define HAS_SKIN 1\n#define HAS_ACTOR_FX 1\n#define MAX_JOINTS_PER_MESH_OBJECT 110\n'
+    getu = gl.fn('glGetUniformfv', None, C.c_uint, C.c_int, C.POINTER(C.c_float))
+
+    def link(label, modules, mutate=None, from_base=False):
+        pr = gl.program()
+        for path, stage in modules:
+            src = base_text('indra/newview/app_settings/shaders/' + path) if from_base else text(SH / path)
+            if mutate and path == mutate[0]:
+                assert mutate[1] in src, 'mutation anchor missing: ' + mutate[1]
+                src = src.replace(mutate[1], mutate[2], 1)
+            gl.attach(pr, h.shader(src, stage, defs, label + ':' + path))
+        h.bindout(pr, 0, b'frag_color')
+        gl.link(pr)
+        ok = C.c_int()
+        gl.getprog(pr, 0x8B82, C.byref(ok))
+        return pr if ok.value else None
+
+    for name, mods in (('avatar beauty (avatarV/F)', beauty), ('avatar shadow (avatarShadowV/F)', shadow)):
+        old = link(name + ' base', mods, from_base=True)
+        check(old is not None, 'linked production program, BASE sources: ' + name + ' (the composition is valid)')
+        pr = link(name, mods)
+        check(pr is not None, 'linked production program with the transition module: ' + name)
+        if pr is None:
+            continue
+        locs = {u: gl.loc(pr, u.encode()) for u in ('actorFxTransition', 'transitionEyeToBody')}
+        check(all(v >= 0 for v in locs.values()), 'transition uniforms are ACTIVE in the linked ' + name + ' ' + str(locs))
+        gl.use(pr)
+        val = (C.c_float * 4)()
+        getu(pr, locs['actorFxTransition'], val)
+        check(list(val) == [0.0, 0.0, 0.0, 0.0], 'linked ' + name + ': actorFxTransition defaults to zero (transition off)')
+    # planted negative: stage type mismatch between the vertex and fragment declaration of one uniform
+    bad = link('planted type mismatch', shadow, mutate=('class1/deferred/avatarShadowV.glsl', 'uniform vec4 actorFxTransition;', 'uniform vec3 actorFxTransition;'))
+    check(bad is None, 'PLANTED NEGATIVE: a vertex/fragment type mismatch on actorFxTransition fails to link in the production shadow program')
+
+
 def gl_checks(exe):
     np = __import__('numpy')
     h = Harness()
@@ -449,6 +619,8 @@ mat4 getLastSkinnedTransform(){ return mat4(1.0); }
                 # genuine module externals (skin / atmospherics / material helpers) are link-time, not compile errors
                 failures.append((p.name, msg.splitlines()[0][:160]))
     check(not failures, 'all touched vertex shaders compile in both HAS_SKIN permutations (%d compiles) %s' % (compiled, failures[:3]))
+
+    linked_program_checks(h)
 
     # ---- (a) field parity ----
     import random
@@ -649,7 +821,9 @@ def native_negatives():
 def main():
     selftest = '--selftest' in sys.argv
     structure_checks()
+    r1_checks()
     native_negatives()
+    r1_negatives()
     try:
         with tempfile.TemporaryDirectory() as tmp:
             exe = build_fixture(Path(tmp))

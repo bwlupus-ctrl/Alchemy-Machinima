@@ -18,6 +18,8 @@
 #include "llghostavatar.h"
 #include "llpresentationtime.h"
 #include "llviewerregion.h"
+#include "llavatarappearancedefines.h"
+#include "llwearabletype.h"
 
 #include <cmath>
 #include <map>
@@ -31,6 +33,25 @@ const ALCloneTransition::RenderParams& inactive_params()
     static const ALCloneTransition::RenderParams none;
     return none;
 }
+
+// M6 (system-avatar entity clones). The Studio ENTITY branch draws only harvested attachment batches and static
+// faces; it has NO system body / eyes / hair draw (the Studio overlay looks 0-100 are not compiled into the
+// system-avatar programs, and the overlay of any other clone has never drawn them either). An entity whose
+// system parts are VISIBLE therefore cannot become an overlay look: its native body would be hidden at commit
+// and those parts would vanish. Same tests the native system passes use (LLVOAvatar::renderSkinned /
+// renderTransparent / renderRigid): a baked texture that is IMG_INVISIBLE (a fully alpha-masked part) does not
+// count. Animesh (control avatars) have no system body.
+bool system_parts_visible(const LLVOAvatar* avatar)
+{
+    using namespace LLAvatarAppearanceDefines;
+    if (!avatar || avatar->isControlAvatar()) return false;
+    return avatar->isTextureVisible(TEX_HEAD_BAKED) || avatar->isTextureVisible(TEX_UPPER_BAKED)
+        || avatar->isTextureVisible(TEX_LOWER_BAKED) || avatar->isTextureVisible(TEX_EYES_BAKED)
+        || avatar->isTextureVisible(TEX_HAIR_BAKED)
+        || (avatar->isWearingWearableType(LLWearableType::WT_SKIRT) && avatar->isTextureVisible(TEX_SKIRT_BAKED));
+}
+const char* const SYSTEM_PARTS_REFUSAL =
+    "Overlay looks cannot draw this clone's standard avatar body or eyes yet (an alpha-masked mesh body works)";
 }
 
 struct ALCloneTransitions::Impl
@@ -59,10 +80,18 @@ struct ALCloneTransitions::Impl
             const ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(r.clone);
             if (!inst || inst->mEntityId != r.body) return false;
             LLGhostAvatar* ghost = ALGhostStudio::instance().resolveEntityClone(r.clone);
-            return ghost && !ghost->isDead() && ghost->getID() == r.body;
+            if (!ghost || ghost->isDead() || ghost->getID() != r.body) return false;
+            // M6: re-checked every tick and at commit; a COMMIT onto an invalid half becomes a ROLLBACK, so a body
+            // whose system parts became visible can never be hidden behind an overlay look that cannot draw them.
+            if (r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost)) return false;
+            return true;
         }
         void onStarted(const Rec& r)
         {
+            // Publish the running state FIRST: the record is already in the machine, and keepsBodyShown() (read by
+            // reapplyEntityBodyFlags below) is gated on sRunning. Without this the first reverse transition left the
+            // native body hidden until finalize.
+            sRunning = mImpl->mMachine.running();
             // The reverse kind needs the native body drawn (it is the incoming half): lift the overlay hide.
             if (r.kind == ALCloneTransition::KIND_OVERLAY_LOOK_TO_ENTITY)
                 ALGhostStudio::instance().reapplyEntityBodyFlags(r.clone);
@@ -127,7 +156,7 @@ struct ALCloneTransitions::Impl
     }
 
     // The presented body root (agent space), heading and scale this frame (PLAN 3.1).
-    void fillFrame(const Rec& r, ALCloneTransition::BodyFrame& frame) const
+    void fillFrame(const Rec& r, ALCloneTransition::RenderParams& params) const
     {
         ALGhostStudio& studio = ALGhostStudio::instance();
         const ALGhostStudio::Instance* inst = studio.getInstance(r.clone);
@@ -135,6 +164,7 @@ struct ALCloneTransitions::Impl
         LLVector3 foot = gAgent.getPosAgentFromGlobal(inst->mFootGlobal);
         LLQuaternion rotation = inst->mRotation;
         F32 scale = inst->mScale;
+        const LLVOAvatar* body_avatar = nullptr; // the body whose shape height drives Wipe (S2)
         if (r.kind != ALCloneTransition::KIND_LOOK_TO_LOOK || inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
         {
             if (LLGhostAvatar* ghost = studio.resolveEntityClone(r.clone))
@@ -142,8 +172,23 @@ struct ALCloneTransitions::Impl
                 foot += ghost->getStayInPlaceRenderedOffset(); // the DRAWN body, Stay in place included
                 rotation = ghost->getRotation();
                 scale = ghost->getUniformScale();
+                body_avatar = ghost;
             }
         }
+        else
+        {
+            body_avatar = ALGhostStudio::resolveOverlayAvatar(*inst); // the overlay's source body
+        }
+        // S2: per-record body height in BODY units (the field divides by scale): the avatar's own shape height,
+        // 1.8 m when it is unavailable or implausible.
+        float height = 1.8f;
+        if (body_avatar)
+        {
+            const float h = body_avatar->mBodySize.mV[VZ];
+            if (std::isfinite(h) && h >= 0.3f && h <= 8.f) height = h;
+        }
+        params.bodyHeight = height;
+        ALCloneTransition::BodyFrame& frame = params.frame;
         for (int i = 0; i < 3; ++i) frame.rootAgent[i] = foot.mV[i];
         frame.heading = headingOf(rotation);
         frame.scale = scale > 0.f ? scale : 1.f;
@@ -154,7 +199,7 @@ struct ALCloneTransitions::Impl
         for (const Rec& r : mMachine.records())
         {
             auto it = mExtras.find(r.clone);
-            if (it != mExtras.end()) fillFrame(r, it->second.params.frame);
+            if (it != mExtras.end()) fillFrame(r, it->second.params);
         }
     }
 
@@ -204,11 +249,9 @@ const ALCloneTransition::RenderParams& ALCloneTransitions::nativeParamsFor(const
         if (r.kind == ALCloneTransition::KIND_LOOK_TO_LOOK || r.body != body_id) continue;
         auto it = mImpl->mExtras.find(r.clone);
         if (it == mImpl->mExtras.end()) continue;
-        // Native half: the outgoing one when the lit body leaves for an overlay look, else the incoming one.
-        ALCloneTransition::RenderParams& params = it->second.params;
-        params.side = r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK
-            ? ALCloneTransition::SIDE_OUTGOING : ALCloneTransition::SIDE_INCOMING;
-        return params;
+        // Native half: the side was fixed at start() (outgoing when the lit body leaves for an overlay look, else
+        // incoming). This getter never mutates the params.
+        return it->second.params;
     }
     return inactive_params();
 }
@@ -298,7 +341,12 @@ bool ALCloneTransitions::start(const LLUUID& instance_id, const ALCloneTransitio
         if (!ghost || ghost->isDead() || !ghost->isBuilt()) { why = "The clone's body is not ready"; return false; }
         body = ghost->getID();
         if (inst->mEntityId != body) { why = "The clone's body is not ready"; return false; }
+        if (request.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost))
+        { why = SYSTEM_PARTS_REFUSAL; return false; }
     }
+    // A refused request never modifies state: reject a duplicate BEFORE anything touches mExtras (the running
+    // record's render params live there; the refusal branch below erases the entry).
+    if (mImpl->mMachine.find(instance_id)) { why = "This clone already has a transition running; Cancel it first"; return false; }
     if (!studio.isVisible(*inst)) { why = "The clone is hidden; show it first"; return false; }
     if (ALCloneTransitions::anyRunning() && mImpl->mMachine.running() >= ALCloneTransition::MAX_RUNNING &&
         !mImpl->mMachine.find(instance_id))
@@ -315,6 +363,8 @@ bool ALCloneTransitions::start(const LLUUID& instance_id, const ALCloneTransitio
     extra.region = region->getRegionID();
     extra.params.active = true;
     extra.params.style = rq.style;
+    extra.params.side = rq.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK
+        ? ALCloneTransition::SIDE_OUTGOING : ALCloneTransition::SIDE_INCOMING; // the native half (see nativeParamsFor)
     extra.params.direction = rq.direction;
     extra.params.seed = seed;
     extra.params.p = 0.f;
@@ -329,7 +379,7 @@ bool ALCloneTransitions::start(const LLUUID& instance_id, const ALCloneTransitio
     }
     sRunning = mImpl->mMachine.running();
     mImpl->setStatus(instance_id, std::string());
-    if (const Impl::Rec* rec = mImpl->mMachine.find(instance_id)) mImpl->fillFrame(*rec, mImpl->mExtras[instance_id].params.frame);
+    if (const Impl::Rec* rec = mImpl->mMachine.find(instance_id)) mImpl->fillFrame(*rec, mImpl->mExtras[instance_id].params);
     why.clear();
     return true;
 }

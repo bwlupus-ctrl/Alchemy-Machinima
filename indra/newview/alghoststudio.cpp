@@ -3695,6 +3695,8 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         if (mSelected == retiring_id) setSelected(LLUUID::null);
     }
     mIndicesDirty = true;
+    if (const Instance* retiring = getInstance(retiring_id); retiring && retiring->mOverlayLook >= 0)
+        mOverlayLookCount = std::max<S32>(0, mOverlayLookCount - 1); // [CloneTransition]
     mInstances.erase(
         std::remove_if(mInstances.begin(), mInstances.end(),
                        [&retiring_id](const Instance& i) { return i.mId == retiring_id; }),
@@ -3750,6 +3752,21 @@ void ALGhostStudio::setSelected(const LLUUID& id)
         return;
     }
     mSelected = id;
+}
+
+// [CloneTransition] D18: a group edit rolls back the transition of EVERY member the edit touches (the authoring unit
+// and the full member list), snapshotted before anything changes. Free when nothing runs.
+void ALGhostStudio::cancelGroupTransitions(const LLUUID& id)
+{
+    if (!ALCloneTransitions::anyRunning()) return;
+    std::vector<LLUUID> affected = groupMembers(id);
+    if (const ALGhostGroupModel::Group* group = groupForMember(id))
+    {
+        const std::vector<LLUUID> all = mGroups.members(group->mId);
+        affected.insert(affected.end(), all.begin(), all.end());
+    }
+    affected.push_back(id);
+    for (const LLUUID& member : affected) ALCloneTransitions::cancelFor(member, ALCloneTransition::R_EDIT_LOCK);
 }
 
 S32 ALGhostStudio::lockGroup(const std::vector<LLUUID>& ids, ELockMode mode)
@@ -3818,7 +3835,7 @@ S32 ALGhostStudio::lockGroup(const std::vector<LLUUID>& ids, ELockMode mode)
 
 S32 ALGhostStudio::ungroup(const LLUUID& id)
 {
-    for (const LLUUID& member : groupMembers(id)) ALCloneTransitions::cancelFor(member, ALCloneTransition::R_EDIT_LOCK); // [CloneTransition] group edit (D18)
+    cancelGroupTransitions(id); // [CloneTransition] group edit (D18): every affected member, not only `id`
     const ALGhostGroupModel::Group* group = groupForMember(id);
     if (!group)
     {
@@ -3854,7 +3871,7 @@ S32 ALGhostStudio::ungroup(const LLUUID& id)
 
 S32 ALGhostStudio::setLockMode(const LLUUID& id, ELockMode mode)
 {
-    ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK); // [CloneTransition] group edit (D18)
+    cancelGroupTransitions(id); // [CloneTransition] group edit (D18): snapshot + cancel every member BEFORE the mode changes
     Instance* inst = getInstance(id);
     if (!inst) return 0;
     switch (mode)
@@ -6402,6 +6419,7 @@ bool ALGhostStudio::setEntityOverlayLook(const LLUUID& id, S32 look)
     if (look >= 0) look = resolveOverlayStyle(look);
     if (look >= 0 && !isOverlayStyle(look)) return false;
     if (inst->mOverlayLook == look) { reapplyEntityBodyFlags(id); return true; }
+    mOverlayLookCount += (look >= 0 ? 1 : 0) - (inst->mOverlayLook >= 0 ? 1 : 0);
     inst->mOverlayLook = look;
     ++mInstanceRevision; // the Clones list rows
     reapplyEntityBodyFlags(id);
@@ -6699,6 +6717,16 @@ void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed, bool 
     {
         const S32 look = remapRetiredOverlayStyle(gSavedSettings.getS32("GhostStudioMixLook"+std::to_string(i)));
         if (isOverlayStyle(look) && std::find(looks.begin(), looks.end(), look) == looks.end()) looks.push_back(look);
+    }
+    if (assign_looks && ALCloneTransitions::anyRunning())
+    {
+        // [CloneTransition] D18: a crowd look assignment writes mStyle directly. Roll back every affected
+        // member's transition FIRST (snapshot of ids; the rollback may touch instance flags), so the natural
+        // completion can never overwrite this edit with the old target look.
+        std::vector<LLUUID> affected;
+        for (const auto& inst : mInstances)
+            if (inst.mCrowdId == crowd && !inst.mDeleting) affected.push_back(inst.mId);
+        for (const LLUUID& id : affected) ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK);
     }
     F64 low = std::numeric_limits<F64>::max(), high = -low;
     for (const auto& inst : mInstances)

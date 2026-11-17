@@ -206,6 +206,7 @@ public:
     uint32_t start(const Id& clone, const Id& body, const Request& rq, uint32_t seed, const char*& why)
     {
         why = nullptr;
+        if (rq.kind < KIND_LOOK_TO_LOOK || rq.kind > KIND_OVERLAY_LOOK_TO_ENTITY) { why = "Unknown transition kind"; return 0; }
         if (!validStyle(rq.style)) { why = "Unknown transition style"; return 0; }
         if (!(rq.duration >= 0.1 && rq.duration <= 30.0)) { why = "Duration must be 0.1 to 30 seconds"; return 0; }
         if (find(clone)) { why = "This clone already has a transition running; Cancel it first"; return 0; }

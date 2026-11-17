@@ -12192,6 +12192,15 @@ static LLStaticHashedString sGhostAlphaCutoffMode("ghostAlphaCutoffMode");
 static LLStaticHashedString sGhostWorldLinear("ghostWorldLinear");
 static LLStaticHashedString sGhostGlowOnly("ghostGlowOnly");
 static LLStaticHashedString sGhostEffectOnly("ghostEffectOnly"); // [CloneTransition] effect shell
+// [CloneTransition] THE one place a ghost-family program gets its transition state. The mask and the effect-shell
+// flag are program state and always travel together, so a value left at 1 by a shell draw can never leak into the
+// next bind of the same program (key-fill / sil / coverage output). Every bind that uploads the transition goes
+// through here.
+static void upload_ghost_transition_state(LLGLSLShader& sh, const ALCloneTransition::RenderParams& params, bool effect_only)
+{
+    LLRenderPass::uploadCloneTransition(sh, params);
+    sh.uniform1i(sGhostEffectOnly, effect_only ? 1 : 0);
+}
 static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
 static LLStaticHashedString sGhostScreenSize("ghostScreenSize");
 static LLStaticHashedString sGhostScreenOrigin("ghostScreenOrigin");
@@ -13377,7 +13386,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform1i(material_slots, 0);
             sh->uniform1i(vec3_position, 0);
             // [CloneTransition] chroma key / silhouette cover must see the same holes as beauty.
-            LLRenderPass::uploadCloneTransition(*sh, gp.mTransition);
+            upload_ghost_transition_state(*sh, gp.mTransition, false);
         }
         else if (gp.mWorldLinear)
         {
@@ -13425,8 +13434,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
             }
             // [CloneTransition] mask + effect shell flag, reset on every bind (inactive = zeros).
-            LLRenderPass::uploadCloneTransition(*sh, gp.mTransition);
-            sh->uniform1i(sGhostEffectOnly, gp.mEffectOnly ? 1 : 0);
+            upload_ghost_transition_state(*sh, gp.mTransition, gp.mEffectOnly);
             sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);
             if (!gp.mWorldLinear)
             {
@@ -15814,7 +15822,9 @@ void LLActorMover::collectGhostBatches()
             if (!body || body->isDead()) continue;
             if (inst.mOverlayLook >= 0
                 || (ALCloneTransitions::anyRunning()
-                    && ALCloneTransitions::instance().shellParamsFor(body->getID()).active))
+                    // the NATIVE transition (not the shell): Crossfade has no shell but its incoming Studio
+                    // layer still needs this body's harvested geometry
+                    && ALCloneTransitions::instance().nativeParamsFor(body->getID()).active))
             {
                 wanted.insert(body);
             }
@@ -16145,6 +16155,14 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         {
             continue;
         }
+        // [CloneTransition] A transitioning clone is drawn by the forward Studio layers ONLY. The deferred
+        // queue's uploadGhostCoverage() disables Actor FX (including the transition uniform), so a Clone-look
+        // overlay submitted here would stay fully visible under the masked incoming look. Phase 1 excludes it
+        // (coverage then reads zero this frame, so the forward draw colours the whole body).
+        if (ALCloneTransitions::anyRunning() && ALCloneTransitions::instance().isRunning(inst.mId))
+        {
+            continue;
+        }
         // P0/P1 handle LIVE ghosts only; frozen-pose support is a later phase (P3).
         if (inst.mPose == ALGhostStudio::POSE_FROZEN)
         {
@@ -16472,6 +16490,8 @@ void LLActorMover::releaseStudioKeyPrograms() { sStudioKeyPrograms.reset(); }
 // or a running a1 transition. Cheap: a scan of the instance list, and nothing at all unless one exists.
 static bool studio_entity_overlay_wanted(ALGhostStudio& studio)
 {
+    // O(1) when idle: no entity clone has an overlay look (counter) and nothing is running.
+    if (!studio.anyEntityOverlayLook() && !ALCloneTransitions::anyRunning()) return false;
     for (const ALGhostStudio::Instance& inst : studio.getInstances())
     {
         if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE || !studio.isVisible(inst)) continue;
@@ -16519,6 +16539,7 @@ void LLActorMover::renderStudioGhosts()
         // [GhostDeferred] which overlay categories this clone's harvested
         // geometry actually CONTAINS (zero for non-clone styles -- unused)
         GhostCoverageMask mPresent = GHOST_COVERAGE_NONE;
+        bool mPresentClassified = false;   // [CloneTransition] mPresent is meaningful (a Clone-look layer exists)
         // [CloneTransition] ENTITY clone drawn as an overlay of its own body (attached placement), and
         // the transition layers of this frame (count 0 = the instance's ordinary single draw).
         bool mEntity = false;
@@ -16565,8 +16586,17 @@ void LLActorMover::renderStudioGhosts()
         // [GhostDeferred] classify what the clone's geometry contains, so the
         // suppression below can compare against the pipeline's coverage and the
         // draw can color only the uncovered categories (no rescan inside).
+        // [CloneTransition] classify whenever ANY look this item draws is the Clone look (the instance's own
+        // style, an entity's overlay look, or either transition layer), not only when the instance's original
+        // style is Clone: Hologram->Clone otherwise left `present` NONE and the incoming Clone layer was skipped as
+        // "fully covered". `present_classified` distinguishes "not classified" from "classified, nothing present".
+        bool needs_clone_coverage = (!entity_inst && inst.mStyle == GHOST_STYLE_CLONE)
+            || (entity_inst && ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook) == GHOST_STYLE_CLONE);
+        for (S32 k = 0; k < layers.count && k < 2; ++k)
+            needs_clone_coverage |= ALGhostStudio::remapRetiredOverlayStyle(layers.layer[k].look) == GHOST_STYLE_CLONE;
         GhostCoverageMask present = GHOST_COVERAGE_NONE;
-        if (inst.mStyle == GHOST_STYLE_CLONE)
+        const bool present_classified = needs_clone_coverage;
+        if (needs_clone_coverage)
         {
             if (batches)
             {
@@ -16616,7 +16646,7 @@ void LLActorMover::renderStudioGhosts()
         }
         phase2 |= !entity_inst && inst.mAlpha > 0.f && studio_phase2_look(inst.mStyle);
         items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics, foot_agent, present,
-                          entity_inst, layers });
+                          present_classified, entity_inst, layers });
     }
     if (items.empty())
     {
@@ -16736,7 +16766,7 @@ void LLActorMover::renderStudioGhosts()
         if (look_id == GHOST_STYLE_CLONE)
         {
             coverage = gPipeline.getGhostDeferredCoverageThisFrame(inst.mId);
-            if ((item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)
+            if (item.mPresentClassified && (item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)
             {
                 continue;
             }
@@ -17336,8 +17366,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         shader.uniform2f(sGhostAlpha, 1.f, 1.f);
         shader.uniform1i(sGhostWorldLinear, 1);
         shader.uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
-        LLRenderPass::uploadCloneTransition(shader, transition_params);
-        shader.uniform1i(sGhostEffectOnly, effect_shell ? 1 : 0);
+        upload_ghost_transition_state(shader, transition_params, effect_shell);
         shader.uniform2fv(sGhostFragOffset, 1, frag_offset.mV);
         shader.uniform2fv(sGhostScreenSize, 1, screen_size.mV);
         shader.uniform1f(sGhostDissolveProgress, gp.mDissolveProgress);
@@ -19317,6 +19346,22 @@ void LLActorMover::buildSharedActorStyleQueue()
             {
                 continue;
             }
+            // The shell is depth-tested against the NATIVE surface and never primes depth. That surface exists only
+            // while native beauty is drawn: an Actor FX Cover/Replace (incl. alpha 0 = "absent") or Layer+Dissolve
+            // style owns or suppresses the native draw, so the shell would test against background depth and glow
+            // where nothing was rendered. Skip it there; the mask alone still reads.
+            {
+                const LLDirectorCast::ActorStyle& native_style =
+                    LLDirectorCast::instance().getRenderActorStyle(avatar->getActorFxOwnerId());
+                if (native_style.mEnabled
+                    && (native_style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+                        || (native_style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+                            && native_style.mStyle == 10))) // GHOST_STYLE_DISSOLVE (see shared_actor_fx_style_suppresses)
+                {
+                    added_wearers.erase(avatar->getID());
+                    continue;
+                }
+            }
 
             SharedActorStyleProxy proxy;
             proxy.mEffectShell = true;
@@ -19420,6 +19465,14 @@ LLVOAvatar* LLActorMover::sharedActorStyleProxyAvatar(size_t index) const
 {
     return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
         ? mSharedActorStyleProxies[index].mAvatar : nullptr;
+}
+
+// [CloneTransition] True for an effect-shell item: consumers that key on the proxy's avatar (Actor Mask forward
+// selection) must bypass it.
+bool LLActorMover::sharedActorStyleProxyIsShell(size_t index) const
+{
+    return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
+        && mSharedActorStyleProxies[index].mEffectShell;
 }
 
 F32 LLActorMover::sharedActorStyleProxyDepth(size_t index) const
@@ -20288,7 +20341,7 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
         shell_params.mWorldLinear = true;
         shell_params.mEffectOnly = true;
         shell_params.mTransition = proxy.mTransition;
-        shell_params.mNativeDepthAvailable = true;   // native beauty is NOT suppressed: its depth is the surface
+        shell_params.mNativeDepthAvailable = true;   // established at queue build: Cover/Replace/Layer+Dissolve bodies get no shell
         shell_params.mPhase = 0.f;
         const LLColor4 shell_tint(1.f, 1.f, 1.f, 1.f);
         bool shell_complete = true;

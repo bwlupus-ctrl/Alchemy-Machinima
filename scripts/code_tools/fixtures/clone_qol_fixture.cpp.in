@@ -71,7 +71,7 @@ struct LLGhostAvatar:LLVOAvatar{
 std::set<const LLGhostAvatar*> LLGhostAvatar::sOffsetHotGazes;
 void set_entity_clone_visible(LLGhostAvatar*,bool,bool);
 namespace ALCloneTransition{enum Reason{R_COMPLETE,R_CANCEL,R_SWAP_SOURCE,R_FADE,R_DELETE,R_GROUP_DELETE,R_RECOVERY,R_SCENE_LOAD,R_SHOW_CLONES_OFF,R_SOLO,R_EDIT_LOCK};}
-struct ALCloneTransitions{static void cancelFor(LLUUID,ALCloneTransition::Reason){}static void cancelAllRunning(ALCloneTransition::Reason){}};   // clone transitions (11/16): Studio hooks; no transition runs here
+struct ALCloneTransitions{static void cancelFor(LLUUID,ALCloneTransition::Reason){}static void cancelAllRunning(ALCloneTransition::Reason){}static bool anyRunning(){return false;}};   // clone transitions (11/16): Studio hooks; no transition runs here
 struct ALActorChoiceSource{LLUUID mId;std::string mLabel;};struct ALActorChoice{LLUUID mId;std::string mLabel,mSubjectLetters;U8 mSubjectMask=0;};
 std::vector<ALActorChoice> alBuildActorChoices(const LLUUID&,const std::array<LLUUID,4>&,const std::vector<ALActorChoiceSource>&);
 struct LLDirectorCast{

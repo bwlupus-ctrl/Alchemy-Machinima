@@ -62,7 +62,7 @@ struct LLDirectorCast{int touches=0;std::map<LLUUID,float> alpha;
  void touchCast(){++touches;}};
 struct LLGhostAvatar{bool visible=true;};
 namespace ALCloneTransition{enum Reason{R_COMPLETE,R_CANCEL,R_SWAP_SOURCE,R_FADE,R_DELETE,R_GROUP_DELETE,R_RECOVERY,R_SCENE_LOAD,R_SHOW_CLONES_OFF,R_SOLO,R_EDIT_LOCK};}
-struct ALCloneTransitions{static void cancelFor(LLUUID,ALCloneTransition::Reason){}static void cancelAllRunning(ALCloneTransition::Reason){}};   // clone transitions (11/16): the Studio hooks; no transition runs in this fixture
+struct ALCloneTransitions{static void cancelFor(LLUUID,ALCloneTransition::Reason){}static void cancelAllRunning(ALCloneTransition::Reason){}static bool anyRunning(){return false;}};   // clone transitions (11/16): the Studio hooks; no transition runs in this fixture
 void set_entity_clone_visible(LLGhostAvatar* ghost,bool visible,bool=false){ghost->visible=visible;}
 struct ALGhostStudio{
  enum{BACKING_OVERLAY,BACKING_ENTITY_CLONE,STATE_READY,STATE_TEARING_DOWN};
