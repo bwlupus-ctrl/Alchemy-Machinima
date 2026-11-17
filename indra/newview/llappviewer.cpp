@@ -82,6 +82,7 @@
 #include "alobjectpathmover.h"
 #include "alprojectortracker.h" // post-animation projector drives
 #include "alghoststudio.h"
+#include "alclonetransitions.h"   // [CloneTransition] clock tick, shutdown
 #include "llghostavatar.h"      // per-instance Keep facing transforms (idle tick)
 #include "alavatarstaging.h"    // staged avatar/ghost transforms (idle tick/logout)
 #include "aldanceball.h"        // client-only multi-avatar dance playback
@@ -2022,6 +2023,9 @@ bool LLAppViewer::cleanup()
     // Give any remaining SLPlugin instances a chance to exit cleanly.
     LLPluginProcessParent::shutdown();
 
+    // [CloneTransition] Shutdown: DISCARD any running transition and restore bodies BEFORE the disconnect
+    // tears the Studio's world down (the Studio has no teardown hook of its own).
+    ALCloneTransitions::shutdown();
     disconnectViewer();
     // [QuitCrash] Name tags with no source object (the Clone Studio nameplates) are never
     // removed by killAllObjects(); release them while the camera still exists (the final
@@ -5722,6 +5726,12 @@ void LLAppViewer::idle()
         ALGhostStudio::instance().updatePerFrame();
     }
     {
+        // [CloneTransition] The transition clock: p is snapshotted ONCE per frame here and read by every
+        // renderer this frame. A no-op (one integer compare) unless a transition runs.
+        LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle clone transitions");
+        ALCloneTransitions::tick();
+    }
+    {
         LL_PROFILE_ZONE_NAMED_CATEGORY_APP("idle avatar staging");
         ALAvatarStaging::instance().update();
     }
@@ -5751,6 +5761,9 @@ void LLAppViewer::idle()
             if (LLGhostAvatar::hasStayInPlaceAvatars()) LLGhostAvatar::applyStayInPlaceAvatars();
             // [AvatarLightResponse] per-frame table rebuild / counter roll / 1 Hz debug log
             ALAvatarLightResponse::tick();
+            // [CloneTransition] Every pose writer incl. Stay in place has run: refresh each running
+            // transition's presented body frame for this frame's renderers.
+            ALCloneTransitions::refreshBodyFrames();
         }
     }
 
@@ -6495,6 +6508,7 @@ void LLAppViewer::idleNetwork()
 
 void LLAppViewer::disconnectViewer()
 {
+    ALCloneTransitions::onDisconnect(); // [CloneTransition] logout / disconnect: DISCARD, restore (idempotent)
     if (LLIMModel::instanceExists()) LLIMModel::instance().clearGroupChatSnoozes();
     if (LLPresentationTime::instanceExists())
     {

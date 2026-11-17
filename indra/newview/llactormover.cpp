@@ -41,6 +41,8 @@
 
 #include "alghostattachmentenumerator.h"
 #include "alghoststudio.h"          // [GhostStudio] free-standing ghost instances
+#include "alclonetransitions.h"       // [CloneTransition] render-facing queries
+#include "alclonetransitionrender.h"
 #include "aoengine.h"               // self Director turns use the enabled AO turn state
 #include "llclonefidelityaudit.h"   // [CloneFidelity] early-capture hooks in the harvest
 #include "altoolghostedit.h"        // [R2-3] selected-ghost ring gates on the edit tool
@@ -12189,6 +12191,16 @@ static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
 static LLStaticHashedString sGhostAlphaCutoffMode("ghostAlphaCutoffMode");
 static LLStaticHashedString sGhostWorldLinear("ghostWorldLinear");
 static LLStaticHashedString sGhostGlowOnly("ghostGlowOnly");
+static LLStaticHashedString sGhostEffectOnly("ghostEffectOnly"); // [CloneTransition] effect shell
+// [CloneTransition] THE one place a ghost-family program gets its transition state. The mask and the effect-shell
+// flag are program state and always travel together, so a value left at 1 by a shell draw can never leak into the
+// next bind of the same program (key-fill / sil / coverage output). Every bind that uploads the transition goes
+// through here.
+static void upload_ghost_transition_state(LLGLSLShader& sh, const ALCloneTransition::RenderParams& params, bool effect_only)
+{
+    LLRenderPass::uploadCloneTransition(sh, params);
+    sh.uniform1i(sGhostEffectOnly, effect_only ? 1 : 0);
+}
 static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
 static LLStaticHashedString sGhostScreenSize("ghostScreenSize");
 static LLStaticHashedString sGhostScreenOrigin("ghostScreenOrigin");
@@ -13373,6 +13385,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             sh->uniform1i(indexed, 0);
             sh->uniform1i(material_slots, 0);
             sh->uniform1i(vec3_position, 0);
+            // [CloneTransition] chroma key / silhouette cover must see the same holes as beauty.
+            upload_ghost_transition_state(*sh, gp.mTransition, false);
         }
         else if (gp.mWorldLinear)
         {
@@ -13419,6 +13433,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             {
                 sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
             }
+            // [CloneTransition] mask + effect shell flag, reset on every bind (inactive = zeros).
+            upload_ghost_transition_state(*sh, gp.mTransition, gp.mEffectOnly);
             sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);
             if (!gp.mWorldLinear)
             {
@@ -14373,6 +14389,44 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         const S32 subset = coverage_blended ? SWEEP_BLEND : SWEEP_SOLID;
         draw_batches(subset, true, false, true);
         draw_static(subset, true, false, true);
+    }
+    else if (gp.mEffectOnly)
+    {
+        // [CloneTransition] EFFECT SHELL (PLAN 3.3). Additive edge over the retained native lit body:
+        // colour = edge * coverage + dst, no depth write, GL_LEQUAL against NATIVE depth, and NEVER a
+        // depth prime. Without native depth the shell is skipped (the mask runs alone). The shell
+        // never adds matte coverage and never replaces the body's RGB outside the edge band.
+        if (gp.mNativeDepthAvailable && !gp.mDepthOnly && !gp.mKeyFill && gp.mWorldLinear)
+        {
+            {
+                LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+                LLGLEnable blend(GL_BLEND);
+                gGL.setColorMask(true, true);
+                gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                              LLRender::BF_ZERO, LLRender::BF_ONE);
+                draw_batches(SWEEP_ALL, true, false, true);
+                draw_static(SWEEP_ALL, true, false, true);
+            }
+            {
+                // bloom: the same edge, alpha-only (Tron precedent)
+                ScopedSharedActorHDRDrawBuffer hdr_only(true);
+                LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+                LLGLEnable blend(GL_BLEND);
+                gGL.setColorMask(true, true);
+                gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                              LLRender::BF_ONE, LLRender::BF_ONE);
+                glow_only = true;
+                apply_program(shader);
+                draw_batches(SWEEP_ALL, true, false, true);
+                draw_static(SWEEP_ALL, true, false, true);
+                glow_only = false;
+                apply_program(shader); // never leak glow-only into the next item
+            }
+        }
+        else
+        {
+            complete = false;   // shell unavailable: fail open (the mask still runs natively)
+        }
     }
     else
     {
@@ -15650,6 +15704,8 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
     }
 }
 
+static bool studio_entity_overlay_wanted(ALGhostStudio& studio);   // [CloneTransition] defined with renderStudioGhosts
+
 void LLActorMover::collectGhostBatches()
 {
     // Shared Actor FX is strictly same-frame. Clear first so every early return
@@ -15679,7 +15735,11 @@ void LLActorMover::collectGhostBatches()
             path_ghosts = floaterp && floaterp->getVisible();
         }
     }
-    const bool studio = ALGhostStudio::instance().anyEnabled();
+    // [CloneTransition] entity clones drawn as an overlay (overlay look / running a1) and bodies with a
+    // running transition need their batches harvested even though they are not overlay sources.
+    const bool studio = ALGhostStudio::instance().anyEnabled()
+        || studio_entity_overlay_wanted(ALGhostStudio::instance())
+        || ALCloneTransitions::anyRunning();
     LLDirectorCast& director_cast = LLDirectorCast::instance();
     bool actor_styles = actor_style_wants_shared_replay(
         director_cast.getRenderActorStyle(LLUUID::null));
@@ -15750,6 +15810,23 @@ void LLActorMover::collectGhostBatches()
             if (av && !av->isDead())
             {
                 wanted.insert(av);
+            }
+        }
+        // [CloneTransition] entity bodies: steady overlay look, or a running transition (native mask /
+        // effect shell / a1 overlay half all read the harvested descriptors).
+        ALGhostStudio& entity_studio = ALGhostStudio::instance();
+        for (const ALGhostStudio::Instance& inst : entity_studio.getInstances())
+        {
+            if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
+            LLVOAvatar* body = entity_studio.resolveEntityClone(inst.mId);
+            if (!body || body->isDead()) continue;
+            if (inst.mOverlayLook >= 0
+                || (ALCloneTransitions::anyRunning()
+                    // the NATIVE transition (not the shell): Crossfade has no shell but its incoming Studio
+                    // layer still needs this body's harvested geometry
+                    && ALCloneTransitions::instance().nativeParamsFor(body->getID()).active))
+            {
+                wanted.insert(body);
             }
         }
     }
@@ -16078,6 +16155,14 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         {
             continue;
         }
+        // [CloneTransition] A transitioning clone is drawn by the forward Studio layers ONLY. The deferred
+        // queue's uploadGhostCoverage() disables Actor FX (including the transition uniform), so a Clone-look
+        // overlay submitted here would stay fully visible under the masked incoming look. Phase 1 excludes it
+        // (coverage then reads zero this frame, so the forward draw colours the whole body).
+        if (ALCloneTransitions::anyRunning() && ALCloneTransitions::instance().isRunning(inst.mId))
+        {
+            continue;
+        }
         // P0/P1 handle LIVE ghosts only; frozen-pose support is a later phase (P3).
         if (inst.mPose == ALGhostStudio::POSE_FROZEN)
         {
@@ -16401,6 +16486,65 @@ bool LLActorMover::captureStudioKeyScene(const S32 (&viewport)[4])
 
 void LLActorMover::releaseStudioKeyPrograms() { sStudioKeyPrograms.reset(); }
 
+// [CloneTransition] The entity body's current render scale, exactly as native rendering applies it
+// (LLRenderPass::applyModelMatrix: view * outer->mCurrent * model, mCurrent = S(scale) about outer->mFootPivot).
+// Harvested skin palettes and static face matrices do NOT include it. Returns true (and the scale pivot and
+// scale) only when native applies a non-unit outer transform; the attached Studio/shell placement
+// T(pivot) * S(scale) * T(-pivot) is then identical to outer->mCurrent, applied exactly once. Identity otherwise.
+static bool entity_outer_placement(const LLVOAvatar* av, LLVector3& pivot, F32& scale)
+{
+    if (!av || !av->hasClientOuterTransform()) return false;
+    const LLClientOuterTransform* outer = av->getClientOuterTransformHandle();
+    if (!outer || !outer->mEnabled || is_approx_equal(outer->mScale, 1.f) || !outer->mFootPivot.isFinite()
+        || !llfinite(outer->mScale))
+    {
+        return false;
+    }
+    pivot = outer->mFootPivot;
+    scale = outer->mScale;
+    return true;
+}
+
+// [CloneTransition] The ONE attached foot/pivot source for an entity body (Studio overlay AND effect shell, any
+// scale): the presented skeleton root minus pelvis-to-foot (what drawGeometryGhost pivots about by default, so
+// the unit-scale extra placement is identity, with no getRenderPosition pelvis-fixup term), or the outer
+// transform's scale pivot when native applies a render scale. `fallback` is used only without a root joint.
+static LLVector3 entity_attached_foot(LLVOAvatar* av, const LLVector3& fallback)
+{
+    LLVector3 foot = fallback;
+    if (av && av->getRootJoint())
+    {
+        F32 p2f = av->getPelvisToFoot();
+        p2f = llfinite(p2f) ? llmax(0.f, p2f) : 0.f;
+        const LLVector3 root = av->getRootJoint()->getWorldPosition();
+        foot.set(root.mV[VX], root.mV[VY], root.mV[VZ] - p2f);
+    }
+    LLVector3 outer_pivot;
+    F32 outer_scale = 1.f;
+    if (entity_outer_placement(av, outer_pivot, outer_scale)) foot = outer_pivot;
+    return foot;
+}
+
+// [CloneTransition] ENTITY clones drawn by the Studio overlay: a steady overlay look (Instance::mOverlayLook)
+// or a running a1 transition. Cheap: a scan of the instance list, and nothing at all unless one exists.
+static bool studio_entity_overlay_wanted(ALGhostStudio& studio)
+{
+    // O(1) when idle: no entity clone has an overlay look (counter) and nothing is running.
+    if (!studio.anyEntityOverlayLook() && !ALCloneTransitions::anyRunning()) return false;
+    for (const ALGhostStudio::Instance& inst : studio.getInstances())
+    {
+        if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE || !studio.isVisible(inst)) continue;
+        if (inst.mOverlayLook >= 0) return true;
+        if (ALCloneTransitions::anyRunning())
+        {
+            ALCloneTransitions::StudioLayers layers;
+            ALCloneTransitions::instance().studioLayersFor(inst.mId, layers);
+            if (layers.count > 0) return true;
+        }
+    }
+    return false;
+}
+
 void LLActorMover::renderStudioGhosts()
 {
     static U64 invocation = 0;
@@ -16414,7 +16558,8 @@ void LLActorMover::renderStudioGhosts()
     if (!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() || sStudioKeyBegin != ALActorChromaKey::finalizeSerial())
         scene_caches.begin(gSnapshot, pose_now);
     ALGhostStudio& studio = ALGhostStudio::instance();
-    if (!studio.anyEnabled())
+    const bool entity_overlay = studio_entity_overlay_wanted(studio);
+    if (!studio.anyEnabled() && !entity_overlay)
     {
         return;
     }
@@ -16433,23 +16578,44 @@ void LLActorMover::renderStudioGhosts()
         // [GhostDeferred] which overlay categories this clone's harvested
         // geometry actually CONTAINS (zero for non-clone styles -- unused)
         GhostCoverageMask mPresent = GHOST_COVERAGE_NONE;
+        bool mPresentClassified = false;   // [CloneTransition] mPresent is meaningful (a Clone-look layer exists)
+        // [CloneTransition] ENTITY clone drawn as an overlay of its own body (attached placement), and
+        // the transition layers of this frame (count 0 = the instance's ordinary single draw).
+        bool mEntity = false;
+        ALCloneTransitions::StudioLayers mLayers;
     };
     std::vector<StudioItem> items;
     bool phase2 = false;
     for (ALGhostStudio::Instance& inst : studio.getInstances())
     {
         inst.mStyle = ALGhostStudio::remapRetiredOverlayStyle(inst.mStyle);
-        if (inst.mKind != ALGhostStudio::BACKING_OVERLAY || !studio.isVisible(inst)
-            || (ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame() && !(inst.mAlpha > 0.f))
+        // [CloneTransition] an ENTITY clone qualifies only through an overlay look or a running a1
+        // transition; every other entity clone is untouched (byte-identical to before).
+        const bool entity_inst = inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+        ALCloneTransitions::StudioLayers layers;
+        if (ALCloneTransitions::anyRunning())
+        {
+            ALCloneTransitions::instance().studioLayersFor(inst.mId, layers);
+        }
+        if ((inst.mKind != ALGhostStudio::BACKING_OVERLAY && !entity_inst) || !studio.isVisible(inst)
+            || (ALActorChromaKey::sActive && ALActorChromaKey::keyedThisFrame() && !(inst.mAlpha > 0.f) && !entity_inst)
             || !(inst.mFadeAlpha > 0.f))
         {
             continue;
         }
-        LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);
+        if (entity_inst && inst.mOverlayLook < 0 && layers.count == 0)
+        {
+            continue;   // an ordinary entity clone: the native body draws it, nothing for the overlay
+        }
+        LLVOAvatar* av = entity_inst ? studio.resolveEntityClone(inst.mId)
+                                     : ALGhostStudio::resolveOverlayAvatar(inst);
         if (!av || av->isDead())
         {
             continue;
         }
+        // N3: the periodic system-part validation of a steady overlay look runs BEFORE rendering, in
+        // ALGhostStudio::updatePerFrame (a drop here would leave the clone invisible for one frame); no state
+        // mutation in this loop.
         if (inst.mPoseRateHz > 0.f) studio.refreshPoseCadence(inst.mId, pose_now);
         if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, pose_now);
         if (inst.mOverlayAvatar.notNull() && inst.mPose == ALGhostStudio::POSE_FROZEN && inst.mFrozenPalettes.empty()) studio.freezeInstance(inst.mId);
@@ -16462,8 +16628,17 @@ void LLActorMover::renderStudioGhosts()
         // [GhostDeferred] classify what the clone's geometry contains, so the
         // suppression below can compare against the pipeline's coverage and the
         // draw can color only the uncovered categories (no rescan inside).
+        // [CloneTransition] classify whenever ANY look this item draws is the Clone look (the instance's own
+        // style, an entity's overlay look, or either transition layer), not only when the instance's original
+        // style is Clone: Hologram->Clone otherwise left `present` NONE and the incoming Clone layer was skipped as
+        // "fully covered". `present_classified` distinguishes "not classified" from "classified, nothing present".
+        bool needs_clone_coverage = (!entity_inst && inst.mStyle == GHOST_STYLE_CLONE)
+            || (entity_inst && ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook) == GHOST_STYLE_CLONE);
+        for (S32 k = 0; k < layers.count && k < 2; ++k)
+            needs_clone_coverage |= ALGhostStudio::remapRetiredOverlayStyle(layers.layer[k].look) == GHOST_STYLE_CLONE;
         GhostCoverageMask present = GHOST_COVERAGE_NONE;
-        if (inst.mStyle == GHOST_STYLE_CLONE)
+        const bool present_classified = needs_clone_coverage;
+        if (needs_clone_coverage)
         {
             if (batches)
             {
@@ -16492,9 +16667,27 @@ void LLActorMover::renderStudioGhosts()
                 }
             }
         }
-        phase2 |= inst.mAlpha > 0.f && studio_phase2_look(inst.mStyle);
-        items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics,
-                          gAgent.getPosAgentFromGlobal(inst.mFootGlobal), present });
+        // [CloneTransition] attached placement for an ENTITY body: identity extra rotation, foot = the body's own
+        // presented root, or its outer-transform scale pivot when native applies a render scale (applied once).
+        LLVector3 foot_agent = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
+        if (entity_inst)
+        {
+            // The scale pivot (not root - pelvisToFoot) is native's scale origin: Stay in place and Floor
+            // placement move it off the root. Attached placement keeps foot == pivot (identity extra placement).
+            foot_agent = entity_attached_foot(av, foot_agent);
+        }
+        if (layers.count > 0)
+        {
+            for (S32 k = 0; k < layers.count && k < 2; ++k)
+                phase2 |= studio_phase2_look(ALGhostStudio::remapRetiredOverlayStyle(layers.layer[k].look));
+        }
+        else if (entity_inst)
+        {
+            phase2 |= studio_phase2_look(ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook));
+        }
+        phase2 |= !entity_inst && inst.mAlpha > 0.f && studio_phase2_look(inst.mStyle);
+        items.push_back({ &inst, av, batches ? batches : &sNoBatches, statics, foot_agent, present,
+                          present_classified, entity_inst, layers });
     }
     if (items.empty())
     {
@@ -16578,9 +16771,18 @@ void LLActorMover::renderStudioGhosts()
                        > (b.mFootAgent - cam_pos).magVecSquared();
               });
 
-    for (const StudioItem& item : items)
+    // [CloneTransition] one iteration per Studio layer: Look->Look and a1 draw the SAME body twice (look A
+    // outgoing / look B incoming, same coordinate, complementary masks); everything else draws once.
+    for (const StudioItem& item_in : items)
+    for (S32 layer_index = 0; layer_index < (item_in.mLayers.count > 0 ? item_in.mLayers.count : 1); ++layer_index)
     {
+        const StudioItem& item = item_in;
         const ALGhostStudio::Instance& inst = *item.mInst;
+        const bool layered = item.mLayers.count > 0;
+        const S32 look_id = layered
+            ? ALGhostStudio::remapRetiredOverlayStyle(item.mLayers.layer[layer_index].look)
+            : (item.mEntity ? ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook) : inst.mStyle);
+        const F32 draw_alpha = item.mEntity ? 1.f : inst.mAlpha;
         const auto key_policy = ALActorChromaKey::sActive ? ALActorChromaKey::studioPolicy(inst.mId)
             : ALActorChromaKey::StudioPolicy::Look;
         if (key_policy == ALActorChromaKey::StudioPolicy::Skip) continue;
@@ -16602,10 +16804,10 @@ void LLActorMover::renderStudioGhosts()
         // otherwise drawGeometryGhost colors just the uncovered categories.
         // Frozen / culled / failed clones read zero coverage -> full overlay.
         GhostCoverageMask coverage = GHOST_COVERAGE_NONE;
-        if (inst.mStyle == GHOST_STYLE_CLONE)
+        if (look_id == GHOST_STYLE_CLONE)
         {
             coverage = gPipeline.getGhostDeferredCoverageThisFrame(inst.mId);
-            if ((item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)
+            if (item.mPresentClassified && (item.mPresent & ~coverage) == GHOST_COVERAGE_NONE)
             {
                 continue;
             }
@@ -16666,6 +16868,30 @@ void LLActorMover::renderStudioGhosts()
             gp.mPivotFootAgent = inst.mCadenceFootAgent;
             gp.mFrozenPalettes = &inst.mCadencePalettes;
         }
+        if (item.mEntity)
+        {
+            // [CloneTransition] ATTACHED placement (PLAN 2.3): the entity's own body, drawn from its own
+            // skinning palette: identity extra rotation; the entity's render scale comes from its outer
+            // transform (palettes/face matrices do not carry it), foot = the scale pivot. Same frame as native.
+            gp.mRotation = LLQuaternion();
+            gp.mScale = 1.f;
+            gp.mHavePivot = false;
+            gp.mFrozenPalettes = nullptr;
+            gp.mFrozenAttachMats = nullptr;
+            // The entity's own render scale, applied once (item.mFootAgent is already the scale pivot).
+            LLVector3 outer_pivot;
+            F32 outer_scale = 1.f;
+            if (entity_outer_placement(item.mAv, outer_pivot, outer_scale))
+            {
+                gp.mScale = outer_scale;
+                gp.mHavePivot = true;
+                gp.mPivotFootAgent = outer_pivot;
+            }
+        }
+        if (layered)
+        {
+            gp.mTransition = item.mLayers.layer[layer_index].params;
+        }
         gp.mShimmerSpeed     = inst.mShimmerSpeed;
         gp.mShimmerIntensity = inst.mShimmerIntensity;
         gp.mPixelSize        = inst.mPixelSize;
@@ -16690,10 +16916,10 @@ void LLActorMover::renderStudioGhosts()
         gp.mDeferredCoverage = coverage;
         gp.mPresentCoverage  = item.mPresent;
         gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]
-        gp.mIsClone = inst.mStyle == GHOST_STYLE_CLONE;
+        gp.mIsClone = look_id == GHOST_STYLE_CLONE;
 
         F32 radius = 0.f;
-        auto instance_frame = studio_prepare_item(inst.mStyle, inst.mAlpha, phase2,
+        auto instance_frame = studio_prepare_item(look_id, draw_alpha, phase2,
             [&]()
             {
                 if (!item.mAv->getRootJoint() || !item.mFootAgent.isFinite()) return false;
@@ -16701,7 +16927,7 @@ void LLActorMover::renderStudioGhosts()
                 return LLViewerCamera::getInstance()->sphereInFrustum(item.mFootAgent, radius) != 0;
             },
             [&]() { return *look_frame; });
-        if (inst.mStyle == GHOST_STYLE_DATAMOSH && instance_frame)
+        if (look_id == GHOST_STYLE_DATAMOSH && instance_frame)
         {
             StudioMotion& previous = motion[inst.mId];
             const glm::vec4 clip = clip_from_agent * glm::vec4(item.mFootAgent.mV[VX],
@@ -16714,7 +16940,7 @@ void LLActorMover::renderStudioGhosts()
             instance_frame->mVelocity = studio_screen_velocity(previous, *view, item.mAv->getID(),
                 item.mAv, pose_now, inst.mFootGlobal, screen, valid);
         }
-        studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),
+        studio_draw_item(look_id, draw_alpha, instance_frame.has_value(),
             instance_frame ? &*instance_frame : nullptr,
             [&]() -> LLImageGL*
             {
@@ -16737,8 +16963,8 @@ void LLActorMover::renderStudioGhosts()
             [&](const StudioLookFrame* inputs)
             {
                 drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
-                    llclamp(inst.mAlpha, 0.f, 1.f) * inst.mFadeAlpha,
-                    ALGhostStudio::resolveOverlayStyle(inst.mStyle), gp,
+                    llclamp(draw_alpha, 0.f, 1.f) * inst.mFadeAlpha,
+                    ALGhostStudio::resolveOverlayStyle(look_id), gp,
                     item.mStatic, nullptr, inputs);
             });
     }
@@ -16810,7 +17036,8 @@ void LLActorMover::renderStudioGhosts()
 // Keep this a two-sweep API so the shared proxy scheduler can submit SOLID at
 // the opaque boundary and BLEND in its ordered alpha stage.
 bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
-                                             const LLUUID& style_id) const
+                                             const LLUUID& style_id,
+                                             const ALCloneTransition::RenderParams* shell) const
 {
     if ((ALDerenderList::keepsAvatarLive(avatar) || LLGhostAvatar::isRenderHidden(avatar))) return false;
     if (!avatar || avatar->isDead() || avatar->isControlAvatar()
@@ -16844,6 +17071,10 @@ bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
         return false;
     }
 
+    if (shell && shell->active)
+    {
+        return true;   // [CloneTransition] the shell needs no Actor FX style
+    }
     const LLDirectorCast::ActorStyle& style =
         LLDirectorCast::instance().getRenderActorStyle(style_id);
     return style.mEnabled
@@ -16945,6 +17176,10 @@ U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cove
     body_shader.uniform2fv(sSilCover, 1, cover.mV);
     body_shader.uniform1i(sSilBlended, phase != 0 ? 1 : 0);
     body_shader.setMinimumAlpha(phase != 0 ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+    // [CloneTransition] chroma key / silhouette cover sees the same transition holes as beauty.
+    const ALCloneTransition::RenderParams& sil_transition =
+        LLDirectorCast::instance().transitionCoverageFor(avatar->getID());
+    LLRenderPass::uploadCloneTransition(body_shader, sil_transition);
     if (LLPipeline::RenderAvatarCloth)
     {
         LLMatrix4 rot_mat;
@@ -16987,6 +17222,7 @@ U32 LLActorMover::renderSystemSilCover(LLVOAvatar* avatar, const LLVector2& cove
         eye_shader.uniform2fv(sSilCover, 1, cover.mV);
         eye_shader.uniform1i(sSilBlended, 0);
         eye_shader.setMinimumAlpha(LLDrawPoolAvatar::sMinimumAlpha);
+        LLRenderPass::uploadCloneTransition(eye_shader, sil_transition);
         if (!key) draws += avatar->renderRigid() ? 1 : 0;
         else
         {
@@ -17011,15 +17247,30 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
                                           const LLUUID& style_id,
                                           bool blend_sweep,
                                           bool depth_only,
-                                          bool depth_available)
+                                          bool depth_available,
+                                          const ALCloneTransition::RenderParams* shell)
 {
-    if (!canRenderSystemActorGhost(avatar, style_id))
+    const bool effect_shell = shell && shell->active;
+    if (!canRenderSystemActorGhost(avatar, style_id, shell))
     {
         return false;
     }
 
-    const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getRenderActorStyle(style_id);
+    // [CloneTransition] the shell replays with a synthetic textured Layer style (alpha cutouts only; its
+    // RGB is replaced by the additive edge in actorghostF). Never an authored Actor FX style.
+    LLDirectorCast::ActorStyle shell_style;
+    if (effect_shell)
+    {
+        shell_style.mEnabled = true;
+        shell_style.mMode = LLDirectorCast::ACTOR_STYLE_LAYER;
+        shell_style.mStyle = static_cast<S32>(LLDirectorCast::ACTOR_LOOK_FORWARD_FALLBACK);
+        shell_style.mAlpha = 1.f;
+    }
+    const LLDirectorCast::ActorStyle& style = effect_shell
+        ? shell_style : LLDirectorCast::instance().getRenderActorStyle(style_id);
+    // [CloneTransition] the native mask applies to the replay of a transitioning body too.
+    const ALCloneTransition::RenderParams& transition_params = effect_shell
+        ? *shell : LLDirectorCast::instance().transitionCoverageFor(avatar->getID());
     const S32 look = llclamp(
         style.mStyle,
         static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
@@ -17165,6 +17416,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         shader.uniform2f(sGhostAlpha, 1.f, 1.f);
         shader.uniform1i(sGhostWorldLinear, 1);
         shader.uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
+        upload_ghost_transition_state(shader, transition_params, effect_shell);
         shader.uniform2fv(sGhostFragOffset, 1, frag_offset.mV);
         shader.uniform2fv(sGhostScreenSize, 1, screen_size.mV);
         shader.uniform1f(sGhostDissolveProgress, gp.mDissolveProgress);
@@ -17231,6 +17483,13 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
         // alpha (bloom) untouched -- the glow_only replay below owns the
         // suit's bloom and the trailing restores put the split blend back.
         // Cover and every other look keep the blend state above.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                      LLRender::BF_ZERO, LLRender::BF_ONE);
+    }
+    if (effect_shell)
+    {
+        // Additive only: colour = edge * coverage + dst; HDR alpha (bloom) untouched here, the shell's own
+        // glow replay publishes it. No depth write (write_solid_depth is false for a non-replacing style).
         gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
                       LLRender::BF_ZERO, LLRender::BF_ONE);
     }
@@ -17351,7 +17610,7 @@ bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
     // layout, so replay them through their own actorghost permutations. This is
     // the same geometry/coverage path as beauty, now with RGB preserved and the
     // animated treatment energy accumulated into HDR bloom alpha only.
-    if (!depth_only && LLRenderPass::actorFxLookNeedsSyntheticBloom(look))
+    if (!depth_only && (effect_shell || LLRenderPass::actorFxLookNeedsSyntheticBloom(look)))
     {
         ScopedSharedActorHDRDrawBuffer hdr_only(true);
         LLGLDepthTest glow_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
@@ -17940,6 +18199,33 @@ F32 shared_native_layer_alpha_depth(LLSpatialGroup* group, F32 fallback)
     return fallback;
 }
 } // anonymous namespace
+
+// [CloneTransition] N4: per-component shell eligibility. The shell is depth-tested against the NATIVE surface and never
+// primes depth, so a component belongs in it only when native draws that component's colour AND depth. Resolves the
+// component's own Actor FX owner with the wearer fallback exactly as native suppression does
+// (LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo&): hidden / kept-live sources, then
+// resolveStoredActorStyle(owner, fallback)), but WITHOUT its side effects (Actor Mask / key capture suppress
+// records) and independent of the per-frame proxy readiness (conservative: an owning style means no shell).
+// A null drawinfo carries no owner of its own, so the wearer-level test made by the caller stands.
+static bool shell_component_native_surface(const LLDrawInfo* info)
+{
+    if (!info) return true;
+    if (LLGhostAvatar::isRenderHidden(info->mAvatar, info->mActorFxOwner, info->mActorFxFallbackOwner)
+        || ALDerenderList::keepsAvatarLive(info->mAvatar)
+        || ALDerenderList::isHiddenSource(info->mActorFxOwner)
+        || ALDerenderList::isHiddenSource(info->mActorFxFallbackOwner))
+    {
+        return false;
+    }
+    if (info->mActorFxOwner.isNull()) return true;
+    LLUUID owner;
+    const LLDirectorCast::ActorStyle& style = LLDirectorCast::instance().resolveStoredActorStyle(
+        info->mActorFxOwner, info->mActorFxFallbackOwner, owner);
+    return !(style.mEnabled
+             && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE   // Cover / Replace (alpha 0 = absent)
+                 || (style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+                     && style.mStyle == 10)));                         // Layer + Dissolve owns native beauty
+}
 
 void LLActorMover::buildSharedActorStyleQueue()
 {
@@ -19117,6 +19403,118 @@ void LLActorMover::buildSharedActorStyleQueue()
         add_actor(member.mId);
     }
 
+    // [CloneTransition] EFFECT SHELL items (PLAN 3.3): one per entity body with a running transition that has
+    // an edge (Dissolve / Wipe). Not Cast-gated, not style-gated. Fails open: any unprovable descriptor drops
+    // the shell for this body this frame and the native mask runs alone.
+    if (ALCloneTransitions::anyRunning())
+    {
+        ALGhostStudio& shell_studio = ALGhostStudio::instance();
+        for (const ALGhostStudio::Instance& inst : shell_studio.getInstances())
+        {
+            if (inst.mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
+            LLVOAvatar* avatar = shell_studio.resolveEntityClone(inst.mId);
+            if (!avatar || avatar->isDead()) continue;
+            const ALCloneTransition::RenderParams& shell =
+                ALCloneTransitions::instance().shellParamsFor(avatar->getID());
+            if (!shell.active || shell.style == ALCloneTransition::STYLE_CROSSFADE
+                || shell.style == ALCloneTransition::STYLE_NONE) continue;
+            if (!actor_visible_in_main_cull(avatar)
+                || !added_wearers.insert(avatar->getID()).second)
+            {
+                continue;
+            }
+            // The shell is depth-tested against the NATIVE surface and never primes depth. That surface exists only
+            // while native beauty is drawn: an Actor FX Cover/Replace (incl. alpha 0 = "absent") or Layer+Dissolve
+            // style owns or suppresses the native draw, so the shell would test against background depth and glow
+            // where nothing was rendered. Skip it there; the mask alone still reads.
+            {
+                const LLDirectorCast::ActorStyle& native_style =
+                    LLDirectorCast::instance().getRenderActorStyle(avatar->getActorFxOwnerId());
+                if (native_style.mEnabled
+                    && (native_style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+                        || (native_style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+                            && native_style.mStyle == 10))) // GHOST_STYLE_DISSOLVE (see shared_actor_fx_style_suppresses)
+                {
+                    added_wearers.erase(avatar->getID());
+                    continue;
+                }
+            }
+
+            SharedActorStyleProxy proxy;
+            proxy.mEffectShell = true;
+            proxy.mActive = true;
+            proxy.mStyleId = avatar->getID();
+            proxy.mWearerId = avatar->getID();
+            proxy.mAvatar = avatar;
+            proxy.mTransition = shell;
+            bool shell_complete = true;
+            if (const std::vector<GhostBatch>* harvested = ghostBatchesFor(avatar->getID()))
+            {
+                for (const GhostBatch& batch : *harvested)
+                {
+                    LLDrawInfo* info = batch.mInfo;
+                    LLSpatialGroup* group = batch.mGroup;
+                    if (!info || !group || group->isDead()) { shell_complete = false; continue; }
+                    if (ghost_pass_is_glow(batch.mPass)) continue;   // glow duplicates base geometry
+                    // N4: only components native draws with depth: not alpha-blended passes (no native depth write),
+                    // not a component whose own owner / wearer-fallback style suppresses native beauty.
+                    if (ghost_pass_is_blend(batch.mPass) || !shell_component_native_surface(info)) continue;
+                    if (!group->isVisible()
+                        || (LLPipeline::sUseOcclusion && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
+                        || !gPipeline.hasRenderType(batch.mPass))
+                    {
+                        continue;
+                    }
+                    LLVOAvatar* drawing_avatar = info->mAvatar.get();
+                    if (!drawing_avatar || drawing_avatar->isDead()) { shell_complete = false; continue; }
+                    if (!shared_rigged_descriptor_ready(batch)) { shell_complete = false; continue; }
+                    proxy.mBatches.push_back(batch);
+                }
+            }
+            if (const std::vector<GhostStaticFace>* harvested = ghostStaticFacesFor(avatar->getID()))
+            {
+                for (const GhostStaticFace& source_face : *harvested)
+                {
+                    LLFace* face = source_face.mFace;
+                    LLDrawable* drawable = face ? face->getDrawable() : nullptr;
+                    LLSpatialGroup* group = drawable ? drawable->getSpatialGroup() : nullptr;
+                    if (!face || !drawable || drawable->isDead() || !group || group->isDead())
+                    {
+                        shell_complete = false;
+                        continue;
+                    }
+                    if (!drawable->isVisible() || !group->isVisible()
+                        || (LLPipeline::sUseOcclusion && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
+                        || !gPipeline.hasRenderType(face->getPoolType()))
+                    {
+                        continue;
+                    }
+                    if (!shared_static_descriptor_ready(source_face)) { shell_complete = false; continue; }
+                    // N4: same per-component rule as the rigged batches (blended statics write no native depth).
+                    if (source_face.mAlphaKind == 2 || !shell_component_native_surface(face->mDrawInfo)) continue;
+                    proxy.mStaticFaces.push_back(source_face);
+                }
+            }
+            const bool system_shell = !avatar->isControlAvatar()
+                && canRenderSystemActorGhost(avatar, avatar->getID(), &shell);
+            if (!shell_complete
+                || (!proxy.mBatches.empty() && !gWorldSkinnedActorGhostProgram.mProgramObject)
+                || (!proxy.mStaticFaces.empty() && !gWorldActorGhostProgram.mProgramObject)
+                || (!system_shell && proxy.mBatches.empty() && proxy.mStaticFaces.empty())
+                || gWorldSkinnedActorGhostProgram.getUniformLocation(sGhostEffectOnly) < 0)
+            {
+                continue;   // shell unavailable here: the mask alone still reads
+            }
+            // [CloneTransition] one attached foot source with the Studio overlay (never getRenderPosition: it
+            // carries the mesh pelvis fixup, which the skeleton-root pivot of drawGeometryGhost does not).
+            proxy.mFootAgent = entity_attached_foot(avatar, avatar->getRenderPosition());
+            proxy.mAlphaDepth = avatar->calcRiggedAlphaDepth();
+            if (!proxy.mFootAgent.isFinite() || !llfinite(proxy.mAlphaDepth)) continue;
+            proxy.mPart = ESharedActorStylePart::ACTOR_SOLID;
+            mSharedActorStyleProxies.push_back(std::move(proxy));
+        }
+    }
+
     std::stable_sort(mSharedActorStyleProxies.begin(),
                      mSharedActorStyleProxies.end(),
         [](const SharedActorStyleProxy& lhs,
@@ -19150,6 +19548,14 @@ LLVOAvatar* LLActorMover::sharedActorStyleProxyAvatar(size_t index) const
         ? mSharedActorStyleProxies[index].mAvatar : nullptr;
 }
 
+// [CloneTransition] True for an effect-shell item: consumers that key on the proxy's avatar (Actor Mask forward
+// selection) must bypass it.
+bool LLActorMover::sharedActorStyleProxyIsShell(size_t index) const
+{
+    return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
+        && mSharedActorStyleProxies[index].mEffectShell;
+}
+
 F32 LLActorMover::sharedActorStyleProxyDepth(size_t index) const
 {
     return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
@@ -19171,7 +19577,7 @@ bool LLActorMover::isSharedActorStyleActive(const LLUUID& actor_id) const
             || (proxy.mStyleId.isNull() && proxy.mAvatar
                 && proxy.mAvatar->isSelf()
                 && (actor_id.isNull() || actor_id == gAgentID));
-        if (proxy.mActive && matches)
+        if (proxy.mActive && !proxy.mEffectShell && matches)
         {
             return true;
         }
@@ -19194,7 +19600,7 @@ bool LLActorMover::isSharedActorStylePBRReady(const LLUUID& actor_id) const
             || (proxy.mStyleId.isNull() && proxy.mAvatar
                 && proxy.mAvatar->isSelf()
                 && (actor_id.isNull() || actor_id == gAgentID));
-        if (proxy.mActive && proxy.mPBRReady && matches)
+        if (proxy.mActive && !proxy.mEffectShell && proxy.mPBRReady && matches)
         {
             return true;
         }
@@ -19217,7 +19623,7 @@ bool LLActorMover::isSharedActorStyleReady(const LLUUID& actor_id) const
             || (proxy.mStyleId.isNull() && proxy.mAvatar
                 && proxy.mAvatar->isSelf()
                 && (actor_id.isNull() || actor_id == gAgentID));
-        if (proxy.mSuppressNativeBeauty && matches)
+        if (proxy.mSuppressNativeBeauty && !proxy.mEffectShell && matches)
         {
             return true;
         }
@@ -19256,7 +19662,7 @@ void LLActorMover::renderSharedActorStyleDepthPrepass()
         {
             continue;
         }
-        proxy.mDepthPrimed = renderSharedActorStyleProxyItem(proxy, true);
+        proxy.mDepthPrimed = !proxy.mEffectShell && renderSharedActorStyleProxyItem(proxy, true);
     }
 }
 
@@ -19996,6 +20402,67 @@ bool LLActorMover::renderSharedActorLegacyGlowCommands(
 bool LLActorMover::renderSharedActorStyleProxyItem(
     SharedActorStyleProxy& proxy, bool depth_only)
 {
+    if (proxy.mEffectShell)
+    {
+        // [CloneTransition] effect shell: its own tiny dispatch (never the style machinery above).
+        if (depth_only || !proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead()
+            || ALDerenderList::keepsAvatarLive(proxy.mAvatar) || LLGhostAvatar::isRenderHidden(proxy.mAvatar))
+        {
+            return false;
+        }
+        struct ShellReplayScope
+        {
+            explicit ShellReplayScope(bool& flag) : mFlag(flag) { mFlag = true; }
+            ~ShellReplayScope() { mFlag = false; }
+            bool& mFlag;
+        } shell_scope(mRenderingSharedActorStyle);
+        LLGLSLShader* saved_shell_shader = LLGLSLShader::sCurBoundShaderPtr;
+        const U32 saved_shell_unit = gGL.getCurrentTexUnitIndex();
+        GhostDrawParams shell_params;
+        shell_params.mWorldLinear = true;
+        shell_params.mEffectOnly = true;
+        shell_params.mTransition = proxy.mTransition;
+        // Every component in this proxy passed shell_component_native_surface() and is not alpha-blended at queue
+        // build (N4), so native draws it with depth; the wearer-level Actor FX test is the cheap first filter.
+        shell_params.mNativeDepthAvailable = true;
+        shell_params.mPhase = 0.f;
+        // The entity's render scale, applied once as native does (placement == outer->mCurrent); the system
+        // replay below applies the outer transform itself (renderSkinned), so only geometry needs it here.
+        // proxy.mFootAgent came from entity_attached_foot() at queue build: the same source at every scale.
+        const LLVector3 shell_foot = proxy.mFootAgent;
+        {
+            LLVector3 outer_pivot;
+            F32 outer_scale = 1.f;
+            if (entity_outer_placement(proxy.mAvatar, outer_pivot, outer_scale))
+            {
+                shell_params.mHavePivot = true;
+                shell_params.mPivotFootAgent = outer_pivot;
+                shell_params.mScale = outer_scale;
+            }
+        }
+        const LLColor4 shell_tint(1.f, 1.f, 1.f, 1.f);
+        bool shell_complete = true;
+        if (!proxy.mAvatar->isControlAvatar())
+        {
+            shell_complete &= renderSystemActorGhost(proxy.mAvatar, proxy.mStyleId, false, false, true,
+                                                     &proxy.mTransition);
+            shell_complete &= renderSystemActorGhost(proxy.mAvatar, proxy.mStyleId, true, false, true,
+                                                     &proxy.mTransition);
+        }
+        if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
+        {
+            bool geometry_complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, shell_foot, shell_tint, 1.f,
+                              GHOST_STYLE_CLONE, shell_params, &proxy.mStaticFaces, &geometry_complete);
+            shell_complete &= geometry_complete;
+        }
+        gGL.flush();
+        LLVertexBuffer::unbind();
+        if (saved_shell_shader && saved_shell_shader->mProgramObject) saved_shell_shader->bind();
+        else LLGLSLShader::unbind();
+        gGL.getTexUnit(saved_shell_unit)->activate();
+        return shell_complete;
+    }
     if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||
         (ALDerenderList::keepsAvatarLive(proxy.mAvatar) || LLGhostAvatar::isRenderHidden(proxy.mAvatar)))
     {
@@ -20062,6 +20529,8 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
     params.mPhase =
         (F32)(proxy.mWearerId.mData[0] | (proxy.mWearerId.mData[1] << 8))
         * (F_TWO_PI / 65536.f);
+    // [CloneTransition] the native mask follows the body into its Actor FX replay (same resolver).
+    params.mTransition = LLDirectorCast::instance().transitionCoverageFor(proxy.mWearerId);
 
     LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
     const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
@@ -20161,11 +20630,11 @@ void LLActorMover::renderSharedProxySilCover(U32 phase, const CoverPolicy& polic
     if (!hasSharedActorStyleProxies()) return;
     for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
     {
-        if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||
+        if (!proxy.mActive || proxy.mEffectShell || !proxy.mAvatar || proxy.mAvatar->isDead() ||
             (proxy.mBatches.empty() && proxy.mStaticFaces.empty()
              && proxy.mPBRCommands.empty()))
         {
-            continue;
+            continue;   // [CloneTransition] the shell never adds matte coverage
         }
         if ((phase == 0 && proxy.mPart != ESharedActorStylePart::ACTOR_SOLID) ||
             (phase != 0 && proxy.mPart == ESharedActorStylePart::SYSTEM_BLEND))
@@ -20178,6 +20647,7 @@ void LLActorMover::renderSharedProxySilCover(U32 phase, const CoverPolicy& polic
         params.mLightResponseKey = proxy.mWearerId;
         params.mSilCoverPhase = phase == 0 ? 1 : 2;
         params.mCoverPolicy = &policy;
+        params.mTransition = LLDirectorCast::instance().transitionCoverageFor(proxy.mWearerId); // [CloneTransition]
         if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
         {
             bool complete = true;

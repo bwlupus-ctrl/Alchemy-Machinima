@@ -415,6 +415,9 @@ public:
         bool        mSoloVisible = true;
         F32         mFadeAlpha = 1.f;
         bool        mUserHidden = false;    // faded out by the user (clone menu): session only, never saved
+        // [CloneTransition] Studio look id shown as an OVERLAY on this ENTITY clone's own body (-1 = the normal
+        // lit body). Session only: never in scene LLSD, never saved. The body is render-only hidden while it is >= 0.
+        S32         mOverlayLook = -1;
         F32         mStartOffset = 0.f;
         LLUUID      mCrowdId; // independent of grouping; session only
         U32         mCrowdRow = 0;
@@ -671,6 +674,21 @@ public:
     bool isVisible(const Instance& inst) const
     { return ALCloneQol::visible(mShowAll, inst.mEnabled, mSolo, inst.mSoloVisible) &&
              !(inst.mUserHidden && !(inst.mFadeAlpha > 0.f)); }    // a faded-out clone is hidden like Show clones off
+    // [CloneTransition] The render_only argument every set_entity_clone_visible caller passes: the Solo
+    // "hidden but animating" flag, plus the overlay-look flag while the clone is visible.
+    bool entityRenderOnly(const Instance& inst) const;
+    // [CloneTransition] Re-apply a clone's body visibility flags from its record (commit / rollback / recovery).
+    void reapplyEntityBodyFlags(const LLUUID& id);
+    // [CloneTransition] COMMIT of a transition that ends in (look >= 0) or leaves (-1) an overlay look.
+    bool setEntityOverlayLook(const LLUUID& id, S32 look);
+    // [CloneTransition] O(1): true while any entity clone has mOverlayLook >= 0 (counter kept by
+    // setEntityOverlayLook and removeInstance), so idle per-frame scans can skip the instance list.
+    bool anyEntityOverlayLook() const { return mOverlayLookCount > 0; }
+    // [CloneTransition] N3: an entity clone whose body is replaced or recovered keeps its overlay look only when
+    // the body has no system parts the Studio cannot draw (ALCloneTransitions::systemPartsVisible). Called at
+    // every body installation (applyEntityRuntimeState) and per frame for a late-loading bake; a failing clone
+    // drops to Normal look (native body visible) with a status note. True when the look was dropped.
+    bool dropUnsupportedOverlayLook(const LLUUID& id);
     bool isDeleting(const LLUUID& actor) const;
     bool isPrivateOverlayRuntime(const LLUUID& actor) const;
     // Shared body identity for attachments and private overlay pose consumers.
@@ -862,6 +880,7 @@ public:
     S32       setLockMode(const LLUUID& id, ELockMode mode);
     S32       ungroup(const LLUUID& id);
     std::vector<LLUUID> groupMembers(const LLUUID& id) const;
+    void      cancelGroupTransitions(const LLUUID& id); // [CloneTransition] D18: cancel every member a group edit touches
     const ALGhostGroupModel::Group* groupForMember(const LLUUID& id) const;
     ALGhostGroupModel::Group* groupForMember(const LLUUID& id);
     bool      renameGroup(const LLUUID& id, const std::string& name);
@@ -1078,6 +1097,15 @@ private:
     std::vector<Instance> mInstances;
     mutable std::map<LLUUID, size_t> mStableIndex, mRuntimeIndex;
     mutable bool mIndicesDirty = true;
+    S32 mOverlayLookCount = 0; // [CloneTransition] entity clones with mOverlayLook >= 0 (see anyEntityOverlayLook)
+    // [CloneTransition] THE state-setting boundary for the counter above. Invariant: mOverlayLookCount == the
+    // number of mInstances with mOverlayLook >= 0. Every insertion (pushInstance), whole-record copy (assignRecord),
+    // field write (setOverlayLookField) and erase (removeInstance) goes through accountOverlayLook.
+    void accountOverlayLook(S32 before, S32 after);
+    void setOverlayLookField(Instance& inst, S32 look);
+    void pushInstance(const Instance& inst);
+    void assignRecord(Instance& dst, const Instance& src);
+    bool dropUnsupportedOverlayLookOf(Instance& inst, LLVOAvatar* body);
     void rebuildIndices() const;
     void releaseOverlayHelper(const LLUUID& id);
     void releaseOverlayReference(const LLUUID& runtime);

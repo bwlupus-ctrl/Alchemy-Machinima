@@ -77,14 +77,18 @@ def check():
     assert 'gp.mEffectFps        = inst.mEffectFps' in overlay
     assert 'inst.mId.mData[0] | (inst.mId.mData[1] << 8)' in overlay
     assert '++invocation;' in overlay
-    assert 'studio_prepare_item(inst.mStyle, inst.mAlpha, phase2,' in overlay
-    assert 'studio_draw_item(inst.mStyle, inst.mAlpha, instance_frame.has_value(),' in overlay
+    # [CloneTransition] the per-layer look/alpha locals fall back to the instance's own look and alpha, so
+    # every non-transition overlay keeps exactly the old arguments.
+    assert 'studio_prepare_item(look_id, draw_alpha, phase2,' in overlay
+    assert 'studio_draw_item(look_id, draw_alpha, instance_frame.has_value(),' in overlay
+    assert ': (item.mEntity ? ALGhostStudio::remapRetiredOverlayStyle(inst.mOverlayLook) : inst.mStyle);' in overlay
+    assert 'const F32 draw_alpha = item.mEntity ? 1.f : inst.mAlpha;' in overlay
     assert overlay.count('studio_scene_copy(') == 1
     assert overlay.index('std::sort(items.begin()') < overlay.index('studio_scene_copy(') < overlay.index('drawGeometryGhost(')
     # Visibility/fade filtering must precede helper resolution and all Glass
     # preparation: zero presentation coverage must never copy the scene.
     gather_guard = overlay[overlay.index('for (ALGhostStudio::Instance& inst : studio.getInstances())'):
-                           overlay.index('LLVOAvatar* av = ALGhostStudio::resolveOverlayAvatar(inst);')]
+                           overlay.index('LLVOAvatar* av = entity_inst ? studio.resolveEntityClone(inst.mId)')]
     assert '!studio.isVisible(inst)' in gather_guard
     assert '|| !(inst.mFadeAlpha > 0.f)' in gather_guard
     assert gather_guard.index('!(inst.mFadeAlpha > 0.f)') < gather_guard.index('continue;')
@@ -111,7 +115,7 @@ def check():
     assert 'gIdleCallbacks.addFunction' in idle
     assert 'studio_scene_caches().expire(LLTimer::getTotalSeconds());' in idle
     assert 'gSnapshot' not in idle
-    assert overlay.index('scene_caches.begin(gSnapshot, pose_now)') < overlay.index('if (!studio.anyEnabled())')
+    assert overlay.index('scene_caches.begin(gSnapshot, pose_now)') < overlay.index('if (!studio.anyEnabled() && !entity_overlay)')  # [CloneTransition] entity overlays also keep the pass alive
     assert 'scene_caches.get(gSnapshot, look_frame->mViewport)' in overlay
     studio = Path('indra/newview/alghoststudio.cpp').read_text()
     # Clock upload is outside all held-pose/fade/helper dispatch. Pose cadence
@@ -712,6 +716,7 @@ int main(){for(int look=0;look<128;++look){
 #include <iostream>
 #include <map>
 #include <vector>
+#include "''' + Path('indra/newview/alclonetransition.h').resolve().as_posix() + r'''"
 using F32=float;using S32=int;using U64=unsigned long long;using U8=unsigned char;
 struct LLQuaternion{};struct LLVector3{};struct LLMatrix4{};struct LLColor3{};struct CoverPolicy;
 struct LLUUID{bool operator<(const LLUUID&)const{return false;}};

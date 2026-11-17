@@ -38,6 +38,8 @@
 #include "llagentdata.h"
 #include "llframetimer.h"
 #include "altron.h" // [TronT2] Actor FX "Tron Suit" (look 36) params
+#include "alclonetransitionrender.h" // clone transition uniform packing
+#include "alclonetransitions.h"
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
 
 #include <algorithm>
@@ -532,6 +534,12 @@ const LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
 const LLStaticHashedString sActorFxTronParams("actorFxTronParams");
 const LLStaticHashedString sActorFxTronParams2("actorFxTronParams2");
 const LLStaticHashedString sActorFxTronColor("actorFxTronColor");
+const LLStaticHashedString sActorFxTransition("actorFxTransition");
+const LLStaticHashedString sActorFxTransition2("actorFxTransition2");
+const LLStaticHashedString sActorFxTransitionEdge("actorFxTransitionEdge");
+const LLStaticHashedString sTransitionEyeToBody("transitionEyeToBody");
+// Programs that currently hold a non-zero transition mask (reset on the next draw they get).
+std::unordered_set<const LLGLSLShader*> sCloneTransitionDirty;
 // [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl
 const LLStaticHashedString sAlrEnabled("alrEnabled");
 const LLStaticHashedString sAlrParams("alrParams");
@@ -599,6 +607,54 @@ LLGLSLShader* get_actor_fx_shader()
 }
 
 // static
+void LLRenderPass::forgetCloneTransitionPrograms()
+{
+    sCloneTransitionDirty.clear();
+}
+
+// static
+void LLRenderPass::uploadCloneTransition(LLGLSLShader& shader, const ALCloneTransition::RenderParams& params)
+{
+    float eye_to_body[16];
+    const bool want = params.active && params.style != ALCloneTransition::STYLE_NONE
+        && ALCloneTransitionRender::packEyeToBody(params, gGLModelView, eye_to_body);
+    if (!want)
+    {
+        if (sCloneTransitionDirty.empty()) return;          // idle: no GL calls, no hashing
+        const auto it = sCloneTransitionDirty.find(&shader);
+        if (it == sCloneTransitionDirty.end()) return;
+        sCloneTransitionDirty.erase(it);
+        const F32 zero[4] = {0.f, 0.f, 0.f, 0.f};
+        shader.uniform4fv(sActorFxTransition, 1, zero);     // style 0 makes every other uniform inert
+        return;
+    }
+    const ALCloneTransitionRender::Uniforms u = ALCloneTransitionRender::packUniforms(params);
+    shader.uniform4fv(sActorFxTransition, 1, u.transition);
+    shader.uniform4fv(sActorFxTransition2, 1, u.transition2);
+    shader.uniform4fv(sActorFxTransitionEdge, 1, u.edge);
+    shader.uniformMatrix4fv(sTransitionEyeToBody, 1, GL_FALSE, eye_to_body);
+    sCloneTransitionDirty.insert(&shader);
+}
+
+namespace
+{
+// Native transition mask for one draw (PLAN 3.2): ONE resolver, shared by the UUID lookup path
+// (getRenderActorStyle) and the stored-owner path (resolveStoredActorStyle). Runs for every actor-fx
+// program draw, INCLUDING when shared replay disables the treatment.
+bool upload_native_clone_transition(const LLUUID& primary, const LLUUID& fallback)
+{
+    if (LLGLSLShader* shader = get_actor_fx_shader())
+    {
+        const ALCloneTransition::RenderParams& params =
+            LLDirectorCast::instance().transitionCoverageFor(primary, fallback);
+        LLRenderPass::uploadCloneTransition(*shader, params);
+        return params.active;
+    }
+    return false;
+}
+}
+
+// static
 void LLRenderPass::uploadActorFxDisabled()
 {
     if (LLGLSLShader* shader = get_actor_fx_shader())
@@ -607,6 +663,8 @@ void LLRenderPass::uploadActorFxDisabled()
         // Actor-FX uniforms are program state and otherwise leak from the last
         // styled attachment into unrelated world geometry using that program.
         shader->uniform1i(sActorFxEnabled, 0);
+        // The clone-transition mask is program state too: an unowned draw resets it.
+        uploadCloneTransition(*shader, ALCloneTransition::RenderParams());
     }
     // [AvatarLightResponse] an unowned/disabled draw must also reset the response so it
     // cannot leak from the last adjusted avatar drawn with this program.
@@ -941,20 +999,29 @@ bool LLRenderPass::uploadActorFxStyleOnly(const LLUUID& actor_id,
                                            bool allow_native_wire,
                                            bool force_native)
 {
+    bool result = false;
     if (!force_native && shared_actor_fx_replay_active(actor_id))
     {
         // Layer keeps the authored material as its base, but the treatment is
         // supplied exactly once by the shared forward-alpha replay. Cover is
         // normally skipped before reaching here; disabling is its safe fallback.
         uploadActorFxDisabled();
-        return false;
     }
-
-    // UUID callers and LLDrawInfo owners are canonicalized at their mutation /
-    // geometry-build boundaries; keep this per-draw path free of object lookup.
-    const LLDirectorCast::ActorStyle& style =
-        LLDirectorCast::instance().getRenderActorStyle(actor_id);
-    return upload_actor_fx_style(actor_id, style, allow_native_wire);
+    else
+    {
+        // UUID callers and LLDrawInfo owners are canonicalized at their mutation /
+        // geometry-build boundaries; keep this per-draw path free of object lookup.
+        const LLDirectorCast::ActorStyle& style =
+            LLDirectorCast::instance().getRenderActorStyle(actor_id);
+        result = upload_actor_fx_style(actor_id, style, allow_native_wire);
+    }
+    // Clone transition mask: independent of the treatment above, uploaded EVEN when replay disabled it.
+    if (upload_native_clone_transition(actor_id, LLUUID::null) && LLActorMaskEligibility::sArmed)
+    {
+        // [ActorMask] a running transition changes native coverage exactly like Dissolve does.
+        LLActorMaskEligibility::instance().coverageChanged(actor_id.isNull() ? gAgentID : actor_id);
+    }
+    return result;
 }
 
 // static
@@ -983,6 +1050,12 @@ bool LLRenderPass::uploadActorFx(const LLDrawInfo& params, bool force_native)
             if (LLActorMaskEligibility::sArmed && actor_mask_native_changes_coverage(style))
                 LLActorMaskEligibility::instance().coverageChanged(params);
             result = upload_actor_fx_style(owner, style, false);
+        }
+        // Clone transition mask: same resolver as the UUID path; attachments inherit the wearer's mask.
+        if (upload_native_clone_transition(params.mActorFxOwner, params.mActorFxFallbackOwner)
+            && LLActorMaskEligibility::sArmed)
+        {
+            LLActorMaskEligibility::instance().coverageChanged(params);   // [ActorMask] transition active
         }
     }
     if (LLGLSLShader* shader = LLGLSLShader::sCurBoundShaderPtr; shader && shader->mFeatures.hasWeatherMaterial)

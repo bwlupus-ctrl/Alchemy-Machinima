@@ -253,6 +253,10 @@ private:
     void onClickAnimSync();
     void onCrowdVariationCommit();
     void refreshCloneQol(const ALGhostStudio::Instance* inst);
+    // [CloneTransition] Clones page Transition card (Look > Transition): Target / Style / Duration / Ease /
+    // Direction, Go, Cancel and a status line. All through ALGhostCloneActions::transitionTo, like the menu.
+    void refreshTransitionCard(const LLUUID& row_value, bool have);
+    void onClickTransitionGo();
     LLButton* mSwapSourceBtn = nullptr;
     LLButton* mSoloBtn = nullptr;
     LLSpinCtrl* mStartOffset = nullptr;
@@ -505,6 +509,18 @@ private:
     LLSliderCtrl*     mBrightnessSlider = nullptr;    // [R2-1]
     LLSpinCtrl*       mEffectFps = nullptr;
     LLComboBox*       mEntityLookCombo = nullptr;
+    // [CloneTransition] null in the v1 floater (the card is a Director kit page only)
+    LLComboBox*       mTransitionTarget = nullptr;
+    LLComboBox*       mTransitionStyle = nullptr;
+    LLSpinCtrl*       mTransitionDuration = nullptr;
+    LLComboBox*       mTransitionEase = nullptr;
+    LLComboBox*       mTransitionDirection = nullptr;
+    LLButton*         mTransitionGoBtn = nullptr;
+    LLButton*         mTransitionCancelBtn = nullptr;
+    LLTextBox*        mTransitionStatus = nullptr;
+    std::string       mTransitionRefusal;          // why the last Go was refused (shown until the next Go or selection)
+    LLUUID            mTransitionShownFor;
+    U64               mTransitionTargetRevision = 0;
 
     LLButton*         mFreezeBtn = nullptr;
     LLButton*         mLiveBtn = nullptr;

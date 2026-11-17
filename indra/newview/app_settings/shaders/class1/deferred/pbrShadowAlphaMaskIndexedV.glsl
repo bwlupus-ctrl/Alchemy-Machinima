@@ -50,6 +50,12 @@ out vec4 post_pos;
 out vec4 vertex_color;
 out vec2 vary_texcoord0;
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
+#ifndef HAS_SKIN
+uniform mat4 modelview_matrix;   // rigid path: eye position for the transition coordinate
+#endif
 
 void main()
 {
@@ -65,6 +71,11 @@ void main()
     vec4 pos = modelview_projection_matrix * pre_pos;
 #endif
 
+#ifdef HAS_SKIN
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((mat * pre_pos).xyz, 1.0)).xyz : vec3(0.0);
+#else
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4((modelview_matrix * vec4(position.xyz, 1.0)).xyz, 1.0)).xyz : vec3(0.0);
+#endif
     post_pos = pos;
     gl_Position = pos;
 

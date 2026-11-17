@@ -1577,6 +1577,29 @@ void registerEntityCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
 
     enable.add("GhostClone.CheckSolo", [](LLUICtrl*, const LLSD&) { return ALGhostStudio::instance().getSolo(); });
     commit.add("GhostClone.Solo", [](LLUICtrl*, const LLSD&) { Actions::toggleSolo(sRows); });
+    // [CloneTransition] Appearance > Transition to...: each item opens the Clones page Transition card with
+    // the target filled in (look... = overlay clones, overlay_look... / normal = entity clones).
+    enable.add("GhostClone.EnableTransitionTo", [](LLUICtrl* ctrl, const LLSD& param)
+    {
+        const std::string kind = param.asString();
+        size_t plain = 0, overlaid = 0;
+        for (const LLUUID& id : liveTargets())
+        {
+            const ALGhostStudio::Instance* inst = ALGhostStudio::instance().getInstance(id);
+            if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE) ++(inst->mOverlayLook >= 0 ? overlaid : plain);
+        }
+        if (sAgg.mExpandedMember) return state(ctrl, false, "GhostCloneMenuNotReady");
+        if (kind == "look") return state(ctrl, sAgg.mOverlays > 0 && sAgg.mEntities == 0, "GhostCloneMenuNotReady");
+        if (kind == "overlay_look") return state(ctrl, sAgg.mEntities > 0 && sAgg.mOverlays == 0 && plain > 0, "GhostCloneMenuNotReady");
+        return state(ctrl, sAgg.mEntities > 0 && sAgg.mOverlays == 0 && overlaid > 0, "GhostCloneMenuNotReady");
+    });
+    commit.add("GhostClone.TransitionTo", [](LLUICtrl*, const LLSD& param)
+    {
+        // Normal look fills the target; the look items open the card as it is (the user picks the look).
+        if (param.asString() == "normal") Actions::requestTransitionTarget(Actions::TRANSITION_TARGET_NORMAL);
+        else Actions::requestTransitionTarget(Actions::TRANSITION_TARGET_PICK);
+        ALDirectorSelect::openCloneInDirector(sPicked);
+    });
     commit.add("GhostClone.Duplicate", [](LLUICtrl*, const LLSD&) { actDuplicate(); });
     commit.add("GhostClone.Delete", [](LLUICtrl*, const LLSD&) { actDelete(); });
 

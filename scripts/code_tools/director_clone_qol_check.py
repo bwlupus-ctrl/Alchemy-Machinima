@@ -61,6 +61,8 @@ struct LLDirectorCast{int touches=0;std::map<LLUUID,float> alpha;
  void setCloneFadeAlpha(LLUUID id,float a){alpha[id]=a;}void forgetCloneFade(LLUUID){}   // the mock has no non-member map: only a member carries alpha here
  void touchCast(){++touches;}};
 struct LLGhostAvatar{bool visible=true;};
+namespace ALCloneTransition{enum Reason{R_COMPLETE,R_CANCEL,R_SWAP_SOURCE,R_FADE,R_DELETE,R_GROUP_DELETE,R_RECOVERY,R_SCENE_LOAD,R_SHOW_CLONES_OFF,R_SOLO,R_EDIT_LOCK};}
+struct ALCloneTransitions{static void cancelFor(LLUUID,ALCloneTransition::Reason){}static void cancelAllRunning(ALCloneTransition::Reason){}static bool anyRunning(){return false;}};   // clone transitions (11/16): the Studio hooks; no transition runs in this fixture
 void set_entity_clone_visible(LLGhostAvatar* ghost,bool visible,bool=false){ghost->visible=visible;}
 struct ALGhostStudio{
  enum{BACKING_OVERLAY,BACKING_ENTITY_CLONE,STATE_READY,STATE_TEARING_DOWN};
@@ -77,6 +79,7 @@ struct ALGhostStudio{
  struct Member {LLUUID mInstanceId;};struct Group {std::vector<Member>mMembers;};
  const Group* groupForMember(LLUUID)const{return nullptr;}
  bool isVisible(const Instance& i)const{return ALCloneQol::visible(mShowAll,i.mEnabled,mSolo,i.mSoloVisible);}
+ bool entityRenderOnly(const Instance& i)const{return mShowAll&&i.mEnabled&&mSolo&&!i.mSoloVisible;}   // the production body adds the overlay-look term; no overlay looks here
  void setSelected(LLUUID id){mSelected=id;}
  void removeInstance(LLUUID id){if(getInstance(id)){++finalDeletes;mInstances.erase(std::remove_if(mInstances.begin(),mInstances.end(),[&](const Instance& i){return i.mId==id;}),mInstances.end());}}
  LLUUID actorOwner(const LLUUID& id)const{return id;}

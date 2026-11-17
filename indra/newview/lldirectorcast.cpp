@@ -28,6 +28,7 @@
 #include "alavatarsubjectpicker.h"
 #include "alsteppedanim.h"          // group rate offsets, per-actor override (de)serialisation
 #include "alavatarlightresponse.h" // [AvatarLightResponse]
+#include "alclonetransitions.h"       // transitionCoverageFor
 #include "llagentdata.h"             // gAgentID (stable even while self avatar is unavailable)
 #include "llghostavatar.h"          // LLGhostAvatar complete type for resolveEntityClone() upcast
 #include "llactormover.h"           // startAll/stopAll/placeAt (ACTION, marks)
@@ -1482,6 +1483,34 @@ const LLDirectorCast::ActorStyle& LLDirectorCast::resolveStoredActorStyle(
     return default_style;
 }
 
+const ALCloneTransition::RenderParams& LLDirectorCast::transitionCoverageFor(
+    const LLUUID& owner, const LLUUID& fallback) const
+{
+    static const ALCloneTransition::RenderParams inactive;
+    if (!ALCloneTransitions::anyRunning())
+    {
+        return inactive;   // idle: one static load, no singleton, no lookups
+    }
+    const ALCloneTransitions& transitions = ALCloneTransitions::instance();
+    if (owner.notNull())
+    {
+        const ALCloneTransition::RenderParams& params = transitions.nativeParamsFor(owner);
+        if (params.active)
+        {
+            return params;
+        }
+    }
+    if (fallback.notNull() && fallback != owner)
+    {
+        const ALCloneTransition::RenderParams& params = transitions.nativeParamsFor(fallback);
+        if (params.active)
+        {
+            return params;
+        }
+    }
+    return inactive;
+}
+
 LLDirectorCast::CastMember* LLDirectorCast::getMember(const LLUUID& id)
 {
     return getStoredMember(canonicalActorId(id));
@@ -2818,6 +2847,7 @@ LLSD LLDirectorCast::sceneData() const
 
 void LLDirectorCast::applySceneData(const LLSD& data)
 {
+    ALCloneTransitions::onSceneReplaced(); // clone transitions are session-only: roll back before membership is replaced
     // replace membership wholesale; a running transport is the caller's
     // problem (the console cuts before loading). Queued staggered starts and
     // group delays belong to the outgoing cast, so both reset here.

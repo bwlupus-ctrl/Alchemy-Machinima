@@ -932,6 +932,9 @@ struct LLUUID
     bool operator==(const LLUUID& o) const { return std::equal(mData, mData + 16, o.mData); }
     bool operator!=(const LLUUID& o) const { return !(*this == o); }
 };
+// clone transitions (fix round 1): applyCrowdVariation cancels affected transitions before a look assignment; none runs here
+namespace ALCloneTransition { enum Reason { R_EDIT_LOCK }; }
+struct ALCloneTransitions { static bool anyRunning() { return false; } static void cancelFor(const LLUUID&, ALCloneTransition::Reason) {} };
 struct Settings
 {
     S32 mode = 0, direction = 0; F32 spread = 0.f;
@@ -2463,9 +2466,15 @@ def look_turn_findings(src: dict[str, str], cpp: str) -> list[str]:
             sub(animation, "Recent Animations") is None:
         out.append("menu_ghost_clone.xml: Animation must hold Back to live, Restart animation, Flip left/right, Speed and Recent")
     appearance = sub(root, "Appearance")
-    if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Look", "Fade out", "Fade in"] or \
+    # Clone transitions (11/16): "Transition to..." sits beside Swap source; the expected list is re-pinned with it.
+    if appearance is None or [c.get("label") for c in appearance] != ["Swap source", "Transition to...", "Look", "Fade out", "Fade in"] or \
             sub(appearance, "Swap Source") is None:
-        out.append("menu_ghost_clone.xml: Appearance must hold Swap source, Look, Fade out and Fade in")
+        out.append("menu_ghost_clone.xml: Appearance must hold Swap source, Transition to..., Look, Fade out and Fade in")
+    elif (lambda node: node is None or [(c.get("name"), call(c)) for c in node if c.tag == "menu_item_call"] != [
+            ("Transition Look", ("GhostClone.TransitionTo", "look")),
+            ("Transition Overlay Look", ("GhostClone.TransitionTo", "overlay_look")),
+            ("Transition Normal Look", ("GhostClone.TransitionTo", "normal"))])(sub(appearance, "Transition To")):
+        out.append("menu_ghost_clone.xml: Transition to... must hold Look..., Overlay look... and Normal look, each calling GhostClone.TransitionTo")
     elif [(call(c), [(e.get("function"), e.get("parameter")) for e in c if e.tag.endswith("on_enable")])
           for c in appearance if c.tag == "menu_item_call"] != [
             (("GhostClone.Fade", "out"), [("GhostClone.EnableFade", "out")]),
@@ -3352,7 +3361,7 @@ def selftest() -> int:
         ("Fade out deletes the clone when its ramp ends",
          swap(src, "alghoststudio.cpp", "if (it->second.mFade.removing && inst->mDeleting) finished.push_back(it->first);   // a hidden-only fade ends at 0, never deletes", "if (it->second.mFade.removing) finished.push_back(it->first);")),
         ("fadeInstance deletes at zero",
-         swap(src, "alghoststudio.cpp", "    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    static LLCachedControl<F32> fade_in", "    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    if (hidden) { requestRemoveInstance(id); return true; }\n    static LLCachedControl<F32> fade_in")),
+         swap(src, "alghoststudio.cpp", "    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    ALCloneTransitions::cancelFor(id, ALCloneTransition::R_FADE); // [CloneTransition] ROLLBACK, then the fade (PLAN 2.6)\n    inst = getInstance(id);\n    if (!inst) return false;\n    static LLCachedControl<F32> fade_in", "    if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;\n    if (hidden) { requestRemoveInstance(id); return true; }\n    static LLCachedControl<F32> fade_in")),
         ("fadeInstance writes a setting",
          swap(src, "alghoststudio.cpp", "    const F32 target = hidden ? 0.f : 1.f;", "    gSavedSettings.setF32(\"GhostStudioFadeOut\", 0.f);\n    const F32 target = hidden ? 0.f : 1.f;")),
         ("fade state saved in a scene",
@@ -3437,7 +3446,7 @@ def selftest() -> int:
         ("a finished hide never re-gates the body",
          swap(src, "alghoststudio.cpp", "        else if (inst->mUserHidden && inst->mKind == BACKING_ENTITY_CLONE)", "        else if (false)")),
         ("fadeInstance does not refresh the instant path visibility",
-         swap(src, "alghoststudio.cpp", "        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);\n        if (LLGhostAvatar* ghost = resolveEntityClone(id))\n            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);\n        if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))\n            LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return true;",
+         swap(src, "alghoststudio.cpp", "        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);\n        if (LLGhostAvatar* ghost = resolveEntityClone(id))\n            set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));\n        if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))\n            LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept\n        return true;",
               "        if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);\n        return true;")),
         ("Delete of an invisible clone ramps 0 to 0",
          swap(src, "alghoststudio.cpp", "if (seconds <= 0.f || all_invisible)", "if (seconds <= 0.f)")),

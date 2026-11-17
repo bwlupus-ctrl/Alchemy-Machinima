@@ -16,6 +16,70 @@ uniform vec4 actorFxParams0;
 uniform vec4 actorFxParams1;
 uniform float actorFxDissolveProgress;
 
+// Clone transition native mask (PLAN 3.2). Independent of actorFxEnabled and every Actor FX
+// look: style 0 (the per-draw reset value) makes ctTransitionDiscard a uniform-only no-op.
+//   actorFxTransition  x = style (0 off, 1 Dissolve, 2 Wipe, 3 Crossfade), y = p, z = side, w = direction
+//   actorFxTransition2 x = body height (m), y = edge width (field units), zw = seed lo/hi 16 bits
+uniform vec4 actorFxTransition;
+uniform vec4 actorFxTransition2;
+// seed: two exact 16-bit halves in actorFxTransition2.zw (float uniforms only: no uint uniform path)
+uint ctSeed() { return uint(actorFxTransition2.z + 0.5) | (uint(actorFxTransition2.w + 0.5) << 16); }
+in vec3 vary_transition_pos;   // body-space transition coordinate (vertex shaders, final skinned position)
+
+// BEGIN CLONE TRANSITION FIELD (exact port of alclonetransition.h fieldValue/keeps; gate: clone_transition_render_check.py)
+float ctHash3(ivec3 c, uint seed)
+{
+    uint h = seed * 747796405u + 2891336453u;
+    h ^= uint(c.x) * 0x8da6b343u; h ^= uint(c.y) * 0xd8163841u; h ^= uint(c.z) * 0xcb1ab31fu;
+    h = (h ^ (h >> 16)) * 0x7feb352du;
+    h = (h ^ (h >> 15)) * 0x846ca68bu;
+    h ^= h >> 16;
+    return float(h >> 8) * (1.0 / 16777216.0);
+}
+float ctLerp(float a, float b, float t) { return a + (b - a) * t; }
+float ctValueNoise(vec3 pos, float cell, uint seed)
+{
+    vec3 q = pos / cell;
+    vec3 f = floor(q);
+    ivec3 i = ivec3(f);
+    vec3 t = q - f;
+    vec3 u = t * t * (3.0 - 2.0 * t);
+    float c000 = ctHash3(i + ivec3(0, 0, 0), seed), c100 = ctHash3(i + ivec3(1, 0, 0), seed);
+    float c010 = ctHash3(i + ivec3(0, 1, 0), seed), c110 = ctHash3(i + ivec3(1, 1, 0), seed);
+    float c001 = ctHash3(i + ivec3(0, 0, 1), seed), c101 = ctHash3(i + ivec3(1, 0, 1), seed);
+    float c011 = ctHash3(i + ivec3(0, 1, 1), seed), c111 = ctHash3(i + ivec3(1, 1, 1), seed);
+    float x00 = ctLerp(c000, c100, u.x), x10 = ctLerp(c010, c110, u.x);
+    float x01 = ctLerp(c001, c101, u.x), x11 = ctLerp(c011, c111, u.x);
+    return ctLerp(ctLerp(x00, x10, u.y), ctLerp(x01, x11, u.y), u.z);
+}
+// style: 1 Dissolve, 2 Wipe, 3 Crossfade. direction: 0 up, 1 down.
+float ctField(int style, vec3 pos, uint seed, float body_height, int direction)
+{
+    if (style == 1)
+    {
+        float n = 0.65 * ctValueNoise(pos, 0.11, seed) + 0.35 * ctValueNoise(pos, 0.037, seed ^ 0x5bd1e995u);
+        return clamp((n - 0.15) / 0.70, 0.0, 0.99999);
+    }
+    if (style == 2)
+    {
+        float h = max(body_height, 0.1);
+        float z = clamp(pos.z / h, 0.0, 0.99999);
+        return direction == 1 ? 0.99999 - z : z;
+    }
+    if (style == 3)
+    {
+        ivec3 cell = ivec3(floor(pos / 0.015));
+        return min(ctHash3(cell, seed), 0.99999);
+    }
+    return 0.0;
+}
+// side: 0 outgoing keeps f >= p, 1 incoming keeps f < p.
+bool ctKeeps(int side, float field, float p)
+{
+    return side == 0 ? field >= p : field < p;
+}
+// END CLONE TRANSITION FIELD
+
 
 float cloneFadeCoverage(float progress)
 {
@@ -92,8 +156,27 @@ float actorFxDissolveCoverage(vec3 object_position)
     return field - threshold;
 }
 
+// Shared entry for beauty (called from actorFxTronPrime in actorFxF.glsl) and every shadow /
+// velocity / depth program (called from actorFxDissolveDiscard below). Never reads
+// actorFxEnabled: the mask is independent of the Actor FX treatment (replay disables it).
+bool actorFxTransitionDiscard()
+{
+    if (actorFxTransition.x < 0.5)
+    {
+        return false;
+    }
+    float f = ctField(int(actorFxTransition.x + 0.5), vary_transition_pos, ctSeed(),
+                      actorFxTransition2.x, int(actorFxTransition.w + 0.5));
+    return !ctKeeps(int(actorFxTransition.z + 0.5), f, actorFxTransition.y);
+}
+
 bool actorFxDissolveDiscard(vec3 object_position)
 {
+    // Transition first: a pixel is discarded if the transition OR the existing coverage discards it.
+    if (actorFxTransitionDiscard())
+    {
+        return true;
+    }
     // Keep every non-Dissolve fragment on the uniform-only fast path.
     if (!actorFxDissolveEnabled())
     {

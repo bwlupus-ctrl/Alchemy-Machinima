@@ -33,6 +33,10 @@ in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;
 #endif
+// clone transition coordinate: unguarded, silCoverF (no HAS_ACTOR_FX) consumes it too
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 in vec3 normal;
 in vec2 texcoord0;
 #ifdef AVATAR_CLOTH
@@ -143,6 +147,7 @@ void main()
     vary_normal = norm;
 
     vary_position = pos.xyz;
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
     gl_Position = projection_matrix * pos;
 }
 

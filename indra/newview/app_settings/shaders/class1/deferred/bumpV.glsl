@@ -32,6 +32,9 @@ invariant gl_Position; // [VelZFight] Keep beauty depth reproducible on replay.
 in vec3 position;
 #ifdef HAS_ACTOR_FX
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 #endif
 in vec4 diffuse_color;
 in vec3 normal;
@@ -72,6 +75,9 @@ void main()
     vec3 t = normalize(normal_matrix * tangent.xyz);
 #endif
 
+#ifdef HAS_ACTOR_FX
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);
+#endif
     vec3 b = cross(n, t) * tangent.w;
     vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;
 

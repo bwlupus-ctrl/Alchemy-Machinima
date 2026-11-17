@@ -28,6 +28,9 @@ uniform mat4 projection_matrix;
 
 in vec3 position;
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 
 mat4 getObjectSkinnedTransform();
 
@@ -39,6 +42,7 @@ void main()
 
     mat = modelview_matrix * mat;
     vec4 pos = (mat*vec4(position.xyz, 1.0));
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(pos.xyz, 1.0)).xyz : vec3(0.0);
     pos = projection_matrix*pos;
 
     gl_Position = pos;

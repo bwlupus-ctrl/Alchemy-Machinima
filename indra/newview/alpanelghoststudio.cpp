@@ -13,6 +13,7 @@
 #include "alkitlistselection.h"     // [ListMultiSelect] pure primary/mirror/rebuild rules
 #include "alghostclearanim.h"       // [ClearAnim] pure cleared-state rules and texts
 #include "alghostcloneactions.h"    // [CloneMenu] row actions shared with the clone menus
+#include "alclonetransitions.h"       // [CloneTransition] card status
 #include "alghostclonemenu.h"       // [CloneMenu] a Clones list row opens the clone menu
 #include "aldirectorcastui.h"
 #include "llviewermenufile.h" // [AutoAnimate]
@@ -688,6 +689,15 @@ bool ALPanelGhostStudio::postBuild()
     mBrightnessSlider = getChild<LLSliderCtrl>("brightness_slider");
     mEffectFps = getChild<LLSpinCtrl>("effect_fps_spinner");
     mEntityLookCombo = getChild<LLComboBox>("entity_look_combo");
+    // [CloneTransition] Director kit page only: findChild, never getChild (the v1 floater has no card)
+    mTransitionTarget = findChild<LLComboBox>("transition_target_combo");
+    mTransitionStyle = findChild<LLComboBox>("transition_style_combo");
+    mTransitionDuration = findChild<LLSpinCtrl>("transition_duration_spinner");
+    mTransitionEase = findChild<LLComboBox>("transition_ease_combo");
+    mTransitionDirection = findChild<LLComboBox>("transition_direction_combo");
+    mTransitionGoBtn = findChild<LLButton>("btn_transition_go");
+    mTransitionCancelBtn = findChild<LLButton>("btn_transition_cancel");
+    mTransitionStatus = findChild<LLTextBox>("transition_status");
     // Overlay-only style controls (hidden for entity clones). The floater groups them in one panel
     // (the parent of the Look combo); the Director's kit page spreads them over three cards of
     // rows. Hide the whole cards there; the entity note lives in Position.
@@ -934,6 +944,16 @@ bool ALPanelGhostStudio::postBuild()
     mBrightnessSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onBrightnessCommit(); });
     mEffectFps->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEffectFpsCommit(); });
     mEntityLookCombo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onEntityLookCommit(); });
+    if (mTransitionGoBtn) mTransitionGoBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickTransitionGo(); });
+    if (mTransitionCancelBtn)
+        mTransitionCancelBtn->setCommitCallback([this](LLUICtrl*, const LLSD&)
+        {
+            mTransitionRefusal.clear();
+            ALGhostCloneActions::cancelTransition(selectedRowValues());
+            mDetailDirty = true;
+        });
+    // Style / Direction decide which rows are live: re-run the gated detail refresh.
+    if (mTransitionStyle) mTransitionStyle->setCommitCallback([this](LLUICtrl*, const LLSD&) { mDetailDirty = true; });
 
     mFreezeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickFreeze(); });
     mLiveBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickLive(); });
@@ -1882,6 +1902,7 @@ void ALPanelGhostStudio::refreshDetail()
     }
     mDetailDirty = false;
     refreshCloneQol(inst);
+    refreshTransitionCard(row_value, have);
     LL_PROFILE_ZONE_NAMED_CATEGORY_UI("ghost refreshDetail apply");
     // strings / metadata / pose status refresh at 4 Hz (or immediately on a key change)
     const bool slow_tick = key_changed || mStatusTick;
@@ -5489,6 +5510,53 @@ void ALPanelGhostStudio::onCrowdVariationCommit()
     ALGhostStudio& studio = ALGhostStudio::instance();
     mDetailDirty = true;
 }
+// [CloneTransition] Gated like every detail refresh (selection / model key or the readout tick): no widget
+// lookup by name, only diff-guarded writes.
+void ALPanelGhostStudio::refreshTransitionCard(const LLUUID& row_value, bool have)
+{
+    if (!mTransitionGoBtn) return;
+    if (const U64 revision = ALGhostCloneActions::pendingTransitionRevision(); revision != mTransitionTargetRevision)
+    {
+        mTransitionTargetRevision = revision;
+        const S32 target = ALGhostCloneActions::pendingTransitionTarget();
+        if (target != ALGhostCloneActions::TRANSITION_TARGET_PICK && mTransitionTarget)
+            setValueIfChanged(mTransitionTarget, LLSD(target), true);
+    }
+    if (row_value != mTransitionShownFor)
+    {
+        mTransitionShownFor = row_value;
+        mTransitionRefusal.clear();
+    }
+    std::vector<LLUUID> rows;
+    if (row_value.notNull()) rows.push_back(row_value);
+    const std::string running = ALGhostCloneActions::transitionStatus(rows);
+    bool active = false;
+    if (have && ALCloneTransitions::instanceExists())
+        for (const LLUUID& id : ALGhostCloneActions::instances(rows))
+            active = active || ALCloneTransitions::instance().isRunning(id);
+    setEnabledIfChanged(mTransitionGoBtn, have && !active); // M2: Go is off while this clone's transition runs (Cancel first)
+    setEnabledIfChanged(mTransitionCancelBtn, active);
+    if (mTransitionDirection && mTransitionStyle)
+        setEnabledIfChanged(mTransitionDirection, mTransitionStyle->getValue().asInteger() == ALCloneTransition::STYLE_WIPE);
+    std::string text = !running.empty() ? running : !mTransitionRefusal.empty() ? mTransitionRefusal : std::string();
+    if (text.empty()) text = have ? "Ready" : "Select a clone";
+    if (mTransitionStatus) setTextIfChanged(mTransitionStatus, text);
+}
+
+void ALPanelGhostStudio::onClickTransitionGo()
+{
+    if (!mTransitionTarget || !mTransitionStyle || !mTransitionDuration || !mTransitionEase || !mTransitionDirection) return;
+    ALGhostCloneActions::TransitionRequest request;
+    request.mTarget = mTransitionTarget->getValue().asInteger();
+    request.mStyle = mTransitionStyle->getValue().asInteger();
+    request.mDuration = (F32)mTransitionDuration->getValue().asReal();
+    request.mEase = mTransitionEase->getValue().asInteger();
+    request.mDirection = mTransitionDirection->getValue().asInteger();
+    const ALGhostCloneActions::TransitionResult result = ALGhostCloneActions::transitionTo(selectedRowValues(), request);
+    mTransitionRefusal = result.mStarted > 0 ? std::string() : result.mStatus;
+    mDetailDirty = true;
+}
+
 void ALPanelGhostStudio::refreshCloneQol(const ALGhostStudio::Instance* inst)
 {
     ALGhostStudio& studio = ALGhostStudio::instance();

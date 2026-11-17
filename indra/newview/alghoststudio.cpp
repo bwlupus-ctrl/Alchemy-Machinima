@@ -13,6 +13,7 @@
 #include "alghoststudio.h"
 #include "alghostclonemenulogic.h" // [ClonePick] which clone is under the cursor
 #include "alcinelightrigmanager.h"
+#include "alclonetransitions.h"    // [CloneTransition] cancellation table hooks
 #include "aldirectortagtargets.h" // Director tag highlight + group label
 #include "alreflectmath.h"
 #include "altoolghostedit.h"
@@ -396,7 +397,10 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
         ghost->setAnimationSource(animation ? animation->getID() : LLUUID::null);
     }
     ghost->setEntityLook(inst.mLook, inst.mLookAlpha);
-    set_entity_clone_visible(ghost, isVisible(inst), mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible);
+    // [CloneTransition] N3: every replacement / recovered / duplicated body is validated BEFORE an existing overlay
+    // look hides it: system parts the Studio cannot draw drop the look to Normal (native body stays visible).
+    dropUnsupportedOverlayLookOf(inst, ghost);
+    set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst));
 
     // A fresh skeleton has no evaluated pose to hold. Let its stored resume
     // mode evaluate first, then finish the requested frozen state from the
@@ -432,6 +436,10 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
     const LLUUID stable_id = inst.mId;
     const std::string stable_name = inst.mName;
     const LLUUID old_runtime = inst.mEntityId;
+    // [CloneTransition] Entity recovery / swap / removal: a running transition rolls back FIRST (PLAN 2.6),
+    // then the new body is built from the record (mOverlayLook re-applied by applyEntityRuntimeState).
+    // Idempotent and free when nothing runs.
+    ALCloneTransitions::cancelFor(stable_id, removing_instance ? ALCloneTransition::R_DELETE : ALCloneTransition::R_RECOVERY);
     // [AutoAnimate] Transfer the old runtime's latest progress before applying the new one.
     if (inst.mAutoAnimate)
     {
@@ -482,7 +490,7 @@ void ALGhostStudio::onEntityRuntimeReplaced(Instance& inst,
                 current->mFadeAlpha = 0.f;
                 LLDirectorCast::instance().setCloneFadeAlpha(new_runtime, 0.f);
                 if (LLGhostAvatar* replaced = resolveEntityClone(stable_id))
-                    set_entity_clone_visible(replaced, isVisible(*current), mShowAll && current->mEnabled && mSolo && !current->mSoloVisible);
+                    set_entity_clone_visible(replaced, isVisible(*current), entityRenderOnly(*current));
                 LLDirectorCast::instance().forgetCloneFade(new_runtime);      // settled hidden: no alpha-0 coverage entry kept
             }
             else if (mFades.count(stable_id))
@@ -703,6 +711,7 @@ void ALGhostStudio::finishPendingRuntimeFreezes()
 void ALGhostStudio::setShowAll(bool on)
 {
     assert_main_thread();
+    ALCloneTransitions::cancelAllRunning(ALCloneTransition::R_SHOW_CLONES_OFF); // [CloneTransition] visibility edit (D18)
     mShowAll = on;
     mSolo = false;
     ++mInstanceRevision;
@@ -714,7 +723,7 @@ void ALGhostStudio::setShowAll(bool on)
                 dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(inst.mEntityId));
             if (ghost && !ghost->isDead())
             {
-                set_entity_clone_visible(ghost, isVisible(inst), mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible);
+                set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst));
             }
         }
     }
@@ -795,7 +804,7 @@ ALGhostStudio::Instance* ALGhostStudio::addInstance(const LLUUID& source)
         inst.mRotation = avatar->getRotation();
     }
     mIndicesDirty = true;
-    mInstances.push_back(inst);
+    pushInstance(inst);
     beginAppearance(inst.mId);
     ++mInstanceRevision; // [GhostPanelPerf]
     return getInstance(inst.mId);
@@ -837,7 +846,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     record.mFootGlobal = gAgent.getPosGlobalFromAgent(source_foot);
     record.mRotation = source->getRotation();
     mIndicesDirty = true;
-    mInstances.push_back(record);
+    pushInstance(record);
     ++mInstanceRevision; // [GhostPanelPerf]
     const LLUUID stable_id = record.mId;
 
@@ -1008,7 +1017,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     const F32 yaw = copy.getYaw();
     copy.mFootGlobal += LLVector3d(-sinf(yaw), cosf(yaw), 0.0);
     mIndicesDirty = true;
-    mInstances.push_back(copy);
+    pushInstance(copy);
     beginAppearance(copy.mId);
     ++mInstanceRevision; // [GhostPanelPerf]
     return getInstance(copy.mId);
@@ -1041,7 +1050,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy.mCrowdId.setNull();
         copy.mLockMode = LOCK_OFF;
         mIndicesDirty = true;
-    mInstances.push_back(copy);
+    pushInstance(copy);
         beginAppearance(copy.mId);
         ++mInstanceRevision; // [GhostPanelPerf]
         return getInstance(copy.mId);
@@ -1060,7 +1069,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     const LLUUID entity_id = copy->mEntityId;
     const ELifecycleState state = copy->mState;
     const std::string new_name = copy->mName; // spawn already called makeDefaultName()
-    *copy = proto;
+    assignRecord(*copy, proto); // keeps mOverlayLookCount exact: the duplicate keeps the prototype's overlay look
     copy->mReflectMirrorPosition = false;
     copy->mReflectFloor = false;
     copy->mMirrorLightRig = false;
@@ -1300,11 +1309,12 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
                 if (item->mEnabled != enabled)
                 {
                     ++mInstanceRevision; // [GhostPanelPerf] only on a real change (callers may re-assert per frame)
+                    ALCloneTransitions::cancelFor(member, ALCloneTransition::R_EDIT_LOCK); // [CloneTransition] visibility edit (D18)
                 }
                 item->mEnabled = enabled;
                 if (item->mKind == BACKING_ENTITY_CLONE)
                     if (LLGhostAvatar* ghost = resolveEntityClone(member))
-                        set_entity_clone_visible(ghost, isVisible(*item), mShowAll && item->mEnabled && mSolo && !item->mSoloVisible);
+                        set_entity_clone_visible(ghost, isVisible(*item), entityRenderOnly(*item));
                 changed = true;
             }
         return changed;
@@ -1312,6 +1322,9 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
     if (inst->mEnabled != enabled)
     {
         ++mInstanceRevision; // [GhostPanelPerf] enable dot
+        ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK); // [CloneTransition] visibility edit (D18)
+        inst = getInstance(id);
+        if (!inst) return false;
     }
     inst->mEnabled = enabled;
     if (inst->mKind == BACKING_ENTITY_CLONE)
@@ -1325,7 +1338,7 @@ bool ALGhostStudio::setInstanceEnabled(const LLUUID& id, bool enabled)
             inst->mState = STATE_RECOVERABLE;
             return false;
         }
-        set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+        set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
     }
     return true;
 }
@@ -2454,6 +2467,21 @@ void ALGhostStudio::updatePerFrame()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     assert_main_thread();
     if (!mFades.empty()) updateFades();
+    // [CloneTransition] N3 periodic validation of steady entity overlay looks, BEFORE this frame renders: a bake
+    // that loaded late drops the look to Normal here, so reapplyEntityBodyFlags un-hides the native body before
+    // the native draw (no invisible frame). Never from the render loop. O(1) when no entity clone has a look.
+    if (mOverlayLookCount > 0)
+    {
+        static U32 sOverlayLookTick = 0;
+        ++sOverlayLookTick;
+        std::vector<LLUUID> look_ids;
+        for (const Instance& inst : mInstances)
+            if (inst.mKind == BACKING_ENTITY_CLONE && inst.mOverlayLook >= 0 && !inst.mDeleting
+                && ((sOverlayLookTick + inst.mId.mData[0]) & 15u) == 0)
+                look_ids.push_back(inst.mId);
+        for (const LLUUID& id : look_ids)
+            if (!ALCloneTransitions::instance().isRunning(id)) dropUnsupportedOverlayLook(id);
+    }
     if (!mPrivateOverlayRuntimes.empty() && LLTimer::getTotalSeconds() >= mNextOverlayRecovery)
     {
         mNextOverlayRecovery = LLTimer::getTotalSeconds()+0.5;
@@ -2467,6 +2495,7 @@ void ALGhostStudio::updatePerFrame()
             if (Instance* inst = getInstance(id); inst && !inst->mDeleting)
             {
                 const bool solo_visible = inst->mSoloVisible;
+                ALCloneTransitions::cancelFor(id, ALCloneTransition::R_RECOVERY); // [CloneTransition] helper recovery
                 mOverlayHistory.erase(id);
                 releaseOverlayHelper(id);
                 inst = getInstance(id);
@@ -3635,6 +3664,12 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         return;
     }
     ++mInstanceRevision; // [GhostPanelPerf] row removed (groups/recursion below also bump)
+    ALCloneTransitions::cancelFor(retiring_id, ALCloneTransition::R_DELETE); // [CloneTransition] ROLLBACK, then the delete
+    inst = getInstance(retiring_id);
+    if (!inst)
+    {
+        return;
+    }
     if (ALCineLightRigManager::instanceExists())
         ALCineLightRigManager::instance().removeMirror(inst->mEntityId);
     if (inst->mGroupId.notNull())
@@ -3678,6 +3713,7 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         if (mSelected == retiring_id) setSelected(LLUUID::null);
     }
     mIndicesDirty = true;
+    if (const Instance* retiring = getInstance(retiring_id)) accountOverlayLook(retiring->mOverlayLook, -1); // [CloneTransition]
     mInstances.erase(
         std::remove_if(mInstances.begin(), mInstances.end(),
                        [&retiring_id](const Instance& i) { return i.mId == retiring_id; }),
@@ -3735,8 +3771,24 @@ void ALGhostStudio::setSelected(const LLUUID& id)
     mSelected = id;
 }
 
+// [CloneTransition] D18: a group edit rolls back the transition of EVERY member the edit touches (the authoring unit
+// and the full member list), snapshotted before anything changes. Free when nothing runs.
+void ALGhostStudio::cancelGroupTransitions(const LLUUID& id)
+{
+    if (!ALCloneTransitions::anyRunning()) return;
+    std::vector<LLUUID> affected = groupMembers(id);
+    if (const ALGhostGroupModel::Group* group = groupForMember(id))
+    {
+        const std::vector<LLUUID> all = mGroups.members(group->mId);
+        affected.insert(affected.end(), all.begin(), all.end());
+    }
+    affected.push_back(id);
+    for (const LLUUID& member : affected) ALCloneTransitions::cancelFor(member, ALCloneTransition::R_EDIT_LOCK);
+}
+
 S32 ALGhostStudio::lockGroup(const std::vector<LLUUID>& ids, ELockMode mode)
 {
+    for (const LLUUID& member : ids) ALCloneTransitions::cancelFor(member, ALCloneTransition::R_EDIT_LOCK); // [CloneTransition] group edit (D18)
     if ((mode != LOCK_RIGID_UNIT && mode != LOCK_MOVE_FACE) ||
         ids.empty())
     {
@@ -3800,6 +3852,7 @@ S32 ALGhostStudio::lockGroup(const std::vector<LLUUID>& ids, ELockMode mode)
 
 S32 ALGhostStudio::ungroup(const LLUUID& id)
 {
+    cancelGroupTransitions(id); // [CloneTransition] group edit (D18): every affected member, not only `id`
     const ALGhostGroupModel::Group* group = groupForMember(id);
     if (!group)
     {
@@ -3835,6 +3888,7 @@ S32 ALGhostStudio::ungroup(const LLUUID& id)
 
 S32 ALGhostStudio::setLockMode(const LLUUID& id, ELockMode mode)
 {
+    cancelGroupTransitions(id); // [CloneTransition] group edit (D18): snapshot + cancel every member BEFORE the mode changes
     Instance* inst = getInstance(id);
     if (!inst) return 0;
     switch (mode)
@@ -4215,6 +4269,7 @@ void ALGhostStudio::removeAll()
     {
         removeInstance(mInstances.back().mId);
     }
+    mOverlayLookCount = 0; // [CloneTransition] wholesale clear: the list is empty, so the count is exactly 0
 }
 
 S32 ALGhostStudio::removeEntityClones()
@@ -5022,7 +5077,7 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
                 copy.setYaw(s.mYaw);
             }
             mIndicesDirty = true;
-    mInstances.push_back(copy);
+    pushInstance(copy);
         beginAppearance(copy.mId);
             ++mInstanceRevision; // [GhostPanelPerf]
             created.push_back(copy.mId);
@@ -6356,10 +6411,85 @@ void ALGhostStudio::refreshSoloVisibility()
     ++mInstanceRevision;
     for (const auto& inst : mInstances)
         if (LLGhostAvatar* ghost = resolveEntityClone(inst.mId))
-            set_entity_clone_visible(ghost, isVisible(inst), mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible);
+            set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst));
 }
+bool ALGhostStudio::entityRenderOnly(const Instance& inst) const
+{
+    // Solo "hidden but animating", plus the overlay look (the Studio draws the body instead) while visible.
+    // The reverse transition (overlay look -> normal body) keeps the native body shown while it runs.
+    return (mShowAll && inst.mEnabled && mSolo && !inst.mSoloVisible) ||
+        (inst.mOverlayLook >= 0 && isVisible(inst) && !ALCloneTransitions::keepsBodyShown(inst.mId));
+}
+
+void ALGhostStudio::reapplyEntityBodyFlags(const LLUUID& id)
+{
+    const Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE) return;
+    if (LLGhostAvatar* ghost = resolveEntityClone(id))
+        set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
+}
+
+void ALGhostStudio::accountOverlayLook(S32 before, S32 after)
+{
+    mOverlayLookCount += (after >= 0 ? 1 : 0) - (before >= 0 ? 1 : 0);
+    if (mOverlayLookCount < 0) mOverlayLookCount = 0; // defensive; the invariant is asserted below
+}
+
+void ALGhostStudio::setOverlayLookField(Instance& inst, S32 look)
+{
+    accountOverlayLook(inst.mOverlayLook, look);
+    inst.mOverlayLook = look;
+}
+
+void ALGhostStudio::pushInstance(const Instance& inst)
+{
+    mInstances.push_back(inst);
+    accountOverlayLook(-1, inst.mOverlayLook);
+}
+
+void ALGhostStudio::assignRecord(Instance& dst, const Instance& src)
+{
+    const S32 before = dst.mOverlayLook;
+    dst = src;
+    accountOverlayLook(before, dst.mOverlayLook);
+}
+
+bool ALGhostStudio::dropUnsupportedOverlayLookOf(Instance& inst, LLVOAvatar* body)
+{
+    if (inst.mKind != BACKING_ENTITY_CLONE || inst.mOverlayLook < 0 || !body) return false;
+    if (!ALCloneTransitions::systemPartsVisible(body)) return false;
+    setOverlayLookField(inst, -1);
+    ALCloneTransitions::setNote(inst.mId, "Overlay look dropped: this body has standard avatar parts the overlay cannot draw");
+    ++mInstanceRevision; // the Clones list rows
+    return true;
+}
+
+bool ALGhostStudio::dropUnsupportedOverlayLook(const LLUUID& id)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || inst->mOverlayLook < 0) return false;
+    if (!dropUnsupportedOverlayLookOf(*inst, resolveEntityClone(id))) return false;
+    reapplyEntityBodyFlags(id);
+    return true;
+}
+
+bool ALGhostStudio::setEntityOverlayLook(const LLUUID& id, S32 look)
+{
+    assert_main_thread();
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || inst->mDeleting) return false;
+    if (look >= 0) look = resolveOverlayStyle(look);
+    if (look >= 0 && !isOverlayStyle(look)) return false;
+    if (inst->mOverlayLook == look) { reapplyEntityBodyFlags(id); return true; }
+    setOverlayLookField(*inst, look);
+    ++mInstanceRevision; // the Clones list rows
+    reapplyEntityBodyFlags(id);
+    return true;
+}
+
 void ALGhostStudio::setSolo(const std::vector<LLUUID>& ids)
 {
+    ALCloneTransitions::cancelAllRunning(ALCloneTransition::R_SOLO); // [CloneTransition] visibility edit (D18)
     std::set<LLUUID> members;
     for (const auto& id : ids)
         for (const auto& member : groupMembers(id))
@@ -6374,7 +6504,7 @@ void ALGhostStudio::beginAppearance(const LLUUID& id, bool fade)
     if (!inst) return;
     if (inst->mStartOffset > 0.f) mOffsetInstances.insert(id);
     inst->mSoloVisible = true; // additions join the session's solo set
-    if (LLGhostAvatar* ghost = resolveEntityClone(id)) set_entity_clone_visible(ghost, isVisible(*inst));
+    if (LLGhostAvatar* ghost = resolveEntityClone(id)) set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
     static LLCachedControl<F32> duration(gSavedSettings, "GhostStudioFadeIn", 0.f);
     const F32 seconds = llclamp(F32(duration), 0.f, 5.f);
     if (inst->mKind == BACKING_OVERLAY && inst->mHasAnimationSource && inst->mOverlayAvatar.isNull())
@@ -6390,7 +6520,7 @@ void ALGhostStudio::beginAppearance(const LLUUID& id, bool fade)
         inst->mFadeAlpha = 0.f;
         if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, 0.f);
         if (LLGhostAvatar* ghost = resolveEntityClone(id))
-            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+            set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
         if (inst->mEntityId.notNull()) LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept
         return;
     }
@@ -6406,6 +6536,8 @@ void ALGhostStudio::beginAppearance(const LLUUID& id, bool fade)
 void ALGhostStudio::requestRemoveInstance(const LLUUID& id)
 {
     const auto members = groupMembers(id);
+    for (const LLUUID& member : members) // [CloneTransition] ROLLBACK, then the delete (PLAN 2.6)
+        ALCloneTransitions::cancelFor(member, members.size() > 1 ? ALCloneTransition::R_GROUP_DELETE : ALCloneTransition::R_DELETE);
     static LLCachedControl<F32> duration(gSavedSettings, "GhostStudioFadeOut", 0.f);
     const F32 seconds = llclamp(F32(duration), 0.f, 5.f);
     bool all_invisible = true;
@@ -6451,7 +6583,7 @@ void ALGhostStudio::updateFades()
             // The fade finished at 0: the body is now hidden by Studio's own visibility gate (isVisible),
             // which no Cast style path can reset, whether or not the clone is a Cast member.
             if (LLGhostAvatar* ghost = resolveEntityClone(inst->mId))
-                set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+                set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
             // Settled hidden: the isVisible gate now hides the body, so a non-Cast clone keeps no alpha-0 coverage entry.
             if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))
                 LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);
@@ -6473,6 +6605,9 @@ bool ALGhostStudio::fadeInstance(const LLUUID& id, bool hidden, bool ramp)
     assert_main_thread();
     Instance* inst = getInstance(id);
     if (!inst || inst->mDeleting || inst->mKind != BACKING_ENTITY_CLONE) return false;
+    ALCloneTransitions::cancelFor(id, ALCloneTransition::R_FADE); // [CloneTransition] ROLLBACK, then the fade (PLAN 2.6)
+    inst = getInstance(id);
+    if (!inst) return false;
     static LLCachedControl<F32> fade_in(gSavedSettings, "GhostStudioFadeIn", 0.f);
     static LLCachedControl<F32> fade_out(gSavedSettings, "GhostStudioFadeOut", 0.f);
     const F32 target = hidden ? 0.f : 1.f;
@@ -6485,7 +6620,7 @@ bool ALGhostStudio::fadeInstance(const LLUUID& id, bool hidden, bool ramp)
         inst->mFadeAlpha = target;
         if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, target);
         if (LLGhostAvatar* ghost = resolveEntityClone(id))
-            set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+            set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
         if (inst->mEntityId.notNull() && !(inst->mFadeAlpha > 0.f))
             LLDirectorCast::instance().forgetCloneFade(inst->mEntityId);      // settled hidden: no alpha-0 coverage entry kept
         return true;
@@ -6494,7 +6629,7 @@ bool ALGhostStudio::fadeInstance(const LLUUID& id, bool hidden, bool ramp)
     mFades[id].mFade = {LLTimer::getTotalSeconds(), seconds, inst->mFadeAlpha, hidden};
     if (inst->mEntityId.notNull()) LLDirectorCast::instance().setCloneFadeAlpha(inst->mEntityId, inst->mFadeAlpha);   // coverage first, so a fade-in never flashes
     if (LLGhostAvatar* ghost = resolveEntityClone(id))        // a fade-in shows the body at once, then ramps it
-        set_entity_clone_visible(ghost, isVisible(*inst), mShowAll && inst->mEnabled && mSolo && !inst->mSoloVisible);
+        set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
     return true;
 }
 
@@ -6503,6 +6638,9 @@ bool ALGhostStudio::swapSource(const LLUUID& id, const LLUUID& source_id, const 
     mSwapStatus = "Swap source unavailable: source or clone is not ready";
     Instance* inst = getInstance(id);
     if (!inst || inst->mDeleting) return false;
+    ALCloneTransitions::cancelFor(id, ALCloneTransition::R_SWAP_SOURCE); // [CloneTransition] ROLLBACK, then the swap (PLAN 2.6)
+    inst = getInstance(id);
+    if (!inst) return false;
     const LLUUID source_owner = actorOwner(source_id);
     const Instance* source_instance = findInstanceByRuntime(source_owner);
     if (source_owner == id || (source_instance && source_instance->mId == id) || isPrivateOverlayRuntime(source_id)) return false;
@@ -6640,6 +6778,16 @@ void ALGhostStudio::applyCrowdVariation(const LLUUID& member_id, U32 seed, bool 
     {
         const S32 look = remapRetiredOverlayStyle(gSavedSettings.getS32("GhostStudioMixLook"+std::to_string(i)));
         if (isOverlayStyle(look) && std::find(looks.begin(), looks.end(), look) == looks.end()) looks.push_back(look);
+    }
+    if (assign_looks && ALCloneTransitions::anyRunning())
+    {
+        // [CloneTransition] D18: a crowd look assignment writes mStyle directly. Roll back every affected
+        // member's transition FIRST (snapshot of ids; the rollback may touch instance flags), so the natural
+        // completion can never overwrite this edit with the old target look.
+        std::vector<LLUUID> affected;
+        for (const auto& inst : mInstances)
+            if (inst.mCrowdId == crowd && !inst.mDeleting) affected.push_back(inst.mId);
+        for (const LLUUID& id : affected) ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK);
     }
     F64 low = std::numeric_limits<F64>::max(), high = -low;
     for (const auto& inst : mInstances)

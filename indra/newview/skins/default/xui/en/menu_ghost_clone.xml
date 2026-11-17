@@ -294,6 +294,31 @@
        enabled="false" />
     </context_menu>
     <context_menu
+     label="Transition to..."
+     name="Transition To">
+      <menu_item_call
+       label="Look..."
+       name="Transition Look"
+       tool_tip="Overlay clones: dissolve, wipe or crossfade to another look. Opens the Transition card.">
+        <menu_item_call.on_click function="GhostClone.TransitionTo" parameter="look" />
+        <menu_item_call.on_enable function="GhostClone.EnableTransitionTo" parameter="look" />
+      </menu_item_call>
+      <menu_item_call
+       label="Overlay look..."
+       name="Transition Overlay Look"
+       tool_tip="Entity clones: change the clone into an overlay look on its own body. Opens the Transition card.">
+        <menu_item_call.on_click function="GhostClone.TransitionTo" parameter="overlay_look" />
+        <menu_item_call.on_enable function="GhostClone.EnableTransitionTo" parameter="overlay_look" />
+      </menu_item_call>
+      <menu_item_call
+       label="Normal look"
+       name="Transition Normal Look"
+       tool_tip="Entity clones with an overlay look: change back to the normal lit body. Opens the Transition card.">
+        <menu_item_call.on_click function="GhostClone.TransitionTo" parameter="normal" />
+        <menu_item_call.on_enable function="GhostClone.EnableTransitionTo" parameter="normal" />
+      </menu_item_call>
+    </context_menu>
+    <context_menu
      label="Look"
      name="Entity Look">
       <menu_item_check

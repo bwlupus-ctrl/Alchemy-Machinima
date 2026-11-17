@@ -255,6 +255,38 @@ bool directedMirrorReplayable(const std::vector<FlipBefore>& state);
 // Undo / redo: each saved clone that is still eligible gets its flip back (a partial step applies to the replayable
 // clones, like restoreGaze). False (changing nothing) when none is replayable.
 bool restoreDirectedMirror(const std::vector<FlipBefore>& state);
+
+// ---- Transition to... (PLAN rev 3 1.1, Phase 1) ---------------------------------------------------
+// ONE action for the Clones page Transition card and the clone menu. Session only: nothing is saved.
+// Overlay clone: Look -> Look. Entity clone: normal body -> overlay look, or overlay look -> normal body.
+constexpr S32 TRANSITION_TARGET_NORMAL = 255;   // the "Normal look" target (entity clones)
+constexpr S32 TRANSITION_TARGET_PICK = -1;      // menu "open the card": leave the target for the user to pick
+struct TransitionRequest
+{
+    S32 mTarget = TRANSITION_TARGET_NORMAL;     // overlay look id, or TRANSITION_TARGET_NORMAL
+    S32 mStyle = 1;                             // ALCloneTransition::Style (Dissolve default, D12)
+    F32 mDuration = 1.5f;                       // seconds (D12)
+    S32 mEase = 0;                              // ALCloneTransition::Ease (Smooth default)
+    S32 mDirection = 0;                         // ALCloneTransition::Direction (Wipe only)
+};
+struct TransitionResult
+{
+    S32 mStarted = 0;
+    std::string mStatus;                        // empty on success, else the refusal reason
+};
+// Starts a transition on every clone the rows stand for (up to 2: D20). All or nothing: if one clone is
+// refused, any transition this call already started is rolled back and the reason is returned. An expanded
+// group member is refused like Look at / Turn (hasExpandedMember).
+TransitionResult transitionTo(const std::vector<LLUUID>& rows, const TransitionRequest& request);
+// Cancel button / menu: ROLLBACK for every clone of the rows. True when anything was running.
+bool cancelTransition(const std::vector<LLUUID>& rows);
+// Status line for the rows ("Running 0.8 / 1.5 s", the last outcome, or empty).
+std::string transitionStatus(const std::vector<LLUUID>& rows);
+// The menu opens the Transition card with a target already filled in. The page applies it when the
+// revision changes (an integer compare, never a widget write in draw()).
+void requestTransitionTarget(S32 target);
+S32 pendingTransitionTarget();
+U64 pendingTransitionRevision();
 }
 
 #endif // AL_ALGHOSTCLONEACTIONS_H

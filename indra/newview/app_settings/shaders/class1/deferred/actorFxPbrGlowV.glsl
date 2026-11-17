@@ -23,6 +23,9 @@ in vec4 diffuse_color;
 in vec2 texcoord0;
 
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 out vec3 vary_position;
 out vec4 vertex_color;
 out vec2 base_color_texcoord;
@@ -43,6 +46,7 @@ void main()
     vary_position = (modelview_matrix * vec4(position, 1.0)).xyz;
 #endif
 
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(vary_position, 1.0)).xyz : vec3(0.0);
     base_color_texcoord = texture_transform(texcoord0,
         texture_base_color_transform, texture_matrix0);
     vertex_color = diffuse_color;

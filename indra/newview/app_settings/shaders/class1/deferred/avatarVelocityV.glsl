@@ -45,6 +45,9 @@ in vec2 texcoord0;
 out vec4 vary_cur_clip;
 out vec4 vary_last_clip;
 out vec3 vary_actor_fx_position;
+uniform vec4 actorFxTransition;      // clone transition: x = style (0 = off); see actorFxDissolveF.glsl
+uniform mat4 transitionEyeToBody;     // eye space -> body-space transition coordinate (PLAN 3.1)
+out vec3 vary_transition_pos;
 out vec2 vary_texcoord0;
 out vec4 vertex_color;
 
@@ -82,6 +85,7 @@ void main()
     mat4 cur_skin = getSkinnedTransform();
     vec4 cur_view = vec4(pos * cur_skin);       // row-vector convention, see avatarV.glsl
     cur_view.w = 1.0;
+    vary_transition_pos = actorFxTransition.x > 0.5 ? (transitionEyeToBody * vec4(cur_view.xyz, 1.0)).xyz : vec3(0.0);
 
     mat4 last_skin = getLastSkinnedTransform();
     vec4 last_view = vec4(pos * last_skin);

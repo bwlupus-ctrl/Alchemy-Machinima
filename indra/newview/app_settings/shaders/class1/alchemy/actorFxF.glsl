@@ -59,6 +59,7 @@ uniform vec4 actorFxTronColor;
 
 // Shared with shadow and glow programs; implemented by actorFxDissolveF.glsl.
 float actorFxDissolveCoverage(vec3 object_position);
+bool actorFxTransitionDiscard(); // clone transition mask (PLAN 3.2), same module
 in vec3 vary_actor_fx_position;
 
 float actorFxBeautyDissolveCoverage()
@@ -426,6 +427,13 @@ void actorFxTronPrime()
         actorFxTronDpx    = dFdx(vary_actor_fx_position);
         actorFxTronDpy    = dFdy(vary_actor_fx_position);
         actorFxTronPrimed = true;
+    }
+    // Clone transition native mask: the one shared beauty entry (every Actor FX program calls
+    // this first), BEFORE any treatment early-out. Uniform-guarded (style 0 = no-op) and
+    // independent of actorFxEnabled, so it also runs while shared replay disables the treatment.
+    if (actorFxTransitionDiscard())
+    {
+        discard;
     }
 }
 
