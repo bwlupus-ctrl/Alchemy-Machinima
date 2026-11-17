@@ -34,6 +34,9 @@ using Callback=int(*)(int,int,int,int,int,void*);Callback callback;
 constexpr int GL_DEPTH_BUFFER_BIT=1,GL_COLOR_BUFFER_BIT=2,GL_DEPTH_COMPONENT=3,
  GL_RGBA=4,GL_RGB=5,GL_UNSIGNED_BYTE=6,GL_FLOAT=7,UI_CURSOR_WAIT=1,UI_CURSOR_ARROW=0;
 #define LL_WARNS(...) std::cerr
+#define LL_INFOS(...) std::cerr
+struct ALCleanFrame{inline static bool sActive=false;static bool active(){return sActive;}};
+struct ALLensLooks{struct VariableNDSnapshotScope{VariableNDSnapshotScope(float,float,float,float,float,float){}};};
 #define LL_ENDL '\n'
 #define LL_PROFILE_ZONE_SCOPED_CATEGORY_WIN32
 #define LL_PROFILE_ZONE_NAMED_CATEGORY_WIN32(x)
@@ -64,7 +67,7 @@ struct LLRenderTarget{int w=1920,h=1080;
 };
 struct LLPipeline{inline static bool sRenderDeferred=true,sShowHUDAttachments=true,ui=true;
  enum{RENDER_DEBUG_FEATURE_UI};struct Pack{LLRenderTarget deferredScreen;}main;Pack*mRT=&main;
- bool hasRenderDebugFeatureMask(int){return ui;}static void toggleRenderDebugFeature(int){ui=!ui;}
+ bool hasRenderDebugFeatureMask(int){return ui;}bool hasRawRenderDebugFeatureMask(int){return ui;}static void toggleRenderDebugFeature(int){ui=!ui;}
  bool allocateScreenBuffer(int w,int h){main.deferredScreen.w=w;main.deferredScreen.h=h;return true;}
  void resetDrawOrders(){}
 }gPipeline;
@@ -154,6 +157,16 @@ extern "C" __declspec(dllexport) int snapshot(Callback cb,int fail,int tiled){
  assert(scratchReleases==1&&!gSnapshotNoPost&&effectsEnabled);
  return ok;
 }
+extern "C" __declspec(dllexport) int snapshot_clean(Callback cb,int active){
+ // Clean-lease contract: stock when inactive; refused (no display, no mask toggle) while active.
+ callback=cb;injected=0;displayCalls=0;scratchReleases=0;ALCleanFrame::sActive=active!=0;
+ LLPipeline::ui=true;LLPipeline::sShowHUDAttachments=true;viewer.mWorldViewRectRaw={};
+ gGLManager.mGLMaxTextureSize=16384;
+ bool ok=viewer.rawSnapshot(&image,3840,2160,false,false,false,false,false,false,false,LLSnapshotModel::SNAPSHOT_TYPE_COLOR,8192);
+ ALCleanFrame::sActive=false;
+ if(active) return (!ok&&displayCalls==0&&LLPipeline::ui&&scratchReleases==0)?1:0;
+ return (ok&&displayCalls==1)?1:0;
+}
 extern "C" __declspec(dllexport) void* pixels(){return image.data.data();}
 extern "C" __declspec(dllexport) int calls(){return displayCalls;}
 '''
@@ -235,6 +248,20 @@ def main():
     assert not errors, errors
     assert g.fn('glGetError', g.U)() == 0
     print('PASS production rawSnapshot scratch/tiled refusals: K0 injections 1..5, post-K2 Glass failure, early display return; no readback or present; cleanup executes', flush=True)
+    dll.snapshot_clean.argtypes = [cb_type, C.c_int]
+    operations.clear()
+    assert dll.snapshot_clean(cb, 0) == 1, 'rawSnapshot must behave stock when ALCleanFrame is inactive'
+    operations.clear()
+    assert dll.snapshot_clean(cb, 1) == 1, 'rawSnapshot must refuse while ALCleanFrame is active'
+    assert not any(op[0] == 3 for op in operations), 'refused rawSnapshot read back pixels'
+    print('PASS production rawSnapshot: stock when ALCleanFrame inactive; refused (no display, no readback, UI mask untouched) while active', flush=True)
+    simple = method(NV / 'llviewerwindow.cpp', 'bool LLViewerWindow::simpleSnapshot(')
+    cube = method(NV / 'llviewerwindow.cpp', 'bool LLViewerWindow::cubeSnapshot(')
+    guard = 'if(ALCleanFrame::active()) { LL_INFOS("Keyframes") << "simpleSnapshot deferred during Play" << LL_ENDL; return false; }'
+    body = simple[simple.index('{') + 1:].lstrip()
+    assert body.startswith(guard), 'simpleSnapshot must refuse first while the clean lease is active'
+    assert 'ALCleanFrame' not in cube, 'cubeSnapshot must never be refused by the clean lease'
+    print('PASS simpleSnapshot refuses first while clean-active; cubeSnapshot is never refused', flush=True)
     bad = native(refuse_reshade=True)
     bad.snapshot.argtypes = [cb_type, C.c_int, C.c_int]
     try:

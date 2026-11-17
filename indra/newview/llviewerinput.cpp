@@ -96,8 +96,9 @@ struct LLKeyboardActionRegistry
 LLViewerInput gViewerInput;
 namespace
 {
-ALKeyframeInputGate sCleanKeys, sCleanMouse, sCleanGlobalMouse;
-std::array<bool, 256> sCleanReleased{}; // survives immediate global UP until ordinary scan UP
+// Keys are stateless (ALKeyframeInputGate); only mouse buttons keep ownership.
+const ALKeyframeInputGate sCleanKeys;
+ALKeyframeMouseGate sCleanMouse, sCleanGlobalMouse;
 unsigned cleanButton(EMouseClickType button) { return button==CLICK_DOUBLELEFT ? (unsigned)CLICK_LEFT : (unsigned)button; }
 }
 
@@ -1409,8 +1410,6 @@ bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool rep
     return mKeyHandledByUI[translated_key];
 }
 
-void LLViewerInput::flushCleanKeys() { sCleanKeys.flush(); }
-
 bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 {
     if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
@@ -1422,7 +1421,6 @@ bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 
 bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 {
-    sCleanReleased[key]=false;
     if (mGlobalBindsSuspended)
     {
         return false; // functional self-test: no user binding may run
@@ -1439,11 +1437,6 @@ bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 
 bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)
 {
-    if(sCleanKeys.releaseBindings(key))
-    {
-        sCleanReleased[key]=true;
-        return true; // suppress global AND delayed ordinary stock UP
-    }
     if (mGlobalBindsSuspended)
     {
         return false; // functional self-test: no user binding may run
@@ -2000,8 +1993,8 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                 if(agent) function=agent;
                 const std::string_view action=agent ? "agent_seated_control" : std::string_view(name);
                 const bool move=name.starts_with("move_") && !agent;
-                if((key_down || key_level) && !sCleanKeys.allow(key,action,
-                    key_down ? ALKeyframeInputGate::Phase::Down : ALKeyframeInputGate::Phase::Level,clean,move)) return true;
+                // Stateless: the phase is the branch stock takes below (DOWN, else UP, else LEVEL).
+                if(!sCleanKeys.allow(action,ALKeyframeInputGate::phaseOf(key_down,key_up,repeat),clean,move)) return true;
                 bool res = false;
                 if (key_down && !repeat)
                 {
@@ -2013,14 +2006,11 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                             gIdleCallbacks.addFunction(releaseHotGazeKeys);
                     }
                     res = (*function)(KEYSTATE_DOWN);
-                    if(res) sCleanKeys.started(key,name,[up=*function](){ up(KEYSTATE_UP); },clean);
                     return true;
                 }
                 else if (key_up)
                 {
                     // ...key went down this frame, call function
-                    // Only the (key, action) pairs the clean gate recorded itself skip stock UP.
-                    if(sCleanKeys.skipStockUp(key,name)) return true;
                     res = binding[i].mFunction( KEYSTATE_UP );
                 }
                 else if (key_level)
@@ -2028,9 +2018,6 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                     // ...key held down from previous frame
                     // Not windows, just call the function.
                     res = (*function)(KEYSTATE_LEVEL);
-                    // Release ownership for a LEVEL action no recorded DOWN started.
-                    sCleanKeys.levelStarted(key,name,[&](){return ALKeyframeInputGate::Release([up=*function](){ up(KEYSTATE_UP); });},clean,
-                        hot_gaze && sHotGazeKeys.count(key)!=0);
                 }//if
                 // Key+Mask combinations are supposed to be unique, so we won't find anything else
                 return res;
@@ -2048,12 +2035,6 @@ bool LLViewerInput::scanKey(KEY key, bool key_down, bool key_up, bool key_level)
         return false;
     }
 
-    struct EndStockUp{ KEY key; bool up; ~EndStockUp(){ if(up) sCleanKeys.endStockUp(key); } } endStockUp{key,key_up};
-    if(key_up && (sCleanReleased[key] || sCleanKeys.releaseBindings(key)))
-    {
-        sCleanReleased[key]=false;
-        return true;
-    }
     // A release belongs to the action chosen on DOWN, even if modifiers,
     // keyboard mode or UI focus changed while held.
     const auto hot = sHotGazeKeys.find(key);

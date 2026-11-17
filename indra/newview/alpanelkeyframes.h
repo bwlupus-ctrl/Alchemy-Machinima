@@ -32,7 +32,7 @@ private:
     void capture(bool insert);
     void target(LLViewerObject*, bool own);
     void edit(const std::string&, const std::function<void(ALKf::Sequence&,ALKf::Track&,ALKf::Key*)>&);
-    ALKf::RefSlot reference(LLViewerObject*) const;
+    static ALKf::RefSlot reference(LLViewerObject*);
     LLUICtrl* control(const std::string&) const;
     static void idle(void*);
     ALKitPage* mPage=nullptr;
@@ -42,7 +42,7 @@ private:
     std::vector<boost::signals2::scoped_connection> mConnections;
     std::map<std::string,LLUICtrl*> mControls;
     std::map<std::string,std::string> mTooltips;
-    std::map<std::string,ALKf::Sequence> mSessions;
+    std::vector<ALKf::SessionSlot> mSessions; // oldest first; capped (see switchSequence)
     U64 mRevision=~U64(0), mCastRevision=~U64(0), mOverlayRevision=~U64(0);
     U32 mSelection=0;
     double mLastRefresh=-1;

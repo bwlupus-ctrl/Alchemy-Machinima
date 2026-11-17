@@ -574,6 +574,21 @@ void F14()
     require(std::get<std::int64_t>(evalChannel(s.tracks[1],b,1,.5))==0,"F14 generic step");
     light.schema[0].name="position";require(cache(light).position==-1,"F14 generic reserved names type checked");
 }
+void F15()
+{
+    auto slot=[](const char* name){SessionSlot s;s.id=name;s.seq.name=name;return s;};
+    auto saved=[](const Sequence& s){return s.name[0]=='s';}; // 's*' = saved/empty, 'u*' = unsaved
+    std::vector<SessionSlot> v{slot("u1"),slot("s1"),slot("u2"),slot("s2"),slot("u3")};
+    std::vector<std::string> dropped;
+    auto over=pruneSessions(v,3,saved,dropped);
+    require(v.size()==3&&v[0].id=="u1"&&v[1].id=="u2"&&v[2].id=="u3","F15 unsaved never dropped");
+    require(dropped==std::vector<std::string>{"s1","s2"}&&over==0,"F15 oldest disposable dropped first");
+    v.push_back(slot("u4"));dropped.clear();
+    over=pruneSessions(v,3,saved,dropped);
+    require(dropped.empty()&&v.size()==4&&over==1,"F15 unsaved never dropped when over cap");
+    v={slot("s1"),slot("s2")};dropped.clear();
+    require(pruneSessions(v,16,saved,dropped)==0&&dropped.empty()&&v.size()==2,"F15 under cap untouched");
+}
 void B1()
 {
     FakeResolver resolver;for(unsigned i=0;i<10000;++i) resolver.targets[i]={.1+double(i%3)*.01,0,1};
@@ -608,6 +623,6 @@ int main(int argc,char** argv)
 {
     std::string selected=argc>1?argv[1]:"all";
     for(auto test:{std::pair{"F1",F1},{"F2",F2},{"F3",F3},{"F4",F4},{"F5",F5},{"F6",F6},{"F7",F7},
-                   {"F8",F8},{"F8time",F8time},{"F8jump",F8jump},{"F8disc",[]{for(int hz:{24,30,60,144})F8disc(hz);}},{"F9",F9},{"F10",F10},{"F11",F11},{"F12",F12},{"F12cancel",F12cancel},{"F12b",F12b},{"F13",F13},{"F14",F14},{"B1",B1}})
+                   {"F8",F8},{"F8time",F8time},{"F8jump",F8jump},{"F8disc",[]{for(int hz:{24,30,60,144})F8disc(hz);}},{"F9",F9},{"F10",F10},{"F11",F11},{"F12",F12},{"F12cancel",F12cancel},{"F12b",F12b},{"F13",F13},{"F14",F14},{"F15",F15},{"B1",B1}})
         if(selected=="all" || selected==test.first) {test.second();std::cout<<"PASS "<<test.first<<'\n';}
 }

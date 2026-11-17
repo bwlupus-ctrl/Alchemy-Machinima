@@ -134,6 +134,12 @@ struct Sequence
     std::uint64_t revision = 0;
     bool operator==(const Sequence&) const = default;
 };
+// Retained editor sessions, oldest first. The panel keeps at most `cap`; over the cap the oldest
+// DISPOSABLE sessions (saved to the library or empty) are dropped. A session with unsaved
+// changes is never dropped: the count still over the cap is returned so the UI can say so.
+struct SessionSlot { std::string id; Sequence seq; };
+std::size_t pruneSessions(std::vector<SessionSlot>&, std::size_t cap,
+                          const std::function<bool(const Sequence&)>& disposable, std::vector<std::string>& dropped);
 Track cameraTrack();
 std::uint32_t appendTrack(Sequence&, Track); // refuses a second camera; 0 on refusal
 std::uint32_t appendKey(Sequence&, std::uint32_t track, Key);

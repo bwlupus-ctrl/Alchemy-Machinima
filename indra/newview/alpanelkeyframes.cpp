@@ -256,7 +256,7 @@ void ALPanelKeyframes::capture(bool insert)
     });
     if(id) mTimeline->select(id);
 }
-ALKf::RefSlot ALPanelKeyframes::reference(LLViewerObject* object) const
+ALKf::RefSlot ALPanelKeyframes::reference(LLViewerObject* object)
 {
     ALKf::RefSlot ref;
     if(object&&object->isAttachment()) object=object->getAvatarAncestor();
@@ -284,10 +284,9 @@ void ALPanelKeyframes::lockOn(LLViewerObject* object)
     if(!canLock()) return;
     if(auto* owner=sOwner.get()) {owner->target(object,false);return;}
     // Menus work with the Director closed; the same session history retains this edit.
-    ALPanelKeyframes helper;
     auto& p=ALKeyframePlayer::instance();auto before=p.sequence();
     auto* t=camera(p.sequence());if(!t) {ALKf::appendTrack(p.sequence(),ALKf::cameraTrack());t=camera(p.sequence());}
-    t->lock=helper.reference(object);++t->revision;++p.sequence().revision;
+    t->lock=reference(object);++t->revision;++p.sequence().revision;
     ALKeyframeHistoryAdapter history(p.history(),p.sequence(),blocked,{});history.commit(before,"Camera Lock");
 }
 void ALPanelKeyframes::refreshLibrary()
@@ -295,9 +294,25 @@ void ALPanelKeyframes::refreshLibrary()
     auto* combo=dynamic_cast<LLComboBox*>(control("kf_track"));if(!combo)return;
     const auto value=combo->getValue();combo->removeall();
     combo->add("Current session",LLSD(""));
-    for(const auto& [id,s]:mSessions) combo->add(s.name.empty()?"Untitled session":s.name,LLSD("session:"+id));
+    for(const auto& slot:mSessions) combo->add(slot.seq.name.empty()?"Untitled session":slot.seq.name,LLSD("session:"+slot.id));
     for(const auto& name:ALKeyframeLibrary::names()) combo->add(name,LLSD("file:"+name));
     combo->setValue(value);
+}
+namespace
+{
+// A retained session may be dropped only when nothing would be lost: it has no keys, or it
+// equals the saved library file of its name (uid/revision are session identity, not content).
+bool sessionDisposable(const ALKf::Sequence& s)
+{
+    bool empty=true;
+    for(const auto& t:s.tracks) if(!t.keys.empty()) empty=false;
+    if(empty) return true;
+    const auto file=ALKeyframeLibrary::path(s.name);
+    ALKf::Sequence saved;std::string why;
+    if(s.name.empty()||file.empty()||!LLFile::isfile(file)||!ALKeyframeLibrary::load(file,saved,why)) return false;
+    saved.uid=s.uid;saved.revision=s.revision;
+    return saved==s;
+}
 }
 void ALPanelKeyframes::switchSequence(ALKf::Sequence next)
 {
@@ -311,9 +326,15 @@ void ALPanelKeyframes::switchSequence(ALKf::Sequence next)
     {
         // File UIDs identify serialized content, not distinct unsaved sessions.
         auto retained=LLUUID::generateNewID().asString();
-        while(mSessions.count(retained)) retained=LLUUID::generateNewID().asString();
-        mSessions.emplace(retained,std::move(previous));
+        mSessions.push_back({retained,std::move(previous)});
+        // Cap the retained sessions. Only saved or empty sessions are ever dropped (oldest
+        // first, logged); a session with unsaved changes is kept and the user is told.
+        static constexpr std::size_t kMaxRetainedSessions=16;
+        std::vector<std::string> dropped;
+        const auto unsaved=ALKf::pruneSessions(mSessions,kMaxRetainedSessions,sessionDisposable,dropped);
+        for(const auto& name:dropped) LL_INFOS("Keyframes") << "retained session dropped (saved or empty): " << name << LL_ENDL;
         mTimeline->select(0);mMessage.clear();refreshLibrary();
+        if(unsaved) mMessage=std::to_string(unsaved)+" retained sessions have unsaved changes; save them to free space";
     }
     else mMessage=why;
 }
@@ -391,7 +412,8 @@ void ALPanelKeyframes::action(const std::string& name)
     {
         const auto selected=control("kf_track")->getValue().asString();
         if(selected.starts_with("session:"))
-        {auto it=mSessions.find(selected.substr(8));if(it!=mSessions.end()) switchSequence(it->second);mLoadedName.clear();}
+        {const auto id=selected.substr(8);auto it=std::find_if(mSessions.begin(),mSessions.end(),[&](const auto& slot){return slot.id==id;});
+         if(it!=mSessions.end()) {auto next=it->seq;switchSequence(std::move(next));}mLoadedName.clear();}
         else if(selected.starts_with("file:"))
         {
             ALKf::Sequence next;std::string why;const auto file=selected.substr(5);

@@ -23,23 +23,24 @@ def assertions(files):
     switch=body(code(panel),'void ALPanelKeyframes::switchSequence(')
     need('P5 retained session instance identity',all(x in switch for x in (
         'auto retained=LLUUID::generateNewID().asString();',
-        'while(mSessions.count(retained)) retained=LLUUID::generateNewID().asString();',
-        'mSessions.emplace(retained,std::move(previous));')) and 'mSessions[previous.uid]' not in switch)
+        'mSessions.push_back({retained,std::move(previous)});')) and '{previous.uid,' not in switch and 'mSessions[previous.uid]' not in switch)
+    # Round 4 S2/S3: retained sessions are capped (never dropping unsaved work); lockOn builds no panel.
+    need('P6 capped sessions / static reference',all(x in switch for x in ('ALKf::pruneSessions(mSessions,kMaxRetainedSessions,sessionDisposable,dropped)','kMaxRetainedSessions=16','retained session dropped')) and 'static ALKf::RefSlot reference(LLViewerObject*);' in files['alpanelkeyframes.h'] and 'ALPanelKeyframes helper' not in panel and 'helper.reference' not in panel)
     return errors
 
 def main():
-    names=['alpanelkeyframes.cpp','alkeyframetimeline.cpp','alkeyframeoverlay.cpp','altoolkeyframeedit.cpp']
+    names=['alpanelkeyframes.h','alpanelkeyframes.cpp','alkeyframetimeline.cpp','alkeyframeoverlay.cpp','altoolkeyframeedit.cpp']
     f={n:(NV/n).read_text(encoding='utf-8') for n in names}
     for name in ('menu_avatar_other.xml','menu_avatar_self.xml','menu_object.xml','menu_attachment_other.xml','menu_attachment_self.xml','menu_viewer.xml'):f[name]=(XUI/name).read_text(encoding='utf-8')
     for key,path in {'mockup':ROOT/'scripts/code_tools/director_kit/director_mockup_data.json','page_xml':XUI/'panel_dpage_camera_keyframes.xml','index':XUI/'director_kit_index.xml','floater':XUI/'floater_director_v2.xml','manifest':ROOT/'scripts/code_tools/director_functional_manifest.py','kit_h':NV/'alkitpage.h','kit_cpp':NV/'alkitpage.cpp','controls':XUI/'control_table_contents_machinima.xml','bindings':NV/'app_settings/key_bindings.xml'}.items():f[key]=path.read_text(encoding='utf-8')
     failed=assertions(f);assert not failed,failed
     print('PASS P1-P4 Keyframes page/search, owned history, gestures/clean guides, controls/targets/fit')
-    mutants=[('P1 page/search','missing_index','index','kf_timeline','removed_timeline'),('P2 owned history','missing_discard_step','alpanelkeyframes.cpp','mHistory->discard_step(r,s)','void(0)'),('P3 gestures/clean guides','guide_during_Play','alkeyframeoverlay.cpp','ALCleanFrame::active()','false'),('P4 controls/targets/fit','Playing_not_bool','mockup','"w":"kf_playing","l":"Playing","k":"toggle"','"w":"kf_playing","l":"Playing","k":"button"'),('P5 retained session instance identity','retain_by_file_uid','alpanelkeyframes.cpp','mSessions.emplace(retained,std::move(previous));','mSessions[previous.uid]=std::move(previous);')]
+    mutants=[('P1 page/search','missing_index','index','kf_timeline','removed_timeline'),('P2 owned history','missing_discard_step','alpanelkeyframes.cpp','mHistory->discard_step(r,s)','void(0)'),('P3 gestures/clean guides','guide_during_Play','alkeyframeoverlay.cpp','ALCleanFrame::active()','false'),('P4 controls/targets/fit','Playing_not_bool','mockup','"w":"kf_playing","l":"Playing","k":"toggle"','"w":"kf_playing","l":"Playing","k":"button"'),('P5 retained session instance identity','retain_by_file_uid','alpanelkeyframes.cpp','mSessions.push_back({retained,std::move(previous)});','mSessions.push_back({previous.uid,std::move(previous)});'),('P6 capped sessions / static reference','no_session_cap','alpanelkeyframes.cpp','ALKf::pruneSessions(mSessions,kMaxRetainedSessions,sessionDisposable,dropped)','0'),('P6 capped sessions / static reference','panel_on_stack','alpanelkeyframes.cpp','t->lock=reference(object);','ALPanelKeyframes helper;t->lock=helper.reference(object);'),('P6 capped sessions / static reference','reference_member','alpanelkeyframes.h','static ALKf::RefSlot reference(LLViewerObject*);','ALKf::RefSlot reference(LLViewerObject*) const;')]
     for assertion,name,file,before,after in mutants:
         assert before in f[file],name
         planted=dict(f);planted[file]=f[file].replace(before,after)
         failed=assertions(planted);assert assertion in failed,(name,failed)
         print('PASS negative [src] '+name+': FAIL '+assertion)
     assert not assertions(f)
-    print('PASS clean page after 5 named source negatives')
+    print('PASS clean page after 8 named source negatives')
 if __name__=='__main__':main()

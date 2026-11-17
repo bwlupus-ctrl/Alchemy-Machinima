@@ -196,7 +196,7 @@ void ALKeyframePlayer::lifecycleCheck()
             const auto& c=ALCleanTelemetry::sites[i];
             LL_INFOS("Keyframes") << "clean site " << i << " evaluated/blocked/forbidden " << c.evaluated << "/" << c.blocked << "/" << c.forbidden << LL_ENDL;
         }
-        gViewerInput.flushCleanKeys(); if(gViewerWindow) gViewerWindow->flushCleanGestures(); // input is stock again
+        // Input is stock again at once: clean key input keeps no state to flush.
         ALCleanFrame::setActive(false); ALKeyframeViewer::cleanParticleTransition(); p.broadcast(true);
     }
     if(fx.resetFlycam) LLViewerJoystick::getInstance()->setNeedsReset(true);

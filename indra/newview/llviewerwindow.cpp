@@ -34,7 +34,6 @@
 #include "alcleanframe.h"
 #include "alcleantelemetry.h"
 #include "alkeyframeplayer.h"
-#include "alkeyframeinputgate.h"
 #include "lldirectorcast.h"
 #include "llactormover.h"
 #include "alactorchromakey.h"
@@ -318,8 +317,6 @@ bool cinematicTargetFrameRect(S32 width, S32 height, LLRect& frame)
 
 namespace
 {
-// Gesture release is independent of binding UP (a key can start both PTT and a gesture).
-ALKeyframeInputGate sCleanGestures;
 
 // Drawn only in LLViewerWindow::draw() for the live UI composite. It is
 // deliberately absent from snapshot renders and is placed before mRootView so
@@ -3550,13 +3547,10 @@ void LLViewerWindow::draw()
     LLView::sIsDrawing = false;
 }
 
-void LLViewerWindow::flushCleanGestures() { sCleanGestures.flush(); }
-
 // Takes a single keyup event, usually when UI is visible
 bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
 {
     if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
-    if (sCleanGestures.releaseKey(key)) return true;
     if (LLSetKeyBindDialog::recordKey(key, mask, false))
     {
         LL_DEBUGS() << "KeyUp handled by LLSetKeyBindDialog" << LL_ENDL;
@@ -3640,12 +3634,7 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
             if(key==KEY_F4 || ALKeyframePlayer::instance().ownsCamera() || cast.isRunning() || cast.isCountingDown()) cast.cut(); else cast.action();
             return true;
         }
-        if(LLGestureMgr::instance().triggerGesture(key,mask))
-        {
-            sCleanGestures.started(key,std::to_string(mask),[key,mask]()
-                {LLGestureMgr::instance().triggerGestureRelease(key,mask);},true);
-            return true;
-        }
+        if(LLGestureMgr::instance().triggerGesture(key,mask)) return true; // its UP is the stock gesture release
         if(gGestureList.trigger(key,mask)) return true;
         return false; // bindings retain normal avatar/voice/blink/hot-gaze routing
     } // functional self-test: real OS input is ignored

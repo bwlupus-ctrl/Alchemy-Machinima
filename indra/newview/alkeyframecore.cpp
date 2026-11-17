@@ -758,4 +758,14 @@ void History::observe(const Sequence& s)
     mRevisionClock=std::max(mRevisionClock,s.revision);mNextTrackId=std::max(mNextTrackId,s.nextTrackId);
     for(const auto& t:s.tracks) {mNextKeys[t.id]=std::max(mNextKeys[t.id],t.nextKeyId);mRevisionClock=std::max(mRevisionClock,t.revision);}
 }
+std::size_t pruneSessions(std::vector<SessionSlot>& sessions,std::size_t cap,
+    const std::function<bool(const Sequence&)>& disposable,std::vector<std::string>& dropped)
+{
+    for(auto it=sessions.begin();sessions.size()>cap&&it!=sessions.end();)
+    {
+        if(disposable(it->seq)) {dropped.push_back(it->seq.name.empty()?it->id:it->seq.name);it=sessions.erase(it);}
+        else ++it;
+    }
+    return sessions.size()>cap?sessions.size()-cap:0;
+}
 } // namespace ALKf
