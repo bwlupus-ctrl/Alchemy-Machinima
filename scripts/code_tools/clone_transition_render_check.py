@@ -292,6 +292,134 @@ def r1_negatives():
 
 
 # ---------------------------------------------------------------------------------------------------------
+# fix round 2: N1 (render scale of attached placement), N4 (per-component shell eligibility), GLM 2 (deferred filter)
+# ---------------------------------------------------------------------------------------------------------
+def placement(foot, pivot, scale, point):
+    """drawGeometryGhost's modelview: T(foot) * S(scale) * T(-pivot) applied to an agent-space point."""
+    return tuple(foot[i] + scale * (point[i] - pivot[i]) for i in range(3))
+
+
+def native_outer(pivot, scale, point):
+    """LLGhostAvatar::updateEntityOuterTransform: mCurrent = S(scale) with translation (1 - scale) * pivot."""
+    return tuple(scale * point[i] + (1.0 - scale) * pivot[i] for i in range(3))
+
+
+def n1_placement_ok(attached):
+    """The attached Studio / shell placement must equal the native outer transform at non-unit scale, for the
+    default pivot (root - pelvisToFoot), a Stay in place pivot (compensated root) and a Floor-placement pivot.
+    `attached(root_foot, outer_pivot, scale, point)` returns the attached-placement position of the point."""
+    pts = [(0.3, -0.2, 1.7), (-0.4, 0.1, 0.05), (1.0, 2.0, 3.0)]
+    cases = [((10.0, 20.0, 5.0), (10.0, 20.0, 5.0)),      # pivot == root - pelvisToFoot (default)
+             ((10.0, 20.0, 5.0), (10.35, 19.8, 5.0)),      # Stay in place: the pivot follows the compensated root
+             ((10.0, 20.0, 5.0), (14.0, 18.0, 0.5))]       # Floor placement: pivot is the desired floor foot
+    for root_foot, pivot in cases:
+        for scale in (0.5, 1.5, 3.0):
+            for p in pts:
+                a = attached(root_foot, pivot, scale, p)
+                b = native_outer(pivot, scale, p)
+                if max(abs(a[i] - b[i]) for i in range(3)) > 1e-9:
+                    return False
+    return True
+
+
+def r2_problems(mover, mgr_cpp, studio_cpp):
+    bad = []
+    # N1: one helper reads the entity's outer transform exactly as native applies it
+    helper = fn_body(mover, 'static bool entity_outer_placement(')
+    for token in ('pivot = outer->mFootPivot;', 'scale = outer->mScale;', 'outer->mEnabled', 'is_approx_equal(outer->mScale, 1.f)'):
+        if token not in helper:
+            bad.append('N1: entity_outer_placement lost ' + token)
+    # Studio entity branch: scale + pivot from the outer transform, foot == pivot, no other scale source
+    studio_branch = mover[mover.index('// [CloneTransition] ATTACHED placement (PLAN 2.3)'):]
+    studio_branch = studio_branch[:studio_branch.index('if (layered)')]
+    if 'entity_outer_placement(item.mAv, outer_pivot, outer_scale)' not in studio_branch or \
+            'gp.mScale = outer_scale;' not in studio_branch or 'gp.mPivotFootAgent = outer_pivot;' not in studio_branch or \
+            'gp.mHavePivot = true;' not in studio_branch:
+        bad.append('N1: attached Studio placement does not apply the entity outer scale about its scale pivot')
+    if 'inst.mScale' in studio_branch:
+        bad.append('N1: attached Studio placement applies the instance scale as well (double scale)')
+    foot = mover[mover.index('// [CloneTransition] attached placement for an ENTITY body'):]
+    foot = foot[:foot.index('if (layers.count > 0)')]
+    if 'entity_outer_placement(av, outer_pivot, outer_scale)) foot_agent = outer_pivot;' not in foot:
+        bad.append('N1: the Studio entity foot is not the outer-transform scale pivot')
+    # shell: same outer placement, and the geometry draw takes the pivot as its foot
+    shell = mover[mover.index('bool LLActorMover::renderSharedActorStyleProxyItem('):]
+    shell = shell[:shell.index('if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||')]
+    if 'entity_outer_placement(proxy.mAvatar, outer_pivot, outer_scale)' not in shell or 'shell_params.mScale = outer_scale;' not in shell \
+            or 'shell_params.mPivotFootAgent = outer_pivot;' not in shell or 'proxy.mBatches, shell_foot,' not in shell:
+        bad.append('N1: the effect shell geometry does not apply the entity outer scale about the same pivot')
+    # BodyFrame (the transition coordinate) stays one source shared by both halves
+    if mgr_cpp.count('rootAgent[') != 1 or 'frame.scale = scale > 0.f ? scale : 1.f;' not in mgr_cpp:
+        bad.append('N1: BodyFrame scale/root must be written once, by fillFrame, for both halves')
+    # N4: per-component eligibility in the shell queue build
+    comp = fn_body(mover, 'static bool shell_component_native_surface(')
+    for token in ('info->mActorFxOwner', 'info->mActorFxFallbackOwner', 'resolveStoredActorStyle', 'ACTOR_STYLE_REPLACE',
+                  'ACTOR_STYLE_LAYER', 'isRenderHidden(info->mAvatar'):
+        if token not in comp:
+            bad.append('N4: shell_component_native_surface lost ' + token)
+    if 'getRenderActorStyle' in comp:
+        bad.append('N4: the component test resolves the WEARER style only')
+    q = mover[mover.index('EFFECT SHELL items (PLAN 3.3)'):]
+    q = q[:q.index('proxy.mFootAgent = avatar->getRenderPosition();')]
+    if 'ghost_pass_is_blend(batch.mPass) || !shell_component_native_surface(info)' not in q:
+        bad.append('N4: rigged shell components are not filtered per component (blend / owner style)')
+    if 'source_face.mAlphaKind == 2 || !shell_component_native_surface(face->mDrawInfo)' not in q:
+        bad.append('N4: static shell components are not filtered per component (blend / owner style)')
+    if 'established at queue build' in mover:
+        bad.append('N4: the overstated "mNativeDepthAvailable ... established at queue build" comment is back')
+    # GLM 2: committed overlay-look entity clones never enter the deferred ghost queue (mKind == BACKING_OVERLAY only)
+    dq = mover[mover.index('mGhostDeferredQueue.clear();'):]
+    dq = dq[:dq.index('++mGhostDeferredCounters.mLiveInstancesConsidered;')]
+    if not re.search(r'if \(inst\.mKind != ALGhostStudio::BACKING_OVERLAY \|\|', dq):
+        bad.append('GLM2: the deferred ghost queue no longer admits overlay-backed instances only')
+    return bad
+
+
+def r2_checks():
+    mover = text(NV / 'llactormover.cpp')
+    bad = r2_problems(mover, text(NV / 'alclonetransitions.cpp'), text(NV / 'alghoststudio.cpp'))
+    check(not bad, 'fix round 2 source rules (N1 N4 GLM2) %s' % bad)
+    check(n1_placement_ok(lambda root, pivot, s, p: placement(pivot, pivot, s, p)),
+          'N1 placement fixture: attached placement (foot == outer pivot, scale = outer scale) == native outer transform at scale 0.5/1.5/3, default + Stay in place + Floor pivots')
+
+
+def r2_negatives():
+    mover = text(NV / 'llactormover.cpp')
+    mgr = text(NV / 'alclonetransitions.cpp')
+    studio = text(NV / 'alghoststudio.cpp')
+
+    def neg(label, old, new, src=None):
+        s = mover if src is None else src
+        assert s.count(old) >= 1, 'anchor missing: ' + old[:70]
+        m2 = s.replace(old, new, 1)
+        check(bool(r2_problems(m2, mgr, studio)) if src is None else bool(r2_problems(mover, m2, studio)), 'PLANTED NEGATIVE: ' + label)
+
+    # math negatives: each wrong placement is caught by the native-vs-attached fixture
+    check(not n1_placement_ok(lambda root, pivot, s, p: placement(root, root, 1.0, p)),
+          'PLANTED NEGATIVE: scale-1 attached placement (the round-1 behaviour) differs from native at scale != 1')
+    check(not n1_placement_ok(lambda root, pivot, s, p: placement(root, root, s, p)),
+          'PLANTED NEGATIVE: scaling about root - pelvisToFoot instead of the outer pivot differs from native (Stay in place / Floor)')
+    check(not n1_placement_ok(lambda root, pivot, s, p: native_outer(pivot, s, native_outer(pivot, s, p))),
+          'PLANTED NEGATIVE: applying the outer transform twice differs from native')
+    neg('N1 Studio branch keeps scale 1 / no pivot', '                gp.mScale = outer_scale;\n                gp.mHavePivot = true;\n                gp.mPivotFootAgent = outer_pivot;\n',
+        '                gp.mScale = 1.f;\n')
+    neg('N1 Studio foot not the outer pivot', 'entity_outer_placement(av, outer_pivot, outer_scale)) foot_agent = outer_pivot;',
+        'entity_outer_placement(av, outer_pivot, outer_scale)) {}')
+    neg('N1 shell geometry unscaled', '                shell_params.mScale = outer_scale;\n', '')
+    neg('N1 shell geometry drawn from the unscaled foot', 'proxy.mBatches, shell_foot,', 'proxy.mBatches, proxy.mFootAgent,')
+    neg('N1 helper ignores the pivot', 'pivot = outer->mFootPivot;', 'pivot = LLVector3();')
+    neg('N4 rigged component filter removed', 'ghost_pass_is_blend(batch.mPass) || !shell_component_native_surface(info)', 'false')
+    neg('N4 static component filter removed', 'source_face.mAlphaKind == 2 || !shell_component_native_surface(face->mDrawInfo)', 'false')
+    neg('N4 component test resolves the wearer only', 'LLDirectorCast::instance().resolveStoredActorStyle(\n        info->mActorFxOwner, info->mActorFxFallbackOwner, owner);',
+        'LLDirectorCast::instance().getRenderActorStyle(owner); (void)info->mActorFxOwner; (void)info->mActorFxFallbackOwner; (void)LLDirectorCast::instance().resolveStoredActorStyle;')
+    neg('N4 the overstated depth comment is back', '        // Every component in this proxy passed shell_component_native_surface()',
+        '        shell_params.mNativeDepthAvailable = true;   // established at queue build\n        // Every component in this proxy passed shell_component_native_surface()')
+    neg('GLM2 deferred queue admits entity-backed instances', 'if (inst.mKind != ALGhostStudio::BACKING_OVERLAY ||\n            !studio.isVisible(inst) || !(inst.mFadeAlpha > 0.f) ||\n            inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)',
+        'if (!studio.isVisible(inst) || !(inst.mFadeAlpha > 0.f) ||\n            inst.mRenderIntent == ALGhostStudio::RENDER_FORCE_FORWARD)')
+    neg('BodyFrame written by a second source', 'frame.scale = scale > 0.f ? scale : 1.f;', 'frame.scale = scale > 0.f ? scale : 1.f; frame.rootAgent[0] += 0.f;', src=mgr)
+
+
+# ---------------------------------------------------------------------------------------------------------
 # C++ reference fixture
 # ---------------------------------------------------------------------------------------------------------
 FIXTURE = r'''
@@ -550,8 +678,12 @@ def linked_program_checks(h):
     defs = '#define HAS_SKIN 1\n#define HAS_ACTOR_FX 1\n#define MAX_JOINTS_PER_MESH_OBJECT 110\n'
     getu = gl.fn('glGetUniformfv', None, C.c_uint, C.c_int, C.POINTER(C.c_float))
 
-    def link(label, modules, mutate=None, from_base=False):
+    bind_attrib = gl.fn('glBindAttribLocation', None, C.c_uint, C.c_uint, C.c_char_p)
+
+    def link(label, modules, mutate=None, from_base=False, attribs=None):
         pr = gl.program()
+        for index, name in enumerate(attribs or ()):
+            bind_attrib(pr, index, name.encode())
         for path, stage in modules:
             src = base_text('indra/newview/app_settings/shaders/' + path) if from_base else text(SH / path)
             if mutate and path == mutate[0]:
@@ -564,22 +696,124 @@ def linked_program_checks(h):
         gl.getprog(pr, 0x8B82, C.byref(ok))
         return pr if ok.value else None
 
+    beauty_pr = None
     for name, mods in (('avatar beauty (avatarV/F)', beauty), ('avatar shadow (avatarShadowV/F)', shadow)):
         old = link(name + ' base', mods, from_base=True)
         check(old is not None, 'linked production program, BASE sources: ' + name + ' (the composition is valid)')
-        pr = link(name, mods)
+        pr = link(name, mods, attribs=('position', 'normal', 'texcoord0', 'weight'))
         check(pr is not None, 'linked production program with the transition module: ' + name)
         if pr is None:
             continue
+        if name.startswith('avatar beauty'):
+            beauty_pr = pr
         locs = {u: gl.loc(pr, u.encode()) for u in ('actorFxTransition', 'transitionEyeToBody')}
         check(all(v >= 0 for v in locs.values()), 'transition uniforms are ACTIVE in the linked ' + name + ' ' + str(locs))
         gl.use(pr)
         val = (C.c_float * 4)()
         getu(pr, locs['actorFxTransition'], val)
         check(list(val) == [0.0, 0.0, 0.0, 0.0], 'linked ' + name + ': actorFxTransition defaults to zero (transition off)')
+    if beauty_pr is not None:
+        production_draw_sequence(h, beauty_pr)
     # planted negative: stage type mismatch between the vertex and fragment declaration of one uniform
     bad = link('planted type mismatch', shadow, mutate=('class1/deferred/avatarShadowV.glsl', 'uniform vec4 actorFxTransition;', 'uniform vec3 actorFxTransition;'))
     check(bad is None, 'PLANTED NEGATIVE: a vertex/fragment type mismatch on actorFxTransition fails to link in the production shadow program')
+
+
+def production_draw_sequence(h, pr):
+    """T3: DRAW the linked production avatar beauty program (avatarV/F + the production modules) with real vertex
+    attributes: a never-active baseline, then an ACTIVE transition draw, then the host's inactive reset
+    (uploadCloneTransition with inactive params writes ONLY actorFxTransition = 0; actorFxTransition2, the edge
+    colour and transitionEyeToBody stay STALE exactly as in the viewer) and an inactive draw that must be pixel
+    identical to the baseline. The active draw must differ (so the proof is not vacuous); an inactive draw WITHOUT
+    the reset must still differ (planted negative: the reset is what restores identity)."""
+    np, gl = h.np, h.gl
+    f = C.c_float
+    gen_vao = gl.fn('glGenVertexArrays', None, C.c_int, C.POINTER(C.c_uint))
+    bind_vao = gl.fn('glBindVertexArray', None, C.c_uint)
+    gen_buf = gl.fn('glGenBuffers', None, C.c_int, C.POINTER(C.c_uint))
+    bind_buf = gl.fn('glBindBuffer', None, C.c_uint, C.c_uint)
+    buf_data = gl.fn('glBufferData', None, C.c_uint, C.c_ssize_t, C.c_void_p, C.c_uint)
+    attrib = gl.fn('glVertexAttribPointer', None, C.c_uint, C.c_int, C.c_uint, C.c_ubyte, C.c_int, C.c_void_p)
+    enable = gl.fn('glEnableVertexAttribArray', None, C.c_uint)
+    u4fv = gl.fn('glUniform4fv', None, C.c_int, C.c_int, C.POINTER(f))
+    um4 = gl.fn('glUniformMatrix4fv', None, C.c_int, C.c_int, C.c_ubyte, C.POINTER(f))
+    vao, vbo = C.c_uint(), C.c_uint()
+    gen_vao(1, C.byref(vao))
+    bind_vao(vao)
+    gen_buf(1, C.byref(vbo))
+    bind_buf(0x8892, vbo)
+    # a body-sized quad in eye space: x in [-0.4, 0.4], y (depth) 0.123, z (height) in [0, 1.8]
+    corners = [(-0.4, 0.0), (0.4, 0.0), (0.4, 1.8), (-0.4, 0.0), (0.4, 1.8), (-0.4, 1.8)]
+    verts = np.array([[x, 0.123, z, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0] for x, z in corners], np.float32)
+    buf_data(0x8892, verts.nbytes, verts.ctypes.data, 0x88E4)
+    stride = 12 * 4
+    for index, (size, offset) in enumerate(((3, 0), (3, 12), (2, 24), (4, 32))):
+        attrib(index, size, 0x1406, 0, stride, C.c_void_p(offset))
+        enable(index)
+    gl.use(pr)
+
+    def uni4(name, *vals, optional=False):
+        loc = gl.loc(pr, name.encode())
+        if loc < 0 and optional:
+            return   # the edge colour is only consumed by the shell program
+        assert loc >= 0, 'uniform missing in the linked beauty program: ' + name
+        arr = (f * 4)(*[float(v) for v in vals])
+        u4fv(loc, 1, arr)
+
+    def mat4(name, m):
+        loc = gl.loc(pr, name.encode())
+        assert loc >= 0, 'uniform missing in the linked beauty program: ' + name
+        um4(loc, 1, 0, (f * 16)(*m))
+
+    # clip = projection * eye: x -> x / 0.4, z -> z / 0.9 - 1 (column-major)
+    mat4('projection_matrix', [2.5, 0, 0, 0, 0, 0, 0, 0, 0, 1 / 0.9, 0, 0, 0, -1, 0, 1])
+    palette = (f * (45 * 4))()
+    for row, base in enumerate((0, 15, 30)):
+        for k in (0, 1):
+            palette[(base + k) * 4 + row] = 1.0
+    loc = gl.loc(pr, b'matrixPalette')
+    assert loc >= 0, 'matrixPalette missing in the linked beauty program'
+    u4fv(loc, 45, palette)
+    for name, val in (('diffuseMap', 0), ('minimum_alpha', 0.0)):
+        l = gl.loc(pr, name.encode())
+        if l >= 0:
+            (gl.ui(l, val) if isinstance(val, int) else gl.uf[1](l, val))
+    gl.active(0x84C0)
+    gl.bind_tex(0x0DE1, h.white)
+
+    def render():
+        h.clearcolor(0, 0, 0, 0)
+        h.clear(0x4000)
+        gl.disable(0x0BE2)
+        gl.draw(4, 0, 6)
+        pix = np.empty(h.size * h.size * 4, np.float32)
+        gl.read(0, 0, h.size, h.size, 0x1908, 0x1406, pix.ctypes.data)
+        assert h.err() == 0, 'GL error in the production draw'
+        return pix
+
+    seed_lo, seed_hi = seed_halves(12345)
+    identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    base = render()
+    check(float(base.reshape(-1, 4)[:, 0].max()) > 0.5,
+          'production draw: the baseline (never active) avatar beauty draw covers pixels')
+    # ACTIVE: every transition uniform the host uploads for a running transition
+    uni4('actorFxTransition', 1, 0.5, 0, 0)
+    uni4('actorFxTransition2', 1.8, 0.06, seed_lo, seed_hi)
+    uni4('actorFxTransitionEdge', 1.0, 0.55, 0.15, 2.0, optional=True)
+    mat4('transitionEyeToBody', identity)
+    active = render()
+    check(not np.array_equal(base, active), 'production draw: the ACTIVE transition draw differs from the baseline (the mask removes pixels)')
+    # INACTIVE after the host reset: only actorFxTransition is written; transition2 / edge / eyeToBody stay stale
+    uni4('actorFxTransition', 0, 0, 0, 0)
+    after_reset = render()
+    check(np.array_equal(base, after_reset),
+          'production draw: active -> inactive (host reset only zeroes actorFxTransition, the rest stays stale) is pixel-identical to a never-active draw')
+    # planted negative: the same sequence WITHOUT the reset keeps the mask (the reset is what restores identity)
+    uni4('actorFxTransition', 1, 0.5, 0, 0)
+    no_reset = render()
+    check(not np.array_equal(base, no_reset), 'PLANTED NEGATIVE: an inactive draw WITHOUT the host reset still carries the stale mask (differs from a never-active draw)')
+    uni4('actorFxTransition', 0, 0, 0, 0)
+    bind_vao(0)
 
 
 def gl_checks(exe):
@@ -735,12 +969,8 @@ void main(){ actorFxTronPrime(); frag_color = vec4(1.0, 0.0, 0.0, 1.0); }
     check(same, 'transition OFF: silhouette cover renders byte-identically to the pre-change shader')
 
     # ---- (s2) Crossfade must not follow the screen: same body points at two screen positions ----
-    cf = h.program([dis, MASK_FS], label='mask')
-    a = kept(h.draw(cf, tuniforms(3, 0.5, 0), lo=(-0.4, 0, 0.0), hi=(0.4, 0, 1.8)))
-    # shift the whole screen footprint by drawing the same body points through a different viewport origin
-    h.gl.viewport(5, 3, h.size - 8, h.size - 6)
-    b2 = kept(h.draw(cf, tuniforms(3, 0.5, 0), lo=(-0.4, 0, 0.0), hi=(0.4, 0, 1.8)))
-    h.gl.viewport(0, 0, h.size, h.size)
+    # (the earlier viewport-shift probe `b2` was computed and never asserted on; object_space_stable below is the real
+    # assertion: the same body samples shifted by one screen pixel must keep the same per-sample result)
     check(object_space_stable(h, dis), 'Crossfade mask depends on the object-space coordinate only (screen shift leaves the kept set per sample unchanged)')
     bayer_dis = dis.replace('float ctField(int style, vec3 pos, uint seed, float body_height, int direction)\n{',
                             'float ctField(int style, vec3 pos, uint seed, float body_height, int direction)\n{\n    if (style == 3) { ivec2 q = ivec2(mod(floor(gl_FragCoord.xy), 4.0)); const float bayer[16] = float[16](0.,8.,2.,10.,12.,4.,14.,6.,3.,11.,1.,9.,15.,7.,13.,5.); return (bayer[q.y*4+q.x]+0.5)/16.0; }', 1)
@@ -824,6 +1054,8 @@ def main():
     r1_checks()
     native_negatives()
     r1_negatives()
+    r2_checks()
+    r2_negatives()
     try:
         with tempfile.TemporaryDirectory() as tmp:
             exe = build_fixture(Path(tmp))

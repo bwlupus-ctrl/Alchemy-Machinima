@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from clone_transition_pins import ROOT, BASE, _git_base, _hunks  # noqa: E402  (shared hunk maker)
 
 MANIFEST = Path(__file__).with_name('clone_transition_engine_hunks.json')
-MANIFEST_SHA256 = 'efd94d9121c39126b8a975bf754738ae436e5a119cbaac3f3f8035e16bd5eb2a'
+MANIFEST_SHA256 = '70f0108868239e321b3de384f7e4e4932dae50773db1601d5e52590175f4303f'
 COVERED = (
     'indra/newview/alghoststudio.cpp', 'indra/newview/alghoststudio.h',
     'indra/newview/alghostcloneactions.cpp', 'indra/newview/alghostcloneactions.h',

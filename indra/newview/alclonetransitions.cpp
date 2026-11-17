@@ -17,9 +17,13 @@
 #include "llagent.h"
 #include "llghostavatar.h"
 #include "llpresentationtime.h"
+#include "pipeline.h"
+#include "llviewerobject.h"
+#include "llviewerjointattachment.h"
 #include "llviewerregion.h"
 #include "llavatarappearancedefines.h"
 #include "llwearabletype.h"
+#include "indra_constants.h"
 
 #include <cmath>
 #include <map>
@@ -37,19 +41,63 @@ const ALCloneTransition::RenderParams& inactive_params()
 // M6 (system-avatar entity clones). The Studio ENTITY branch draws only harvested attachment batches and static
 // faces; it has NO system body / eyes / hair draw (the Studio overlay looks 0-100 are not compiled into the
 // system-avatar programs, and the overlay of any other clone has never drawn them either). An entity whose
-// system parts are VISIBLE therefore cannot become an overlay look: its native body would be hidden at commit
-// and those parts would vanish. Same tests the native system passes use (LLVOAvatar::renderSkinned /
-// renderTransparent / renderRigid): a baked texture that is IMG_INVISIBLE (a fully alpha-masked part) does not
-// count. Animesh (control avatars) have no system body.
-bool system_parts_visible(const LLVOAvatar* avatar)
+// system parts are DRAWN therefore cannot become an overlay look: its native body would be hidden at commit
+// and those parts would vanish. T2: "drawn" is decided exactly as native avatar rendering decides it; the rule is
+// the pure ALCloneTransition::systemPartsDrawn (documented and native-tested there): visible bake (not
+// IMG_INVISIBLE) AND the system mesh not hidden by a Bakes-on-Mesh attachment (LLVOAvatar::updateMeshVisibility)
+// AND not AOA_INVISIBLE. Animesh (control avatars) have no system body.
+bool bom_hides(const LLVOAvatar* avatar, const LLUUID& baked_id)
+{
+    auto uses = [&baked_id](LLViewerObject* object)
+    {
+        for (S32 face = 0; face < object->getNumTEs(); ++face)
+        {
+            const LLTextureEntry* te = object->getTE(face);
+            if (te && te->getID() == baked_id) return true;
+        }
+        return false;
+    };
+    for (const auto& point : avatar->mAttachmentPoints)
+    {
+        const LLViewerJointAttachment* attachment = point.second;
+        if (!attachment) continue;
+        for (const auto& object : attachment->mAttachedObjects)
+        {
+            if (object.isNull()) continue;
+            if (uses(object.get())) return true;
+            for (const auto& child : object->getChildren())
+                if (child.notNull() && uses(child.get())) return true;
+        }
+    }
+    return false;
+}
+}
+
+bool ALCloneTransitions::systemPartsVisible(const LLVOAvatar* avatar)
 {
     using namespace LLAvatarAppearanceDefines;
     if (!avatar || avatar->isControlAvatar()) return false;
-    return avatar->isTextureVisible(TEX_HEAD_BAKED) || avatar->isTextureVisible(TEX_UPPER_BAKED)
-        || avatar->isTextureVisible(TEX_LOWER_BAKED) || avatar->isTextureVisible(TEX_EYES_BAKED)
-        || avatar->isTextureVisible(TEX_HAIR_BAKED)
-        || (avatar->isWearingWearableType(LLWearableType::WT_SKIRT) && avatar->isTextureVisible(TEX_SKIRT_BAKED));
+    ALCloneTransition::SystemPartInputs in;
+    in.invisibleAppearance = avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE;
+    in.headBake = avatar->isTextureVisible(TEX_HEAD_BAKED);
+    in.upperBake = avatar->isTextureVisible(TEX_UPPER_BAKED);
+    in.lowerBake = avatar->isTextureVisible(TEX_LOWER_BAKED);
+    in.eyesBake = avatar->isTextureVisible(TEX_EYES_BAKED);
+    in.hairBake = avatar->isTextureVisible(TEX_HAIR_BAKED);
+    in.skirtWorn = avatar->isWearingWearableType(LLWearableType::WT_SKIRT);
+    in.skirtBake = in.skirtWorn && avatar->isTextureVisible(TEX_SKIRT_BAKED);
+    // The Bakes-on-Mesh scan only matters for a part whose bake is visible.
+    if (in.headBake) in.bomHead = bom_hides(avatar, IMG_USE_BAKED_HEAD);
+    if (in.upperBake) in.bomUpper = bom_hides(avatar, IMG_USE_BAKED_UPPER);
+    if (in.lowerBake) in.bomLower = bom_hides(avatar, IMG_USE_BAKED_LOWER);
+    if (in.eyesBake) in.bomEyes = bom_hides(avatar, IMG_USE_BAKED_EYES);
+    if (in.hairBake) in.bomHair = bom_hides(avatar, IMG_USE_BAKED_HAIR);
+    if (in.skirtBake) in.bomSkirt = bom_hides(avatar, IMG_USE_BAKED_SKIRT);
+    return ALCloneTransition::systemPartsDrawn(in);
 }
+
+namespace
+{
 const char* const SYSTEM_PARTS_REFUSAL =
     "Overlay looks cannot draw this clone's standard avatar body or eyes yet (an alpha-masked mesh body works)";
 }
@@ -83,7 +131,7 @@ struct ALCloneTransitions::Impl
             if (!ghost || ghost->isDead() || ghost->getID() != r.body) return false;
             // M6: re-checked every tick and at commit; a COMMIT onto an invalid half becomes a ROLLBACK, so a body
             // whose system parts became visible can never be hidden behind an overlay look that cannot draw them.
-            if (r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost)) return false;
+            if (r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && ALCloneTransitions::systemPartsVisible(ghost)) return false;
             return true;
         }
         void onStarted(const Rec& r)
@@ -221,10 +269,11 @@ struct ALCloneTransitions::Impl
             sRunning = mMachine.running();
             return;
         }
-        // Presentation time: world time scale aware, and stopped by Freeze (same rule as the Studio motion
-        // clock); the 0.25 s cap keeps a stalled frame from skipping the whole effect.
-        const F64 raw = LLPresentationTime::drives(LLTemporalFeature::ANIMATION) ? frame.presentation_delta : frame.wall_delta;
-        const F64 delta = (std::isfinite(raw) && raw > 0.0) ? std::min(raw, 0.25) : 0.0;
+        // Presentation time: world time scale aware (a World Time freeze holds it), and (T1) held while the world is
+        // frozen: Freeze World / FreezeTime (LLPipeline::FreezeTime, the cached setting) are independent of the presentation clock.
+        // The pure ALCloneTransition::clockDelta is the native-tested rule (0.25 s cap included).
+        const F64 delta = ALCloneTransition::clockDelta(LLPipeline::FreezeTime,
+            LLPresentationTime::drives(LLTemporalFeature::ANIMATION), frame.presentation_delta, frame.wall_delta);
         mReason = ALCloneTransition::R_BODY_INVALID; // overwritten by the machine for a natural end
         mMachine.tick(delta);
         sRunning = mMachine.running();
@@ -341,15 +390,14 @@ bool ALCloneTransitions::start(const LLUUID& instance_id, const ALCloneTransitio
         if (!ghost || ghost->isDead() || !ghost->isBuilt()) { why = "The clone's body is not ready"; return false; }
         body = ghost->getID();
         if (inst->mEntityId != body) { why = "The clone's body is not ready"; return false; }
-        if (request.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost))
+        if (request.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && ALCloneTransitions::systemPartsVisible(ghost))
         { why = SYSTEM_PARTS_REFUSAL; return false; }
     }
     // A refused request never modifies state: reject a duplicate BEFORE anything touches mExtras (the running
     // record's render params live there; the refusal branch below erases the entry).
     if (mImpl->mMachine.find(instance_id)) { why = "This clone already has a transition running; Cancel it first"; return false; }
     if (!studio.isVisible(*inst)) { why = "The clone is hidden; show it first"; return false; }
-    if (ALCloneTransitions::anyRunning() && mImpl->mMachine.running() >= ALCloneTransition::MAX_RUNNING &&
-        !mImpl->mMachine.find(instance_id))
+    if (mImpl->mMachine.running() >= ALCloneTransition::MAX_RUNNING)
     { why = "Two transitions are already running; wait or Cancel one"; return false; }
     LLViewerRegion* region = gAgent.getRegion();
     if (!region || gAgent.getTeleportState() != LLAgent::TELEPORT_NONE) { why = "Not available during a teleport"; return false; }
@@ -423,6 +471,12 @@ std::string ALCloneTransitions::statusFor(const LLUUID& instance_id) const
         return llformat("Running %.1f / %.1f s", rec->elapsed, rec->duration);
     const auto it = mImpl->mStatus.find(instance_id);
     return it == mImpl->mStatus.end() ? std::string() : it->second;
+}
+
+void ALCloneTransitions::setNote(const LLUUID& instance_id, const std::string& text)
+{
+    if (instance_id.isNull() || !instanceExists()) return;
+    instance().mImpl->setStatus(instance_id, text);
 }
 
 // --- cancellation table hooks (all idempotent, all free when nothing runs) ---------------------------

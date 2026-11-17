@@ -397,6 +397,9 @@ void ALGhostStudio::applyEntityRuntimeState(Instance& inst,
         ghost->setAnimationSource(animation ? animation->getID() : LLUUID::null);
     }
     ghost->setEntityLook(inst.mLook, inst.mLookAlpha);
+    // [CloneTransition] N3: every replacement / recovered / duplicated body is validated BEFORE an existing overlay
+    // look hides it: system parts the Studio cannot draw drop the look to Normal (native body stays visible).
+    dropUnsupportedOverlayLookOf(inst, ghost);
     set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst));
 
     // A fresh skeleton has no evaluated pose to hold. Let its stored resume
@@ -801,7 +804,7 @@ ALGhostStudio::Instance* ALGhostStudio::addInstance(const LLUUID& source)
         inst.mRotation = avatar->getRotation();
     }
     mIndicesDirty = true;
-    mInstances.push_back(inst);
+    pushInstance(inst);
     beginAppearance(inst.mId);
     ++mInstanceRevision; // [GhostPanelPerf]
     return getInstance(inst.mId);
@@ -843,7 +846,7 @@ ALGhostStudio::Instance* ALGhostStudio::spawnEntityClone(
     record.mFootGlobal = gAgent.getPosGlobalFromAgent(source_foot);
     record.mRotation = source->getRotation();
     mIndicesDirty = true;
-    mInstances.push_back(record);
+    pushInstance(record);
     ++mInstanceRevision; // [GhostPanelPerf]
     const LLUUID stable_id = record.mId;
 
@@ -1014,7 +1017,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstance(const LLUUID& id)
     const F32 yaw = copy.getYaw();
     copy.mFootGlobal += LLVector3d(-sinf(yaw), cosf(yaw), 0.0);
     mIndicesDirty = true;
-    mInstances.push_back(copy);
+    pushInstance(copy);
     beginAppearance(copy.mId);
     ++mInstanceRevision; // [GhostPanelPerf]
     return getInstance(copy.mId);
@@ -1047,7 +1050,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     copy.mCrowdId.setNull();
         copy.mLockMode = LOCK_OFF;
         mIndicesDirty = true;
-    mInstances.push_back(copy);
+    pushInstance(copy);
         beginAppearance(copy.mId);
         ++mInstanceRevision; // [GhostPanelPerf]
         return getInstance(copy.mId);
@@ -1066,7 +1069,7 @@ ALGhostStudio::Instance* ALGhostStudio::duplicateInstanceSnapshotInPlace(
     const LLUUID entity_id = copy->mEntityId;
     const ELifecycleState state = copy->mState;
     const std::string new_name = copy->mName; // spawn already called makeDefaultName()
-    *copy = proto;
+    assignRecord(*copy, proto); // keeps mOverlayLookCount exact: the duplicate keeps the prototype's overlay look
     copy->mReflectMirrorPosition = false;
     copy->mReflectFloor = false;
     copy->mMirrorLightRig = false;
@@ -3695,8 +3698,7 @@ void ALGhostStudio::removeInstance(const LLUUID& id)
         if (mSelected == retiring_id) setSelected(LLUUID::null);
     }
     mIndicesDirty = true;
-    if (const Instance* retiring = getInstance(retiring_id); retiring && retiring->mOverlayLook >= 0)
-        mOverlayLookCount = std::max<S32>(0, mOverlayLookCount - 1); // [CloneTransition]
+    if (const Instance* retiring = getInstance(retiring_id)) accountOverlayLook(retiring->mOverlayLook, -1); // [CloneTransition]
     mInstances.erase(
         std::remove_if(mInstances.begin(), mInstances.end(),
                        [&retiring_id](const Instance& i) { return i.mId == retiring_id; }),
@@ -5059,7 +5061,7 @@ S32 ALGhostStudio::makeArray(const LLUUID& id, S32 count, F32 spacing,
                 copy.setYaw(s.mYaw);
             }
             mIndicesDirty = true;
-    mInstances.push_back(copy);
+    pushInstance(copy);
         beginAppearance(copy.mId);
             ++mInstanceRevision; // [GhostPanelPerf]
             created.push_back(copy.mId);
@@ -6411,6 +6413,50 @@ void ALGhostStudio::reapplyEntityBodyFlags(const LLUUID& id)
         set_entity_clone_visible(ghost, isVisible(*inst), entityRenderOnly(*inst));
 }
 
+void ALGhostStudio::accountOverlayLook(S32 before, S32 after)
+{
+    mOverlayLookCount += (after >= 0 ? 1 : 0) - (before >= 0 ? 1 : 0);
+    if (mOverlayLookCount < 0) mOverlayLookCount = 0; // defensive; the invariant is asserted below
+}
+
+void ALGhostStudio::setOverlayLookField(Instance& inst, S32 look)
+{
+    accountOverlayLook(inst.mOverlayLook, look);
+    inst.mOverlayLook = look;
+}
+
+void ALGhostStudio::pushInstance(const Instance& inst)
+{
+    mInstances.push_back(inst);
+    accountOverlayLook(-1, inst.mOverlayLook);
+}
+
+void ALGhostStudio::assignRecord(Instance& dst, const Instance& src)
+{
+    const S32 before = dst.mOverlayLook;
+    dst = src;
+    accountOverlayLook(before, dst.mOverlayLook);
+}
+
+bool ALGhostStudio::dropUnsupportedOverlayLookOf(Instance& inst, LLVOAvatar* body)
+{
+    if (inst.mKind != BACKING_ENTITY_CLONE || inst.mOverlayLook < 0 || !body) return false;
+    if (!ALCloneTransitions::systemPartsVisible(body)) return false;
+    setOverlayLookField(inst, -1);
+    ALCloneTransitions::setNote(inst.mId, "Overlay look dropped: this body has standard avatar parts the overlay cannot draw");
+    ++mInstanceRevision; // the Clones list rows
+    return true;
+}
+
+bool ALGhostStudio::dropUnsupportedOverlayLook(const LLUUID& id)
+{
+    Instance* inst = getInstance(id);
+    if (!inst || inst->mKind != BACKING_ENTITY_CLONE || inst->mOverlayLook < 0) return false;
+    if (!dropUnsupportedOverlayLookOf(*inst, resolveEntityClone(id))) return false;
+    reapplyEntityBodyFlags(id);
+    return true;
+}
+
 bool ALGhostStudio::setEntityOverlayLook(const LLUUID& id, S32 look)
 {
     assert_main_thread();
@@ -6419,8 +6465,7 @@ bool ALGhostStudio::setEntityOverlayLook(const LLUUID& id, S32 look)
     if (look >= 0) look = resolveOverlayStyle(look);
     if (look >= 0 && !isOverlayStyle(look)) return false;
     if (inst->mOverlayLook == look) { reapplyEntityBodyFlags(id); return true; }
-    mOverlayLookCount += (look >= 0 ? 1 : 0) - (inst->mOverlayLook >= 0 ? 1 : 0);
-    inst->mOverlayLook = look;
+    setOverlayLookField(*inst, look);
     ++mInstanceRevision; // the Clones list rows
     reapplyEntityBodyFlags(id);
     return true;

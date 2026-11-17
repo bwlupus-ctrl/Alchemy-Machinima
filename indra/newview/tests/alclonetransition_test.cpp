@@ -397,4 +397,55 @@ void alclonetransition_object::test<15>()
            r && r->generation == gen && r->duration == 2.0 && r->seed == 5u && r->elapsed == 0.5);
     ensure_equals("onStarted not repeated", host.started[1], 1);
 }
+// 16. The manager clock (T1): a frozen world holds every transition (delta 0, no progress, no commit); otherwise
+// presentation delta when the world-time drive owns the clock, else wall; non-finite / negative => 0; 0.25 s cap.
+template<> template<>
+void alclonetransition_object::test<16>()
+{
+    ensure_equals("frozen world: no advance (wall clock)", clockDelta(true, false, 0.0, 0.016), 0.0);
+    ensure_equals("frozen world: no advance (presentation clock)", clockDelta(true, true, 0.016, 0.016), 0.0);
+    ensure_equals("running world uses wall delta", clockDelta(false, false, 0.5, 0.016), 0.016);
+    ensure_equals("world-time drive uses presentation delta", clockDelta(false, true, 0.008, 0.016), 0.008);
+    ensure_equals("stalled frame capped", clockDelta(false, false, 0.0, 3.0), 0.25);
+    ensure_equals("negative delta ignored", clockDelta(false, false, 0.0, -1.0), 0.0);
+    ensure_equals("NaN delta ignored", clockDelta(false, false, 0.0, std::nan("")), 0.0);
+    DoubleHost host;
+    Machine<Id, DoubleHost> m(host);
+    const char* why = nullptr;
+    m.start(1, 10, request(KIND_ENTITY_TO_OVERLAY_LOOK, 1.0), 1u, why);
+    for (int i = 0; i < 100; ++i) m.tick(clockDelta(true, false, 0.0, 0.5)); // frozen for 50 s of wall time
+    ensure("a frozen transition neither progresses nor commits", m.find(1) && m.find(1)->elapsed == 0.0);
+    for (int i = 0; i < 10; ++i) m.tick(clockDelta(false, false, 0.0, 0.25));
+    ensure("thawed transition completes", !m.find(1));
+}
+
+// 17. System-part visibility (M6 / T2): the native avatar draw rule.
+template<> template<>
+void alclonetransition_object::test<17>()
+{
+    SystemPartInputs none;
+    ensure("no system part visible: nothing to draw", !systemPartsDrawn(none));
+    SystemPartInputs masked; // mesh body with alpha-masked system layers: every bake is IMG_INVISIBLE
+    masked.skirtWorn = true;
+    ensure("alpha-masked system body is NOT refused", !systemPartsDrawn(masked));
+    SystemPartInputs bom; // Bakes on Mesh: the bakes are visible but the mesh body hides the system meshes
+    bom.headBake = bom.upperBake = bom.lowerBake = bom.eyesBake = bom.hairBake = true;
+    bom.bomHead = bom.bomUpper = bom.bomLower = bom.bomEyes = bom.bomHair = true;
+    ensure("BOM mesh body (system meshes hidden) is NOT refused", !systemPartsDrawn(bom));
+    SystemPartInputs visible; // a standard avatar body
+    visible.upperBake = true;
+    ensure("visible system body IS refused", systemPartsDrawn(visible));
+    SystemPartInputs eyes; eyes.eyesBake = true;
+    ensure("visible system eyes ARE refused", systemPartsDrawn(eyes));
+    eyes.bomEyes = true;
+    ensure("BOM-hidden eyes are not", !systemPartsDrawn(eyes));
+    SystemPartInputs skirt; skirt.skirtBake = true;
+    ensure("a skirt bake without the wearable draws nothing", !systemPartsDrawn(skirt));
+    skirt.skirtWorn = true;
+    ensure("a worn visible skirt is refused", systemPartsDrawn(skirt));
+    SystemPartInputs invisible = visible; invisible.invisibleAppearance = true;
+    ensure("an invisible avatar draws nothing", !systemPartsDrawn(invisible));
+    SystemPartInputs partial = bom; partial.upperBake = true; partial.bomUpper = false; // only the upper mesh still draws
+    ensure("one system part still drawn is enough to refuse", systemPartsDrawn(partial));
+}
 }

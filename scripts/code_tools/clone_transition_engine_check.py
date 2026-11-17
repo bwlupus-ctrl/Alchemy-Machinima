@@ -309,9 +309,9 @@ def check_fix_r1(files: dict[str, str]) -> list[str]:
     if "setEnabledIfChanged(mTransitionGoBtn, have && !active)" not in panel:
         problems.append("M2: Go must be disabled while the selected clone's transition runs")
     # M6: system parts the Studio entity branch cannot draw refuse at start and at commit
-    if "system_parts_visible(ghost)" not in start:
+    if "ALCloneTransitions::systemPartsVisible(ghost)" not in start:
         problems.append("M6: start() does not refuse an entity whose system body / eyes are visible")
-    if "system_parts_visible(ghost)" not in body(m, "bool bodyValid("):
+    if "ALCloneTransitions::systemPartsVisible(ghost)" not in body(m, "bool bodyValid("):
         problems.append("M6: bodyValid (tick + commit re-check) does not re-test the visible system parts")
     # M7: group edits cancel every member, snapshotted before the change
     cg = body(studio, "void ALGhostStudio::cancelGroupTransitions(")
@@ -337,12 +337,172 @@ def check_fix_r1(files: dict[str, str]) -> list[str]:
         problems.append("S6: studio_entity_overlay_wanted is not guarded by the O(1) overlay-look counter")
     if "S32 mOverlayLookCount = 0;" not in files["studio_h"]:
         problems.append("S6: overlay-look counter missing")
-    if "mOverlayLookCount" not in body(studio, "bool ALGhostStudio::setEntityOverlayLook(") or \
-            "mOverlayLookCount" not in body(studio, "void ALGhostStudio::removeInstance("):
+    # fix round 2: the counter is maintained through the ONE boundary (setOverlayLookField / accountOverlayLook)
+    if "setOverlayLookField(" not in body(studio, "bool ALGhostStudio::setEntityOverlayLook(") or \
+            "accountOverlayLook(" not in body(studio, "void ALGhostStudio::removeInstance("):
         problems.append("S6: counter not maintained by setEntityOverlayLook and removeInstance")
     # S7: Machine::start range-checks the kind
     if "rq.kind < KIND_LOOK_TO_LOOK || rq.kind > KIND_OVERLAY_LOOK_TO_ENTITY" not in read(NV / "alclonetransition.h"):
         problems.append("S7: Machine::start does not range-check rq.kind")
+    return problems
+
+
+def signature_line(text: str, signature: str) -> str:
+    m = re.search(r"^[^\n;]*" + re.escape(signature) + r"[^\n;]*\n", text, re.M)
+    return m.group(0).strip() if m else ""
+
+
+COUNTER_MOCK = r"""
+#include <vector>
+#include <cstdio>
+typedef int S32;
+struct Mock
+{
+    struct Instance { int mId = 0; S32 mOverlayLook = -1; };
+    std::vector<Instance> mInstances;
+    S32 mOverlayLookCount = 0;
+    void accountOverlayLook(S32 before, S32 after);
+    void setOverlayLookField(Instance& inst, S32 look);
+    void pushInstance(const Instance& inst);
+    void assignRecord(Instance& dst, const Instance& src);
+    // removeInstance's statement: account the retiring record, then erase it
+    void removeInstance(int id)
+    {
+        for (size_t i = 0; i < mInstances.size(); ++i)
+            if (mInstances[i].mId == id) { accountOverlayLook(mInstances[i].mOverlayLook, -1); mInstances.erase(mInstances.begin() + i); return; }
+    }
+    Instance* find(int id) { for (auto& i : mInstances) if (i.mId == id) return &i; return nullptr; }
+    S32 recount() const { S32 n = 0; for (const auto& i : mInstances) n += i.mOverlayLook >= 0; return n; }
+};
+@BODIES@
+int main()
+{
+    int bad = 0;
+    auto check = [&](const char* what, Mock& m) { if (m.mOverlayLookCount != m.recount()) { std::printf("INVARIANT BROKEN after %s: counter %d vs %d\n", what, m.mOverlayLookCount, m.recount()); bad = 1; } };
+    for (int order = 0; order < 2; ++order)
+    {
+        Mock m;
+        Mock::Instance a; a.mId = 1;
+        m.pushInstance(a);
+        m.setOverlayLookField(*m.find(1), 10);            // committed overlay look
+        check("commit", m);
+        Mock::Instance spawned; spawned.mId = 2;           // duplicateInstanceSnapshotInPlace: spawn, then copy the prototype in place
+        m.pushInstance(spawned);
+        Mock::Instance proto = *m.find(1);
+        const int new_id = 2;
+        Mock::Instance* dup = m.find(2);
+        m.assignRecord(*dup, proto);
+        dup->mId = new_id;                                 // production restores the stable id after the copy
+        check("duplicate", m);
+        if (order == 0)
+        {
+            m.setOverlayLookField(*m.find(1), -1);          // original reverse-commit
+            check("original reverse-commit", m);
+            if (!(m.mOverlayLookCount > 0)) { std::printf("duplicate lost its look accounting after the original returned to Normal\n"); bad = 1; }
+            m.removeInstance(1);
+            check("original delete", m);
+        }
+        else
+        {
+            m.removeInstance(1);
+            check("original delete", m);
+            if (!(m.mOverlayLookCount > 0)) { std::printf("duplicate lost its look accounting after the original was deleted\n"); bad = 1; }
+        }
+        Mock::Instance prebuilt; prebuilt.mId = 3; prebuilt.mOverlayLook = 7;   // a record inserted already carrying a look
+        m.pushInstance(prebuilt);
+        check("insertion of a record with a look", m);
+        m.removeInstance(3);
+        check("delete of that record", m);
+        m.removeInstance(2);
+        check("duplicate delete", m);
+        if (m.mOverlayLookCount != 0) bad = 1;
+    }
+    if (!bad) std::printf("PASS counter invariant\n");
+    return bad;
+}
+"""
+
+
+def counter_fixture(studio: str) -> str:
+    bodies = ""
+    for sig in ("void ALGhostStudio::accountOverlayLook(", "void ALGhostStudio::setOverlayLookField(",
+                "void ALGhostStudio::pushInstance(", "void ALGhostStudio::assignRecord("):
+        line = signature_line(studio, sig)
+        text = body(studio, sig)
+        if not line or not text:
+            return ""
+        bodies += line.replace("ALGhostStudio::", "Mock::") + "\n" + text + "\n"
+    return COUNTER_MOCK.replace("@BODIES@", bodies)
+
+
+def check_fix_r2(files: dict[str, str], tree: dict[str, str]) -> list[str]:
+    """Fix round 2 (N2 counter boundary, N3 replacement validation, T1 clock, T2 system-part rule, T4)."""
+    problems = []
+    m, studio, mover = files["manager"], files["studio"], tree.get("llactormover.cpp", "")
+    # N2: ONE state-setting boundary for the overlay-look counter
+    for sig in ("accountOverlayLook(", "setOverlayLookField(", "pushInstance(", "assignRecord("):
+        if not body(studio, "void ALGhostStudio::" + sig):
+            problems.append("N2: ALGhostStudio::" + sig + " missing")
+    if studio.count("mInstances.push_back(") != 1 or "mInstances.push_back(inst);" not in body(studio, "void ALGhostStudio::pushInstance("):
+        problems.append("N2: an instance is inserted outside pushInstance")
+    if "accountOverlayLook(-1, inst.mOverlayLook)" not in body(studio, "void ALGhostStudio::pushInstance("):
+        problems.append("N2: pushInstance does not account the inserted record")
+    ar = body(studio, "void ALGhostStudio::assignRecord(")
+    if "accountOverlayLook(before, dst.mOverlayLook)" not in ar or "dst = src;" not in ar:
+        problems.append("N2: assignRecord does not account the whole-record copy")
+    dup = body(studio, "ALGhostStudio::duplicateInstanceSnapshotInPlace(")
+    if "assignRecord(*copy, proto)" not in dup or re.search(r"\*copy\s*=\s*proto\s*;", dup):
+        problems.append("N2: duplicateInstanceSnapshotInPlace copies the record without the counter boundary")
+    for mm in re.finditer(r"mOverlayLook\s*=[^=]", studio):
+        # the only direct field writes: the Instance default (header) and setOverlayLookField
+        start = studio.rfind("\nvoid ALGhostStudio::", 0, mm.start())
+        head = studio[start:studio.find("\n", start + 1)] if start >= 0 else ""
+        if "setOverlayLookField(" not in head:
+            problems.append("N2: mOverlayLook written outside setOverlayLookField: " + studio[mm.start() - 30:mm.start() + 30].strip())
+    for mm in re.finditer(r"mOverlayLookCount\s*(\+|-)?=[^=]", studio):
+        start = studio.rfind("\nvoid ALGhostStudio::", 0, mm.start())
+        head = studio[start:studio.find("\n", start + 1)] if start >= 0 else ""
+        if "accountOverlayLook(" not in head:
+            problems.append("N2: mOverlayLookCount written outside accountOverlayLook")
+    if "accountOverlayLook(retiring->mOverlayLook, -1)" not in body(studio, "void ALGhostStudio::removeInstance("):
+        problems.append("N2: removeInstance does not account the retiring record")
+    if "setOverlayLookField(*inst, look)" not in body(studio, "bool ALGhostStudio::setEntityOverlayLook("):
+        problems.append("N2: setEntityOverlayLook bypasses setOverlayLookField")
+    # N3: every body installation validates the overlay look first
+    apply_fn = body(studio, "void ALGhostStudio::applyEntityRuntimeState(")
+    v = apply_fn.find("dropUnsupportedOverlayLookOf(inst, ghost)")
+    h = apply_fn.find("set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst))")
+    if v < 0 or h < 0 or v > h:
+        problems.append("N3: applyEntityRuntimeState must validate the overlay look BEFORE the hide is applied to the new body")
+    drop = body(studio, "bool ALGhostStudio::dropUnsupportedOverlayLookOf(")
+    if "ALCloneTransitions::systemPartsVisible(body)" not in drop or "setOverlayLookField(inst, -1)" not in drop or "ALCloneTransitions::setNote(" not in drop:
+        problems.append("N3: the replacement validation must drop the look to Normal (-1) with a status note when system parts are visible")
+    if "onEntityRuntimeReplaced(" not in body(studio, "ALGhostStudio::swapSource(") or \
+            "onEntityRuntimeReplaced(" not in body(studio, "ALGhostStudio::refreshEntityClone(") or \
+            "applyEntityRuntimeState(inst, new_ghost)" not in body(studio, "ALGhostStudio::onEntityRuntimeReplaced("):
+        problems.append("N3: swap / refresh / recovery no longer install their body through applyEntityRuntimeState")
+    if "studio.dropUnsupportedOverlayLook(inst.mId)" not in mover:
+        problems.append("N3: the Studio draw does not re-validate a steady overlay look (a bake that loads late)")
+    # T1: the manager clock holds while the world is frozen
+    tick = body(m, "void tick()")
+    if "ALCloneTransition::clockDelta(" not in tick or 'ALCloneTransition::clockDelta(LLPipeline::FreezeTime,' not in tick or "frame.presentation_delta, frame.wall_delta" not in tick:
+        problems.append("T1: the manager clock does not use clockDelta with the FreezeTime state")
+    if "if (worldFrozen) return 0.0;" not in files["header"]:
+        problems.append("T1: clockDelta no longer returns 0 for a frozen world")
+    # T2: the system-part rule is the native decision (bake visible AND not hidden by Bakes on Mesh AND not invisible)
+    sv = body(m, "ALCloneTransitions::systemPartsVisible(")
+    for token in ("isTextureVisible(TEX_HEAD_BAKED)", "isTextureVisible(TEX_UPPER_BAKED)", "isTextureVisible(TEX_LOWER_BAKED)",
+                  "isTextureVisible(TEX_EYES_BAKED)", "isTextureVisible(TEX_HAIR_BAKED)", "isTextureVisible(TEX_SKIRT_BAKED)",
+                  "in.bomHead = bom_hides(avatar, IMG_USE_BAKED_HEAD)", "in.bomUpper = bom_hides(avatar, IMG_USE_BAKED_UPPER)",
+                  "in.bomLower = bom_hides(avatar, IMG_USE_BAKED_LOWER)", "in.bomEyes = bom_hides(avatar, IMG_USE_BAKED_EYES)",
+                  "in.bomHair = bom_hides(avatar, IMG_USE_BAKED_HAIR)", "in.bomSkirt = bom_hides(avatar, IMG_USE_BAKED_SKIRT)",
+                  "AOA_INVISIBLE", "ALCloneTransition::systemPartsDrawn(in)"):
+        if token not in sv:
+            problems.append("T2: systemPartsVisible lost `%s` (the native draw rule)" % token)
+    # T4: the dead duplicate-find in the MAX_RUNNING guard is gone
+    guard = re.search(r"if \(mImpl->mMachine\.running\(\) >= ALCloneTransition::MAX_RUNNING[^\n]*\n[^\n]*\n", body(m, "bool ALCloneTransitions::start("))
+    if not guard or ".find(instance_id)" in guard.group(0):
+        problems.append("T4: the MAX_RUNNING guard is missing or still carries the unreachable find(instance_id)")
     return problems
 
 
@@ -358,6 +518,7 @@ def load_files() -> tuple[dict[str, str], dict[str, str]]:
         "alloff": read(NV / "aldirectoralloff.cpp"),
         "manager": read(NV / "alclonetransitions.cpp"),
         "manager_h": read(NV / "alclonetransitions.h"),
+        "header": read(NV / "alclonetransition.h"),
         "page": read(xui / "panel_dpage_cast_ghosts.xml"),
         "menu": read(xui / "menu_ghost_clone.xml"),
     }
@@ -371,7 +532,8 @@ def load_files() -> tuple[dict[str, str], dict[str, str]]:
 
 def all_problems(files, tree) -> list[str]:
     return (check_table(files) + check_overlay_look(files["studio"]) + check_session_only(files, tree)
-            + check_ui(files) + check_contract(files) + check_seams(files, tree) + check_fix_r1(files))
+            + check_ui(files) + check_contract(files) + check_seams(files, tree) + check_fix_r1(files)
+            + check_fix_r2(files, tree))
 
 
 def main() -> int:
@@ -395,6 +557,12 @@ def main() -> int:
     print(("PASS" if hook_ok else "FAIL") + " scene load / cast clear: onSceneReplaced() is the first statement of LLDirectorCast::applySceneData")
     if not hook_ok:
         failures.append("lldirectorcast.cpp applySceneData must call ALCloneTransitions::onSceneReplaced() first")
+
+    fixture_src = counter_fixture(files["studio"])
+    okc, outc = compile_run("counter", fixture_src) if fixture_src else (False, "counter fixture could not be built from the production helpers")
+    print(("PASS " if okc else "FAIL ") + "overlay-look counter invariant (production helpers; duplicate, original reverse-commit, original delete): " + (outc.splitlines()[-1] if outc else ""))
+    if not okc:
+        failures.append("counter invariant fixture failed:\n" + outc)
 
     # ---------------- planted negatives: each MUST fail ----------------
     negatives = []
@@ -478,9 +646,9 @@ def main() -> int:
            "    if (mImpl->mMachine.find(instance_id)) { why = \"This clone already has a transition running; Cancel it first\"; return false; }\n", "")
     neg_r1("M2: Go stays enabled while running", "panel", "setEnabledIfChanged(mTransitionGoBtn, have && !active);", "setEnabledIfChanged(mTransitionGoBtn, have);")
     neg_r1("M6: start accepts a clone with visible system parts", "manager",
-           "        if (request.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost))\n        { why = SYSTEM_PARTS_REFUSAL; return false; }\n", "")
+           "        if (request.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && ALCloneTransitions::systemPartsVisible(ghost))\n        { why = SYSTEM_PARTS_REFUSAL; return false; }\n", "")
     neg_r1("M6: commit does not re-test the system parts", "manager",
-           "if (r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && system_parts_visible(ghost)) return false;", "")
+           "if (r.kind == ALCloneTransition::KIND_ENTITY_TO_OVERLAY_LOOK && ALCloneTransitions::systemPartsVisible(ghost)) return false;", "")
     neg_r1("M7: setLockMode cancels only one member", "studio",
            "    cancelGroupTransitions(id); // [CloneTransition] group edit (D18): snapshot + cancel every member BEFORE the mode changes\n",
            "    ALCloneTransitions::cancelFor(id, ALCloneTransition::R_EDIT_LOCK);\n")
@@ -495,6 +663,44 @@ def main() -> int:
                     "        mHost.onStarted(r);\n        mRecords.push_back(r);")
     native_negative("M2: duplicate start overwrites the running record (native test 15)",
                     "        if (find(clone)) { why = \"This clone already has a transition running; Cancel it first\"; return 0; }\n", "")
+
+    # ---- fix round 2 negatives ----
+    def neg_r2(label, key, old, new):
+        ff = dict(files)
+        ff[key] = mutate(files[key], old, new)
+        negatives.append((label, bool(check_fix_r2(ff, tree)), ""))
+
+    def counter_negative(label, old, new):
+        src = counter_fixture(mutate(files["studio"], old, new))
+        okn, outn = compile_run("neg_counter", src) if src else (True, "")
+        negatives.append((label, not okn, outn.splitlines()[0] if outn else ""))
+
+    counter_negative("N2: whole-record copy without accounting (the review's duplicate bug)",
+                     "    accountOverlayLook(before, dst.mOverlayLook);\n", "")
+    counter_negative("N2: insertion without accounting", "    accountOverlayLook(-1, inst.mOverlayLook);\n", "")
+    counter_negative("N2: field write without accounting", "    accountOverlayLook(inst.mOverlayLook, look);\n", "")
+    neg_r2("N2: duplicate copies the record raw", "studio", "    assignRecord(*copy, proto); // keeps mOverlayLookCount exact: the duplicate keeps the prototype's overlay look",
+           "    *copy = proto;")
+    neg_r2("N2: a raw push_back bypasses the boundary", "studio", "    mInstances.push_back(inst);\n    accountOverlayLook(-1, inst.mOverlayLook);",
+           "    mInstances.push_back(inst);\n    mInstances.push_back(inst);")
+    neg_r2("N2: removeInstance does not account", "studio", "accountOverlayLook(retiring->mOverlayLook, -1); // [CloneTransition]", "(void)retiring; // [CloneTransition]")
+    neg_r2("N3: replacement body not validated before the hide", "studio", "    dropUnsupportedOverlayLookOf(inst, ghost);\n", "")
+    neg_r2("N3: validation does not drop the look", "studio", "    setOverlayLookField(inst, -1);\n    ALCloneTransitions::setNote(", "    ALCloneTransitions::setNote(")
+    neg_r2("N3: validation runs after the hide is applied", "studio",
+           "    dropUnsupportedOverlayLookOf(inst, ghost);\n    set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst));\n",
+           "    set_entity_clone_visible(ghost, isVisible(inst), entityRenderOnly(inst));\n    dropUnsupportedOverlayLookOf(inst, ghost);\n")
+    neg_r2("T1: the manager clock ignores the frozen world", "manager", 'ALCloneTransition::clockDelta(LLPipeline::FreezeTime,',
+           'ALCloneTransition::clockDelta(false,')
+    neg_r2("T2: BOM-hidden head ignored by the system-part rule", "manager", "in.bomHead = bom_hides(avatar, IMG_USE_BAKED_HEAD);", "")
+    neg_r2("T2: invisible-appearance test dropped", "manager", "in.invisibleAppearance = avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE;", "")
+    neg_r2("T4: the dead duplicate find is back", "manager", "    if (mImpl->mMachine.running() >= ALCloneTransition::MAX_RUNNING)\n",
+           "    if (mImpl->mMachine.running() >= ALCloneTransition::MAX_RUNNING && !mImpl->mMachine.find(instance_id))\n")
+    native_negative("T1: a frozen world still advances the clock (native test 16)", "    if (worldFrozen) return 0.0;\n", "")
+    native_negative("T1: stalled-frame cap removed (native test 16)", "std::min(raw, 0.25) : 0.0;", "raw : 0.0;")
+    native_negative("T2: BOM-hidden meshes still counted as drawn (native test 17)", "(in.upperBake && !in.bomUpper)", "(in.upperBake)")
+    native_negative("T2: an alpha-masked body counted as drawn (native test 17)", "(in.headBake && !in.bomHead)", "(true && !in.bomHead)")
+    native_negative("T2: invisible appearance still draws (native test 17)", "    if (in.invisibleAppearance) return false;\n", "")
+    native_negative("T2: skirt without the wearable draws (native test 17)", "(in.skirtWorn && in.skirtBake && !in.bomSkirt)", "(in.skirtBake && !in.bomSkirt)")
 
     for label, failed_as_planted, detail in negatives:
         print(("PASS " if failed_as_planted else "FAIL ") + "planted negative fails as planted: " + label)

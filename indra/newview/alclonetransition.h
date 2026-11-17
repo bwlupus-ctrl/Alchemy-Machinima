@@ -177,6 +177,43 @@ struct Request
 };
 inline bool validStyle(int32_t s) { return s == STYLE_DISSOLVE || s == STYLE_WIPE || s == STYLE_CROSSFADE; }
 
+// The manager clock (T1): the delta one frame advances every running transition. The world is FROZEN (Freeze World
+// sets FreezeTime; both are independent of the presentation clock) => 0, so a transition holds while the world is
+// frozen and neither progresses nor commits. Otherwise the presentation delta when the world-time drive owns the
+// animation clock, else the wall delta; non-finite / non-positive => 0; the 0.25 s cap keeps a stalled frame from
+// skipping the effect.
+inline double clockDelta(bool worldFrozen, bool presentationDrives, double presentationDelta, double wallDelta)
+{
+    if (worldFrozen) return 0.0;
+    const double raw = presentationDrives ? presentationDelta : wallDelta;
+    return (std::isfinite(raw) && raw > 0.0) ? std::min(raw, 0.25) : 0.0;
+}
+
+// System-part visibility (M6 / T2). The Studio entity branch cannot draw the legacy system body / eyes / hair, so
+// an entity whose system parts are DRAWN cannot become an overlay look. "Drawn" is decided exactly as native
+// avatar rendering decides it (LLVOAvatar::renderSkinned / renderTransparent / renderRigid):
+//   - a part draws only when its baked texture is visible (isTextureVisible: defined and not IMG_INVISIBLE, i.e.
+//     a fully alpha-masked body region draws nothing), AND
+//   - its system mesh is not hidden by a worn Bakes-on-Mesh attachment (LLVOAvatar::updateMeshVisibility hides the
+//     head/eyelash, hair, skirt, upper, lower or eyeball mesh whenever an attachment face uses the matching
+//     IMG_USE_BAKED_* texture), and
+//   - nothing draws for an AOA_INVISIBLE avatar.
+// The skirt additionally requires the skirt wearable; the eyelashes follow the head bake.
+struct SystemPartInputs
+{
+    bool invisibleAppearance = false;
+    bool headBake = false, upperBake = false, lowerBake = false, eyesBake = false, hairBake = false, skirtBake = false;
+    bool skirtWorn = false;
+    bool bomHead = false, bomUpper = false, bomLower = false, bomEyes = false, bomHair = false, bomSkirt = false;
+};
+inline bool systemPartsDrawn(const SystemPartInputs& in)
+{
+    if (in.invisibleAppearance) return false;
+    return (in.headBake && !in.bomHead) || (in.upperBake && !in.bomUpper) || (in.lowerBake && !in.bomLower)
+        || (in.eyesBake && !in.bomEyes) || (in.hairBake && !in.bomHair)
+        || (in.skirtWorn && in.skirtBake && !in.bomSkirt);
+}
+
 template <class Id>
 struct Record
 {

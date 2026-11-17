@@ -20,6 +20,8 @@
 #include <memory>
 #include <string>
 
+class LLVOAvatar;
+
 class ALCloneTransitions : public LLSingleton<ALCloneTransitions>
 {
     LLSINGLETON(ALCloneTransitions);
@@ -72,6 +74,11 @@ public:
 
     // Per-frame (llappviewer.cpp): the clock tick (p snapshotted ONCE per frame, validity, teleport test, end)
     // and, after every pose writer including Stay in place, the body frame refresh.
+    // M6 / T2: true when the entity body has system parts (body / eyes / hair) that native avatar rendering draws
+    // and the Studio entity branch cannot (see ALCloneTransition::systemPartsDrawn for the rule).
+    static bool systemPartsVisible(const LLVOAvatar* avatar);
+    // A short note shown as the clone's last outcome (N3: overlay look dropped for a replacement body).
+    static void setNote(const LLUUID& instance_id, const std::string& text);
     // True while a running OVERLAY_LOOK_TO_ENTITY transition needs the native body drawn (Studio body flags).
     static bool keepsBodyShown(const LLUUID& instance_id);
     static void tick();

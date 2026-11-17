@@ -16486,6 +16486,25 @@ bool LLActorMover::captureStudioKeyScene(const S32 (&viewport)[4])
 
 void LLActorMover::releaseStudioKeyPrograms() { sStudioKeyPrograms.reset(); }
 
+// [CloneTransition] The entity body's current render scale, exactly as native rendering applies it
+// (LLRenderPass::applyModelMatrix: view * outer->mCurrent * model, mCurrent = S(scale) about outer->mFootPivot).
+// Harvested skin palettes and static face matrices do NOT include it. Returns true (and the scale pivot and
+// scale) only when native applies a non-unit outer transform; the attached Studio/shell placement
+// T(pivot) * S(scale) * T(-pivot) is then identical to outer->mCurrent, applied exactly once. Identity otherwise.
+static bool entity_outer_placement(const LLVOAvatar* av, LLVector3& pivot, F32& scale)
+{
+    if (!av || !av->hasClientOuterTransform()) return false;
+    const LLClientOuterTransform* outer = av->getClientOuterTransformHandle();
+    if (!outer || !outer->mEnabled || is_approx_equal(outer->mScale, 1.f) || !outer->mFootPivot.isFinite()
+        || !llfinite(outer->mScale))
+    {
+        return false;
+    }
+    pivot = outer->mFootPivot;
+    scale = outer->mScale;
+    return true;
+}
+
 // [CloneTransition] ENTITY clones drawn by the Studio overlay: a steady overlay look (Instance::mOverlayLook)
 // or a running a1 transition. Cheap: a scan of the instance list, and nothing at all unless one exists.
 static bool studio_entity_overlay_wanted(ALGhostStudio& studio)
@@ -16574,6 +16593,14 @@ void LLActorMover::renderStudioGhosts()
         {
             continue;
         }
+        // N3: a steady overlay look whose body later shows system parts the Studio cannot draw (a bake that was
+        // still loading when the body was installed) drops to Normal look instead of vanishing. Sampled every 16th
+        // frame per clone (staggered by id); applyEntityRuntimeState already validated the installation itself.
+        if (entity_inst && inst.mOverlayLook >= 0 && layers.count == 0 && ((frame + inst.mId.mData[0]) & 15u) == 0
+            && studio.dropUnsupportedOverlayLook(inst.mId))
+        {
+            continue;
+        }
         if (inst.mPoseRateHz > 0.f) studio.refreshPoseCadence(inst.mId, pose_now);
         if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, pose_now);
         if (inst.mOverlayAvatar.notNull() && inst.mPose == ALGhostStudio::POSE_FROZEN && inst.mFrozenPalettes.empty()) studio.freezeInstance(inst.mId);
@@ -16625,8 +16652,8 @@ void LLActorMover::renderStudioGhosts()
                 }
             }
         }
-        // [CloneTransition] attached placement for an ENTITY body: identity rotation, scale 1, foot = the
-        // body's own presented root (do NOT apply the clone scale again: the vertices are already scaled).
+        // [CloneTransition] attached placement for an ENTITY body: identity extra rotation, foot = the body's own
+        // presented root, or its outer-transform scale pivot when native applies a render scale (applied once).
         LLVector3 foot_agent = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
         if (entity_inst)
         {
@@ -16634,6 +16661,11 @@ void LLActorMover::renderStudioGhosts()
             entity_p2f = llfinite(entity_p2f) ? llmax(0.f, entity_p2f) : 0.f;
             const LLVector3 entity_root = av->getRootJoint() ? av->getRootJoint()->getWorldPosition() : foot_agent;
             foot_agent.set(entity_root.mV[VX], entity_root.mV[VY], entity_root.mV[VZ] - entity_p2f);
+            // The scale pivot (not root - pelvisToFoot) is native's scale origin: Stay in place and Floor
+            // placement move it off the root. Attached placement keeps foot == pivot (identity extra placement).
+            LLVector3 outer_pivot;
+            F32 outer_scale = 1.f;
+            if (entity_outer_placement(av, outer_pivot, outer_scale)) foot_agent = outer_pivot;
         }
         if (layers.count > 0)
         {
@@ -16830,13 +16862,22 @@ void LLActorMover::renderStudioGhosts()
         if (item.mEntity)
         {
             // [CloneTransition] ATTACHED placement (PLAN 2.3): the entity's own body, drawn from its own
-            // skinning palette: identity extra rotation, scale 1 (the vertices already carry the clone
-            // scale), foot = the body's presented root. Same frame as the native half.
+            // skinning palette: identity extra rotation; the entity's render scale comes from its outer
+            // transform (palettes/face matrices do not carry it), foot = the scale pivot. Same frame as native.
             gp.mRotation = LLQuaternion();
             gp.mScale = 1.f;
             gp.mHavePivot = false;
             gp.mFrozenPalettes = nullptr;
             gp.mFrozenAttachMats = nullptr;
+            // The entity's own render scale, applied once (item.mFootAgent is already the scale pivot).
+            LLVector3 outer_pivot;
+            F32 outer_scale = 1.f;
+            if (entity_outer_placement(item.mAv, outer_pivot, outer_scale))
+            {
+                gp.mScale = outer_scale;
+                gp.mHavePivot = true;
+                gp.mPivotFootAgent = outer_pivot;
+            }
         }
         if (layered)
         {
@@ -18150,6 +18191,33 @@ F32 shared_native_layer_alpha_depth(LLSpatialGroup* group, F32 fallback)
 }
 } // anonymous namespace
 
+// [CloneTransition] N4: per-component shell eligibility. The shell is depth-tested against the NATIVE surface and never
+// primes depth, so a component belongs in it only when native draws that component's colour AND depth. Resolves the
+// component's own Actor FX owner with the wearer fallback exactly as native suppression does
+// (LLRenderPass::shouldSuppressSharedActorFx(const LLDrawInfo&): hidden / kept-live sources, then
+// resolveStoredActorStyle(owner, fallback)), but WITHOUT its side effects (Actor Mask / key capture suppress
+// records) and independent of the per-frame proxy readiness (conservative: an owning style means no shell).
+// A null drawinfo carries no owner of its own, so the wearer-level test made by the caller stands.
+static bool shell_component_native_surface(const LLDrawInfo* info)
+{
+    if (!info) return true;
+    if (LLGhostAvatar::isRenderHidden(info->mAvatar, info->mActorFxOwner, info->mActorFxFallbackOwner)
+        || ALDerenderList::keepsAvatarLive(info->mAvatar)
+        || ALDerenderList::isHiddenSource(info->mActorFxOwner)
+        || ALDerenderList::isHiddenSource(info->mActorFxFallbackOwner))
+    {
+        return false;
+    }
+    if (info->mActorFxOwner.isNull()) return true;
+    LLUUID owner;
+    const LLDirectorCast::ActorStyle& style = LLDirectorCast::instance().resolveStoredActorStyle(
+        info->mActorFxOwner, info->mActorFxFallbackOwner, owner);
+    return !(style.mEnabled
+             && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE   // Cover / Replace (alpha 0 = absent)
+                 || (style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+                     && style.mStyle == 10)));                         // Layer + Dissolve owns native beauty
+}
+
 void LLActorMover::buildSharedActorStyleQueue()
 {
     mSharedActorStyleProxies.clear();
@@ -19379,6 +19447,9 @@ void LLActorMover::buildSharedActorStyleQueue()
                     LLSpatialGroup* group = batch.mGroup;
                     if (!info || !group || group->isDead()) { shell_complete = false; continue; }
                     if (ghost_pass_is_glow(batch.mPass)) continue;   // glow duplicates base geometry
+                    // N4: only components native draws with depth: not alpha-blended passes (no native depth write),
+                    // not a component whose own owner / wearer-fallback style suppresses native beauty.
+                    if (ghost_pass_is_blend(batch.mPass) || !shell_component_native_surface(info)) continue;
                     if (!group->isVisible()
                         || (LLPipeline::sUseOcclusion && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
                         || !gPipeline.hasRenderType(batch.mPass))
@@ -19410,6 +19481,8 @@ void LLActorMover::buildSharedActorStyleQueue()
                         continue;
                     }
                     if (!shared_static_descriptor_ready(source_face)) { shell_complete = false; continue; }
+                    // N4: same per-component rule as the rigged batches (blended statics write no native depth).
+                    if (source_face.mAlphaKind == 2 || !shell_component_native_surface(face->mDrawInfo)) continue;
                     proxy.mStaticFaces.push_back(source_face);
                 }
             }
@@ -20341,8 +20414,24 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
         shell_params.mWorldLinear = true;
         shell_params.mEffectOnly = true;
         shell_params.mTransition = proxy.mTransition;
-        shell_params.mNativeDepthAvailable = true;   // established at queue build: Cover/Replace/Layer+Dissolve bodies get no shell
+        // Every component in this proxy passed shell_component_native_surface() and is not alpha-blended at queue
+        // build (N4), so native draws it with depth; the wearer-level Actor FX test is the cheap first filter.
+        shell_params.mNativeDepthAvailable = true;
         shell_params.mPhase = 0.f;
+        // The entity's render scale, applied once as native does (placement == outer->mCurrent); the system
+        // replay below applies the outer transform itself (renderSkinned), so only geometry needs it here.
+        LLVector3 shell_foot = proxy.mFootAgent;
+        {
+            LLVector3 outer_pivot;
+            F32 outer_scale = 1.f;
+            if (entity_outer_placement(proxy.mAvatar, outer_pivot, outer_scale))
+            {
+                shell_foot = outer_pivot;
+                shell_params.mHavePivot = true;
+                shell_params.mPivotFootAgent = outer_pivot;
+                shell_params.mScale = outer_scale;
+            }
+        }
         const LLColor4 shell_tint(1.f, 1.f, 1.f, 1.f);
         bool shell_complete = true;
         if (!proxy.mAvatar->isControlAvatar())
@@ -20355,7 +20444,7 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
         if (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty())
         {
             bool geometry_complete = true;
-            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent, shell_tint, 1.f,
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, shell_foot, shell_tint, 1.f,
                               GHOST_STYLE_CLONE, shell_params, &proxy.mStaticFaces, &geometry_complete);
             shell_complete &= geometry_complete;
         }
