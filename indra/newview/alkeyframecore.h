@@ -213,6 +213,8 @@ struct AimState
 {
     Quat presented;
     bool initialized = false;
+    Quat lastAuthored;         // authored (laid) orientation of the previous Play frame
+    bool nearLast = false;     // previous frame was inside the 5 cm laid/aim blend zone
     double integratedTime = 0; // last call; diagnostics for the exact dt contract
     Quat update(Vec3 forward, double roll, double wallDt);
 };

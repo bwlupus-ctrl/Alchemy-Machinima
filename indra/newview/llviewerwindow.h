@@ -368,6 +368,7 @@ public:
     LLView*         getLoginPanelHolder() { return mLoginPanelHolder.get(); }
     bool            handleKey(KEY key, MASK mask);
     bool            handleKeyUp(KEY key, MASK mask);
+    void            flushCleanGestures(); // clean-lease end: deliver outstanding gesture UPs once
     void            handleScrollWheel   (LLScrollDelta delta);
     void            handleScrollHWheel  (LLScrollDelta delta);
 

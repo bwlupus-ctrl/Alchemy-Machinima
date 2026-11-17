@@ -1409,6 +1409,8 @@ bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool rep
     return mKeyHandledByUI[translated_key];
 }
 
+void LLViewerInput::flushCleanKeys() { sCleanKeys.flush(); }
+
 bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 {
     if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
@@ -1437,7 +1439,7 @@ bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 
 bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)
 {
-    if(sCleanKeys.releaseKey(key))
+    if(sCleanKeys.releaseBindings(key))
     {
         sCleanReleased[key]=true;
         return true; // suppress global AND delayed ordinary stock UP
@@ -2017,6 +2019,8 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                 else if (key_up)
                 {
                     // ...key went down this frame, call function
+                    // Only the (key, action) pairs the clean gate recorded itself skip stock UP.
+                    if(sCleanKeys.skipStockUp(key,name)) return true;
                     res = binding[i].mFunction( KEYSTATE_UP );
                 }
                 else if (key_level)
@@ -2025,7 +2029,8 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                     // Not windows, just call the function.
                     res = (*function)(KEYSTATE_LEVEL);
                     // Release ownership for a LEVEL action no recorded DOWN started.
-                    sCleanKeys.levelStarted(key,name,[&](){return ALKeyframeInputGate::Release([up=*function](){ up(KEYSTATE_UP); });},clean);
+                    sCleanKeys.levelStarted(key,name,[&](){return ALKeyframeInputGate::Release([up=*function](){ up(KEYSTATE_UP); });},clean,
+                        hot_gaze && sHotGazeKeys.count(key)!=0);
                 }//if
                 // Key+Mask combinations are supposed to be unique, so we won't find anything else
                 return res;
@@ -2043,7 +2048,8 @@ bool LLViewerInput::scanKey(KEY key, bool key_down, bool key_up, bool key_level)
         return false;
     }
 
-    if(key_up && (sCleanReleased[key] || sCleanKeys.releaseKey(key)))
+    struct EndStockUp{ KEY key; bool up; ~EndStockUp(){ if(up) sCleanKeys.endStockUp(key); } } endStockUp{key,key_up};
+    if(key_up && (sCleanReleased[key] || sCleanKeys.releaseBindings(key)))
     {
         sCleanReleased[key]=false;
         return true;

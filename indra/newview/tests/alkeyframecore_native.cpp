@@ -319,6 +319,20 @@ void F8()
     for(int j=0;j<1000;++j) previous=evalCamera(t,c,0,resolver,EvalMode::Play,runtime).rotation;
     require(std::abs(angle(initial,previous)-30*degree)<1e-6,"F8 Play pole key roll");
 }
+void F8disc(int hz)
+{
+    for(double degrees:{151.,180.})
+    {
+        AimState aim;aim.initialized=true;auto old=aim.presented;
+        auto forward=axisAngle({0,0,1},degrees*degree).rotate({1,0,0});
+        for(int frame=0;frame<int(std::ceil(.25*hz))+1;++frame)
+        {
+            auto now=aim.update(forward,0,1./hz);
+            require(angle(old,now)<=1440*degree/hz+1e-8,"F8jump discontinuity smooth bound");old=now;
+        }
+        require(dot(old.rotate({1,0,0}),forward)>1-1e-8,"F8jump discontinuity recovers within bound");
+    }
+}
 void F8jump()
 {
     // Pass through a fixed target fast enough to skip its entire blend zone.
@@ -366,17 +380,28 @@ void F8jump()
                 require(dot(before.rotate({1,0,0}),expected)>1-1e-8,"F8jump laid crossing recovers target facing");
             }
         }
-        for(double degrees:{151.,180.})
+        // Authored rotation must not be delayed by the aim-correction bound: two coincident
+        // camera keys, a coincident point Lock and a 180 degree authored turn over 0.1 s,
+        // then a hold. Play must equal Visit (the authored orientation) at every frame,
+        // reach the endpoint at the authored time and not keep turning in the hold.
         {
-            AimState aim;aim.initialized=true;auto old=aim.presented;
-            auto forward=axisAngle({0,0,1},degrees*degree).rotate({1,0,0});
-            for(int frame=0;frame<int(std::ceil(.25*hz))+1;++frame)
+            auto at=track({{0,0,0},{0,0,0}});at.settings.easeEnds=false;
+            at.keys[0].out.mode=PaceMode::Duration;at.keys[0].out.value=.1;at.keys[1].hold=.5;
+            at.keys[1].values[1]=axisAngle({0,0,1},pi);
+            for(auto& key:at.keys) key.aim.mode=AimMode::FollowLock;
+            at.lock.kind=RefKind::Point;at.lock.fallback={0,0,0};auto ac=cache(at);
+            FakeResolver aresolver;ClientRuntime aruntime;aruntime.wallDelta=1./hz;
+            double worst=0;
+            for(int frame=0;double(frame)/hz<=ac.end+1e-9;++frame)
             {
-                auto now=aim.update(forward,0,1./hz);
-                require(angle(old,now)<=1440*degree/hz+1e-8,"F8jump discontinuity smooth bound");old=now;
+                double time=double(frame)/hz;
+                auto play=evalCamera(at,ac,time,aresolver,EvalMode::Play,aruntime).rotation;
+                auto visit=eval(at,ac,time).rotation;
+                worst=std::max(worst,angle(play,visit));
             }
-            require(dot(old.rotate({1,0,0}),forward)>1-1e-8,"F8jump discontinuity recovers within bound");
+            require(worst<1e-8,"F8jump authored turn matches Visit at every frame");
         }
+        F8disc(hz);
     }
 }
 void F9()
@@ -583,6 +608,6 @@ int main(int argc,char** argv)
 {
     std::string selected=argc>1?argv[1]:"all";
     for(auto test:{std::pair{"F1",F1},{"F2",F2},{"F3",F3},{"F4",F4},{"F5",F5},{"F6",F6},{"F7",F7},
-                   {"F8",F8},{"F8time",F8time},{"F8jump",F8jump},{"F9",F9},{"F10",F10},{"F11",F11},{"F12",F12},{"F12cancel",F12cancel},{"F12b",F12b},{"F13",F13},{"F14",F14},{"B1",B1}})
+                   {"F8",F8},{"F8time",F8time},{"F8jump",F8jump},{"F8disc",[]{for(int hz:{24,30,60,144})F8disc(hz);}},{"F9",F9},{"F10",F10},{"F11",F11},{"F12",F12},{"F12cancel",F12cancel},{"F12b",F12b},{"F13",F13},{"F14",F14},{"B1",B1}})
         if(selected=="all" || selected==test.first) {test.second();std::cout<<"PASS "<<test.first<<'\n';}
 }

@@ -678,14 +678,19 @@ Pose evalCamera(const Track& t,const Cache& c,double time,const Resolver& resolv
                 sources[j]=state.aim.update(forward,roll,runtime.wallDelta);
                 if(distance<.05) sources[j]=slerp(pose.rotation,sources[j],smooth((distance-.01)/.04));
             }
-            // Forward transport and roll correction each carry a 720 deg/s ceiling; the laid-pose
-            // assignment inside 1 cm and the near-target blend can both present
-            // an opposite orientation in one frame. Bound the FINAL presented result.
-            if(hadPresented && runtime.wallDelta>0 && runtime.wallDelta<=1 && number(runtime.wallDelta))
+            // The laid-pose assignment inside 1 cm and the near-target blend can present an
+            // opposite orientation in one frame. Only that discontinuous CORRECTION is bounded
+            // (1440 deg/s), measured relative to the advancing authored frame: a legitimate
+            // authored turn passes through unchanged and arrives on time.
+            const bool nearNow=distance<.05;
+            if(hadPresented && (nearNow || state.aim.nearLast) && runtime.wallDelta>0 && runtime.wallDelta<=1 && number(runtime.wallDelta))
             {
-                double turn=angle(lastPresented,sources[j]),most=1440*degree*runtime.wallDelta;
-                if(turn>most) sources[j]=unit(slerp(lastPresented,sources[j],most/turn));
+                Quat lastD=lastPresented*state.aim.lastAuthored.inverse(),newD=sources[j]*pose.rotation.inverse();
+                double turn=angle(lastD,newD),most=1440*degree*runtime.wallDelta;
+                if(turn>most) newD=unit(slerp(lastD,newD,most/turn));
+                sources[j]=unit(newD*pose.rotation);
             }
+            state.aim.nearLast=nearNow;state.aim.lastAuthored=pose.rotation;
             state.aim.presented=sources[j];
         }
         else sources[j]=previewAim(pose.position,target,pose.rotation,pose.roll);

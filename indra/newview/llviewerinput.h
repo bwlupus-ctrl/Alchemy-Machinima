@@ -154,6 +154,8 @@ public:
     // focus / activation event is ignored; only events delivered inside an
     // LLSyntheticInputScope (the harness own, UI-only injections) are processed.
     bool            dropsNativeInput() const;
+    // Clean-lease end: deliver every outstanding recorded key UP exactly once, then clear.
+    void            flushCleanKeys();
 
     S32             loadBindingsXML(const std::string& filename);                                       // returns number bound, 0 on error
     // Controls loader; shares runtime migration gated by the viewer setting and original binding count.

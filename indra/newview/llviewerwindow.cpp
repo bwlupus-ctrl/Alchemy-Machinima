@@ -3550,6 +3550,8 @@ void LLViewerWindow::draw()
     LLView::sIsDrawing = false;
 }
 
+void LLViewerWindow::flushCleanGestures() { sCleanGestures.flush(); }
+
 // Takes a single keyup event, usually when UI is visible
 bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
 {

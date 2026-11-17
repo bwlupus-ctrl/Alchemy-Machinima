@@ -41,6 +41,60 @@ int main(int argc,char** argv){
   require(!g.releaseKey(88),"feature off level not recorded");
   std::cout<<"PASS mixed global PTT / modifier LEVEL run_forward released exactly once\n";
  }
+ if(run("ptt_preplay")){
+  // PTT (global) and run_forward (ordinary) share W. PTT DOWN happened BEFORE Play, so it was
+  // never recorded; one LEVEL scan during Play records run_forward; then W is released.
+  G g;int pttUp=0,runUp=0;
+  g.allow(87,"run_forward",G::Phase::Level,true);
+  g.levelStarted(87,"run_forward",[&]{return G::Release([&]{++runUp;});},true);
+  const bool swallowed=g.releaseBindings(87);
+  for(auto name:{"voice_follow_key","run_forward"})
+   if(!swallowed&&!g.skipStockUp(87,name)){ if(std::string(name)=="voice_follow_key")++pttUp; else ++runUp; }
+  g.endStockUp(87);
+  require(pttUp==1,"pre Play PTT stock UP delivered once");
+  require(runUp==1,"recorded run_forward UP delivered once");
+  std::cout<<"PASS pre-Play PTT held into Play/one LEVEL scan/release: voice released once, run once\n";
+ }
+ if(run("hotgaze_preplay")){
+  // Pre-Play hot gaze owns its UP through sHotGazeKeys; a LEVEL scan during Play must not
+  // add a second owner.
+  G g;int hotUp=0;
+  g.allow(49,"director_hot_gaze_1",G::Phase::Level,true);
+  g.levelStarted(49,"director_hot_gaze_1",[&]{return G::Release([&]{++hotUp;});},true,true);
+  require(!g.releaseKey(49),"hot gaze not recorded twice");
+  ++hotUp; // the stock sHotGazeKeys owner delivers its one UP
+  require(hotUp==1,"pre Play hot gaze one UP");
+  std::cout<<"PASS pre-Play hot gaze held through Play: exactly one UP\n";
+ }
+ if(run("shift_gesture")){
+  G g;int pttUp=0,chat=0;
+  g.started(87,"voice_follow_key",[&]{++pttUp;},true); // W down in Play: global PTT
+  require(!g.allow(87,"start_gesture",G::Phase::Level,true),"denied LEVEL action never starts");
+  require(!g.allow(87,"start_gesture",G::Phase::Level,true),"denied LEVEL action never starts");
+  const bool swallowed=g.releaseBindings(87);
+  if(!swallowed&&!g.skipStockUp(87,"start_gesture"))++chat;
+  g.endStockUp(87);
+  require(chat==0,"Shift W start_gesture does not open chat on UP");
+  require(pttUp==1,"PTT UP delivered with denied LEVEL");
+  require(g.allow(87,"start_gesture",G::Phase::Level,false),"denied LEVEL only blocked in clean");
+  std::cout<<"PASS Shift+W start_gesture during Play: LEVEL denied, no chat on UP, PTT released once\n";
+ }
+ if(run("walk_escape")){
+  G g;int pushUp=0,runUp=0;
+  require(g.allow(87,"push_forward",G::Phase::Down,true),"walk W allowed in Play");
+  g.started(87,"push_forward",[&]{++pushUp;},true);
+  g.flush(); // Escape ends the lease
+  require(pushUp==1,"flush delivers outstanding recorded UP");
+  g.flush();
+  // Play over: Shift pressed (run_forward LEVEL, not clean), then W released.
+  g.levelStarted(87,"run_forward",[&]{return G::Release([&]{++runUp;});},false);
+  const bool swallowed=g.releaseBindings(87);
+  if(!swallowed&&!g.skipStockUp(87,"run_forward"))++runUp;
+  g.endStockUp(87);
+  require(pushUp==1,"flushed UP delivered exactly once");
+  require(runUp==1,"post Play run_forward gets its UP");
+  std::cout<<"PASS hold W in Play/Escape flush/Shift/release: push once, run_forward UP, nothing stuck\n";
+ }
  if(run("gesture")){
   G bindings,gestures;int pttUp=0,gestureUp=0;unsigned releaseMask=0;
   bindings.started(65,"voice_follow_key",[&]{++pttUp;},true);
@@ -126,13 +180,17 @@ int main(int argc,char** argv){
  }
 }
 """
-def source_rules(text):
+def source_rules(text,player=None):
  errors=[]
  global_up=text[text.index('bool LLViewerInput::handleGlobalBindsKeyUp'):text.index('bool LLViewerInput::handleGlobalBindsMouse')]
- if not ('sCleanKeys.releaseKey(key)' in global_up and global_up.index('sCleanKeys.releaseKey(key)')<global_up.index('if (mGlobalBindsSuspended)') and 'return gViewerWindow->handleKeyUp(translated_key, translated_mask);' in text and 'if(key_up && (sCleanReleased[key] || sCleanKeys.releaseKey(key)))' in text):errors.append('I1 physical release routes')
+ if not ('sCleanKeys.releaseBindings(key)' in global_up and global_up.index('sCleanKeys.releaseBindings(key)')<global_up.index('if (mGlobalBindsSuspended)') and 'return gViewerWindow->handleKeyUp(translated_key, translated_mask);' in text and 'if(key_up && (sCleanReleased[key] || sCleanKeys.releaseBindings(key)))' in text):errors.append('I1 physical release routes')
  if not ('res = (*function)(KEYSTATE_DOWN);' in text and 'if(res) sCleanKeys.started' in text and text.index('res = (*function)(KEYSTATE_DOWN);')<text.index('if(res) sCleanKeys.started')):errors.append('I2 record actual DOWN')
  if not ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'if (!clean && binding[i].mFunctionName' in text and 'const auto button=cleanButton(clicktype);' in text and text.index('sCleanMouse.mouseDown(button,ALCleanFrame::active())')<text.index('gViewerWindow->handleAnyMouseClick')):errors.append('I3 branch and mouse ownership')
- if not ('res = (*function)(KEYSTATE_LEVEL);' in text and 'sCleanKeys.levelStarted(key,name,' in text and text.index('res = (*function)(KEYSTATE_LEVEL);')<text.index('sCleanKeys.levelStarted(key,name,') and 'KEYSTATE_UP); });},clean);' in text):errors.append('I5 LEVEL action takes release ownership')
+ if not ('res = (*function)(KEYSTATE_LEVEL);' in text and 'sCleanKeys.levelStarted(key,name,' in text and text.index('res = (*function)(KEYSTATE_LEVEL);')<text.index('sCleanKeys.levelStarted(key,name,') and 'KEYSTATE_UP); });},clean,' in text):errors.append('I5 LEVEL action takes release ownership')
+ player_text=player if player is not None else (NV/'alkeyframeplayer.cpp').read_text(encoding='utf-8')
+ rel=player_text[player_text.index('if(fx.release)'):]
+ if not ('gViewerInput.flushCleanKeys();' in rel and 'flushCleanGestures();' in rel and rel.index('flushCleanKeys')<rel.index('ALCleanFrame::setActive(false)')):errors.append('I7 lease end flushes recorded input')
+ if not ('if(sCleanKeys.skipStockUp(key,name)) return true;' in text and text.index('if(sCleanKeys.skipStockUp(key,name)) return true;')<text.index('res = binding[i].mFunction( KEYSTATE_UP );') and 'hot_gaze && sHotGazeKeys.count(key)!=0' in text):errors.append('I8 stock UP skips only recorded pairs and hot gaze owner')
  return errors
 
 def floater_rules(inp,gate):
@@ -176,6 +234,12 @@ def check():
  ('forget_swallowed','keys','held denied key fires after Play','alkeyframeinputgate.h','if (mSwallowed.count(key))','if (false)'),
  ('modifier_starts_unowned','modifiers','denied press cannot start modifier action','alkeyframeinputgate.h','if (mSwallowed.count(key))','if (mSwallowed.count(key) && denied(action,cameraOnlyMove))'),
  ('level_action_unowned','level','mixed global modifier LEVEL action released once','alkeyframeinputgate.h','mStarted[key].push_back({std::string(action), makeUp()});','(void)makeUp;'),
+ ('suppress_whole_key','ptt_preplay','pre Play PTT stock UP delivered once','alkeyframeinputgate.h','deliver(key, true);\n        return mSwallowed.erase(key) != 0;','bool owned = deliver(key, true);\n        return mSwallowed.erase(key) != 0 || owned;'),
+ ('hot_gaze_duplicated','hotgaze_preplay','hot gaze not recorded twice','alkeyframeinputgate.h','if (!clean || stockOwned) return;','if (!clean) return;'),
+ ('denied_level_starts','shift_gesture','denied LEVEL action never starts','alkeyframeinputgate.h','            if (!mSkip[key].count(action)) mSkip[key].emplace(action);\n            return false;','            return true;'),
+ ('denied_level_up_not_skipped','shift_gesture','Shift W start_gesture does not open chat on UP','alkeyframeinputgate.h','if (!mSkip[key].count(action)) mSkip[key].emplace(action);','(void)0;'),
+ ('flush_noop','walk_escape','flush delivers outstanding recorded UP','alkeyframeinputgate.h','for (auto& action : entry.second) action.up();','(void)entry;'),
+ ('flush_keeps_records','walk_escape','flushed UP delivered exactly once','alkeyframeinputgate.h','mStarted.clear();\n        for (auto& entry : all)','mStarted = all;\n        for (auto& entry : all)'),
  ('gesture_released_twice','gesture','mixed PTT gesture releases once with DOWN identity','alkeyframeinputgate.h','for (auto& action : actions) action.up();','for (auto& action : actions) {action.up();action.up();}'),
  ('stock_up_also','keys','allowed action UP delivered exactly once','alkeyframeinputgate.h','mSwallowed.erase(key) != 0 || owned','(mSwallowed.erase(key), false)'),
  ('release_by_current_mode','keys','allowed action UP delivered exactly once','alkeyframeinputgate.h','for (auto& action : actions) action.up();','for (auto& action : actions) {}'),
@@ -193,6 +257,12 @@ def check():
   ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())','false','I3 branch and mouse ownership'),
   ('sCleanKeys.levelStarted(key,name,','(void)(key,name,','I5 LEVEL action takes release ownership')]:
   assert before in text;assert assertion in source_rules(text.replace(before,after,1));print('PASS negative [src]: FAIL '+assertion)
+ for before,assertion in [('if(sCleanKeys.skipStockUp(key,name)) return true;','I8 stock UP skips only recorded pairs and hot gaze owner'),('hot_gaze && sHotGazeKeys.count(key)!=0','I8 stock UP skips only recorded pairs and hot gaze owner')]:
+  assert before in text;assert assertion in source_rules(text.replace(before,'false' if 'hot_gaze' in before else '',1));print('PASS negative [src]: FAIL '+assertion)
+ player=(NV/'alkeyframeplayer.cpp').read_text(encoding='utf-8')
+ for planted in (player.replace('gViewerInput.flushCleanKeys(); ','',1),player.replace('flushCleanGestures();','',1)):
+  assert planted!=player and 'I7 lease end flushes recorded input' in source_rules(text,planted);print('PASS negative [src]: FAIL I7 lease end flushes recorded input')
+
  gate=originals['alkeyframeinputgate.h'];assert not floater_rules(text,gate),floater_rules(text,gate)
  for name,i,g in [('floater_action_undenied',text,gate.replace('"start_chat", ','',1)),('new_floater_action',text.replace('bool toggle_enable_media(EKeystate s)'+chr(10)+'{','bool toggle_enable_media(EKeystate s)'+chr(10)+'{LLFloaterReg::showInstance("inventory");',1),gate)]:
   want='I6 floater action '+('start_chat' if name=='floater_action_undenied' else 'toggle_enable_media')+' not denied in clean';assert floater_rules(i,g)==[want],(name,floater_rules(i,g))
@@ -201,5 +271,5 @@ def check():
  for name,i,w in [('early_binding_return',text.replace('bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)\n{','bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)\n{\nif(sCleanReleased[translated_key]) return true;'),window),('lost_down_mask',text,window.replace('[key,mask]()','[key,mask=MASK_NONE]()'))]:
   assert gesture_rules(i,w)==['I4 gesture release independent of binding UP'],name
   print('PASS negative [src] '+name+': FAIL I4 gesture release independent of binding UP')
- print('PASS clean input/telemetry after 9 semantic and 8 source negatives')
+ print('PASS clean input/telemetry after 15 semantic and 12 source negatives')
 if __name__=='__main__':check()

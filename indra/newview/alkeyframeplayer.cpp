@@ -15,6 +15,8 @@
 #include "llfloaterreg.h"
 #include "llsetkeybinddialog.h"
 #include "llviewerjoystick.h"
+#include "llviewerinput.h"
+#include "llviewerwindow.h"
 #include "llviewercamera.h"
 #include "llviewerregion.h"
 #include "lltemporalframecontext.h"
@@ -194,6 +196,7 @@ void ALKeyframePlayer::lifecycleCheck()
             const auto& c=ALCleanTelemetry::sites[i];
             LL_INFOS("Keyframes") << "clean site " << i << " evaluated/blocked/forbidden " << c.evaluated << "/" << c.blocked << "/" << c.forbidden << LL_ENDL;
         }
+        gViewerInput.flushCleanKeys(); if(gViewerWindow) gViewerWindow->flushCleanGestures(); // input is stock again
         ALCleanFrame::setActive(false); ALKeyframeViewer::cleanParticleTransition(); p.broadcast(true);
     }
     if(fx.resetFlycam) LLViewerJoystick::getInstance()->setNeedsReset(true);
