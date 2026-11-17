@@ -194,6 +194,8 @@ public:
                          mOwnedReady = std::move(ready); mOwnedDiscardStep = std::move(discard_step);
                          mOwnedGroupSequence = std::move(group_sequence); }
     void               historyEdited(bool owned);
+    void               setOwnedHistoryBlockedMessages(std::string undo, std::string redo)
+                       { mOwnedUndoBlocked=std::move(undo); mOwnedRedoBlocked=std::move(redo); }
     void               setAvailabilityRefresh(std::function<void()> refresh) { mAvailabilityRefresh = std::move(refresh); }
     void               refreshAvailability() { if (mAvailabilityRefresh) mAvailabilityRefresh(); }
     void               setMasterContext(const std::string& label, const std::string& off_text);
@@ -303,6 +305,7 @@ private:
     LLButton*                                       mPageUndo       = nullptr;
     LLButton*                                       mPageRedo       = nullptr;
     std::function<U64(bool)>                         mOwnedSequence;
+    std::string mOwnedUndoBlocked="Stop the walk to undo path edits", mOwnedRedoBlocked="Stop the walk to redo path edits";
     std::function<void(bool)>                        mOwnedReplay;
     std::function<void()>                            mOwnedDiscardRedo;
     std::function<bool(bool, U64)>                   mOwnedReady;

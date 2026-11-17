@@ -177,6 +177,10 @@ set(viewer_SOURCE_FILES
     alkeyframecodec.cpp
     alkeyframehistoryadapter.cpp
     alkeyframefit.cpp
+    alkeyframetimeline.cpp
+    alkeyframeoverlay.cpp
+    altoolkeyframeedit.cpp
+    alpanelkeyframes.cpp
     ao.cpp
     bdmergememorybudget.cpp
     bdmergemeshpool.cpp

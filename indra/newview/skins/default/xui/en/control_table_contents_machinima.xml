@@ -127,4 +127,9 @@
         <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
          tool_tip="Fire hot gaze Slot 4; Hold mode releases on key up" value="Gaze: Hot target 4" />
     </rows>
+    <rows name="keyframe_play_stop" value="keyframe_play_stop">
+        <columns column="lst_action" font="SansSerif" halign="left" name="lst_action"
+         tool_tip="Play or stop the camera keyframe track. Assign a key here; no default binding."
+         value="Play/Stop keyframes" />
+    </rows>
 </contents>

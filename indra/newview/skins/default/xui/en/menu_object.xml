@@ -34,6 +34,10 @@
   <context_menu
       label="Director"
       name="Director">
+    <menu_item_call label="Lock keyframe camera on this" name="Keyframes Lock">
+      <menu_item_call.on_click function="Keyframes.LockOnObject" />
+      <menu_item_call.on_enable function="Keyframes.CanLock" />
+    </menu_item_call>
     <menu_item_call label="Lock camera to this object" name="Lock camera to object"
       tool_tip="Mount on a prim or worn prop. Avatars and HUD attachments are rejected.">
       <menu_item_call.on_click function="Object.LockCamera" />

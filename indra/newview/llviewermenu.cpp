@@ -27,6 +27,8 @@
 #include "llviewerprecompiledheaders.h"
 #include "alprojectortracker.h"
 #include "alpaneldirectorvcam.h"
+#include "alpanelkeyframes.h"
+#include "alkeyframeplayer.h"
 
 #include "llviewermenu.h"
 
@@ -10942,6 +10944,26 @@ void initialize_menus()
     // Object pie menu
     view_listener_t::addMenu(new LLObjectBuild(), "Object.Build");
     commit.add("Object.Touch", boost::bind(&handle_object_touch));
+    commit.add("Keyframes.PlayStop", [](LLUICtrl*, const LLSD&)
+    {
+        auto& player=ALKeyframePlayer::instance();
+        if(player.ownsCamera())player.stop(ALKfTransport::Exit::CUT);else player.play();
+    });
+    enable.add("Keyframes.CanPlayStop", [](LLUICtrl*, const LLSD&)
+    {
+        auto& player=ALKeyframePlayer::instance();std::string why;
+        if(player.ownsCamera())return true;
+        if(player.rlvHandbackActive()||player.restricted(why))return false;
+        for(const auto& track:player.sequence().tracks)if(track.kind=="camera"&&!track.keys.empty())return true;
+        return false;
+    });
+    // Keyframes uses authoritative picked objects; attachments resolve to their wearer.
+    commit.add("Keyframes.LockOnAvatar", [](LLUICtrl*, const LLSD&)
+    { ALPanelKeyframes::lockOn(LLToolPie::getInstance()->getPick().getObject()); });
+    commit.add("Keyframes.LockOnObject", [](LLUICtrl*, const LLSD&)
+    { ALPanelKeyframes::lockOn(LLToolPie::getInstance()->getPick().getObject()); });
+    enable.add("Keyframes.CanLock", [](LLUICtrl*, const LLSD&)
+    { return ALPanelKeyframes::canLock() && LLToolPie::getInstance()->getPick().getObject(); });
     commit.add("Object.LockCamera", [](LLUICtrl*, const LLSD&)
     {
         LLCinematicCamera::instance().lockToObject(LLToolPie::getInstance()->getPick().getObject());

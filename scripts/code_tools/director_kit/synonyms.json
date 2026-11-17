@@ -31,6 +31,7 @@
     ["look", "grade", "lut", "preset"],
     ["iso", "sensor", "sensor noise", "dual native", "read noise", "camera sensor"],
     ["gamut", "s-gamut3", "sgamut", "s-gamut3.cine", "awg3", "arri wide gamut", "color space", "colour space", "magic bullet", "aces idt", "oversaturated", "too saturated"],
-    ["purity", "sensor purity", "saturation", "desaturate", "crosstalk", "neon", "too saturated", "oversaturated", "chroma"]
+    ["purity", "sensor purity", "saturation", "desaturate", "crosstalk", "neon", "too saturated", "oversaturated", "chroma"],
+    ["keyframes", "camera path", "camera keyframes", "timeline", "retime", "bezier", "camera move"]
   ]
 }

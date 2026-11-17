@@ -38,6 +38,7 @@ METHOD_RE = re.compile(
 # C++ references are accepted only from the classes which own/build those
 # roots.  Same-name hits outside this scope are retained as ambiguity evidence.
 PAGE_OWNER_FILES = {
+    "keyframes_tab": {"panel_dpage_camera_keyframes.xml"},
     "groups_tab": {"panel_director_move_src.xml"},
     "move_tab": {"panel_actor_mover.xml", "floater_director.xml", "panel_avatar_anim_speed.xml"},
     "path_tab": {"panel_path_editor.xml"},
@@ -81,6 +82,7 @@ PAGE_OWNER_FILES = {
 }
 
 PAGE_OWNER_CLASSES = {
+    "keyframes_tab": {"ALPanelKeyframes"},
     "groups_tab": {"LLFloaterDirector"},
     "move_tab": {"ALPanelActorMover", "LLFloaterDirector"},
     "path_tab": {"ALPanelPathEditor"},
@@ -163,6 +165,14 @@ def model_binding_override(page: str, widget: str) -> dict | None:
             "pattern": pattern, "wiring_only": False, "text": "explicit scoped model binding",
         }
 
+    if page == "keyframes_tab" and widget == "kf_timeline":
+        source = (ROOT / "indra/newview/alpanelkeyframes.cpp").read_text(encoding="utf-8")
+        timeline = (ROOT / "indra/newview/alkeyframetimeline.cpp").read_text(encoding="utf-8")
+        if 'mTimeline->bind(mHistory.get()' not in source or 'mHistory->commit(mBefore,' not in timeline:
+            raise RuntimeError("missing owned keyframe timeline history binding")
+        signature = "bool ALKeyframeTimeline::handleMouseDown("
+        return binding("indra/newview/alkeyframetimeline.cpp", timeline.count("\n",0,timeline.index(signature))+1,
+                       "ALKeyframeTimeline", "handleMouseDown")
     if page == "practicals_tab" and widget in {
         "sl_track", "sl_track_subject", "sl_track_joint", "sl_track_mode",
         "sl_track_smoothing", "sl_track_capture", "sl_track_status"
@@ -390,6 +400,7 @@ EXPECTED_SHORTCUTS = {
 }
 
 ADAPTERS = {
+    "keyframes_tab": "ALPanelKeyframes",
     "groups_tab": "LLFloaterDirector::bindGroupsPage",
     "key_tab": "ALPanelActorKey",
     "move_tab": "ALActorMoverKitAdapter", "path_tab": "ALPathKitAdapter",

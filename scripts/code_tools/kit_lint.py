@@ -99,7 +99,7 @@ KIND_TAGS: dict[str, frozenset[str] | None] = {
     "vec2": frozenset(),
     "vec3": frozenset(),
     "link": frozenset(),
-    "viewport": frozenset({"view_border", "panel"}),
+    "viewport": frozenset({"view_border", "panel", "keyframe_timeline"}),
     "gobo": frozenset({"icon"}),
     "segmented": frozenset({"radio_group"}),
     "custom": None,

@@ -1071,3 +1071,23 @@ This is an open-beta build. When something goes wrong, a log helps a lot.
   happened. A short clip or screenshot of a visual issue is ideal.
 
 Thanks for helping test.
+
+
+Camera keyframes (2026-11-17): Director > Camera > Keyframes follows Takes. Capture
+poses with Add keyframe; select and drag timeline diamonds, double-click to Visit,
+and Release to hand back the camera. Delete and Ctrl+Z/Ctrl+Y work in the focused
+timeline. Plain wheel scrolls the page; Ctrl-wheel zooms and Shift-wheel pans time.
+Path & pace controls durations or cruise speed, holds, easing and total length.
+Lock uses the unified actor list (You, cast and Subjects) or a world pick; attachments
+resolve to their wearer. Each key can follow Lock, use its own target, or keep its
+captured orientation. Joint targets use automatic 0.15 s smoothing.
+Playing hides UI, HUDs, pointer and all edit guides, then holds the last view until
+Escape or CUT. ACTION plays keyframes skips the start delay. Play/Stop keyframes
+is assignable in Controls, with no default key. Star Playing and Show path for Quick.
+Save/Load uses named library files; scene saves keep independent copies. Make keyframes
+from take always creates a new track and retains the current session in the Track list;
+PASS/APPROXIMATE reports position, rotation and FOV errors against the original samples.
+Preview aims directly; Play rate-limits pole correction (up to 240 Hz integration), so
+pole-crossing scrub and playback can differ. Missing targets hold their last point and
+reacquire smoothly. RLVa restrictions disable Play, scrub, Visit and Lock with a reason.
+User snapshots wait during Play; outside Play snapshots restore the original UI state.

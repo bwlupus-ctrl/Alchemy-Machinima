@@ -75,6 +75,7 @@
   "camera_group/shot_tab": {"bulk_subject_assignment": true}
  },
  "p0_pages": {
+  "camera_group/keyframes_tab": {"v1_sources": [], "root_class": "panel_keyframes", "root_name": "keyframes_tab_logic", "label_names": {}},
   "capture_group/key_tab": {
    "v1_sources": [], "root_class": "panel_actor_key", "root_name": "key_tab_logic", "label_names": {}
   },
@@ -657,6 +658,7 @@
  "layout_overrides": {"look_group/bloom_glow_tab": {"row_overrides": {"set_RenderBloomMipCount": {"row_height": 32}}}},
  "launcher_targets": {},
  "undo_owners": {
+  "camera_group/keyframes_tab": {"history": "none"},
   "world_group/shadows_probes_tab": {"scope": "global"},
   "look_group/tron_tab": {"scope": "global"},
   "look_group/stylize_tab": {"scope": "global"},

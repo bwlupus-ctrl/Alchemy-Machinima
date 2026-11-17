@@ -388,8 +388,9 @@ def validate_data(data: dict) -> None:
     # Shadow preset: one card-level kit_preset_strip row at the top of Light > Rim > Soft shadows (soft_shadows provider), 2528 -> 2529 (11/13).
     # Clone transitions: the Clones page Transition card adds 8 searchable rows (Target, Style, Duration, Ease, Direction,
     # Go, Cancel, Status), 2529 -> 2537 (11/16).
-    if len(pages) != 40 or row_count != 2537:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 40/2537")
+    # 2026-11-17: Keyframes 57 rows + Takes link 1; census 40/2537 -> 41/2595.
+    if len(pages) != 41 or row_count != 2595:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 41/2595")
     stay = [row for _, page in pages if page["name"] == "ghosts_tab"
             for card in page["cards"] if card["id"] == "pose"
             for row in card["rows"] if row.get("w") == "stay_in_place_check"]
@@ -2129,7 +2130,8 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     leaves = {node.get("name", ""): node for node in v1.iter("panel") if node.get("name")}
     classes = {f"{g['name']}/{p['name']}": classify(g["name"], p, config, leaves)
                for g, p in flatten_pages(data)}
-    expected = {"light_group/cine_light_rig_tab": "kit (P0)", "light_group/light_rim_tab": "kit (P0)",
+    # 2026-11-17: Keyframes adds one exact P0 page (39 -> 40).
+    expected = {"camera_group/keyframes_tab": "kit (P0)", "light_group/cine_light_rig_tab": "kit (P0)", "light_group/light_rim_tab": "kit (P0)",
                 "light_group/actors_tab": "kit (P0)",
                 "camera_group/vcam_tab": "kit (P0)", "look_group/stylize_tab": "kit (P0)",
                 "look_group/tron_tab": "kit (P0)", "look_group/image_tab": "kit (P0)",
@@ -2170,7 +2172,7 @@ def generate(data_path: Path, config_path: Path, out_dir: Path) -> tuple[dict[Pa
     # 10/15 batch 2, cast_group/props_tab: legacy 5 -> 4.
     # 10/15 batch 3, cast_group/dance_tab: legacy 2 -> 1.
     # 10/15 batch 3, cast_group/ghosts_tab: legacy 1 -> 0 (no legacy page remains).
-    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 39, "pure kit (new)": 1}):
+    if any(classes.get(key) != value for key, value in expected.items()) or Counter(classes.values()) != Counter({"kit (P0)": 40, "pure kit (new)": 1}):
         raise GenError(f"classification table drift: {Counter(classes.values())}, special={[(k, classes.get(k)) for k in expected]}")
     note = header(data_path, config_path)
     referenced = cpp_names(config_path)
@@ -2552,7 +2554,7 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                        next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("label") == "Keep breathing while paused" and
                        all(word in next(row for row in wind_rows if row.get("widget") == "keep_avatar_life").get("keywords", "")
                            for word in ("breathing", "breathe", "idle", "life", "pause", "freeze", "wind down", "slow motion"))))
-        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 39, "pure kit (new)": 1})
+        checks.append(("classification table", Counter(classes.values()) == Counter({"kit (P0)": 40, "pure kit (new)": 1})
                        and classes["light_group/cine_light_rig_tab"] == "kit (P0)"
                        and classes["light_group/light_rim_tab"] == "kit (P0)"
                        and classes["camera_group/vcam_tab"] == "kit (P0)"
@@ -2772,7 +2774,8 @@ def selftest(data_path: Path, config_path: Path, out_dir: Path) -> int:
                            row.find("kit_switch").get("control_name") == row.get("setting") and
                            row.get("setting").encode() in outputs[out_dir / "director_kit_index.xml"]
                            for row in purge_rows + pin_rows)))
-        checks.append(("41 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 41))
+        # 2026-11-17: measured 41 feature pages plus the runtime Quick host = 42.
+        checks.append(("42 page files including runtime Quick host", sum(path.name.startswith("panel_dpage_") for path in outputs) == 42))
         synonyms = json.loads(SYNONYMS_DATA.read_text(encoding="utf-8")).get("groups", [])
         exposure_aliases = synonym_aliases("Exposure", synonyms).split()
         checks.append(("synonym expansion is bidirectional and index-ready",

@@ -7616,6 +7616,9 @@ private:
     static bool functionalInWorldExcludedWidget(const std::string& name)
     {
         static const std::set<std::string> excluded = {
+            // 2026-11-17: camera ownership/clean lease and take fitting need the in-world fixture.
+            "kf_playing", "kf_visit", "kf_playhead", "kf_timeline", "kf_make",
+
             "vc_lens_locate", "vc_face_locate",
             // Anim explorer: stop/revoke message the simulator; blacklist
             // writes the account's asset_blocklist.
