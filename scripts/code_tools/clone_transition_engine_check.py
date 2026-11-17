@@ -462,8 +462,17 @@ def check_fix_r2(files: dict[str, str], tree: dict[str, str]) -> list[str]:
     for mm in re.finditer(r"mOverlayLookCount\s*(\+|-)?=[^=]", studio):
         start = studio.rfind("\nvoid ALGhostStudio::", 0, mm.start())
         head = studio[start:studio.find("\n", start + 1)] if start >= 0 else ""
-        if "accountOverlayLook(" not in head:
-            problems.append("N2: mOverlayLookCount written outside accountOverlayLook")
+        if "accountOverlayLook(" not in head and "ALGhostStudio::removeAll(" not in head:
+            problems.append("N2: mOverlayLookCount written outside accountOverlayLook / removeAll")
+    # R3 Q2: every wholesale change of the instance list stays inside the accounting boundary
+    for bad_op in ("mInstances.clear(", "mInstances.swap(", "mInstances = ", "mInstances.assign(", "mInstances.insert(", "mInstances.emplace"):
+        if bad_op in studio or any(bad_op in t for k, t in tree.items() if k.startswith("alghoststudio") and k != "alghoststudio.cpp"):
+            problems.append("R3Q2: wholesale instance-list operation outside the counter boundary: " + bad_op)
+    if studio.count("mInstances.erase(") != 1 or "mInstances.erase(" not in body(studio, "void ALGhostStudio::removeInstance("):
+        problems.append("R3Q2: an instance is erased outside removeInstance")
+    ra = body(studio, "void ALGhostStudio::removeAll(")
+    if "removeInstance(mInstances.back().mId)" not in ra or "mOverlayLookCount = 0;" not in ra or ra.index("mOverlayLookCount = 0;") < ra.index("removeInstance("):
+        problems.append("R3Q2: removeAll must drain through removeInstance and then reset the overlay-look counter")
     if "accountOverlayLook(retiring->mOverlayLook, -1)" not in body(studio, "void ALGhostStudio::removeInstance("):
         problems.append("N2: removeInstance does not account the retiring record")
     if "setOverlayLookField(*inst, look)" not in body(studio, "bool ALGhostStudio::setEntityOverlayLook("):
@@ -481,8 +490,12 @@ def check_fix_r2(files: dict[str, str], tree: dict[str, str]) -> list[str]:
             "onEntityRuntimeReplaced(" not in body(studio, "ALGhostStudio::refreshEntityClone(") or \
             "applyEntityRuntimeState(inst, new_ghost)" not in body(studio, "ALGhostStudio::onEntityRuntimeReplaced("):
         problems.append("N3: swap / refresh / recovery no longer install their body through applyEntityRuntimeState")
-    if "studio.dropUnsupportedOverlayLook(inst.mId)" not in mover:
-        problems.append("N3: the Studio draw does not re-validate a steady overlay look (a bake that loads late)")
+    # R3 Q1: the periodic re-validation (a bake that loads late) runs BEFORE rendering, never inside the render loop
+    upf = body(studio, "void ALGhostStudio::updatePerFrame(")
+    if "dropUnsupportedOverlayLook(id)" not in upf or "mOverlayLookCount > 0" not in upf or "& 15u" not in upf or ".isRunning(id)" not in upf:
+        problems.append("N3/Q1: updatePerFrame does not periodically re-validate steady overlay looks (O(1) idle guard, 1-in-16, skips running transitions)")
+    if "dropUnsupportedOverlayLook(" in mover:
+        problems.append("Q1: the periodic overlay-look validation mutates state from the render loop (one invisible frame)")
     # T1: the manager clock holds while the world is frozen
     tick = body(m, "void tick()")
     if "ALCloneTransition::clockDelta(" not in tick or 'ALCloneTransition::clockDelta(LLPipeline::FreezeTime,' not in tick or "frame.presentation_delta, frame.wall_delta" not in tick:
@@ -684,6 +697,14 @@ def main() -> int:
     neg_r2("N2: a raw push_back bypasses the boundary", "studio", "    mInstances.push_back(inst);\n    accountOverlayLook(-1, inst.mOverlayLook);",
            "    mInstances.push_back(inst);\n    mInstances.push_back(inst);")
     neg_r2("N2: removeInstance does not account", "studio", "accountOverlayLook(retiring->mOverlayLook, -1); // [CloneTransition]", "(void)retiring; // [CloneTransition]")
+    neg_r2("Q1: periodic validation removed from updatePerFrame", "studio", "            if (!ALCloneTransitions::instance().isRunning(id)) dropUnsupportedOverlayLook(id);\n", "")
+    tree_q1 = dict(tree)
+    tree_q1["llactormover.cpp"] = mutate(tree["llactormover.cpp"], "        // N3: the periodic system-part validation of a steady overlay look runs BEFORE rendering, in\n",
+                                         "        if (studio.dropUnsupportedOverlayLook(inst.mId)) continue;\n        // N3: the periodic system-part validation of a steady overlay look runs BEFORE rendering, in\n")
+    negatives.append(("Q1: periodic validation moved back into the render loop", bool(check_fix_r2(files, tree_q1)), ""))
+    neg_r2("Q2: removeAll does not reset the counter", "studio", "    mOverlayLookCount = 0; // [CloneTransition] wholesale clear", "    // [CloneTransition] wholesale clear")
+    neg_r2("Q2: a wholesale list clear bypasses the boundary", "studio", "    mOverlayHistory.clear();\n    mSolo = false;\n    while (!mInstances.empty())",
+           "    mOverlayHistory.clear();\n    mSolo = false;\n    mInstances.clear();\n    while (!mInstances.empty())")
     neg_r2("N3: replacement body not validated before the hide", "studio", "    dropUnsupportedOverlayLookOf(inst, ghost);\n", "")
     neg_r2("N3: validation does not drop the look", "studio", "    setOverlayLookField(inst, -1);\n    ALCloneTransitions::setNote(", "    ALCloneTransitions::setNote(")
     neg_r2("N3: validation runs after the hide is applied", "studio",

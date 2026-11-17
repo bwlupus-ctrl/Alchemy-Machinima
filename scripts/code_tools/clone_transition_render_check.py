@@ -322,6 +322,26 @@ def n1_placement_ok(attached):
     return True
 
 
+def unit_fixup_ok(foot_source):
+    """R3 P1: at scale 1 with a NONZERO pelvis fixup, shell geometry (rigged or static: both go through
+    drawGeometryGhost) must land exactly on native geometry. The presented skeleton root is R, the default
+    pivot is R - (0,0,p2f); getRenderPosition = R + fixup. `foot_source(root, p2f, render_pos)` is the foot the
+    shell passes; placement() pivots about the default pivot (gp.mHavePivot false)."""
+    pts = [(0.3, -0.2, 1.7), (-0.4, 0.1, 0.05), (1.0, 2.0, 3.0)]
+    for root in ((10.0, 20.0, 5.0), (-3.0, 7.5, 40.0)):
+        for p2f in (0.9, 1.1):
+            for fixup in ((0.0, 0.0, 0.05), (0.02, -0.03, 0.12), (0.0, 0.0, -0.08)):
+                render_pos = tuple(root[i] + fixup[i] for i in range(3))
+                pivot = (root[0], root[1], root[2] - p2f)
+                foot = foot_source(root, p2f, render_pos)
+                for kind in ('rigged', 'static'):
+                    for p in pts:
+                        a = placement(foot, pivot, 1.0, p)
+                        if max(abs(a[i] - p[i]) for i in range(3)) > 1e-9:
+                            return False
+    return True
+
+
 def r2_problems(mover, mgr_cpp, studio_cpp):
     bad = []
     # N1: one helper reads the entity's outer transform exactly as native applies it
@@ -340,11 +360,21 @@ def r2_problems(mover, mgr_cpp, studio_cpp):
         bad.append('N1: attached Studio placement applies the instance scale as well (double scale)')
     foot = mover[mover.index('// [CloneTransition] attached placement for an ENTITY body'):]
     foot = foot[:foot.index('if (layers.count > 0)')]
-    if 'entity_outer_placement(av, outer_pivot, outer_scale)) foot_agent = outer_pivot;' not in foot:
-        bad.append('N1: the Studio entity foot is not the outer-transform scale pivot')
+    if 'foot_agent = entity_attached_foot(av, foot_agent);' not in foot or 'getRenderPosition' in foot:
+        bad.append('N1: the Studio entity foot is not the shared entity_attached_foot() source')
+    # R3 P1: ONE foot source (skeleton root - pelvisToFoot, or the outer pivot) at every scale, for Studio AND shell
+    fh = fn_body(mover, 'static LLVector3 entity_attached_foot(')
+    for token in ('getRootJoint()->getWorldPosition()', 'getPelvisToFoot()',
+                  'entity_outer_placement(av, outer_pivot, outer_scale)) foot = outer_pivot;'):
+        if token not in fh:
+            bad.append('R3P1: entity_attached_foot lost ' + token)
+    if 'getRenderPosition' in fh:
+        bad.append('R3P1: entity_attached_foot reads the render position (carries the mesh pelvis fixup)')
     # shell: same outer placement, and the geometry draw takes the pivot as its foot
     shell = mover[mover.index('bool LLActorMover::renderSharedActorStyleProxyItem('):]
     shell = shell[:shell.index('if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead() ||')]
+    if 'const LLVector3 shell_foot = proxy.mFootAgent;' not in shell or 'getRenderPosition' in shell:
+        bad.append('R3P1: the shell foot is not the proxy foot taken from entity_attached_foot()')
     if 'entity_outer_placement(proxy.mAvatar, outer_pivot, outer_scale)' not in shell or 'shell_params.mScale = outer_scale;' not in shell \
             or 'shell_params.mPivotFootAgent = outer_pivot;' not in shell or 'proxy.mBatches, shell_foot,' not in shell:
         bad.append('N1: the effect shell geometry does not apply the entity outer scale about the same pivot')
@@ -360,7 +390,12 @@ def r2_problems(mover, mgr_cpp, studio_cpp):
     if 'getRenderActorStyle' in comp:
         bad.append('N4: the component test resolves the WEARER style only')
     q = mover[mover.index('EFFECT SHELL items (PLAN 3.3)'):]
-    q = q[:q.index('proxy.mFootAgent = avatar->getRenderPosition();')]
+    foot_anchor = 'proxy.mFootAgent = entity_attached_foot(avatar, '
+    if foot_anchor not in q or 'proxy.mAlphaDepth = avatar->calcRiggedAlphaDepth();' not in q[q.index(foot_anchor):]:
+        bad.append('R3P1: the shell queue build does not take its foot from entity_attached_foot()')
+        q = q[:q.index('proxy.mAlphaDepth')] if 'proxy.mAlphaDepth' in q else q
+    else:
+        q = q[:q.index(foot_anchor)]
     if 'ghost_pass_is_blend(batch.mPass) || !shell_component_native_surface(info)' not in q:
         bad.append('N4: rigged shell components are not filtered per component (blend / owner style)')
     if 'source_face.mAlphaKind == 2 || !shell_component_native_surface(face->mDrawInfo)' not in q:
@@ -381,6 +416,8 @@ def r2_checks():
     check(not bad, 'fix round 2 source rules (N1 N4 GLM2) %s' % bad)
     check(n1_placement_ok(lambda root, pivot, s, p: placement(pivot, pivot, s, p)),
           'N1 placement fixture: attached placement (foot == outer pivot, scale = outer scale) == native outer transform at scale 0.5/1.5/3, default + Stay in place + Floor pivots')
+    check(unit_fixup_ok(lambda root, p2f, rp: (root[0], root[1], root[2] - p2f)),
+          'R3 P1 fixture: scale 1 + nonzero pelvis fixup (rigged + static): shell foot from the skeleton root == native geometry')
 
 
 def r2_negatives():
@@ -403,8 +440,16 @@ def r2_negatives():
           'PLANTED NEGATIVE: applying the outer transform twice differs from native')
     neg('N1 Studio branch keeps scale 1 / no pivot', '                gp.mScale = outer_scale;\n                gp.mHavePivot = true;\n                gp.mPivotFootAgent = outer_pivot;\n',
         '                gp.mScale = 1.f;\n')
-    neg('N1 Studio foot not the outer pivot', 'entity_outer_placement(av, outer_pivot, outer_scale)) foot_agent = outer_pivot;',
+    check(not unit_fixup_ok(lambda root, p2f, rp: (rp[0], rp[1], rp[2] - p2f)),
+          'PLANTED NEGATIVE: scale-1 shell foot from the render position (the old fallback, carries the pelvis fixup) is displaced from native')
+    neg('N1 helper foot not the outer pivot', 'entity_outer_placement(av, outer_pivot, outer_scale)) foot = outer_pivot;',
         'entity_outer_placement(av, outer_pivot, outer_scale)) {}')
+    neg('R3P1 shell queue foot is the render position again', 'proxy.mFootAgent = entity_attached_foot(avatar, avatar->getRenderPosition());',
+        'proxy.mFootAgent = avatar->getRenderPosition();')
+    neg('R3P1 helper reads the render position', 'const LLVector3 root = av->getRootJoint()->getWorldPosition();',
+        'const LLVector3 root = av->getRenderPosition(); (void)av->getRootJoint()->getWorldPosition();')
+    neg('R3P1 shell re-derives its own foot', 'const LLVector3 shell_foot = proxy.mFootAgent;',
+        'const LLVector3 shell_foot = proxy.mAvatar->getRenderPosition();')
     neg('N1 shell geometry unscaled', '                shell_params.mScale = outer_scale;\n', '')
     neg('N1 shell geometry drawn from the unscaled foot', 'proxy.mBatches, shell_foot,', 'proxy.mBatches, proxy.mFootAgent,')
     neg('N1 helper ignores the pivot', 'pivot = outer->mFootPivot;', 'pivot = LLVector3();')

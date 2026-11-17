@@ -98,6 +98,10 @@ bool ALCloneTransitions::systemPartsVisible(const LLVOAvatar* avatar)
 
 namespace
 {
+// Phase 1 limitation (review r3 Codex 2): a legacy custom baked-alpha texture that is fully transparent but is not
+// IMG_INVISIBLE still counts as a drawn system part (isTextureVisible checks identity, not pixel coverage). The
+// viewer caches no baked-alpha coverage for other avatars (isInvisibleAlphaMask is a local-layer-set property), so
+// the conservative answer (visible) stands; this refusal text tells the user what to do.
 const char* const SYSTEM_PARTS_REFUSAL =
     "Overlay looks cannot draw this clone's standard avatar body or eyes yet (an alpha-masked mesh body works)";
 }

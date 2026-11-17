@@ -2467,6 +2467,21 @@ void ALGhostStudio::updatePerFrame()
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; // [GhostPanelPerf]
     assert_main_thread();
     if (!mFades.empty()) updateFades();
+    // [CloneTransition] N3 periodic validation of steady entity overlay looks, BEFORE this frame renders: a bake
+    // that loaded late drops the look to Normal here, so reapplyEntityBodyFlags un-hides the native body before
+    // the native draw (no invisible frame). Never from the render loop. O(1) when no entity clone has a look.
+    if (mOverlayLookCount > 0)
+    {
+        static U32 sOverlayLookTick = 0;
+        ++sOverlayLookTick;
+        std::vector<LLUUID> look_ids;
+        for (const Instance& inst : mInstances)
+            if (inst.mKind == BACKING_ENTITY_CLONE && inst.mOverlayLook >= 0 && !inst.mDeleting
+                && ((sOverlayLookTick + inst.mId.mData[0]) & 15u) == 0)
+                look_ids.push_back(inst.mId);
+        for (const LLUUID& id : look_ids)
+            if (!ALCloneTransitions::instance().isRunning(id)) dropUnsupportedOverlayLook(id);
+    }
     if (!mPrivateOverlayRuntimes.empty() && LLTimer::getTotalSeconds() >= mNextOverlayRecovery)
     {
         mNextOverlayRecovery = LLTimer::getTotalSeconds()+0.5;
@@ -4254,6 +4269,7 @@ void ALGhostStudio::removeAll()
     {
         removeInstance(mInstances.back().mId);
     }
+    mOverlayLookCount = 0; // [CloneTransition] wholesale clear: the list is empty, so the count is exactly 0
 }
 
 S32 ALGhostStudio::removeEntityClones()

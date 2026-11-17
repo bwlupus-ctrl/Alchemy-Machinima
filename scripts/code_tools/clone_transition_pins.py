@@ -22,7 +22,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[2]
 BASE = 'a49168443e7'
 MANIFEST = Path(__file__).with_name('clone_transition_render_hunks.json')
-MANIFEST_SHA256 = 'f8e5ac963a51c9d3d1301a7651d1bf1498dfa45d5b560a555db4811c597be1d1'
+MANIFEST_SHA256 = 'bb3f31df2bcd384e6c688b504d8b898decf8d9ab6c118da1bd4a7633f708ef62'
 # Files this layer may touch. Everything else is "unchanged by this layer".
 COVERED_PREFIXES = (
     'indra/newview/app_settings/shaders/',

@@ -16505,6 +16505,26 @@ static bool entity_outer_placement(const LLVOAvatar* av, LLVector3& pivot, F32& 
     return true;
 }
 
+// [CloneTransition] The ONE attached foot/pivot source for an entity body (Studio overlay AND effect shell, any
+// scale): the presented skeleton root minus pelvis-to-foot (what drawGeometryGhost pivots about by default, so
+// the unit-scale extra placement is identity, with no getRenderPosition pelvis-fixup term), or the outer
+// transform's scale pivot when native applies a render scale. `fallback` is used only without a root joint.
+static LLVector3 entity_attached_foot(LLVOAvatar* av, const LLVector3& fallback)
+{
+    LLVector3 foot = fallback;
+    if (av && av->getRootJoint())
+    {
+        F32 p2f = av->getPelvisToFoot();
+        p2f = llfinite(p2f) ? llmax(0.f, p2f) : 0.f;
+        const LLVector3 root = av->getRootJoint()->getWorldPosition();
+        foot.set(root.mV[VX], root.mV[VY], root.mV[VZ] - p2f);
+    }
+    LLVector3 outer_pivot;
+    F32 outer_scale = 1.f;
+    if (entity_outer_placement(av, outer_pivot, outer_scale)) foot = outer_pivot;
+    return foot;
+}
+
 // [CloneTransition] ENTITY clones drawn by the Studio overlay: a steady overlay look (Instance::mOverlayLook)
 // or a running a1 transition. Cheap: a scan of the instance list, and nothing at all unless one exists.
 static bool studio_entity_overlay_wanted(ALGhostStudio& studio)
@@ -16593,14 +16613,9 @@ void LLActorMover::renderStudioGhosts()
         {
             continue;
         }
-        // N3: a steady overlay look whose body later shows system parts the Studio cannot draw (a bake that was
-        // still loading when the body was installed) drops to Normal look instead of vanishing. Sampled every 16th
-        // frame per clone (staggered by id); applyEntityRuntimeState already validated the installation itself.
-        if (entity_inst && inst.mOverlayLook >= 0 && layers.count == 0 && ((frame + inst.mId.mData[0]) & 15u) == 0
-            && studio.dropUnsupportedOverlayLook(inst.mId))
-        {
-            continue;
-        }
+        // N3: the periodic system-part validation of a steady overlay look runs BEFORE rendering, in
+        // ALGhostStudio::updatePerFrame (a drop here would leave the clone invisible for one frame); no state
+        // mutation in this loop.
         if (inst.mPoseRateHz > 0.f) studio.refreshPoseCadence(inst.mId, pose_now);
         if (inst.mStartOffset > 0.f) studio.refreshOverlayOffset(inst, pose_now);
         if (inst.mOverlayAvatar.notNull() && inst.mPose == ALGhostStudio::POSE_FROZEN && inst.mFrozenPalettes.empty()) studio.freezeInstance(inst.mId);
@@ -16657,15 +16672,9 @@ void LLActorMover::renderStudioGhosts()
         LLVector3 foot_agent = gAgent.getPosAgentFromGlobal(inst.mFootGlobal);
         if (entity_inst)
         {
-            F32 entity_p2f = av->getPelvisToFoot();
-            entity_p2f = llfinite(entity_p2f) ? llmax(0.f, entity_p2f) : 0.f;
-            const LLVector3 entity_root = av->getRootJoint() ? av->getRootJoint()->getWorldPosition() : foot_agent;
-            foot_agent.set(entity_root.mV[VX], entity_root.mV[VY], entity_root.mV[VZ] - entity_p2f);
             // The scale pivot (not root - pelvisToFoot) is native's scale origin: Stay in place and Floor
             // placement move it off the root. Attached placement keeps foot == pivot (identity extra placement).
-            LLVector3 outer_pivot;
-            F32 outer_scale = 1.f;
-            if (entity_outer_placement(av, outer_pivot, outer_scale)) foot_agent = outer_pivot;
+            foot_agent = entity_attached_foot(av, foot_agent);
         }
         if (layers.count > 0)
         {
@@ -19496,10 +19505,9 @@ void LLActorMover::buildSharedActorStyleQueue()
             {
                 continue;   // shell unavailable here: the mask alone still reads
             }
-            proxy.mFootAgent = avatar->getRenderPosition();
-            F32 pelvis_to_foot = avatar->getPelvisToFoot();
-            if (!llfinite(pelvis_to_foot)) pelvis_to_foot = 0.f;
-            proxy.mFootAgent.mV[VZ] -= llmax(0.f, pelvis_to_foot);
+            // [CloneTransition] one attached foot source with the Studio overlay (never getRenderPosition: it
+            // carries the mesh pelvis fixup, which the skeleton-root pivot of drawGeometryGhost does not).
+            proxy.mFootAgent = entity_attached_foot(avatar, avatar->getRenderPosition());
             proxy.mAlphaDepth = avatar->calcRiggedAlphaDepth();
             if (!proxy.mFootAgent.isFinite() || !llfinite(proxy.mAlphaDepth)) continue;
             proxy.mPart = ESharedActorStylePart::ACTOR_SOLID;
@@ -20420,13 +20428,13 @@ bool LLActorMover::renderSharedActorStyleProxyItem(
         shell_params.mPhase = 0.f;
         // The entity's render scale, applied once as native does (placement == outer->mCurrent); the system
         // replay below applies the outer transform itself (renderSkinned), so only geometry needs it here.
-        LLVector3 shell_foot = proxy.mFootAgent;
+        // proxy.mFootAgent came from entity_attached_foot() at queue build: the same source at every scale.
+        const LLVector3 shell_foot = proxy.mFootAgent;
         {
             LLVector3 outer_pivot;
             F32 outer_scale = 1.f;
             if (entity_outer_placement(proxy.mAvatar, outer_pivot, outer_scale))
             {
-                shell_foot = outer_pivot;
                 shell_params.mHavePivot = true;
                 shell_params.mPivotFootAgent = outer_pivot;
                 shell_params.mScale = outer_scale;
