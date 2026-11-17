@@ -31,7 +31,7 @@ struct Sim{
    const std::string action=agent?"agent_seated_control":b.action;
    const bool move=b.action.rfind("move_",0)==0&&!agent;
    if(!gate.allow(action,G::phaseOf(down,up,repeat),clean,move)) return true;
-   if(down&&!repeat){if(!clean&&hot(b.action))owner[key]=b.action;log.push_back("D:"+action);return true;}
+   if(down&&!repeat){if(hot(b.action)&&G::ownsHotGaze(clean))owner[key]=b.action;log.push_back("D:"+action);if(G::pairedUp(clean,down,up,repeat))log.push_back("U:"+b.action);return true;}
    if(up){log.push_back("U:"+b.action);return true;}
    if(level){log.push_back("L:"+action);return true;}
    return false;}
@@ -102,7 +102,11 @@ int main(int argc,char** argv){
    s.nativeDown(87,0);s.nativeUp(87,0);s.scanKeyboard(87,0,true,true,true);return s.log;};
   const Log stock=go(false);
   require(stock==Log{"D:voice_follow_key","U:voice_follow_key","D:run_forward"},"stock press+release baseline");
-  require(go(true)==stock,"press+release between scans equals stock");
+  require(go(false)==stock,"press+release between scans equals stock");
+  const Log play=go(true);
+  bool running=false;for(auto& e:play){if(e=="D:run_forward")running=true;if(e=="U:run_forward")running=false;}
+  require(!running,"press+release in Play leaves no running state");
+  require(play==Log{"D:voice_follow_key","U:voice_follow_key","D:run_forward","U:run_forward"},"press+release in Play delivers DOWN then UP");
   Sim d;d.binds={{70,0,"pan_up",false},{71,0,"start_gesture",false}};d.clean=true;
   d.scanKeyboard(70,0,true,true,true);d.scanKeyboard(71,0,true,true,true); // denied press+release between scans
   require(d.log.empty(),"denied press+release between scans stays dropped");
@@ -123,6 +127,23 @@ int main(int argc,char** argv){
   require(stock.log==Log{"D:director_hot_gaze_1","L:director_hot_gaze_1","U:director_hot_gaze_1","U:director_hot_gaze_1"},"stock hot gaze baseline");
   require(play.log==stock.log&&play.owner.empty(),"hot gaze UP routes equal stock");
   std::cout<<"PASS pre-Play hot gaze through native UP (stock owner) and scan UP: identical to stock, owner consumed, nothing recorded\n";
+ }
+ if(run("hotgaze_play_modifier")){
+  // Ctrl+Alt+1 pressed DURING Play, modifiers released first, then the key: stock owner releases the gaze.
+  Sim s;s.binds={{49,CTRLALT,"director_hot_gaze_1",false}};s.clean=true;
+  s.scanKeyboard(49,CTRLALT,true,false,true);
+  s.scanKeyboard(49,0,false,false,true);              // Ctrl/Alt released: exact-mask lookup misses
+  s.scanKeyboard(49,0,false,true,false);              // key released
+  require(count(s.log,"U:director_hot_gaze_1")==1&&s.owner.empty(),"hot gaze started in Play released after modifier change");
+  std::cout<<"PASS hot gaze started in Play, modifiers released before the key: gaze released via stock owner\n";
+ }
+ if(run("hotgaze_play_focus")){
+  // Same, but focus loss: resetKeys drops the scan UP, only the synthetic native UP arrives.
+  Sim s;s.binds={{49,CTRLALT,"director_hot_gaze_1",false}};s.clean=true;
+  s.scanKeyboard(49,CTRLALT,true,false,true);
+  s.nativeUp(49,0);
+  require(count(s.log,"U:director_hot_gaze_1")==1&&s.owner.empty(),"hot gaze started in Play released after focus loss");
+  std::cout<<"PASS hot gaze started in Play, focus loss before release: gaze released via stock owner\n";
  }
  if(run("ptt_preplay")){
   Sim s;s.binds={{87,0,"run_forward",false},{87,0,"voice_follow_key",true}};
@@ -248,7 +269,7 @@ def source_rules(text,player=None,window=None):
  allow='sCleanKeys.allow(action,ALKeyframeInputGate::phaseOf(key_down,key_up,repeat),clean,move)'
  at=scan.find(allow);dn=scan.find('res = (*function)(KEYSTATE_DOWN);');upc=scan.find('res = binding[i].mFunction( KEYSTATE_UP );')
  if not (at>=0 and (dn<0 or at<dn) and (upc<0 or at<upc) and scan.find('res = (*function)(KEYSTATE_LEVEL);')>at):errors.append('I2 every phase passes the stateless gate before dispatch')
- if not ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'if (!clean && binding[i].mFunctionName' in text and 'const auto button=cleanButton(clicktype);' in text and text.index('sCleanMouse.mouseDown(button,ALCleanFrame::active())')<text.index('gViewerWindow->handleAnyMouseClick')):errors.append('I3 branch and mouse ownership')
+ if not ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'if (hot_gaze && ALKeyframeInputGate::ownsHotGaze(clean))' in text and '!clean && binding[i].mFunctionName' not in text and 'if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) res = binding[i].mFunction(KEYSTATE_UP);' in text and 'const auto button=cleanButton(clicktype);' in text and text.index('sCleanMouse.mouseDown(button,ALCleanFrame::active())')<text.index('gViewerWindow->handleAnyMouseClick')):errors.append('I3 branch and mouse ownership')
  up=scan[scan.index('else if (key_up)'):scan.index('else if (key_level)')]
  if not ('res = binding[i].mFunction( KEYSTATE_UP );' in up and 'return' not in up and 'sClean' not in up):errors.append('I5 UP reaches the stock binding function')
  player_text=player if player is not None else (NV/'alkeyframeplayer.cpp').read_text(encoding='utf-8')
@@ -325,6 +346,9 @@ def check():
  ('clean_drops_all_up_hotgaze','hotgaze_preplay','hot gaze UP routes equal stock',drop_up),
  ('clean_drops_all_up_ptt','ptt_preplay','pre Play PTT and run_forward each get their UP',drop_up),
  ('up_before_down','press_release','denied press+release between scans stays dropped',[(G,PHASE,'{ return up ? Phase::Up : (down && !repeat) ? Phase::Down : Phase::Level; }')]),
+ ('hotgaze_owner_excluded_in_clean','hotgaze_play_modifier','hot gaze started in Play released after modifier change',[(G,'static bool ownsHotGaze(bool clean) { (void)clean; return true; }','static bool ownsHotGaze(bool clean) { return !clean; }')]),
+ ('hotgaze_owner_excluded_focus','hotgaze_play_focus','hot gaze started in Play released after focus loss',[(G,'static bool ownsHotGaze(bool clean) { (void)clean; return true; }','static bool ownsHotGaze(bool clean) { return !clean; }')]),
+ ('paired_up_omitted','press_release','press+release in Play leaves no running state',[(G,'{ return clean && down && !repeat && up; }','{ return false; }')]),
  ('feature_off_gated','feature_off','feature off equals stock',[(G,ALLOW,'        if (!denied(action, cameraOnlyMove)) return true;')]),
  ]
  for name,selected,assertion,edits in negatives:
@@ -345,6 +369,8 @@ def check():
   ('up_swallowed_in_scan',text.replace('res = binding[i].mFunction( KEYSTATE_UP );','res = true;',1),player,window,'I5 UP reaches the stock binding function'),
   ('lease_end_flush',text,player.replace('ALCleanFrame::setActive(false); ALKeyframeViewer::cleanParticleTransition(); p.broadcast(true);','gViewerInput.flushCleanKeys(); ALCleanFrame::setActive(false); ALKeyframeViewer::cleanParticleTransition(); p.broadcast(true);',1),window,'I7 lease end and shutdown release the lease with no input flush'),
   ('shutdown_keeps_lease',text,player.replace('ALCleanFrame::setActive(false); // shutdown: no UI or renderer calls','',1),window,'I7 lease end and shutdown release the lease with no input flush'),
+  ('hotgaze_owner_excluded_src',text.replace('if (hot_gaze && ALKeyframeInputGate::ownsHotGaze(clean))','if (!clean && binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0)',1),player,window,'I3 branch and mouse ownership'),
+  ('paired_up_removed_src',text.replace('if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) res = binding[i].mFunction(KEYSTATE_UP);','',1),player,window,'I3 branch and mouse ownership'),
   ('namespace_skip_set',text.replace('const ALKeyframeInputGate sCleanKeys;','const ALKeyframeInputGate sCleanKeys;\nstd::set<KEY> sSkipUp;',1),player,window,'I8 no namespace-scope key state')]
  for name,t2,p2,w2,assertion in src:
   assert (t2,p2,w2)!=(text,player,window),name

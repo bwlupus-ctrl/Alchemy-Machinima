@@ -140,6 +140,10 @@ struct Sequence
 struct SessionSlot { std::string id; Sequence seq; };
 std::size_t pruneSessions(std::vector<SessionSlot>&, std::size_t cap,
                           const std::function<bool(const Sequence&)>& disposable, std::vector<std::string>& dropped);
+// A session is disposable when empty, or when its content equals the saved file of its name.
+// Content = everything except uid and revision bookkeeping (sequence and track revisions).
+Sequence normalizedContent(Sequence);
+bool isDisposableSession(const Sequence&, const std::function<bool(const std::string& name, Sequence& saved)>& loadSaved);
 Track cameraTrack();
 std::uint32_t appendTrack(Sequence&, Track); // refuses a second camera; 0 on refusal
 std::uint32_t appendKey(Sequence&, std::uint32_t track, Key);

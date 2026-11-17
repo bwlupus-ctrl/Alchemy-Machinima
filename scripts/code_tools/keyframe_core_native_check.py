@@ -47,6 +47,8 @@ def check():
         ('reacquire_snap', 'F10', 'F10 no snap', [(core, 'Vec3 start=continuous?previous:sample;', 'if(!continuous) filtered=sample;Vec3 start=continuous?previous:sample;')]),
         ('private_history_clock', 'F12b', 'F12b interleave order', [(adapter, 'label,alNextUndoSequence()', 'label,1')]),
         ('drop_unsaved_session', 'F15', 'F15 unsaved never dropped', [(core, 'if(disposable(it->seq)) {', 'if(true) {')]),
+        ('session_revision_compared', 'F15', 'F15 undo-restored session disposable', [(core, 'for(auto& t:s.tracks) t.revision=0;return s;', 'return s;')]),
+        ('session_edit_ignored', 'F15', 'F15 edited session retained', [(core, 'return normalizedContent(saved)==normalizedContent(s);', 'return true;')]),
         ('prune_under_cap', 'F15', 'F15 under cap untouched', [(core, 'for(auto it=sessions.begin();sessions.size()>cap&&it!=sessions.end();)', 'for(auto it=sessions.begin();it!=sessions.end();)')]),
         ('drop_roll', 'F13', 'F13 round-trip', [(codec, 'values.push_back(num(*p));', 'values.push_back(num(&v==&k.values.back()?0:*p));')]),
     ]
@@ -65,7 +67,7 @@ def check():
     clean = production_run(directory, originals, fixture, name='clean_after_negatives')
     print(clean.stdout + clean.stderr, end='', flush=True)
     assert clean.returncode == 0
-    print('PASS clean WP1 after 21 semantic negatives; kit arbitration INCONCLUSIVE until in-world')
+    print('PASS clean WP1 after 23 semantic negatives; kit arbitration INCONCLUSIVE until in-world')
 
 
 if __name__ == '__main__':

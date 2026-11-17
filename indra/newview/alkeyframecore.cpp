@@ -758,6 +758,19 @@ void History::observe(const Sequence& s)
     mRevisionClock=std::max(mRevisionClock,s.revision);mNextTrackId=std::max(mNextTrackId,s.nextTrackId);
     for(const auto& t:s.tracks) {mNextKeys[t.id]=std::max(mNextKeys[t.id],t.nextKeyId);mRevisionClock=std::max(mRevisionClock,t.revision);}
 }
+Sequence normalizedContent(Sequence s)
+{
+    s.uid.clear();s.revision=0;for(auto& t:s.tracks) t.revision=0;return s;
+}
+bool isDisposableSession(const Sequence& s,const std::function<bool(const std::string&,Sequence&)>& loadSaved)
+{
+    bool empty=true;
+    for(const auto& t:s.tracks) if(!t.keys.empty()) empty=false;
+    if(empty) return true;
+    Sequence saved;
+    if(s.name.empty()||!loadSaved(s.name,saved)) return false;
+    return normalizedContent(saved)==normalizedContent(s);
+}
 std::size_t pruneSessions(std::vector<SessionSlot>& sessions,std::size_t cap,
     const std::function<bool(const Sequence&)>& disposable,std::vector<std::string>& dropped)
 {

@@ -1999,13 +1999,15 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                 if (key_down && !repeat)
                 {
                     // ...key went down this frame, call function
-                    if (!clean && binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0)
+                    if (hot_gaze && ALKeyframeInputGate::ownsHotGaze(clean))
                     {
                         sHotGazeKeys[key] = binding[i].mFunction;
                         if (!gIdleCallbacks.containsFunction(releaseHotGazeKeys))
                             gIdleCallbacks.addFunction(releaseHotGazeKeys);
                     }
                     res = (*function)(KEYSTATE_DOWN);
+                    // Clean only: a press and release inside one scan is a complete press (stateless).
+                    if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) res = binding[i].mFunction(KEYSTATE_UP);
                     return true;
                 }
                 else if (key_up)

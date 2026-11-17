@@ -304,14 +304,9 @@ namespace
 // equals the saved library file of its name (uid/revision are session identity, not content).
 bool sessionDisposable(const ALKf::Sequence& s)
 {
-    bool empty=true;
-    for(const auto& t:s.tracks) if(!t.keys.empty()) empty=false;
-    if(empty) return true;
-    const auto file=ALKeyframeLibrary::path(s.name);
-    ALKf::Sequence saved;std::string why;
-    if(s.name.empty()||file.empty()||!LLFile::isfile(file)||!ALKeyframeLibrary::load(file,saved,why)) return false;
-    saved.uid=s.uid;saved.revision=s.revision;
-    return saved==s;
+    return ALKf::isDisposableSession(s,[](const std::string& name,ALKf::Sequence& saved){
+        const auto file=ALKeyframeLibrary::path(name);std::string why;
+        return !file.empty()&&LLFile::isfile(file)&&ALKeyframeLibrary::loadDecoded(file,saved,why);});
 }
 }
 void ALPanelKeyframes::switchSequence(ALKf::Sequence next)

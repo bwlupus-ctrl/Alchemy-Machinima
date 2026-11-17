@@ -38,6 +38,10 @@ public:
     // The branch stock scanKey takes for one key edge set: DOWN (not a repeat), else UP, else LEVEL.
     static Phase phaseOf(bool down, bool up, bool repeat)
     { return (down && !repeat) ? Phase::Down : up ? Phase::Up : Phase::Level; }
+    // Stock hot-gaze owner (sHotGazeKeys) registers on DOWN exactly as without the feature.
+    static bool ownsHotGaze(bool clean) { (void)clean; return true; }
+    // Clean only: one scan carrying DOWN and UP of a permitted action is a complete press.
+    static bool pairedUp(bool clean, bool down, bool up, bool repeat) { return clean && down && !repeat && up; }
     bool allow(std::string_view action, Phase phase, bool clean, bool cameraOnlyMove = false) const
     {
         if (!clean || !denied(action, cameraOnlyMove)) return true;

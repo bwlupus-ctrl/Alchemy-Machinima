@@ -59,11 +59,17 @@ bool ALKeyframeLibrary::fromLLSD(const LLSD& value,KfDoc& result,std::string& re
 {
     KfDoc candidate; if(!readDoc(value,candidate,reason,0)) return false; result=std::move(candidate); return true;
 }
-bool ALKeyframeLibrary::load(const std::string& file,ALKf::Sequence& result,std::string& reason)
+bool ALKeyframeLibrary::loadDecoded(const std::string& file,ALKf::Sequence& result,std::string& reason)
 {
     LLSD data; KfDoc doc;
     ALKf::Sequence candidate;
     if(!readFile(file,data,reason) || !fromLLSD(data,doc,reason) || !ALKf::decode(doc,candidate,reason)) return false;
+    result=std::move(candidate); return true;
+}
+bool ALKeyframeLibrary::load(const std::string& file,ALKf::Sequence& result,std::string& reason)
+{
+    ALKf::Sequence candidate;
+    if(!loadDecoded(file,candidate,reason)) return false;
     ALKf::rewriteRefs(candidate,[](ALKf::RefSlot& ref){ if(ref.kind==ALKf::RefKind::Clone) { ref.kind=ALKf::RefKind::Point; ref.id={}; } });
     result=std::move(candidate); return true;
 }

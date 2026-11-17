@@ -588,6 +588,26 @@ void F15()
     require(dropped.empty()&&v.size()==4&&over==1,"F15 unsaved never dropped when over cap");
     v={slot("s1"),slot("s2")};dropped.clear();
     require(pruneSessions(v,16,saved,dropped)==0&&dropped.empty()&&v.size()==2,"F15 under cap untouched");
+    // REAL disposal predicate (isDisposableSession) against a fake library of decoded files.
+    {
+        Sequence base;base.name="song";base.uid="uid-a";
+        Track t=track({{1,2,3},{4,5,6}});t.lock.kind=RefKind::Clone;t.lock.id[0]=9; // clone ref survives save as stored
+        require(appendTrack(base,t)!=0,"F15 fixture track valid");base.revision=7;base.tracks[0].revision=5;
+        std::map<std::string,Sequence> library;
+        auto decoded=[&](const Sequence& s){Sequence d;std::string why;require(decode(encode(s),d,why),"F15 decode");return d;};
+        library["song"]=decoded(base); // saved file, decoded WITHOUT load-time reference rewriting
+        auto loader=[&](const std::string& n,Sequence& out){auto f=library.find(n);if(f==library.end())return false;out=f->second;return true;};
+        auto disposable=[&](const Sequence& s){return isDisposableSession(s,loader);};
+        require(disposable(base),"F15 saved session disposable");
+        Sequence restored=base;restored.uid="uid-b";restored.revision=99;restored.tracks[0].revision=42; // undo-restored: only bookkeeping differs
+        require(disposable(restored),"F15 undo-restored session disposable");
+        Sequence edited=base;edited.tracks[0].keys.pop_back();++edited.tracks[0].revision;
+        require(!disposable(edited),"F15 edited session retained");
+        Sequence renamed=base;renamed.name="other";
+        require(!disposable(renamed),"F15 unsaved name retained");
+        Sequence empty;empty.name="x";empty.tracks.push_back(cameraTrack());
+        require(disposable(empty),"F15 empty session disposable");
+    }
 }
 void B1()
 {
