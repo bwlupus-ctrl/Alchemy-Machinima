@@ -9,6 +9,7 @@ FIXTURE=r"""
 #include <iostream>
 #include <cstdlib>
 #include <map>
+#include <set>
 #include <type_traits>
 #include <vector>
 class ALKeyframePlayer {public:static void clean(bool v){ALCleanFrame::setActive(v);}};
@@ -16,12 +17,13 @@ void require(bool v,const char* name){if(!v){std::cout<<"FAIL "<<name<<"\n";std:
 using G=ALKeyframeInputGate;
 using Log=std::vector<std::string>;
 constexpr unsigned SHIFT=1,CTRLALT=3;
+constexpr bool RETAIN_PAIRED=false;
 // Executable model of LLViewerInput dispatch: handleGlobalBindsKeyDown/Up (native global route),
 // handleKeyUp (stock sHotGazeKeys owner), scanKey(KEY) and scanKey(bindings). The gate calls
 // (phaseOf / allow) are the production ones; everything else mirrors stock and holds no clean state.
 struct Bind{unsigned key,mask;std::string action;bool global;};
 struct Sim{
- std::vector<Bind> binds;Log log;std::map<unsigned,std::string> owner;bool clean=false,agentBranch=false;const G gate;
+ std::vector<Bind> binds;Log log;std::map<unsigned,std::string> owner;bool clean=false,agentBranch=false,retainPairedOwner=false;const G gate;
  static bool hot(const std::string& a){return a.rfind("director_hot_gaze_",0)==0;}
  bool scan(bool global,unsigned key,unsigned mask,bool down,bool up,bool level,bool repeat=false){
   for(const auto& b:binds){
@@ -31,7 +33,7 @@ struct Sim{
    const std::string action=agent?"agent_seated_control":b.action;
    const bool move=b.action.rfind("move_",0)==0&&!agent;
    if(!gate.allow(action,G::phaseOf(down,up,repeat),clean,move)) return true;
-   if(down&&!repeat){if(hot(b.action)&&G::ownsHotGaze(clean))owner[key]=b.action;log.push_back("D:"+action);if(G::pairedUp(clean,down,up,repeat))log.push_back("U:"+b.action);return true;}
+   if(down&&!repeat){if(hot(b.action)&&G::ownsHotGaze(clean))owner[key]=b.action;log.push_back("D:"+action);if(G::pairedUp(clean,down,up,repeat)){log.push_back("U:"+b.action);if(!retainPairedOwner)owner.erase(key);}return true;}
    if(up){log.push_back("U:"+b.action);return true;}
    if(level){log.push_back("L:"+action);return true;}
    return false;}
@@ -43,6 +45,7 @@ struct Sim{
  void scanKeyboard(unsigned key,unsigned mask,bool down,bool up,bool level){
   if(up){auto h=owner.find(key);if(h!=owner.end()){log.push_back("U:"+h->second);owner.erase(h);return;}}
   scan(false,key,mask,down,up,level);}
+ void idleRelease(const std::set<unsigned>& physicallyDown){for(auto it=owner.begin();it!=owner.end();){if(!physicallyDown.count(it->first)){log.push_back("U:"+it->second);it=owner.erase(it);}else ++it;}} // releaseHotGazeKeys
  void gestureDown(){log.push_back("D:gesture");} // handleKey clean branch: triggerGesture, no record
  void gestureUp(){log.push_back("U:gesture");}   // handleKeyUp: stock triggerGestureRelease
 };
@@ -136,6 +139,15 @@ int main(int argc,char** argv){
   s.scanKeyboard(49,0,false,true,false);              // key released
   require(count(s.log,"U:director_hot_gaze_1")==1&&s.owner.empty(),"hot gaze started in Play released after modifier change");
   std::cout<<"PASS hot gaze started in Play, modifiers released before the key: gaze released via stock owner\n";
+ }
+ if(run("hotgaze_play_paired")){
+  // Ctrl+Alt+1 pressed and released between scans during Play (modifiers held): native UP precedes the owner,
+  // the combined-edge scan delivers DOWN+UP, then the idle releaseHotGazeKeys pass must add nothing.
+  Sim s;s.binds={{49,CTRLALT,"director_hot_gaze_1",false}};s.clean=true;s.retainPairedOwner=RETAIN_PAIRED;
+  s.nativeDown(49,CTRLALT);s.nativeUp(49,CTRLALT);s.scanKeyboard(49,CTRLALT,true,true,true);
+  s.idleRelease({});
+  require(count(s.log,"U:director_hot_gaze_1")==1&&count(s.log,"D:director_hot_gaze_1")==1&&s.owner.empty(),"hot gaze combined edge releases exactly once");
+  std::cout<<"PASS hot gaze press+release between scans in Play: one UP, owner consumed, idle release adds nothing\n";
  }
  if(run("hotgaze_play_focus")){
   // Same, but focus loss: resetKeys drops the scan UP, only the synthetic native UP arrives.
@@ -269,7 +281,7 @@ def source_rules(text,player=None,window=None):
  allow='sCleanKeys.allow(action,ALKeyframeInputGate::phaseOf(key_down,key_up,repeat),clean,move)'
  at=scan.find(allow);dn=scan.find('res = (*function)(KEYSTATE_DOWN);');upc=scan.find('res = binding[i].mFunction( KEYSTATE_UP );')
  if not (at>=0 and (dn<0 or at<dn) and (upc<0 or at<upc) and scan.find('res = (*function)(KEYSTATE_LEVEL);')>at):errors.append('I2 every phase passes the stateless gate before dispatch')
- if not ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'if (hot_gaze && ALKeyframeInputGate::ownsHotGaze(clean))' in text and '!clean && binding[i].mFunctionName' not in text and 'if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) res = binding[i].mFunction(KEYSTATE_UP);' in text and 'const auto button=cleanButton(clicktype);' in text and text.index('sCleanMouse.mouseDown(button,ALCleanFrame::active())')<text.index('gViewerWindow->handleAnyMouseClick')):errors.append('I3 branch and mouse ownership')
+ if not ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'if (hot_gaze && ALKeyframeInputGate::ownsHotGaze(clean))' in text and '!clean && binding[i].mFunctionName' not in text and 'if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) { res = binding[i].mFunction(KEYSTATE_UP); sHotGazeKeys.erase(key); }' in text and 'const auto button=cleanButton(clicktype);' in text and text.index('sCleanMouse.mouseDown(button,ALCleanFrame::active())')<text.index('gViewerWindow->handleAnyMouseClick')):errors.append('I3 branch and mouse ownership')
  up=scan[scan.index('else if (key_up)'):scan.index('else if (key_level)')]
  if not ('res = binding[i].mFunction( KEYSTATE_UP );' in up and 'return' not in up and 'sClean' not in up):errors.append('I5 UP reaches the stock binding function')
  player_text=player if player is not None else (NV/'alkeyframeplayer.cpp').read_text(encoding='utf-8')
@@ -358,6 +370,11 @@ def check():
   exe=build(planted,name,False);result=subprocess.run([str(exe),selected],capture_output=True,text=True)
   assert result.returncode==1 and result.stdout.count('FAIL ')==1 and 'FAIL '+assertion+'\n' in result.stdout,(name,result.stdout,result.stderr)
   print('PASS negative [exec] '+name+': '+result.stdout.strip())
+ planted_fixture=FIXTURE.replace('constexpr bool RETAIN_PAIRED=false;','constexpr bool RETAIN_PAIRED=true;',1);assert planted_fixture!=FIXTURE
+ for f,s2 in originals.items():(d/f).write_bytes(s2.encode())
+ exe=compile_run(d,planted_fixture,'retain_paired_owner',flags=(f'/I"{d}"',f'/I"{NV}"','/O2'),run=False);result=subprocess.run([str(exe),'hotgaze_play_paired'],capture_output=True,text=True)
+ assert result.returncode==1 and result.stdout.count('FAIL ')==1 and 'FAIL hot gaze combined edge releases exactly once\n' in result.stdout,(result.stdout,result.stderr)
+ print('PASS negative [exec] retain_paired_owner: '+result.stdout.strip())
  clean=build(originals,'clean_after_negatives');print(clean.stdout,end='');assert clean.returncode==0
  text=(NV/'llviewerinput.cpp').read_text(encoding='utf-8');player=(NV/'alkeyframeplayer.cpp').read_text(encoding='utf-8');window=(NV/'llviewerwindow.cpp').read_text(encoding='utf-8')
  assert not source_rules(text,player,window),source_rules(text,player,window)
@@ -370,7 +387,8 @@ def check():
   ('lease_end_flush',text,player.replace('ALCleanFrame::setActive(false); ALKeyframeViewer::cleanParticleTransition(); p.broadcast(true);','gViewerInput.flushCleanKeys(); ALCleanFrame::setActive(false); ALKeyframeViewer::cleanParticleTransition(); p.broadcast(true);',1),window,'I7 lease end and shutdown release the lease with no input flush'),
   ('shutdown_keeps_lease',text,player.replace('ALCleanFrame::setActive(false); // shutdown: no UI or renderer calls','',1),window,'I7 lease end and shutdown release the lease with no input flush'),
   ('hotgaze_owner_excluded_src',text.replace('if (hot_gaze && ALKeyframeInputGate::ownsHotGaze(clean))','if (!clean && binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0)',1),player,window,'I3 branch and mouse ownership'),
-  ('paired_up_removed_src',text.replace('if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) res = binding[i].mFunction(KEYSTATE_UP);','',1),player,window,'I3 branch and mouse ownership'),
+  ('paired_up_owner_retained_src',text.replace(' sHotGazeKeys.erase(key); }',' }',1),player,window,'I3 branch and mouse ownership'),
+  ('paired_up_removed_src',text.replace('if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) { res = binding[i].mFunction(KEYSTATE_UP); sHotGazeKeys.erase(key); }','',1),player,window,'I3 branch and mouse ownership'),
   ('namespace_skip_set',text.replace('const ALKeyframeInputGate sCleanKeys;','const ALKeyframeInputGate sCleanKeys;\nstd::set<KEY> sSkipUp;',1),player,window,'I8 no namespace-scope key state')]
  for name,t2,p2,w2,assertion in src:
   assert (t2,p2,w2)!=(text,player,window),name

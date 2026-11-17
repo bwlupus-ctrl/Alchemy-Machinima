@@ -2007,7 +2007,7 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                     }
                     res = (*function)(KEYSTATE_DOWN);
                     // Clean only: a press and release inside one scan is a complete press (stateless).
-                    if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) res = binding[i].mFunction(KEYSTATE_UP);
+                    if (ALKeyframeInputGate::pairedUp(clean, key_down, key_up, repeat)) { res = binding[i].mFunction(KEYSTATE_UP); sHotGazeKeys.erase(key); } // complete press: no idle-release owner
                     return true;
                 }
                 else if (key_up)
