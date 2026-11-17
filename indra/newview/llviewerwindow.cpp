@@ -3620,6 +3620,15 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
     if (gViewerInput.dropsNativeInput()) return true;
     if (key==KEY_ESCAPE && mask==MASK_NONE && ALKeyframePlayer::instance().ownsCamera())
     { ALKeyframePlayer::instance().stop(ALKfTransport::Exit::ESCAPE); return true; }
+    {
+        // F3/F4 release ANY keyframe camera ownership (Play, Visit/PREVIEW, handback) before
+        // focus/tool routing: Director idle or closed, a focused timeline and closed operator
+        // floaters cannot keep the camera.
+        static LLCachedControl<bool> keyframe_cut_hotkeys(gSavedSettings,"DirectorHotkeysEnabled",true);
+        if (mask==MASK_NONE && keyframe_cut_hotkeys && (key==KEY_F3 || key==KEY_F4) &&
+            (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()))
+        { LLDirectorCast::instance().cut(); return true; }
+    }
     if (ALCleanFrame::active())
     {
         static LLCachedControl<bool> hotkeys(gSavedSettings,"DirectorHotkeysEnabled",true);

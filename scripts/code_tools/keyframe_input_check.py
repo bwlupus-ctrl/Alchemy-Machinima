@@ -25,6 +25,22 @@ int main(int argc,char** argv){
   require(g.allow(87,"run_forward",G::Phase::Down,false),"fresh W allowed after release");
   std::cout<<"PASS modifier transition denied Alt W/Level run/Play end/physical UP/fresh W\n";
  }
+ if(run("level")){
+  // Global voice_follow_key on W (DOWN recorded), then Shift held while W held: the
+  // ordinary Shift+W run_forward starts on LEVEL with no recorded DOWN.
+  G g;int pttUp=0,runUp=0,runLevel=0;
+  require(g.allow(87,"voice_follow_key",G::Phase::Down,true),"global PTT allowed");
+  g.started(87,"voice_follow_key",[&]{++pttUp;},true);
+  for(int frame=0;frame<3;++frame)
+   if(g.allow(87,"run_forward",G::Phase::Level,true)){++runLevel;g.levelStarted(87,"run_forward",[&]{return G::Release([&]{++runUp;});},true);}
+  require(runLevel==3,"level action still executes");
+  require(g.releaseKey(87),"mixed key UP owned");
+  require(pttUp==1&&runUp==1,"mixed global modifier LEVEL action released once");
+  require(!g.releaseKey(87),"mixed level record cleared");
+  g.levelStarted(88,"run_forward",[&]{return G::Release([&]{++runUp;});},false);
+  require(!g.releaseKey(88),"feature off level not recorded");
+  std::cout<<"PASS mixed global PTT / modifier LEVEL run_forward released exactly once\n";
+ }
  if(run("gesture")){
   G bindings,gestures;int pttUp=0,gestureUp=0;unsigned releaseMask=0;
   bindings.started(65,"voice_follow_key",[&]{++pttUp;},true);
@@ -116,6 +132,24 @@ def source_rules(text):
  if not ('sCleanKeys.releaseKey(key)' in global_up and global_up.index('sCleanKeys.releaseKey(key)')<global_up.index('if (mGlobalBindsSuspended)') and 'return gViewerWindow->handleKeyUp(translated_key, translated_mask);' in text and 'if(key_up && (sCleanReleased[key] || sCleanKeys.releaseKey(key)))' in text):errors.append('I1 physical release routes')
  if not ('res = (*function)(KEYSTATE_DOWN);' in text and 'if(res) sCleanKeys.started' in text and text.index('res = (*function)(KEYSTATE_DOWN);')<text.index('if(res) sCleanKeys.started')):errors.append('I2 record actual DOWN')
  if not ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())' in text and 'if (!clean && binding[i].mFunctionName' in text and 'const auto button=cleanButton(clicktype);' in text and text.index('sCleanMouse.mouseDown(button,ALCleanFrame::active())')<text.index('gViewerWindow->handleAnyMouseClick')):errors.append('I3 branch and mouse ownership')
+ if not ('res = (*function)(KEYSTATE_LEVEL);' in text and 'sCleanKeys.levelStarted(key,name,' in text and text.index('res = (*function)(KEYSTATE_LEVEL);')<text.index('sCleanKeys.levelStarted(key,name,') and 'KEYSTATE_UP); });},clean);' in text):errors.append('I5 LEVEL action takes release ownership')
+ return errors
+
+def floater_rules(inp,gate):
+ # G3: during Play the clean key branch returns false into the ordinary bindings. No bound
+ # action may open or toggle a floater/chat unless the gate denies it in clean.
+ import re
+ bs=chr(92)
+ denied=set(re.findall(r'"([a-z_]+)"',gate[gate.index('for (auto name'):gate.index('for (auto prefix')]))
+ tokens=('LLFloaterReg::','startChat','toggleInstance','showInstance','gMenuBarView','LLNotificationsUtil','LLNotifications','LLFloaterIMNearbyChat')
+ errors=[]
+ for m in re.finditer(r'REGISTER_KEYBOARD_ACTION\("([^"]+)",'+bs+'s*('+bs+'w+)'+bs+')',inp):
+  name,fn=m.groups();d=re.search(chr(10)+'bool '+fn+bs+'s*'+bs+'('+bs+'s*EKeystate'+bs+'s+'+bs+'w+'+bs+'s*'+bs+')',inp)
+  if not d:
+   if name not in denied:errors.append('I6 unlocated action '+name)
+   continue
+  rest=inp[d.end():];ends=[rest.find(x) for x in (chr(10)+'}'+chr(10),chr(10)+'bool ') if rest.find(x)>=0]
+  if any(t in rest[:min(ends or [len(rest)])] for t in tokens) and name not in denied:errors.append('I6 floater action '+name+' not denied in clean')
  return errors
 
 def gesture_rules(inp,window):
@@ -141,6 +175,7 @@ def check():
  ('allow_effect_geometry','particles','frozen prebuilt consumption','alkeyframeparticles.h','return !clean || !effect;','return true;'),
  ('forget_swallowed','keys','held denied key fires after Play','alkeyframeinputgate.h','if (mSwallowed.count(key))','if (false)'),
  ('modifier_starts_unowned','modifiers','denied press cannot start modifier action','alkeyframeinputgate.h','if (mSwallowed.count(key))','if (mSwallowed.count(key) && denied(action,cameraOnlyMove))'),
+ ('level_action_unowned','level','mixed global modifier LEVEL action released once','alkeyframeinputgate.h','mStarted[key].push_back({std::string(action), makeUp()});','(void)makeUp;'),
  ('gesture_released_twice','gesture','mixed PTT gesture releases once with DOWN identity','alkeyframeinputgate.h','for (auto& action : actions) action.up();','for (auto& action : actions) {action.up();action.up();}'),
  ('stock_up_also','keys','allowed action UP delivered exactly once','alkeyframeinputgate.h','mSwallowed.erase(key) != 0 || owned','(mSwallowed.erase(key), false)'),
  ('release_by_current_mode','keys','allowed action UP delivered exactly once','alkeyframeinputgate.h','for (auto& action : actions) action.up();','for (auto& action : actions) {}'),
@@ -155,11 +190,16 @@ def check():
  for before,after,assertion in [
   ('return gViewerWindow->handleKeyUp(translated_key, translated_mask);','return true;','I1 physical release routes'),
   ('if(res) sCleanKeys.started','if(false) sCleanKeys.started','I2 record actual DOWN'),
-  ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())','false','I3 branch and mouse ownership')]:
+  ('ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())','false','I3 branch and mouse ownership'),
+  ('sCleanKeys.levelStarted(key,name,','(void)(key,name,','I5 LEVEL action takes release ownership')]:
   assert before in text;assert assertion in source_rules(text.replace(before,after,1));print('PASS negative [src]: FAIL '+assertion)
+ gate=originals['alkeyframeinputgate.h'];assert not floater_rules(text,gate),floater_rules(text,gate)
+ for name,i,g in [('floater_action_undenied',text,gate.replace('"start_chat", ','',1)),('new_floater_action',text.replace('bool toggle_enable_media(EKeystate s)'+chr(10)+'{','bool toggle_enable_media(EKeystate s)'+chr(10)+'{LLFloaterReg::showInstance("inventory");',1),gate)]:
+  want='I6 floater action '+('start_chat' if name=='floater_action_undenied' else 'toggle_enable_media')+' not denied in clean';assert floater_rules(i,g)==[want],(name,floater_rules(i,g))
+  print('PASS negative [src] '+name+': FAIL I6')
  window=(NV/'llviewerwindow.cpp').read_text(encoding='utf-8');assert not gesture_rules(text,window)
  for name,i,w in [('early_binding_return',text.replace('bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)\n{','bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)\n{\nif(sCleanReleased[translated_key]) return true;'),window),('lost_down_mask',text,window.replace('[key,mask]()','[key,mask=MASK_NONE]()'))]:
   assert gesture_rules(i,w)==['I4 gesture release independent of binding UP'],name
   print('PASS negative [src] '+name+': FAIL I4 gesture release independent of binding UP')
- print('PASS clean input/telemetry after 8 semantic and 5 source negatives')
+ print('PASS clean input/telemetry after 9 semantic and 8 source negatives')
 if __name__=='__main__':check()

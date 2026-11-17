@@ -26,7 +26,9 @@ def check():
     core, codec, adapter = SOURCES
     negatives = [
         ('reject_large_aim', 'F8jump', 'F8jump crossing recovers within bound', [(core, 'double turn=angle(transport,Quat{});', 'double turn=angle(transport,Quat{});if(turn>150*degree) return presented;')]),
-        ('snap_large_aim', 'F8jump', 'F8jump crossing smooth bound', [(core, 'if(turn>720*degree*dt) transport=', 'if(false) transport=')]),
+        ('snap_large_aim', 'F8jump', 'F8jump crossing smooth bound', [(core, 'if(turn>720*degree*dt) transport=', 'if(false) transport='), (core, 'if(turn>most) sources[j]=unit(slerp(lastPresented,sources[j],most/turn));', '')]),
+        ('snap_large_aim_transport_only', 'F8jump', 'F8jump discontinuity smooth bound', [(core, 'if(turn>720*degree*dt) transport=', 'if(false) transport=')]),
+        ('unbounded_final_presentation', 'F8jump', 'F8jump laid crossing smooth bound', [(core, 'if(turn>most) sources[j]=unit(slerp(lastPresented,sources[j],most/turn));', '')]),
         ('lose_gesture_boundary', 'F12cancel', 'F12cancel rekey keeps both history boundaries', [(core, 'if(gestureCurrent) mExpectedRevision=mGesture->revision;', '')]),
         ('raw_coincident_tangents', 'F2', 'F2 finite', [(core, 'if(nodes.empty() || length(v-nodes.back())>.001)', 'if(true)')]),
         ('uniform_u', 'F3', 'F3 cruise flat', [(core, 'arc.curve.at(arc.inverse(s))', 'arc.curve.at(u)')]),
@@ -60,7 +62,7 @@ def check():
     clean = production_run(directory, originals, fixture, name='clean_after_negatives')
     print(clean.stdout + clean.stderr, end='', flush=True)
     assert clean.returncode == 0
-    print('PASS clean WP1 after 16 semantic negatives; kit arbitration INCONCLUSIVE until in-world')
+    print('PASS clean WP1 after 18 semantic negatives; kit arbitration INCONCLUSIVE until in-world')
 
 
 if __name__ == '__main__':

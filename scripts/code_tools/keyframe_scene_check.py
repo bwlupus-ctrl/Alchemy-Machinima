@@ -45,6 +45,7 @@ int main(int argc,char** argv){
  }
 }
 """
+NL=chr(10)
 def source_rules(files):
  f=files['llfloaterdirector.cpp']; h=files['llfloaterdirector.h']; lib=files['alkeyframelibrary.cpp']; errors=[]
  load=f[f.index('bool LLFloaterDirector::loadScene('):f.index('LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp()')]
@@ -52,6 +53,9 @@ def source_rules(files):
  if 'if (scene.has("keyframes"))\n        ALKeyframePlayer::instance().replaceSequence' not in load:errors.append('S2 absent session untouched')
  if 'stamp.mKeyframes = ALKeyframePlayer::instance().revision();' not in f or 'mKeyframes == other.mKeyframes' not in h:errors.append('S3 scene stamp')
  if 'ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;' not in f:errors.append('S4 autosave deferred')
+ quit_body=f[f.index('void LLFloaterDirector::prepareRecoveryForShutdown()'):f.index('void LLFloaterDirector::cancelRecoveryShutdown()')]
+ idle=f[f.index('void LLFloaterDirector::idleSceneRecovery(bool force_write)'):f.index('void LLFloaterDirector::sceneRecoveryIdle(void*)')]
+ if not ('if (!force_write)'+NL+'        if (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;' in idle and idle.index('if (!force_write)')<idle.index('updateSceneDirty();') and 'idleSceneRecovery(true);' in quit_body and quit_body.index('sRecoveryShutdownPrepared = true;')<quit_body.index('idleSceneRecovery(true);')):errors.append('S7 forced shutdown capture never deferred')
  if 'SCENE_VERSION   = 6;' not in f or 'block["payload_version"]=1' not in lib:errors.append('S5 independent payload version')
  if not ('\n    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);\n    if (scene.has("keyframes"))' in load and
   load.index('LLPrismLens::applySceneData')<load.index('ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);')<load.index('ALKeyframePlayer::instance().replaceSequence')):errors.append('S6 every validated scene releases keyframes')
@@ -75,6 +79,7 @@ def check():
  ('llfloaterdirector.cpp','\n    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);\n    if (scene.has("keyframes"))','\n    if (scene.has("keyframes")) ALKeyframePlayer::instance().stop(ALKfTransport::Exit::SCENE);\n    if (scene.has("keyframes"))','S6 every validated scene releases keyframes'),
  ('llfloaterdirector.cpp','if (scene.has("keyframes"))\n        ALKeyframePlayer::instance().replaceSequence','if (true)\n        ALKeyframePlayer::instance().replaceSequence','S2 absent session untouched'),
  ('llfloaterdirector.h','mKeyframes == other.mKeyframes','true','S3 scene stamp'),
+ ('llfloaterdirector.cpp','    if (!force_write)\n        if (ALKeyframePlayer::instance().ownsCamera()','    if (true)\n        if (ALKeyframePlayer::instance().ownsCamera()','S7 forced shutdown capture never deferred'),
  ('llfloaterdirector.cpp','ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;','ownsCamera()) return;','S4 autosave deferred'),
  ('llfloaterdirector.cpp','SCENE_VERSION   = 6;','SCENE_VERSION   = 7;','S5 independent payload version')]:
   planted=dict(files);assert before in planted[file];planted[file]=planted[file].replace(before,after,1);assert assertion in source_rules(planted)
@@ -82,5 +87,5 @@ def check():
  # Move the validation call after Prism, without changing the production file.
  planted=dict(files);text=planted['llfloaterdirector.cpp'];a='ALKeyframeLibrary::loadScene(scene, keyframe_candidate, keyframe_reason)';b='LLPrismLens::applySceneData';text=text.replace(a,'__VALIDATE__',1).replace(b,a,1).replace('__VALIDATE__',b,1);planted['llfloaterdirector.cpp']=text;assert 'S1 validation before Prism' in source_rules(planted);print('PASS negative [src]: FAIL S1 validation before Prism',flush=True)
  clean=build(sources,'clean_after_negatives');print(clean.stdout,end='',flush=True);assert clean.returncode==0
- print('PASS clean scene after 1 executable and 6 source negatives')
+ print('PASS clean scene after 1 executable and 7 source negatives')
 if __name__=='__main__':check()

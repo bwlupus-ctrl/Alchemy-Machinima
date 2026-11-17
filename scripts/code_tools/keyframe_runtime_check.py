@@ -162,11 +162,17 @@ def assertions(f):
     overlay=body(f['alkeyframeoverlay.cpp'],'void ALKeyframeOverlay::draw()')
     main=body(pipe,'bool LLPipeline::isTagRecordView() const')
     need(20,census(f,GUIDE_TOKEN)==GUIDE_CENSUS and
-         'if (!isTagRecordView() || sReflectionRender || sShadowRender) return;' in guides[:guides.index('target->bindTarget();')] and
+         'if (isTagRecordView() && !sReflectionRender && !sShadowRender)\n            ALKeyframePlayer::instance().drawGuides();' in guides and
+         # Feature-off identity: the existing Actor Mover/path guides keep baseline pass
+         # eligibility (snapshots included); only the keyframe draw is main-view restricted.
+         guides.count('isTagRecordView')==1 and guides.index('renderActorPathOverlay')<guides.index('isTagRecordView') and
+         not any(x in guides[:guides.index('target->bindTarget();')] for x in ('isTagRecordView','sReflectionRender','sShadowRender')) and
          all(x in overlay[:overlay.index('gGL.flush();')] for x in ('!gPipeline.isTagRecordView()', 'LLPipeline::sShadowRender', 'LLPipeline::sReflectionRender')) and
          'return mRT == &mMainRT && !gSnapshot && !gCubeSnapshot && !gSnapshotNoPost &&' in main and
          '!sRenderingHUDs && !sImpostorRender && !sPrismLensRender && !sPrismPreviewRender;' in main)
     need(21,'if(key==KEY_F4 || ALKeyframePlayer::instance().ownsCamera() || cast.isRunning() || cast.isCountingDown()) cast.cut(); else cast.action();' in key)
+    early='if (mask==MASK_NONE && keyframe_cut_hotkeys && (key==KEY_F3 || key==KEY_F4) &&'+chr(10)+'            (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()))'+chr(10)+'        { LLDirectorCast::instance().cut(); return true; }'
+    need(22,early in key and 0<=key.find('Exit::ESCAPE')<key.find(early) and key.find(early)<key.find('LLSetKeyBindDialog::recordKey') and key.find(early)<(key.find('if (ALCleanFrame::active())') if 'if (ALCleanFrame::active())' in key else 0))
     return errors
 
 def check():
@@ -177,7 +183,7 @@ def check():
         if NV in p.parents:files[p.relative_to(NV).as_posix()]=text
         elif CLEAN_TOKEN.search(text):files['../'+p.relative_to(ROOT/'indra').as_posix()]=text
     failures=assertions(files);assert not failures,failures
-    print('PASS R1-R21 runtime; table-A census '+str(len(CENSUS))+' classified caller statements')
+    print('PASS R1-R22 runtime; table-A census '+str(len(CENSUS))+' classified caller statements')
     print('R4 table A effective/raw/indicators/configuration/other-bit caller identities pinned')
     mutations=[
       (1,'llappviewer.cpp','    ALKeyframePlayer::instance().lifecycleCheck();',''),
@@ -199,8 +205,10 @@ def check():
       (17,'llappviewer.cpp','LLViewerJoystick::getInstance()->setCameraNeedsUpdate(true);',''),
       (18,'llviewermessage.cpp','ALKeyframePlayer::instance().targetRemoved(ALKeyframeViewer::id(id));',''),
       (19,'lllegacyatmospherics.cpp','if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_FOG))','if (ALCleanFrame::active()) return;\n    if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_FOG))'),
-      (20,'pipeline.cpp','if (!isTagRecordView() || sReflectionRender || sShadowRender) return;','if (false) return;'),
-      (21,'llviewerwindow.cpp','if(key==KEY_F4 || ALKeyframePlayer::instance().ownsCamera() || cast.isRunning()','if(key==KEY_F4 || cast.isRunning()')]
+      (20,'pipeline.cpp','if (isTagRecordView() && !sReflectionRender && !sShadowRender)\n            ALKeyframePlayer::instance().drawGuides();','ALKeyframePlayer::instance().drawGuides();'),
+      (21,'llviewerwindow.cpp','if(key==KEY_F4 || ALKeyframePlayer::instance().ownsCamera() || cast.isRunning()','if(key==KEY_F4 || cast.isRunning()'),
+      (22,'llviewerwindow.cpp','(ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()))'+chr(10)+'        { LLDirectorCast','(ALKeyframePlayer::instance().ownsCamera() && ALCleanFrame::active()))'+chr(10)+'        { LLDirectorCast'),
+      (22,'llviewerwindow.cpp','(key==KEY_F3 || key==KEY_F4) &&','(key==KEY_F3) &&')]
     for rule,file,before,after in mutations:
         planted=dict(files)
         if rule==4:
@@ -220,6 +228,13 @@ def check():
         if rule==19:assert census(planted)==CENSUS, 'G2 must reproduce the original R4 blind spot'
         assert 'R'+str(rule) in failed,(rule,failed)
         print('PASS negative [src]: '+('authoritative_kill_provenance: ' if rule==18 else '')+'FAIL R'+str(rule))
+    # R2-3: re-adding the shared main-view early return suppresses the existing Actor Mover
+    # heading/path guides in snapshots with keyframes inactive; R20 must name that regression.
+    planted=dict(files);text=planted['pipeline.cpp'];start=text.index('void LLPipeline::renderActorPathGuides(')
+    start=text.index('{',start)+1
+    planted['pipeline.cpp']=text[:start]+'\n    if (!isTagRecordView() || sReflectionRender || sShadowRender) return;'+text[start:]
+    assert 'R20' in assertions(planted)
+    print('PASS negative [src] feature_off_snapshot_guides_suppressed: FAIL R20')
     # C8 negative restores the old exact-restore correction and must fail R12.
     planted=dict(files);text=planted['llviewerwindow.cpp'];start=text.index('gDepthDirty = true;',text.index('bool LLViewerWindow::rawSnapshot('))
     before='if (!gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))'
@@ -235,5 +250,5 @@ def check():
         planted=dict(files);mutate(planted);rule='R20' if name.startswith('overlay') else 'R19'
         assert rule in assertions(planted);print('PASS negative [src] '+name+': FAIL '+rule)
     assert not assertions(files)
-    print('PASS clean runtime after 27 named source negatives')
+    print('PASS clean runtime after 30 named source negatives')
 if __name__=='__main__':check()

@@ -5899,7 +5899,11 @@ void LLFloaterDirector::updateSceneDirty()
 
 void LLFloaterDirector::idleSceneRecovery(bool force_write)
 {
-    if (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;
+    // Periodic autosave is deferred while keyframes own the camera (Play, Visit/PREVIEW) or an RLV
+    // handback is active. The forced shutdown capture is never deferred: it is the last recovery
+    // save, and prepareRecoveryForShutdown() latches completion right after requesting it.
+    if (!force_write)
+        if (ALKeyframePlayer::instance().ownsCamera() || ALKeyframePlayer::instance().rlvHandbackActive()) return;
     // Autosave ALWAYS runs on its timer and at shutdown: no recovery state can disable it.
     updateSceneDirty();
     RecoveryServiceState& service = recoveryServiceState();

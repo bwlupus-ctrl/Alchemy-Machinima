@@ -53,6 +53,19 @@ public:
         for (const auto& entry : entries) if (entry.name == action) return;
         entries.push_back({std::string(action), std::move(up)});
     }
+    // A LEVEL action that was not started by a recorded DOWN (a modifier changed while the
+    // key was held, a mixed global/ordinary binding) acquires release ownership the first
+    // time it executes, so the physical UP reaches it exactly once. makeUp is only called
+    // when a record is actually created (no per-frame allocation).
+    template <class MakeUp>
+    void levelStarted(std::uint32_t key, std::string_view action, MakeUp makeUp, bool clean)
+    {
+        if (!clean) return;
+        auto found = mStarted.find(key);
+        if (found != mStarted.end())
+            for (const auto& entry : found->second) if (entry.name == action) return;
+        mStarted[key].push_back({std::string(action), makeUp()});
+    }
     bool releaseKey(std::uint32_t key)
     {
         auto found = mStarted.find(key);

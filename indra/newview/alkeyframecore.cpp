@@ -664,9 +664,10 @@ Pose evalCamera(const Track& t,const Cache& c,double time,const Resolver& resolv
             if(!state.smoother.initialized) {state.smoother.filtered=state.smoother.previous=target;state.smoother.initialized=true;state.smoother.present=found;}
             target=state.smoother.update(target,found,runtime.wallDelta);
             Quat preview=previewAim(pose.position,target,pose.rotation,pose.roll);
+            bool hadPresented=state.aim.initialized;Quat lastPresented=state.aim.presented;
             if(!state.aim.initialized) {state.aim.presented=preview;state.aim.initialized=true;}
             double distance=length(target-pose.position);
-            if(distance<=.01) {sources[j]=pose.rotation;state.aim.presented=pose.rotation;}
+            if(distance<=.01) sources[j]=pose.rotation;
             else
             {
                 // Blend the desired forward BEFORE transport. Crossing the target cannot leave
@@ -676,8 +677,16 @@ Pose evalCamera(const Track& t,const Cache& c,double time,const Resolver& resolv
                 double roll=distance>=.05?pose.roll:std::atan2(dot(forward,cross(level,up)),dot(level,up));
                 sources[j]=state.aim.update(forward,roll,runtime.wallDelta);
                 if(distance<.05) sources[j]=slerp(pose.rotation,sources[j],smooth((distance-.01)/.04));
-                state.aim.presented=sources[j];
             }
+            // Forward transport and roll correction each carry a 720 deg/s ceiling; the laid-pose
+            // assignment inside 1 cm and the near-target blend can both present
+            // an opposite orientation in one frame. Bound the FINAL presented result.
+            if(hadPresented && runtime.wallDelta>0 && runtime.wallDelta<=1 && number(runtime.wallDelta))
+            {
+                double turn=angle(lastPresented,sources[j]),most=1440*degree*runtime.wallDelta;
+                if(turn>most) sources[j]=unit(slerp(lastPresented,sources[j],most/turn));
+            }
+            state.aim.presented=sources[j];
         }
         else sources[j]=previewAim(pose.position,target,pose.rotation,pose.roll);
         evaluated[k]=true;aimed[k]=sources[j];

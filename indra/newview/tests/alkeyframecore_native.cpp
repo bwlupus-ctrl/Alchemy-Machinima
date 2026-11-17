@@ -344,6 +344,28 @@ void F8jump()
             }
             previous=now;
         }
+        // Opposing laid orientations: the zero-distance assignment and the near-target blend
+        // must obey the same orientation bound as the transport. Offsets 0 and 3 cm land the
+        // crossing inside the blend zone (0 also inside the 1 cm laid assignment).
+        for(double offset:{0.,.03,.2})
+        {
+            for(double laidDegrees:{180.,90.,0.})
+            {
+                auto lt=track({{-1,0,0},{1,0,0}});lt.settings.easeEnds=false;lt.keys[0].out.value=1;
+                for(auto& key:lt.keys) {key.aim.mode=AimMode::FollowLock;key.values[1]=axisAngle({0,0,1},laidDegrees*degree);}
+                lt.lock.kind=RefKind::Point;lt.lock.fallback={0,offset,0};auto lc=cache(lt);
+                FakeResolver lresolver;ClientRuntime lruntime;lruntime.wallDelta=1./hz;
+                auto before=evalCamera(lt,lc,0,lresolver,EvalMode::Play,lruntime).rotation;
+                for(int frame=1;frame<=hz;++frame)
+                {
+                    auto now=evalCamera(lt,lc,double(frame)/hz,lresolver,EvalMode::Play,lruntime).rotation;
+                    require(finite(now)&&angle(before,now)<=1440*degree/hz+1e-8,"F8jump laid crossing smooth bound");
+                    before=now;
+                }
+                Vec3 expected=unit(Vec3{-1,offset,0});
+                require(dot(before.rotate({1,0,0}),expected)>1-1e-8,"F8jump laid crossing recovers target facing");
+            }
+        }
         for(double degrees:{151.,180.})
         {
             AimState aim;aim.initialized=true;auto old=aim.presented;

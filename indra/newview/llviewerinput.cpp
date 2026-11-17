@@ -2024,6 +2024,8 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                     // ...key held down from previous frame
                     // Not windows, just call the function.
                     res = (*function)(KEYSTATE_LEVEL);
+                    // Release ownership for a LEVEL action no recorded DOWN started.
+                    sCleanKeys.levelStarted(key,name,[&](){return ALKeyframeInputGate::Release([up=*function](){ up(KEYSTATE_UP); });},clean);
                 }//if
                 // Key+Mask combinations are supposed to be unique, so we won't find anything else
                 return res;
