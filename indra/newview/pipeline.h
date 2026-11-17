@@ -1089,6 +1089,7 @@ public:
     void recordTrianglesDrawn();
 
     bool hasRenderDebugFeatureMask(const U32 mask) const    { return bool(mRenderDebugFeatureMask & mask); }
+    bool hasRawRenderDebugFeatureMask(const U32 mask) const; // WP3 supplies implementation
     bool hasRenderDebugMask(const U64 mask) const           { return bool(mRenderDebugMask & mask); }
     void setAllRenderDebugFeatures() { mRenderDebugFeatureMask = 0xffffffff; }
     void clearAllRenderDebugFeatures() { mRenderDebugFeatureMask = 0x0; }
