@@ -1465,9 +1465,11 @@ def page_audit_states(page: dict) -> list[tuple[str, str]]:
             result.append(state)
     # Size budget for the per-page audit enumeration (every state is still
     # audited). The 16 cinematic choices bring Clones to 350 unique states;
-    # the per-clone Stay in place switch (11/13) makes it 351.
+    # the per-clone Stay in place switch (11/13) makes it 351; the clone
+    # Transition card (11/17: 64 target looks, 3 styles, 2 eases, 2 directions,
+    # duration, Go, Cancel) adds 73 for 424.
     # Keep an exact page-specific cap; unrelated pages retain their budget.
-    budget = 351 if key == 'ghosts_tab' else 320
+    budget = 424 if key == 'ghosts_tab' else 320
     if len(result) > budget:
         raise RuntimeError(f"{key} has {len(result)} audit states; hard cap is {budget}")
     return result
