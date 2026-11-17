@@ -2,7 +2,7 @@
 
 No unknown is silently accepted as safe to port.
 
-All 3586 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
+All 3597 hunk guard conclusions remain unknown: local conditional evidence is not domination proof. See hooks.md / hooks.json.
 
 ## Unknown product-path features (192)
 
@@ -199,7 +199,7 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml` (HOOK)
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml` (HOOK)
 
-## Unknown hunk features (1971)
+## Unknown hunk features (1960)
 
 - `indra/llui/llfloater.cpp@83,7`
 - `indra/llui/llfloater.cpp@103,7`
@@ -264,15 +264,15 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/llui/llspinctrl.h@128,8`
 - `indra/newview/CMakeLists.txt@118,28`
 - `indra/newview/CMakeLists.txt@275,24`
-- `indra/newview/CMakeLists.txt@534,7`
-- `indra/newview/CMakeLists.txt@828,8`
-- `indra/newview/CMakeLists.txt@1244,20`
-- `indra/newview/CMakeLists.txt@1562,7`
-- `indra/newview/CMakeLists.txt@1849,8`
-- `indra/newview/CMakeLists.txt@2375,7`
-- `indra/newview/CMakeLists.txt@2655,38`
-- `indra/newview/CMakeLists.txt@2750,7`
-- `indra/newview/CMakeLists.txt@2790,7`
+- `indra/newview/CMakeLists.txt@536,7`
+- `indra/newview/CMakeLists.txt@830,8`
+- `indra/newview/CMakeLists.txt@1246,20`
+- `indra/newview/CMakeLists.txt@1566,7`
+- `indra/newview/CMakeLists.txt@1853,8`
+- `indra/newview/CMakeLists.txt@2379,7`
+- `indra/newview/CMakeLists.txt@2659,38`
+- `indra/newview/CMakeLists.txt@2754,7`
+- `indra/newview/CMakeLists.txt@2794,7`
 - `indra/newview/app_settings/settings.xml@22720,10`
 - `indra/newview/app_settings/settings.xml@23607,21`
 - `indra/newview/app_settings/settings.xml@23629,32`
@@ -317,26 +317,26 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/settings.xml@29545,10`
 - `indra/newview/app_settings/settings.xml@29556,10`
 - `indra/newview/app_settings/settings.xml@29567,10`
-- `indra/newview/llappviewer.cpp@220,7`
-- `indra/newview/llappviewer.cpp@561,16`
-- `indra/newview/llappviewer.cpp@670,12`
-- `indra/newview/llappviewer.cpp@777,7`
-- `indra/newview/llappviewer.cpp@832,8`
-- `indra/newview/llappviewer.cpp@875,8`
-- `indra/newview/llappviewer.cpp@1432,22`
-- `indra/newview/llappviewer.cpp@1495,49`
-- `indra/newview/llappviewer.cpp@1692,9`
-- `indra/newview/llappviewer.cpp@1709,14`
-- `indra/newview/llappviewer.cpp@1770,15`
-- `indra/newview/llappviewer.cpp@1791,12`
-- `indra/newview/llappviewer.cpp@1858,23`
-- `indra/newview/llappviewer.cpp@2087,29`
-- `indra/newview/llappviewer.cpp@2147,9`
-- `indra/newview/llappviewer.cpp@2475,25`
-- `indra/newview/llappviewer.cpp@2538,25`
-- `indra/newview/llappviewer.cpp@2799,7`
-- `indra/newview/llappviewer.cpp@5105,9`
-- `indra/newview/llappviewer.cpp@5508,15`
+- `indra/newview/llappviewer.cpp@221,7`
+- `indra/newview/llappviewer.cpp@562,16`
+- `indra/newview/llappviewer.cpp@671,12`
+- `indra/newview/llappviewer.cpp@778,7`
+- `indra/newview/llappviewer.cpp@833,8`
+- `indra/newview/llappviewer.cpp@876,8`
+- `indra/newview/llappviewer.cpp@1433,22`
+- `indra/newview/llappviewer.cpp@1496,49`
+- `indra/newview/llappviewer.cpp@1693,9`
+- `indra/newview/llappviewer.cpp@1710,14`
+- `indra/newview/llappviewer.cpp@1771,15`
+- `indra/newview/llappviewer.cpp@1792,12`
+- `indra/newview/llappviewer.cpp@1859,23`
+- `indra/newview/llappviewer.cpp@2091,29`
+- `indra/newview/llappviewer.cpp@2151,9`
+- `indra/newview/llappviewer.cpp@2479,25`
+- `indra/newview/llappviewer.cpp@2542,25`
+- `indra/newview/llappviewer.cpp@2803,7`
+- `indra/newview/llappviewer.cpp@5109,9`
+- `indra/newview/llappviewer.cpp@5512,15`
 - `indra/newview/llfloaterenvironmentadjust.cpp@682,32`
 - `indra/newview/llfloaterhoverheight.cpp@149,31`
 - `indra/newview/llpanelmaininventory.cpp@145,8`
@@ -438,26 +438,25 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llcontrolavatar.cpp@385,20`
 - `indra/newview/llcontrolavatar.cpp@627,18`
 - `indra/newview/llcontrolavatar.cpp@754,7`
-- `indra/newview/lldrawpool.cpp@63,7`
-- `indra/newview/lldrawpool.cpp@2210,12`
-- `indra/newview/lldrawpool.cpp@2239,7`
-- `indra/newview/lldrawpool.cpp@2276,7`
-- `indra/newview/lldrawpool.cpp@2305,22`
-- `indra/newview/lldrawpool.cpp@2328,16`
-- `indra/newview/lldrawpool.cpp@2363,10`
-- `indra/newview/lldrawpool.cpp@2382,10`
-- `indra/newview/lldrawpool.cpp@2409,11`
-- `indra/newview/lldrawpool.cpp@2435,11`
-- `indra/newview/lldrawpool.cpp@2502,20`
-- `indra/newview/lldrawpool.cpp@2561,11`
-- `indra/newview/lldrawpool.cpp@2703,7`
-- `indra/newview/lldrawpool.cpp@2722,7`
-- `indra/newview/lldrawpool.cpp@2763,7`
-- `indra/newview/lldrawpool.cpp@2789,7`
-- `indra/newview/lldrawpool.cpp@2808,3`
-- `indra/newview/lldrawpool.h@42,31`
-- `indra/newview/lldrawpool.h@506,7`
-- `indra/newview/lldrawpool.h@518,9`
+- `indra/newview/lldrawpool.cpp@65,7`
+- `indra/newview/lldrawpool.cpp@2283,12`
+- `indra/newview/lldrawpool.cpp@2312,7`
+- `indra/newview/lldrawpool.cpp@2349,7`
+- `indra/newview/lldrawpool.cpp@2378,22`
+- `indra/newview/lldrawpool.cpp@2401,16`
+- `indra/newview/lldrawpool.cpp@2436,10`
+- `indra/newview/lldrawpool.cpp@2455,10`
+- `indra/newview/lldrawpool.cpp@2482,11`
+- `indra/newview/lldrawpool.cpp@2508,11`
+- `indra/newview/lldrawpool.cpp@2575,20`
+- `indra/newview/lldrawpool.cpp@2634,11`
+- `indra/newview/lldrawpool.cpp@2776,7`
+- `indra/newview/lldrawpool.cpp@2795,7`
+- `indra/newview/lldrawpool.cpp@2836,7`
+- `indra/newview/lldrawpool.cpp@2862,7`
+- `indra/newview/lldrawpool.cpp@2881,3`
+- `indra/newview/lldrawpool.h@514,7`
+- `indra/newview/lldrawpool.h@526,9`
 - `indra/newview/lldrawpoolavatar.cpp@73,8`
 - `indra/newview/lldrawpoolavatar.cpp@253,24`
 - `indra/newview/lldrawpoolavatar.cpp@280,20`
@@ -710,42 +709,42 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/pipeline.cpp@1307,16`
 - `indra/newview/pipeline.cpp@1487,48`
 - `indra/newview/pipeline.cpp@1545,13`
-- `indra/newview/pipeline.cpp@32100,11`
-- `indra/newview/pipeline.cpp@32138,13`
-- `indra/newview/pipeline.cpp@32163,32`
-- `indra/newview/pipeline.cpp@32659,6`
-- `indra/newview/pipeline.cpp@33719,7`
-- `indra/newview/pipeline.cpp@33747,13`
-- `indra/newview/pipeline.cpp@33781,15`
-- `indra/newview/pipeline.cpp@34105,7`
-- `indra/newview/pipeline.cpp@34113,11`
-- `indra/newview/pipeline.cpp@35753,69`
-- `indra/newview/pipeline.cpp@35833,9`
-- `indra/newview/pipeline.cpp@35864,7`
-- `indra/newview/pipeline.cpp@35872,19`
-- `indra/newview/pipeline.cpp@35892,11`
-- `indra/newview/pipeline.cpp@35908,7`
-- `indra/newview/pipeline.cpp@35920,15`
-- `indra/newview/pipeline.cpp@35943,7`
-- `indra/newview/pipeline.cpp@35954,15`
-- `indra/newview/pipeline.cpp@35981,7`
-- `indra/newview/pipeline.cpp@35997,7`
-- `indra/newview/pipeline.cpp@36658,43`
-- `indra/newview/pipeline.cpp@36789,7`
-- `indra/newview/pipeline.cpp@36800,8`
-- `indra/newview/pipeline.cpp@36816,41`
-- `indra/newview/pipeline.cpp@36942,54`
-- `indra/newview/pipeline.cpp@37112,9`
-- `indra/newview/pipeline.cpp@37177,265`
-- `indra/newview/pipeline.cpp@37462,9`
-- `indra/newview/pipeline.cpp@37489,34`
-- `indra/newview/pipeline.cpp@37535,11`
-- `indra/newview/pipeline.cpp@37608,7`
-- `indra/newview/pipeline.cpp@37646,18`
-- `indra/newview/pipeline.cpp@37691,8`
-- `indra/newview/pipeline.cpp@37722,8`
-- `indra/newview/pipeline.cpp@37742,18`
-- `indra/newview/pipeline.cpp@40013,15`
+- `indra/newview/pipeline.cpp@32103,11`
+- `indra/newview/pipeline.cpp@32141,13`
+- `indra/newview/pipeline.cpp@32166,32`
+- `indra/newview/pipeline.cpp@32662,6`
+- `indra/newview/pipeline.cpp@33722,7`
+- `indra/newview/pipeline.cpp@33750,13`
+- `indra/newview/pipeline.cpp@33784,15`
+- `indra/newview/pipeline.cpp@34108,7`
+- `indra/newview/pipeline.cpp@34116,11`
+- `indra/newview/pipeline.cpp@35756,69`
+- `indra/newview/pipeline.cpp@35836,9`
+- `indra/newview/pipeline.cpp@35867,7`
+- `indra/newview/pipeline.cpp@35875,19`
+- `indra/newview/pipeline.cpp@35895,11`
+- `indra/newview/pipeline.cpp@35911,7`
+- `indra/newview/pipeline.cpp@35923,15`
+- `indra/newview/pipeline.cpp@35946,7`
+- `indra/newview/pipeline.cpp@35957,15`
+- `indra/newview/pipeline.cpp@35984,7`
+- `indra/newview/pipeline.cpp@36000,7`
+- `indra/newview/pipeline.cpp@36661,43`
+- `indra/newview/pipeline.cpp@36792,7`
+- `indra/newview/pipeline.cpp@36803,8`
+- `indra/newview/pipeline.cpp@36819,41`
+- `indra/newview/pipeline.cpp@36945,54`
+- `indra/newview/pipeline.cpp@37115,9`
+- `indra/newview/pipeline.cpp@37180,265`
+- `indra/newview/pipeline.cpp@37465,9`
+- `indra/newview/pipeline.cpp@37492,34`
+- `indra/newview/pipeline.cpp@37538,11`
+- `indra/newview/pipeline.cpp@37611,7`
+- `indra/newview/pipeline.cpp@37649,18`
+- `indra/newview/pipeline.cpp@37694,8`
+- `indra/newview/pipeline.cpp@37725,8`
+- `indra/newview/pipeline.cpp@37745,18`
+- `indra/newview/pipeline.cpp@40016,15`
 - `indra/newview/pipeline.h@1083,7`
 - `indra/newview/pipeline.h@1099,7`
 - `indra/newview/pipeline.h@2390,18`
@@ -894,9 +893,9 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/lldrawpoolalpha.cpp@773,15`
 - `indra/newview/lldrawpoolalpha.cpp@1088,7`
 - `indra/newview/lldrawpoolalpha.cpp@1323,24`
-- `indra/newview/lldrawpoolalpha.cpp@1536,21`
-- `indra/newview/lldrawpoolalpha.cpp@1560,8`
-- `indra/newview/lldrawpoolalpha.cpp@1575,8`
+- `indra/newview/lldrawpoolalpha.cpp@1539,21`
+- `indra/newview/lldrawpoolalpha.cpp@1563,8`
+- `indra/newview/lldrawpoolalpha.cpp@1578,8`
 - `indra/newview/llfloater360capture.cpp@841,12`
 - `indra/newview/llfloaterhoverheight.h@29,21`
 - `indra/newview/llmeshrepository.cpp@29,8`
@@ -961,13 +960,13 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewershadermgr.cpp@1055,11`
 - `indra/newview/llviewershadermgr.cpp@1229,8`
 - `indra/newview/llviewershadermgr.cpp@1259,9`
-- `indra/newview/llviewershadermgr.cpp@1339,8`
-- `indra/newview/llviewershadermgr.cpp@1375,20`
-- `indra/newview/llviewershadermgr.cpp@1408,6`
-- `indra/newview/llviewershadermgr.cpp@2748,7`
-- `indra/newview/llviewershadermgr.cpp@2818,8`
-- `indra/newview/llviewershadermgr.cpp@4282,8`
-- `indra/newview/llviewershadermgr.cpp@7111,3`
+- `indra/newview/llviewershadermgr.cpp@1341,8`
+- `indra/newview/llviewershadermgr.cpp@1377,20`
+- `indra/newview/llviewershadermgr.cpp@1410,6`
+- `indra/newview/llviewershadermgr.cpp@2750,7`
+- `indra/newview/llviewershadermgr.cpp@2820,8`
+- `indra/newview/llviewershadermgr.cpp@4284,8`
+- `indra/newview/llviewershadermgr.cpp@7113,3`
 - `indra/newview/llviewershadermgr.h@35,11`
 - `indra/newview/llviewershadermgr.h@320,7`
 - `indra/llrender/llrender.cpp@37,8`
@@ -1066,10 +1065,26 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@734,7`
 - `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@956,19`
 - `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@1012,27`
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@83,3`
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@72,3`
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@149,3`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@25,6`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@60,9`
+- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@58,3`
 - `indra/newview/app_settings/shaders/class1/deferred/blurLightF.glsl@36,16`
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@46,7`
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@28,7`
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@31,7`
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@35,6`
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@31,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@36,6`
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@25,7`
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@1,4`
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@271,11`
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@312,3`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@29,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@25,7`
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@157,3`
 - `indra/newview/fsposeranimator.cpp@31,23`
 - `indra/newview/fsposeranimator.cpp@1311,166`
 - `indra/newview/fsposeranimator.cpp@1647,19`
@@ -1349,33 +1364,7 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewermedia.h@595,7`
 - `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@30,7`
 - `indra/newview/skins/default/xui/en/floater_texture_ctrl.xml@88,13`
-- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@79,3`
-- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@68,3`
-- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@143,3`
-- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@25,6`
-- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@56,9`
-- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@54,3`
-- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@143,3`
-- `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl@70,5`
-- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@43,7`
-- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@75,7`
-- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@28,7`
 - `indra/newview/app_settings/shaders/class1/deferred/luminanceF.glsl@73,7`
-- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@31,7`
-- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@35,6`
-- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@60,6`
-- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@31,7`
-- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@146,17`
-- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@36,6`
-- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@65,6`
-- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl@62,6`
-- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@25,7`
-- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@95,5`
-- `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@71,16`
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@29,7`
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@25,7`
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@147,3`
-- `indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl@59,6`
 - `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@31,7`
 - `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@51,8`
 - `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@198,29`
@@ -2173,7 +2162,7 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/zh/strings.xml@31,9`
 - `indra/newview/skins/gemini/xui/en/widgets/floater.xml@12,14`
 
-## Unknown/non-function contexts (1304)
+## Unknown/non-function contexts (1303)
 
 - `indra/llui/CMakeLists.txt@4,7`: unknown/non-function (add_library (llui STATIC))
 - `indra/llui/CMakeLists.txt@71,8`: unknown/non-function (target_sources(llui)
@@ -2229,36 +2218,36 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@186,55`: unknown/non-function (set(viewer_SOURCE_FILES)
 - `indra/newview/CMakeLists.txt@243,11`: unknown/non-function (set(viewer_SOURCE_FILES)
 - `indra/newview/CMakeLists.txt@275,24`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@335,124`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@534,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@563,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@661,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@672,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@828,8`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@904,11`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@918,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1111,7`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1130,13`: unknown/non-function (set(viewer_SOURCE_FILES)
-- `indra/newview/CMakeLists.txt@1145,59`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1206,14`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1244,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1301,184`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1562,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1591,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1693,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1704,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1849,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1920,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1936,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2135,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2375,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2655,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2750,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2790,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2879,32`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2917,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2985,198`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3244,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@335,126`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@536,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@565,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@663,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@674,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@830,8`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@906,11`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@920,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1113,7`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1132,13`: unknown/non-function (set(viewer_SOURCE_FILES)
+- `indra/newview/CMakeLists.txt@1147,59`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1208,14`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1246,20`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1303,186`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1566,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1595,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1697,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1708,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1853,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1924,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1940,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2139,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2379,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2659,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2754,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2794,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2883,33`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2922,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2990,198`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3249,40`: unknown/non-function (if (BUILD_TESTING))
 - `indra/newview/app_settings/settings.xml@2,3497`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3500,10`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3511,1055`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2337,11 +2326,11 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/settings.xml@32045,209`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@32255,364`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llappviewer.cpp@25,19`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@72,35`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@156,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@220,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@276,8`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/llappviewer.cpp@832,8`: unknown/non-function (public:)
+- `indra/newview/llappviewer.cpp@72,36`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@157,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@221,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@277,8`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/llappviewer.cpp@833,8`: unknown/non-function (public:)
 - `indra/newview/llfloaterenvironmentadjust.cpp@27,39`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterenvironmentadjust.h@31,19`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llfloaterenvironmentadjust.h@60,19`: unknown/non-function (public:)
@@ -2423,14 +2412,14 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/fsposeranimator.h@831,7`: unknown/non-function (public:)
 - `indra/newview/fsposeranimator.h@872,6`: unknown/non-function (public:)
 - `indra/newview/llcontrolavatar.cpp@25,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@25,26`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@63,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/lldrawpool.cpp@2808,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
-- `indra/newview/lldrawpool.h@42,31`: unknown/non-function (class LLGLSLShader;)
-- `indra/newview/lldrawpool.h@136,15`: unknown/non-function (public:)
-- `indra/newview/lldrawpool.h@388,112`: unknown/non-function (public:)
-- `indra/newview/lldrawpool.h@506,7`: unknown/non-function (public:)
-- `indra/newview/lldrawpool.h@518,9`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.cpp@25,28`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@65,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/lldrawpool.cpp@2881,3`: unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat)
+- `indra/newview/lldrawpool.h@41,32`: unknown/non-function (class LLVOAvatar;)
+- `indra/newview/lldrawpool.h@137,15`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@389,119`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@514,7`: unknown/non-function (public:)
+- `indra/newview/lldrawpool.h@526,9`: unknown/non-function (public:)
 - `indra/newview/lldrawpoolavatar.cpp@25,14`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpoolavatar.cpp@47,17`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawpoolavatar.cpp@73,8`: unknown/non-function (LLGLSLShader* LLDrawPoolAvatar::sVertexProgram = NULL;)
@@ -2789,7 +2778,7 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/llviewershadermgr.cpp@335,32`: unknown/non-function (LLGLSLShader            gDeferredSkinnedFullbrightAlphaMaskAlphaProgram;)
 - `indra/newview/llviewershadermgr.cpp@370,21`: unknown/non-function (LLGLSLShader            gCGColorgradeGammaProgram;)
 - `indra/newview/llviewershadermgr.cpp@398,22`: unknown/non-function (LLGLSLShader            gDeferredSkinnedPBROpaqueProgram;)
-- `indra/newview/llviewershadermgr.cpp@7111,3`: unknown/non-function (LLViewerShaderMgr::shader_iter LLViewerShaderMgr::endShaders() const)
+- `indra/newview/llviewershadermgr.cpp@7113,3`: unknown/non-function (LLViewerShaderMgr::shader_iter LLViewerShaderMgr::endShaders() const)
 - `indra/newview/llviewershadermgr.h@35,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llviewershadermgr.h@163,21`: unknown/non-function (public:)
 - `indra/newview/llviewershadermgr.h@194,13`: unknown/non-function (inline bool operator != (LLViewerShaderMgr::shader_iter const & a, LLViewerShade)
@@ -2839,10 +2828,44 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@4,11`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@19,10`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/alchemy/postEffectUtilsF.glsl@200,26`: unknown/non-function (vec4 applyChromaticAberration(sampler2D tex, vec2 uv))
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@24,17`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@83,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@27,17`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@72,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@32,15`: unknown/non-function (uniform mat4 texture_matrix0;)
+- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@149,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@25,6`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl@27,15`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@58,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@24,15`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/blurLightF.glsl@36,16`: unknown/non-function (uniform vec2 screen_res;)
+- `indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl@27,15`: unknown/non-function (uniform mat4 modelview_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl@26,15`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@26,18`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@46,7`: unknown/non-function (vec3 atmosAmbient();)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@28,7`: unknown/non-function (uniform mat4 texture_matrix0;)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@38,12`: unknown/non-function (uniform vec4 origin;)
+- `indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl@26,16`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@42,12`: unknown/non-function (uniform mat3 normal_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@35,6`: unknown/non-function (mat4 getObjectSkinnedTransform();)
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@31,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@44,12`: unknown/non-function (out vec3 vary_position;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@36,6`: unknown/non-function (mat4 getObjectSkinnedTransform();)
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@53,12`: unknown/non-function (uniform vec4[2] texture_emissive_transform;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@35,25`: unknown/non-function (uniform mat4 projection_matrix;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@30,25`: unknown/non-function (uniform mat4 projection_matrix;)
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@1,4`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@271,11`: unknown/non-function (uniform sampler2D diffuseMap;  //always in sRGB space)
 - `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl@312,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@29,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@49,12`: unknown/non-function (uniform vec4 gltf_mr_transform[2*GLTF_INDEXED_CHANNELS];)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@46,12`: unknown/non-function (uniform vec4[2] texture_metallic_roughness_transform;)
+- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@157,3`: unknown/non-function (void main())
+- `indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl@26,11`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl@27,19`: unknown/non-function (uniform mat3 normal_matrix;)
 - `indra/newview/fsposeranimator.cpp@31,23`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/llavataractions.cpp@39,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/lldrawable.cpp@48,8`: unknown/non-function (declaration, XML, build list or global scope)
@@ -3051,47 +3074,12 @@ All 3586 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@58,7`: unknown/non-function (uniform vec3  halation_tint;)
 - `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@66,18`: unknown/non-function (vec3 applyExposure(vec3 color);)
 - `indra/newview/app_settings/shaders/class1/alchemy/colorCorrectF.glsl@95,8`: unknown/non-function (vec3 applyChannelCurves(vec3 diff);)
-- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@24,14`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl@79,3`: unknown/non-function (void main())
-- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@27,14`: unknown/non-function (uniform mat3 normal_matrix;)
-- `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl@68,3`: unknown/non-function (void main())
-- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@32,12`: unknown/non-function (uniform mat4 texture_matrix0;)
-- `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl@143,3`: unknown/non-function (void main())
-- `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl@25,6`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl@27,12`: unknown/non-function (uniform mat3 normal_matrix;)
-- `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl@54,3`: unknown/non-function (void main())
-- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@24,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl@143,3`: unknown/non-function (void main())
-- `indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl@27,12`: unknown/non-function (uniform mat4 modelview_matrix;)
-- `indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl@26,12`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@26,15`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl@43,7`: unknown/non-function (vec3 atmosAmbient();)
-- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@28,7`: unknown/non-function (uniform mat4 texture_matrix0;)
-- `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl@38,9`: unknown/non-function (uniform vec4 origin;)
-- `indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl@26,13`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/gbufferUtil.glsl@32,7`: unknown/non-function (uniform sampler2D emissiveRect;)
 - `indra/newview/app_settings/shaders/class1/deferred/luminanceF.glsl@37,19`: unknown/non-function (uniform sampler2D emissiveRect;)
-- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@31,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl@42,9`: unknown/non-function (uniform mat3 normal_matrix;)
 - `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl@32,15`: unknown/non-function (out vec4 frag_color;)
-- `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl@35,6`: unknown/non-function (mat4 getObjectSkinnedTransform();)
-- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@31,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl@44,9`: unknown/non-function (out vec3 vary_position;)
 - `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskF.glsl@28,13`: unknown/non-function (out vec4 frag_color;)
 - `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedF.glsl@30,15`: unknown/non-function (out vec4 frag_color;)
-- `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl@36,6`: unknown/non-function (mat4 getObjectSkinnedTransform();)
-- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl@53,9`: unknown/non-function (uniform vec4[2] texture_emissive_transform;)
-- `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl@35,22`: unknown/non-function (uniform mat4 projection_matrix;)
-- `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl@30,22`: unknown/non-function (uniform mat4 projection_matrix;)
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@29,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl@49,9`: unknown/non-function (uniform vec4 gltf_mr_transform[2*GLTF_INDEXED_CHANNELS];)
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@25,7`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@46,9`: unknown/non-function (uniform vec4[2] texture_metallic_roughness_transform;)
-- `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl@147,3`: unknown/non-function (void main())
-- `indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl@26,7`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl@33,9`: unknown/non-function (uniform float minimum_alpha;)
-- `indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl@27,16`: unknown/non-function (uniform mat3 normal_matrix;)
 - `indra/newview/app_settings/shaders/class2/deferred/reflectionProbeF.glsl@27,16`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@31,7`: unknown/non-function (out vec4 frag_color;)
 - `indra/newview/app_settings/shaders/class3/deferred/softenLightF.glsl@51,8`: unknown/non-function (uniform vec3 sun_dir;)

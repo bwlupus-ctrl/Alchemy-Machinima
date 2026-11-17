@@ -204,36 +204,36 @@ HEAD coordinates; guards/features are candidate evidence
 | 186–240 (n=55) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 243–253 (n=11) | unknown/non-function (set(viewer_SOURCE_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 275–298 (n=24) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 335–458 (n=124) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 534–540 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 563–569 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 661–667 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 672–678 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 828–835 (n=8) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 904–914 (n=11) | unknown/non-function (set(viewer_SOURCE_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 918–924 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1111–1117 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1130–1142 (n=13) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-path, environment | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1145–1203 (n=59) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1206–1219 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1244–1263 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1301–1484 (n=184) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1562–1568 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1591–1597 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1693–1699 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1704–1710 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1849–1856 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1920–1932 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1936–1943 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2135–2141 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2375–2381 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2655–2692 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
-| 2750–2756 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2790–2796 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2879–2910 (n=32) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2917–2936 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
-| 2985–3182 (n=198) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
-| 3244–3283 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
+| 335–460 (n=126) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 536–542 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 565–571 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 663–669 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 674–680 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 830–837 (n=8) | unknown/non-function (set(viewer_SOURCE_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 906–916 (n=11) | unknown/non-function (set(viewer_SOURCE_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 920–926 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1113–1119 (n=7) | unknown/non-function (set(viewer_SOURCE_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1132–1144 (n=13) | unknown/non-function (set(viewer_SOURCE_FILES) | actor-path, environment | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1147–1205 (n=59) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, common-ui, director-shell, rig, sensor, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1208–1221 (n=14) | unknown/non-function (set(viewer_HEADER_FILES) | camera, stepped-animation | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1246–1265 (n=20) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1303–1488 (n=186) | unknown/non-function (set(viewer_HEADER_FILES) | actor-bar, actor-path, camera, capture-sidecar, clones, common-ui, composition, crowd, director-shell, gaze, looks, rig, roto-tron, sensor, shafts-volumetrics, stepped-animation, tracking, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1566–1572 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1595–1601 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1697–1703 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | environment | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1708–1714 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | clones | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1853–1860 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1924–1936 (n=13) | unknown/non-function (set(viewer_HEADER_FILES) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1940–1947 (n=8) | unknown/non-function (set(viewer_HEADER_FILES) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2139–2145 (n=7) | unknown/non-function (set(viewer_HEADER_FILES) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2379–2385 (n=7) | unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES}) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2659–2696 (n=38) | unknown/non-function (elseif(LINUX)) | unknown | unknown-review | unknown; conditional evidence present | Edits LL_GENERATOR_IS_MULTI_CONFIG |
+| 2754–2760 (n=7) | unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR})) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2794–2800 (n=7) | unknown/non-function (if (PACKAGE)) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2883–2915 (n=33) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, common-ui, crowd, director-shell, looks, rig, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2922–2941 (n=20) | unknown/non-function (if (BUILD_TESTING)) | camera, vcam, weather | creative-candidate | unknown; no local conditional evidence | Edits LL_TEST_ADDITIONAL_SOURCE_FILES |
+| 2990–3187 (n=198) | unknown/non-function (if (BUILD_TESTING)) | actor-bar, actor-path, camera, clones, composition, director-shell, gaze, rig, shafts-volumetrics, stepped-animation, tracking, vcam | mixed/perf-review | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, ALGazeMath, ALTrajectory, ALGazeMotor, LLControlVariable, LLUI, gSavedSettings |
+| 3249–3288 (n=40) | unknown/non-function (if (BUILD_TESTING)) | camera | creative-candidate | unknown; no local conditional evidence | Edits LL_ADD_INTEGRATION_TEST, LLControlGroup, LLDir, gDirUtilp, LLNotificationsUtil, LLNotifications |
 
 ## Slice 1: `indra/newview/app_settings/settings.xml`
 
@@ -326,61 +326,61 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 25–43 (n=19) | unknown/non-function (declaration, XML, build list or global scope) | camera, common-ui, composition, director-shell, looks, sensor, vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 72–106 (n=35) | unknown/non-function (declaration, XML, build list or global scope) | actor-bar, actor-path, camera, clones, common-ui, gaze, looks, rig, roto-tron, shafts-volumetrics, stepped-animation, tracking, vcam, weather | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 156–162 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 220–226 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 276–283 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 382–441 (n=60) | alCameraDispatchFinalizePresented, alCameraDispatchSampleFinal | camera | creative-candidate | unknown; conditional evidence present | Edits gCameraDispatchSerial, gCameraDispatchOwner, gCameraDispatchFlycamWrote, gCameraDispatchForeignSinceFlycamWrite, ALCameraDispatchSample, gCameraDispatchSamples, gCameraDispatchSampleStart, gCameraDispatchSampleCount, gFrameCount, LLViewerCamera |
-| 561–576 (n=16) | idle_afk_check | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): the session is never allowed to go Away on its own -- not during the run, not during teardown, and not if the logout is blocked by a dialog. Independent of the AFKTimeout setting (and of an RLV allowidle restriction), which the run restores or can |
-| 670–681 (n=12) | settings_to_globals | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: honor a persisted-ON master toggle at startup (raised object-LOD ceiling, force-LOD-3, clamped-positive distance factor). |
-| 777–783 (n=7) | LLAppViewer::LLAppViewer | unknown | unknown-review | unknown; no local conditional evidence | Edits gDirUtilp |
-| 832–839 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 875–882 (n=8) | LLAppViewer::init | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Unconditional: must precede error handling, configuration and all TLS use. |
-| 916–941 (n=26) | LLAppViewer::init, getControl | looks, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: ACES was the default until 8/2026, so older profiles and graphics presets can still hold it. Move those to AgX once; a later ACES choice is kept. |
-| 1432–1453 (n=22) | LLAppViewer::initMaxHeapSize | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.0] 0 = auto-size from installed physical RAM. A fixed cap makes updateMemoryInfo() report available memory as min(true available, cap - private commit), so a machine with far more RAM than the cap can misread as "low system memory" and trigger the emergency texture pu |
-| 1495–1543 (n=49) | LLAppViewer::doFrame, frameLimiterEnabled, frameLimiterFps, frameLimiterVSyncLock, frameLimiterVSyncSetting | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [FrameLimiter] One cached bool read per frame; everything else is skipped when the cap is off. [FrameLimiter] Opt-in driver pacing (wglSwapIntervalEXT); off = CPU pacing only. [FrameLimiter] The CACHED viewer VSync setting (never a WGL query). With VSync on and the cap at or abov |
-| 1636–1643 (n=8) | LLAppViewer::doFrame | camera | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1692–1700 (n=9) | LLAppViewer::doFrame | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ProbeCost] Never reuse a previous iteration, including skipped displays. |
-| 1709–1722 (n=14) | LLAppViewer::doFrame | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ProbeBeforePresent] FALSE preserves the original post-display update site for live A/B captures. |
-| 1729–1740 (n=12) | LLAppViewer::doFrame | actor-path, gaze, stepped-animation | creative-candidate | unknown; conditional evidence present | Edits LLActorMover, ALSteppedAnimRuntime |
-| 1770–1784 (n=15) | LLAppViewer::doFrame | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [FrameLimiter] When the cap is on, an unfocused-but-visible window (the user clicked over to OBS) is paced by the cap, not by the background yield: the yield sleeps on top of the render time and would drop a 30 fps cap to ~18 fps. A hidden or MINIMISED window keeps today's yield  |
-| 1791–1802 (n=12) | LLAppViewer::doFrame | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Skip the sleep, keep the worker-thread pause. |
-| 1858–1880 (n=23) | LLAppViewer::doFrame | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [FrameLimiter] Fallback pacing: a frame that presented was already paced just before SwapBuffers (this returns 0 then). A frame that did not present (minimised or hidden window, skipped display) is paced here, so VSync's swap wait and the background/minimised yield above already  |
-| 1955–1978 (n=24) | LLAppViewer::cleanup | camera, director-shell, looks, tracking, vcam | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [XInputRumble] The main loop no longer advances patterns; stop the pad now, not when the joystick is terminated much later in cleanup. [AvatarLightResponse] Quit-time flush: the Director floater skips its close-save while quitting, and a slider debounce may still be pending. flus |
-| 2023–2033 (n=11) | LLAppViewer::cleanup | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [QuitCrash] Name tags with no source object (the Clone Studio nameplates) are never removed by killAllObjects(); release them while the camera still exists (the final LLHUDObject::updateAll() below otherwise reads the deleted camera and crashes, skipping the settings save). |
-| 2047–2080 (n=34) | LLAppViewer::cleanup | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step up to "Global stuff deleted" is logged so a quit that dies or stalls in this range shows exactly where (11/11: the log ended after the decomposition shutdown line, with no settings save). |
-| 2087–2115 (n=29) | LLAppViewer::cleanup | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_INFOS, LL_ENDL |
-| 2147–2155 (n=9) | LLAppViewer::cleanup | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: decoded sounds now live in the dedicated "sounds" subfolder -- clear it too |
-| 2161–2169 (n=9) | LLAppViewer::cleanup | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: Model previews release their decomposition handles while the UI is destroyed. |
-| 2225–2241 (n=17) | LLAppViewer::cleanup | sensor | creative-candidate | unknown; conditional evidence present | Edits gSavedSettings, ALUIPerfSelfTest, ALEnvOnlyDiagnostics, LL_INFOS, LL_ENDL |
-| 2331–2338 (n=8) | LLAppViewer::cleanup | rig | creative-candidate | unknown; no local conditional evidence | Edits LLPipeline |
-| 2475–2499 (n=25) | LLAppViewer::cleanup | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge FastExit] Everything durable is now persisted (settings, per-account settings, mute list, conversation/transaction logs, inventory cache) and all child processes (SLVoice, media/CEF plugins) and worker threads have already been shut down above - the only thing left in th |
-| 2538–2562 (n=25) | LLAppViewer::initThreads | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs (measured: ~45 threads' worth of queued decode demand on 32 threads); 0 = stock ceiling of 16 A decoder can transiently hold a full raw image plus conversion and cache copies. Limit concurrency to one worker per 2  |
-| 2653–2705 (n=53) | applyMachinimaDebugLogging | actor-bar, actor-path, camera, capture-sidecar, clones, director-shell, looks, rig, roto-tron, weather | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [DebugLogging] additional fork tags |
-| 2799–2805 (n=7) | LLAppViewer::loadSettingsFromDirectory | unknown | unknown-review | unknown; no local conditional evidence | Edits ALScopedPresetMaterializing |
-| 2905–2911 (n=7) | LLAppViewer::loadColorSettings | director-shell | creative-candidate | unknown; no local conditional evidence | Edits ALDirectorTheme |
-| 3649–3655 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
-| 3659–3665 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
-| 4617–4633 (n=17) | LLAppViewer::fastQuit, LLAppViewer::forceQuit | camera, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: [XInputRumble] _exit below skips LLViewerJoystick::terminate. |
-| 4646–4655 (n=10) | LLAppViewer::requestQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Final recovery capture belongs before closeAllChildren() and the logout teardown, while Director's model/UI dependencies are known to be alive. |
-| 4687–4696 (n=10) | LLAppViewer::requestQuit | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and latch the quit flag, so no settle can send a hover / region-environment update during logout. Covers sliders outside floaters (Quick Settings pulldown) too. |
-| 4757–4767 (n=11) | LLAppViewer::abortQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLFloaterDirector, ALUIPerfSelfTest |
-| 4869–4880 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The general one-shot is consumed below even if another viewer owns the media cache. Only the media lock owner's completed sweep acknowledges this. |
-| 4998–5009 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: Retain the Preferences request after its persisted flag was consumed above, also in a read-only viewer that wins the separate media lock. Media cleanup acquires its own exclusive lock off-main, including when either VCam enable is off. purgeCache() stays non-recursive. |
-| 5105–5113 (n=9) | LLAppViewer::purgeCache | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its own sweep to be cleared along with the rest of the cache. |
-| 5377–5400 (n=24) | LLAppViewer::idle | capture-sidecar, clones, roto-tron, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [Temporal Capture] Advance the presentation clock and freeze this iteration's immutable time context BEFORE any cinematic consumer (object path/ghost updates, gObjectList.update, particles, camera) runs later in idle() or in the following display(). Wall/network time is untouched |
-| 5411–5447 (n=37) | LLAppViewer::idle | gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md) [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static constraint members, since llcha |
-| 5508–5522 (n=15) | LLAppViewer::idle | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Login-screen tests are ticked by idle_startup(). Once an authorized in-world test reaches STATE_STARTED, idle_startup() is no longer called. Keep the active-runner check as the zero-cost gate for normal sessions. |
-| 5655–5663 (n=9) | LLAppViewer::idle | tracking | creative-candidate | unknown; conditional evidence present | Edits gDisconnected, gTeleportDisplay, ALProjectorTracker |
-| 5699–5756 (n=58) | LLAppViewer::idle | actor-bar, actor-path, clones, gaze, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ObjectPath] client-side object drives (props on splines): advance and re-assert each enrolled object's rendered transform BEFORE gObjectList.update(), so the driven mount's new pose is consumed THIS frame by object interpolation, the seated-avatar root slave, the skeleton world- |
-| 5846–5978 (n=133) | LLAppViewer::idle | actor-path, camera, clones, director-shell, rig, shafts-volumetrics, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World: hold the particle simulation while the world is frozen so existing particles hang in place instead of aging out (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the merge spec for this item requires the full scene — including particles  |
-| 5981–6024 (n=44) | LLAppViewer::idle | camera, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Follow the final VCam/flycam camera; hidden costs one cached bool test. The ownership sampler and recorder must observe the same final, post-operator camera.  Keep this immediately before onIdleFrame(). |
-| 6034–6063 (n=30) | LLAppViewer::idle | actor-path, clones, gaze, stepped-animation, tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b |
-| 6087–6094 (n=8) | LLAppViewer::idleShutdown | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles |
-| 6170–6176 (n=7) | LLAppViewer::sendLogoutRequest | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
-| 6495–6510 (n=16) | LLAppViewer::disconnectViewer | clones, director-shell, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched. |
-| 6516–6523 (n=8) | LLAppViewer::disconnectViewer | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALExposureSettingsHistory |
-| 6534–6578 (n=45) | LLAppViewer::disconnectViewer | actor-bar, actor-path, clones, composition, director-shell, rig, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses |
+| 72–107 (n=36) | unknown/non-function (declaration, XML, build list or global scope) | actor-bar, actor-path, camera, clones, common-ui, gaze, looks, rig, roto-tron, shafts-volumetrics, stepped-animation, tracking, vcam, weather | mixed/perf-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 157–163 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | director-shell | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 221–227 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 277–284 (n=8) | unknown/non-function (declaration, XML, build list or global scope) | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 383–442 (n=60) | alCameraDispatchFinalizePresented, alCameraDispatchSampleFinal | camera | creative-candidate | unknown; conditional evidence present | Edits gCameraDispatchSerial, gCameraDispatchOwner, gCameraDispatchFlycamWrote, gCameraDispatchForeignSinceFlycamWrite, ALCameraDispatchSample, gCameraDispatchSamples, gCameraDispatchSampleStart, gCameraDispatchSampleCount, gFrameCount, LLViewerCamera |
+| 562–577 (n=16) | idle_afk_check | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Functional self-test (in-world): the session is never allowed to go Away on its own -- not during the run, not during teardown, and not if the logout is blocked by a dialog. Independent of the AFKTimeout setting (and of an RLV allowidle restriction), which the run restores or can |
+| 671–682 (n=12) | settings_to_globals | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge Batch4] Machinima High-LOD: honor a persisted-ON master toggle at startup (raised object-LOD ceiling, force-LOD-3, clamped-positive distance factor). |
+| 778–784 (n=7) | LLAppViewer::LLAppViewer | unknown | unknown-review | unknown; no local conditional evidence | Edits gDirUtilp |
+| 833–840 (n=8) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 876–883 (n=8) | LLAppViewer::init | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Unconditional: must precede error handling, configuration and all TLS use. |
+| 917–942 (n=26) | LLAppViewer::init, getControl | looks, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: ACES was the default until 8/2026, so older profiles and graphics presets can still hold it. Move those to AgX once; a later ACES choice is kept. |
+| 1433–1454 (n=22) | LLAppViewer::initMaxHeapSize | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.0] 0 = auto-size from installed physical RAM. A fixed cap makes updateMemoryInfo() report available memory as min(true available, cap - private commit), so a machine with far more RAM than the cap can misread as "low system memory" and trigger the emergency texture pu |
+| 1496–1544 (n=49) | LLAppViewer::doFrame, frameLimiterEnabled, frameLimiterFps, frameLimiterVSyncLock, frameLimiterVSyncSetting | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [FrameLimiter] One cached bool read per frame; everything else is skipped when the cap is off. [FrameLimiter] Opt-in driver pacing (wglSwapIntervalEXT); off = CPU pacing only. [FrameLimiter] The CACHED viewer VSync setting (never a WGL query). With VSync on and the cap at or abov |
+| 1637–1644 (n=8) | LLAppViewer::doFrame | camera | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1693–1701 (n=9) | LLAppViewer::doFrame | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ProbeCost] Never reuse a previous iteration, including skipped displays. |
+| 1710–1723 (n=14) | LLAppViewer::doFrame | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ProbeBeforePresent] FALSE preserves the original post-display update site for live A/B captures. |
+| 1730–1741 (n=12) | LLAppViewer::doFrame | actor-path, gaze, stepped-animation | creative-candidate | unknown; conditional evidence present | Edits LLActorMover, ALSteppedAnimRuntime |
+| 1771–1785 (n=15) | LLAppViewer::doFrame | unknown | mixed/perf-review | unknown; no local conditional evidence | Comment evidence: [FrameLimiter] When the cap is on, an unfocused-but-visible window (the user clicked over to OBS) is paced by the cap, not by the background yield: the yield sleeps on top of the render time and would drop a 30 fps cap to ~18 fps. A hidden or MINIMISED window keeps today's yield  |
+| 1792–1803 (n=12) | LLAppViewer::doFrame | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Skip the sleep, keep the worker-thread pause. |
+| 1859–1881 (n=23) | LLAppViewer::doFrame | unknown | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [FrameLimiter] Fallback pacing: a frame that presented was already paced just before SwapBuffers (this returns 0 then). A frame that did not present (minimised or hidden window, skipped display) is paced here, so VSync's swap wait and the background/minimised yield above already  |
+| 1956–1979 (n=24) | LLAppViewer::cleanup | camera, director-shell, looks, tracking, vcam | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [XInputRumble] The main loop no longer advances patterns; stop the pad now, not when the joystick is terminated much later in cleanup. [AvatarLightResponse] Quit-time flush: the Director floater skips its close-save while quitting, and a slider debounce may still be pending. flus |
+| 2023–2037 (n=15) | LLAppViewer::cleanup | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [CloneTransition] Shutdown: DISCARD any running transition and restore bodies BEFORE the disconnect tears the Studio's world down (the Studio has no teardown hook of its own). [QuitCrash] Name tags with no source object (the Clone Studio nameplates) are never removed by killAllOb |
+| 2051–2084 (n=34) | LLAppViewer::cleanup | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: [ShutdownTrace] each step up to "Global stuff deleted" is logged so a quit that dies or stalls in this range shows exactly where (11/11: the log ended after the decomposition shutdown line, with no settings save). |
+| 2091–2119 (n=29) | LLAppViewer::cleanup | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_INFOS, LL_ENDL |
+| 2151–2159 (n=9) | LLAppViewer::cleanup | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: decoded sounds now live in the dedicated "sounds" subfolder -- clear it too |
+| 2165–2173 (n=9) | LLAppViewer::cleanup | composition | creative-candidate | unknown; no local conditional evidence | Comment evidence: Model previews release their decomposition handles while the UI is destroyed. |
+| 2229–2245 (n=17) | LLAppViewer::cleanup | sensor | creative-candidate | unknown; conditional evidence present | Edits gSavedSettings, ALUIPerfSelfTest, ALEnvOnlyDiagnostics, LL_INFOS, LL_ENDL |
+| 2335–2342 (n=8) | LLAppViewer::cleanup | rig | creative-candidate | unknown; no local conditional evidence | Edits LLPipeline |
+| 2479–2503 (n=25) | LLAppViewer::cleanup | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge FastExit] Everything durable is now persisted (settings, per-account settings, mute list, conversation/transaction logs, inventory cache) and all child processes (SLVoice, media/CEF plugins) and worker threads have already been shut down above - the only thing left in th |
+| 2542–2566 (n=25) | LLAppViewer::initThreads | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge G5.1 4a-i] the stock 16-thread ceiling starves wide CPUs (measured: ~45 threads' worth of queued decode demand on 32 threads); 0 = stock ceiling of 16 A decoder can transiently hold a full raw image plus conversion and cache copies. Limit concurrency to one worker per 2  |
+| 2657–2709 (n=53) | applyMachinimaDebugLogging | actor-bar, actor-path, camera, capture-sidecar, clones, director-shell, looks, rig, roto-tron, weather | mixed/perf-review | unknown; conditional evidence present | Comment evidence: [DebugLogging] additional fork tags |
+| 2803–2809 (n=7) | LLAppViewer::loadSettingsFromDirectory | unknown | unknown-review | unknown; no local conditional evidence | Edits ALScopedPresetMaterializing |
+| 2909–2915 (n=7) | LLAppViewer::loadColorSettings | director-shell | creative-candidate | unknown; no local conditional evidence | Edits ALDirectorTheme |
+| 3653–3659 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
+| 3663–3669 (n=7) | LLAppViewer::initWindow | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALEnvOnlyDiagnostics |
+| 4621–4637 (n=17) | LLAppViewer::fastQuit, LLAppViewer::forceQuit | camera, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: [XInputRumble] _exit below skips LLViewerJoystick::terminate. |
+| 4650–4659 (n=10) | LLAppViewer::requestQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Comment evidence: Final recovery capture belongs before closeAllChildren() and the logout teardown, while Director's model/UI dependencies are known to be alive. |
+| 4691–4700 (n=10) | LLAppViewer::requestQuit | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] design v7 4.2: drop every pending slider wheel settle WITHOUT firing and latch the quit flag, so no settle can send a hover / region-environment update during logout. Covers sliders outside floaters (Quick Settings pulldown) too. |
+| 4761–4771 (n=11) | LLAppViewer::abortQuit | director-shell | creative-candidate | unknown; no local conditional evidence | Edits LLFloaterDirector, ALUIPerfSelfTest |
+| 4873–4884 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The general one-shot is consumed below even if another viewer owns the media cache. Only the media lock owner's completed sweep acknowledges this. |
+| 5002–5013 (n=12) | LLAppViewer::initCache | vcam | creative-candidate | unknown; no local conditional evidence | Comment evidence: Retain the Preferences request after its persisted flag was consumed above, also in a read-only viewer that wins the separate media lock. Media cleanup acquires its own exclusive lock off-main, including when either VCam enable is off. purgeCache() stays non-recursive. |
+| 5109–5117 (n=9) | LLAppViewer::purgeCache | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: deleteFilesInDir is non-recursive, so the decoded-sound subfolder needs its own sweep to be cleared along with the rest of the cache. |
+| 5381–5404 (n=24) | LLAppViewer::idle | capture-sidecar, clones, roto-tron, stepped-animation | creative-candidate | unknown; conditional evidence present | Comment evidence: [Temporal Capture] Advance the presentation clock and freeze this iteration's immutable time context BEFORE any cinematic consumer (object path/ghost updates, gObjectList.update, particles, camera) runs later in idle() or in the following display(). Wall/network time is untouched |
+| 5415–5451 (n=37) | LLAppViewer::idle | gaze | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A0.1] no-op sample patch proving the per-item runtime gate (doc/BD_MERGE_PATCHLOG.md) [BDMerge B4] configurable max head/eye rotation angle for lookAt (donor: Black Dragon 525e398af5). Pushes the per-frame setting into llcharacter's static constraint members, since llcha |
+| 5512–5526 (n=15) | LLAppViewer::idle | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Login-screen tests are ticked by idle_startup(). Once an authorized in-world test reaches STATE_STARTED, idle_startup() is no longer called. Keep the active-runner check as the zero-cost gate for normal sessions. |
+| 5659–5667 (n=9) | LLAppViewer::idle | tracking | creative-candidate | unknown; conditional evidence present | Edits gDisconnected, gTeleportDisplay, ALProjectorTracker |
+| 5703–5769 (n=67) | LLAppViewer::idle | actor-bar, actor-path, clones, gaze, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ObjectPath] client-side object drives (props on splines): advance and re-assert each enrolled object's rendered transform BEFORE gObjectList.update(), so the driven mount's new pose is consumed THIS frame by object interpolation, the seated-avatar root slave, the skeleton world- |
+| 5859–5991 (n=133) | LLAppViewer::idle | actor-path, camera, clones, director-shell, rig, shafts-volumetrics, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge B3] Freeze World: hold the particle simulation while the world is frozen so existing particles hang in place instead of aging out (donor: Black Dragon b4cfc2cb83; BD leaves particles running, but the merge spec for this item requires the full scene — including particles  |
+| 5994–6037 (n=44) | LLAppViewer::idle | camera, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Follow the final VCam/flycam camera; hidden costs one cached bool test. The ownership sampler and recorder must observe the same final, post-operator camera.  Keep this immediately before onIdleFrame(). |
+| 6047–6076 (n=30) | LLAppViewer::idle | actor-path, clones, gaze, stepped-animation, tracking | creative-candidate | unknown; conditional evidence present | Comment evidence: HOT_GAZE_PRESENT_BEGIN: shared with the native frame integration check. HOT_GAZE_PRESENT_END applyHeld above is the stepped base skeleton writer (including boil/smear and held root yaw). Sample/capture and place projectors here, then finish their drawable/bounds/child mesh work b |
+| 6100–6107 (n=8) | LLAppViewer::idleShutdown | common-ui | creative-candidate | unknown; no local conditional evidence | Comment evidence: [SliderWheel] second quit site: cancel (never fire) pending slider wheel settles |
+| 6183–6189 (n=7) | LLAppViewer::sendLogoutRequest | tracking | creative-candidate | unknown; no local conditional evidence | Edits ALProjectorTracker |
+| 6508–6524 (n=17) | LLAppViewer::disconnectViewer | clones, director-shell, looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Write/clean the Director recovery BEFORE Prism/rig/world teardown below (a forced disconnect would otherwise save a stripped scene). Latched. |
+| 6530–6537 (n=8) | LLAppViewer::disconnectViewer | sensor | creative-candidate | unknown; no local conditional evidence | Edits ALExposureSettingsHistory |
+| 6548–6592 (n=45) | LLAppViewer::disconnectViewer | actor-bar, actor-path, clones, composition, director-shell, rig, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Local light emitters must leave mLights before the region/object list is torn down. This is idempotent on logout, relog, and final shutdown. [DirFix] The path editor's shared edit session (edit owner/actor/node, the transient path-edit tool, a held path-camera preview) is per-ses |
 
 ## Slice 1: `indra/newview/llfloaterenvironmentadjust.cpp`
 
@@ -743,37 +743,37 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 25–50 (n=26) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks, roto-tron | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 63–69 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 71–152 (n=82) | LLScopedVelocityPolygonOffset::LLScopedVelocityPolygonOffset, LLScopedVelocityPolygonOffset::beginPass, LLScopedVelocityPolygonOffset::endPass, LLScopedVelocityPolygonOffset::set, LLScopedVelocityPolygonOffset::~LLScopedVelocityPolygonOffset, getVelocityRiggedBias | actor-bar, actor-path, capture-sidecar, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: [VelHistory] Keep drawable history live throughout the velocity pass, then apply each requested current transform at pass exit. Capacity survives clears. Every guard restores these exact values, so they stay current all pass. A positive bias would push velocity away from the came |
-| 333–364 (n=32) | LLDrawPool::beginVelocityPass, LLDrawPool::endVelocityPass, LLDrawPool::getNumVelocityPasses, LLDrawPool::renderVelocity | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] Velocity-pass base hooks. Default: this pool contributes no velocity (0 passes). Rigid draw pools override these; skinned support is 1b. virtual virtual virtual virtual |
-| 499–1897 (n=1399) | LLRenderPass::LLRenderPass, LLRenderPass::actorFxFragOffset, LLRenderPass::actorFxFrameTime, LLRenderPass::actorFxLookNeedsSyntheticBloom, LLRenderPass::actorFxScreenSize, LLRenderPass::applyModelMatrix, LLRenderPass::beginVelocityModelMatrixUpdates, LLRenderPass::bindVelocityUniforms, LLRenderPass::flushVelocityModelMatrixUpdates, LLRenderPass::invalidateModelMatrixCache, LLRenderPass::pushBatches, LLRenderPass::pushEmissiveBatchesIndexed, LLRenderPass::pushEmissiveBatchesScalar, LLRenderPass::pushMaskBatches, LLRenderPass::pushMaskBatchesIndexed, LLRenderPass::pushRiggedBatches, LLRenderPass::pushRiggedMaskBatches, LLRenderPass::pushRiggedVelocityBatches, LLRenderPass::pushUntexturedBatches, LLRenderPass::pushUntexturedRiggedBatches, LLRenderPass::pushVelocityBatches, LLRenderPass::pushVelocityBatchesTextured, LLRenderPass::renderGroup, LLRenderPass::renderRiggedGroup, LLRenderPass::shouldSuppressSharedActorFx, LLRenderPass::shouldSuppressSharedActorFxPBR, LLRenderPass::updateLastVelocityModelMatrix, LLRenderPass::uploadActorFx, LLRenderPass::uploadActorFxDisabled, LLRenderPass::uploadActorFxStyleOnly, LLRenderPass::uploadAvatarLightResponse, LLRenderPass::uploadAvatarLightResponseDisabled, LLRenderPass::uploadAvatarLightResponseTo, LLRenderPass::uploadVelocityMatrixPalettes, LLRenderPass::~LLRenderPass, actor_mask_native_changes_coverage, get_actor_fx_shader, shared_actor_fx_beauty_context, shared_actor_fx_replay_active, shared_actor_fx_style_suppresses, shared_actor_fx_zero_cover, shared_actor_fx_zero_cover_context, skip_shadow_draw, upload_actor_fx_style, upload_alr | actor-bar, actor-path, capture-sidecar, clones, director-shell, looks, roto-tron, sensor, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Fold both policies into the existing per-draw rain filter. [TronT2] Look 36 "Tron Suit" -- actorFxF.glsl. [AvatarLightResponse] per-avatar light response uniforms -- avatarLightResponseF.glsl / actorghostF.glsl Uploads one draw's response to 'shader', which MUST  |
-| 1899–2034 (n=136) | LLRenderPass::pushRiggedVelocityBatches, LLRenderPass::pushRiggedVelocityBatchesTextured, LLRenderPass::pushVelocityAlphaBatchesIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Slot count is capped at N (<= 8) by genDrawInfo; clamp defensively so a stale/over-long list can never overrun the 8-slot array or N sampler units. [VelZFight] See pushRiggedVelocityBatches: masked rigged velocity has the same unavoidable cross-program depth-expression mismatch.  |
-| 2037–2128 (n=92) | LLRenderPass::pushVelocityAlphaBatchesIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Slot count is capped at N (<= 8) by genDrawInfo; clamp defensively so a stale/over-long list can never bind past the N diffuse sampler units. |
-| 2131–2140 (n=10) | LLRenderPass::pushBatch | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2171–2177 (n=7) | LLRenderPass::pushBatch | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2187–2199 (n=13) | LLRenderPass::pushUntexturedBatch | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2210–2221 (n=12) | LLRenderPass::uploadMatrixPalette | unknown | unknown-review | unknown; conditional evidence present | Edits ALDerenderList |
-| 2239–2245 (n=7) | LLRenderPass::uploadMatrixPalette | unknown | unknown-review | unknown; conditional evidence present | Edits ALDerenderList |
-| 2276–2282 (n=7) | LLRenderPass::uploadMatrixPalette | unknown | unknown-review | unknown; conditional evidence present | Edits ALDerenderList |
-| 2305–2326 (n=22) | LLRenderPass::setupGLTFTextureMatrix, LLRenderPass::teardownGLTFTextureMatrix | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: static static |
-| 2328–2343 (n=16) | setup_texture_matrix, teardown_texture_matrix | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawInfo, LLRenderPass |
-| 2363–2372 (n=10) | LLRenderPass::pushGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2382–2391 (n=10) | LLRenderPass::pushUntexturedGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2409–2419 (n=11) | LLRenderPass::pushGLTFBatchesScalar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Count only the sweep that owns this slot count. |
-| 2435–2445 (n=11) | LLRenderPass::pushGLTFBatchesIndexed | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Count only the sweep that owns this slot count. |
-| 2448–2476 (n=29) | LLRenderPass::pushGLTFBatchIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: sIndexedGLTFChannels) and contributes one element to the per-slot scalar/transform active shader material stride) and contributes one element to the per-slot scalar/transform |
-| 2502–2521 (n=20) | LLRenderPass::pushGLTFBatchIndexed | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_MASK |
-| 2561–2571 (n=11) | LLRenderPass::pushGLTFBatchIndexed | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2593–2605 (n=13) | LLRenderPass::pushGLTFBatchIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Shared replay uploads the proxy's authoritative style immediately before entering this helper (including the topology-wire bit).  Do not resolve and overwrite it from the source DrawInfo a second time. |
-| 2607–2617 (n=11) | LLRenderPass::pushGLTFBatch | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 2622–2648 (n=27) | LLRenderPass::pushGLTFBatch | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Material/texture caching must not cache the per-draw cutoff. Two objects may share one PBR asset while carrying different client overrides. |
-| 2652–2675 (n=24) | LLRenderPass::pushUntexturedGLTFBatch | looks | creative-candidate | unknown; conditional evidence present | Edits LLPipeline, LLGLSLShader |
-| 2703–2709 (n=7) | LLRenderPass::pushRiggedGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
-| 2722–2728 (n=7) | LLRenderPass::pushUntexturedRiggedGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
-| 2763–2769 (n=7) | LLRenderPass::pushRiggedGLTFBatchesScalar | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
-| 2789–2795 (n=7) | LLRenderPass::pushRiggedGLTFBatchesIndexed | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
-| 2808–2810 (n=3) | unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 25–52 (n=28) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks, roto-tron | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 65–71 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 73–154 (n=82) | LLScopedVelocityPolygonOffset::LLScopedVelocityPolygonOffset, LLScopedVelocityPolygonOffset::beginPass, LLScopedVelocityPolygonOffset::endPass, LLScopedVelocityPolygonOffset::set, LLScopedVelocityPolygonOffset::~LLScopedVelocityPolygonOffset, getVelocityRiggedBias | actor-bar, actor-path, capture-sidecar, director-shell | creative-candidate | unknown; conditional evidence present | Comment evidence: [VelHistory] Keep drawable history live throughout the velocity pass, then apply each requested current transform at pass exit. Capacity survives clears. Every guard restores these exact values, so they stay current all pass. A positive bias would push velocity away from the came |
+| 335–366 (n=32) | LLDrawPool::beginVelocityPass, LLDrawPool::endVelocityPass, LLDrawPool::getNumVelocityPasses, LLDrawPool::renderVelocity | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] Velocity-pass base hooks. Default: this pool contributes no velocity (0 passes). Rigid draw pools override these; skinned support is 1b. virtual virtual virtual virtual |
+| 501–1970 (n=1470) | LLRenderPass::LLRenderPass, LLRenderPass::actorFxFragOffset, LLRenderPass::actorFxFrameTime, LLRenderPass::actorFxLookNeedsSyntheticBloom, LLRenderPass::actorFxScreenSize, LLRenderPass::applyModelMatrix, LLRenderPass::beginVelocityModelMatrixUpdates, LLRenderPass::bindVelocityUniforms, LLRenderPass::flushVelocityModelMatrixUpdates, LLRenderPass::forgetCloneTransitionPrograms, LLRenderPass::invalidateModelMatrixCache, LLRenderPass::pushBatches, LLRenderPass::pushEmissiveBatchesIndexed, LLRenderPass::pushEmissiveBatchesScalar, LLRenderPass::pushMaskBatches, LLRenderPass::pushMaskBatchesIndexed, LLRenderPass::pushRiggedBatches, LLRenderPass::pushRiggedMaskBatches, LLRenderPass::pushRiggedVelocityBatches, LLRenderPass::pushUntexturedBatches, LLRenderPass::pushUntexturedRiggedBatches, LLRenderPass::pushVelocityBatches, LLRenderPass::pushVelocityBatchesTextured, LLRenderPass::renderGroup, LLRenderPass::renderRiggedGroup, LLRenderPass::shouldSuppressSharedActorFx, LLRenderPass::shouldSuppressSharedActorFxPBR, LLRenderPass::updateLastVelocityModelMatrix, LLRenderPass::uploadActorFx, LLRenderPass::uploadActorFxDisabled, LLRenderPass::uploadActorFxStyleOnly, LLRenderPass::uploadAvatarLightResponse, LLRenderPass::uploadAvatarLightResponseDisabled, LLRenderPass::uploadAvatarLightResponseTo, LLRenderPass::uploadCloneTransition, LLRenderPass::uploadVelocityMatrixPalettes, LLRenderPass::~LLRenderPass, actor_mask_native_changes_coverage, get_actor_fx_shader, shared_actor_fx_beauty_context, shared_actor_fx_replay_active, shared_actor_fx_style_suppresses, shared_actor_fx_zero_cover, shared_actor_fx_zero_cover_context, skip_shadow_draw, upload_actor_fx_style, upload_alr, upload_native_clone_transition | actor-bar, actor-path, capture-sidecar, clones, director-shell, looks, roto-tron, sensor, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Fold both policies into the existing per-draw rain filter. [TronT2] Look 36 "Tron Suit" -- actorFxF.glsl. Programs that currently hold a non-zero transition mask (reset on the next draw they get). [AvatarLightResponse] per-avatar light response uniforms -- avatar |
+| 1972–2107 (n=136) | LLRenderPass::pushRiggedVelocityBatches, LLRenderPass::pushRiggedVelocityBatchesTextured, LLRenderPass::pushVelocityAlphaBatchesIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Slot count is capped at N (<= 8) by genDrawInfo; clamp defensively so a stale/over-long list can never overrun the 8-slot array or N sampler units. [VelZFight] See pushRiggedVelocityBatches: masked rigged velocity has the same unavoidable cross-program depth-expression mismatch.  |
+| 2110–2201 (n=92) | LLRenderPass::pushVelocityAlphaBatchesIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Slot count is capped at N (<= 8) by genDrawInfo; clamp defensively so a stale/over-long list can never bind past the N diffuse sampler units. |
+| 2204–2213 (n=10) | LLRenderPass::pushBatch | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2244–2250 (n=7) | LLRenderPass::pushBatch | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2260–2272 (n=13) | LLRenderPass::pushUntexturedBatch | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2283–2294 (n=12) | LLRenderPass::uploadMatrixPalette | unknown | unknown-review | unknown; conditional evidence present | Edits ALDerenderList |
+| 2312–2318 (n=7) | LLRenderPass::uploadMatrixPalette | unknown | unknown-review | unknown; conditional evidence present | Edits ALDerenderList |
+| 2349–2355 (n=7) | LLRenderPass::uploadMatrixPalette | unknown | unknown-review | unknown; conditional evidence present | Edits ALDerenderList |
+| 2378–2399 (n=22) | LLRenderPass::setupGLTFTextureMatrix, LLRenderPass::teardownGLTFTextureMatrix | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: static static |
+| 2401–2416 (n=16) | setup_texture_matrix, teardown_texture_matrix | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawInfo, LLRenderPass |
+| 2436–2445 (n=10) | LLRenderPass::pushGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2455–2464 (n=10) | LLRenderPass::pushUntexturedGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2482–2492 (n=11) | LLRenderPass::pushGLTFBatchesScalar | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Count only the sweep that owns this slot count. |
+| 2508–2518 (n=11) | LLRenderPass::pushGLTFBatchesIndexed | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Count only the sweep that owns this slot count. |
+| 2521–2549 (n=29) | LLRenderPass::pushGLTFBatchIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: sIndexedGLTFChannels) and contributes one element to the per-slot scalar/transform active shader material stride) and contributes one element to the per-slot scalar/transform |
+| 2575–2594 (n=20) | LLRenderPass::pushGLTFBatchIndexed | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_MASK |
+| 2634–2644 (n=11) | LLRenderPass::pushGLTFBatchIndexed | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2666–2678 (n=13) | LLRenderPass::pushGLTFBatchIndexed | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Shared replay uploads the proxy's authoritative style immediately before entering this helper (including the topology-wire bit).  Do not resolve and overwrite it from the source DrawInfo a second time. |
+| 2680–2690 (n=11) | LLRenderPass::pushGLTFBatch | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 2695–2721 (n=27) | LLRenderPass::pushGLTFBatch | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Material/texture caching must not cache the per-draw cutoff. Two objects may share one PBR asset while carrying different client overrides. |
+| 2725–2748 (n=24) | LLRenderPass::pushUntexturedGLTFBatch | looks | creative-candidate | unknown; conditional evidence present | Edits LLPipeline, LLGLSLShader |
+| 2776–2782 (n=7) | LLRenderPass::pushRiggedGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
+| 2795–2801 (n=7) | LLRenderPass::pushUntexturedRiggedGLTFBatches | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
+| 2836–2842 (n=7) | LLRenderPass::pushRiggedGLTFBatchesScalar | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
+| 2862–2868 (n=7) | LLRenderPass::pushRiggedGLTFBatchesIndexed | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
+| 2881–2883 (n=3) | unknown/non-function (void LLRenderPass::pushRiggedGLTFBatchIndexed(LLDrawInfo& params, const LLVOAvat) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 2: `indra/newview/lldrawpool.h`
 
@@ -781,11 +781,11 @@ HEAD coordinates; guards/features are candidate evidence
 
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
-| 42–72 (n=31) | unknown/non-function (class LLGLSLShader;) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [VelZFight] Preserve polygon-offset parameters around scoped velocity bias. GL_POLYGON_OFFSET_FILL enablement remains owned by an adjacent LLGLEnable. [VelZFight] Read the GL offset state ONCE per velocity pass (glGet can force a driver-thread sync under threaded optimisation). G |
-| 136–150 (n=15) | unknown/non-function (public:) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] Velocity / motion-vector pass. Base returns 0 passes so a pool that does not override these is silently skipped by renderGeomVelocity. Implemented (rigid + camera) by the opaque/alpha-mask draw pools; skinned batches are the Phase 1b seam (see pool .cpp files). |
-| 388–499 (n=112) | unknown/non-function (public:) | director-shell, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Upload native per-actor cinematic styling to the currently bound shader. The UUID overload follows Director identity rules (null explicitly means You); LLDrawInfo's null mActorFxOwner instead means disabled and is routed through the draw-info overload/disabled helper. Returns tru |
-| 506–512 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 518–526 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawInfo |
+| 41–72 (n=32) | unknown/non-function (class LLVOAvatar;) | clones | creative-candidate | unknown; no local conditional evidence | Comment evidence: [VelZFight] Preserve polygon-offset parameters around scoped velocity bias. GL_POLYGON_OFFSET_FILL enablement remains owned by an adjacent LLGLEnable. [VelZFight] Read the GL offset state ONCE per velocity pass (glGet can force a driver-thread sync under threaded optimisation). G |
+| 137–151 (n=15) | unknown/non-function (public:) | capture-sidecar | creative-candidate | unknown; no local conditional evidence | Comment evidence: [BDMerge A5.4-1a] Velocity / motion-vector pass. Base returns 0 passes so a pool that does not override these is silently skipped by renderGeomVelocity. Implemented (rigid + camera) by the opaque/alpha-mask draw pools; skinned batches are the Phase 1b seam (see pool .cpp files). |
+| 389–507 (n=119) | unknown/non-function (public:) | clones, director-shell, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: Upload native per-actor cinematic styling to the currently bound shader. The UUID overload follows Director identity rules (null explicitly means You); LLDrawInfo's null mActorFxOwner instead means disabled and is routed through the draw-info overload/disabled helper. Returns tru |
+| 514–520 (n=7) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 526–534 (n=9) | unknown/non-function (public:) | unknown | unknown-review | unknown; no local conditional evidence | Edits LLDrawInfo |
 
 ## Slice 2: `indra/newview/lldrawpoolavatar.cpp`
 
@@ -1492,75 +1492,75 @@ HEAD coordinates; guards/features are candidate evidence
 | 1487–1534 (n=48) | LLPipeline::allocateScreenBufferInternal | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Propagate allocation failure (like the FXAA/SMAA path below) so the caller's lower-resolution retry can run. Matters more now that the fp16 post option doubles these to 8 bytes/pixel: a VRAM-tight 4K+ user must fall back rather than hit an FBO-less bindTarget assert. [ActorPath]  |
 | 1545–1557 (n=13) | LLPipeline::allocateScreenBufferInternal | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: FXAA packs luma into ALPHA (glowcombineFXAAF -> fxaaF with FXAA_GREEN_AS_LUMA 0 reads rgba.w). RGB10_A2 has a 2-bit alpha, quantising luma to 4 levels and crippling edge detection, so the FXAA prep target alone gets 16-bit unorm (same 0..1 clamp, finer RGB, 16-bit luma). SMAA, fp |
 | 1567–1672 (n=106) | LLPipeline::allocateScreenBufferInternal | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A5.4-1a] Velocity / motion-vector buffer (GL_RG16F). Shares the deferred screen's depth buffer so the velocity geometry pass depth-tests against the already-rendered opaque scene (mirror BD pipeline.cpp:1046). Default OFF -> released -> zero extra cost/behavior. [A5.4-3] |
-| 1704–32025 (n=30322) | ALWorldShadow::cachedNear, ALWorldShadow::updateResidencyPicked, ActorKeyFramebufferScope, ActorKeyTextureScope, BlurHappySize, ColourMaskScope, IR, LLOctreeDirtyTexture, LLPipeline::FinalizeGuides::operator, LLPipeline::acquirePrismLensScratch, LLPipeline::acquireShaftTestMaster, LLPipeline::acquireVCamVolumetrics, LLPipeline::activatePrismAuxiliaryProbeState, LLPipeline::actorKeyMatteValid, LLPipeline::actorMaskParityPathInconclusiveReason, LLPipeline::actorMaskViewStamp, LLPipeline::actorOnlyVolumetricLightCount, LLPipeline::addObject, LLPipeline::addPool, LLPipeline::addToQuickLookup, LLPipeline::addTrianglesDrawn, LLPipeline::allocDrawable, LLPipeline::allocatePrismLensOutput, LLPipeline::allocatePrismPreviewScratch, LLPipeline::allocateShadowBuffer, LLPipeline::appendCinematicProbeLightSignature, LLPipeline::applyCAS, LLPipeline::applyEnvOnlyDraw, LLPipeline::applyFXAA, LLPipeline::applyLensSoftEdge, LLPipeline::applyOnLensFilters, LLPipeline::applySMAA, LLPipeline::applyShadowUnitsFiltering, LLPipeline::areaShadowsActive, LLPipeline::areaShadowsAllowedThisView, LLPipeline::assertInitializedDoError, LLPipeline::beginCinematicProbeCapture, LLPipeline::beginPrismAuxiliaryState, LLPipeline::bindActorMask, LLPipeline::bindDeferredShader, LLPipeline::bindDeferredShaderFast, LLPipeline::bindLightFunc, LLPipeline::bindPrismLensTarget, LLPipeline::bindPrismPreviewScratch, LLPipeline::bindRigRimAux, LLPipeline::bindScreenToTexture, LLPipeline::bindShadowMaps, LLPipeline::bindSunShadowState, LLPipeline::buildActorKeyCoverageAndMatte, LLPipeline::buildActorKeyMatte, LLPipeline::calcNearbyLights, LLPipeline::calcPixelArea, LLPipeline::canUseAntiAliasing, LLPipeline::canUseInterleavedAlpha, LLPipeline::canUseWindLightShaders, LLPipeline::checkReferences, LLPipeline::clearAwayWorldShadowPicks, LLPipeline::clearGoboOverride, LLPipeline::clearPrismLensDirtyScreenShaderTracking, LLPipeline::clearProjectorShadowSoftness, LLPipeline::clearRebuildDrawables, LLPipeline::clearRebuildGroups, LLPipeline::clearReferences, LLPipeline::clearShadowUniformStamps, LLPipeline::clearVolumetricShaftOverride, LLPipeline::clearVolumetricShafts, LLPipeline::clearWorldShadowPicks, LLPipeline::collectRotoInkCandidates, LLPipeline::colorCorrect, LLPipeline::colorCorrectPermutation, LLPipeline::colorCorrectProgram, LLPipeline::colorCorrectWillApplyExposure, LLPipeline::combineGlow, LLPipeline::compositeActorKey, LLPipeline::compositeBloomHDR, LLPipeline::compositeSensorOverlay, LLPipeline::copyRenderTarget, LLPipeline::copyScreenSpaceReflections, LLPipeline::createGLBuffers, LLPipeline::createLUTBuffers, LLPipeline::createObject, LLPipeline::createObjects, LLPipeline::deferredLightShape, LLPipeline::dirtyPoolObjectTextures, LLPipeline::dirtyPrismProjectorFeed, LLPipeline::disableLights, LLPipeline::doOcclusion, LLPipeline::effectiveShadowSplitBlend, LLPipeline::enableLights, LLPipeline::enableLightsAvatar, LLPipeline::enableLightsAvatarEdit, LLPipeline::enableLightsDynamic, LLPipeline::enableLightsFullbright, LLPipeline::enableLightsPreview, LLPipeline::enableShadows, LLPipeline::endCinematicProbeCapture, LLPipeline::endPrismAuxiliaryState, LLPipeline::ensureActorMask, LLPipeline::ensureKeyCoverage, LLPipeline::ensureKeyPrograms, LLPipeline::ensureLensPyramid, LLPipeline::ensurePrismProjectorFeed, LLPipeline::ensureRigRimAux, LLPipeline::ensureRigRimSmooth, LLPipeline::ensureRigRimWrap, LLPipeline::ensureSensorTargets, LLPipeline::ensureSilCover, LLPipeline::feedProjectorVolumetricBloom, LLPipeline::feedProjectorVolumetricBloomClassic, LLPipeline::finalizeGhostRiggedSolidCoverage, LLPipeline::findPool, LLPipeline::findReferences, LLPipeline::flushRelightTakes, LLPipeline::forAllVisibleDrawables, LLPipeline::gatherRotoInkTargets, LLPipeline::generateBloomHDR, LLPipeline::generateExposure, LLPipeline::generateGlow, LLPipeline::generateLuminance, LLPipeline::generateSMAABuffers, LLPipeline::getAlphaMaskCutoffOverride, LLPipeline::getAlphaModeOverride, LLPipeline::getGhostDeferredCoverageThisFrame, LLPipeline::getGoboOverride, LLPipeline::getPool, LLPipeline::getPoolFromTE, LLPipeline::getPoolTypeFromTE, LLPipeline::getProjectorShadowSoftness, LLPipeline::getRenderBeacons, LLPipeline::getRenderHighlights, LLPipeline::getRenderMOAPBeacons, LLPipeline::getRenderParticleBeacons, LLPipeline::getRenderPhysicalBeacons, LLPipeline::getRenderScriptedBeacons, LLPipeline::getRenderScriptedTouchBeacons, LLPipeline::getRenderSoundBeacons, LLPipeline::getRenderWaterHeight, LLPipeline::getSpatialPartition, LLPipeline::getVisibleExtents, LLPipeline::getVolumetricShaftOverride, LLPipeline::getWaterDisTarget, LLPipeline::getWaterExclusionMaskTarget, LLPipeline::ghostPostDeferredBlendPending, LLPipeline::ghostPostDeferredSolidsPending, LLPipeline::grabReferences, LLPipeline::hasAlphaOverrides, LLPipeline::hasGoboOverride, LLPipeline::hasProjectorShaftShadowSlot, LLPipeline::hasRenderTypeControl, LLPipeline::hasVCamVolumetricOverride, LLPipeline::hasVolumetricShaftOverride, LLPipeline::inkExposureSelector, LLPipeline::invalidateWeatherSpatial, LLPipeline::isHeroProjector, LLPipeline::isLiveMainAreaShadowPass, LLPipeline::isProjectorNoShadow, LLPipeline::isProjectorShadowSuppressed, LLPipeline::isTagRecordView, LLPipeline::isUserShaftSlotPromoted, LLPipeline::isVCamVolumetricAutoEnabled, LLPipeline::isVCamVolumetricDeclined, LLPipeline::isVolumetricShaftEnabled, LLPipeline::isWaterClip, LLPipeline::isWorldShadowPicked, LLPipeline::lensCoverageValid, LLPipeline::lineSegmentIntersectInHUD, LLPipeline::lineSegmentIntersectInWorld, LLPipeline::lineSegmentIntersectParticle, LLPipeline::loadProjVolDustMap, LLPipeline::logRelightTake, LLPipeline::manualWorldShadowPickList, LLPipeline::markGLRebuild, LLPipeline::markMeshDirty, LLPipeline::markMoved, LLPipeline::markNotCulled, LLPipeline::markOccluder, LLPipeline::markPartitionMove, LLPipeline::markRebuild, LLPipeline::markShift, LLPipeline::markTextured, LLPipeline::markVisible, LLPipeline::materializeDiopterPreset, LLPipeline::materializeKaleidoPreset, LLPipeline::nativeSpotShadowClip, LLPipeline::noteAreaDepthLight, LLPipeline::noteVolumetricShaftEdit, LLPipeline::observeProjectorShafts, LLPipeline::popRenderDebugFeatureMask, LLPipeline::postSort, LLPipeline::preflightActorKey, LLPipeline::prepareDirtyPrismProjectorFeeds, LLPipeline::prepareGatePrismProjectorFeeds, LLPipeline::prepareMediaPrismProjectorFeeds, LLPipeline::preparePrismProjectorFeeds, LLPipeline::preserveReShadeGBuffer, LLPipeline::probeShouldRenderLight, LLPipeline::processPartitionQ, LLPipeline::projectorDetailShadows, LLPipeline::projectorShaftCostReadout, LLPipeline::projectorShaftStatus, LLPipeline::pushRenderDebugFeatureMask, LLPipeline::rebaseWeather, LLPipeline::rebuildPools, LLPipeline::rebuildPriorityGroups, LLPipeline::recordTrianglesDrawn, LLPipeline::refreshCachedSettings, LLPipeline::releaseActorKeyTargets, LLPipeline::releaseActorMasks, LLPipeline::releaseGLBuffers, LLPipeline::releaseLUTBuffers, LLPipeline::releaseLensPyramid, LLPipeline::releasePrismLensBuffers, LLPipeline::releasePrismLensLargeScratch, LLPipeline::releasePrismLensOutput, LLPipeline::releasePrismLensOutputs, LLPipeline::releasePrismPreviewScratch, LLPipeline::releasePrismProjectorFeed, LLPipeline::releasePrismProjectorFeeds, LLPipeline::releaseRigRimAux, LLPipeline::releaseScreenBuffers, LLPipeline::releaseSensorTargets, LLPipeline::releaseShadowBuffers, LLPipeline::releaseSilCovers, LLPipeline::releaseSpotShadowTargets, LLPipeline::releaseSunShadowTarget, LLPipeline::releaseSunShadowTargets, LLPipeline::releaseUnusedPrismAreaTargets, LLPipeline::releaseVCamVolumetrics, LLPipeline::removeFromQuickLookup, LLPipeline::removeMutedAVsLights, LLPipeline::removePool, LLPipeline::renderActorKeyLens, LLPipeline::renderActorKeyPrismOccluders, LLPipeline::renderActorMask, LLPipeline::renderActorPathGuides, LLPipeline::renderAlphaObjects, LLPipeline::renderAreaShadows, LLPipeline::renderCineFisheye, LLPipeline::renderCineOutline, LLPipeline::renderCompositionGuideOverlay, LLPipeline::renderCover, LLPipeline::renderDebug, LLPipeline::renderDeferredLighting, LLPipeline::renderDoF, LLPipeline::renderFinalize, LLPipeline::renderFinalizeLegacy, LLPipeline::renderFinalizePresent, LLPipeline::renderFinalizeScene, LLPipeline::renderFocusPoint, LLPipeline::renderFroxelVolumetrics, LLPipeline::renderFullbrightMaskedObjects, LLPipeline::renderGLTFObjects, LLPipeline::renderGeomDeferred, LLPipeline::renderGeomPostDeferred, LLPipeline::renderGeomShadow, LLPipeline::renderGeomVelocity, LLPipeline::renderGhostDeferredOpaqueMasked, LLPipeline::renderGhostPostDeferred, LLPipeline::renderGhostRiggedBlend, LLPipeline::renderGhostSilCover, LLPipeline::renderHighlights, LLPipeline::renderMaskedObjects, LLPipeline::renderMotionBlurComposite, LLPipeline::renderObjects, LLPipeline::renderPhysicsDisplay, LLPipeline::renderProjectorVolumetric, LLPipeline::renderProjectorVolumetricClassic, LLPipeline::renderProjectorVolumetricNew, LLPipeline::renderRetainedPrismProjectorFeed, LLPipeline::renderRigRimWrap, LLPipeline::renderSelectedFaces, LLPipeline::renderSensor, LLPipeline::renderSilCover, LLPipeline::renderTronWorld, LLPipeline::renderUltimateDiopter, LLPipeline::renderUltimateKaleidoscope, LLPipeline::renderVelocityDebug, LLPipeline::renderVolumetric, LLPipeline::renderWeather, LLPipeline::renderWeatherParticles, LLPipeline::resetDrawOrders, LLPipeline::resetFrameStats, LLPipeline::resetShadowSlotHistory, LLPipeline::resetShadowSlotTimers, LLPipeline::resetVertexBuffers, LLPipeline::resolveAlphaMaskCutoff, LLPipeline::resolveAlphaMode, LLPipeline::resolveAlphaPolicy, LLPipeline::resolveRotoInkLayer, LLPipeline::resolveShadowSubject, LLPipeline::restoreGL, LLPipeline::selectForwardLightSet, LLPipeline::selfTestActorKey, LLPipeline::sensorAAEncode, LLPipeline::sensorDiagnosticView, LLPipeline::sensorUnavailableReason, LLPipeline::sensorVignette, LLPipeline::sensorWarpUniforms, LLPipeline::setAlphaMaskCutoffOverride, LLPipeline::setAlphaModeOverride, LLPipeline::setGoboOverride, LLPipeline::setLight, LLPipeline::setPrismAuxiliaryWaterHeight, LLPipeline::setProjectorDetailShadows, LLPipeline::setProjectorShadowSoftness, LLPipeline::setRenderBeacons, LLPipeline::setRenderDebugFeatureControl, LLPipeline::setRenderHighlightTextureChannel, LLPipeline::setRenderHighlights, LLPipeline::setRenderMOAPBeacons, LLPipeline::setRenderParticleBeacons, LLPipeline::setRenderPhysicalBeacons, LLPipeline::setRenderScriptedBeacons, LLPipeline::setRenderScriptedTouchBeacons, LLPipeline::setRenderSoundBeacons, LLPipeline::setRigWorldShadowPick, LLPipeline::setVolumetricShaftOverride, LLPipeline::setWorldShadowPick, LLPipeline::setWorldShadowPicks, LLPipeline::setupAvatarLights, LLPipeline::setupGradingLUT, LLPipeline::setupHWLights, LLPipeline::setupSpotLightVolumetricClassic, LLPipeline::shadersLoaded, LLPipeline::shadowUnitsFilterWanted, LLPipeline::shiftObjects, LLPipeline::shouldRunRotoInkAt, LLPipeline::sortAlphaGroupsForInterleaving, LLPipeline::spotShadowMapSampled, LLPipeline::stateSort, LLPipeline::suspendWeather, LLPipeline::toggleHeroProjector, LLPipeline::toggleProjectorCastShadows, LLPipeline::toggleRenderBeacons, LLPipeline::toggleRenderDebug, LLPipeline::toggleRenderDebugControl, LLPipeline::toggleRenderDebugFeature, LLPipeline::toggleRenderDebugFeatureControl, LLPipeline::toggleRenderHighlights, LLPipeline::toggleRenderMOAPBeacons, LLPipeline::toggleRenderParticleBeacons, LLPipeline::toggleRenderPhysicalBeacons, LLPipeline::toggleRenderScriptedBeacons, LLPipeline::toggleRenderScriptedTouchBeacons, LLPipeline::toggleRenderSoundBeacons, LLPipeline::toggleRenderType, LLPipeline::toggleRenderTypeControl, LLPipeline::toggleRenderTypeControlNegated, LLPipeline::toggleVolumetricShaft, LLPipeline::toggleWorldShadowPick, LLPipeline::unlinkDrawable, LLPipeline::unloadShaders, LLPipeline::updateCineFlareEnergy, LLPipeline::updateCull, LLPipeline::updateDrawableGeom, LLPipeline::updateGL, LLPipeline::updateGeom, LLPipeline::updateMove, LLPipeline::updateMoveDampedAsync, LLPipeline::updateMoveNormalAsync, LLPipeline::updateMovedList, LLPipeline::updateNightMaskAnchor, LLPipeline::updateRenderTransparentWater, LLPipeline::updateShadowEngaged, LLPipeline::uploadEnvOnlyView, LLPipeline::uploadPrismPreviewColorCorrectUniforms, LLPipeline::uploadShadowAlphaMode, LLPipeline::uploadShadowUniforms, LLPipeline::verify, LLPipeline::visibleObjectsInFrustum, LLPipeline::visualizeBuffers, LLPipeline::worldChannelOwnsPickedLight, LLPipeline::worldHDREnabled, LLPipeline::worldPresentationPermutation, LLPipeline::worldShadowOwned, LLPipeline::worldShadowPickChatLines, LLPipeline::worldShadowPickList, LLPipeline::worldShadowPickReport, LLPipeline::worldShadowPickRevision, LLPipeline::worldShadowReadout, LLPipeline::worldShadowResidentEligible, LLPrismLens::ensureProjectorOutputCapacity, ProjVolAuxStateGuard, ProjectionStackGuard, ScissorBoxScope, ScopedActorMaskState, ScopedGhostColorMask, ScopedGhostTransform, ScopedSilCoverInvariant, ScopedSilCoverState, State, VelocityModelMatrixUpdateGuard, actor_key_copy, alDiopterResolveBaseFocus, alDiopterResolveLook, alKaleidoFocusUV, alKaleidoResolveLook, alKaleidoResolveMotion, alKaleidoSpinDeg, allocateSunCascadeTarget, apply, applyParityMaskBlend, applySunShadowSamplerState, apply_cube_face_rotation, area_source_radius, bdmerge_alpha_owner_avatar, bdmerge_dust_wind_dir, bdmerge_rebuild_for_alpha_target, bdmerge_should_render_light, bdmerge_should_render_projector, bdmerge_snapshot_autoscale_multiplier, bindHighlightProgram, calc_light_dist, capture, cg_apply_duv, cg_cct_to_xy, cg_compute_white_balance_gain, check_references, classifyGhostBatchPhase, debugLightingTerm, diopter_drift, diopter_hash, diopter_noise1, drawActorMaskBatch, drawSilCoverBatch, forAllDrawables, froxelShaftInputsDiffer, getControl, ghostMaterialShaderIndex, globalFroxelShaftInputs, kalFract, kalHashCell, kalNoise1, lerpf, light_shape_enabled, light_shape_for_volume, light_shape_master_enabled, local_light_selection_color, log_world_shadow_impl, parityMaskBlendSupported, pow3f, pow4fsrgb, probe_tiny_cull_pass_ok, projvolAdaptiveResolution, projvolCameraMargin, projvolClipPyramidBounds, projvolConeDefinition, projvolCoverage, projvolDrawFullResRim, projvolDrawRimTexture, projvolEffectiveDefinition, projvolFullCostIsUnclamped, projvolPyramidBounds, projvolPyramidGeometry, projvolSoftBudgetAllowed, projvolSphereBounds, projvolStepBudget, projvolUploadRecordingUniforms, projvolUploadStepBudget, projvolVariantReady, pushGhostBatch, pushGhostBumpBatch, pushGhostFullbrightShinyBatch, pushGhostGLTFBatch, pushGhostGLTFBatchIndexed, pushGhostMaterialBatch, refresh, release_prism_scratch_entry, renderMOAPBeacons, renderParticleBeacons, renderPhysicalBeacons, renderScriptedBeacons, renderScriptedTouchBeacons, renderSoundHighlights, render_hud_elements, saveShaderTextures, saveTexture, setVCamVolumetricMaster, setup_ghost_texture_matrix, silCoverBlendCacheMatches, silCoverBlendFactor, silCoverPrivate, std::max, std::sort, std::stable_sort, teardown_ghost_texture_matrix, unbindHighlightProgram, update, uploadDebugLightingTerm, uploadGhostCoverage, uploadGhostPalette, uploadSLogCaptureUniforms, uploadSilhouetteFrame, validate_framebuffer_object, visit, worldShadowLightNear, worldShadowLightNearUncached, world_shadow_eligible, world_shadow_extents, world_shadow_label, world_shadow_pick_labels, ~ActorKeyFramebufferScope, ~ActorKeyTextureScope, ~ColourMaskScope, ~EndBeautyCapture, ~FlushCover, ~FlushMask, ~ProjVolAuxStateGuard, ~ProjectionStackGuard, ~ResetActorMaskView, ~ScissorBoxScope, ~ScopedActorMaskState, ~ScopedGhostColorMask, ~ScopedGhostTransform, ~ScopedSilCoverInvariant, ~ScopedSilCoverState, ~SensorScope, ~State, ~VelocityModelMatrixUpdateGuard | actor-bar, actor-path, camera, capture-sidecar, clones, composition, director-shell, environment, looks, rig, roto-tron, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: must be even to avoid a stripe in the horizontal shadow blur Release every GL target owned by one Prism scratch pool entry and zero its size key so acquirePrismLensScratch treats it as empty. File-local so no caller outside the acquire/release pair can partially tear down an entr |
-| 32066–32095 (n=30) | LLPipeline::renderDeferredLighting, LLPrismPreviewPolicy::clearPreviewAO | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The pinned preview pack is reused. Seed its AO/direct-light map to neutral white on every preview before the SSAO/shadow dispatch gates, so a sentinel or a previous preview can never darken this capture. |
-| 32100–32110 (n=11) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 32117–32132 (n=16) | LLPipeline::renderDeferredLighting | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Cascade colours and raw R/G are producer diagnostics; preserve the sun pass exactly instead of running the normal two-pass light blur. |
-| 32138–32150 (n=13) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge A1.2] scale the shared shadow+SSAO soften blur kernel so a high-res snapshot keeps the same blur weighting it had at window resolution; this pass softens both the sun shadow and (when RenderDeferredSSAO is on, as gated above) SSAO together, matching BD's donor which scal |
-| 32163–32194 (n=32) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control D: sun-shadow channel softening split from the SSAO blur (design v2 s5, v3 s6, v4 s4, v5 s4). Mode 0 = stock (the shader's original path runs untouched). Uniforms persist in the program across the second (vertical) bind below. reference-pixel sigma: scaled |
-| 32201–32207 (n=7) | LLPipeline::renderDeferredLighting | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 32215–32586 (n=372) | LLPipeline::renderDeferredLighting, std::isfinite | actor-bar, capture-sidecar, director-shell, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Rig Rim Quality auxiliary and silhouette passes. Main view only; validity deliberately survives ResetActorMaskView until finalize. At zero keep the original pass, targets and draw count. Geometric aux remains immutable for silhouette seeding. All normal filtering and its allocati |
-| 32601–32638 (n=38) | LLPipeline::renderDeferredLighting | rig, roto-tron, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The diagnostic replaces opaque lighting; do not add punctual lights over its display-space result after the soften pass. [RigRim] Round-2 P2 fix: read once per call so the point-light push and the multi-light batch pack/upload below can both skip their rim-specific work when Rig  |
-| 32659–32664 (n=6) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 32666–32718 (n=53) | LLPipeline::renderDeferredLighting | looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Before EVERY count/toggle/selection side effect. Removing these entries is exactly the light-off world list, including which world entry triggers the count-limit break. A cinematic live probe captures the four authored rig projectors, but not the target rig's syntheti |
-| 32721–32733 (n=13) | LLPipeline::renderDeferredLighting | sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: [EnvIntensity v2] per-emitter Local lights EV folded in once here; light_colors.push_back below carries this already-scaled colour and the fullscreen packing copy (col[count] = light_colors[i]) is untouched. |
-| 32750–32786 (n=37) | LLPipeline::renderDeferredLighting | rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Rig projectors retain their cone/cookie when the world projector toggle is off. Priority is persistent LLVOVolume state used by next-frame main-view shadow-slot assignment. [ActorMask] Record only accepted points actually drawn by F3. [RigRim] |
-| 32788–32804 (n=17) | LLPipeline::renderDeferredLighting | rig, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Rig projectors retain their cone/cookie when the world projector toggle is off. |
-| 32806–32825 (n=20) | LLPipeline::renderDeferredLighting | rig, roto-tron, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] This accepted F3 point will use the stock batch below. [RigRim] Only staged when active; every consumer below checks the same function-constant rig_rim_active, so indices stay parallel. |
-| 32851–32868 (n=18) | LLPipeline::renderDeferredLighting | rig, sensor | creative-candidate | unknown; no local conditional evidence | Edits gDeferredSpotLightProgram, LLColor3, ALEnvIntensity, LLShaderMgr |
-| 32886–32912 (n=27) | LLPipeline::renderDeferredLighting | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [RigRim] Round-2 P2 fix: skip packing the rim slot when off; the upload below is skipped too, so a stale/uninitialized entry here is never read. |
-| 32915–32944 (n=30) | LLPipeline::renderDeferredLighting | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [RigRim] P2-5: the GLSL name 'rig_rim_lights' is reused for two differently-shaped arrays: this program's multiPointLightF.glsl declares vec4[LIGHT_COUNT] parallel to MULTI_LIGHT/MULTI_LIGHT_COL (uploaded here, manually, once per batch), while the forward alpha programs declare v |
-| 32967–32984 (n=18) | LLPipeline::renderDeferredLighting | rig, sensor | creative-candidate | unknown; no local conditional evidence | Edits gDeferredMultiSpotLightProgram, LLColor3, ALEnvIntensity, LLShaderMgr |
-| 32990–33169 (n=180) | LLPipeline::renderDeferredLighting | clones, looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Independent uncapped scan: the world collector's break cannot hide actors. All actor draws follow BOTH world spot blocks, so tier-0 projectors only auction after the world slots are settled. [ActorMask] WP7 extended guard (Debug != 0 only); outlives saved_state. [Acto |
-| 33202–33355 (n=154) | LLPipeline::renderDeferredLighting | actor-path, capture-sidecar, clones, looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [GhostDeferred] Solid Completion Rescue: draw the clone's fullbright / fullbright-shiny / fullbright-mask rigged faces (which cannot enter the G-buffer) here in the post-deferred forward pass, so metallic-gold / fullbright wardrobes render scene-lit instead of forcing the whole c |
-| 33357–33687 (n=331) | LLPipeline::renderDeferredLighting, LLPipeline::renderPrismDisplays, ScopedPrismCompositeRestore, popFaceMatrix, pushFaceMatrix, pushWorldMatrix, ~ScopedPrismCompositeRestore | capture-sidecar, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Snapshot the un-jittered velocity projection at the same scene boundary as the previous modelview. NOTE: deliberately no else-branch. Cube/probe passes do not advance the main-view history, so there is nothing to invalidate -- the snapshot from the last main-view frame is still t |
-| 33700–33714 (n=15) | LLPipeline::doAtmospherics | vcam | creative-candidate | unknown; no local conditional evidence | Edits LLRenderTarget, gPipeline |
-| 33719–33725 (n=7) | LLPipeline::doAtmospherics | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 33747–33759 (n=13) | LLPipeline::doWaterHaze | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [PerfB1] Above water, an empty current draw list means the haze geometry covers no pixels. |
-| 33761–33775 (n=15) | LLPipeline::doWaterHaze | vcam | creative-candidate | unknown; no local conditional evidence | Edits LLRenderTarget, gPipeline |
-| 33781–33795 (n=15) | LLPipeline::doWaterHaze | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
-| 33823–34044 (n=222) | LLPipeline::bindProjectorCookie, LLPipeline::doWaterExclusionMask, LLPipeline::projectorCookieRevision, LLPipeline::setupSpotLight | clones, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: flush() rebinds the preceding FBO, and bindTarget() installs that target's full-size viewport -- with exact-size Prism scratch packs the restored viewport is already correct, so no reassert is needed. Media samples the settings accepted with these pixels. OWN_COOKIE is deliberate |
-| 34105–34111 (n=7) | LLPipeline::setupSpotLight | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 34113–34123 (n=11) | LLPipeline::setupSpotLight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [World Shadow pick] A picked projector whose soft-shadow channel is world-owned this frame is shadowed by its cube alone: the lighting pass does not also sample its native SL map (index -1, the "no map" value the shader already handles), so there is one shadow edge, not two. The  |
-| 34128–34565 (n=438) | LLPipeline::logSpotShadowSlots, LLPipeline::retainSpotShadowOwners, LLPipeline::setupSpotLight, LLPipeline::setupSpotLightVolumetric, LLPipeline::snapshotSpotShadowAuction, LLPipeline::spotShadowTier | rig, roto-tron, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: make sure we're not already targeting the same spot light with both shadow maps make sure we're not already targeting the same spot light with both shadow maps [BDMerge G3.3 Batch 3] Per-projector "cast shadows" opt-out: a projector in the no-shadow set still lights the scene (al |
-| 34568–34578 (n=11) | LLPipeline::unbindDeferredShader | rig | creative-candidate | unknown; conditional evidence present | Edits LLShaderMgr |
-| 34635–34670 (n=36) | LLPipeline::bindReflectionProbes | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: SSR samplers stay active with the runtime gate off. Never bind a released target (or a target belonging to the main camera during an auxiliary pass). |
-| 34679–34685 (n=7) | LLPipeline::bindReflectionProbes | vcam | creative-candidate | unknown; conditional evidence present | Edits RenderMirrors |
-| 34690–34730 (n=41) | LLPipeline::bindReflectionProbes | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: On an auxiliary no-UBO allocation failure, never let setUniforms() lazily run updateUniforms() from the source camera. The explicit Prism shader guard still suppresses SSR/hero; probe lighting simply degrades for this failed capture instead of contaminating main state. reflection |
-| 34786–35740 (n=955) | LLPipeline::bindWeatherMaterial, LLPipeline::dirtyWeatherDrawable, LLPipeline::dirtyWeatherRegion, LLPipeline::drawShadowCascade, LLPipeline::drawWeatherCover, LLPipeline::generateWeatherAdvancedShelter, LLPipeline::generateWeatherRainOcclusion, LLPipeline::generateWeatherSurfaceCover, LLPipeline::prepareShadowCascade, LLPipeline::renderShadow, LLShadowCascadeScope, look, std::any_of, ~LLShadowCascadeScope | clones, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: The default-off path is only two cached-control checks: do not touch producer state or inspect any other setting or shader when disabled. Manual sampler2D comparisons require raw depth, never a shadow compare sampler. Keep the dedicated target isolated from sun-map filtering/comp |
-| 35753–35821 (n=69) | LLPipeline::drawShadowCascade, MatrixScope, ~MatrixScope | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: enable depth clamping if available In RenderShadowCullMode 1, do_cull is false: generateSunShadow did the single union octree cull and pre-filtered 'result' to this cascade's frustum (bucketShadowCull), so skip the per-cascade octree walk and only sort/build this cascade's render |
-| 35833–35841 (n=9) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 35864–35870 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
-| 35872–35890 (n=19) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Before binds; restored at iteration end, before rigged. |
-| 35892–35902 (n=11) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLSLShader, LLShaderMgr |
-| 35908–35914 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
-| 35920–35934 (n=15) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Grass cannot be a worn attachment. |
-| 35943–35949 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
-| 35954–35968 (n=15) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Before binds; restored at iteration end, before rigged. |
-| 35981–35987 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
-| 35997–36003 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
-| 36017–36360 (n=344) | ALActorKeyUI::shadowStatus, CasterScope, LLPipeline::buildActorKeyShadowTerm, LLPipeline::diagnoseKeyShadowOwners, LLPipeline::drawShadowCascade, LLPipeline::ensureActorShadowTargets, LLPipeline::releaseActorShadowTargets, LLPipeline::renderKeyShadowCascade, LLPipeline::skipKeyShadowAvatar, LLPipeline::skipKeyShadowCaster, actor_key_compare_shadows, ~CasterScope, ~RestorePack, ~TargetScope | clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Main pack only. Clone the ACTUAL beauty dimensions, including per-cascade overrides and non-square screen-derived sizing, rather than re-reading settings. Count all ownerless attachments conservatively: a rigid attachment has no avatar pointer with which to prove it belongs to a  |
-| 36554–36600 (n=47) | LLPipeline::getSpotShadowTarget, LLPipeline::getSunShadowTarget, LLPipeline::mainSunShadowsPublishedThisIteration, LLPipeline::reexpressProbeSpotShadows | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeCost] Allocation metadata and this iteration's completed generation are both required. [Prism spot shadows Stage 2] the aux capture samples its own dedicated maps; the main-view maps must survive untouched for the main deferred lighting that runs after the aux pass (paralle |
-| 36658–36700 (n=43) | LLPipeline::generateSunShadow, ~CasterFilterLeakCheck | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ProbeCost] A failed/early-returning main generation cannot publish stale maps. |
-| 36789–36795 (n=7) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Edits gGL |
-| 36800–36807 (n=8) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 36816–36856 (n=41) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control A: cascade blend width this generation's frusta (and, through the meta, the shader) use. Probe renders always keep the stock 0.25. At default 1.f - 0.25f == 0.75f and 1.f + 0.25f == 1.25f exactly, so the stock constants below are reproduced exactly (<= 1 u |
-| 36942–36995 (n=54) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control A: "Sharp shadow range (m)" (design v2 s2.2). The user value is the camera distance covered EXCLUSIVELY by cascade 0, i.e. (1 - blend) * clip0; cascades 1..3 then split the remainder geometrically so their texel-density ratio is uniform. Bypasses the split |
-| 37000–37077 (n=78) | LLPipeline::generateSunShadow | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeCost] Reuse/Off need Full's probe projector clip/fade distances, but must leave all shadow maps and their metadata untouched. CPU zones enclose the entire RT call, including Tracy GPU timestamps. Pass zones carry the sun/projector index; bind values pack old/new FBOs. [Shad |
-| 37112–37120 (n=9) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] (1 -/+ blend) == 0.75f / 1.25f exactly at default |
-| 37177–37441 (n=265) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: restore render matrices [ShadowDist P3] Control B: cascade 0 = light-space orthographic COLUMN around the subject (design v2 s3.4, v3 s4, v4 s5). Self-contained: fits, records, culls, renders, writes ShadowMeta site 3 and 'continue's, so the legacy slice fit below stays byte-iden |
-| 37462–37470 (n=9) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] (1 -/+ blend) == 0.75f / 1.25f exactly at default |
-| 37489–37522 (n=34) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] ShadowMeta site 4: a cleared map samples as lit whatever its matrix says, so sunVP[j] is left as is (exactly as the legacy code leaves mSunShadowMatrix[j]). |
-| 37535–37545 (n=11) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P2] Control C coefficients for THIS cascade's projection, written by whichever of the three proj[j] branches below runs and stored in the meta at site 2. |
-| 37608–37614 (n=7) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE |
-| 37646–37663 (n=18) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Edits RenderShadowErrorCutoff, LLPipeline, gCubeSnapshot |
-| 37691–37698 (n=8) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 37722–37729 (n=8) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 37742–37759 (n=18) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, gCubeSnapshot |
-| 37766–38129 (n=364) | LLPipeline::generateSunShadow | rig, roto-tron, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: llassert(eye.isFinite()); llassert(eye.isFinite()); shadow_cam.setFar(128.f); shadow_cam.ignoreAgentFrustumPlane(LLCamera::AGENT_PLANE_NEAR); translate and scale to from [-1, 1] to [0, 1] [ShadowDist P1] ShadowMeta site 2: this cascade's view-independent trans*proj*view in double |
-| 38131–39217 (n=1087) | LLPipeline::generatePrismSpotShadows, LLPipeline::generateSunShadow, LLPipeline::generateWorldShadowCubes, LLPipeline::releaseWorldShadowTargets, WorldShadowDrawScope, WorldShadowStateGuard, attachment_visibility, capture, compare, countWorldShadowRiggedMaps, std::sort, ~WorldShadowDrawScope, ~WorldShadowStateGuard | looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence:  hack to disable projector shadows Restore the entry parent (or FB0 + GL_BACK) before the beauty-pass state setup. Keep gGLViewport exactly as stock, including empty-slice behavior. should never happen update shadow targets [ProbeCost] Only completed main generations publish; ear |
-| 40013–40027 (n=15) | LLPipeline::skipRenderingShadows | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] ShadowMeta site 5: all four maps cleared -> lit; the matrices are irrelevant, only the (future) subject flag must drop. |
-| 40087–40239 (n=153) | LLPipeline::getRotoAnimClockOffset, LLPipeline::uploadPrismPreviewColorGradeUniforms | clones, looks, roto-tron, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: --- Linear-space grading (pre-tonemap) --- White balance: resolve (CCT offset, Duv) into a linear-sRGB gain on the CPU. Duv is exposed to artists on a friendly [-1, 1] scale and scaled into CIE 1960 uv units (Ã‚Â±0.02) here. Lift / Gamma / Gain; gamma is inverted on the CPU. ---  |
+| 1704–32028 (n=30325) | ALWorldShadow::cachedNear, ALWorldShadow::updateResidencyPicked, ActorKeyFramebufferScope, ActorKeyTextureScope, BlurHappySize, ColourMaskScope, IR, LLOctreeDirtyTexture, LLPipeline::FinalizeGuides::operator, LLPipeline::acquirePrismLensScratch, LLPipeline::acquireShaftTestMaster, LLPipeline::acquireVCamVolumetrics, LLPipeline::activatePrismAuxiliaryProbeState, LLPipeline::actorKeyMatteValid, LLPipeline::actorMaskParityPathInconclusiveReason, LLPipeline::actorMaskViewStamp, LLPipeline::actorOnlyVolumetricLightCount, LLPipeline::addObject, LLPipeline::addPool, LLPipeline::addToQuickLookup, LLPipeline::addTrianglesDrawn, LLPipeline::allocDrawable, LLPipeline::allocatePrismLensOutput, LLPipeline::allocatePrismPreviewScratch, LLPipeline::allocateShadowBuffer, LLPipeline::appendCinematicProbeLightSignature, LLPipeline::applyCAS, LLPipeline::applyEnvOnlyDraw, LLPipeline::applyFXAA, LLPipeline::applyLensSoftEdge, LLPipeline::applyOnLensFilters, LLPipeline::applySMAA, LLPipeline::applyShadowUnitsFiltering, LLPipeline::areaShadowsActive, LLPipeline::areaShadowsAllowedThisView, LLPipeline::assertInitializedDoError, LLPipeline::beginCinematicProbeCapture, LLPipeline::beginPrismAuxiliaryState, LLPipeline::bindActorMask, LLPipeline::bindDeferredShader, LLPipeline::bindDeferredShaderFast, LLPipeline::bindLightFunc, LLPipeline::bindPrismLensTarget, LLPipeline::bindPrismPreviewScratch, LLPipeline::bindRigRimAux, LLPipeline::bindScreenToTexture, LLPipeline::bindShadowMaps, LLPipeline::bindSunShadowState, LLPipeline::buildActorKeyCoverageAndMatte, LLPipeline::buildActorKeyMatte, LLPipeline::calcNearbyLights, LLPipeline::calcPixelArea, LLPipeline::canUseAntiAliasing, LLPipeline::canUseInterleavedAlpha, LLPipeline::canUseWindLightShaders, LLPipeline::checkReferences, LLPipeline::clearAwayWorldShadowPicks, LLPipeline::clearGoboOverride, LLPipeline::clearPrismLensDirtyScreenShaderTracking, LLPipeline::clearProjectorShadowSoftness, LLPipeline::clearRebuildDrawables, LLPipeline::clearRebuildGroups, LLPipeline::clearReferences, LLPipeline::clearShadowUniformStamps, LLPipeline::clearVolumetricShaftOverride, LLPipeline::clearVolumetricShafts, LLPipeline::clearWorldShadowPicks, LLPipeline::collectRotoInkCandidates, LLPipeline::colorCorrect, LLPipeline::colorCorrectPermutation, LLPipeline::colorCorrectProgram, LLPipeline::colorCorrectWillApplyExposure, LLPipeline::combineGlow, LLPipeline::compositeActorKey, LLPipeline::compositeBloomHDR, LLPipeline::compositeSensorOverlay, LLPipeline::copyRenderTarget, LLPipeline::copyScreenSpaceReflections, LLPipeline::createGLBuffers, LLPipeline::createLUTBuffers, LLPipeline::createObject, LLPipeline::createObjects, LLPipeline::deferredLightShape, LLPipeline::dirtyPoolObjectTextures, LLPipeline::dirtyPrismProjectorFeed, LLPipeline::disableLights, LLPipeline::doOcclusion, LLPipeline::effectiveShadowSplitBlend, LLPipeline::enableLights, LLPipeline::enableLightsAvatar, LLPipeline::enableLightsAvatarEdit, LLPipeline::enableLightsDynamic, LLPipeline::enableLightsFullbright, LLPipeline::enableLightsPreview, LLPipeline::enableShadows, LLPipeline::endCinematicProbeCapture, LLPipeline::endPrismAuxiliaryState, LLPipeline::ensureActorMask, LLPipeline::ensureKeyCoverage, LLPipeline::ensureKeyPrograms, LLPipeline::ensureLensPyramid, LLPipeline::ensurePrismProjectorFeed, LLPipeline::ensureRigRimAux, LLPipeline::ensureRigRimSmooth, LLPipeline::ensureRigRimWrap, LLPipeline::ensureSensorTargets, LLPipeline::ensureSilCover, LLPipeline::feedProjectorVolumetricBloom, LLPipeline::feedProjectorVolumetricBloomClassic, LLPipeline::finalizeGhostRiggedSolidCoverage, LLPipeline::findPool, LLPipeline::findReferences, LLPipeline::flushRelightTakes, LLPipeline::forAllVisibleDrawables, LLPipeline::gatherRotoInkTargets, LLPipeline::generateBloomHDR, LLPipeline::generateExposure, LLPipeline::generateGlow, LLPipeline::generateLuminance, LLPipeline::generateSMAABuffers, LLPipeline::getAlphaMaskCutoffOverride, LLPipeline::getAlphaModeOverride, LLPipeline::getGhostDeferredCoverageThisFrame, LLPipeline::getGoboOverride, LLPipeline::getPool, LLPipeline::getPoolFromTE, LLPipeline::getPoolTypeFromTE, LLPipeline::getProjectorShadowSoftness, LLPipeline::getRenderBeacons, LLPipeline::getRenderHighlights, LLPipeline::getRenderMOAPBeacons, LLPipeline::getRenderParticleBeacons, LLPipeline::getRenderPhysicalBeacons, LLPipeline::getRenderScriptedBeacons, LLPipeline::getRenderScriptedTouchBeacons, LLPipeline::getRenderSoundBeacons, LLPipeline::getRenderWaterHeight, LLPipeline::getSpatialPartition, LLPipeline::getVisibleExtents, LLPipeline::getVolumetricShaftOverride, LLPipeline::getWaterDisTarget, LLPipeline::getWaterExclusionMaskTarget, LLPipeline::ghostPostDeferredBlendPending, LLPipeline::ghostPostDeferredSolidsPending, LLPipeline::grabReferences, LLPipeline::hasAlphaOverrides, LLPipeline::hasGoboOverride, LLPipeline::hasProjectorShaftShadowSlot, LLPipeline::hasRenderTypeControl, LLPipeline::hasVCamVolumetricOverride, LLPipeline::hasVolumetricShaftOverride, LLPipeline::inkExposureSelector, LLPipeline::invalidateWeatherSpatial, LLPipeline::isHeroProjector, LLPipeline::isLiveMainAreaShadowPass, LLPipeline::isProjectorNoShadow, LLPipeline::isProjectorShadowSuppressed, LLPipeline::isTagRecordView, LLPipeline::isUserShaftSlotPromoted, LLPipeline::isVCamVolumetricAutoEnabled, LLPipeline::isVCamVolumetricDeclined, LLPipeline::isVolumetricShaftEnabled, LLPipeline::isWaterClip, LLPipeline::isWorldShadowPicked, LLPipeline::lensCoverageValid, LLPipeline::lineSegmentIntersectInHUD, LLPipeline::lineSegmentIntersectInWorld, LLPipeline::lineSegmentIntersectParticle, LLPipeline::loadProjVolDustMap, LLPipeline::logRelightTake, LLPipeline::manualWorldShadowPickList, LLPipeline::markGLRebuild, LLPipeline::markMeshDirty, LLPipeline::markMoved, LLPipeline::markNotCulled, LLPipeline::markOccluder, LLPipeline::markPartitionMove, LLPipeline::markRebuild, LLPipeline::markShift, LLPipeline::markTextured, LLPipeline::markVisible, LLPipeline::materializeDiopterPreset, LLPipeline::materializeKaleidoPreset, LLPipeline::nativeSpotShadowClip, LLPipeline::noteAreaDepthLight, LLPipeline::noteVolumetricShaftEdit, LLPipeline::observeProjectorShafts, LLPipeline::popRenderDebugFeatureMask, LLPipeline::postSort, LLPipeline::preflightActorKey, LLPipeline::prepareDirtyPrismProjectorFeeds, LLPipeline::prepareGatePrismProjectorFeeds, LLPipeline::prepareMediaPrismProjectorFeeds, LLPipeline::preparePrismProjectorFeeds, LLPipeline::preserveReShadeGBuffer, LLPipeline::probeShouldRenderLight, LLPipeline::processPartitionQ, LLPipeline::projectorDetailShadows, LLPipeline::projectorShaftCostReadout, LLPipeline::projectorShaftStatus, LLPipeline::pushRenderDebugFeatureMask, LLPipeline::rebaseWeather, LLPipeline::rebuildPools, LLPipeline::rebuildPriorityGroups, LLPipeline::recordTrianglesDrawn, LLPipeline::refreshCachedSettings, LLPipeline::releaseActorKeyTargets, LLPipeline::releaseActorMasks, LLPipeline::releaseGLBuffers, LLPipeline::releaseLUTBuffers, LLPipeline::releaseLensPyramid, LLPipeline::releasePrismLensBuffers, LLPipeline::releasePrismLensLargeScratch, LLPipeline::releasePrismLensOutput, LLPipeline::releasePrismLensOutputs, LLPipeline::releasePrismPreviewScratch, LLPipeline::releasePrismProjectorFeed, LLPipeline::releasePrismProjectorFeeds, LLPipeline::releaseRigRimAux, LLPipeline::releaseScreenBuffers, LLPipeline::releaseSensorTargets, LLPipeline::releaseShadowBuffers, LLPipeline::releaseSilCovers, LLPipeline::releaseSpotShadowTargets, LLPipeline::releaseSunShadowTarget, LLPipeline::releaseSunShadowTargets, LLPipeline::releaseUnusedPrismAreaTargets, LLPipeline::releaseVCamVolumetrics, LLPipeline::removeFromQuickLookup, LLPipeline::removeMutedAVsLights, LLPipeline::removePool, LLPipeline::renderActorKeyLens, LLPipeline::renderActorKeyPrismOccluders, LLPipeline::renderActorMask, LLPipeline::renderActorPathGuides, LLPipeline::renderAlphaObjects, LLPipeline::renderAreaShadows, LLPipeline::renderCineFisheye, LLPipeline::renderCineOutline, LLPipeline::renderCompositionGuideOverlay, LLPipeline::renderCover, LLPipeline::renderDebug, LLPipeline::renderDeferredLighting, LLPipeline::renderDoF, LLPipeline::renderFinalize, LLPipeline::renderFinalizeLegacy, LLPipeline::renderFinalizePresent, LLPipeline::renderFinalizeScene, LLPipeline::renderFocusPoint, LLPipeline::renderFroxelVolumetrics, LLPipeline::renderFullbrightMaskedObjects, LLPipeline::renderGLTFObjects, LLPipeline::renderGeomDeferred, LLPipeline::renderGeomPostDeferred, LLPipeline::renderGeomShadow, LLPipeline::renderGeomVelocity, LLPipeline::renderGhostDeferredOpaqueMasked, LLPipeline::renderGhostPostDeferred, LLPipeline::renderGhostRiggedBlend, LLPipeline::renderGhostSilCover, LLPipeline::renderHighlights, LLPipeline::renderMaskedObjects, LLPipeline::renderMotionBlurComposite, LLPipeline::renderObjects, LLPipeline::renderPhysicsDisplay, LLPipeline::renderProjectorVolumetric, LLPipeline::renderProjectorVolumetricClassic, LLPipeline::renderProjectorVolumetricNew, LLPipeline::renderRetainedPrismProjectorFeed, LLPipeline::renderRigRimWrap, LLPipeline::renderSelectedFaces, LLPipeline::renderSensor, LLPipeline::renderSilCover, LLPipeline::renderTronWorld, LLPipeline::renderUltimateDiopter, LLPipeline::renderUltimateKaleidoscope, LLPipeline::renderVelocityDebug, LLPipeline::renderVolumetric, LLPipeline::renderWeather, LLPipeline::renderWeatherParticles, LLPipeline::resetDrawOrders, LLPipeline::resetFrameStats, LLPipeline::resetShadowSlotHistory, LLPipeline::resetShadowSlotTimers, LLPipeline::resetVertexBuffers, LLPipeline::resolveAlphaMaskCutoff, LLPipeline::resolveAlphaMode, LLPipeline::resolveAlphaPolicy, LLPipeline::resolveRotoInkLayer, LLPipeline::resolveShadowSubject, LLPipeline::restoreGL, LLPipeline::selectForwardLightSet, LLPipeline::selfTestActorKey, LLPipeline::sensorAAEncode, LLPipeline::sensorDiagnosticView, LLPipeline::sensorUnavailableReason, LLPipeline::sensorVignette, LLPipeline::sensorWarpUniforms, LLPipeline::setAlphaMaskCutoffOverride, LLPipeline::setAlphaModeOverride, LLPipeline::setGoboOverride, LLPipeline::setLight, LLPipeline::setPrismAuxiliaryWaterHeight, LLPipeline::setProjectorDetailShadows, LLPipeline::setProjectorShadowSoftness, LLPipeline::setRenderBeacons, LLPipeline::setRenderDebugFeatureControl, LLPipeline::setRenderHighlightTextureChannel, LLPipeline::setRenderHighlights, LLPipeline::setRenderMOAPBeacons, LLPipeline::setRenderParticleBeacons, LLPipeline::setRenderPhysicalBeacons, LLPipeline::setRenderScriptedBeacons, LLPipeline::setRenderScriptedTouchBeacons, LLPipeline::setRenderSoundBeacons, LLPipeline::setRigWorldShadowPick, LLPipeline::setVolumetricShaftOverride, LLPipeline::setWorldShadowPick, LLPipeline::setWorldShadowPicks, LLPipeline::setupAvatarLights, LLPipeline::setupGradingLUT, LLPipeline::setupHWLights, LLPipeline::setupSpotLightVolumetricClassic, LLPipeline::shadersLoaded, LLPipeline::shadowUnitsFilterWanted, LLPipeline::shiftObjects, LLPipeline::shouldRunRotoInkAt, LLPipeline::sortAlphaGroupsForInterleaving, LLPipeline::spotShadowMapSampled, LLPipeline::stateSort, LLPipeline::suspendWeather, LLPipeline::toggleHeroProjector, LLPipeline::toggleProjectorCastShadows, LLPipeline::toggleRenderBeacons, LLPipeline::toggleRenderDebug, LLPipeline::toggleRenderDebugControl, LLPipeline::toggleRenderDebugFeature, LLPipeline::toggleRenderDebugFeatureControl, LLPipeline::toggleRenderHighlights, LLPipeline::toggleRenderMOAPBeacons, LLPipeline::toggleRenderParticleBeacons, LLPipeline::toggleRenderPhysicalBeacons, LLPipeline::toggleRenderScriptedBeacons, LLPipeline::toggleRenderScriptedTouchBeacons, LLPipeline::toggleRenderSoundBeacons, LLPipeline::toggleRenderType, LLPipeline::toggleRenderTypeControl, LLPipeline::toggleRenderTypeControlNegated, LLPipeline::toggleVolumetricShaft, LLPipeline::toggleWorldShadowPick, LLPipeline::unlinkDrawable, LLPipeline::unloadShaders, LLPipeline::updateCineFlareEnergy, LLPipeline::updateCull, LLPipeline::updateDrawableGeom, LLPipeline::updateGL, LLPipeline::updateGeom, LLPipeline::updateMove, LLPipeline::updateMoveDampedAsync, LLPipeline::updateMoveNormalAsync, LLPipeline::updateMovedList, LLPipeline::updateNightMaskAnchor, LLPipeline::updateRenderTransparentWater, LLPipeline::updateShadowEngaged, LLPipeline::uploadEnvOnlyView, LLPipeline::uploadPrismPreviewColorCorrectUniforms, LLPipeline::uploadShadowAlphaMode, LLPipeline::uploadShadowUniforms, LLPipeline::verify, LLPipeline::visibleObjectsInFrustum, LLPipeline::visualizeBuffers, LLPipeline::worldChannelOwnsPickedLight, LLPipeline::worldHDREnabled, LLPipeline::worldPresentationPermutation, LLPipeline::worldShadowOwned, LLPipeline::worldShadowPickChatLines, LLPipeline::worldShadowPickList, LLPipeline::worldShadowPickReport, LLPipeline::worldShadowPickRevision, LLPipeline::worldShadowReadout, LLPipeline::worldShadowResidentEligible, LLPrismLens::ensureProjectorOutputCapacity, ProjVolAuxStateGuard, ProjectionStackGuard, ScissorBoxScope, ScopedActorMaskState, ScopedGhostColorMask, ScopedGhostTransform, ScopedSilCoverInvariant, ScopedSilCoverState, State, VelocityModelMatrixUpdateGuard, actor_key_copy, alDiopterResolveBaseFocus, alDiopterResolveLook, alKaleidoFocusUV, alKaleidoResolveLook, alKaleidoResolveMotion, alKaleidoSpinDeg, allocateSunCascadeTarget, apply, applyParityMaskBlend, applySunShadowSamplerState, apply_cube_face_rotation, area_source_radius, bdmerge_alpha_owner_avatar, bdmerge_dust_wind_dir, bdmerge_rebuild_for_alpha_target, bdmerge_should_render_light, bdmerge_should_render_projector, bdmerge_snapshot_autoscale_multiplier, bindHighlightProgram, calc_light_dist, capture, cg_apply_duv, cg_cct_to_xy, cg_compute_white_balance_gain, check_references, classifyGhostBatchPhase, debugLightingTerm, diopter_drift, diopter_hash, diopter_noise1, drawActorMaskBatch, drawSilCoverBatch, forAllDrawables, froxelShaftInputsDiffer, getControl, ghostMaterialShaderIndex, globalFroxelShaftInputs, kalFract, kalHashCell, kalNoise1, lerpf, light_shape_enabled, light_shape_for_volume, light_shape_master_enabled, local_light_selection_color, log_world_shadow_impl, parityMaskBlendSupported, pow3f, pow4fsrgb, probe_tiny_cull_pass_ok, projvolAdaptiveResolution, projvolCameraMargin, projvolClipPyramidBounds, projvolConeDefinition, projvolCoverage, projvolDrawFullResRim, projvolDrawRimTexture, projvolEffectiveDefinition, projvolFullCostIsUnclamped, projvolPyramidBounds, projvolPyramidGeometry, projvolSoftBudgetAllowed, projvolSphereBounds, projvolStepBudget, projvolUploadRecordingUniforms, projvolUploadStepBudget, projvolVariantReady, pushGhostBatch, pushGhostBumpBatch, pushGhostFullbrightShinyBatch, pushGhostGLTFBatch, pushGhostGLTFBatchIndexed, pushGhostMaterialBatch, refresh, release_prism_scratch_entry, renderMOAPBeacons, renderParticleBeacons, renderPhysicalBeacons, renderScriptedBeacons, renderScriptedTouchBeacons, renderSoundHighlights, render_hud_elements, saveShaderTextures, saveTexture, setVCamVolumetricMaster, setup_ghost_texture_matrix, silCoverBlendCacheMatches, silCoverBlendFactor, silCoverPrivate, std::max, std::sort, std::stable_sort, teardown_ghost_texture_matrix, unbindHighlightProgram, update, uploadDebugLightingTerm, uploadGhostCoverage, uploadGhostPalette, uploadSLogCaptureUniforms, uploadSilhouetteFrame, validate_framebuffer_object, visit, worldShadowLightNear, worldShadowLightNearUncached, world_shadow_eligible, world_shadow_extents, world_shadow_label, world_shadow_pick_labels, ~ActorKeyFramebufferScope, ~ActorKeyTextureScope, ~ColourMaskScope, ~EndBeautyCapture, ~FlushCover, ~FlushMask, ~ProjVolAuxStateGuard, ~ProjectionStackGuard, ~ResetActorMaskView, ~ScissorBoxScope, ~ScopedActorMaskState, ~ScopedGhostColorMask, ~ScopedGhostTransform, ~ScopedSilCoverInvariant, ~ScopedSilCoverState, ~SensorScope, ~State, ~VelocityModelMatrixUpdateGuard | actor-bar, actor-path, camera, capture-sidecar, clones, composition, director-shell, environment, looks, rig, roto-tron, sensor, shafts-volumetrics, vcam, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: must be even to avoid a stripe in the horizontal shadow blur Release every GL target owned by one Prism scratch pool entry and zero its size key so acquirePrismLensScratch treats it as empty. File-local so no caller outside the acquire/release pair can partially tear down an entr |
+| 32069–32098 (n=30) | LLPipeline::renderDeferredLighting, LLPrismPreviewPolicy::clearPreviewAO | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The pinned preview pack is reused. Seed its AO/direct-light map to neutral white on every preview before the SSAO/shadow dispatch gates, so a sentinel or a previous preview can never darken this capture. |
+| 32103–32113 (n=11) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 32120–32135 (n=16) | LLPipeline::renderDeferredLighting | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Cascade colours and raw R/G are producer diagnostics; preserve the sun pass exactly instead of running the normal two-pass light blur. |
+| 32141–32153 (n=13) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [BDMerge A1.2] scale the shared shadow+SSAO soften blur kernel so a high-res snapshot keeps the same blur weighting it had at window resolution; this pass softens both the sun shadow and (when RenderDeferredSSAO is on, as gated above) SSAO together, matching BD's donor which scal |
+| 32166–32197 (n=32) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control D: sun-shadow channel softening split from the SSAO blur (design v2 s5, v3 s6, v4 s4, v5 s4). Mode 0 = stock (the shader's original path runs untouched). Uniforms persist in the program across the second (vertical) bind below. reference-pixel sigma: scaled |
+| 32204–32210 (n=7) | LLPipeline::renderDeferredLighting | vcam | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 32218–32589 (n=372) | LLPipeline::renderDeferredLighting, std::isfinite | actor-bar, capture-sidecar, director-shell, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Rig Rim Quality auxiliary and silhouette passes. Main view only; validity deliberately survives ResetActorMaskView until finalize. At zero keep the original pass, targets and draw count. Geometric aux remains immutable for silhouette seeding. All normal filtering and its allocati |
+| 32604–32641 (n=38) | LLPipeline::renderDeferredLighting | rig, roto-tron, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: The diagnostic replaces opaque lighting; do not add punctual lights over its display-space result after the soften pass. [RigRim] Round-2 P2 fix: read once per call so the point-light push and the multi-light batch pack/upload below can both skip their rim-specific work when Rig  |
+| 32662–32667 (n=6) | LLPipeline::renderDeferredLighting | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 32669–32721 (n=53) | LLPipeline::renderDeferredLighting | looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Before EVERY count/toggle/selection side effect. Removing these entries is exactly the light-off world list, including which world entry triggers the count-limit break. A cinematic live probe captures the four authored rig projectors, but not the target rig's syntheti |
+| 32724–32736 (n=13) | LLPipeline::renderDeferredLighting | sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: [EnvIntensity v2] per-emitter Local lights EV folded in once here; light_colors.push_back below carries this already-scaled colour and the fullscreen packing copy (col[count] = light_colors[i]) is untouched. |
+| 32753–32789 (n=37) | LLPipeline::renderDeferredLighting | rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Rig projectors retain their cone/cookie when the world projector toggle is off. Priority is persistent LLVOVolume state used by next-frame main-view shadow-slot assignment. [ActorMask] Record only accepted points actually drawn by F3. [RigRim] |
+| 32791–32807 (n=17) | LLPipeline::renderDeferredLighting | rig, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Rig projectors retain their cone/cookie when the world projector toggle is off. |
+| 32809–32828 (n=20) | LLPipeline::renderDeferredLighting | rig, roto-tron, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] This accepted F3 point will use the stock batch below. [RigRim] Only staged when active; every consumer below checks the same function-constant rig_rim_active, so indices stay parallel. |
+| 32854–32871 (n=18) | LLPipeline::renderDeferredLighting | rig, sensor | creative-candidate | unknown; no local conditional evidence | Edits gDeferredSpotLightProgram, LLColor3, ALEnvIntensity, LLShaderMgr |
+| 32889–32915 (n=27) | LLPipeline::renderDeferredLighting | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [RigRim] Round-2 P2 fix: skip packing the rim slot when off; the upload below is skipped too, so a stale/uninitialized entry here is never read. |
+| 32918–32947 (n=30) | LLPipeline::renderDeferredLighting | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: [RigRim] P2-5: the GLSL name 'rig_rim_lights' is reused for two differently-shaped arrays: this program's multiPointLightF.glsl declares vec4[LIGHT_COUNT] parallel to MULTI_LIGHT/MULTI_LIGHT_COL (uploaded here, manually, once per batch), while the forward alpha programs declare v |
+| 32970–32987 (n=18) | LLPipeline::renderDeferredLighting | rig, sensor | creative-candidate | unknown; no local conditional evidence | Edits gDeferredMultiSpotLightProgram, LLColor3, ALEnvIntensity, LLShaderMgr |
+| 32993–33172 (n=180) | LLPipeline::renderDeferredLighting | clones, looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Independent uncapped scan: the world collector's break cannot hide actors. All actor draws follow BOTH world spot blocks, so tier-0 projectors only auction after the world slots are settled. [ActorMask] WP7 extended guard (Debug != 0 only); outlives saved_state. [Acto |
+| 33205–33358 (n=154) | LLPipeline::renderDeferredLighting | actor-path, capture-sidecar, clones, looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [GhostDeferred] Solid Completion Rescue: draw the clone's fullbright / fullbright-shiny / fullbright-mask rigged faces (which cannot enter the G-buffer) here in the post-deferred forward pass, so metallic-gold / fullbright wardrobes render scene-lit instead of forcing the whole c |
+| 33360–33690 (n=331) | LLPipeline::renderDeferredLighting, LLPipeline::renderPrismDisplays, ScopedPrismCompositeRestore, popFaceMatrix, pushFaceMatrix, pushWorldMatrix, ~ScopedPrismCompositeRestore | capture-sidecar, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Snapshot the un-jittered velocity projection at the same scene boundary as the previous modelview. NOTE: deliberately no else-branch. Cube/probe passes do not advance the main-view history, so there is nothing to invalidate -- the snapshot from the last main-view frame is still t |
+| 33703–33717 (n=15) | LLPipeline::doAtmospherics | vcam | creative-candidate | unknown; no local conditional evidence | Edits LLRenderTarget, gPipeline |
+| 33722–33728 (n=7) | LLPipeline::doAtmospherics | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 33750–33762 (n=13) | LLPipeline::doWaterHaze | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [PerfB1] Above water, an empty current draw list means the haze geometry covers no pixels. |
+| 33764–33778 (n=15) | LLPipeline::doWaterHaze | vcam | creative-candidate | unknown; no local conditional evidence | Edits LLRenderTarget, gPipeline |
+| 33784–33798 (n=15) | LLPipeline::doWaterHaze | unknown | unknown-review | unknown; no local conditional evidence | Edits LLShaderMgr |
+| 33826–34047 (n=222) | LLPipeline::bindProjectorCookie, LLPipeline::doWaterExclusionMask, LLPipeline::projectorCookieRevision, LLPipeline::setupSpotLight | clones, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: flush() rebinds the preceding FBO, and bindTarget() installs that target's full-size viewport -- with exact-size Prism scratch packs the restored viewport is already correct, so no reassert is needed. Media samples the settings accepted with these pixels. OWN_COOKIE is deliberate |
+| 34108–34114 (n=7) | LLPipeline::setupSpotLight | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 34116–34126 (n=11) | LLPipeline::setupSpotLight | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [World Shadow pick] A picked projector whose soft-shadow channel is world-owned this frame is shadowed by its cube alone: the lighting pass does not also sample its native SL map (index -1, the "no map" value the shader already handles), so there is one shadow edge, not two. The  |
+| 34131–34568 (n=438) | LLPipeline::logSpotShadowSlots, LLPipeline::retainSpotShadowOwners, LLPipeline::setupSpotLight, LLPipeline::setupSpotLightVolumetric, LLPipeline::snapshotSpotShadowAuction, LLPipeline::spotShadowTier | rig, roto-tron, shafts-volumetrics, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: make sure we're not already targeting the same spot light with both shadow maps make sure we're not already targeting the same spot light with both shadow maps [BDMerge G3.3 Batch 3] Per-projector "cast shadows" opt-out: a projector in the no-shadow set still lights the scene (al |
+| 34571–34581 (n=11) | LLPipeline::unbindDeferredShader | rig | creative-candidate | unknown; conditional evidence present | Edits LLShaderMgr |
+| 34638–34673 (n=36) | LLPipeline::bindReflectionProbes | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: SSR samplers stay active with the runtime gate off. Never bind a released target (or a target belonging to the main camera during an auxiliary pass). |
+| 34682–34688 (n=7) | LLPipeline::bindReflectionProbes | vcam | creative-candidate | unknown; conditional evidence present | Edits RenderMirrors |
+| 34693–34733 (n=41) | LLPipeline::bindReflectionProbes | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: On an auxiliary no-UBO allocation failure, never let setUniforms() lazily run updateUniforms() from the source camera. The explicit Prism shader guard still suppresses SSR/hero; probe lighting simply degrades for this failed capture instead of contaminating main state. reflection |
+| 34789–35743 (n=955) | LLPipeline::bindWeatherMaterial, LLPipeline::dirtyWeatherDrawable, LLPipeline::dirtyWeatherRegion, LLPipeline::drawShadowCascade, LLPipeline::drawWeatherCover, LLPipeline::generateWeatherAdvancedShelter, LLPipeline::generateWeatherRainOcclusion, LLPipeline::generateWeatherSurfaceCover, LLPipeline::prepareShadowCascade, LLPipeline::renderShadow, LLShadowCascadeScope, look, std::any_of, ~LLShadowCascadeScope | clones, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: The default-off path is only two cached-control checks: do not touch producer state or inspect any other setting or shader when disabled. Manual sampler2D comparisons require raw depth, never a shadow compare sampler. Keep the dedicated target isolated from sun-map filtering/comp |
+| 35756–35824 (n=69) | LLPipeline::drawShadowCascade, MatrixScope, ~MatrixScope | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: enable depth clamping if available In RenderShadowCullMode 1, do_cull is false: generateSunShadow did the single union octree cull and pre-filtered 'result' to this cascade's frustum (bucketShadowCull), so skip the per-cascade octree walk and only sort/build this cascade's render |
+| 35836–35844 (n=9) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 35867–35873 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline |
+| 35875–35893 (n=19) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Before binds; restored at iteration end, before rigged. |
+| 35895–35905 (n=11) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLSLShader, LLShaderMgr |
+| 35911–35917 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
+| 35923–35937 (n=15) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Grass cannot be a worn attachment. |
+| 35946–35952 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
+| 35957–35971 (n=15) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [AlphaShadowCap] Before binds; restored at iteration end, before rigged. |
+| 35984–35990 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
+| 36000–36006 (n=7) | LLPipeline::drawShadowCascade | unknown | unknown-review | unknown; no local conditional evidence | Edits LLGLSLShader, LLShaderMgr |
+| 36020–36363 (n=344) | ALActorKeyUI::shadowStatus, CasterScope, LLPipeline::buildActorKeyShadowTerm, LLPipeline::diagnoseKeyShadowOwners, LLPipeline::drawShadowCascade, LLPipeline::ensureActorShadowTargets, LLPipeline::releaseActorShadowTargets, LLPipeline::renderKeyShadowCascade, LLPipeline::skipKeyShadowAvatar, LLPipeline::skipKeyShadowCaster, actor_key_compare_shadows, ~CasterScope, ~RestorePack, ~TargetScope | clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Main pack only. Clone the ACTUAL beauty dimensions, including per-cascade overrides and non-square screen-derived sizing, rather than re-reading settings. Count all ownerless attachments conservatively: a rigid attachment has no avatar pointer with which to prove it belongs to a  |
+| 36557–36603 (n=47) | LLPipeline::getSpotShadowTarget, LLPipeline::getSunShadowTarget, LLPipeline::mainSunShadowsPublishedThisIteration, LLPipeline::reexpressProbeSpotShadows | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeCost] Allocation metadata and this iteration's completed generation are both required. [Prism spot shadows Stage 2] the aux capture samples its own dedicated maps; the main-view maps must survive untouched for the main deferred lighting that runs after the aux pass (paralle |
+| 36661–36703 (n=43) | LLPipeline::generateSunShadow, ~CasterFilterLeakCheck | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ProbeCost] A failed/early-returning main generation cannot publish stale maps. |
+| 36792–36798 (n=7) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Edits gGL |
+| 36803–36810 (n=8) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 36819–36859 (n=41) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control A: cascade blend width this generation's frusta (and, through the meta, the shader) use. Probe renders always keep the stock 0.25. At default 1.f - 0.25f == 0.75f and 1.f + 0.25f == 1.25f exactly, so the stock constants below are reproduced exactly (<= 1 u |
+| 36945–36998 (n=54) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control A: "Sharp shadow range (m)" (design v2 s2.2). The user value is the camera distance covered EXCLUSIVELY by cascade 0, i.e. (1 - blend) * clip0; cascades 1..3 then split the remainder geometrically so their texel-density ratio is uniform. Bypasses the split |
+| 37003–37080 (n=78) | LLPipeline::generateSunShadow | vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: [ProbeCost] Reuse/Off need Full's probe projector clip/fade distances, but must leave all shadow maps and their metadata untouched. CPU zones enclose the entire RT call, including Tracy GPU timestamps. Pass zones carry the sun/projector index; bind values pack old/new FBOs. [Shad |
+| 37115–37123 (n=9) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] (1 -/+ blend) == 0.75f / 1.25f exactly at default |
+| 37180–37444 (n=265) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: restore render matrices [ShadowDist P3] Control B: cascade 0 = light-space orthographic COLUMN around the subject (design v2 s3.4, v3 s4, v4 s5). Self-contained: fits, records, culls, renders, writes ShadowMeta site 3 and 'continue's, so the legacy slice fit below stays byte-iden |
+| 37465–37473 (n=9) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] (1 -/+ blend) == 0.75f / 1.25f exactly at default |
+| 37492–37525 (n=34) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] ShadowMeta site 4: a cleared map samples as lit whatever its matrix says, so sunVP[j] is left as is (exactly as the legacy code leaves mSunShadowMatrix[j]). |
+| 37538–37548 (n=11) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P2] Control C coefficients for THIS cascade's projection, written by whichever of the three proj[j] branches below runs and stored in the meta at site 2. |
+| 37611–37617 (n=7) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_PROFILE_ZONE_NAMED_CATEGORY_PIPELINE |
+| 37649–37666 (n=18) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Edits RenderShadowErrorCutoff, LLPipeline, gCubeSnapshot |
+| 37694–37701 (n=8) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 37725–37732 (n=8) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 37745–37762 (n=18) | LLPipeline::generateSunShadow | unknown | unknown-review | unknown; conditional evidence present | Edits LLPipeline, gCubeSnapshot |
+| 37769–38132 (n=364) | LLPipeline::generateSunShadow | rig, roto-tron, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: llassert(eye.isFinite()); llassert(eye.isFinite()); shadow_cam.setFar(128.f); shadow_cam.ignoreAgentFrustumPlane(LLCamera::AGENT_PLANE_NEAR); translate and scale to from [-1, 1] to [0, 1] [ShadowDist P1] ShadowMeta site 2: this cascade's view-independent trans*proj*view in double |
+| 38134–39220 (n=1087) | LLPipeline::generatePrismSpotShadows, LLPipeline::generateSunShadow, LLPipeline::generateWorldShadowCubes, LLPipeline::releaseWorldShadowTargets, WorldShadowDrawScope, WorldShadowStateGuard, attachment_visibility, capture, compare, countWorldShadowRiggedMaps, std::sort, ~WorldShadowDrawScope, ~WorldShadowStateGuard | looks, rig, roto-tron, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence:  hack to disable projector shadows Restore the entry parent (or FB0 + GL_BACK) before the beauty-pass state setup. Keep gGLViewport exactly as stock, including empty-slice behavior. should never happen update shadow targets [ProbeCost] Only completed main generations publish; ear |
+| 40016–40030 (n=15) | LLPipeline::skipRenderingShadows | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] ShadowMeta site 5: all four maps cleared -> lit; the matrices are irrelevant, only the (future) subject flag must drop. |
+| 40090–40242 (n=153) | LLPipeline::getRotoAnimClockOffset, LLPipeline::uploadPrismPreviewColorGradeUniforms | clones, looks, roto-tron, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: --- Linear-space grading (pre-tonemap) --- White balance: resolve (CCT offset, Duv) into a linear-sRGB gain on the CPU. Duv is exposed to artists on a friendly [-1, 1] scale and scaled into CIE 1960 uv units (Ã‚Â±0.02) here. Lift / Gamma / Gain; gamma is inverted on the CPU. ---  |
 
 ## Slice 2: `indra/newview/pipeline.h`
 
@@ -2186,16 +2186,16 @@ HEAD coordinates; guards/features are candidate evidence
 | 1156–1162 (n=7) | LLDrawPoolAlpha::renderRiggedPbrEmissives | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 1164–1320 (n=157) | LLDrawPoolAlpha::renderActorFxEmissives, LLDrawPoolAlpha::renderAlpha, LLDrawPoolAlpha::renderRiggedPbrEmissives, ~RestoreForwardWorld | actor-path, capture-sidecar, looks, rig, roto-tron, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: Match the beauty alpha draw's custom-blend cutoff override. Ordinary GLTF BLEND keeps the -1 supplied by material bind. Mirror the beauty shader's cutout policy. Legacy material BLEND has no cutoff; fullbright tests texture alpha; ordinary lit alpha tests the complete texture * f |
 | 1323–1346 (n=24) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; conditional evidence present | Edits LLCullResult, gPipeline, LLEnvironment |
-| 1349–1464 (n=116) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, clones, looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: depth-write conditions that apply to every group in this pass; in merged mode, stamped rigged groups additionally write depth (see below) merged mode: per-group depth-write guard, re-emplaced only when the write state changes (one glDepthMask per run, not per group) share one ava |
-| 1487–1524 (n=38) | LLDrawPoolAlpha::renderAlpha | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: merged mode: stamped rigged groups write depth so attachment-order layering holds; an unstamped group has no defined position in the rigged order and must not depth-reject geometry behind it (it still blends). Non-merged passes keep the caller's depth state (set in forwardRender) |
-| 1536–1556 (n=21) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge] 3-pass attachment filter (non-rigged path only). Gate off / rigged path use ATTACHMENT_ALL, which skips nothing, so this is byte-identical to stock when disabled. |
-| 1560–1567 (n=8) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
-| 1575–1582 (n=8) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1662–1726 (n=65) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Replace/Cover replays the actor through the frame-ready shared proxy. Preserve native DoF depth for every nonzero Cover, but suppress it at opacity zero so an intentionally invisible actor cannot occlude/blur the background. [ActorMask] Eligibility was evaluated under the real sh |
-| 1732–1758 (n=27) | LLDrawPoolAlpha::renderAlpha | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [Cine Haze] additive-blended draws (dst factor ONE: additive particles / glow faces) must not accumulate the atmosphere colour once per layer -- tell the shader to apply transmittance only.  Value-cached uniform; only touched around additive draws. |
-| 1786–1812 (n=27) | LLDrawPoolAlpha::renderAlpha | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Zero-authored-glow faces have no TYPE_EMISSIVE stream. Queue only effective glow looks into the lightweight colour-stream shader, avoiding blanket duplicate draws. |
-| 1817–1843 (n=27) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Emissive replays and following passes start with world. M3: the emissive sub-passes below run single-output shaders (renderEmissives / renderPbrEmissives / renderRiggedEmissives / renderRiggedPbrEmissives all declare only frag_color). With attachment 1 still write-ena |
-| 1872–1905 (n=34) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: reopen the sidecar for any subsequent diffuse-bearing draws |
+| 1349–1467 (n=119) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, clones, looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: depth-write conditions that apply to every group in this pass; in merged mode, stamped rigged groups additionally write depth (see below) merged mode: per-group depth-write guard, re-emplaced only when the write state changes (one glDepthMask per run, not per group) share one ava |
+| 1490–1527 (n=38) | LLDrawPoolAlpha::renderAlpha | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: merged mode: stamped rigged groups write depth so attachment-order layering holds; an unstamped group has no defined position in the rigged order and must not depth-reject geometry behind it (it still blends). Non-merged passes keep the caller's depth state (set in forwardRender) |
+| 1539–1559 (n=21) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: [BDMerge] 3-pass attachment filter (non-rigged path only). Gate off / rigged path use ATTACHMENT_ALL, which skips nothing, so this is byte-identical to stock when disabled. |
+| 1563–1570 (n=8) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; conditional evidence present | Edits LLGLTFMaterial, ALPHA_MODE_BLEND, LLPipeline |
+| 1578–1585 (n=8) | LLDrawPoolAlpha::renderAlpha | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1665–1729 (n=65) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, looks, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Replace/Cover replays the actor through the frame-ready shared proxy. Preserve native DoF depth for every nonzero Cover, but suppress it at opacity zero so an intentionally invisible actor cannot occlude/blur the background. [ActorMask] Eligibility was evaluated under the real sh |
+| 1735–1761 (n=27) | LLDrawPoolAlpha::renderAlpha | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [Cine Haze] additive-blended draws (dst factor ONE: additive particles / glow faces) must not accumulate the atmosphere colour once per layer -- tell the shader to apply transmittance only.  Value-cached uniform; only touched around additive draws. |
+| 1789–1815 (n=27) | LLDrawPoolAlpha::renderAlpha | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Zero-authored-glow faces have no TYPE_EMISSIVE stream. Queue only effective glow looks into the lightweight colour-stream shader, avoiding blanket duplicate draws. |
+| 1820–1846 (n=27) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Emissive replays and following passes start with world. M3: the emissive sub-passes below run single-output shaders (renderEmissives / renderPbrEmissives / renderRiggedEmissives / renderRiggedPbrEmissives all declare only frag_color). With attachment 1 still write-ena |
+| 1875–1908 (n=34) | LLDrawPoolAlpha::renderAlpha | capture-sidecar, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: reopen the sidecar for any subsequent diffuse-bearing draws |
 
 ## Slice 3: `indra/newview/llflexibleobject.cpp`
 
@@ -2513,78 +2513,78 @@ HEAD coordinates; guards/features are candidate evidence
 | 1118–1126 (n=9) | LLViewerShaderMgr::setShaders | looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: [AvatarLightResponse] count the programs that attach avatarLightResponseF.glsl during this load |
 | 1229–1236 (n=8) | LLViewerShaderMgr::setShaders | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 1259–1267 (n=9) | LLViewerShaderMgr::setShaders | unknown | unknown-review | unknown; no local conditional evidence | Edits gPipeline |
-| 1276–1329 (n=54) | LLViewerShaderMgr::setShaders, LLViewerShaderMgr::unloadShaders | looks, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Sampler budgets can narrow generic or indexed material batches. Retire old draw maps before any draw uses the newly linked, smaller sampler inventory. [AvatarLightResponse] A completed auxiliary Prism pass can retain shader addresses solely to restore main-view screen uniforms on |
-| 1339–1346 (n=8) | LLViewerShaderMgr::loadBasicShaders | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1375–1394 (n=20) | LLViewerShaderMgr::loadBasicShaders | unknown | unknown-review | unknown; conditional evidence present | Edits gSavedSettings, RenderScreenSpaceReflections, LLCachedControl, RenderEnableEmissiveBuffer |
-| 1408–1413 (n=6) | LLViewerShaderMgr::loadBasicShaders | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 1429–1465 (n=37) | LLViewerShaderMgr::loadBasicShaders | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [TronA0] Per-pixel avatar tag in the G-buffer normal .w. HASH-TOKEN global define: LLShaderMgr::loadShaderFile keys the flag-decoder preamble text on it (and emits the real GBUFFER_AVATAR_TAG there), the binary-cache hash covers it explicitly (llglslshader.cpp). The hash token it |
-| 1484–1511 (n=28) | LLViewerShaderMgr::loadBasicShaders | environment, looks, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 1514–1548 (n=35) | LLViewerShaderMgr::loadBasicShaders | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A successful load may have selected a lower class, including the no-SSR stub. Only the real, requested modules permit a runtime toggle. Snapshot only preloaded modules, before any program roots are compiled. Their assembled-text keys cover class choices, generated text and channe |
-| 1587–1604 (n=18) | LLViewerShaderMgr::loadShadersWater | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: S3: without this the water shader declares only frag_color, so the sidecar attachment kept the seed pass's answer for the SEABED behind the water and published it as the water surface's albedo at K=1. Only the visible-diffuse permutation -- water has no emissive output, so add_co |
-| 1621–1634 (n=14) | LLViewerShaderMgr::loadShadersWater | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: MUST be after clearPermutations(). The underwater program shares POOL_WATER, which opens the sidecar and coverage attachments; without the extra output declarations this shader would write UNDEFINED values to them (hazard H1) -- the precise failure this exists to prevent. |
-| 1781–2039 (n=259) | LLViewerShaderMgr::loadColorChartShaders, LLViewerShaderMgr::loadSensorShaders, LLViewerShaderMgr::loadShadersDeferred, LLViewerShaderMgr::unloadColorChartShaders, LLViewerShaderMgr::unloadSensorShaders, isComplete | clones, looks, rig, roto-tron, sensor, shafts-volumetrics | creative-candidate | unknown; conditional evidence present | Comment evidence: Only the two camera stages needed by the atlas. These private programs cannot invalidate the physical sensor's program suite. Clone source recipes, not program handles or legacy permutations. Compile the pure WP-A utility as a separate production fragment unit. |
-| 2049–2056 (n=8) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; no local conditional evidence | Edits gAreaShadowProgram, gAreaShadowFilterProgram |
-| 2058–2069 (n=12) | LLViewerShaderMgr::loadShadersDeferred | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits gDeferredMultiLightActorMaskProgram, gDeferredMultiSpotLightActorMaskProgram, gVisibleDiffuseSeedProgram |
-| 2080–2088 (n=9) | LLViewerShaderMgr::loadShadersDeferred | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits gActorMaskProgram, gSilCoverProgram, gActorMaskDebugProgram |
-| 2098–2107 (n=10) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gActorFxGlowProgram, gActorFxSkinnedGlowProgram, gActorFxPBRGlowProgram, gActorFxPBRSkinnedGlowProgram |
-| 2118–2163 (n=46) | LLViewerShaderMgr::loadShadersDeferred | looks, rig, roto-tron, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Ultimate Diopter] |
-| 2174–2213 (n=40) | LLViewerShaderMgr::loadShadersDeferred | capture-sidecar, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits gPrismLensProgram, gPrismMediaCopyProgram, LLGLSLShader, gPrismProjectorFeedProgram, gPrismProjectorLookProgram, gPrismPreviewProgram, gVelocityProgram, gVelocityAlphaProgram, gVelocityPBRAlphaProgram, gVelocityAlphaIndexedProgram |
-| 2222–2228 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 2235–2398 (n=164) | LLViewerShaderMgr::loadShadersDeferred, load_family | looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Preserve required failures before scheduling any family work. The projector conversion uses the same display transform and colour pipeline as monitor previews, but writes a dedicated mipmapped cookie. Keep the family aligned with colorCorrectPermutation() so legacy gamma, tonemap |
-| 2408–2419 (n=12) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredDiffuseProgram |
-| 2423–2435 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredDiffuseAlphaMaskProgram |
-| 2451–2463 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredNonIndexedDiffuseAlphaMaskNoColorProgram |
-| 2466–2478 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredBumpProgram |
-| 2488–2609 (n=122) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | capture-sidecar, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A material's velocity coverage must evaluate the same glare as beauty. Share its sources, features and all permutations. Same post-link lighting flag as the forward beauty program. Clear any stale value from a previous load before (re)deciding legacy indexed eligibility -- if the |
-| 2612–2670 (n=59) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | looks | creative-candidate | unknown; conditional evidence present | Edits LLMaterial, LLGLSLShader, gDeferredMaterialIndexedProgram |
-| 2682–2710 (n=29) | LLViewerShaderMgr::loadShadersDeferred, load_family | looks | creative-candidate | unknown; conditional evidence present | Edits gDeferredPBROpaqueProgram, gDeferredSkinnedPBROpaqueProgram |
-| 2713–2740 (n=28) | LLViewerShaderMgr::loadShadersDeferred, load_family | looks | creative-candidate | unknown; conditional evidence present | Edits gDeferredPBROpaqueIndexedProgram, LLGLSLShader, gDeferredSkinnedPBROpaqueIndexedProgram |
-| 2748–2754 (n=7) | LLViewerShaderMgr::loadShadersDeferred | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The legacy material indexed programs were built earlier (above) with the now-stale channel count and share sIndexedGLTFChannels. Tear them down so the invariant sIndexedLegacyMaterials => sIndexedGLTFChannels >= 2 holds. |
-| 2758–2815 (n=58) | LLViewerShaderMgr::loadShadersDeferred, load_family | actor-path, crowd, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: pushGLTFBatchIndexed drives it directly. Optional: failure leaves the program incomplete and the pool falls back to scalar glow. Kept out of the 'success' chain. pushGLTFBatchIndexed drives it directly. A failure disables indexed material formation so rebuilt geometry uses the sc |
-| 2818–2825 (n=8) | LLViewerShaderMgr::loadShadersDeferred | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_WARNS, LL_ENDL, gPBRGlowIndexedProgram, gPBRGlowSkinnedIndexedProgram |
-| 2843–3168 (n=326) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | capture-sidecar, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Alpha Shader Hack See: LLRender::syncMatrices() [ActorStyle/Shared PBR Phase 1] Optional, isolated forward-PBR replay family.  It intentionally does not participate in the main 'success' chain: a failed cinematic replay program must leave native GLTF rendering available.  The fam |
-| 3238–3244 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredTreeShadowProgram |
-| 3251–3257 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredSkinnedTreeShadowProgram |
-| 3292–3314 (n=23) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: A failed compile decrements mShaderLevel; restore it for the retry. |
-| 3330–3352 (n=23) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; conditional evidence present | Edits gDeferredMultiLightProgram, gGLManager, LL_WARNS, LL_ENDL, gRigRimAuxCompiled |
-| 3366–3387 (n=22) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; conditional evidence present | Edits gDeferredSpotLightProgram, gGLManager, LL_WARNS, LL_ENDL, gRigRimAuxCompiled |
-| 3401–3485 (n=85) | LLViewerShaderMgr::loadShadersDeferred | rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Optional programs cannot change stock success/fallback. No environment uniforms: bindDeferredShader supplies globals, as stock. |
-| 3542–3695 (n=154) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Hack Hack Begin Hack End Hack Begin Hack End Hack |
-| 3700–3715 (n=16) | LLViewerShaderMgr::loadShadersDeferred | looks, roto-tron | creative-candidate | unknown; no local conditional evidence | Comment evidence: [TronA0] Eyes link diffuseF.glsl (a world shader) without HAS_SKIN; this permutation lets diffuseF tag the pixel as avatar geometry. |
-| 3725–3741 (n=17) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightProgram |
-| 3768–3780 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightAlphaMaskProgram |
-| 3815–3828 (n=14) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightAlphaMaskAlphaProgram |
-| 3864–3875 (n=12) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightShinyProgram |
-| 3908–3919 (n=12) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredEmissiveProgram |
-| 3922–3970 (n=49) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A dedicated zero-authored-glow path uses the ordinary colour stream, so Actor FX does not force every actor VBO to carry duplicate emissive vertex data. It is only submitted for active glowing looks. |
-| 3973–3986 (n=14) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredEmissiveIndexedProgram, LLGLSLShader |
-| 4005–4071 (n=67) | LLViewerShaderMgr::loadShadersDeferred | capture-sidecar, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: NOT folded into 'success', and deliberately not asserted. This program is OPTIONAL: it exists only when the visible-diffuse sidecar is enabled, and the whole feature is designed to degrade to feature-off. Gating 'success' on it would abort the rest of the load chain -- gDeferredS |
-| 4153–4159 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowProgram |
-| 4166–4172 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredSkinnedShadowProgram |
-| 4185–4191 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowCubeProgram |
-| 4200–4206 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowFullbrightAlphaMaskProgram |
-| 4222–4228 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowAlphaMaskProgram |
-| 4238–4244 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowGLTFAlphaMaskProgram |
-| 4255–4265 (n=11) | LLViewerShaderMgr::loadShadersDeferred | actor-path, crowd, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: per-slot in the shadow map. Optional: if it fails to load the shadow pass falls back to the scalar program (slightly wrong per-face cutouts, no crash), so this is kept out of the 'success' chain. per-slot in the shadow map. A failure disables indexed material formation; the subse |
-| 4282–4289 (n=8) | LLViewerShaderMgr::loadShadersDeferred | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_WARNS, LL_ENDL, gDeferredShadowGLTFAlphaMaskIndexedProgram, gDeferredSkinnedShadowGLTFAlphaMaskIndexedProgram |
-| 4295–4302 (n=8) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowMaterialIndexedProgram, LLGLSLShader |
-| 4328–4334 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowGLTFAlphaBlendProgram |
-| 4346–4352 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarShadowProgram |
-| 4360–4366 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarAlphaShadowProgram |
-| 4372–4378 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarAlphaMaskShadowProgram |
-| 4405–4419 (n=15) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarProgram |
-| 4438–4451 (n=14) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarAlphaProgram |
-| 4513–5336 (n=824) | LLViewerShaderMgr::loadShadersDeferred, load_family | clones, rig, roto-tron, sensor, shafts-volumetrics, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: llassert(success); continue as if this shader never happened llassert(success); continue as if this shader never happened llassert(success); continue as if this shader never happened llassert(success); continue as if this shader never happened Rig Rim Quality programs are optiona |
-| 5607–5905 (n=299) | LLViewerShaderMgr::loadShadersDeferred | capture-sidecar, looks, shafts-volumetrics | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A5.4-1a/1b] Velocity / motion-vector pass programs. Phase 1b adds the make_rigged_variant skinned pair (HAS_SKIN -> objectSkinV.glsl current + last palettes) and the classic-avatar velocity program. These programs are cheap to keep resident and only run when BDMergeVeloc |
-| 6162–6232 (n=71) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Optional history pass; failure leaves the established unsmoothed path. Always compile the material-free permutation. Select the IR-capable shader only when IR or VND pollution needs G-buffer material inputs. |
-| 6239–6353 (n=115) | LLViewerShaderMgr::loadShadersDeferred | looks, rig, roto-tron, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Optional programs never affect stock shader success/fallback. All permutations follow clearPermutations (CLAUDE.md). [AvatarSilhouette] Coverage replay programs deliberately share the Actor Mask vertex contract, but write continuous RG coverage. [ActorMask] WP7 debug  |
-| 6387–6398 (n=12) | LLViewerShaderMgr::loadShadersObject | looks | creative-candidate | unknown; no local conditional evidence | Edits gObjectAlphaMaskNoColorProgram |
-| 6455–6462 (n=8) | LLViewerShaderMgr::loadShadersAvatar | clones | creative-candidate | unknown; no local conditional evidence | Edits gAvatarActorGhostProgram, gAvatarEyeballActorGhostProgram |
-| 6470–6481 (n=12) | LLViewerShaderMgr::loadShadersAvatar | looks | creative-candidate | unknown; no local conditional evidence | Edits gAvatarProgram |
-| 6495–6564 (n=70) | LLViewerShaderMgr::loadShadersAvatar | clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorStyle] Dedicated WORLD/HDR actorghostF programs for the classic system avatar.  They deliberately remain separate from the interface Ghost Studio pair: classic body vertices use the avatar palette (not objectSkinV), rigid eyes use their joint model matrix, and both need wor |
-| 6585–6702 (n=118) | LLViewerShaderMgr::loadShadersInterface | actor-path, clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMover] pose-ghost FX shader (ALL model-ghost styles): the highlight pair's skinned constant-colour transform plus animated screen-space scanlines, a fresnel-ish rim boost, a subtle time flicker (ghostTime / ghostParams) and the per-batch alpha stage (ghostAux: mask-cutoff d |
-| 7073–7102 (n=30) | LLViewerShaderMgr::updateWeatherUniforms, LLViewerShaderMgr::weatherMaterialsEnabled, LLViewerShaderMgr::weatherMaterialsSupported | weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Four maps per terrain layer plus paint/alpha and cover; forward paths need up to 16. |
-| 7111–7113 (n=3) | unknown/non-function (LLViewerShaderMgr::shader_iter LLViewerShaderMgr::endShaders() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1276–1331 (n=56) | LLViewerShaderMgr::setShaders, LLViewerShaderMgr::unloadShaders | clones, looks, sensor, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Sampler budgets can narrow generic or indexed material batches. Retire old draw maps before any draw uses the newly linked, smaller sampler inventory. [AvatarLightResponse] A completed auxiliary Prism pass can retain shader addresses solely to restore main-view screen uniforms on |
+| 1341–1348 (n=8) | LLViewerShaderMgr::loadBasicShaders | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1377–1396 (n=20) | LLViewerShaderMgr::loadBasicShaders | unknown | unknown-review | unknown; conditional evidence present | Edits gSavedSettings, RenderScreenSpaceReflections, LLCachedControl, RenderEnableEmissiveBuffer |
+| 1410–1415 (n=6) | LLViewerShaderMgr::loadBasicShaders | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 1431–1467 (n=37) | LLViewerShaderMgr::loadBasicShaders | roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [TronA0] Per-pixel avatar tag in the G-buffer normal .w. HASH-TOKEN global define: LLShaderMgr::loadShaderFile keys the flag-decoder preamble text on it (and emits the real GBUFFER_AVATAR_TAG there), the binary-cache hash covers it explicitly (llglslshader.cpp). The hash token it |
+| 1486–1513 (n=28) | LLViewerShaderMgr::loadBasicShaders | environment, looks, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 1516–1550 (n=35) | LLViewerShaderMgr::loadBasicShaders | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A successful load may have selected a lower class, including the no-SSR stub. Only the real, requested modules permit a runtime toggle. Snapshot only preloaded modules, before any program roots are compiled. Their assembled-text keys cover class choices, generated text and channe |
+| 1589–1606 (n=18) | LLViewerShaderMgr::loadShadersWater | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: S3: without this the water shader declares only frag_color, so the sidecar attachment kept the seed pass's answer for the SEABED behind the water and published it as the water surface's albedo at K=1. Only the visible-diffuse permutation -- water has no emissive output, so add_co |
+| 1623–1636 (n=14) | LLViewerShaderMgr::loadShadersWater | capture-sidecar | creative-candidate | unknown; conditional evidence present | Comment evidence: MUST be after clearPermutations(). The underwater program shares POOL_WATER, which opens the sidecar and coverage attachments; without the extra output declarations this shader would write UNDEFINED values to them (hazard H1) -- the precise failure this exists to prevent. |
+| 1783–2041 (n=259) | LLViewerShaderMgr::loadColorChartShaders, LLViewerShaderMgr::loadSensorShaders, LLViewerShaderMgr::loadShadersDeferred, LLViewerShaderMgr::unloadColorChartShaders, LLViewerShaderMgr::unloadSensorShaders, isComplete | clones, looks, rig, roto-tron, sensor, shafts-volumetrics | creative-candidate | unknown; conditional evidence present | Comment evidence: Only the two camera stages needed by the atlas. These private programs cannot invalidate the physical sensor's program suite. Clone source recipes, not program handles or legacy permutations. Compile the pure WP-A utility as a separate production fragment unit. |
+| 2051–2058 (n=8) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; no local conditional evidence | Edits gAreaShadowProgram, gAreaShadowFilterProgram |
+| 2060–2071 (n=12) | LLViewerShaderMgr::loadShadersDeferred | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits gDeferredMultiLightActorMaskProgram, gDeferredMultiSpotLightActorMaskProgram, gVisibleDiffuseSeedProgram |
+| 2082–2090 (n=9) | LLViewerShaderMgr::loadShadersDeferred | roto-tron | creative-candidate | unknown; no local conditional evidence | Edits gActorMaskProgram, gSilCoverProgram, gActorMaskDebugProgram |
+| 2100–2109 (n=10) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gActorFxGlowProgram, gActorFxSkinnedGlowProgram, gActorFxPBRGlowProgram, gActorFxPBRSkinnedGlowProgram |
+| 2120–2165 (n=46) | LLViewerShaderMgr::loadShadersDeferred | looks, rig, roto-tron, shafts-volumetrics, weather | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Ultimate Diopter] |
+| 2176–2215 (n=40) | LLViewerShaderMgr::loadShadersDeferred | capture-sidecar, shafts-volumetrics, vcam | creative-candidate | unknown; no local conditional evidence | Edits gPrismLensProgram, gPrismMediaCopyProgram, LLGLSLShader, gPrismProjectorFeedProgram, gPrismProjectorLookProgram, gPrismPreviewProgram, gVelocityProgram, gVelocityAlphaProgram, gVelocityPBRAlphaProgram, gVelocityAlphaIndexedProgram |
+| 2224–2230 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 2237–2400 (n=164) | LLViewerShaderMgr::loadShadersDeferred, load_family | looks, vcam | creative-candidate | unknown; conditional evidence present | Comment evidence: Preserve required failures before scheduling any family work. The projector conversion uses the same display transform and colour pipeline as monitor previews, but writes a dedicated mipmapped cookie. Keep the family aligned with colorCorrectPermutation() so legacy gamma, tonemap |
+| 2410–2421 (n=12) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredDiffuseProgram |
+| 2425–2437 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredDiffuseAlphaMaskProgram |
+| 2453–2465 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredNonIndexedDiffuseAlphaMaskNoColorProgram |
+| 2468–2480 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredBumpProgram |
+| 2490–2611 (n=122) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | capture-sidecar, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A material's velocity coverage must evaluate the same glare as beauty. Share its sources, features and all permutations. Same post-link lighting flag as the forward beauty program. Clear any stale value from a previous load before (re)deciding legacy indexed eligibility -- if the |
+| 2614–2672 (n=59) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | looks | creative-candidate | unknown; conditional evidence present | Edits LLMaterial, LLGLSLShader, gDeferredMaterialIndexedProgram |
+| 2684–2712 (n=29) | LLViewerShaderMgr::loadShadersDeferred, load_family | looks | creative-candidate | unknown; conditional evidence present | Edits gDeferredPBROpaqueProgram, gDeferredSkinnedPBROpaqueProgram |
+| 2715–2742 (n=28) | LLViewerShaderMgr::loadShadersDeferred, load_family | looks | creative-candidate | unknown; conditional evidence present | Edits gDeferredPBROpaqueIndexedProgram, LLGLSLShader, gDeferredSkinnedPBROpaqueIndexedProgram |
+| 2750–2756 (n=7) | LLViewerShaderMgr::loadShadersDeferred | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: The legacy material indexed programs were built earlier (above) with the now-stale channel count and share sIndexedGLTFChannels. Tear them down so the invariant sIndexedLegacyMaterials => sIndexedGLTFChannels >= 2 holds. |
+| 2760–2817 (n=58) | LLViewerShaderMgr::loadShadersDeferred, load_family | actor-path, crowd, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: pushGLTFBatchIndexed drives it directly. Optional: failure leaves the program incomplete and the pool falls back to scalar glow. Kept out of the 'success' chain. pushGLTFBatchIndexed drives it directly. A failure disables indexed material formation so rebuilt geometry uses the sc |
+| 2820–2827 (n=8) | LLViewerShaderMgr::loadShadersDeferred | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_WARNS, LL_ENDL, gPBRGlowIndexedProgram, gPBRGlowSkinnedIndexedProgram |
+| 2845–3170 (n=326) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | capture-sidecar, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Alpha Shader Hack See: LLRender::syncMatrices() [ActorStyle/Shared PBR Phase 1] Optional, isolated forward-PBR replay family.  It intentionally does not participate in the main 'success' chain: a failed cinematic replay program must leave native GLTF rendering available.  The fam |
+| 3240–3246 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredTreeShadowProgram |
+| 3253–3259 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredSkinnedTreeShadowProgram |
+| 3294–3316 (n=23) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; conditional evidence present | Comment evidence: A failed compile decrements mShaderLevel; restore it for the retry. |
+| 3332–3354 (n=23) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; conditional evidence present | Edits gDeferredMultiLightProgram, gGLManager, LL_WARNS, LL_ENDL, gRigRimAuxCompiled |
+| 3368–3389 (n=22) | LLViewerShaderMgr::loadShadersDeferred | rig | creative-candidate | unknown; conditional evidence present | Edits gDeferredSpotLightProgram, gGLManager, LL_WARNS, LL_ENDL, gRigRimAuxCompiled |
+| 3403–3487 (n=85) | LLViewerShaderMgr::loadShadersDeferred | rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Optional programs cannot change stock success/fallback. No environment uniforms: bindDeferredShader supplies globals, as stock. |
+| 3544–3697 (n=154) | LLViewerShaderMgr::loadShadersDeferred, after_shader_family, load_family | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Hack Hack Begin Hack End Hack Begin Hack End Hack |
+| 3702–3717 (n=16) | LLViewerShaderMgr::loadShadersDeferred | looks, roto-tron | creative-candidate | unknown; no local conditional evidence | Comment evidence: [TronA0] Eyes link diffuseF.glsl (a world shader) without HAS_SKIN; this permutation lets diffuseF tag the pixel as avatar geometry. |
+| 3727–3743 (n=17) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightProgram |
+| 3770–3782 (n=13) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightAlphaMaskProgram |
+| 3817–3830 (n=14) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightAlphaMaskAlphaProgram |
+| 3866–3877 (n=12) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredFullbrightShinyProgram |
+| 3910–3921 (n=12) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredEmissiveProgram |
+| 3924–3972 (n=49) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: A dedicated zero-authored-glow path uses the ordinary colour stream, so Actor FX does not force every actor VBO to carry duplicate emissive vertex data. It is only submitted for active glowing looks. |
+| 3975–3988 (n=14) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredEmissiveIndexedProgram, LLGLSLShader |
+| 4007–4073 (n=67) | LLViewerShaderMgr::loadShadersDeferred | capture-sidecar, rig | creative-candidate | unknown; conditional evidence present | Comment evidence: NOT folded into 'success', and deliberately not asserted. This program is OPTIONAL: it exists only when the visible-diffuse sidecar is enabled, and the whole feature is designed to degrade to feature-off. Gating 'success' on it would abort the rest of the load chain -- gDeferredS |
+| 4155–4161 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowProgram |
+| 4168–4174 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredSkinnedShadowProgram |
+| 4187–4193 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowCubeProgram |
+| 4202–4208 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowFullbrightAlphaMaskProgram |
+| 4224–4230 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowAlphaMaskProgram |
+| 4240–4246 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowGLTFAlphaMaskProgram |
+| 4257–4267 (n=11) | LLViewerShaderMgr::loadShadersDeferred | actor-path, crowd, looks | creative-candidate | unknown; no local conditional evidence | Comment evidence: per-slot in the shadow map. Optional: if it fails to load the shadow pass falls back to the scalar program (slightly wrong per-face cutouts, no crash), so this is kept out of the 'success' chain. per-slot in the shadow map. A failure disables indexed material formation; the subse |
+| 4284–4291 (n=8) | LLViewerShaderMgr::loadShadersDeferred | unknown | unknown-review | unknown; no local conditional evidence | Edits LL_WARNS, LL_ENDL, gDeferredShadowGLTFAlphaMaskIndexedProgram, gDeferredSkinnedShadowGLTFAlphaMaskIndexedProgram |
+| 4297–4304 (n=8) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowMaterialIndexedProgram, LLGLSLShader |
+| 4330–4336 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredShadowGLTFAlphaBlendProgram |
+| 4348–4354 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarShadowProgram |
+| 4362–4368 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarAlphaShadowProgram |
+| 4374–4380 (n=7) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarAlphaMaskShadowProgram |
+| 4407–4421 (n=15) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarProgram |
+| 4440–4453 (n=14) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; no local conditional evidence | Edits gDeferredAvatarAlphaProgram |
+| 4515–5338 (n=824) | LLViewerShaderMgr::loadShadersDeferred, load_family | clones, rig, roto-tron, sensor, shafts-volumetrics, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: llassert(success); continue as if this shader never happened llassert(success); continue as if this shader never happened llassert(success); continue as if this shader never happened llassert(success); continue as if this shader never happened Rig Rim Quality programs are optiona |
+| 5609–5907 (n=299) | LLViewerShaderMgr::loadShadersDeferred | capture-sidecar, looks, shafts-volumetrics | creative-candidate | unknown; conditional evidence present | Comment evidence: [BDMerge A5.4-1a/1b] Velocity / motion-vector pass programs. Phase 1b adds the make_rigged_variant skinned pair (HAS_SKIN -> objectSkinV.glsl current + last palettes) and the classic-avatar velocity program. These programs are cheap to keep resident and only run when BDMergeVeloc |
+| 6164–6234 (n=71) | LLViewerShaderMgr::loadShadersDeferred | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Optional history pass; failure leaves the established unsmoothed path. Always compile the material-free permutation. Select the IR-capable shader only when IR or VND pollution needs G-buffer material inputs. |
+| 6241–6355 (n=115) | LLViewerShaderMgr::loadShadersDeferred | looks, rig, roto-tron, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMask] Optional programs never affect stock shader success/fallback. All permutations follow clearPermutations (CLAUDE.md). [AvatarSilhouette] Coverage replay programs deliberately share the Actor Mask vertex contract, but write continuous RG coverage. [ActorMask] WP7 debug  |
+| 6389–6400 (n=12) | LLViewerShaderMgr::loadShadersObject | looks | creative-candidate | unknown; no local conditional evidence | Edits gObjectAlphaMaskNoColorProgram |
+| 6457–6464 (n=8) | LLViewerShaderMgr::loadShadersAvatar | clones | creative-candidate | unknown; no local conditional evidence | Edits gAvatarActorGhostProgram, gAvatarEyeballActorGhostProgram |
+| 6472–6483 (n=12) | LLViewerShaderMgr::loadShadersAvatar | looks | creative-candidate | unknown; no local conditional evidence | Edits gAvatarProgram |
+| 6497–6566 (n=70) | LLViewerShaderMgr::loadShadersAvatar | clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorStyle] Dedicated WORLD/HDR actorghostF programs for the classic system avatar.  They deliberately remain separate from the interface Ghost Studio pair: classic body vertices use the avatar palette (not objectSkinV), rigid eyes use their joint model matrix, and both need wor |
+| 6587–6704 (n=118) | LLViewerShaderMgr::loadShadersInterface | actor-path, clones, looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ActorMover] pose-ghost FX shader (ALL model-ghost styles): the highlight pair's skinned constant-colour transform plus animated screen-space scanlines, a fresnel-ish rim boost, a subtle time flicker (ghostTime / ghostParams) and the per-batch alpha stage (ghostAux: mask-cutoff d |
+| 7075–7104 (n=30) | LLViewerShaderMgr::updateWeatherUniforms, LLViewerShaderMgr::weatherMaterialsEnabled, LLViewerShaderMgr::weatherMaterialsSupported | weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Four maps per terrain layer plus paint/alpha and cover; forward paths need up to 16. |
+| 7113–7115 (n=3) | unknown/non-function (LLViewerShaderMgr::shader_iter LLViewerShaderMgr::endShaders() const) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 3: `indra/newview/llviewershadermgr.h`
 
@@ -2880,6 +2880,77 @@ HEAD coordinates; guards/features are candidate evidence
 | 1012–1038 (n=27) | flareForSource | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: ---- Halo chromatic fringing (new, gated) ------------------------- R ring pulled slightly inward, B pushed outward — classic lateral dispersion. G keeps the base ring. |
 | 1065–1236 (n=172) | computeLensFlare, flareForSource | clones, rig, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: ---- N-gon iris ghosts (new, gated) ----------------------------------- Polygonal aperture reflections marching along the source→center axis, body + bright rim, per-element hash for spacing/size/rotation jitter. March from just past the source through center to the far side, with |
 
+## Slice 4: `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 24–40 (n=17) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 67–79 (n=13) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 83–85 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–43 (n=17) | unknown/non-function (uniform mat3 normal_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 58–70 (n=13) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 72–74 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 32–46 (n=15) | unknown/non-function (uniform mat4 texture_matrix0;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 76–84 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 127–135 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 149–151 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 25–30 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 33–47 (n=15) | main | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 51–57 (n=7) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 60–68 (n=9) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–41 (n=15) | unknown/non-function (uniform mat3 normal_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 47–60 (n=14) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 30–43 (n=14) | main | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 47–53 (n=7) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 58–60 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 24–38 (n=15) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 58–66 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 143–151 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/blurLightF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -2889,6 +2960,34 @@ HEAD coordinates; guards/features are candidate evidence
 | 36–51 (n=16) | unknown/non-function (uniform vec2 screen_res;) | unknown | unknown-review | unknown; no local conditional evidence | Comment evidence: [ShadowDist P1] Control D: sun-shadow (.r) softening decoupled from the SSAO (.g) blur. 0 = stock (the shadow channel shares the SSAO kernel; the original code below runs untouched), 1 = Gaussian sigma in pixels, 2 = Gaussian sigma in world metres (converted per pixel from depth, |
 | 118–188 (n=71) | main | clones | creative-candidate | unknown; conditional evidence present | Comment evidence: [ShadowDist P1] Control D. The stock loops above have already produced .g (SSAO) -- and .b/.a, which softenLight never reads -- exactly as before; only the shadow channel is replaced here. Dedicated taps sit on the UNPERTURBED pixel grid at whole-pixel offsets (the light map is p |
 
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–41 (n=15) | unknown/non-function (uniform mat4 modelview_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 55–63 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 75–83 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/diffuseNoColorV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 24–60 (n=37) | main | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 26–40 (n=15) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 57–65 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 73–81 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
 ## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/emissiveF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -2896,6 +2995,129 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 28–117 (n=90) | main | capture-sidecar, clones, looks, roto-tron | creative-candidate | unknown; conditional evidence present | Comment evidence: Shared Cover replays authored legacy glow separately from its treatment bloom.  Keep dissolve coverage active, but omit actorFxEmissive so the actorghost glow-only pass remains the single synthetic contributor. 0: no cutoff, 1: texture alpha, 2: texture * vertex alpha, 3: texture |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 37–69 (n=33) | main | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 73–87 (n=15) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 26–43 (n=18) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 46–52 (n=7) | unknown/non-function (vec3 atmosAmbient();) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 56–64 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 73–87 (n=15) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 28–34 (n=7) | unknown/non-function (uniform mat4 texture_matrix0;) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 38–49 (n=12) | unknown/non-function (uniform vec4 origin;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 61–69 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 81–89 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 26–41 (n=16) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 57–65 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 75–83 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 31–37 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 42–53 (n=12) | unknown/non-function (uniform mat3 normal_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 76–84 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 121–133 (n=13) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 35–40 (n=6) | unknown/non-function (mat4 getObjectSkinnedTransform();) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 43–61 (n=19) | main | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 66–76 (n=11) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 31–37 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 44–55 (n=12) | unknown/non-function (out vec3 vary_position;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 76–98 (n=23) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 144–172 (n=29) | main | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: Rasterize with the identical beauty position above; motion uses the unjittered endpoints and the same history as the other velocity pools. |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 36–41 (n=6) | unknown/non-function (mat4 getObjectSkinnedTransform();) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 47–65 (n=19) | main | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 71–81 (n=11) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 35–61 (n=27) | main | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 68–79 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 25–31 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 53–64 (n=12) | unknown/non-function (uniform vec4[2] texture_emissive_transform;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 81–89 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 118–130 (n=13) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 35–59 (n=25) | unknown/non-function (uniform mat4 projection_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 63–87 (n=25) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 98–109 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 30–54 (n=25) | unknown/non-function (uniform mat4 projection_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 56–71 (n=16) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 74–96 (n=23) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbropaqueF.glsl`
 
@@ -2908,6 +3130,88 @@ HEAD coordinates; guards/features are candidate evidence
 | 158–265 (n=108) | defined, main | looks, roto-tron, sensor, weather | creative-candidate | unknown; conditional evidence present | Comment evidence: Neutral occlusion prevents the old material's cavities/noise from modulating a flat/sensor/owned-material Cover treatment. Evaluate derivatives for the entire quad, then exclude emitting pixels. [TronA0] rigged mesh: avatar geometry -> tagged flag |
 | 271–281 (n=11) | unknown/non-function (uniform sampler2D diffuseMap;  //always in sRGB space) | unknown | unknown-review | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 | 312–314 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 29–35 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 49–60 (n=12) | unknown/non-function (uniform vec4 gltf_mr_transform[2*GLTF_INDEXED_CHANNELS];) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 80–88 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 126–137 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 25–31 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 46–57 (n=12) | unknown/non-function (uniform vec4[2] texture_metallic_roughness_transform;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 74–82 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 112–124 (n=13) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 157–159 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 32–58 (n=27) | main | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 65–76 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 26–36 (n=11) | unknown/non-function (declaration, XML, build list or global scope) | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+| 39–47 (n=9) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/shadowSkinnedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–48 (n=22) | main | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/shadowV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 26–41 (n=16) | main | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/treeShadowSkinnedV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 31–53 (n=23) | main | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/deferred/treeShadowV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 30–47 (n=18) | main | clones, looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
+
+## Slice 4: `indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl`
+
+HEAD coordinates; guards/features are candidate evidence
+
+| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
+|---|---|---|---|---|---|
+| 27–45 (n=19) | unknown/non-function (uniform mat3 normal_matrix;) | clones, looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
+| 58–69 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 4: `indra/newview/fsposeranimator.cpp`
 
@@ -4491,26 +4795,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 116–291 (n=176) | cameraTransfer, defined, main | looks, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: White balance and lift/gamma/gain run in linear light, between exposure and tonemap, so chromatic adaptation and the three-way grade act on physically meaningful HDR values rather than rolled-off display ones. Bypassed for S-Log3 capture: grade neutrally, correct in post. Split t |
 | 295–313 (n=19) | main | looks, sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: White balance and lift/gamma/gain run in linear light, between exposure and tonemap, so chromatic adaptation and the three-way grade act on physically meaningful HDR values rather than rolled-off display ones. Split toning after tonemap so tints apply to rolled-off values. === DI |
 
-## Slice 10: `indra/newview/app_settings/shaders/class1/avatar/avatarV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 24–37 (n=14) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 64–75 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 79–81 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/avatar/eyeballV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 27–40 (n=14) | unknown/non-function (uniform mat3 normal_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 55–66 (n=12) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 68–70 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/SMAA.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -4521,16 +4805,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 1383–1391 (n=9) | SMAANeighborhoodBlendingPS | sensor | creative-candidate | unknown; conditional evidence present | Edits AL_SENSOR_HDR |
 | 1403–1417 (n=15) | SMAANeighborhoodBlendingPS | sensor | creative-candidate | unknown; conditional evidence present | Edits AL_SENSOR_HDR |
 | 1423–1431 (n=9) | SMAANeighborhoodBlendingPS | sensor | creative-candidate | unknown; conditional evidence present | Edits AL_SENSOR_HDR |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/alphaV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 32–43 (n=12) | unknown/non-function (uniform mat4 texture_matrix0;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 73–81 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 143–145 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaMaskShadowF.glsl`
 
@@ -4548,25 +4822,6 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 29–61 (n=33) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/avatarAlphaShadowV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 25–30 (n=6) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 33–44 (n=12) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 56–64 (n=9) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/avatarEyesV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 27–38 (n=12) | unknown/non-function (uniform mat3 normal_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 44–52 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/avatarShadowF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -4574,34 +4829,6 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 26–40 (n=15) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/avatarShadowV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 30–40 (n=11) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 54–56 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/avatarV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 24–35 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 55–63 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 143–145 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/bumpV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 27–38 (n=12) | unknown/non-function (uniform mat4 modelview_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 52–60 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/cofF.glsl`
 
@@ -4612,23 +4839,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 43–98 (n=56) | lensSoftEdgeMask | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [LensLooks] Soft-Edge "Defocus" blur type: widen the circle of confusion outside the sweet spot so DoF renders real bokeh there (doc/LENS_LOOKS_CONTRACT.md, stage S4).  dof_softedge.x == 0 (the GL default) is the bit-exact off path: the branch in main() is untaken and the origina |
 | 124–144 (n=21) | main | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [LensLooks] Defocus: outside the sweet spot, push the CoF toward the far-blur edge value (never shrinking an existing larger blur of either sign).  Off (dof_softedge.x == 0) leaves sc exactly as computed above. Far blur is NEGATIVE here (see the dof_softedge comment), which is th |
 
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/diffuseNoColorV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 24–54 (n=31) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/diffuseV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 26–37 (n=12) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 54–62 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/dofCombineF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -4636,45 +4846,6 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 48–141 (n=94) | main, sensorDiskCount, sensorFocused, sensorReflect | sensor | creative-candidate | unknown; conditional evidence present | Comment evidence: GLSL integer remainder is undefined for negative operands. A full-resolution focused receiver is opaque to background scatter. Only front-of-focus apertures contribute, with their own coverage and transmittance. Do not infer coverage from a mixed reduced depth cell. Integrate the |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/emissiveIndexedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 37–63 (n=27) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 70–74 (n=5) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/emissiveV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 26–40 (n=15) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 43–49 (n=7) | unknown/non-function (vec3 atmosAmbient();) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 53–61 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 75–81 (n=7) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/fullbrightShinyV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 28–34 (n=7) | unknown/non-function (uniform mat4 texture_matrix0;) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 38–46 (n=9) | unknown/non-function (uniform vec4 origin;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 58–66 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/fullbrightV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 26–38 (n=13) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 54–62 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/gbufferUtil.glsl`
 
@@ -4694,16 +4865,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 37–55 (n=19) | unknown/non-function (uniform sampler2D emissiveRect;) | sensor | creative-candidate | unknown; no local conditional evidence | Comment evidence: [Night Mask B1] emissiveRect (bloomMip[0]) here is LAST frame's bloom, which generateBloomHDR() builds from the (possibly masked) scene AFTER this same luminance pass runs each frame. When Night Mask is active, that bloom was generated from the darkened scene, so folding it into  |
 | 73–79 (n=7) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/materialIndexedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 31–37 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 42–50 (n=9) | unknown/non-function (uniform mat3 normal_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 73–81 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -4712,27 +4873,6 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 32–46 (n=15) | unknown/non-function (out vec4 frag_color;) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 97–106 (n=10) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/materialShadowIndexedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 35–40 (n=6) | unknown/non-function (mat4 getObjectSkinnedTransform();) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 43–55 (n=13) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 60–65 (n=6) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/materialV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 31–37 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 44–52 (n=9) | unknown/non-function (out vec3 vary_position;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 73–95 (n=23) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 146–162 (n=17) | main | unknown | unknown-review | unknown; conditional evidence present | Comment evidence: Rasterize with the identical beauty position above; motion uses the unjittered endpoints and the same history as the other velocity pools. |
 
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaBlendF.glsl`
 
@@ -4760,76 +4900,6 @@ HEAD coordinates; guards/features are candidate evidence
 | 30–44 (n=15) | unknown/non-function (out vec4 frag_color;) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 97–106 (n=10) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskIndexedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 36–41 (n=6) | unknown/non-function (mat4 getObjectSkinnedTransform();) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 47–59 (n=13) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 65–70 (n=6) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbrShadowAlphaMaskV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 35–55 (n=21) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 62–67 (n=6) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbralphaV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 25–31 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 53–61 (n=9) | unknown/non-function (uniform vec4[2] texture_emissive_transform;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 78–86 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbrglowIndexedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 35–56 (n=22) | unknown/non-function (uniform mat4 projection_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 60–84 (n=25) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 95–99 (n=5) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbrglowV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 30–51 (n=22) | unknown/non-function (uniform mat4 projection_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 53–68 (n=16) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 71–86 (n=16) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbropaqueIndexedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 29–35 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 49–57 (n=9) | unknown/non-function (uniform vec4 gltf_mr_transform[2*GLTF_INDEXED_CHANNELS];) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 77–85 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/pbropaqueV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 25–31 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 46–54 (n=9) | unknown/non-function (uniform vec4[2] texture_metallic_roughness_transform;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 71–79 (n=9) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 147–149 (n=3) | unknown/non-function (void main()) | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/postDeferredF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -4849,24 +4919,6 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 28–105 (n=78) | main | looks | creative-candidate | unknown; conditional evidence present | Comment evidence: [ShadowDist P3] shadow-pass alpha policy (design v4 s3 / v5 s2). Mode 0 = stock (the legacy branches below run verbatim). Mode 1 = one LOW cutoff, no column dither: thin alpha-cut jewelry / hair whose mip-averaged alpha lands between the cutoff and 0.88 casts a CONTINUOUS shadow  |
 
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/shadowAlphaMaskV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 32–52 (n=21) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 59–64 (n=6) | main | unknown | unknown-review | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/shadowCubeV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 26–32 (n=7) | unknown/non-function (declaration, XML, build list or global scope) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-| 35–41 (n=7) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/shadowF.glsl`
 
 HEAD coordinates; guards/features are candidate evidence
@@ -4874,22 +4926,6 @@ HEAD coordinates; guards/features are candidate evidence
 | HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
 |---|---|---|---|---|---|
 | 24–38 (n=15) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/shadowSkinnedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 27–39 (n=13) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/shadowV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 26–36 (n=11) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/treeShadowF.glsl`
 
@@ -4899,31 +4935,6 @@ HEAD coordinates; guards/features are candidate evidence
 |---|---|---|---|---|---|
 | 33–41 (n=9) | unknown/non-function (uniform float minimum_alpha;) | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
 | 46–55 (n=10) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/treeShadowSkinnedV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 31–43 (n=13) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/deferred/treeShadowV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 30–40 (n=11) | main | looks | creative-candidate | unknown; no local conditional evidence | Edits declarations/data/build wiring; purpose unknown |
-
-## Slice 10: `indra/newview/app_settings/shaders/class1/objects/simpleNoColorV.glsl`
-
-HEAD coordinates; guards/features are candidate evidence
-
-| HEAD range | Function(s) / context | Feature candidates | Scope | Guard status | Purpose evidence |
-|---|---|---|---|---|---|
-| 27–42 (n=16) | unknown/non-function (uniform mat3 normal_matrix;) | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
-| 55–65 (n=11) | main | looks | creative-candidate | unknown; conditional evidence present | Edits declarations/data/build wiring; purpose unknown |
 
 ## Slice 10: `indra/newview/app_settings/shaders/class2/deferred/reflectionProbeF.glsl`
 

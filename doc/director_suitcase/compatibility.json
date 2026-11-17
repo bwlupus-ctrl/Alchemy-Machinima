@@ -1037,6 +1037,69 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/alclonetransition.cpp",
+    "dependency": "indra/newview/alclonetransition.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alclonetransitionrender.h",
+    "dependency": "indra/newview/alclonetransition.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alclonetransitions.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alclonetransitions.cpp",
+    "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alclonetransitions.cpp",
+    "dependency": "indra/newview/llghostavatar.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alclonetransitions.cpp",
+    "dependency": "indra/newview/llpresentationtime.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alclonetransitions.h",
+    "dependency": "indra/newview/alclonetransition.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/alcolorchart.cpp",
     "dependency": "indra/newview/alcolorchart.h",
     "excluded": false,
@@ -1210,6 +1273,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/aldirectoralloff.cpp",
     "dependency": "indra/newview/alcinelightrigmanager.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/aldirectoralloff.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -2343,6 +2415,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alghostcloneactions.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghostcloneactions.cpp",
     "dependency": "indra/newview/alghostanimdrop.h",
     "excluded": false,
     "origin": "fork-added",
@@ -2776,6 +2857,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alghoststudio.cpp",
     "dependency": "indra/newview/alcinelightrigmanager.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alghoststudio.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -5548,6 +5638,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelghoststudio.cpp",
     "dependency": "indra/newview/alghostcloneactions.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelghoststudio.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -8445,6 +8544,24 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.cpp",
+    "dependency": "indra/newview/alclonetransitionrender.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.cpp",
     "dependency": "indra/newview/llclonefidelityaudit.h",
     "excluded": false,
     "origin": "fork-added",
@@ -8572,6 +8689,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llactormover.h",
     "dependency": "indra/newview/llghostcoverage.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llactormover.h",
+    "dependency": "indra/newview/alclonetransition.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -8842,6 +8968,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llappviewer.cpp",
     "dependency": "indra/newview/alghoststudio.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llappviewer.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9435,6 +9570,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/lldirectorcast.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.cpp",
     "dependency": "indra/newview/llghostavatar.h",
     "excluded": false,
     "origin": "fork-added",
@@ -9463,6 +9607,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/lldirectorcast.cpp",
     "dependency": "indra/newview/llflycamrecorder.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.h",
+    "dependency": "indra/newview/alclonetransition.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9571,6 +9724,24 @@
     "class": "OWNED",
     "consumer": "indra/newview/lldrawpool.cpp",
     "dependency": "indra/newview/altron.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldrawpool.cpp",
+    "dependency": "indra/newview/alclonetransitionrender.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldrawpool.cpp",
+    "dependency": "indra/newview/alclonetransitions.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
