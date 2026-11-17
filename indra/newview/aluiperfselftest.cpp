@@ -4313,7 +4313,7 @@ private:
             nav = functionalVerifiedTabButton(tabs);
         }
         std::string reason;
-        bool ok = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) &&
+        bool ok = gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) &&
             nav && functionalReachable(nav, reason) && functionalPointerClick();
         addFunctionalResult(assertion, ok ? "PASS" : "FAIL",
             ok ? "real dispatch channel accepted a verified navigation click" :
@@ -5787,7 +5787,7 @@ private:
             return false;
         }
         // With the UI disabled a click skips UI dispatch entirely; never inject then.
-        if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+        if (!gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
         {
             reason = "in-world: the UI is disabled (hidden); input refused";
             return false;

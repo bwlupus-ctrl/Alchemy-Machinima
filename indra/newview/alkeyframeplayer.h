@@ -24,6 +24,24 @@ public:
     bool restricted(std::string& why) const;
     ALKf::Sequence& sequence();
     ALKf::History& history();
+    ALKfTransport::State state() const;
+    double time() const;
+    double duration();
+    std::uint64_t revision() const;
+    const std::string& status() const;
+    // Validates before stopping or swapping; resets history identity and runtime.
+    bool replaceSequence(ALKf::Sequence, std::string& reason);
+    const ALKf::Cache* cameraCache();
+    // Call only for authoritative deletion, never visibility/cache eviction.
+    void targetRemoved(const ALKf::Id&);
+    void rewriteActorReferences(const ALKf::Id& oldId, const ALKf::Id& newId);
+    // UI/overlay owners register cancellation here; called before capture loss.
+    void setCancelEdit(std::function<void()>);
+    void presented();
+    // WP6 registers only while editing is visible; invoked in the guarded guides pass.
+    void setGuideDraw(std::function<void()>);
+    bool hasGuideDraw() const;
+    void drawGuides() const;
 private:
     struct Impl;
     std::unique_ptr<Impl> mImpl;

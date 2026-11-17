@@ -169,6 +169,10 @@ if (HAVOK)
 endif ()
 
 set(viewer_SOURCE_FILES
+    alkeyframetransport.cpp
+    alkeyframecamera.cpp
+    alkeyframeplayer.cpp
+    alkeyframelibrary.cpp
     alkeyframecore.cpp
     alkeyframecodec.cpp
     alkeyframehistoryadapter.cpp
@@ -1219,6 +1223,9 @@ set(viewer_HEADER_FILES
     alsteppedanimruntime.h
     alpanelsteppedanim.h
     alcleanframe.h
+    alkeyframeviewer.h
+    alcleantelemetry.h
+    alkeyframeparticles.h
     alkeyframecore.h
     alkeyframetransport.h
     alkeyframehistoryadapter.h

@@ -4,6 +4,10 @@
 class LLSD;
 namespace ALKeyframeLibrary
 {
+std::string directory();
+std::string path(const std::string& name);
+std::vector<std::string> names();
+bool remove(const std::string& name);
 LLSD toLLSD(const KfDoc&);
 bool fromLLSD(const LLSD&, KfDoc&, std::string& reason);
 bool saveVerified(const std::string& file, const ALKf::Sequence&, std::string& reason);

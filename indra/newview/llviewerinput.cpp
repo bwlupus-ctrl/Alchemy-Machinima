@@ -25,6 +25,9 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alkeyframeinputgate.h"
+#include "alkeyframeplayer.h"
 
 #include "llviewerinput.h"
 
@@ -91,6 +94,13 @@ struct LLKeyboardActionRegistry
 };
 
 LLViewerInput gViewerInput;
+namespace
+{
+ALKeyframeInputGate sCleanKeys, sCleanMouse, sCleanGlobalMouse;
+std::array<bool, 256> sCleanReleased{}; // survives immediate global UP until ordinary scan UP
+unsigned cleanButton(EMouseClickType button) { return button==CLICK_DOUBLELEFT ? (unsigned)CLICK_LEFT : (unsigned)button; }
+}
+
 
 bool agent_jump( EKeystate s )
 {
@@ -1169,6 +1179,16 @@ bool agent_control_lbutton_handle(EKeystate s)
 #define REGISTER_KEYBOARD_ACTION(KEY, ACTION) LLREGISTER_STATIC(LLKeyboardActionRegistry, KEY, LLKeybindFunctionData(ACTION, false));
 // Global keybindings that should work even with floaters focused, like voice
 #define REGISTER_KEYBOARD_GLOBAL_ACTION(KEY, ACTION) LLREGISTER_STATIC(LLKeyboardActionRegistry, KEY, LLKeybindFunctionData(ACTION, true));
+bool keyframe_play_stop(EKeystate state)
+{
+    if(state==KEYSTATE_DOWN)
+    {
+        auto& player=ALKeyframePlayer::instance();
+        if(player.ownsCamera()) player.stop(ALKfTransport::Exit::CUT); else player.play();
+    }
+    return true;
+}
+REGISTER_KEYBOARD_ACTION("keyframe_play_stop", keyframe_play_stop);
 REGISTER_KEYBOARD_ACTION("jump", agent_jump);
 REGISTER_KEYBOARD_ACTION("push_down", agent_push_down);
 REGISTER_KEYBOARD_ACTION("push_forward", agent_push_forward);
@@ -1391,6 +1411,7 @@ bool LLViewerInput::handleKey(KEY translated_key, MASK translated_mask, bool rep
 
 bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 {
+    if(sCleanReleased[translated_key]) return true;
     if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     const auto hot = sHotGazeKeys.find(translated_key);
     if (hot != sHotGazeKeys.end())
@@ -1400,6 +1421,7 @@ bool LLViewerInput::handleKeyUp(KEY translated_key, MASK translated_mask)
 
 bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 {
+    sCleanReleased[key]=false;
     if (mGlobalBindsSuspended)
     {
         return false; // functional self-test: no user binding may run
@@ -1416,6 +1438,11 @@ bool LLViewerInput::handleGlobalBindsKeyDown(KEY key, MASK mask)
 
 bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)
 {
+    if(sCleanKeys.releaseKey(key))
+    {
+        sCleanReleased[key]=true;
+        return true; // suppress global AND delayed ordinary stock UP
+    }
     if (mGlobalBindsSuspended)
     {
         return false; // functional self-test: no user binding may run
@@ -1433,6 +1460,8 @@ bool LLViewerInput::handleGlobalBindsKeyUp(KEY key, MASK mask)
 
 bool LLViewerInput::handleGlobalBindsMouse(EMouseClickType clicktype, MASK mask, bool down)
 {
+    const auto button=cleanButton(clicktype);
+    if(down ? sCleanGlobalMouse.mouseDown(button,ALCleanFrame::active()) : sCleanGlobalMouse.mouseUp(button)) return true;
     if (mGlobalBindsSuspended)
     {
         return false; // functional self-test: no user binding may run
@@ -1928,6 +1957,25 @@ EKeyboardMode LLViewerInput::getMode() const
     }
 }
 
+namespace
+{
+// Rev5 census: normal/fast move_* zoom only; sitting wrappers may forward agent controls.
+// Apply the same classification to seated spin wrappers so grabbed vehicles still steer.
+const LLKeyFunc* cleanAgentBranch(std::string_view name)
+{
+    static const LLKeyFunc forward=agent_push_forward, backward=agent_push_backward;
+    static const LLKeyFunc right=agent_turn_right, left=agent_turn_left, up=agent_jump, down=agent_push_down;
+    const bool sit=gAgentCamera.sitCameraEnabled();
+    if(name=="move_forward_sitting" && ALKeyframeInputGate::seatedMoveAgent(gAgent.forwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())) return &forward;
+    if(name=="move_backward_sitting" && ALKeyframeInputGate::seatedMoveAgent(gAgent.backwardGrabbed(),sit,gAgent.getRunning(),gAgent.getAlwaysRun())) return &backward;
+    if(name=="spin_around_ccw_sitting" && (gAgent.rotateGrabbed() || sit || gAgent.getRunning())) return &right;
+    if(name=="spin_around_cw_sitting" && (gAgent.rotateGrabbed() || sit || gAgent.getRunning())) return &left;
+    if(name=="spin_over_sitting" && (gAgent.upGrabbed() || sit)) return &up;
+    if(name=="spin_under_sitting" && (gAgent.downGrabbed() || sit)) return &down;
+    return nullptr;
+}
+}
+
 bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                                S32 binding_count,
                                KEY key,
@@ -1944,17 +1992,27 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
             const bool hot_gaze = binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0;
             if (hot_gaze ? binding[i].mMask == mask : (binding[i].mMask & mask) == binding[i].mMask)
             {
+                const auto& name=binding[i].mFunctionName;
+                const bool clean=ALCleanFrame::active();
+                const LLKeyFunc* function=&binding[i].mFunction;
+                const LLKeyFunc* agent=clean ? cleanAgentBranch(name) : nullptr;
+                if(agent) function=agent;
+                const std::string_view action=agent ? "agent_seated_control" : std::string_view(name);
+                const bool move=name.starts_with("move_") && !agent;
+                if((key_down || key_level) && !sCleanKeys.allow(key,action,
+                    key_down ? ALKeyframeInputGate::Phase::Down : ALKeyframeInputGate::Phase::Level,clean,move)) return true;
                 bool res = false;
                 if (key_down && !repeat)
                 {
                     // ...key went down this frame, call function
-                    if (binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0)
+                    if (!clean && binding[i].mFunctionName.compare(0, 18, "director_hot_gaze_") == 0)
                     {
                         sHotGazeKeys[key] = binding[i].mFunction;
                         if (!gIdleCallbacks.containsFunction(releaseHotGazeKeys))
                             gIdleCallbacks.addFunction(releaseHotGazeKeys);
                     }
-                    res = binding[i].mFunction( KEYSTATE_DOWN );
+                    res = (*function)(KEYSTATE_DOWN);
+                    if(res) sCleanKeys.started(key,name,[up=*function](){ up(KEYSTATE_UP); },clean);
                     return true;
                 }
                 else if (key_up)
@@ -1966,7 +2024,7 @@ bool LLViewerInput::scanKey(const std::vector<LLKeyboardBinding> &binding,
                 {
                     // ...key held down from previous frame
                     // Not windows, just call the function.
-                    res = binding[i].mFunction( KEYSTATE_LEVEL );
+                    res = (*function)(KEYSTATE_LEVEL);
                 }//if
                 // Key+Mask combinations are supposed to be unique, so we won't find anything else
                 return res;
@@ -1984,6 +2042,11 @@ bool LLViewerInput::scanKey(KEY key, bool key_down, bool key_up, bool key_level)
         return false;
     }
 
+    if(key_up && (sCleanReleased[key] || sCleanKeys.releaseKey(key)))
+    {
+        sCleanReleased[key]=false;
+        return true;
+    }
     // A release belongs to the action chosen on DOWN, even if modifiers,
     // keyboard mode or UI focus changed while held.
     const auto hot = sHotGazeKeys.find(key);
@@ -2011,6 +2074,8 @@ bool LLViewerInput::scanKey(KEY key, bool key_down, bool key_up, bool key_level)
 bool LLViewerInput::handleMouse(LLWindow *window_impl, LLCoordGL pos, MASK mask, EMouseClickType clicktype, bool down)
 {
     if (dropsNativeInput()) return true; // functional self-test: real OS input is ignored
+    const auto button=cleanButton(clicktype);
+    if(down ? sCleanMouse.mouseDown(button,ALCleanFrame::active()) : sCleanMouse.mouseUp(button)) return true;
     bool is_toolmgr_action = false;
     bool handled = gViewerWindow->handleAnyMouseClick(window_impl, pos, mask, clicktype, down, is_toolmgr_action);
 

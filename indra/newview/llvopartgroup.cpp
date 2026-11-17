@@ -25,6 +25,11 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alkeyframeparticles.h"
+#include "alcleantelemetry.h"
+#include "alkeyframeviewer.h"
+#include "llviewerpartsource.h"
 #include "alderenderlist.h"
 
 #include "llvopartgroup.h"
@@ -44,6 +49,48 @@
 #include "llviewerregion.h"
 #include "pipeline.h"
 #include "llspatialpartition.h"
+
+namespace
+{
+std::map<LLVOPartGroup*,bool> sKeyframeParticleObjects; // one node per object birth, never per frame
+bool keyframeEffect(const LLViewerPart& part)
+{
+    if(part.mPartSourcep.isNull()) return false;
+    const auto type=part.mPartSourcep->getType();
+    return type==LLViewerPartSource::LL_PART_SOURCE_SPIRAL || type==LLViewerPartSource::LL_PART_SOURCE_BEAM || type==LLViewerPartSource::LL_PART_SOURCE_CHAT;
+}
+}
+void ALKeyframeViewer::cleanParticleTransition()
+{
+    // Transition-only scan; production and the frozen/prebuilt fixture use this same algorithm.
+    ALCleanParticleBatches::transition(sKeyframeParticleObjects,ALCleanFrame::active(),
+        [](const auto& entry){
+            auto* object=entry.first; auto* particles=object->getViewerPartGroup();
+            if(!particles || object->isDead() || object->mDrawable.isNull()) return false;
+            for(const auto* part:particles->mParticles) if(keyframeEffect(*part)) return true;
+            return false;
+        },
+        [](const auto& entry){return reinterpret_cast<std::uintptr_t>(entry.first->mDrawable->getSpatialGroup());},
+        [](const auto& entry){
+            auto* drawable=entry.first->mDrawable.get();
+            gPipeline.markRebuild(drawable,LLDrawable::REBUILD_ALL);
+            entry.first->updateGeometry(drawable);
+            if(auto* group=drawable->getSpatialGroup()) group->setState(LLSpatialGroup::GEOM_DIRTY);
+        },
+        [](std::uintptr_t address){
+            auto* group=reinterpret_cast<LLSpatialGroup*>(address);
+            group->getSpatialPartition()->rebuildGeom(group);
+            group->rebuildMesh();
+        });
+}
+void ALKeyframeViewer::particleGroupBuilt(LLSpatialGroup* group,bool forbidden)
+{
+    if(ALCleanFrame::active()) ALCleanParticleBatches::built(reinterpret_cast<std::uintptr_t>(group),forbidden);
+}
+bool ALKeyframeViewer::particleGroupForbidden(const LLSpatialGroup* group)
+{
+    return ALCleanParticleBatches::forbidden(reinterpret_cast<std::uintptr_t>(group));
+}
 
 extern U64MicrosecondsImplicit gFrameTime;
 
@@ -81,6 +128,7 @@ LLVOPartGroup::LLVOPartGroup(const LLUUID &id, const LLPCode pcode, LLViewerRegi
     :   LLAlphaObject(id, pcode, regionp),
         mViewerPartGroupp(NULL)
 {
+    sKeyframeParticleObjects.emplace(this,false);
     setNumTEs(1);
     setTETexture(0, LLUUID::null);
     mbCanSelect = false;            // users can't select particle systems
@@ -89,6 +137,7 @@ LLVOPartGroup::LLVOPartGroup(const LLUUID &id, const LLPCode pcode, LLViewerRegi
 
 LLVOPartGroup::~LLVOPartGroup()
 {
+    sKeyframeParticleObjects.erase(this);
 }
 
 bool LLVOPartGroup::isActive() const
@@ -245,7 +294,7 @@ bool LLVOPartGroup::updateGeometry(LLDrawable *drawable)
         return true;
     }
 
-    if (!(gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_PARTICLES)))
+    if (!ALCleanFrame::active() && !(gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_PARTICLES)))
     {
         return true;
     }
@@ -263,6 +312,7 @@ bool LLVOPartGroup::updateGeometry(LLDrawable *drawable)
 
     LLViewerPartSim::checkParticleCount(static_cast<U32>(mViewerPartGroupp->mParticles.size()));
 
+    bool effect_geometry=false; // provenance flag, no per-particle telemetry counters
     S32 count=0;
     mDepth = 0.f;
     S32 i = 0 ;
@@ -334,7 +384,9 @@ bool LLVOPartGroup::updateGeometry(LLDrawable *drawable)
         const F32 NEAR_PART_DIST_SQ = 5.f*5.f;  // Only discard particles > 5 m from the camera
         const F32 MIN_PART_AREA = .005f*.005f;  // only less than 5 mm x 5 mm at 1 m from camera
 
-        if ((part->mPartSourcep.notNull() &&
+        const bool effect=ALCleanFrame::active() && keyframeEffect(*part);
+        if (!ALCleanParticleBatches::visible(effect,ALCleanFrame::active()) ||
+            (part->mPartSourcep.notNull() &&
              ALDerenderList::isHiddenObject(part->mPartSourcep->mSourceObjectp)) ||
             (camera_dist_squared > NEAR_PART_DIST_SQ && area < MIN_PART_AREA))
         {
@@ -343,6 +395,7 @@ bool LLVOPartGroup::updateGeometry(LLDrawable *drawable)
         }
 
         facep->setSize(4, 6);
+        effect_geometry |= effect; // reuse the required source predicate after the guard
 
         facep->setViewerObject(this);
 
@@ -381,6 +434,7 @@ bool LLVOPartGroup::updateGeometry(LLDrawable *drawable)
         facep->setSize(0, 0);
     }
 
+    if(ALCleanFrame::active()) sKeyframeParticleObjects.find(this)->second=effect_geometry;
     //record max scale (used to stretch bounding box for visibility culling)
 
     mScale.set(max_scale, max_scale, max_scale);
@@ -683,6 +737,7 @@ void LLParticlePartition::rebuildGeom(LLSpatialGroup* group)
     }
 
     group->clearDrawMap();
+    ALKeyframeViewer::particleGroupBuilt(group,false);
 
     //get geometry count
     U32 index_count = 0;
@@ -748,6 +803,7 @@ void LLParticlePartition::addGeometryCount(LLSpatialGroup* group, U32& vertex_co
 {
     mFaceList.clear();
 
+    bool forbidden_geometry=false;
     LLViewerCamera* camera = LLViewerCamera::getInstance();
     for (LLSpatialGroup::element_iter i = group->getDataBegin(); i != group->getDataEnd(); ++i)
     {
@@ -759,6 +815,11 @@ void LLParticlePartition::addGeometryCount(LLSpatialGroup* group, U32& vertex_co
         }
 
         LLAlphaObject* obj = (LLAlphaObject*) drawablep->getVObj().get();
+        if(ALCleanFrame::active())
+        {
+            const auto found=sKeyframeParticleObjects.find(static_cast<LLVOPartGroup*>(obj));
+            forbidden_geometry |= found!=sKeyframeParticleObjects.end() && found->second;
+        }
         obj->mDepth = 0.f;
 
         U32 count = 0;
@@ -783,8 +844,9 @@ void LLParticlePartition::addGeometryCount(LLSpatialGroup* group, U32& vertex_co
             llassert(facep->getIndicesCount() < 65536);
         }
 
-        obj->mDepth /= count;
+        if(count || !ALCleanFrame::active()) obj->mDepth /= count;
     }
+    ALKeyframeViewer::particleGroupBuilt(group,forbidden_geometry);
 }
 
 

@@ -25,6 +25,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alcleantelemetry.h"
 #include "alsteppedanimruntime.h"
 #include "llactormover.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
@@ -837,6 +839,7 @@ void LLViewerPartSim::shift(const LLVector3 &offset)
 
 void LLViewerPartSim::updateSimulation()
 {
+    ALCleanTelemetry::guard(ALCleanTelemetry::EffectSources,!mViewerPartSources.empty());
     LL_PROFILE_ZONE_SCOPED;
 
     static LLFrameTimer update_timer;
@@ -951,8 +954,8 @@ void LLViewerPartSim::updateSimulation()
             // and fade out instead of popping.
             static LLCachedControl<bool> hide_effect_particles(
                 gSavedSettings, "BDMergeHideEffectParticlesWithUI", true);
-            if (hide_effect_particles &&
-                !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+            if (ALCleanFrame::active() || (hide_effect_particles &&
+                !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI)))
             {
                 const U32 src_type = mViewerPartSources[i]->getType();
                 if (src_type == LLViewerPartSource::LL_PART_SOURCE_SPIRAL ||

@@ -98,7 +98,7 @@ namespace {
         U32 render_feature = feature_from_string( request["feature"].asString() );
         if ( render_feature != 0 )
         {
-            response["value"] = gPipeline.hasRenderDebugFeatureMask(render_feature);
+            response["value"] = gPipeline.hasRawRenderDebugFeatureMask(render_feature);
         }
         else
         {

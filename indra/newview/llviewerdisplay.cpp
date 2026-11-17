@@ -25,6 +25,9 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alcleantelemetry.h"
+#include "alkeyframeplayer.h"
 #include "alpovblink.h"
 #include "alactorchromakey.h"
 #include "alactorkeyui.h"
@@ -1670,8 +1673,10 @@ void render_hud_attachments()
     // smoothly interpolate current zoom level
     gAgentCamera.mHUDCurZoom = lerp(gAgentCamera.mHUDCurZoom, gAgentCamera.getAgentHUDTargetZoom(), LLSmoothInterpolation::getInterpolant(0.03f));
 
-    if (LLPipeline::sShowHUDAttachments && !gDisconnected && setup_hud_matrices())
+    ALCleanTelemetry::guard(ALCleanTelemetry::Attachments,LLPipeline::sShowHUDAttachments);
+    if (!ALCleanFrame::active() && LLPipeline::sShowHUDAttachments && !gDisconnected && setup_hud_matrices())
     {
+        ALCleanTelemetry::submit(ALCleanTelemetry::Attachments);
         LLPipeline::sRenderingHUDs = true;
         LLCamera hud_cam = *LLViewerCamera::getInstance();
         hud_cam.setOrigin(-1.f, 0.f, 0.f);
@@ -1698,7 +1703,7 @@ void render_hud_attachments()
             gPipeline.toggleRenderType(LLPipeline::RENDER_TYPE_HUD_PARTICLES);
         }
 
-        bool has_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
+        bool has_ui = gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
         if (has_ui)
         {
             gPipeline.toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
@@ -1932,6 +1937,7 @@ void render_ui(F32 zoom_factor, int subfield)
         // selections / 2D chrome when the UI is on. Zero cost when the studio
         // has no enabled instances.
         const U64 key_serial = ALActorChromaKey::sActive ? ALActorChromaKey::finalizeSerial() : 0;
+        ALCleanTelemetry::guard(ALCleanTelemetry::Ring,false);
         LLActorMover::instance().renderStudioGhosts();
         if (ALActorChromaKey::sActive) ALActorChromaKey::finishStudioFrame(key_serial);
 
@@ -1945,6 +1951,8 @@ void render_ui(F32 zoom_factor, int subfield)
             !LLPipeline::sReflectionRender && !LLPipeline::sImpostorRender && !LLPipeline::sRenderingHUDs,
             gPipeline.mScreenTriangleVB);
 
+        ALCleanTelemetry::guard(ALCleanTelemetry::UI,true);
+        ALCleanTelemetry::guard(ALCleanTelemetry::UI3D,true);
         bool render_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
         if (render_ui)
         {
@@ -1952,6 +1960,7 @@ void render_ui(F32 zoom_factor, int subfield)
             {
                 LL_PROFILE_ZONE_NAMED_CATEGORY_UI("UI 3D"); //LL_RECORD_BLOCK_TIME(FTM_RENDER_UI_3D);
                 LLGLState::checkStates();
+                ALCleanTelemetry::submit(ALCleanTelemetry::UI3D);
                 render_ui_3d();
                 LLGLState::checkStates();
             }
@@ -1970,12 +1979,14 @@ void render_ui(F32 zoom_factor, int subfield)
         {
             LL_PROFILE_ZONE_NAMED_CATEGORY_UI("UI 2D"); //LL_RECORD_BLOCK_TIME(FTM_RENDER_UI_2D);
             LLHUDObject::renderAll();
+            ALCleanTelemetry::submit(ALCleanTelemetry::UI);
             render_ui_2d();
         }
 
         gViewerWindow->setup2DRender();
         gViewerWindow->updateDebugText();
-        gViewerWindow->drawDebugText();
+        ALCleanTelemetry::guard(ALCleanTelemetry::Viewfinder,true);
+        if (!ALCleanFrame::active()) gViewerWindow->drawDebugText();
     }
 
     if (!gSnapshot)
@@ -1983,6 +1994,9 @@ void render_ui(F32 zoom_factor, int subfield)
         set_current_modelview(saved_view);
         gGL.popMatrix();
     }
+    if (!gSnapshot && !gCubeSnapshot && !LLPipeline::sPrismLensRender && !LLPipeline::sPrismPreviewRender &&
+        !LLPipeline::sReflectionRender && !LLPipeline::sImpostorRender)
+        ALKeyframePlayer::instance().presented();
     if (ui_draw_timer)
     {
         ALUIPerfSelfTest::recordUIDraw(
@@ -2139,7 +2153,7 @@ void render_ui_3d()
 
     // Coordinate axes
     static LLCachedControl<bool> show_axes(gSavedSettings, "ShowAxes");
-    if (show_axes())
+    if (!ALCleanFrame::active() && show_axes())
     {
         draw_axes();
     }

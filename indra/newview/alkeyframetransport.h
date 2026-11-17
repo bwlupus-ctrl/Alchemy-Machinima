@@ -6,7 +6,7 @@ class ALKfTransport
 {
 public:
     enum class State { IDLE, PREVIEW, START_DELAY, PLAYING, HOLD_END };
-    enum class Exit { NONE, ESCAPE, CUT, TELEPORT, DISCONNECT, RLVA, PILOT, RECORDER, SCENE, SHUTDOWN };
+    enum class Exit { NONE, ESCAPE, CUT, TELEPORT, DISCONNECT, RLVA, PILOT, RECORDER, SCENE, SHUTDOWN, REGION, TARGET_GONE, USER_INPUT };
     struct Effects { bool acquire = false, release = false, resetFlycam = false, resetAgent = false; Exit exit = Exit::NONE; };
     struct Lifecycle { bool teleport = false, disconnect = false, restricted = false, pilot = false, recorder = false, scene = false; };
     struct Frame { std::uint64_t generation = 0; double wallDelta = 0, presentationDelta = 0; bool driveCamera = false; };

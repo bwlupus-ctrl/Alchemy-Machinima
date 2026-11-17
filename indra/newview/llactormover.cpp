@@ -8,6 +8,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alcleantelemetry.h"
 #include "alactorkeycapture.h"
 #include "llviewerregion.h"
 #include "llpresentationtime.h"    // [Temporal Capture]
@@ -16983,13 +16985,15 @@ void LLActorMover::renderStudioGhosts()
     // the current tool -- it can never leak into a filmed frame (the tool is
     // gone the moment the operator leaves edit mode, and studio ghosts render
     // with the UI hidden precisely because they are NOT gated like this).
-    if ((!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() ||
+    ALCleanTelemetry::guard(ALCleanTelemetry::Ring,true);
+    if (!ALCleanFrame::active() && (!ALActorChromaKey::sActive || !ALActorChromaKey::keyedThisFrame() ||
          (gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI) && gViewerWindow->getUIVisibility())) &&
         LLToolMgr::getInstance()->getCurrentTool() == ALToolGhostEdit::getInstance())
     {
         if (ALGhostStudio::Instance* inst = studio.getInstance(studio.getSelected());
             inst && inst->mKind == ALGhostStudio::BACKING_OVERLAY)
         {
+            ALCleanTelemetry::submit(ALCleanTelemetry::Ring);
             LLColor4 ring_tint;
             if (!inst->mUseActorTint)
             {

@@ -27,6 +27,7 @@
 #ifndef LL_LLFLYCAMRECORDER_H
 #define LL_LLFLYCAMRECORDER_H
 
+#include "alkeyframefit.h"
 #include <string>
 #include <vector>
 
@@ -36,7 +37,7 @@
 #include "v3dmath.h"
 #include "v3math.h"
 
-class LLFlycamRecorder
+class LLFlycamRecorder : public ALKf::TakeSource
 {
 public:
     enum EState
@@ -99,6 +100,11 @@ public:
     // ---- file I/O (LLSD XML) ----
     bool saveToFile(const std::string& filename);
     bool loadFromFile(const std::string& filename);
+
+    // Read-only originals and recorder interpolation for take conversion.
+    std::size_t size() const override { return mKeys.size(); }
+    ALKf::TakeSample sample(std::size_t) const override;
+    ALKf::Pose evaluate(double exactTakeTime) const override;
 
     // ---- introspection (for the floater) ----
     EState             getState() const        { return mState; }

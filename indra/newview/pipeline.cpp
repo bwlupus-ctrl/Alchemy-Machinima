@@ -28,6 +28,9 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alcleantelemetry.h"
+#include "alkeyframeplayer.h"
 #include "alactorkeycapture.h"
 #include "alpovblink.h"
 #include "alcolorchart.h"
@@ -5875,7 +5878,7 @@ void renderScriptedBeacons(LLDrawable* drawablep)
             gObjectList.addDebugBeacon(vobj->getPositionAgent(), "", LLColor4(1.f, 0.f, 0.f, 0.5f), LLColor4(1.f, 1.f, 1.f, 0.5f), LLPipeline::DebugBeaconLineWidth);
         }
 
-        if (gPipeline.sRenderHighlight)
+        if (!ALCleanFrame::active() && gPipeline.sRenderHighlight)
         {
             S32 face_id;
             S32 count = drawablep->getNumFaces();
@@ -5902,7 +5905,7 @@ void renderScriptedTouchBeacons(LLDrawable *drawablep)
                                        LLPipeline::DebugBeaconLineWidth);
         }
 
-        if (gPipeline.sRenderHighlight)
+        if (!ALCleanFrame::active() && gPipeline.sRenderHighlight)
         {
             S32 face_id;
             S32 count = drawablep->getNumFaces();
@@ -5932,7 +5935,7 @@ void renderPhysicalBeacons(LLDrawable *drawablep)
                                        LLPipeline::DebugBeaconLineWidth);
         }
 
-        if (gPipeline.sRenderHighlight)
+        if (!ALCleanFrame::active() && gPipeline.sRenderHighlight)
         {
             S32 face_id;
             S32 count = drawablep->getNumFaces();
@@ -5973,7 +5976,7 @@ void renderMOAPBeacons(LLDrawable *drawablep)
                                        LLPipeline::DebugBeaconLineWidth);
         }
 
-        if (gPipeline.sRenderHighlight)
+        if (!ALCleanFrame::active() && gPipeline.sRenderHighlight)
         {
             S32 face_id;
             S32 count = drawablep->getNumFaces();
@@ -6002,7 +6005,7 @@ void renderParticleBeacons(LLDrawable *drawablep)
                                        LLPipeline::DebugBeaconLineWidth);
         }
 
-        if (gPipeline.sRenderHighlight)
+        if (!ALCleanFrame::active() && gPipeline.sRenderHighlight)
         {
             S32 face_id;
             S32 count = drawablep->getNumFaces();
@@ -6024,7 +6027,7 @@ void renderSoundHighlights(LLDrawable *drawablep)
     LLViewerObject *vobj = drawablep->getVObj();
     if (vobj && vobj->isAudioSource())
     {
-        if (gPipeline.sRenderHighlight)
+        if (!ALCleanFrame::active() && gPipeline.sRenderHighlight)
         {
             S32 face_id;
             S32 count = drawablep->getNumFaces();
@@ -6278,7 +6281,7 @@ void LLPipeline::postSort(LLCamera &camera)
     }
 
     // only render if the flag is set. The flag is only set if we are in edit mode or the toggle is set in the menus
-    if (LLFloaterReg::instanceVisible("beacons") && !sShadowRender && !gCubeSnapshot)
+    if (!ALCleanFrame::active() && LLFloaterReg::instanceVisible("beacons") && !sShadowRender && !gCubeSnapshot)
     {
         if (sRenderScriptedTouchBeacons)
         {
@@ -6395,6 +6398,7 @@ void LLPipeline::postSort(LLCamera &camera)
 
 void render_hud_elements()
 {
+    ALCleanTelemetry::guard(ALCleanTelemetry::HUD,true);
     LL_PROFILE_ZONE_SCOPED_CATEGORY_UI; //LL_RECORD_BLOCK_TIME(FTM_RENDER_UI);
     gPipeline.disableLights();
 
@@ -6411,6 +6415,7 @@ void render_hud_elements()
 
     if (!LLPipeline::sReflectionRender && gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
     {
+        ALCleanTelemetry::submit(ALCleanTelemetry::HUD);
         gViewerWindow->renderSelections(false, false, false); // For HUD version in render_ui_3d()
 
         // Draw the tracking overlays
@@ -6424,13 +6429,14 @@ void render_hud_elements()
         LLViewerParcelMgr::getInstance()->render();
         LLViewerParcelMgr::getInstance()->renderParcelCollision();
     }
-    else if (gForceRenderLandFence)
+    else if (gForceRenderLandFence && !ALCleanFrame::active())
     {
         // This is only set when not rendering the UI, for parcel snapshots
         LLViewerParcelMgr::getInstance()->render();
     }
-    else if (gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_HUD))
+    else if (!ALCleanFrame::active() && gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_HUD))
     {
+        ALCleanTelemetry::submit(ALCleanTelemetry::HUDText);
         LLHUDText::renderAllHUD();
     }
 
@@ -6486,6 +6492,7 @@ void LLPipeline::renderSelectedFaces(const LLColor4& color)
 
 void LLPipeline::renderHighlights()
 {
+    ALCleanTelemetry::guard(ALCleanTelemetry::Highlights,!mHighlightFaces.empty() || !mSelectedFaces.empty());
     assertInitialized();
 
     // Draw 3D UI elements here (before we clear the Z buffer in POOL_HUD)
@@ -6495,9 +6502,10 @@ void LLPipeline::renderHighlights()
 
     // [BDMerge HideUI] Face highlights (white selected-face glow, red beacon
     // highlight) are selection/debug indicators - hide them with the interface.
-    if (hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED) &&
+    if (!ALCleanFrame::active() && hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED) &&
         gViewerWindow && gViewerWindow->getIndicatorsVisible())
     {
+        ALCleanTelemetry::submit(ALCleanTelemetry::Highlights);
         bindHighlightProgram(gHighlightProgram);
 
         if (sRenderHighlightTextureChannel == LLRender::DIFFUSE_MAP ||
@@ -6525,7 +6533,7 @@ void LLPipeline::renderHighlights()
     // have touch-handlers.
     mHighlightFaces.clear();
 
-    if (hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED) &&
+    if (!ALCleanFrame::active() && hasRenderDebugFeatureMask(RENDER_DEBUG_FEATURE_SELECTED) &&
         gViewerWindow && gViewerWindow->getIndicatorsVisible()) // [BDMerge HideUI]
     {
         if (sRenderHighlightTextureChannel == LLRender::NORMAL_MAP)
@@ -9393,6 +9401,9 @@ void LLPipeline::renderFocusPoint()
 // snapshot path (llviewerwindow.cpp rawSnapshot()).
 void LLPipeline::renderCompositionGuideOverlay()
 {
+    ALCleanTelemetry::guard(ALCleanTelemetry::Composition,true);
+    if(ALCleanFrame::active()) return;
+    ALCleanTelemetry::submit(ALCleanTelemetry::Composition);
     static LLCachedControl<bool> show_guides(gSavedSettings, "RenderCompositionGuide", false);
     static LLCachedControl<bool> with_ui_hidden(gSavedSettings, "RenderCompositionGuideWithUIHidden", true);
     if (!show_guides || !gViewerWindow || gSnapshot || gCubeSnapshot)
@@ -9870,6 +9881,10 @@ void LLPipeline::renderDebug()
 
     assertInitialized();
 
+    ALCleanTelemetry::guard(ALCleanTelemetry::Debug,true);
+    if (!ALCleanFrame::active())
+    {
+    ALCleanTelemetry::submit(ALCleanTelemetry::Debug);
     bool hud_only = hasRenderType(LLPipeline::RENDER_TYPE_HUD);
 
     if (!hud_only )
@@ -10255,7 +10270,22 @@ void LLPipeline::renderDebug()
         }
     }
 
+    } // clean draw guard; frame bookkeeping below is unconditional
+    // renderDebug also owns blip expiry, not only draw lists. Keep that clock
+    // running during clean playback without executing any debug GL submission.
+    if (ALCleanFrame::active() && !hasRenderType(RENDER_TYPE_HUD))
+    {
+        for(auto it=mDebugBlips.begin();it!=mDebugBlips.end();)
+        {
+            it->mAge += gFrameIntervalSeconds.value();
+            if(it->mAge>2.f) it=mDebugBlips.erase(it);
+            else { it->mPosition.mV[2] += gFrameIntervalSeconds.value()*2.f; ++it; }
+        }
+    }
     visible_selected_groups.clear();
+    if (!ALCleanFrame::active())
+    {
+    bool hud_only = hasRenderType(LLPipeline::RENDER_TYPE_HUD);
 
     //draw reflection probes and links between them
     if (gPipeline.hasRenderDebugMask(LLPipeline::RENDER_DEBUG_REFLECTION_PROBES) && !hud_only)
@@ -10487,6 +10517,7 @@ void LLPipeline::renderDebug()
 
     gGL.flush();
     gUIProgram.unbind();
+    } // clean draw guard
 }
 
 void LLPipeline::rebuildPools()
@@ -12947,7 +12978,7 @@ void LLPipeline::toggleRenderDebugFeature(U32 bit)
 //static
 bool LLPipeline::toggleRenderDebugFeatureControl(U32 bit)
 {
-    return gPipeline.hasRenderDebugFeatureMask(bit);
+    return gPipeline.hasRawRenderDebugFeatureMask(bit);
 }
 
 void LLPipeline::setRenderDebugFeatureControl(U32 bit, bool value)
@@ -26883,7 +26914,7 @@ void LLPipeline::renderFinalize()
         // Stage D: affine guide capture preserves the guide renderer's blend
         // modes and scene-depth occlusion without sending guides to the sensor.
         static LLCachedControl<bool> show_heading(gSavedSettings, "ActorMoverShowHeading", true);
-        const bool guide_work =
+        const bool guide_work = ALKeyframePlayer::instance().hasGuideDraw() ||
             (show_heading && (LLFloaterReg::instanceVisible("actor_mover") ||
                               LLFloaterReg::instanceVisible("director") ||
                               LLFloaterReg::instanceVisible("prop_mover"))) ||
@@ -26975,6 +27006,7 @@ void LLPipeline::renderActorPathGuides(LLRenderTarget* target, const glm::mat4& 
                 mover.getEditActor(), true,
                 ALToolPathEdit::getInstance()->getHoverNode(), true);
         }
+        ALKeyframePlayer::instance().drawGuides();
         target->flush();
 
         gGL.matrixMode(LLRender::MM_PROJECTION);
@@ -40239,4 +40271,9 @@ S32 LLPipeline::uploadPrismPreviewColorGradeUniforms(LLGLSLShader& target_shader
 F64 LLPipeline::getRotoAnimClockOffset() const
 {
     return mRotoAnimClock - LLPresentationTime::currentFrame().presentation_time;
+}
+
+bool LLPipeline::hasRawRenderDebugFeatureMask(const U32 mask) const
+{
+    return bool(mRenderDebugFeatureMask & mask);
 }

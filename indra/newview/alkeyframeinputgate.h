@@ -14,6 +14,8 @@ class ALKeyframeInputGate
 public:
     enum class Phase { Down, Level };
     using Release = std::function<void()>;
+    static bool seatedMoveAgent(bool grabbed, bool sitCamera, bool running, bool alwaysRun)
+    { return grabbed || sitCamera || (running && !alwaysRun); }
     static bool denied(std::string_view action, bool cameraOnlyMove = false)
     {
         for (auto name : {"start_chat", "start_gesture", "toggle_viewfinder", "toggle_colour_chart",

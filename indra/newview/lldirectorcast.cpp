@@ -8,6 +8,8 @@
  */
 
 #include "llviewerprecompiledheaders.h"
+#include "alkeyframeplayer.h"
+#include "alkeyframeviewer.h"
 
 #include "lldirectorcast.h"
 
@@ -1280,6 +1282,7 @@ bool LLDirectorCast::rewriteActorReferences(const LLUUID& old_id, const LLUUID& 
     ALAvatarSubjectPicker::rewriteActorReferences(old_id, new_id);
     ALKitHistory::rewriteActorReferences(old_id, new_id);
     ALProjectorTracker::instance().rewriteActorReferences(old_id, new_id);
+    ALKeyframePlayer::instance().rewriteActorReferences(ALKeyframeViewer::id(old_id), ALKeyframeViewer::id(new_id));
     ALDirectorAnimSwitcher::instance().rewriteActorReferences(old_id, new_id);
     LLCinematicCamera::onRuntimeTargetReplaced(old_id, new_id);
     ALGhostStudio::instance().rewriteActorReferences(old_id, new_id);
@@ -3223,6 +3226,7 @@ void LLDirectorCast::fireAction()
 {
     static LLCachedControl<bool> arm_moves(gSavedSettings, "DirectorArmMoves", true);
     static LLCachedControl<bool> arm_camera(gSavedSettings, "DirectorArmCamera", true);
+    static LLCachedControl<bool> arm_keyframes(gSavedSettings, "DirectorArmKeyframePlay", false);
     static LLCachedControl<bool> arm_play(gSavedSettings, "DirectorArmRecorderPlay", false);
     static LLCachedControl<bool> arm_capture(gSavedSettings, "DirectorArmRecorderCapture", false);
 
@@ -3291,11 +3295,13 @@ void LLDirectorCast::fireAction()
         LLFlycamRecorder::instance().startRecording(false); // ACTION queues the record below.
         mFiredCapture = true;
     }
-    else if (arm_play)
+    else if (arm_play && !arm_keyframes)
     {
         LLFlycamRecorder::instance().startPlayback(false);
         mFiredPlay = true;
     }
+
+    if (arm_keyframes) ALKeyframePlayer::instance().play(true);
 
     mRunning = true;
     // An armed switcher owns the effective CineCam program but cooperates with
@@ -3311,6 +3317,7 @@ void LLDirectorCast::fireAction()
 
 void LLDirectorCast::cut()
 {
+    ALKeyframePlayer::instance().stop(ALKfTransport::Exit::CUT);
     cancelCountdown();
     // queued staggered starts die with the take -- BEFORE the running check,
     // so a CUT pressed while only group-Start waves are pending (transport

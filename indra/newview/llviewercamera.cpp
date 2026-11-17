@@ -809,6 +809,14 @@ extern bool gCubeSnapshot;
 
     if (vertical_fov_rads == old_fov) return;
 
+    sendViewToSimulator(vertical_fov_rads);
+
+    // sync the camera with the new value
+    LLCamera::setView(vertical_fov_rads); // call base implementation
+}
+
+void LLViewerCamera::sendViewToSimulator(F32 vertical_fov_rads)
+{
     // send the new value to the simulator
     LLMessageSystem* msg = gMessageSystem;
     msg->newMessageFast(_PREHASH_AgentFOV);
@@ -823,8 +831,6 @@ extern bool gCubeSnapshot;
 
     gAgent.sendReliableMessage();
 
-    // sync the camera with the new value
-    LLCamera::setView(vertical_fov_rads); // call base implementation
 }
 
 void LLViewerCamera::setViewNoBroadcast(F32 vertical_fov_rads)

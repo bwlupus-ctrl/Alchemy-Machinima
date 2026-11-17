@@ -31,6 +31,10 @@
 // MAX_SNAPSHOT_IMAGE_SIZE raise. See doc/BD_MERGE_PATCHLOG.md.
 
 #include "llviewerprecompiledheaders.h"
+#include "alcleanframe.h"
+#include "alcleantelemetry.h"
+#include "alkeyframeplayer.h"
+#include "lldirectorcast.h"
 #include "llactormover.h"
 #include "alactorchromakey.h"
 #include "llviewerwindow.h"
@@ -1622,7 +1626,7 @@ LLWindowCallbacks::DragNDropResult LLViewerWindow::handleDragNDrop(LLWindow *win
     LLWindowCallbacks::DragNDropResult result = LLWindowCallbacks::DND_NONE;
     // Functional self-test (in-world): no drag-and-drop at all (SLURL dispatch, file upload,
     // media drop), even for marked events -- the harness never needs one.
-    if (gViewerInput.worldInputSuspended()) return result;
+    if (gViewerInput.worldInputSuspended() || ALCleanFrame::active()) return result;
     switch (type)
     {
         case LLWindowCallbacks::DNDT_FILE:
@@ -3372,6 +3376,8 @@ void LLViewerWindow::setMenuBackgroundColor(bool god_mode, bool dev_grid)
 
 void LLViewerWindow::drawDebugText()
 {
+    ALCleanTelemetry::guard(ALCleanTelemetry::Viewfinder,true);
+    if(ALCleanFrame::active()) return;
     gUIProgram.bind();
     gGL.color4f(1,1,1,1);
     gGL.pushMatrix();
@@ -3384,8 +3390,10 @@ void LLViewerWindow::drawDebugText()
         // Cinematic Viewfinder: drawn here, not in draw(), so it survives
         // both UI-hiding mechanisms. gSnapshot keeps it out of every capture
         // (render_ui() also runs for snapshots).
-        if (!gSnapshot)
+        ALCleanTelemetry::guard(ALCleanTelemetry::Viewfinder,!gSnapshot);
+        if (!gSnapshot && !ALCleanFrame::active())
         {
+            ALCleanTelemetry::submit(ALCleanTelemetry::Viewfinder);
             drawCinematicViewfinder(getWorldViewRectScaled(), getWindowWidthScaled(), getWindowHeightScaled());
         }
     }
@@ -3605,7 +3613,21 @@ bool LLViewerWindow::handleKeyUp(KEY key, MASK mask)
 // Takes a single keydown event, usually when UI is visible
 bool LLViewerWindow::handleKey(KEY key, MASK mask)
 {
-    if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
+    if (gViewerInput.dropsNativeInput()) return true;
+    if (key==KEY_ESCAPE && mask==MASK_NONE && ALKeyframePlayer::instance().ownsCamera())
+    { ALKeyframePlayer::instance().stop(ALKfTransport::Exit::ESCAPE); return true; }
+    if (ALCleanFrame::active())
+    {
+        static LLCachedControl<bool> hotkeys(gSavedSettings,"DirectorHotkeysEnabled",true);
+        if(mask==MASK_NONE && hotkeys && (key==KEY_F3 || key==KEY_F4))
+        {
+            auto& cast=LLDirectorCast::instance();
+            if(key==KEY_F4 || cast.isRunning() || cast.isCountingDown()) cast.cut(); else cast.action();
+            return true;
+        }
+        if(LLGestureMgr::instance().triggerGesture(key,mask) || gGestureList.trigger(key,mask)) return true;
+        return false; // bindings retain normal avatar/voice/blink/hot-gaze routing
+    } // functional self-test: real OS input is ignored
     // hide tooltips on keypress
     LLToolTipMgr::instance().blockToolTips();
 
@@ -3973,6 +3995,7 @@ bool LLViewerWindow::handleKey(KEY key, MASK mask)
 
 bool LLViewerWindow::handleUnicodeChar(llwchar uni_char, MASK mask)
 {
+    if(ALCleanFrame::active()) return true;
     if (gViewerInput.dropsNativeInput()) return true; // functional self-test: real OS input is ignored
     ALKitHistory::ScopedSource source(ALKitHistory::comboInputSource(dynamic_cast<LLView*>(gFocusMgr.getKeyboardFocus())));
     // HACK:  We delay processing of return keys until they arrive as a Unicode char,
@@ -4025,6 +4048,7 @@ bool LLViewerWindow::handleUnicodeChar(llwchar uni_char, MASK mask)
 
 void LLViewerWindow::handleScrollWheel(LLScrollDelta delta)
 {
+    if(ALCleanFrame::active()) return;
     LLUI::getInstance()->resetMouseIdleTimer();
 
     // Scale the precise (smooth) component by the user's sensitivity multiplier.
@@ -4095,6 +4119,7 @@ void LLViewerWindow::handleScrollWheel(LLScrollDelta delta)
 
 void LLViewerWindow::handleScrollHWheel(LLScrollDelta delta)
 {
+    if(ALCleanFrame::active()) return;
     if (LLAppViewer::instance()->quitRequested())
     {
         return;
@@ -4315,7 +4340,7 @@ void LLViewerWindow::updateUI()
     // (LLToolPie::handleHover -> setHoverObject -> RequestObjectPropertiesFamily), no land or
     // object hover tip, no media hover -- whatever the synthetic or real cursor is over,
     // for the whole run and its logout.  UI hover (floaters, mouse captors) is unaffected.
-    const bool world_input_suspended = gViewerInput.worldInputSuspended();
+    const bool world_input_suspended = gViewerInput.worldInputSuspended() || ALCleanFrame::active();
 
     LLUICtrl* top_ctrl = gFocusMgr.getTopCtrl();
     LLMouseHandler* mouse_captor = gFocusMgr.getMouseCapture();
@@ -4758,7 +4783,8 @@ void LLViewerWindow::updateLayout()
     // client bounds/focus on its window thread, including captured motion;
     // cached viewer mouse/focus events could otherwise flash on client re-entry.
     static LLCachedControl<bool> hide_cursor_with_ui(gSavedSettings, "HideCursorWithUI", false);
-    const bool hide_cursor = ALHideCursor::wantHidden(hide_cursor_with_ui, !getIndicatorsVisible(), true, true);
+    ALCleanTelemetry::guard(ALCleanTelemetry::Cursor,true);
+    const bool hide_cursor = ALCleanFrame::active() || ALHideCursor::wantHidden(hide_cursor_with_ui, !getIndicatorsVisible(), true, true);
     if (hide_cursor != mHideCursorWithUI)
     {
         mHideCursorWithUI = hide_cursor;
@@ -5995,6 +6021,7 @@ bool LLViewerWindow::thumbnailSnapshot(LLImageRaw *raw, S32 preview_width, S32 p
 bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_height,
     bool keep_window_aspect, bool is_texture, bool show_ui, bool show_hud, bool do_rebuild, bool no_post, bool show_balance, LLSnapshotModel::ESnapshotLayerType type, S32 max_size)
 {
+    if(ALCleanFrame::active()) { LL_INFOS("Keyframes") << "rawSnapshot deferred during Play" << LL_ENDL; return false; }
     if (!raw)
     {
         return false;
@@ -6023,9 +6050,10 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
     setCursor(UI_CURSOR_WAIT);
 
     // Hide all the UI widgets first and draw a frame
-    bool prev_draw_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
+    bool prev_draw_ui = gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
 
-    if ( prev_draw_ui != show_ui)
+    const bool toggled_ui = (prev_draw_ui != show_ui);
+    if (toggled_ui)
     {
         LLPipeline::toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
     }
@@ -6303,8 +6331,8 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
     gSnapshotNoPost = false;
     gDepthDirty = true;
 
-    // POST SNAPSHOT
-    if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    // POST SNAPSHOT: restore exactly the raw bit we changed.
+    if (toggled_ui)
     {
         LLPipeline::toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
     }
@@ -6370,6 +6398,7 @@ bool LLViewerWindow::rawSnapshot(LLImageRaw *raw, S32 image_width, S32 image_hei
 
 bool LLViewerWindow::simpleSnapshot(LLImageRaw* raw, S32 image_width, S32 image_height, const int num_render_passes)
 {
+    if(ALCleanFrame::active()) { LL_INFOS("Keyframes") << "simpleSnapshot deferred during Play" << LL_ENDL; return false; }
     ALActorChromaKey::SuppressScope key_suppressed;
     LL_PROFILE_ZONE_SCOPED_CATEGORY_APP;
     gDisplaySwapBuffers = false;
@@ -6377,7 +6406,7 @@ bool LLViewerWindow::simpleSnapshot(LLImageRaw* raw, S32 image_width, S32 image_
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT); // stencil buffer is deprecated | GL_STENCIL_BUFFER_BIT);
     setCursor(UI_CURSOR_WAIT);
 
-    bool prev_draw_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
+    bool prev_draw_ui = gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
     if (prev_draw_ui)
     {
         LLPipeline::toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
@@ -6452,7 +6481,7 @@ bool LLViewerWindow::simpleSnapshot(LLImageRaw* raw, S32 image_width, S32 image_
     gDisplaySwapBuffers = false;
     gDepthDirty = true;
 
-    if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    if (!gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
     {
         if (prev_draw_ui)
         {
@@ -6543,7 +6572,7 @@ bool LLViewerWindow::cubeSnapshot(const LLVector3& origin, LLCubeMapArray* cubea
         }
     }
 
-    bool prev_draw_ui = gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
+    bool prev_draw_ui = gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI);
     if (prev_draw_ui)
     {
         LLPipeline::toggleRenderDebugFeature(LLPipeline::RENDER_DEBUG_FEATURE_UI);
@@ -6600,7 +6629,7 @@ bool LLViewerWindow::cubeSnapshot(const LLVector3& origin, LLCubeMapArray* cubea
 
     gDisplaySwapBuffers = true;
 
-    if (!gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
+    if (!gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))
     {
         if (prev_draw_ui)
         {
