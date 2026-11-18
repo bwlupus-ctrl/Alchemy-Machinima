@@ -7,21 +7,12 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 740,
       "HOOK": 564,
-      "OWNED": 974,
-      "TOOLING": 543
+      "OWNED": 975,
+      "TOOLING": 551
     },
     "dirty_product_inputs": [
-      "indra/newview/alcinelightrig.cpp",
-      "indra/newview/alcinelightrig.h",
-      "indra/newview/alcinelightrigmanager.cpp",
-      "indra/newview/alcinelightrigmanager.h",
-      "indra/newview/alpanelrigrim.cpp",
-      "indra/newview/alpanelrigrim.h",
-      "indra/newview/llfloaterdirector.cpp",
-      "indra/newview/llfloaterdirector.h",
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
       "indra/newview/skins/default/xui/en/floater_director_v2.xml",
-      "indra/newview/skins/default/xui/en/menu_director_cast.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_frame_orbit.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_keyframes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_camera_moves.xml",
@@ -64,19 +55,7 @@
       "indra/newview/skins/default/xui/en/panel_dpage_world_atmosphere.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_shadows_probes.xml",
       "indra/newview/skins/default/xui/en/panel_dpage_world_weather.xml",
-      "indra/newview/tests/alcinelightrigmodel_test.cpp",
-      "scripts/code_tools/director_kit/director_mockup_data.json",
-      "scripts/code_tools/director_kit/gen_report.txt",
-      "scripts/code_tools/director_kit/kit_pages.json",
-      "scripts/code_tools/director_kit/synonyms.json",
-      "scripts/code_tools/director_kit_gen.py",
-      "scripts/code_tools/director_page_sources.py",
-      "scripts/code_tools/relight_local_ev_check.py",
-      "scripts/code_tools/rig_borrow_check.py",
-      "scripts/code_tools/rig_borrow_round2.py",
-      "scripts/code_tools/rig_borrow_round6.py",
-      "scripts/code_tools/rig_lit_group_check.py",
-      "scripts/code_tools/rig_sway_recovery.py"
+      "scripts/code_tools/director_kit/gen_report.txt"
     ],
     "evidence": {
       "functional_csv_hash_matches": true,
@@ -90,7 +69,7 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "e170af2c636396ea7fecb564efeac8a577cfd5375cbe720f6509a14a765c2697",
+        "csv_sha256": "ba2c79568f560b3260b0abe57595b0d758c0fd6c3a5154f9ac2fd4b5b65e8ccb",
         "director_rules": {
           "known_legacy": 0,
           "links": 19,
@@ -196,7 +175,7 @@
         ],
         "warning_count": 0,
         "warnings": [],
-        "xui_files": 848
+        "xui_files": 849
       },
       "kit_config_p0_pages": [
         "camera_group/frame_orbit_tab",
@@ -263,10 +242,10 @@
       },
       "wiring_rows": 2392
     },
-    "head_source_tree": "d2f70cce412f269e3f8f729f02a785950c2c6db4",
+    "head_source_tree": "1cfea55c12733e61af410f12bba6fb7032c37e77",
     "hook_files": 564,
     "hunks": 3629,
-    "input_sha256": "51f6967e9d066a1313f9f04e0e7bcb199cdbd96b105340e5bd2fe56632c9ec90",
+    "input_sha256": "38a7d682e4a7b41db6889b3d07ddf775097de8b2acc0a5d5e35c18ef2d2088cc",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -13433,8 +13412,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "rig",
-        "roto-tron"
+        "rig"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -13454,9 +13432,7 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -13478,9 +13454,7 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -14731,6 +14705,21 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "rig"
+      ],
+      "git_status": "A",
+      "layer": 7,
+      "path": "indra/newview/alextrarimmodel.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [
         "vcam"
       ],
@@ -15906,9 +15895,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell",
-        "gaze"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -15924,6 +15911,7 @@
         "crowd",
         "director-shell",
         "gaze",
+        "rig",
         "stepped-animation"
       ],
       "git_status": "A",
@@ -16937,9 +16925,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell",
-        "weather"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -16950,6 +16936,7 @@
       "features": [
         "common-ui",
         "director-shell",
+        "rig",
         "weather"
       ],
       "git_status": "A",
@@ -18860,9 +18847,7 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
-      "candidate_features_from_subjects": [
-        "director-shell"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "OWNED",
       "deleted": false,
       "feature_evidence": [
@@ -18870,6 +18855,8 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "actor-bar",
+        "clones",
         "director-shell",
         "looks",
         "rig"
@@ -18890,10 +18877,11 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "director-shell",
         "rig"
       ],
       "git_status": "A",
-      "layer": 7,
+      "layer": 2,
       "path": "indra/newview/alpanelrigrim.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -29677,7 +29665,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "director-shell"
       ],
       "class": "OWNED",
@@ -37593,8 +37580,7 @@
       "candidate_features_from_subjects": [
         "clones",
         "director-shell",
-        "gaze",
-        "looks"
+        "gaze"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -37689,8 +37675,7 @@
     {
       "candidate_features_from_subjects": [
         "clones",
-        "director-shell",
-        "looks"
+        "director-shell"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -44500,6 +44485,110 @@
       "git_status": "A",
       "layer": 10,
       "path": "scripts/code_tools/env_only_signal_test.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_engine_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_model_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_registry_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_round2_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_round3_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_round4_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/extra_rims_ui_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

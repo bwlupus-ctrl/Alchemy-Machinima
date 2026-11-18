@@ -36,7 +36,7 @@ committing only these outputs should not itself make them stale.
 
 ## Read the ledger before copying
 
-`inventory.csv` / `inventory.json` contain 2904 classified paths.
+`inventory.csv` / `inventory.json` contain 2913 classified paths.
 OWNED means absent at the local base: copy source units with their dependencies.
 It does not mean standalone or certified creative-only. HOOK means a pre-existing
 LL/Alchemy file: adapt individual hunks from `hooks.json`, never copy that file
@@ -66,18 +66,18 @@ adds include/call edges; `compatibility.json` lists Alchemy/fork helper dependen
 | Feature sheet | Layer | OWNED | HOOK files | Setting changes |
 |---|---:|---:|---:|---:|
 | [common-ui](features/common-ui.md) | 1 | 93 | 23 | 5 |
-| [director-shell](features/director-shell.md) | 2 | 343 | 60 | 205 |
-| [actor-bar](features/actor-bar.md) | 3 | 79 | 15 | 0 |
+| [director-shell](features/director-shell.md) | 2 | 344 | 60 | 205 |
+| [actor-bar](features/actor-bar.md) | 3 | 80 | 15 | 0 |
 | [actor-path](features/actor-path.md) | 3 | 110 | 34 | 34 |
 | [camera](features/camera.md) | 3 | 87 | 33 | 493 |
 | [composition](features/composition.md) | 3 | 46 | 27 | 12 |
 | [gaze](features/gaze.md) | 3 | 68 | 31 | 88 |
 | [stepped-animation](features/stepped-animation.md) | 3 | 32 | 20 | 53 |
-| [clones](features/clones.md) | 4 | 233 | 129 | 83 |
+| [clones](features/clones.md) | 4 | 234 | 129 | 83 |
 | [crowd](features/crowd.md) | 4 | 55 | 11 | 19 |
 | [roto-tron](features/roto-tron.md) | 5 | 125 | 56 | 227 |
 | [capture-sidecar](features/capture-sidecar.md) | 6 | 69 | 60 | 17 |
-| [rig](features/rig.md) | 7 | 175 | 57 | 254 |
+| [rig](features/rig.md) | 7 | 178 | 57 | 254 |
 | [shafts-volumetrics](features/shafts-volumetrics.md) | 7 | 66 | 24 | 109 |
 | [tracking](features/tracking.md) | 7 | 9 | 17 | 0 |
 | [environment](features/environment.md) | 8 | 98 | 29 | 4 |

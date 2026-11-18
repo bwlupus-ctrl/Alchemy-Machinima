@@ -269,12 +269,12 @@ All 3629 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@548,7`
 - `indra/newview/CMakeLists.txt@842,8`
 - `indra/newview/CMakeLists.txt@1274,20`
-- `indra/newview/CMakeLists.txt@1594,7`
-- `indra/newview/CMakeLists.txt@1881,8`
-- `indra/newview/CMakeLists.txt@2407,7`
-- `indra/newview/CMakeLists.txt@2687,38`
-- `indra/newview/CMakeLists.txt@2782,7`
-- `indra/newview/CMakeLists.txt@2822,7`
+- `indra/newview/CMakeLists.txt@1595,7`
+- `indra/newview/CMakeLists.txt@1882,8`
+- `indra/newview/CMakeLists.txt@2408,7`
+- `indra/newview/CMakeLists.txt@2688,38`
+- `indra/newview/CMakeLists.txt@2783,7`
+- `indra/newview/CMakeLists.txt@2823,7`
 - `indra/newview/app_settings/settings.xml@22727,10`
 - `indra/newview/app_settings/settings.xml@23614,21`
 - `indra/newview/app_settings/settings.xml@23636,32`
@@ -837,8 +837,8 @@ All 3629 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@978,7`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1213,14`
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1243,63`
-- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@972,24`
-- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@983,24`
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@977,24`
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@988,24`
 - `indra/newview/skins/default/xui/en/menu_object.xml@579,7`
 - `indra/newview/skins/default/xui/en/menu_object.xml@588,7`
 - `indra/newview/skins/default/xui/en/menu_viewer.xml@771,19`
@@ -2261,23 +2261,23 @@ All 3629 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/CMakeLists.txt@1159,59`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1220,30`: unknown/non-function (set(viewer_HEADER_FILES)
 - `indra/newview/CMakeLists.txt@1274,20`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1331,186`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1594,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1623,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1725,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1736,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1881,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1952,13`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@1968,8`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2167,7`: unknown/non-function (set(viewer_HEADER_FILES)
-- `indra/newview/CMakeLists.txt@2407,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
-- `indra/newview/CMakeLists.txt@2687,38`: unknown/non-function (elseif(LINUX))
-- `indra/newview/CMakeLists.txt@2782,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
-- `indra/newview/CMakeLists.txt@2822,7`: unknown/non-function (if (PACKAGE))
-- `indra/newview/CMakeLists.txt@2911,33`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@2950,20`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3018,198`: unknown/non-function (if (BUILD_TESTING))
-- `indra/newview/CMakeLists.txt@3277,40`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@1331,187`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1595,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1624,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1726,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1737,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1882,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1953,13`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@1969,8`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2168,7`: unknown/non-function (set(viewer_HEADER_FILES)
+- `indra/newview/CMakeLists.txt@2408,7`: unknown/non-function (set_source_files_properties(${viewer_CHARACTER_FILES})
+- `indra/newview/CMakeLists.txt@2688,38`: unknown/non-function (elseif(LINUX))
+- `indra/newview/CMakeLists.txt@2783,7`: unknown/non-function (if(IS_DIRECTORY ${LOCAL_DIST_DIR}))
+- `indra/newview/CMakeLists.txt@2823,7`: unknown/non-function (if (PACKAGE))
+- `indra/newview/CMakeLists.txt@2912,33`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@2951,20`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3019,198`: unknown/non-function (if (BUILD_TESTING))
+- `indra/newview/CMakeLists.txt@3278,40`: unknown/non-function (if (BUILD_TESTING))
 - `indra/newview/app_settings/settings.xml@2,3504`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3507,10`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/app_settings/settings.xml@3518,1055`: unknown/non-function (declaration, XML, build list or global scope)
@@ -2667,18 +2667,18 @@ All 3629 hunk guard conclusions remain unknown: local conditional evidence is no
 - `indra/newview/skins/default/xui/en/floater_preferences_graphics_advanced.xml@1243,63`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/fonts.xml@322,14`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/fonts.xml@663,26`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,783`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@972,24`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@1087,45`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,773`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_attachment_self.xml@1189,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@3,788`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@977,24`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_other.xml@1092,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_self.xml@2,778`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_attachment_self.xml@1194,45`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_avatar_other.xml@3,549`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,249`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@983,24`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@1075,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@654,254`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@988,24`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_other.xml@1080,45`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_avatar_self.xml@2,549`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,233`: unknown/non-function (declaration, XML, build list or global scope)
-- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@1091,45`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@838,238`: unknown/non-function (declaration, XML, build list or global scope)
+- `indra/newview/skins/default/xui/en/menu_avatar_self.xml@1096,45`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_object.xml@22,253`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_object.xml@285,67`: unknown/non-function (declaration, XML, build list or global scope)
 - `indra/newview/skins/default/xui/en/menu_object.xml@579,7`: unknown/non-function (declaration, XML, build list or global scope)
