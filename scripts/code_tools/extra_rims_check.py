@@ -7,11 +7,16 @@ All generated products live below this checkout's .tmp directory on I:.
 """
 from pathlib import Path
 import re
+import xml.etree.ElementTree as ET
 
 from rig_shadow_presets_check import function
 
 ROOT = Path(__file__).resolve().parents[2]
 PATHS = {
+    'avatar': 'indra/newview/alghostclonemenu.cpp',
+    **{name: 'indra/newview/skins/default/xui/en/' + name for name in (
+        'menu_avatar_other.xml', 'menu_avatar_self.xml',
+        'menu_attachment_other.xml', 'menu_attachment_self.xml')},
     'manager': 'indra/newview/alcinelightrigmanager.cpp',
     'rig': 'indra/newview/alcinelightrig.cpp',
     'header': 'indra/newview/alcinelightrigmanager.h',
@@ -39,6 +44,49 @@ def mutation(bundle, key, old, new, occurrence=1):
     return changed
 
 
+def menu_contracts(b):
+    menus = [ET.fromstring(b[name]).find("context_menu[@name='Director']/*[@name='Avatar Rim light']")
+             for name in PATHS if name.endswith('.xml')]
+    cast = ET.fromstring(b['menu']).find("*[@name='extra_rim_toggle']")
+    checked = body(b, 'avatar', 'bool avatarRimChecked()\n{')
+    actor = body(b, 'avatar', 'LLUUID avatarRimActor()')
+    action = body(b, 'avatar', 'void actAvatarRim()\n{')
+    enroll = body(b, 'avatar', 'bool ensureAvatarGazeCast(')
+    cast_action = body(b, 'director', 'void LLFloaterDirector::onCastExtraRimToggle()')
+    record = body(b, 'ui', 'void ALExtraRimUI::recordEdit(')
+    def toggle(item, click, check, enable=None):
+        if item is None or item.tag != 'menu_item_check' or item.get('label') != 'Rim light':
+            return False
+        for event, callback in [('on_click', click), ('on_check', check)] + ([('on_enable', enable)] if enable else []):
+            node = item.find('menu_item_check.' + event)
+            if node is None or node.get('function') != callback:
+                return False
+        return True
+    no_rig = not re.search(r'borrowSlot|borrowFor|setSubject|enableSlot|ensureRig|giveRig', action + enroll)
+    return {
+        'xr_avatar_menu_missing': len(menus) == 4 and all(item is not None for item in menus),
+        'xr_avatar_menu_gives_rig': no_rig and 'cast.add(actor);' in enroll and
+            'ensureAvatarGazeCast(actor)' in action and 'rigs.addExtraRim(actor);' in action,
+        'xr_avatar_menu_no_undo': action.count('ALExtraRimUI::recordEdit(shell, before, "Extra rim light");') == 1 and
+            'const LLSD before = rigs.captureExtraRims();' in action and
+            'rigs.removeExtraRim(actor)' in action and 'light_group/light_rim_tab' in record and
+            'if (before == after) return;' in record and
+            'ensurePageBuilt("light_group/light_rim_tab")' in action,
+        'xr_menu_not_toggle': all(item is None or toggle(item, 'Avatar.RimToggle', 'Avatar.CheckRim', 'Avatar.EnableRim') for item in menus) and
+            toggle(cast, 'Director.ExtraRimToggle', 'Director.ExtraRimCheck') and
+            'hasExtraRim(avatarRimActor())' in checked and
+            'resolveBorrowActor(*sAvatarRimPick, sAvatarRimWasCast)' in actor and
+            'retainBorrowActor(sMenuAvatar)' in b['avatar'] and
+            'if (present) rigs.removeExtraRim(actor);' in action and
+            'else rigs.addExtraRim(actor);' in action and
+            b['director'].count('rigs.hasExtraRim(rigs.resolveBorrowActor(*mExtraRimMenuPick, true))') == 2 and
+            'resolveBorrowActor(*mExtraRimMenuPick, true)' in cast_action and
+            'if (rigs.hasExtraRim(actor)) rigs.removeExtraRim(actor);' in cast_action and
+            'ALExtraRimUI::recordEdit(mShell, before, "Extra rim light");' in cast_action and
+            'setItemLabel("extra_rim_toggle"' not in b['director'],
+    }
+
+
 def contracts(b):
     manager = lambda signature: body(b, 'manager', signature)
     persist = manager('void ALCineLightRigManager::persist() const')
@@ -56,6 +104,7 @@ def contracts(b):
     draw = body(b, 'ui', 'void ALPanelRigRim::draw()')
     custom = b['preset'].split('case RIM_CUSTOM:', 1)[1].split('break;', 1)[0]
     return {
+        **menu_contracts(b),
         'xr_persisted_in_instances': 'extra_rims' not in persist and 'mExtraRim' not in persist,
         'xr_login_recovery_restores':
             'if (login_recovery) { clearExtraRims(); return; }' in replace and
@@ -117,6 +166,10 @@ def planted_negatives(b):
         local[1] + '["extra_rims"] = captureExtraRims();\n    gSavedSettings.setLLSD(', 1)
     area = body(b, 'manager', 'bool ALCineLightRigManager::isMirrorLight(')
     return {
+        'xr_avatar_menu_missing': mutation(b, 'menu_avatar_other.xml', 'name="Avatar Rim light"', 'name="Planted missing rim"'),
+        'xr_avatar_menu_gives_rig': mutation(b, 'avatar', '    cast.add(actor);', '    cast.add(actor);\n    rigs.borrowFor(actor);'),
+        'xr_avatar_menu_no_undo': mutation(b, 'avatar', '    ALExtraRimUI::recordEdit(shell, before, "Extra rim light");', ''),
+        'xr_menu_not_toggle': mutation(b, 'avatar', 'hasExtraRim(avatarRimActor())', 'hasExtraRim(LLUUID::null)'),
         'xr_persisted_in_instances': mutation(b, 'manager', persist, bad_persist),
         'xr_login_recovery_restores': mutation(b, 'manager', 'if (login_recovery) { clearExtraRims(); return; }',
                                               'if (false) { clearExtraRims(); return; }'),
@@ -171,6 +224,24 @@ def run_contracts(root=ROOT):
         else:
             raise AssertionError(name + ' planted bug escaped')
         print('PASS: rejected planted ' + name + ' at its named assertion', flush=True)
+    variants = []
+    for name in PATHS:
+        if name.endswith('.xml'):
+            variants.append(('xr_avatar_menu_missing', mutation(bundle, name, 'name="Avatar Rim light"', 'name="Missing"')))
+            variants.append(('xr_menu_not_toggle', mutation(bundle, name, '<menu_item_check label="Rim light" name="Avatar Rim light">', '<menu_item_call label="Rim light" name="Avatar Rim light">').copy()))
+            # Keep the planted XML syntactically valid.
+            variants[-1][1][name] = variants[-1][1][name].replace('function="Avatar.EnableRim" />\n    </menu_item_check>', 'function="Avatar.EnableRim" />\n    </menu_item_call>', 1)
+    variants.append(('xr_menu_not_toggle', mutation(bundle, 'director', 'rigs.hasExtraRim(rigs.resolveBorrowActor(*mExtraRimMenuPick, true))', 'false')))
+    variants.append(('xr_menu_not_toggle', mutation(bundle, 'menu', '<menu_item_check label="Rim light"', '<menu_item_call label="Rim light"')))
+    variants[-1][1]['menu'] = variants[-1][1]['menu'].replace('function="Director.ExtraRimCheck" />\n  </menu_item_check>', 'function="Director.ExtraRimCheck" />\n  </menu_item_call>', 1)
+    for name, changed in variants:
+        try:
+            check_contracts(changed)
+        except AssertionError as error:
+            require(str(error) == name, f'{name} failed a different assertion: {error}')
+        else:
+            raise AssertionError(name + ' variant escaped')
+        print('PASS: rejected planted ' + name + ' menu variant at its named assertion', flush=True)
     print('PASS: extra-rim production contracts', flush=True)
 
 

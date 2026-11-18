@@ -1438,7 +1438,8 @@ public:
     };
     std::vector<ExtraRimInfo> extraRims() const;
     bool hasExtraRim(const LLUUID& actor) const;
-    bool canAddExtraRim(const LLUUID& actor, std::string* why = nullptr) const;
+    // Menu preflight may inspect a live avatar before enrolling it in Cast.
+    bool canAddExtraRim(const LLUUID& actor, std::string* why = nullptr, bool allow_uncast = false) const;
     bool addExtraRim(const LLUUID& actor);
     void removeExtraRim(const LLUUID& actor);
     void setExtraRimTrim(const LLUUID& actor, F32 trim);

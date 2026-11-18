@@ -667,6 +667,11 @@
       <menu_item_call.on_click function="Keyframes.LockOnAvatar" />
       <menu_item_call.on_enable function="Keyframes.CanLock" />
     </menu_item_call>
+    <menu_item_check label="Rim light" name="Avatar Rim light">
+      <menu_item_check.on_click function="Avatar.RimToggle" />
+      <menu_item_check.on_check function="Avatar.CheckRim" />
+      <menu_item_check.on_enable function="Avatar.EnableRim" />
+    </menu_item_check>
     <context_menu label="Gaze" name="Avatar Gaze">
       <menu_item_check label="Gaze On" name="Avatar Gaze On">
         <menu_item_check.on_click function="Avatar.Gaze" parameter="on" />

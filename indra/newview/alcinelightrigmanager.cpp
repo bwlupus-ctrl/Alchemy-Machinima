@@ -1763,17 +1763,18 @@ bool ALCineLightRigManager::hasExtraRim(const LLUUID& actor) const
         [&id](const ExtraRim& extra) { return extra.mActor == id; });
 }
 
-bool ALCineLightRigManager::canAddExtraRim(const LLUUID& actor, std::string* why) const
+bool ALCineLightRigManager::canAddExtraRim(const LLUUID& actor, std::string* why, bool allow_uncast) const
 {
     const auto refuse = [why](const char* reason)
     { if (why) *why = reason; return false; };
     const auto& studio = ALGhostStudio::instance();
     const auto* clone = studio.getInstance(actor);
     if (!clone) clone = studio.findInstanceByRuntime(actor);
-    if (clone && clone->mKind == ALGhostStudio::BACKING_OVERLAY)
+    if (studio.isPrivateOverlayRuntime(actor) || (clone && clone->mKind == ALGhostStudio::BACKING_OVERLAY))
         return refuse("Overlay ghosts cannot receive rim lights");
     const LLUUID id = resolveRigActorIdentity(actor);
-    if (id.isNull() || !LLDirectorCast::instance().contains(id))
+    if (id.isNull() || (!LLDirectorCast::instance().contains(id) &&
+        (!allow_uncast || resolveBorrowActor(id).isNull())))
         return refuse("Select a cast actor");
     if (hasExtraRim(id)) return refuse("Already has an extra rim");
     if (mExtraRims.size() >= ALExtraRimModel::kMaxExtraRims)
