@@ -1,6 +1,7 @@
 #include "llviewerprecompiledheaders.h"
 #include "alpresetlook.h"
 #include "alkitpage.h"
+#include "alpanelrigrim.h"
 #include "alpanelprojectorshafts.h"
 #include "alshaftselftest.h"
 #include "alsettingsundohistory.h"
@@ -2109,6 +2110,7 @@ LLUUID ALKitPage::actorTarget() const
 
 void ALKitPage::undoOnPage(bool redo)
 {
+    ALExtraRimUI::finishPendingTrims();
     if (ALKitShell* shell = ALKitShell::find(this))
     {
         // Finish before choosing any owner, so a delayed drag cannot reappear after undo.

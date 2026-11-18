@@ -5,15 +5,15 @@ Per-control rows: `doc/director_kit/wiring/wiring_table.csv`.
 
 Versions: **ORIG** = commit 9c25f75491a (git blobs); **V1** = working tree `floater_director.xml` + owner panels; **V2** = working tree `floater_director_v2.xml` + `panel_dpage_*.xml` + kit rows.
 
-Interactive controls: 2244 (of 2386 catalog rows; readout/text rows excluded from counts).
+Interactive controls: 2249 (of 2392 catalog rows; readout/text rows excluded from counts).
 
 ## Totals
 
 | Version | Wired | WIRED_SETTING | WIRED_CALLBACK | WIRED_CPP | Suspect (V2) | UNWIRED | MISSING |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ORIG | 1612 | 1035 | 1 | 576 | 0 | 54 | 578 |
-| V1 | 1720 | 1089 | 1 | 630 | 0 | 55 | 469 |
-| V2 | 2044 | 1393 | 0 | 651 | 66 | 101 | 33 |
+| ORIG | 1612 | 1035 | 1 | 576 | 0 | 54 | 583 |
+| V1 | 1720 | 1089 | 1 | 630 | 0 | 55 | 474 |
+| V2 | 2049 | 1393 | 0 | 656 | 66 | 101 | 33 |
 
 ## Per page: wired counts (ORIG -> V1 -> V2)
 
@@ -41,7 +41,7 @@ Interactive controls: 2244 (of 2386 catalog rows; readout/text rows excluded fro
 | filters_tab (Filters) | Lens | 48 | 29 | 29 | 43 | 3 | 2 | 0 | 0 |
 | diopter_tab (Diopter) | Lens | 4 | 3 | 3 | 3 | 0 | 1 | 0 | 0 |
 | cine_light_rig_tab (Rig) | Light | 189 | 151 | 160 | 172 | 0 | 16 | 1 | 0 |
-| light_rim_tab (Rim) | Light | 84 | 40 | 43 | 79 | 0 | 5 | 0 | 0 |
+| light_rim_tab (Rim) | Light | 89 | 40 | 43 | 84 | 0 | 5 | 0 | 0 |
 | exposure_tab (Exposure) | Light | 48 | 23 | 24 | 46 | 1 | 1 | 0 | 0 |
 | practicals_tab (Practicals) | Light | 21 | 14 | 14 | 19 | 0 | 2 | 0 | 0 |
 | projector_shafts_tab (Projector Shafts) | Light | 58 | 37 | 43 | 57 | 0 | 1 | 0 | 0 |
@@ -63,7 +63,7 @@ Interactive controls: 2244 (of 2386 catalog rows; readout/text rows excluded fro
 
 ## Reconciliation with page_sources.json
 
-Catalog = 2022 mockup rows + 364 page_sources-only (page, widget) rows = 2386 controls. page_sources.json lists 2386 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
+Catalog = 2028 mockup rows + 364 page_sources-only (page, widget) rows = 2392 controls. page_sources.json lists 2392 row entries in total; it expands option-indexed rows (repeated widgets are collapsed here by page + widget).
 Of the page_sources-only rows, 360 are interactive.
 
 ## V2 losses: wired in ORIG or V1, UNWIRED or MISSING in V2
@@ -74,8 +74,8 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3495 LLFloaterDirector::bindFrameOrbitPage |
-| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3488 LLFloaterDirector::bindFrameOrbitPage |
+| `frame_aspect_ratio` | Format | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:3498 LLFloaterDirector::bindFrameOrbitPage |
+| `auto_frame_resolve` | Re-solve now | WIRED_CALLBACK | WIRED_CALLBACK | UNWIRED | cpp other-class llfloaterdirector.cpp:3491 LLFloaterDirector::bindFrameOrbitPage |
 
 ### vcam_tab (1)
 
@@ -87,7 +87,7 @@ Total: 26 (excludes 9 rows that are present on another V2 page, listed below)
 
 | Widget | Label | ORIG | V1 | V2 | V2 evidence |
 |---|---|---|---|---|---|
-| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2574 LLFloaterDirector::bindLensFocusPage |
+| `dof_res_combo` | Quality | WIRED_SETTING | WIRED_SETTING | UNWIRED | cpp other-class llfloaterdirector.cpp:2577 LLFloaterDirector::bindLensFocusPage |
 
 ### atmosphere_tab (22)
 
@@ -193,11 +193,11 @@ Names present in the ORIG page closure but absent from the V1 closure: 352 entri
 ## Structural checks
 
 - Interactive rows whose V1 XUI control_name/setting is not declared in app_settings/settings*.xml: 0 (may be declared in C++ instead; not counted as WIRED_SETTING).
-- V2 resolution by source: alias-kit=1, kit=20, none=33, xui=2190.
+- V2 resolution by source: alias-kit=1, kit=20, none=33, xui=2195.
   `xui` = named widget in the V2 dpage closure; `kit` = kit row `widget=`; `alias-*` = matched by bound setting on the same page; `redirect-*` = V2 launcher stub, control found in the V1 owner floater it opens.
 - Launcher-stub pages (V2 opens V1 floater): none.
 - Interactive rows missing in ALL three versions (mockup-only, never implemented): 1.
-- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2244 interactive.
+- Rows absent from the director_kit_index.xml TSV (page, widget): 35 of 2249 interactive.
 - V2 bound setting differs from the kit index TSV: 0
 - V2 pages without a panel_dpage file: none
 
@@ -206,7 +206,7 @@ Names present in the ORIG page closure but absent from the V1 closure: 352 entri
 - Static analysis only. A C++ match inside a FLOATER-owned postBuild (LLFloaterDirector) does not prove the V2 copy is wired; such V2 controls are flagged `V2_SUSPECT_FLOATER_SCOPED` unless the enclosing function mentions `DirectorUIV2`. This flag is conservative and needs in-world confirmation.
 - A panel class counts as instantiated for a V2 page only when its XML is embedded in that page closure (`LLPanelInjector` registration name = file stem).
 - Kit rows (V2 `kit_row`/`kit_switch` with `widget=`) have no per-widget C++; WIRED_SETTING means the bound setting is declared (kit binding is generic in alkit*.cpp), not that the in-world behaviour was checked.
-- Control universe = the mockup rows (2244 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
+- Control universe = the mockup rows (2249 interactive) per page, matched to each version's XML. Widgets that exist in a version XUI but are not in the mockup are not enumerated.
 - ORIG page owners are the HEAD owner files that exist at ORIG; ORIG floater_director.xml is always searched. ORIG C++ is read from the commit; V1/V2 C++ is the working tree.
 - Callbacks count as WIRED only when the name is referenced (not just defined) in top-level indra/newview/*.cpp. Registry names are matched as literals or identifiers.
 - Widget literal hits require a getChild/findChild/childSet/setCommitCallback/Registrar token within 3 lines before (or 1 line after) the literal, and the enclosing class must be one of the page owner classes from page_sources.json.

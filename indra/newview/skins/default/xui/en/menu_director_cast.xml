@@ -88,6 +88,10 @@
      function="Director.LightResponse" />
   </menu_item_call>
   <menu_item_separator layout="topleft" />
+  <menu_item_check label="Rim light" layout="topleft" name="extra_rim_toggle">
+    <menu_item_check.on_click function="Director.ExtraRimToggle" />
+    <menu_item_check.on_check function="Director.ExtraRimCheck" />
+  </menu_item_check>
   <menu_item_call label="Make group" layout="topleft" name="make_group">
     <menu_item_call.on_click function="Director.MakeGroup" />
   </menu_item_call>

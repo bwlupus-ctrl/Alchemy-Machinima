@@ -1,12 +1,12 @@
 # Rim — Director Kit page contract
 
 Page key: `light_rim_tab`. Evidence: [`page_sources.json`](../page_sources.json) and [`page_sources.md`](../page_sources.md).
-Computed class: **code-driven** (78/89 setting-bound rows; 8 C++-referenced rows).
+Computed class: **code-driven** (78/95 setting-bound rows; 14 C++-referenced rows).
 
 ## Real owners
 
 - `panel_cine_light_rig` / `panel` at `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:8` (43 matching rows).
-- Referencing classes: `ALRigRimController` (5), `LLPipeline` (3), `ALKitPresetStrip` (1).
+- Referencing classes: `ALExtraRimUI` (6), `ALRigRimController` (5), `LLPipeline` (3), `ALKitPresetStrip` (1).
 
 Name collisions in secondary XUI files are evidence candidates, not automatic ownership. The implementation must retain only occurrences whose root and class agree with the row's behavior.
 
@@ -20,95 +20,101 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 | Card / row | Existing control evidence | Required binding | Other writable homes |
 |---|---|---|---|
-| `rig_rim` / `cine_rig_rim_master_gain` (Master) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1005` | kit `slider` ↔ `CineRigRimMasterGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:10` `cine_rig_rim_master_gain` |
-| `rig_rim` / `cine_rig_rim_roughness_soften` (Soften) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1011` | kit `slider` ↔ `CineRigRimRoughnessSoften` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:15` `cine_rig_rim_roughness_soften` |
-| `rig_rim` / `cine_rig_rim_back_softness` (Back softness) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1017` | kit `slider` ↔ `CineRigRimBackSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:20` `cine_rig_rim_back_softness` |
-| `rig_rim` / `cine_rig_rim_tint` (Tint) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1023` | kit `slider` ↔ `CineRigRimTint` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:25` `cine_rig_rim_tint` |
-| `rig_rim` / `cine_rig_rim_shadow` (Shadow) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1030` | kit `slider` ↔ `CineRigRimShadow` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:30` `cine_rig_rim_shadow` |
-| `rig_rim` / `cine_rig_rim_include_alpha` (Alpha surfaces) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1034` | kit `toggle` ↔ `CineRigRimIncludeAlpha` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:35` `cine_rig_rim_include_alpha` |
-| `rig_rim` / `cine_rig_rim_include_probes` (Probes) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1037` | kit `toggle` ↔ `CineRigRimIncludeProbes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:38` `cine_rig_rim_include_probes` |
-| `rig_rim` / `cine_rig_rim_include_bounce` (Bounce fills) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1040` | kit `toggle` ↔ `CineRigRimIncludeBounce` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:41` `cine_rig_rim_include_bounce` |
-| `rim_quality` / `cine_rimq_smooth` (Smoothness) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1142` | kit `slider` ↔ `CineRigRimSmoothness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:46` `cine_rimq_smooth` |
-| `rim_quality` / `cine_rimq_smooth_radius` (Smooth radius) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1145` | kit `slider` ↔ `CineRigRimSmoothRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:51` `cine_rimq_smooth_radius` |
-| `rim_quality` / `cine_rimq_texture_normals` (Texture normals) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1148` | kit `slider` ↔ `CineRigRimTextureNormals` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:56` `cine_rimq_texture_normals` |
-| `rim_quality` / `cine_rimq_steady` (Steady) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1151` | kit `slider` ↔ `CineRigRimAntiShimmer` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:61` `cine_rimq_steady` |
-| `rim_quality` / `cine_rimq_actors` (Actors only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1137` | kit `toggle` ↔ `CineRigRimActorsOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:66` `cine_rimq_actors` |
+| `rig_rim` / `cine_rig_rim_master_gain` (Master) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1005` | kit `slider` ↔ `CineRigRimMasterGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:11` `cine_rig_rim_master_gain` |
+| `rig_rim` / `cine_rig_rim_roughness_soften` (Soften) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1011` | kit `slider` ↔ `CineRigRimRoughnessSoften` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:16` `cine_rig_rim_roughness_soften` |
+| `rig_rim` / `cine_rig_rim_back_softness` (Back softness) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1017` | kit `slider` ↔ `CineRigRimBackSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:21` `cine_rig_rim_back_softness` |
+| `rig_rim` / `cine_rig_rim_tint` (Tint) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1023` | kit `slider` ↔ `CineRigRimTint` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:26` `cine_rig_rim_tint` |
+| `rig_rim` / `cine_rig_rim_shadow` (Shadow) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1030` | kit `slider` ↔ `CineRigRimShadow` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:31` `cine_rig_rim_shadow` |
+| `rig_rim` / `cine_rig_rim_include_alpha` (Alpha surfaces) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1034` | kit `toggle` ↔ `CineRigRimIncludeAlpha` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:36` `cine_rig_rim_include_alpha` |
+| `rig_rim` / `cine_rig_rim_include_probes` (Probes) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1037` | kit `toggle` ↔ `CineRigRimIncludeProbes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:39` `cine_rig_rim_include_probes` |
+| `rig_rim` / `cine_rig_rim_include_bounce` (Bounce fills) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1040` | kit `toggle` ↔ `CineRigRimIncludeBounce` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:42` `cine_rig_rim_include_bounce` |
+| `rim_quality` / `cine_rimq_smooth` (Smoothness) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1142` | kit `slider` ↔ `CineRigRimSmoothness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:47` `cine_rimq_smooth` |
+| `rim_quality` / `cine_rimq_smooth_radius` (Smooth radius) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1145` | kit `slider` ↔ `CineRigRimSmoothRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:52` `cine_rimq_smooth_radius` |
+| `rim_quality` / `cine_rimq_texture_normals` (Texture normals) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1148` | kit `slider` ↔ `CineRigRimTextureNormals` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:57` `cine_rimq_texture_normals` |
+| `rim_quality` / `cine_rimq_steady` (Steady) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1151` | kit `slider` ↔ `CineRigRimAntiShimmer` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:62` `cine_rimq_steady` |
+| `rim_quality` / `cine_rimq_actors` (Actors only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1137` | kit `toggle` ↔ `CineRigRimActorsOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:67` `cine_rimq_actors` |
 | `rim_quality` / `cine_rimq_enable_tag` (Avatar tag) | `button` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1139` | `ALRigRimKitAdapter` command/model binding → behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:124`) | none |
-| `per_light_rim [Key]` / `cine_rig_rim_key_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1050` | kit `number` ↔ `CineRigRimKeyGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:81` `cine_rig_rim_key_gain` |
-| `per_light_rim [Key]` / `cine_rig_rim_key_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1053` | kit `number` ↔ `CineRigRimKeySharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:84` `cine_rig_rim_key_sharpness` |
-| `per_light_rim [Key]` / `cine_rig_rim_key_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1056` | kit `number` ↔ `CineRigRimKeyWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:87` `cine_rig_rim_key_wrap` |
-| `per_light_rim [Key]` / `cine_rig_rim_key_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1059` | kit `number` ↔ `CineRigRimKeyBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:90` `cine_rig_rim_key_back_bias` |
-| `per_light_rim [Fill]` / `cine_rig_rim_fill_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1064` | kit `number` ↔ `CineRigRimFillGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:95` `cine_rig_rim_fill_gain` |
-| `per_light_rim [Fill]` / `cine_rig_rim_fill_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1067` | kit `number` ↔ `CineRigRimFillSharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:98` `cine_rig_rim_fill_sharpness` |
-| `per_light_rim [Fill]` / `cine_rig_rim_fill_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1070` | kit `number` ↔ `CineRigRimFillWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:101` `cine_rig_rim_fill_wrap` |
-| `per_light_rim [Fill]` / `cine_rig_rim_fill_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1073` | kit `number` ↔ `CineRigRimFillBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:104` `cine_rig_rim_fill_back_bias` |
-| `per_light_rim [Back]` / `cine_rig_rim_rim_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1078` | kit `number` ↔ `CineRigRimRimGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:109` `cine_rig_rim_rim_gain` |
-| `per_light_rim [Back]` / `cine_rig_rim_rim_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1081` | kit `number` ↔ `CineRigRimRimSharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:112` `cine_rig_rim_rim_sharpness` |
-| `per_light_rim [Back]` / `cine_rig_rim_rim_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1084` | kit `number` ↔ `CineRigRimRimWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:115` `cine_rig_rim_rim_wrap` |
-| `per_light_rim [Back]` / `cine_rig_rim_rim_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1087` | kit `number` ↔ `CineRigRimRimBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:118` `cine_rig_rim_rim_back_bias` |
-| `per_light_rim [BG]` / `cine_rig_rim_bg_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1092` | kit `number` ↔ `CineRigRimBgGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:123` `cine_rig_rim_bg_gain` |
-| `per_light_rim [BG]` / `cine_rig_rim_bg_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1095` | kit `number` ↔ `CineRigRimBgSharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:126` `cine_rig_rim_bg_sharpness` |
-| `per_light_rim [BG]` / `cine_rig_rim_bg_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1098` | kit `number` ↔ `CineRigRimBgWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:129` `cine_rig_rim_bg_wrap` |
-| `per_light_rim [BG]` / `cine_rig_rim_bg_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1101` | kit `number` ↔ `CineRigRimBgBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:132` `cine_rig_rim_bg_back_bias` |
-| `rim_edge` / `cine_rimq_edge` (Edge) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1154` | kit `slider` ↔ `CineRigRimSilhouette` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:138` `cine_rimq_edge` |
-| `rim_edge` / `cine_rimq_width` (Width) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1157` | kit `slider` ↔ `CineRigRimSilhouetteWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:143` `cine_rimq_width` |
-| `rim_edge` / `cine_rimq_units` (Units) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1158` | kit `combo` ↔ `CineRigRimSilhouetteUnits` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:148` `cine_rimq_units` |
-| `rim_edge` / `cine_rimq_soft` (Soft) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1161` | kit `slider` ↔ `CineRigRimSilhouetteSoft` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:156` `cine_rimq_soft` |
-| `rim_wrap` / `cine_rimq_wrap_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1166` | kit `slider` ↔ `CineRigRimWrapStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:163` `cine_rimq_wrap_amount` |
-| `rim_wrap` / `cine_rimq_wrap_reach` (Reach) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1169` | kit `slider` ↔ `CineRigRimWrapWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:168` `cine_rimq_wrap_reach` |
-| `rim_wrap` / `cine_rimq_wrap_blur` (Blur) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1172` | kit `slider` ↔ `CineRigRimWrapBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:173` `cine_rimq_wrap_blur` |
-| `rim_wrap` / `cine_rimq_wrap_colour` (Colour) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1175` | kit `slider` ↔ `CineRigRimWrapSaturation` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:178` `cine_rimq_wrap_colour` |
-| `rim_tron` / `cine_rig_rim_tron_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1109` | kit `combo` ↔ `CineRigRimTronMode` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1402`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6406` `tr_rigrim_tron_mode_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:185` `cine_rig_rim_tron_mode` |
-| `rim_tron` / `cine_rig_rim_tron_mix` (Mix) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1120` | kit `slider` ↔ `CineRigRimTronMix` `F32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1403`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6412` `tr_rigrim_tron_mix_slider`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:194` `cine_rig_rim_tron_mix` |
-| `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1125` | kit `combo` ↔ `CineRigRimTronColorSource` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1404`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6415` `tr_rigrim_tron_color_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:199` `cine_rig_rim_tron_color` |
-| `rim_diagnostics` / `cine_rig_rim_debug` (Rim only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:992` | kit `toggle` ↔ `CineRigRimDebugRimOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:210` `cine_rig_rim_debug` |
-| `rim_diagnostics` / `cine_rimq_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1178` | kit `combo` ↔ `CineRigRimDebugView` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:213` `cine_rimq_debug` |
-| `light_shape` / `relight_physical` (Physical falloff) | none | kit `toggle` ↔ `RenderLocalLightPhysicalFalloff` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:227` `relight_physical` |
-| `light_shape` / `relight_world_size` (World light size (m)) | none | kit `slider` ↔ `RenderLocalLightDefaultRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:230` `relight_world_size` |
-| `light_shape` / `relight_size_from_prim` (Size from prim) | none | kit `toggle` ↔ `RenderLocalLightSizeFromPrim` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:235` `relight_size_from_prim` |
-| `light_shape` / `relight_highlight_softness` (Highlight softness) | none | kit `slider` ↔ `RenderLocalLightHighlightScale` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:238` `relight_highlight_softness` |
+| `per_light_rim [Key]` / `cine_rig_rim_key_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1050` | kit `number` ↔ `CineRigRimKeyGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:82` `cine_rig_rim_key_gain` |
+| `per_light_rim [Key]` / `cine_rig_rim_key_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1053` | kit `number` ↔ `CineRigRimKeySharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:85` `cine_rig_rim_key_sharpness` |
+| `per_light_rim [Key]` / `cine_rig_rim_key_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1056` | kit `number` ↔ `CineRigRimKeyWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:88` `cine_rig_rim_key_wrap` |
+| `per_light_rim [Key]` / `cine_rig_rim_key_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1059` | kit `number` ↔ `CineRigRimKeyBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:91` `cine_rig_rim_key_back_bias` |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1064` | kit `number` ↔ `CineRigRimFillGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:96` `cine_rig_rim_fill_gain` |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1067` | kit `number` ↔ `CineRigRimFillSharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:99` `cine_rig_rim_fill_sharpness` |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1070` | kit `number` ↔ `CineRigRimFillWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:102` `cine_rig_rim_fill_wrap` |
+| `per_light_rim [Fill]` / `cine_rig_rim_fill_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1073` | kit `number` ↔ `CineRigRimFillBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:105` `cine_rig_rim_fill_back_bias` |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1078` | kit `number` ↔ `CineRigRimRimGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:110` `cine_rig_rim_rim_gain` |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1081` | kit `number` ↔ `CineRigRimRimSharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:113` `cine_rig_rim_rim_sharpness` |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1084` | kit `number` ↔ `CineRigRimRimWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:116` `cine_rig_rim_rim_wrap` |
+| `per_light_rim [Back]` / `cine_rig_rim_rim_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1087` | kit `number` ↔ `CineRigRimRimBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:119` `cine_rig_rim_rim_back_bias` |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_gain` (Strength) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1092` | kit `number` ↔ `CineRigRimBgGain` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:124` `cine_rig_rim_bg_gain` |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_sharpness` (Sharpness) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1095` | kit `number` ↔ `CineRigRimBgSharpness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:127` `cine_rig_rim_bg_sharpness` |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_wrap` (Wrap) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1098` | kit `number` ↔ `CineRigRimBgWrap` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:130` `cine_rig_rim_bg_wrap` |
+| `per_light_rim [BG]` / `cine_rig_rim_bg_back_bias` (Back bias) | `spinner` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1101` | kit `number` ↔ `CineRigRimBgBackBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:133` `cine_rig_rim_bg_back_bias` |
+| `rim_edge` / `cine_rimq_edge` (Edge) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1154` | kit `slider` ↔ `CineRigRimSilhouette` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:139` `cine_rimq_edge` |
+| `rim_edge` / `cine_rimq_width` (Width) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1157` | kit `slider` ↔ `CineRigRimSilhouetteWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:144` `cine_rimq_width` |
+| `rim_edge` / `cine_rimq_units` (Units) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1158` | kit `combo` ↔ `CineRigRimSilhouetteUnits` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:149` `cine_rimq_units` |
+| `rim_edge` / `cine_rimq_soft` (Soft) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1161` | kit `slider` ↔ `CineRigRimSilhouetteSoft` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:157` `cine_rimq_soft` |
+| `rim_wrap` / `cine_rimq_wrap_amount` (Amount) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1166` | kit `slider` ↔ `CineRigRimWrapStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:164` `cine_rimq_wrap_amount` |
+| `rim_wrap` / `cine_rimq_wrap_reach` (Reach) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1169` | kit `slider` ↔ `CineRigRimWrapWidth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:169` `cine_rimq_wrap_reach` |
+| `rim_wrap` / `cine_rimq_wrap_blur` (Blur) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1172` | kit `slider` ↔ `CineRigRimWrapBlur` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:174` `cine_rimq_wrap_blur` |
+| `rim_wrap` / `cine_rimq_wrap_colour` (Colour) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1175` | kit `slider` ↔ `CineRigRimWrapSaturation` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:179` `cine_rimq_wrap_colour` |
+| `rim_tron` / `cine_rig_rim_tron_mode` (Mode) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1109` | kit `combo` ↔ `CineRigRimTronMode` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1402`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6406` `tr_rigrim_tron_mode_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:186` `cine_rig_rim_tron_mode` |
+| `rim_tron` / `cine_rig_rim_tron_mix` (Mix) | `slider` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1120` | kit `slider` ↔ `CineRigRimTronMix` `F32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1403`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6412` `tr_rigrim_tron_mix_slider`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:195` `cine_rig_rim_tron_mix` |
+| `rim_tron` / `cine_rig_rim_tron_color` (Colour) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1125` | kit `combo` ↔ `CineRigRimTronColorSource` `S32`; `ALRigRimKitAdapter` preserves/calls behavior `ALRigRimController::attach()` (`indra/newview/alrigrimcontroller.cpp:1404`) | page `tron_tab`, `indra/newview/skins/default/xui/en/floater_lightbox_settings.xml:6415` `tr_rigrim_tron_color_combo`, `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:200` `cine_rig_rim_tron_color` |
+| `rim_diagnostics` / `cine_rig_rim_debug` (Rim only) | `check_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:992` | kit `toggle` ↔ `CineRigRimDebugRimOnly` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:211` `cine_rig_rim_debug` |
+| `rim_diagnostics` / `cine_rimq_debug` (Debug view) | `combo_box` `indra/newview/skins/default/xui/en/panel_cine_light_rig.xml:1178` | kit `combo` ↔ `CineRigRimDebugView` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:214` `cine_rimq_debug` |
+| `light_shape` / `relight_physical` (Physical falloff) | none | kit `toggle` ↔ `RenderLocalLightPhysicalFalloff` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:228` `relight_physical` |
+| `light_shape` / `relight_world_size` (World light size (m)) | none | kit `slider` ↔ `RenderLocalLightDefaultRadius` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:231` `relight_world_size` |
+| `light_shape` / `relight_size_from_prim` (Size from prim) | none | kit `toggle` ↔ `RenderLocalLightSizeFromPrim` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:236` `relight_size_from_prim` |
+| `light_shape` / `relight_highlight_softness` (Highlight softness) | none | kit `slider` ↔ `RenderLocalLightHighlightScale` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:239` `relight_highlight_softness` |
 | `light_shape` / `relight_shape_preset` (Size preset) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
-| `light_shape` / `relight_near_floor` (Near floor (m)) | none | kit `number` ↔ `RenderLocalLightNearFloor` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:254` `relight_near_floor` |
-| `light_shape` / `relight_max_boost` (Max boost) | none | kit `number` ↔ `RenderLocalLightPhysicalMaxBoost` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:257` `relight_max_boost` |
+| `light_shape` / `relight_near_floor` (Near floor (m)) | none | kit `number` ↔ `RenderLocalLightNearFloor` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:255` `relight_near_floor` |
+| `light_shape` / `relight_max_boost` (Max boost) | none | kit `number` ↔ `RenderLocalLightPhysicalMaxBoost` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:258` `relight_max_boost` |
 | `area_soft_shadows` / `soft_shadow_preset_strip` (Shadow preset) | none | `ALRigRimKitAdapter` command/model binding → wired in `ALKitPresetStrip::postBuild()`; behavior `ALKitPresetStrip::onSelect()` (`indra/newview/alkitpresets.cpp:585`) | none |
-| `area_soft_shadows` / `area_shadow_thin_objects` (Thin objects) | none | kit `toggle` ↔ `RenderAreaShadowThinObjects` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:265` `area_shadow_thin_objects` |
-| `area_soft_shadows` / `area_shadow_world` (World shadows) | none | kit `toggle` ↔ `RenderAreaShadowCubeMaps` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:268` `area_shadow_world` |
-| `area_soft_shadows` / `area_shadow_hidden_body` (Hidden body casts in World shadows) | none | kit `toggle` ↔ `RenderWorldShadowHiddenBodyCasts` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:271` `area_shadow_hidden_body` |
-| `area_soft_shadows` / `area_shadow_world_lights` (World lights) | none | kit `number` ↔ `RenderAreaShadowCubeLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:274` `area_shadow_world_lights` |
+| `area_soft_shadows` / `area_shadow_thin_objects` (Thin objects) | none | kit `toggle` ↔ `RenderAreaShadowThinObjects` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:266` `area_shadow_thin_objects` |
+| `area_soft_shadows` / `area_shadow_world` (World shadows) | none | kit `toggle` ↔ `RenderAreaShadowCubeMaps` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:269` `area_shadow_world` |
+| `area_soft_shadows` / `area_shadow_hidden_body` (Hidden body casts in World shadows) | none | kit `toggle` ↔ `RenderWorldShadowHiddenBodyCasts` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:272` `area_shadow_hidden_body` |
+| `area_soft_shadows` / `area_shadow_world_lights` (World lights) | none | kit `number` ↔ `RenderAreaShadowCubeLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:275` `area_shadow_world_lights` |
 | `area_soft_shadows` / `area_shadow_world_status` (World shadows) | none | kit readout ← approved static copy; no runtime writer | none |
 | `area_soft_shadows` / `area_shadow_world_picks` (World picks) | none | kit readout ← approved static copy; no runtime writer | none |
 | `area_soft_shadows` / `area_shadow_world_list_picks` (List picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::worldShadowPickChatLines()` (`indra/newview/pipeline.cpp:30887`) | none |
 | `area_soft_shadows` / `area_shadow_world_clear_picks` (Clear picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::clearWorldShadowPicks()` (`indra/newview/pipeline.cpp:25361`) | none |
 | `area_soft_shadows` / `area_shadow_world_clear_away_picks` (Clear away picks) | none | `ALRigRimKitAdapter` command/model binding → wired in `LLFloaterDirector::bindPage()`; behavior `LLPipeline::clearAwayWorldShadowPicks()` (`indra/newview/pipeline.cpp:25373`) | none |
-| `area_soft_shadows` / `area_shadow_vcam` (Also in VCam feeds) | none | kit `toggle` ↔ `RenderAreaShadowsVCam` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:292` `area_shadow_vcam` |
+| `area_soft_shadows` / `area_shadow_vcam` (Also in VCam feeds) | none | kit `toggle` ↔ `RenderAreaShadowsVCam` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:293` `area_shadow_vcam` |
 | `area_soft_shadows` / `area_shadow_sl_status` (SL status) | none | kit readout ← approved static copy; no runtime writer | none |
 | `area_soft_shadows` / `area_shadow_coverage` (Coverage) | none | kit readout ← approved static copy; no runtime writer | none |
-| `area_soft_shadows` / `area_shadow_strength` (Shadow strength) | none | kit `slider` ↔ `RenderAreaShadowStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:301` `area_shadow_strength` |
-| `area_soft_shadows` / `area_shadow_contrast` (Shadow contrast) | none | kit `slider` ↔ `RenderAreaShadowContrast` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:306` `area_shadow_contrast` |
-| `area_soft_shadows` / `area_shadow_depth` (Shadow depth) | none | kit `slider` ↔ `RenderAreaShadowDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:311` `area_shadow_depth` |
-| `area_soft_shadows` / `area_shadow_screen_reach` (Screen-space detail (m)) | none | kit `slider` ↔ `RenderAreaShadowWorldScreenReach` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:316` `area_shadow_screen_reach` |
-| `area_soft_shadows` / `area_shadow_world_amount` (World shadow amount) | none | kit `slider` ↔ `RenderAreaShadowWorldAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:321` `area_shadow_world_amount` |
-| `area_soft_shadows` / `area_shadow_screen_amount` (Screen-space amount) | none | kit `slider` ↔ `RenderAreaShadowScreenAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:326` `area_shadow_screen_amount` |
-| `area_soft_shadows` / `area_shadow_lights` (Shadowed lights) | none | kit `number` ↔ `RenderAreaShadowLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:331` `area_shadow_lights` |
-| `area_soft_shadows` / `shadow_slot_hysteresis` (Steady shadow slots) | none | kit `toggle` ↔ `RenderShadowSlotHysteresis` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:334` `shadow_slot_hysteresis` |
-| `area_soft_shadows` / `soft_shadow_min_softness` (Minimum softness (texels)) | none | kit `slider` ↔ `RenderSoftShadowMinSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:337` `soft_shadow_min_softness` |
-| `area_soft_shadows` / `area_shadow_world_wide_taps` (Wide light taps) | none | kit `number` ↔ `RenderAreaShadowWorldWideTaps` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:342` `area_shadow_world_wide_taps` |
-| `area_soft_shadows` / `area_shadow_quality` (Quality preset) | none | kit `combo` ↔ `RenderAreaShadowQuality` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:345` `area_shadow_quality` |
-| `area_soft_shadows` / `area_shadow_samples` (Rays per light) | none | kit `number` ↔ `RenderAreaShadowSamples` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:356` `area_shadow_samples` |
-| `area_soft_shadows` / `area_shadow_steps` (March steps) | none | kit `number` ↔ `RenderAreaShadowSteps` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:359` `area_shadow_steps` |
-| `area_soft_shadows` / `area_shadow_distance` (Trace distance (m)) | none | kit `number` ↔ `RenderAreaShadowMaxDist` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:362` `area_shadow_distance` |
-| `area_soft_shadows` / `area_shadow_distance_reach` (Distance reach) | none | kit `toggle` ↔ `RenderAreaShadowDistanceReach` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:365` `area_shadow_distance_reach` |
-| `area_soft_shadows` / `area_shadow_far_reach` (Far reach (m)) | none | kit `number` ↔ `RenderAreaShadowFarReach` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:368` `area_shadow_far_reach` |
-| `area_soft_shadows` / `area_shadow_thickness` (Thickness (m)) | none | kit `number` ↔ `RenderAreaShadowThickness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:371` `area_shadow_thickness` |
-| `area_soft_shadows` / `area_shadow_half` (Half resolution) | none | kit `toggle` ↔ `RenderAreaShadowHalfRes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:374` `area_shadow_half` |
-| `area_soft_shadows` / `area_shadow_denoise` (Denoise radius) | none | kit `number` ↔ `RenderAreaShadowDenoise` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:377` `area_shadow_denoise` |
-| `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:380` `area_shadow_light_bias` |
-| `area_soft_shadows` / `area_shadow_world_near` (Near clip (m)) | none | kit `number` ↔ `RenderAreaShadowWorldNear` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:383` `area_shadow_world_near` |
-| `area_soft_shadows` / `area_shadow_mapped_contact` (Contact (m)) | none | kit `number` ↔ `RenderAreaShadowMappedContact` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:386` `area_shadow_mapped_contact` |
-| `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:389` `area_shadow_debug` |
-| `area_soft_shadows` / `area_shadow_world_debug` (World view) | none | kit `combo` ↔ `RenderAreaShadowWorldDebug` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:404` `area_shadow_world_debug` |
-| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:414` `area_shadow_budget` |
+| `area_soft_shadows` / `area_shadow_strength` (Shadow strength) | none | kit `slider` ↔ `RenderAreaShadowStrength` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:302` `area_shadow_strength` |
+| `area_soft_shadows` / `area_shadow_contrast` (Shadow contrast) | none | kit `slider` ↔ `RenderAreaShadowContrast` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:307` `area_shadow_contrast` |
+| `area_soft_shadows` / `area_shadow_depth` (Shadow depth) | none | kit `slider` ↔ `RenderAreaShadowDepth` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:312` `area_shadow_depth` |
+| `area_soft_shadows` / `area_shadow_screen_reach` (Screen-space detail (m)) | none | kit `slider` ↔ `RenderAreaShadowWorldScreenReach` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:317` `area_shadow_screen_reach` |
+| `area_soft_shadows` / `area_shadow_world_amount` (World shadow amount) | none | kit `slider` ↔ `RenderAreaShadowWorldAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:322` `area_shadow_world_amount` |
+| `area_soft_shadows` / `area_shadow_screen_amount` (Screen-space amount) | none | kit `slider` ↔ `RenderAreaShadowScreenAmount` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:327` `area_shadow_screen_amount` |
+| `area_soft_shadows` / `area_shadow_lights` (Shadowed lights) | none | kit `number` ↔ `RenderAreaShadowLights` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:332` `area_shadow_lights` |
+| `area_soft_shadows` / `shadow_slot_hysteresis` (Steady shadow slots) | none | kit `toggle` ↔ `RenderShadowSlotHysteresis` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:335` `shadow_slot_hysteresis` |
+| `area_soft_shadows` / `soft_shadow_min_softness` (Minimum softness (texels)) | none | kit `slider` ↔ `RenderSoftShadowMinSoftness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:338` `soft_shadow_min_softness` |
+| `area_soft_shadows` / `area_shadow_world_wide_taps` (Wide light taps) | none | kit `number` ↔ `RenderAreaShadowWorldWideTaps` `U32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:343` `area_shadow_world_wide_taps` |
+| `area_soft_shadows` / `area_shadow_quality` (Quality preset) | none | kit `combo` ↔ `RenderAreaShadowQuality` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:346` `area_shadow_quality` |
+| `area_soft_shadows` / `area_shadow_samples` (Rays per light) | none | kit `number` ↔ `RenderAreaShadowSamples` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:357` `area_shadow_samples` |
+| `area_soft_shadows` / `area_shadow_steps` (March steps) | none | kit `number` ↔ `RenderAreaShadowSteps` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:360` `area_shadow_steps` |
+| `area_soft_shadows` / `area_shadow_distance` (Trace distance (m)) | none | kit `number` ↔ `RenderAreaShadowMaxDist` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:363` `area_shadow_distance` |
+| `area_soft_shadows` / `area_shadow_distance_reach` (Distance reach) | none | kit `toggle` ↔ `RenderAreaShadowDistanceReach` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:366` `area_shadow_distance_reach` |
+| `area_soft_shadows` / `area_shadow_far_reach` (Far reach (m)) | none | kit `number` ↔ `RenderAreaShadowFarReach` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:369` `area_shadow_far_reach` |
+| `area_soft_shadows` / `area_shadow_thickness` (Thickness (m)) | none | kit `number` ↔ `RenderAreaShadowThickness` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:372` `area_shadow_thickness` |
+| `area_soft_shadows` / `area_shadow_half` (Half resolution) | none | kit `toggle` ↔ `RenderAreaShadowHalfRes` `Boolean` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:375` `area_shadow_half` |
+| `area_soft_shadows` / `area_shadow_denoise` (Denoise radius) | none | kit `number` ↔ `RenderAreaShadowDenoise` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:378` `area_shadow_denoise` |
+| `area_soft_shadows` / `area_shadow_light_bias` (Light end bias (m)) | none | kit `number` ↔ `RenderAreaShadowLightBias` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:381` `area_shadow_light_bias` |
+| `area_soft_shadows` / `area_shadow_world_near` (Near clip (m)) | none | kit `number` ↔ `RenderAreaShadowWorldNear` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:384` `area_shadow_world_near` |
+| `area_soft_shadows` / `area_shadow_mapped_contact` (Contact (m)) | none | kit `number` ↔ `RenderAreaShadowMappedContact` `F32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:387` `area_shadow_mapped_contact` |
+| `area_soft_shadows` / `area_shadow_debug` (Visibility view) | none | kit `combo` ↔ `RenderAreaShadowDebugView` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:390` `area_shadow_debug` |
+| `area_soft_shadows` / `area_shadow_world_debug` (World view) | none | kit `combo` ↔ `RenderAreaShadowWorldDebug` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:405` `area_shadow_world_debug` |
+| `area_soft_shadows` / `area_shadow_budget` (Work budget (M)) | none | kit `number` ↔ `RenderAreaShadowBudget` `S32` | `indra/newview/skins/default/xui/en/panel_dpage_light_rim.xml:415` `area_shadow_budget` |
 | `area_soft_shadows` / `area_shadow_sl_help` (SL shadows) | none | kit readout ← approved static copy; no runtime writer | none |
+| `extra_rims` / `cine_extra_rim_status` (Status) | none | kit readout ← approved static copy; no runtime writer | none |
+| `extra_rims` / `cine_extra_rim_source` (Direction from) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `extra_rims` / `cine_extra_rim_list` (Actors) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `extra_rims` / `cine_extra_rim_trim` (Strength) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `extra_rims` / `cine_extra_rim_remove` (Remove) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
+| `extra_rims` / `cine_extra_rim_add` (Add selected cast) | none | **UNRESOLVED:** UNRESOLVED: no scoped owner callback, setting, model binding, or kit action | none |
 
 ## Adapter extraction
 
@@ -129,7 +135,7 @@ Use the existing XUI control types as ordinary measured kit rows. No new canvas,
 
 ## Bounded non-default audit states
 
-Manifest size: **72 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
+Manifest size: **82 states**, hard cap 256, page runtime budget 2 minutes. Each row below is applied independently from the default snapshot; there is no Cartesian product.
 
 | State key | Exact scenario |
 |---|---|
@@ -205,6 +211,16 @@ Manifest size: **72 states**, hard cap 256, page runtime budget 2 minutes. Each 
 | `area_shadow_world_debug-option-1` | Only `area_shadow_world_debug` selects `World visibility only`; other selectors remain default. |
 | `area_shadow_world_debug-option-2` | Only `area_shadow_world_debug` selects `Face (grey = face / 5)`; other selectors remain default. |
 | `area_shadow_world_debug-option-3` | Only `area_shadow_world_debug` selects `Depth difference`; other selectors remain default. |
+| `card-extra_rims-tallest-850` | Only `extra_rims` is put in its tallest local state at 850 px; all other cards stay default. |
+| `card-extra_rims-tallest-1160` | Only `extra_rims` is put in its tallest local state at 1160 px; all other cards stay default. |
+| `cine_extra_rim_source-option-0` | Only `cine_extra_rim_source` selects `You`; other selectors remain default. |
+| `cine_extra_rim_source-option-1` | Only `cine_extra_rim_source` selects `A`; other selectors remain default. |
+| `cine_extra_rim_source-option-2` | Only `cine_extra_rim_source` selects `B`; other selectors remain default. |
+| `cine_extra_rim_source-option-3` | Only `cine_extra_rim_source` selects `C`; other selectors remain default. |
+| `cine_extra_rim_source-option-4` | Only `cine_extra_rim_source` selects `D`; other selectors remain default. |
+| `cine_extra_rim_list-empty` | `cine_extra_rim_list` is empty with no selection. |
+| `cine_extra_rim_list-one` | `cine_extra_rim_list` has one selected item. |
+| `cine_extra_rim_list-overflow` | `cine_extra_rim_list` has 51 items and a visible scrollbar. |
 
 ## Parity check
 
@@ -219,7 +235,7 @@ None.
 
 ## Rejected out-of-scope same-name candidates
 
-98 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
+104 candidates were rejected by the XUI-owner/class scope; exact records and reasons are in `page_sources.json`.
 
 ## New widget required
 
@@ -228,6 +244,11 @@ None. Every approved visual kind is either a kit primitive or an existing XUI co
 ## Unresolved and pending-decision items
 
 - `relight_shape_preset` (Size preset): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `cine_extra_rim_source` (Direction from): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `cine_extra_rim_list` (Actors): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `cine_extra_rim_trim` (Strength): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `cine_extra_rim_remove` (Remove): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
+- `cine_extra_rim_add` (Add selected cast): UNRESOLVED: no scoped owner callback, setting, model binding, or kit action.
 
 ## Risks
 

@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkithistory.h"
+#include "alpanelrigrim.h"
 #include "alpanelweathersettings.h"
 #include "alkitbinding.h"
 #include "alkitpage.h"
@@ -501,6 +502,7 @@ bool ALKitHistory::entryMatches(Entry& entry, bool redo)
 
 bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string& reason, bool check_values)
 {
+    ALExtraRimUI::finishPendingTrims();
     ScopedSuspend guard; // Resolving a rebuilt source page must not record initialization writes.
     auto& steps = redo ? mRedo : mUndo;
     auto it = std::find_if(steps.rbegin(), steps.rend(),
@@ -684,6 +686,7 @@ void ALKitHistory::discardRedo(const std::string& page)
 
 void ALKitHistory::undo(const std::string& page)
 {
+    ALExtraRimUI::finishPendingTrims();
     finishGesture();
     mTimer.reset();
     std::string reason;
@@ -708,6 +711,7 @@ void ALKitHistory::undo(const std::string& page)
 }
 void ALKitHistory::redo(const std::string& page)
 {
+    ALExtraRimUI::finishPendingTrims();
     finishGesture();
     mTimer.reset();
     std::string reason;

@@ -4,12 +4,15 @@ Compiles the production area selection loop, planner, admission/Thin weights,
 UUID channel lookup and EV factor with small viewer adapters. Its results drive
 the real WGL gather/filter/world-cube resolve. No viewer build or checkout.
 --source-ref accepts a commit for a failing-before run (default WORKTREE).
-The committed 4f1c152fa08 defect is also a mandatory negative control.
+The committed 4f1c152fa08 defect is also a mandatory negative control. The
+historical snapshot grid exercises stateless selection (the current secondary /
+hysteresis-off path); temporal main-view channel retention is a separate policy.
 """
 import argparse
 import ctypes as C
 import json
 from pathlib import Path
+import re
 import subprocess
 
 import numpy as np
@@ -58,7 +61,11 @@ struct LLVector3 {
 };
 struct LLVector4 { float mV[4]={0,0,1,-1}; };
 struct LLVector4a { void load3(const float*){} void splat(float){} };
-struct LLViewerObject { bool rig=false; bool isCineRigEmitter()const{return rig;} };
+struct LLViewerObject {
+    bool rig=false;
+    bool isCineRigEmitter()const{return rig;}
+    bool isColorChart()const{return false;} // No chart fixtures in this EV/rig sweep.
+};
 struct LLVOVolume:LLViewerObject {
     int id=0; float colour=.8f; bool projector=false;
     int getID()const{return id;} bool isHUDAttachment()const{return false;}
@@ -70,6 +77,13 @@ struct LLDrawable {
     LLVector3 getPositionAgent()const{return {{0,0,2}};}
 };
 float ev=0; bool includeRig=false;
+const unsigned gFrameCount=1;
+// No previous main-view channels or ramp recipients exist in this stateless
+// fixture. These adapters only satisfy references in the unused temporal arm.
+struct EmptySelectionHistory {
+    std::array<double,8> strength{};
+    bool contains(int,unsigned,double)const{return false;}
+};
 struct Controls {} gSavedSettings;
 struct { float mGLVersion=4.6f; } gGLManager;
 template<class T> struct LLCachedControl {
@@ -85,6 +99,8 @@ EV_FUNCTION
 }
 SELECTION_HELPER
 struct Registry {
+    // This EV fixture has no derived lights. The production method also
+    // excludes extra rims; that identity contract is tested by extra_rims_check.
     bool isMirrorLight(int)const{return false;} bool areaShadowSuppressed(const LLVOVolume*)const{return false;}
     U8 actorOnlyBits(int)const{return 0;} U8 liveRecipientBits()const{return 255;}
 };
@@ -100,6 +116,7 @@ struct Pipeline {
     std::vector<LLDrawable*> mLights;
     LLDrawable* mShadowSpotLight[MAX_SPOT_SHADOWS]={}; float mSpotLightFade[MAX_SPOT_SHADOWS]={1,1,1,1,1};
     ALWorldShadow::Residency<int> mWorldShadowResident;
+    EmptySelectionHistory mAreaShadowRamps, mAreaShadowPrevious;
     ALAreaShadow::Selection<int> candidates;
     ALAreaShadow::Ranking<int,ALWorldShadow::kMaxPicks> picks;
     bool picked=false, owned=false;
@@ -108,6 +125,11 @@ struct Pipeline {
     bool worldShadowOwned(int,unsigned&)const{return owned;}
     ALAreaShadow::Selection<int> select(bool cube_main) {
         Registry registry; Camera camera; const float light_scale=1;
+        const bool steady_main=false;
+        const double selection_time=1.;
+        const auto incumbent=[](int){return false;};
+        std::array<ALAreaShadow::Candidate<LLUUID>,8> ramp_candidates{};
+        unsigned ramp_candidate_count=0;
         const bool actor_only=false,actor_as_world=false,gSnapshot=false;
         const auto toggles=[](LLVOVolume*){return true;};
         const auto actually_drawn=[](LLDrawable*,U8){return true;};
@@ -166,6 +188,11 @@ int main() {
         auto requested=thin ? ALAreaShadow::segmented(uniform,3):uniform;
         auto work=ALAreaShadow::workloadOrUniform(requested,uniform,1920,1080,selected.size,1500,4,0);
         const unsigned wanted_lights=selected.size;
+        const bool steady_main=false;
+        std::array<bool,8> slot_exiting{};
+        std::array<double,8> slot_fade{{1,1,1,1,1,1,1,1}};
+        auto& mAreaShadowPrevious=p.mAreaShadowPrevious;
+BOUNDARY_SCORES
 ADMISSION
         p.mAreaShadowCount=selected.size;for(unsigned i=0;i<selected.size;++i)p.mAreaShadowIDs[i]=selected.lights[i].id;
         auto shape=p.deferredLightShape(&v[1]);
@@ -200,12 +227,21 @@ def compile_selection(ref, out):
     start = render.index('    for (LLDrawable* drawable : mLights)', render.index('const bool pick_record_pass'))
     loop = function(render[start:], '    for (LLDrawable* drawable : mLights)')
     admission = render[render.index('    std::array<double,8> admission;'):render.index('    if (!sPrismLensRender)', render.index('    std::array<double,8> admission;'))]
+    # Hysteresis hoists these raw boundaries before admission. Keep each
+    # selected revision's expressions verbatim, including the historical
+    # absence of these declarations.
+    boundaries = []
+    for declaration in ('double dropped_score =', 'const double regular_score ='):
+        if declaration in render:
+            boundary = render.index(declaration)
+            boundaries.append(render[boundary:render.index(';', boundary) + 1])
     helper = function(pipe, 'static LLColor3 local_light_selection_color(') if 'static LLColor3 local_light_selection_color(' in pipe else ''
     source = SHIM.replace('EV_CLAMP_FUNCTION', function(env, 'inline F32 clampEV('))
     source = source.replace('ENVIRONMENT_EV_FUNCTION', function(env, 'F32 environmentEV()') if 'F32 environmentEV()' in env else '')
     source = source.replace('EV_SWEEP', ','.join('%sf' % float(ev) for ev in EVS))
     source = source.replace('EV_FUNCTION', function(env, 'F32 localLightEVScale('))
     source = source.replace('SELECTION_HELPER', helper).replace('SELECTION_LOOP', loop).replace('ADMISSION', admission)
+    source = source.replace('BOUNDARY_SCORES', '\n'.join(boundaries))
     source = source.replace('CHANNEL_FUNCTION', function(pipe, 'LLVector4 LLPipeline::deferredLightShape(').replace('LLPipeline::', 'Pipeline::'))
     colour_start = pipe.index('    const F32 ls = light_scale * ALEnvIntensity::localLightEVScale(volume);', pipe.index('renderAreaShadows(debugLightingTerm()'))
     colour = pipe[colour_start:pipe.index('                    if (s <= 0.001f)', colour_start)]
@@ -215,8 +251,16 @@ def compile_selection(ref, out):
     source = source.replace('PROBE_COLOUR', probe[probe_start:probe.index('\n\n', probe_start)])
     gate_start = probe.index('    const LLColor3 selection_color', probe_start) if '    const LLColor3 selection_color' in probe[probe_start:] else probe.index('    if (s.mRadius * 1.5f <=', probe_start)
     source = source.replace('PROBE_ELIGIBILITY', probe[gate_start:probe.index('    s.mEligible = eligible;', gate_start)])
-    for header in ('alareashadowmath.h', 'alworldshadowmath.h'):
-        (out / header).write_text(tree.read('indra/newview/' + header), encoding='utf-8')
+    # Copy the selected revision's pure-header dependencies too. Current area
+    # and world maths share alshadowslotmath; the historical defect baseline
+    # predates that include. Never substitute a WORKTREE header into BASE.
+    headers = ['alareashadowmath.h', 'alworldshadowmath.h']
+    for header in headers:
+        content = tree.read('indra/newview/' + header)
+        (out / header).write_bytes(content.encode('utf-8'))
+        for dependency in re.findall(r'^#include "(al\w+\.h)"', content, re.M):
+            if dependency not in headers:
+                headers.append(dependency)
     cpp, exe = out / 'selection.cpp', out / 'selection.exe'
     cpp.write_text(source, encoding='utf-8')
     cmd = out / 'compile.cmd'
@@ -414,6 +458,7 @@ def main():
     ap.add_argument('--out', default='.tmp/localev/check')
     args = ap.parse_args()
     out = Path(args.out).resolve()
+    print('[local-ev] snapshot grid: stateless selection / hysteresis off; temporal main-view retention is not exercised', flush=True)
     before = compile_selection(BASE, out / 'before')
     rows = compile_selection(args.source_ref, out / 'current')
     failures = violations(rows)

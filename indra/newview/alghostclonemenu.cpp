@@ -15,6 +15,8 @@
 #include "alghostclonemenu.h"
 
 #include "alavatarsubjectpicker.h"
+#include "alcinelightrigmanager.h"
+#include "alpanelrigrim.h"
 #include "aldirectorselect.h"
 #include "alghostanimassetindex.h"
 #include "alghostanimdrop.h"
@@ -2017,9 +2019,16 @@ void populateAvatarGazeMenus(LLContextMenu* menu)
     if (gaze) gaze->arrange();
 }
 
+bool avatarRimChecked();
+bool enableAvatarRim(LLUICtrl* ctrl);
+void actAvatarRim();
+
 void registerAvatarCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable,
                              LLUICtrl::CommitCallbackRegistry::Registrar& commit)
 {
+    enable.add("Avatar.EnableRim", [](LLUICtrl* ctrl, const LLSD&) { return enableAvatarRim(ctrl); });
+    enable.add("Avatar.CheckRim", [](LLUICtrl*, const LLSD&) { return avatarRimChecked(); });
+    commit.add("Avatar.RimToggle", [](LLUICtrl*, const LLSD&) { actAvatarRim(); });
     // "Select in Director" on self / other avatar and attachment menus.
     enable.add("Avatar.EnableSelectInDirector", [](LLUICtrl* ctrl, const LLSD&)
     {
@@ -2044,6 +2053,54 @@ void registerAvatarCallbacks(LLUICtrl::EnableCallbackRegistry::Registrar& enable
         if (ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr)
             shell->navigateTo("performance_group/gaze_tab");
     });
+}
+
+// Retained pick identities survive rekeys and become null on actor deletion.
+std::shared_ptr<const LLUUID> sAvatarRimPick;
+bool sAvatarRimWasCast = false;
+
+LLUUID avatarRimActor()
+{
+    if (sMenuHud || !sAvatarRimPick) return LLUUID::null;
+    return ALCineLightRigManager::instance().resolveBorrowActor(*sAvatarRimPick, sAvatarRimWasCast);
+}
+
+bool avatarRimChecked()
+{
+    return ALCineLightRigManager::instance().hasExtraRim(avatarRimActor());
+}
+
+bool enableAvatarRim(LLUICtrl* ctrl)
+{
+    auto& rigs = ALCineLightRigManager::instance();
+    const LLUUID actor = avatarRimActor();
+    std::string why;
+    const bool allowed = actor.notNull() && (rigs.hasExtraRim(actor) || rigs.canAddExtraRim(actor, &why, true));
+    if (actor.isNull()) why = "Avatar unavailable or overlay/proxy";
+    if (sMenuHud) why = "Rim light is set on the avatar, not attachments";
+    // The toggle label stays fixed, including while disabled.
+    ctrl->setToolTip(allowed ? "One actor-only rim, following Direction from on Light > Rim" : why);
+    return allowed;
+}
+
+void actAvatarRim()
+{
+    auto& rigs = ALCineLightRigManager::instance();
+    const LLUUID actor = avatarRimActor();
+    if (actor.isNull()) return;
+    const bool present = rigs.hasExtraRim(actor);
+    std::string why;
+    if (!present && !rigs.canAddExtraRim(actor, &why, true)) { tip(why); return; }
+    ALExtraRimUI::finishPendingTrims();
+    // Use v2 history when available; menu mutation also works without a shell.
+    LLFloater* director = LLFloaterReg::getInstance("director");
+    ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+    if (shell) shell->ensurePageBuilt("light_group/light_rim_tab");
+    if (!present && !ensureAvatarGazeCast(actor)) return;
+    const LLSD before = rigs.captureExtraRims();
+    if (present) rigs.removeExtraRim(actor);
+    else rigs.addExtraRim(actor);
+    ALExtraRimUI::recordEdit(shell, before, "Extra rim light");
 }
 
 // The avatar an overlay sits on. An overlay whose source was removed belongs
@@ -2372,6 +2429,8 @@ void prepareAvatarMenu(LLContextMenu* menu, LLVOAvatar* avatar, bool hud_attachm
     ALGhostStudio& studio = ALGhostStudio::instance();
     sMenuAvatar = avatar ? avatar->getID() : LLUUID::null;
     sMenuHud = hud_attachment;
+    sAvatarRimPick = ALCineLightRigManager::instance().retainBorrowActor(sMenuAvatar);
+    sAvatarRimWasCast = LLDirectorCast::instance().contains(sMenuAvatar);
     sOverlays.clear();
     if (avatar)
     {

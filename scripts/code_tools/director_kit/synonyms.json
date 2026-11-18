@@ -11,7 +11,7 @@
     ["fog", "haze", "atmosphere", "shafts", "volumetric", "rays", "godrays", "beams", "shaft"],
     ["glow", "bloom", "halation"],
     ["color", "colour", "tint", "gel", "hue"],
-    ["rim", "backlight", "edge light"],
+    ["rim", "backlight", "edge light", "extra rims", "hair light", "edge", "rim others"],
     ["camera", "cam", "vcam", "lens"],
     ["speed", "rate", "fps"],
     ["fps cap", "frame limit", "framerate", "fps limit", "frame rate limit"],

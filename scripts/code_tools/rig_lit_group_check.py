@@ -139,7 +139,7 @@ struct ALCineLightRigManager {
         'manager.groupSlotActor', 'manager.slotActor', 1))
     registry = function(manager, 'void ALCineLightRigManager::rebuildActorOnlyRegistry()')
     start = registry.index('            if (!rig.getLitGroup().empty())')
-    end = registry.index('            rigs.push_back(input);', start)
+    end = registry.index('            if (!reuse) rigs.push_back(input);', start)
     recipients = ('uuid_vec_t recipients(const ALCineLightRig& rig){uuid_vec_t ids;'
                   'const S32 SLOT_COUNT=5;using Slot=ALCineLightRigSlot;'
                   'auto& manager=ALCineLightRigManager::instance();'
@@ -294,3 +294,11 @@ int main(){
     if result.returncode:
         raise RuntimeError(result.stdout + result.stderr)
     print(result.stdout.strip(), flush=True)
+
+
+if __name__ == '__main__':
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[2]
+    run_registered_unit(root)
+    from rig_borrow_round2 import run_registry
+    run_registry(root)
