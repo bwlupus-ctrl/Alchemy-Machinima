@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 def run_unit(root=ROOT):
     manager = (root/'indra/newview/alcinelightrigmanager.cpp').read_text(encoding='utf8')
     avatar = (root/'indra/newview/alghostclonemenu.cpp').read_text(encoding='utf8')
+    cast = (root/'indra/newview/lldirectorcast.cpp').read_text(encoding='utf8')
     director = (root/'indra/newview/llfloaterdirector.cpp').read_text(encoding='utf8')
     ui = (root/'indra/newview/alpanelrigrim.cpp').read_text(encoding='utf8')
     history = (root/'indra/newview/alkithistory.cpp').read_text(encoding='utf8')
@@ -44,6 +45,7 @@ def run_unit(root=ROOT):
 #include <cstdlib>
 #define LL_INFOS(x) std::cerr
 #define LL_ENDL std::endl
+struct LLVOAvatar;
 struct ALGhostStudio {
  enum {BACKING_OVERLAY}; struct Clone {int mKind=1;};
  static ALGhostStudio& instance(){static ALGhostStudio s;return s;}
@@ -51,12 +53,34 @@ struct ALGhostStudio {
  const Clone* findInstanceByRuntime(LLUUID)const{return nullptr;}
  bool isPrivateOverlayRuntime(LLUUID)const{return false;}
  bool isDeleting(LLUUID)const{return false;}
+ LLVOAvatar* resolveEntityClone(LLUUID)const{return nullptr;}
 };
+struct LLVOAvatar {
+ bool dead=false; bool isDead()const{return dead;} bool isGhostAvatar()const{return false;}
+ bool isColorChart()const{return false;}
+ LLVOAvatar* asAvatar(){return this;} LLVOAvatar* getRootEdit(){return this;}
+ LLVOAvatar* getControlAvatar(){return nullptr;} std::string getFullname(){return "Test";}
+};
+using LLViewerObject=LLVOAvatar;
+struct ObjectList {std::map<LLUUID,LLVOAvatar*> objects;
+ LLViewerObject* findObject(const LLUUID& id){auto i=objects.find(id);return i==objects.end()?nullptr:i->second;}
+} gObjectList;
+LLVOAvatar* gAgentAvatarp=nullptr;
+bool isAgentAvatarValid(){return false;}
+struct LLActorMover {static LLActorMover& instance(){static LLActorMover m;return m;} void pruneEditActor(){}};
 struct LLDirectorCast {
  static std::map<LLUUID,LLUUID> aliases;
  static LLUUID canonicalActorId(LLUUID id){auto i=aliases.find(id);return i==aliases.end()?id:i->second;}
  static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
- bool contains(LLUUID)const{return true;}
+ struct CastMember {LLUUID mId;std::string mLastName;};
+ std::vector<CastMember> mCast; std::vector<LLUUID> mIds;
+ std::map<LLUUID,int> mMemberIndex; U64 mCastRevision=0;
+ static bool isSelf(LLUUID){return false;}
+ CastMember* getMember(LLUUID){return nullptr;} void touchScene(){}
+ bool contains(const LLUUID&)const; bool containsStored(const LLUUID&)const;
+ LLVOAvatar* resolve(const LLUUID&,bool=true);
+ void add(const LLUUID&,bool=true);
+
 };
 std::map<LLUUID,LLUUID> LLDirectorCast::aliases;
 struct Rig {void shutdown(){}};
@@ -68,8 +92,12 @@ struct ALCineLightRigManager {
  bool mExtraRimRegistryDirty=false,mBorrowAnchorsDirty=false;
  std::map<LLUUID,LLUUID> mBorrowRekeys;
  static ALCineLightRigManager& instance(){static ALCineLightRigManager m;return m;}
- bool hasOwnLitRig(LLUUID)const{return false;}
- LLUUID resolveBorrowActor(LLUUID id,bool=true)const{return resolveRigActorIdentity(id);}
+ using Slot=int;static constexpr int SLOT_COUNT=5,SLOT_SELF=0;
+ std::map<LLUUID,std::unique_ptr<Rig>> mMirrors;
+ LLUUID actors[5];bool lit[5]{};
+ LLUUID slotActor(Slot s)const{return actors[s];} bool isSlotLit(Slot s)const{return lit[s];}
+ bool hasOwnLitRig(const LLUUID&)const;
+ LLUUID resolveBorrowActor(const LLUUID&,bool=false)const;
  static bool validSlotValue(int s){return s>=0 && s<5;}
  void rebuildActorOnlyRegistry(){}
  void shutdownExtraRims(){}
@@ -85,7 +113,10 @@ struct ALCineLightRigManager {
  void setExtraRimState(ExtraRim&,ExtraRimState);
 };
 """
-    for sig in ('LLUUID ALCineLightRigManager::resolveRigActorIdentity(', 'bool ALCineLightRigManager::hasExtraRim(', 'bool ALCineLightRigManager::canAddExtraRim(', 'bool ALCineLightRigManager::addExtraRim(', 'void ALCineLightRigManager::removeExtraRim(', 'void ALCineLightRigManager::setExtraRimTrim(', 'void ALCineLightRigManager::setExtraRimSource(', 'LLSD ALCineLightRigManager::captureExtraRims(', 'void ALCineLightRigManager::restoreExtraRims(', 'void ALCineLightRigManager::setExtraRimState('):
+    for sig in ('void LLDirectorCast::add(', 'bool LLDirectorCast::contains(', 'bool LLDirectorCast::containsStored(', 'LLVOAvatar* LLDirectorCast::resolve('):
+        source += function(cast,sig)+'\n'
+    source += function(manager,'LLUUID ALCineLightRigManager::resolveBorrowActor(')+'\n'
+    for sig in ('bool ALCineLightRigManager::hasOwnLitRig(', 'LLUUID ALCineLightRigManager::resolveRigActorIdentity(', 'bool ALCineLightRigManager::hasExtraRim(', 'bool ALCineLightRigManager::canAddExtraRim(', 'bool ALCineLightRigManager::addExtraRim(', 'void ALCineLightRigManager::removeExtraRim(', 'void ALCineLightRigManager::setExtraRimTrim(', 'void ALCineLightRigManager::setExtraRimSource(', 'LLSD ALCineLightRigManager::captureExtraRims(', 'void ALCineLightRigManager::restoreExtraRims(', 'void ALCineLightRigManager::setExtraRimState('):
         source += function(manager,sig)+'\n'
     source += r"""
 struct ALKitShell { void ensurePageBuilt(const char*){} };
@@ -100,18 +131,31 @@ struct ALExtraRimUI {
 };
 LLUUID picked;
 LLUUID avatarRimActor(){return picked;}
-bool ensureAvatarGazeCast(LLUUID){return true;}
-void tip(const std::string&){}
+int notices=0;
+void tip(const std::string&){++notices;}
+std::string avatarGazeLabel(LLUUID){return "Test";}
+bool ensureAvatarGazeCast(const LLUUID&);
+struct LLUICtrl {void setToolTip(const std::string&) {}};
+bool sMenuHud=false;
 struct LLFloaterDirector {
  std::shared_ptr<LLUUID> mExtraRimMenuPick; ALKitShell* mShell=nullptr;
  void onCastExtraRimToggle();
 };
 """
+    source += function(avatar,'bool ensureAvatarGazeCast(')+'\n'+function(avatar,'bool enableAvatarRim(LLUICtrl* ctrl)\n{')+'\n'
     source += function(avatar,'void actAvatarRim()\n{')+'\n'+function(director,'void LLFloaterDirector::onCastExtraRimToggle()')+r"""
 void require(bool ok,const char* name){if(!ok){std::cerr<<name<<"\n";std::exit(1);}}
 LLUUID id(int n){return LLUUID(llformat("00000000-0000-0000-0000-%012d",n));}
 int main(){
  auto& m=ALCineLightRigManager::instance();
+ auto& cast=LLDirectorCast::instance(); LLVOAvatar uncast;
+ shellAvailable=true; // Keep D8 separate from the existing no-shell negative.
+ picked=id(77);gObjectList.objects[picked]=&uncast; LLUICtrl ctrl;
+ require(!cast.contains(picked) && m.resolveBorrowActor(picked)==picked && enableAvatarRim(&ctrl),"xr_uncast_enrolment");
+ actAvatarRim();
+ require(cast.contains(picked) && notices==1 && m.hasExtraRim(picked) && !m.hasOwnLitRig(picked),"xr_uncast_enrolment");
+ actAvatarRim();
+ for(int n:{1,2,3})cast.add(id(n));
  for(bool shell:{false,true}){
   shellAvailable=shell;picked=id(1);
   int steps=historySteps,settled=settlements;
@@ -126,6 +170,7 @@ int main(){
  // Avatar, clone runtime->instance and a retained clone id rekeyed again.
  LLDirectorCast::aliases[id(20)]=id(2);m.mBorrowRekeys[id(3)]=id(2);
  for(LLUUID actor:{id(1),id(20),id(3)}){
+  require(m.resolveBorrowActor(actor)==m.resolveRigActorIdentity(actor),"xr_clone_identity");
   auto stamp=m.mConfigurationRevision;require(m.addExtraRim(actor),"xr_clone_identity");
   require(m.mConfigurationRevision>stamp,"xr_scene_dirty_stamp");
   require(m.hasExtraRim(actor) && !m.canAddExtraRim(actor),"xr_clone_identity");
@@ -156,6 +201,7 @@ int main(){
     assert 'mConfigurationRevision' not in function(manager,'void ALCineLightRigManager::updateExtraRims('), 'xr_transient_clean'
     flags,libs=viewer_native_flags();directory=check_directory('extra_rims_round2')
     mutations={
+      'xr_uncast_enrolment': ('auto* avatar = cast.resolve(id, false);', 'auto* avatar = cast.contains(id) ? cast.resolve(id, false) : nullptr;'),
       'xr_transient_clean': ('    extra.mState = state;', '    extra.mState = state; ++mConfigurationRevision;'),
       'xr_scene_dirty_stamp':('++mExtraRimRevision; ++mConfigurationRevision;', '++mExtraRimRevision;'),
       'xr_clone_identity':('const LLUUID id = resolveRigActorIdentity(actor);','const LLUUID id = actor;'),

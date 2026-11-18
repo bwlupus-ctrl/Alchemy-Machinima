@@ -107,10 +107,15 @@ struct ALExtraRimUI {
         const LLSD after=ALCineLightRigManager::instance().captureExtraRims();
         if(before!=after){++steps;first=before;last=after;}
     }
+    static void finishPendingTrims();
     void finishTrim(bool force=false);
     void commit() {
 '''
     source += trim[1] + '\n}\n};\n' + function(ui, 'void ALExtraRimUI::finishTrim(') + '\n'
+    source += 'std::set<ALExtraRimUI*> extraRimEditors;\n' + function(ui, 'void ALExtraRimUI::finishPendingTrims(') + '\n'
+    page = (root / 'indra/newview/alkitpage.cpp').read_text(encoding='utf8')
+    boundary = function(page, 'void ALKitPage::undoOnPage(')
+    source += 'void pageReplayBoundary(){\n' + boundary[boundary.index('{')+1:boundary.index('    if (ALKitShell* shell')] + '}\n'
     recovery = record[record.index('            if (!shell || !page)'):record.index('            // A scene/reset boundary')]
     source += 'void recoverHost(ALKitShell*& shell, void*& page) {\n' + recovery + '\n}\n'
     source += r'''
@@ -162,10 +167,15 @@ int main() {
     ALCineLightRigManager::instance().live=removed; // undo removal
     ALCineLightRigManager::instance().live=strength.first; // undo Strength
     require(fabs(ALCineLightRigManager::instance().live["items"][0]["trim"].asReal()-.5)<1.e-6,"xr_ui_strength_removal");
+    strength.control.wheel=true;strength.control.value=20;strength.commit();
+    extraRimEditors.insert(&strength);
+    pageReplayBoundary(); // before page-level sequence selection and prevalidation
+    require(strength.steps==5 && fabs(strength.last["items"][0]["trim"].asReal()-.2)<1.e-6,"xr_ui_strength_prevalidation");
+    extraRimEditors.clear();
     strength.control.wheel=true;strength.control.value=25;strength.commit();
     ++ALCineLightRigManager::instance().sceneEpoch;
     strength.control.wheel=false;strength.finishTrim();
-    require(strength.steps==4 && strength.mTrimBefore.isUndefined(),"xr_ui_strength_epoch");
+    require(strength.steps==5 && strength.mTrimBefore.isUndefined(),"xr_ui_strength_epoch");
     ALCineLightRigManager::instance().sceneEpoch=1;
     QueueProbe pending{1}; int owner=1, page=1, unrelatedHistoryRevision=1;
     require(queueAllowed(&owner,&page,&pending), "xr_ui_epoch_guard");
@@ -230,6 +240,7 @@ int main() {
     assert baseline.returncode == 0, output
     print(baseline.stdout, end='', flush=True)
     mutations = {
+        'xr_ui_strength_prevalidation': ('    ALExtraRimUI::finishPendingTrims();', ''),
         'xr_ui_strength_removal': ('strength.finishTrim(true); // menu boundary', 'strength.finishTrim(); // menu boundary'),
         'xr_ui_row_conflict': ('a->second != c->second', 'false'),
         'xr_ui_source_conflict': ('current["source"] != expected["source"]', 'false'),

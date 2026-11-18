@@ -2081,9 +2081,10 @@ void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
                 const LLVOAvatar* wearer = avatar->getAttachedAvatar();
                 if (wearer && !wearer->isDead()) fallback = wearer->getActorFxOwnerId();
             }
-            if (extra.mRecipient != avatar->getID() || extra.mFxOwner != avatar->getActorFxOwnerId() ||
+            if (extra.mRecipientBody.get() != avatar || extra.mRecipient != avatar->getID() || extra.mFxOwner != avatar->getActorFxOwnerId() ||
                 extra.mFallbackOwner != fallback)
             {
+                extra.mRecipientBody = avatar;
                 extra.mRecipient = avatar->getID();
                 extra.mFxOwner = avatar->getActorFxOwnerId();
                 extra.mFallbackOwner = fallback;

@@ -439,7 +439,6 @@ private:
     LLTextBox*        mCastHint = nullptr;
     LLHandle<LLContextMenu> mCastMenuHandle;
     LLUUID mCastRightClickId;
-    LLUUID mExtraRimMenuActor;
     std::shared_ptr<const LLUUID> mExtraRimMenuPick;
     // per-row last-applied cell state, parallel to the list rows, so cells
     // are only re-set when something actually changed (v2 mover idiom)

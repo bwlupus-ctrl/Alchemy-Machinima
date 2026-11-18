@@ -375,7 +375,11 @@ void ALExtraRimUI::attach(LLPanel* root)
     mStatus = root->findChild<LLTextBox>("cine_extra_rim_status");
     mAdd = root->findChild<LLButton>("cine_extra_rim_add");
     mRemove = root->findChild<LLButton>("cine_extra_rim_remove");
-    if (!mList || !mSource || !mTrim || !mStatus || !mAdd || !mRemove) return;
+    if (!mList || !mSource || !mTrim || !mStatus || !mAdd || !mRemove)
+    {
+        LL_WARNS_ONCE("CineRig") << "Extra rims card is missing required widgets" << LL_ENDL;
+        return;
+    }
     mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { finishTrim(true); syncSelection(); });
     mList->setRightMouseDownCallback([this](LLUICtrl*, S32 x, S32 y, MASK) { showMenu(x, y); });
     mSource->setCommitCallback([this](LLUICtrl*, const LLSD&)

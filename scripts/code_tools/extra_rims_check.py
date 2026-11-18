@@ -273,3 +273,6 @@ if __name__ == '__main__':
 
     from extra_rims_round2_check import run_unit as run_round2
     run_round2(ROOT)
+
+    from extra_rims_round3_check import run_unit as run_round3
+    run_round3(ROOT)

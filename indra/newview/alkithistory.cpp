@@ -502,6 +502,7 @@ bool ALKitHistory::entryMatches(Entry& entry, bool redo)
 
 bool ALKitHistory::prepareReplay(const std::string& page, bool redo, std::string& reason, bool check_values)
 {
+    ALExtraRimUI::finishPendingTrims();
     ScopedSuspend guard; // Resolving a rebuilt source page must not record initialization writes.
     auto& steps = redo ? mRedo : mUndo;
     auto it = std::find_if(steps.rbegin(), steps.rend(),

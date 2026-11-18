@@ -1542,6 +1542,8 @@ private:
         F32 mTrim = 1.f;
         bool mEnrolled = false;
         ExtraRimState mState = ExtraRimState::WAITING;
+        // Retain the instance safely across same-UUID body replacement.
+        LLPointer<LLVOAvatar> mRecipientBody;
         LLUUID mRecipient;
         LLUUID mFxOwner;
         LLUUID mFallbackOwner;

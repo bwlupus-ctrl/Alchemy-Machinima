@@ -8949,11 +8949,11 @@ void LLFloaterDirector::showProjectorTrack(const LLUUID& projector)
 void LLFloaterDirector::updateCastExtraRimMenu(LLContextMenu* menu)
 {
     auto& rigs = ALCineLightRigManager::instance();
-    mExtraRimMenuActor = mCastRightClickId;
-    mExtraRimMenuPick = rigs.retainBorrowActor(mExtraRimMenuActor);
-    const bool present = rigs.hasExtraRim(mExtraRimMenuActor);
+    mExtraRimMenuPick = rigs.retainBorrowActor(mCastRightClickId);
+    const LLUUID actor = *mExtraRimMenuPick;
+    const bool present = rigs.hasExtraRim(actor);
     std::string why;
-    const bool allowed = present || rigs.canAddExtraRim(mExtraRimMenuActor, &why);
+    const bool allowed = present || rigs.canAddExtraRim(actor, &why);
     menu->setItemEnabled("extra_rim_toggle", allowed);
     menu->getChild<LLMenuItemCheckGL>("extra_rim_toggle")->setToolTip(allowed ?
         "One actor-only rim, following Direction from on Light > Rim" : why);
