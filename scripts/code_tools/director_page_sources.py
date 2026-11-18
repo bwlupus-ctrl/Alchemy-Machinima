@@ -104,7 +104,7 @@ PAGE_OWNER_CLASSES = {
     "filters_tab": {"ALPanelLensLooks"},
     "diopter_tab": {"ALFloaterUltimateDiopter"},
     "cine_light_rig_tab": {"ALPanelCineLightRig"},
-    "light_rim_tab": {"ALPanelCineLightRig", "ALPanelRigRim", "ALRigRimController"},
+    "light_rim_tab": {"ALPanelCineLightRig", "ALPanelRigRim", "ALRigRimController", "ALExtraRimUI"},
     "exposure_tab": {"ALPanelExposureHub", "LLFloaterDirector", "ALPanelExposurePage"},
     "practicals_tab": {"ALFloaterLightBox", "ALPanelPracticals"},
     "actors_tab": {"ALPanelAvatarLightResponse", "ALFloaterLightBox", "LLFloaterDirector"},

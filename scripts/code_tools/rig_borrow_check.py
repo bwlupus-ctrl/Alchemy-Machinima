@@ -121,11 +121,22 @@ def check_contract(root, source=None):
     }.items():
         assert bad != director and not valid_recovery(bad), 'planted ' + label + ' escaped'
     assert not valid_login_solo(manager.replace('if (!scene_load || mLoginRecovery)', 'if (!scene_load)')), 'planted login-only cleanup escaped'
+    # Extra rims are a separate session collection, outside the five instance
+    # blobs. Preserve the original LoginSolo oracle and pin its new scene seam.
+    def valid_extra_recovery(text):
+        scene = function(text, 'void ALCineLightRigManager::applySceneData(')
+        replace = function(text, 'void ALCineLightRigManager::replaceExtraRims(')
+        return ('replaceExtraRims(data["extra_rims"], mLoginRecovery);' in scene and
+                'if (login_recovery) { clearExtraRims(); return; }' in replace)
+    assert valid_extra_recovery(manager), 'login recovery must clear session-only extra rims'
+    bad = manager.replace('if (login_recovery) { clearExtraRims(); return; }',
+                          'if (false) { clearExtraRims(); return; }', 1)
+    assert bad != manager and not valid_extra_recovery(bad), 'planted extra rim login restore escaped'
     # A reused rig drops the previous actor's group mask (Codex r1).
     give = function(manager, 'void ALCineLightRigManager::giveActorRig(')
     assert 'rig.setGroupSlots(0);' in give, 'reused rig must clear the group mask'
     assert 'rig.setGroupSlots(0);' not in function(manager.replace('    rig.setGroupSlots(0); // [LoginSolo]', '    // [LoginSolo]'), 'void ALCineLightRigManager::giveActorRig('), 'planted group mask kept escaped'
-    print('PASS: precise borrow chip/On, Replace-first, canonical lifetime checks, follow/edit/remove and no Subject writes; 11 planted controls')
+    print('PASS: precise borrow chip/On, Replace-first, canonical lifetime checks, follow/edit/remove, no Subject writes and session-only extra-rim recovery; planted controls rejected')
 
 
 def check_generator_contract(root):

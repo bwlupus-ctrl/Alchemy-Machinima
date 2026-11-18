@@ -183,6 +183,14 @@
    "watch_extra": ["RenderSoftShadowNoiseModel", "RenderSpotShadowPenumbraModel", "RenderSpotShadowBiasModel", "RenderSoftShadowFillStep", "RenderSunLightProjectorDeadSamples", "RenderSpotShadowFadeModel"],
    "selector_settings": {"per_light_rim": "DirectorV2SelectedLight"},
    "card_enables": {"rim_wrap": "cine_rimq_wrap_enable"},
+   "row_overrides": {
+    "cine_extra_rim_status": {"no_widget_history": true},
+    "cine_extra_rim_source": {"no_widget_history": true},
+    "cine_extra_rim_list": {"no_widget_history": true},
+    "cine_extra_rim_trim": {"no_widget_history": true},
+    "cine_extra_rim_remove": {"no_widget_history": true},
+    "cine_extra_rim_add": {"no_widget_history": true}
+   },
    "add_rows": [
     {"card": "rim_quality", "after": "cine_rimq_enable_tag", "row": {"k": "readout", "w": "cine_rimq_status", "l": "Status", "h": "Whether rim quality features are running, and what is missing."}},
     {"card": "rim_quality", "row": {"k": "toggle", "w": "cine_rimq_actors_alpha", "l": "Alpha actors", "a": 1, "hidden": 1, "h": "Reserved for a later version."}}

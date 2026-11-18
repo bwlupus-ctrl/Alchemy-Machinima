@@ -47,7 +47,12 @@ struct Popover {bool visible=true;std::string snapshot;bool getVisible()const{re
 struct ALKitShell : LLView {
     Popover* mOpenPopover=nullptr;bool hidePopover();uuid_vec_t castSelection()const{return {LLUUID{"new-body"}};}
 ''')
-    return '#include <cstring>\n#define LL_INFOS(...) std::cerr\n' + source
+    # Round-one fixtures extract the full production rekey/prune methods but
+    # have no derived session lights. Keep those new services explicit rather
+    # than stripping calls out of the production method bodies.
+    return ('#include <cstring>\n#define LL_INFOS(...) std::cerr\n'
+            'void pruneRemovedExtraRims() {}\n'
+            'void rewriteExtraRimActorReferences(const LLUUID&,const LLUUID&) {}\n' + source)
 
 
 def registry_fixture(root):
@@ -94,10 +99,17 @@ struct ALCineLightRigManager {
     struct ActorOnlyRecipient {LLVOAvatar* mAvatar=nullptr;LLUUID mAvatarId,mFxOwner;U8 mBit=0;};
     std::vector<ActorOnlyRecipient> mActorOnlyRecipients;
     std::map<LLUUID,std::unique_ptr<ALCineLightRig>> mMirrors;
+    std::vector<int> mExtraRims;
+    std::vector<ActorOnlyRig> mExtraRimRegistryInputs;
+    std::vector<LLVOAvatar*> mExtraRimRegistryAvatars;
     bool mActorOnlyOverflowLogged=false;static inline bool sAnyActorOnly=false;
     bool isSlotEnabled(Slot)const{return true;}
     LLUUID slotActor(Slot slot)const{return mInstances[static_cast<int>(slot)].anchor;}
     LLUUID groupSlotActor(Slot)const;void rebuildActorOnlyRegistry();void rebuildActorOnlyRegistryWrongSelf();
+    // Extra-rim behavior has its own production contract/TUT gate. This
+    // fixture continues to exercise the unchanged rig/group registry path.
+    void appendExtraRimActorOnly(std::vector<ActorOnlyRig>&,std::vector<LLVOAvatar*>&,size_t&) {}
+    void finishExtraRimActorOnlyRegistry() {}
 };
 '''
     support += function(manager, 'LLUUID ALCineLightRigManager::groupSlotActor(')
@@ -120,3 +132,25 @@ void test(){
 }
 '''
     return support
+
+
+def run_registry(root):
+    """Execute this module's production-registry oracle when run directly."""
+    from native_check_tools import check_directory, compile_run, viewer_native_flags
+    from rig_shadow_presets_check import SHIM
+    from rig_sway_recovery import extended_shim
+    header = (root/'indra/newview/alcinelightrig.h').read_text(encoding='utf8')
+    source = (extended_shim(SHIM) + '\n#include <memory>\n'
+              '#define LL_INFOS(...) std::cerr\n#define LL_WARNS(...) std::cerr\n' +
+              function(header, 'enum class ALCineLightRigSlot') + ';\n' +
+              registry_fixture(root) + '\nint main(){RigRegistryRound2::test();}\n')
+    flags, libraries = viewer_native_flags()
+    result = compile_run(check_directory('rig_borrow_registry'), source,
+                         'registry', flags=flags + ['/UNDEBUG'])
+    assert result.returncode == 0, result.stdout + result.stderr
+    print(result.stdout.strip(), flush=True)
+
+
+if __name__ == '__main__':
+    from pathlib import Path
+    run_registry(Path(__file__).resolve().parents[2])

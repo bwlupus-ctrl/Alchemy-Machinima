@@ -14,9 +14,13 @@ def check_history_callers(root):
         callers[path.name] += len(re.findall(r'(?:->|\.)recordCustom\s*\(', text))
         providers[path.name] += len(re.findall(r'(?:->|\.)registerContext\s*\(', text))
     callers = +callers; providers = +providers
-    assert callers == Counter({'alghostclonemenu.cpp':4, 'alkitpresets.cpp':1,
-        'alpanelcinelightrig.cpp':2, 'alpanelgazecues.cpp':1, 'alpanelghoststudio.cpp':2,
-        'alpanellightcues.cpp':1, 'llfloaterdirector.cpp':1}), callers
+    # 2026-11-18: base c7ffc0ee1d3 already has six clone-menu, three Studio
+    # and one manipulator caller; Extra rims adds its one Rim-page caller.
+    # Keep an exact inventory (unknown callers still fail this assertion).
+    assert callers == Counter({'alghostclonemenu.cpp':6, 'alghostmanipproxy.cpp':1,
+        'alkitpresets.cpp':1, 'alpanelcinelightrig.cpp':2, 'alpanelgazecues.cpp':1,
+        'alpanelghoststudio.cpp':3, 'alpanellightcues.cpp':1, 'alpanelrigrim.cpp':1,
+        'llfloaterdirector.cpp':1}), callers
     assert providers == Counter({'alpanelcinelightrig.cpp':1}), providers
     panel = (root/'indra/newview/alpanelcinelightrig.cpp').read_text(encoding='utf8')
     start = panel.index('shell->history().registerContext(')
@@ -24,11 +28,16 @@ def check_history_callers(root):
     assert panel[start+panel[start:].index(cb)+len(cb):].lstrip().startswith(', true);')
     header = (root/'indra/newview/alkithistory.h').read_text(encoding='utf8')
     assert 'bool custom_entries = false' in header
-    print('PASS: production history inventory: 12 recordCustom calls in 7 files; rig is the sole context provider/opt-in')
+    print('PASS: production history inventory: 17 recordCustom calls in 9 files; rig is the sole context provider/opt-in')
 
 
 def extend_fixture(root, source):
     check_history_callers(root)
+    # The production reuse path already clears this legacy mask at the base
+    # revision. Model that service faithfully instead of deleting its call.
+    anchor = 'void setGroupEnabled(bool b){groupEnabled=b;}'
+    assert anchor in source, 'Rig service adapter drift'
+    source = source.replace(anchor, anchor + 'void setGroupSlots(U32 value){slots=value;}', 1)
     page = (root/'indra/newview/alkitpage.cpp').read_text(encoding='utf8')
     shell = (root/'indra/newview/alkitshell.cpp').read_text(encoding='utf8')
     manager = (root/'indra/newview/alcinelightrigmanager.cpp').read_text(encoding='utf8')

@@ -36,6 +36,7 @@
 #include "alkitstyle.h"
 
 #include "llfloaterdirector.h"
+#include "alpanelrigrim.h"
 #include "alavatarsubjectpicker.h"
 #include "alghoststudio.h" // [AutoAnimate]
 #include "aluirefresh.h"            // [UIPerfC1] diff-guarded text writes
@@ -1610,6 +1611,7 @@ bool LLFloaterDirector::postBuild()
             { editGroupMembers(selectedCastIds(), {}); });
         registrar.add("Director.SelectGroup", [this](LLUICtrl*, const LLSD&)
             { selectGroupMembers(LLDirectorCast::instance().getGroup(mCastRightClickId)); });
+        registrar.add("Director.ExtraRimToggle", [this](LLUICtrl*, const LLSD&) { onCastExtraRimToggle(); });
         registrar.add("Director.RemoveFromCast", [this](LLUICtrl*, const LLSD&) { onCastRemove(); });
         // Animate tab's list menu shares the registrar scope
         registrar.add("Director.AnimCopyUUID", [this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
@@ -2127,6 +2129,7 @@ void LLFloaterDirector::bindChrome(LLView* root)
         { editGroupMembers(selectedCastIds(), {}); });
     registrar.add("Director.SelectGroup", [this](LLUICtrl*, const LLSD&)
         { selectGroupMembers(LLDirectorCast::instance().getGroup(mCastRightClickId)); });
+    registrar.add("Director.ExtraRimToggle", [this](LLUICtrl*, const LLSD&) { onCastExtraRimToggle(); });
     registrar.add("Director.RemoveFromCast", [this](LLUICtrl*, const LLSD&) { onCastRemove(); });
     registrar.add("Director.AnimCopyUUID", [this](LLUICtrl*, const LLSD&) { onAnimCopyUUID(); });
     registrar.add("Director.AnimSetLoco", [this](LLUICtrl*, const LLSD&) { onAnimSetLoco(); });
@@ -6792,6 +6795,7 @@ void LLFloaterDirector::onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y)
             }
         }
         updateCastGroupMenu(menu);
+        updateCastExtraRimMenu(menu);
         menu->buildDrawLabels();
         menu->updateParent(LLMenuGL::sMenuContainer);
         menu->show(x, y);
@@ -8930,4 +8934,28 @@ void LLFloaterDirector::showProjectorTrack(const LLUUID& projector)
             director->mShell->navigateTo(target);
         }
     }
+}
+
+void LLFloaterDirector::updateCastExtraRimMenu(LLContextMenu* menu)
+{
+    auto& rigs = ALCineLightRigManager::instance();
+    mExtraRimMenuActor = mCastRightClickId;
+    mExtraRimMenuPick = rigs.retainBorrowActor(mExtraRimMenuActor);
+    const bool present = rigs.hasExtraRim(mExtraRimMenuActor);
+    menu->setItemLabel("extra_rim_toggle", present ? "Remove rim light" : "Add rim light");
+    std::string why;
+    const bool allowed = present || rigs.canAddExtraRim(mExtraRimMenuActor, &why);
+    menu->setItemEnabled("extra_rim_toggle", allowed);
+    menu->getChild<LLMenuItemCallGL>("extra_rim_toggle")->setToolTip(allowed ?
+        "One actor-only rim, following Direction from on Light > Rim" : why);
+}
+void LLFloaterDirector::onCastExtraRimToggle()
+{
+    auto& rigs = ALCineLightRigManager::instance();
+    const LLUUID actor = rigs.resolveBorrowActor(mExtraRimMenuActor, true);
+    if (actor.isNull()) return;
+    const LLSD before = rigs.captureExtraRims();
+    if (rigs.hasExtraRim(actor)) rigs.removeExtraRim(actor);
+    else rigs.addExtraRim(actor);
+    ALExtraRimUI::recordEdit(mShell, before, "Extra rim light");
 }

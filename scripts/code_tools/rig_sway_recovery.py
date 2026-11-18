@@ -130,6 +130,18 @@ public:
     void touchSlot(Slot); void pruneRemovedAnchors();
     void rewriteActorReferences(const LLUUID&,const LLUUID&);
     void removeMirror(const LLUUID&) {}
+    // Renderer-derived session lighting is covered by extra_rims_check.py;
+    // these adapters retain the existing scene/cue/recovery assertions.
+    std::vector<int> mExtraRims;
+    S32 mExtraRimSource=0;
+    U64 mExtraRimSceneEpoch=1;
+    void updateExtraRims(F64) {}
+    void replaceExtraRims(const LLSD&,bool) {}
+    void shutdownExtraRims() {}
+    void clearExtraRims() {mExtraRims.clear();mExtraRimSource=0;}
+    void pruneRemovedExtraRims() {}
+    void rewriteExtraRimActorReferences(const LLUUID&,const LLUUID&) {}
+    bool extraRimRegistryNeedsRebuild()const{return true;}
     LLUUID slotActor(Slot) const; Slot actorSlot(const LLUUID&) const;
     Slot borrowSlot(const LLUUID&) const; Slot leastRecentlyUsedSlot() const;
     void giveActorRig(Slot,const LLUUID&); void removeBorrowedRig(Slot);
@@ -618,3 +630,10 @@ static ALGhostStudio& instance(){static ALGhostStudio s;return s;}std::vector<In
         lines.append(function(model_tests, signature).replace(signature, f'void testSession{number}()'))
     lines.append(TESTS)
     return lines
+
+
+if __name__ == '__main__':
+    # The recovery fixtures are linked into the production sway executable;
+    # running this module must execute those assertions, not just define them.
+    from rig_sway_check import main
+    raise SystemExit(main())

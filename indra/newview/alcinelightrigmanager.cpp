@@ -14,6 +14,7 @@
 #include "alghoststudio.h"
 #include "alkithistory.h"
 #include "alreflectmath.h"
+#include "alextrarimmodel.h"
 #include "llghostavatar.h"
 #include "lljoint.h"
 
@@ -689,6 +690,7 @@ void ALCineLightRigManager::refreshBorrowAnchors()
 
 void ALCineLightRigManager::pruneRemovedAnchors()
 {
+    pruneRemovedExtraRims();
     const auto& cast = LLDirectorCast::instance();
     for (S32 i = 1; i < SLOT_COUNT; ++i)
     {
@@ -1031,6 +1033,7 @@ void ALCineLightRigManager::rewriteActorReferences(const LLUUID& old_id, const L
         changed = true;
     }
     removeMirror(old_id); // derived light objects belong to the old body
+    rewriteExtraRimActorReferences(old_id, new_id);
     if (changed)
     {
         writeSelectedSettings();
@@ -1066,6 +1069,7 @@ void ALCineLightRigManager::writeSelectedSettings()
 void ALCineLightRigManager::shutdownSlot(S32 index)
 {
     mInstances[index].shutdown();
+    if (!mExtraRims.empty() && index == mExtraRimSource) shutdownExtraRims();
     if (index == 0)
     {
         for (auto& entry : mMirrors) entry.second->shutdown();
@@ -1163,6 +1167,8 @@ void ALCineLightRigManager::logSelectedTarget()
 
 void ALCineLightRigManager::resetAllToSelf()
 {
+    ++mExtraRimSceneEpoch;
+    clearExtraRims();
     ++mConfigurationRevision;
     // The panel has already reset every live key. Omitting the rig keeps
     // every session-only field at its shipped default as well.
@@ -1229,6 +1235,8 @@ bool ALCineLightRigManager::isMirrorLight(const LLUUID& id) const
         for (S32 i=0; i<ALCineLightRigModel::LIGHT_COUNT; ++i)
             if (rig.projectorId(i) == id || rig.omniId(i) == id) return true;
     }
+    for (const auto& extra : mExtraRims)
+        if (extra.mRig && extra.mRig->projectorId(2) == id) return true;
     return false;
 }
 
@@ -1279,6 +1287,8 @@ bool ALCineLightRigManager::lightShapeSourceFor(const LLUUID& id, LLVector4& out
         if (lookup(at(static_cast<Slot>(i)))) return true;
     for (const auto& entry : mMirrors)
         if (lookup(*entry.second)) return true;
+    for (const auto& extra : mExtraRims)
+        if (extra.mRig && lookup(*extra.mRig)) return true;
     return false;
 }
 
@@ -1317,6 +1327,14 @@ bool ALCineLightRigManager::rigRimParamsFor(
                 out = rig.rigRimParams(light);
                 return true;
             }
+        }
+    }
+    for (const auto& extra : mExtraRims)
+    {
+        if (extra.mRig && extra.mRig->projectorId(2) == id)
+        {
+            out = extra.mRig->rigRimParams(2);
+            return true;
         }
     }
     return false;
@@ -1524,8 +1542,13 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
     // WP5 installs the setting. Until then, absence means the default false.
     const bool disabled = gSavedSettings.controlExists("CineLightRigActorMaskDisable") &&
         gSavedSettings.getBOOL("CineLightRigActorMaskDisable");
-    std::vector<ActorOnlyRig> rigs;
-    std::vector<LLVOAvatar*> avatars;
+    const bool reuse = !mExtraRims.empty();
+    std::vector<ActorOnlyRig> transient_rigs;
+    std::vector<LLVOAvatar*> transient_avatars;
+    auto& rigs = reuse ? mExtraRimRegistryInputs : transient_rigs;
+    auto& avatars = reuse ? mExtraRimRegistryAvatars : transient_avatars;
+    avatars.clear();
+    size_t used = 0;
     U32 object_slots = 0;
     if (!disabled)
     {
@@ -1534,7 +1557,8 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
             const ALCineLightRig& rig = mInstances[slot];
             if (!rig.mActorOnlyRequested || !isSlotEnabled(static_cast<Slot>(slot)))
                 continue;
-            ActorOnlyRig input;
+            ActorOnlyRig transient_input;
+            auto& input = reuse ? acquireActorOnlyRig(rigs, used) : transient_input;
             input.mEnabled = true;
             input.mObjectTarget = rig.getObjectTarget().notNull();
             if (input.mObjectTarget)
@@ -1598,7 +1622,7 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
             {
                 add(rig.resolveSlotAvatar());
             }
-            rigs.push_back(input);
+            if (!reuse) rigs.push_back(input);
         }
     }
     if (!disabled)
@@ -1608,7 +1632,8 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
             LLVOAvatar* avatar = dynamic_cast<LLGhostAvatar*>(gObjectList.findObject(entry.first));
             if (!avatar || avatar->isDead()) continue;
             const ALCineLightRig& rig = *entry.second;
-            ActorOnlyRig input;
+            ActorOnlyRig transient_input;
+            auto& input = reuse ? acquireActorOnlyRig(rigs, used) : transient_input;
             input.mEnabled = true;
             input.mActorOnlyAll = true; // Also links every omni and catchlight.
             input.mCatchlight = rig.catchlightId();
@@ -1622,11 +1647,16 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
             identity.mFxOwner = avatar->getActorFxOwnerId();
             input.mRecipients.push_back(identity);
             avatars.push_back(avatar);
-            rigs.push_back(input);
+            if (!reuse) rigs.push_back(input);
         }
     }
+    if (!disabled) appendExtraRimActorOnly(rigs, avatars, used);
+    // Retain outer capacity, but do not scan historical retired clone inputs.
+    // Recipient storage is released only when membership itself shrinks.
+    if (reuse) rigs.resize(used);
     mActorOnlyObjectSlots = object_slots;
-    mActorOnlyRegistry = buildActorOnlyRegistry(rigs, disabled);
+    if (reuse) fillActorOnlyRegistry(rigs, disabled, mActorOnlyRegistry);
+    else mActorOnlyRegistry = buildActorOnlyRegistry(rigs, disabled);
     mActorOnlyRecipients.clear();
     for (const auto& identity : mActorOnlyRegistry.mRecipients)
     {
@@ -1650,6 +1680,20 @@ void ALCineLightRigManager::rebuildActorOnlyRegistry()
         mActorOnlyOverflowLogged = true;
     }
     sAnyActorOnly = !mActorOnlyRegistry.mLights.empty();
+    finishExtraRimActorOnlyRegistry();
+}
+
+void ALCineLightRigManager::finishExtraRimActorOnlyRegistry()
+{
+    mExtraRimRegistryDirty = false;
+    mExtraRimRegistryOnly = !mExtraRims.empty() &&
+        !ALCineLightRig::sActorOnlyRequestedSlots && !mActorOnlyObjectSlots && mMirrors.empty();
+    for (auto& extra : mExtraRims)
+    {
+        if (!extra.mRig || extra.mRig->projectorId(2).isNull()) continue;
+        const bool overflow = (actorOnlyBits(extra.mRig->projectorId(2)) & ACTOR_ONLY_ORPHAN_BIT) != 0;
+        setExtraRimState(extra, overflow ? ExtraRimState::MASK_OVERFLOW : ExtraRimState::ACTIVE);
+    }
 }
 
 void ALCineLightRigManager::removeMirror(const LLUUID& clone_id)
@@ -1712,6 +1756,399 @@ void ALCineLightRigManager::updateMirrors()
     }
 }
 
+bool ALCineLightRigManager::hasExtraRim(const LLUUID& actor) const
+{
+    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    return std::any_of(mExtraRims.begin(), mExtraRims.end(),
+        [&id](const ExtraRim& extra) { return extra.mActor == id; });
+}
+
+bool ALCineLightRigManager::canAddExtraRim(const LLUUID& actor, std::string* why) const
+{
+    const auto refuse = [why](const char* reason)
+    { if (why) *why = reason; return false; };
+    const auto& studio = ALGhostStudio::instance();
+    const auto* clone = studio.getInstance(actor);
+    if (!clone) clone = studio.findInstanceByRuntime(actor);
+    if (clone && clone->mKind == ALGhostStudio::BACKING_OVERLAY)
+        return refuse("Overlay ghosts cannot receive rim lights");
+    const LLUUID id = resolveRigActorIdentity(actor);
+    if (id.isNull() || !LLDirectorCast::instance().contains(id))
+        return refuse("Select a cast actor");
+    if (hasExtraRim(id)) return refuse("Already has an extra rim");
+    if (mExtraRims.size() >= ALExtraRimModel::kMaxExtraRims)
+        return refuse("Maximum 4 extra rims");
+    if (hasOwnLitRig(id)) return refuse("Has own rig");
+    if (why) why->clear();
+    return true;
+}
+
+bool ALCineLightRigManager::addExtraRim(const LLUUID& actor)
+{
+    if (!canAddExtraRim(actor)) return false;
+    ExtraRim extra;
+    extra.mActor = resolveRigActorIdentity(actor);
+    extra.mEnrolled = LLDirectorCast::instance().contains(extra.mActor);
+    mExtraRims.push_back(std::move(extra));
+    ++mExtraRimRevision;
+    mExtraRimRegistryDirty = true;
+    mBorrowAnchorsDirty = true;
+    return true;
+}
+
+void ALCineLightRigManager::removeExtraRim(const LLUUID& actor)
+{
+    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    for (auto it = mExtraRims.begin(); it != mExtraRims.end(); ++it)
+    {
+        if (it->mActor != id) continue;
+        if (it->mRig) it->mRig->shutdown();
+        LL_INFOS("CineRig") << "#ExtraRim actor=" << id << " verdict=DARK(removed)" << LL_ENDL;
+        mExtraRims.erase(it);
+        ++mExtraRimRevision;
+        mExtraRimRegistryDirty = true;
+        rebuildActorOnlyRegistry();
+        return;
+    }
+}
+
+void ALCineLightRigManager::setExtraRimTrim(const LLUUID& actor, F32 trim)
+{
+    if (!std::isfinite(trim)) return;
+    trim = std::clamp(trim, 0.f, 2.f);
+    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    for (auto& extra : mExtraRims)
+        if (extra.mActor == id && extra.mTrim != trim)
+        { extra.mTrim = trim; ++mExtraRimRevision; }
+}
+
+void ALCineLightRigManager::setExtraRimSource(S32 source)
+{
+    source = validSlotValue(source) ? source : 0;
+    if (source == mExtraRimSource) return;
+    shutdownExtraRims();
+    mExtraRimSource = source;
+    ++mExtraRimRevision;
+}
+
+std::string ALCineLightRigManager::extraRimStatus(const LLUUID& actor) const
+{
+    if (actor.isNull())
+    {
+        if (mExtraRims.empty()) return "Add up to 4 cast actors";
+        const Slot source = static_cast<Slot>(mExtraRimSource);
+        const std::string label = mExtraRimSource == 0 ? "You" : std::string(1, 'A' + mExtraRimSource - 1);
+        if (!isSlotLit(source)) return "Waiting: " + label + " is off";
+        const auto& rim = at(source).mProjectors[2];
+        if (rim.isNull() || rim->isDead() || !rim->getIsLight())
+            return label + " Back light is off";
+        return std::to_string(mExtraRims.size()) + " / 4 extra rims";
+    }
+    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    for (const auto& extra : mExtraRims)
+    {
+        if (extra.mActor != id) continue;
+        switch (extra.mState)
+        {
+            case ExtraRimState::ACTIVE: return "Lit";
+            case ExtraRimState::SOURCE_OFF:
+            case ExtraRimState::BACK_OFF: return extraRimStatus();
+            case ExtraRimState::AWAY: return "Away";
+            case ExtraRimState::OWN_RIG: return "Has own rig";
+            case ExtraRimState::MASK_DISABLED: return "Unlit - Actor Mask disabled";
+            case ExtraRimState::MASK_OVERFLOW: return "Unlit - actor mask full";
+            default: return "Waiting";
+        }
+    }
+    return std::string();
+}
+
+std::vector<ALCineLightRigManager::ExtraRimInfo> ALCineLightRigManager::extraRims() const
+{
+    std::vector<ExtraRimInfo> result;
+    result.reserve(mExtraRims.size());
+    for (const auto& extra : mExtraRims)
+        result.push_back({extra.mActor, extra.mTrim, extraRimStatus(extra.mActor)});
+    return result;
+}
+
+LLSD ALCineLightRigManager::captureExtraRims() const
+{
+    ALExtraRimModel::State state;
+    state.mSource = mExtraRimSource;
+    for (const auto& extra : mExtraRims)
+        state.mItems.push_back({extra.mActor, extra.mTrim});
+    return ALExtraRimModel::toLLSD(state);
+}
+
+LLSD ALCineLightRigManager::extraRimsSceneData() const
+{
+    ALExtraRimModel::State state;
+    state.mSource = mExtraRimSource;
+    for (const auto& extra : mExtraRims)
+    {
+        const LLUUID saved = LLDirectorCast::savedSceneActorId(extra.mActor);
+        if (saved.notNull()) state.mItems.push_back({saved, extra.mTrim});
+    }
+    return ALExtraRimModel::toLLSD(state);
+}
+
+void ALCineLightRigManager::restoreExtraRims(const LLSD& data)
+{
+    ALExtraRimModel::State state;
+    if (!ALExtraRimModel::fromLLSD(data, state)) return;
+    // Resolve and validate the complete replacement before touching any live
+    // emitter. Undo carries a delta merged with current unrelated entries.
+    ALExtraRimModel::State resolved;
+    resolved.mSource = state.mSource;
+    const auto& studio = ALGhostStudio::instance();
+    for (const auto& item : state.mItems)
+    {
+        // History may restore an actor who acquired a rig: keep it, paused.
+        const LLUUID id = resolveRigActorIdentity(item.mActor);
+        if (id.isNull()) continue;
+        const auto* clone = studio.getInstance(id);
+        if (!clone) clone = studio.findInstanceByRuntime(id);
+        if (clone && clone->mKind == ALGhostStudio::BACKING_OVERLAY) continue;
+        ALExtraRimModel::add(resolved, id, item.mTrim);
+    }
+    bool changed = mExtraRimSource != resolved.mSource || mExtraRims.size() != resolved.mItems.size();
+    if (!changed)
+        for (size_t i = 0; i < mExtraRims.size(); ++i)
+            changed |= mExtraRims[i].mActor != resolved.mItems[i].mActor ||
+                mExtraRims[i].mTrim != resolved.mItems[i].mTrim;
+    if (!changed) return;
+
+    if (mExtraRimSource != resolved.mSource) shutdownExtraRims();
+    std::vector<ExtraRim> reconciled;
+    reconciled.reserve(resolved.mItems.size());
+    for (const auto& item : resolved.mItems)
+    {
+        auto found = std::find_if(mExtraRims.begin(), mExtraRims.end(),
+            [&item](const ExtraRim& extra) { return extra.mActor == item.mActor; });
+        if (found != mExtraRims.end())
+        {
+            // Keep the local light UUID, recipient cache and damping history.
+            reconciled.push_back(std::move(*found));
+            found->mActor.setNull();
+            reconciled.back().mTrim = item.mTrim;
+        }
+        else
+        {
+            ExtraRim extra;
+            extra.mActor = item.mActor;
+            extra.mTrim = item.mTrim;
+            extra.mEnrolled = LLDirectorCast::instance().contains(item.mActor);
+            reconciled.push_back(std::move(extra));
+        }
+    }
+    for (auto& extra : mExtraRims)
+        if (extra.mActor.notNull())
+        {
+            if (extra.mRig) extra.mRig->shutdown();
+            LL_INFOS("CineRig") << "#ExtraRim actor=" << extra.mActor << " verdict=DARK(removed)" << LL_ENDL;
+        }
+    mExtraRims = std::move(reconciled);
+    mExtraRimSource = resolved.mSource;
+    ++mExtraRimRevision;
+    mExtraRimRegistryDirty = true;
+    mBorrowAnchorsDirty = true;
+}
+
+void ALCineLightRigManager::replaceExtraRims(const LLSD& data, bool login_recovery)
+{
+    if (login_recovery) { clearExtraRims(); return; }
+    restoreExtraRims(data);
+}
+
+void ALCineLightRigManager::shutdownExtraRims()
+{
+    for (auto& extra : mExtraRims)
+        if (extra.mRig) extra.mRig->shutdown();
+    if (!mExtraRims.empty()) mExtraRimRegistryDirty = true;
+}
+
+void ALCineLightRigManager::clearExtraRims()
+{
+    shutdownExtraRims();
+    if (!mExtraRims.empty() || mExtraRimSource != 0) ++mExtraRimRevision;
+    mExtraRims.clear();
+    mExtraRimSource = 0;
+}
+
+void ALCineLightRigManager::rewriteExtraRimActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    for (auto& extra : mExtraRims)
+    {
+        if (extra.mActor != old_id) continue;
+        if (extra.mRig) extra.mRig->shutdown();
+        extra.mActor = new_id;
+        extra.mEnrolled = new_id.notNull() && LLDirectorCast::instance().contains(new_id);
+        ++mExtraRimRevision;
+        mExtraRimRegistryDirty = true;
+    }
+    for (auto it = mExtraRims.begin(); it != mExtraRims.end();)
+    {
+        const bool duplicate = std::any_of(mExtraRims.begin(), it,
+            [&it](const ExtraRim& extra) { return extra.mActor == it->mActor; });
+        if (it->mActor.isNull() || duplicate || ALGhostStudio::instance().isDeleting(it->mActor))
+        {
+            if (it->mRig) it->mRig->shutdown();
+            it = mExtraRims.erase(it);
+            ++mExtraRimRevision;
+        }
+        else ++it;
+    }
+}
+
+void ALCineLightRigManager::pruneRemovedExtraRims()
+{
+    const auto& cast = LLDirectorCast::instance();
+    for (auto it = mExtraRims.begin(); it != mExtraRims.end();)
+    {
+        if (cast.contains(it->mActor)) it->mEnrolled = true;
+        if ((!cast.contains(it->mActor) && it->mEnrolled) || ALGhostStudio::instance().isDeleting(it->mActor))
+        {
+            if (it->mRig) it->mRig->shutdown();
+            LL_INFOS("CineRig") << "#ExtraRim actor=" << it->mActor << " verdict=DARK(removed from cast)" << LL_ENDL;
+            it = mExtraRims.erase(it);
+            ++mExtraRimRevision;
+            mExtraRimRegistryDirty = true;
+        }
+        else ++it;
+    }
+}
+
+void ALCineLightRigManager::setExtraRimState(ExtraRim& extra, ExtraRimState state)
+{
+    if (extra.mState == state) return;
+    extra.mState = state;
+    ++mExtraRimRevision;
+    const char* verdict = "DARK(waiting)";
+    switch (state)
+    {
+        case ExtraRimState::ACTIVE: verdict = "PASS"; break;
+        case ExtraRimState::SOURCE_OFF: verdict = "DARK(source rig off)"; break;
+        case ExtraRimState::BACK_OFF: verdict = "DARK(Back light off)"; break;
+        case ExtraRimState::AWAY: verdict = "DARK(away)"; break;
+        case ExtraRimState::OWN_RIG: verdict = "PAUSED(own rig)"; break;
+        case ExtraRimState::MASK_DISABLED: verdict = "DARK(Actor Mask disabled)"; break;
+        case ExtraRimState::MASK_OVERFLOW: verdict = "OVERFLOW"; break;
+        default: break;
+    }
+    LL_INFOS("CineRig") << "#ExtraRim actor=" << extra.mActor
+        << " source=" << mExtraRimSource << " verdict=" << verdict << LL_ENDL;
+}
+
+void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
+{
+    if (mExtraRims.empty()) return;
+    pruneRemovedExtraRims();
+    static LLCachedControl<bool> mask_disabled(gSavedSettings, "CineLightRigActorMaskDisable", false);
+    const Slot picked = static_cast<Slot>(mExtraRimSource);
+    const ALCineLightRig& source = at(picked);
+    const auto& rim = source.mProjectors[2];
+    const U32 bit = 1u << mExtraRimSource;
+    const auto resolved = ALExtraRimModel::resolveSource(mExtraRimSource,
+        isSlotLit(picked) ? bit : 0,
+        rim.notNull() && !rim->isDead() && rim->getIsLight() ? bit : 0);
+    for (auto& extra : mExtraRims)
+    {
+        ExtraRimState state = ExtraRimState::ACTIVE;
+        auto* avatar = LLDirectorCast::instance().resolve(extra.mActor, false);
+        if (hasOwnLitRig(extra.mActor)) state = ExtraRimState::OWN_RIG;
+        else if (mask_disabled) state = ExtraRimState::MASK_DISABLED;
+        else if (resolved.mDark == ALExtraRimModel::SourceDark::RIG_OFF) state = ExtraRimState::SOURCE_OFF;
+        else if (resolved.mDark == ALExtraRimModel::SourceDark::RIM_OFF) state = ExtraRimState::BACK_OFF;
+        else if (!avatar || avatar->isDead()) state = ExtraRimState::AWAY;
+        if (state == ExtraRimState::ACTIVE)
+        {
+            LLUUID fallback;
+            if (avatar->isControlAvatar())
+            {
+                const LLVOAvatar* wearer = avatar->getAttachedAvatar();
+                if (wearer && !wearer->isDead()) fallback = wearer->getActorFxOwnerId();
+            }
+            if (extra.mRecipient != avatar->getID() || extra.mFxOwner != avatar->getActorFxOwnerId() ||
+                extra.mFallbackOwner != fallback || extra.mRecipientObject != avatar)
+            {
+                extra.mRecipient = avatar->getID();
+                extra.mFxOwner = avatar->getActorFxOwnerId();
+                extra.mFallbackOwner = fallback;
+                extra.mRecipientObject = avatar;
+                mExtraRimRegistryDirty = true;
+            }
+            if (!extra.mRig) extra.mRig = std::make_unique<ALCineLightRig>();
+            const LLUUID old_light = extra.mRig->projectorId(2);
+            if (!extra.mRig->extraRimFrom(source, avatar, extra.mTrim, presentation_time))
+                state = ExtraRimState::AWAY;
+            if (extra.mRig->projectorId(2) != old_light) mExtraRimRegistryDirty = true;
+            // Publish PASS only after the registry has assigned a live bit.
+            if (state == ExtraRimState::ACTIVE)
+            {
+                if (extra.mState != ExtraRimState::ACTIVE && extra.mState != ExtraRimState::MASK_OVERFLOW)
+                    mExtraRimRegistryDirty = true;
+                continue;
+            }
+        }
+        if (extra.mRig && extra.mRig->projectorId(2).notNull())
+        {
+            extra.mRig->shutdown();
+            mExtraRimRegistryDirty = true;
+        }
+        setExtraRimState(extra, state);
+    }
+}
+
+void ALCineLightRigManager::appendExtraRimActorOnly(std::vector<ActorOnlyRig>& rigs,
+                                                  std::vector<LLVOAvatar*>& avatars, size_t& used)
+{
+    for (const auto& extra : mExtraRims)
+    {
+        if (!extra.mRig || extra.mRig->projectorId(2).isNull()) continue;
+        auto* avatar = LLDirectorCast::instance().resolve(extra.mActor, false);
+        auto& input = acquireActorOnlyRig(rigs, used);
+        input.mEnabled = true;
+        input.mActorOnlyAll = true;
+        input.mProjectors[2] = extra.mRig->projectorId(2);
+        if (avatar && !avatar->isDead())
+        {
+            ActorOnlyIdentity identity;
+            identity.mAvatarId = avatar->getID();
+            identity.mFxOwner = avatar->getActorFxOwnerId();
+            if (avatar->isControlAvatar())
+            {
+                const LLVOAvatar* wearer = avatar->getAttachedAvatar();
+                if (wearer && !wearer->isDead()) identity.mFallbackOwner = wearer->getActorFxOwnerId();
+            }
+            input.mRecipients.push_back(identity);
+            avatars.push_back(avatar);
+        }
+        // Even a disappearing body gets an orphan bit, never a world light.
+    }
+}
+
+bool ALCineLightRigManager::extraRimRegistryNeedsRebuild() const
+{
+    // Preserve the existing registry path exactly when this feature is unused.
+    if (mExtraRims.empty()) return true;
+    return mExtraRimRegistryDirty || !mExtraRimRegistryOnly ||
+        ALCineLightRig::sActorOnlyRequestedSlots || mActorOnlyObjectSlots || !mMirrors.empty();
+}
+
+bool ALCineLightRigManager::hasOwnLitRig(const LLUUID& actor) const
+{
+    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    if (id.isNull()) return false;
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const Slot slot = static_cast<Slot>(i);
+        if (LLDirectorCast::canonicalActorId(slotActor(slot)) == id && isSlotLit(slot)) return true;
+    }
+    return false;
+}
+
 void ALCineLightRigManager::tick(F64 presentation_time)
 {
     if (mNeedsSessionRestore)
@@ -1753,8 +2190,10 @@ void ALCineLightRigManager::tick(F64 presentation_time)
         }
     }
     updateMirrors();
+    updateExtraRims(presentation_time);
     // [ActorMask] Include session-only derived lights in the existing registry.
-    if (ALCineLightRig::sActorOnlyRequestedSlots || sAnyActorOnly || mActorOnlyObjectSlots || !mMirrors.empty())
+    if ((ALCineLightRig::sActorOnlyRequestedSlots || sAnyActorOnly || mActorOnlyObjectSlots || !mMirrors.empty() || !mExtraRims.empty()) &&
+        extraRimRegistryNeedsRebuild())
         rebuildActorOnlyRegistry();
     // No blanket non-focus suppression: each enabled rig casts per its own
     // ShadowMode and the pipeline caps the total at MAX_SPOT_SHADOWS(16) by
@@ -1872,6 +2311,7 @@ void ALCineLightRigManager::clearShadowSuppression()
 
 void ALCineLightRigManager::shutdown()
 {
+    clearExtraRims();
     for (auto& entry : mMirrors) entry.second->shutdown();
     mMirrors.clear();
     // [ActorMask] Drop retained avatars and light IDs before shutdown.
@@ -2299,6 +2739,7 @@ LLSD ALCineLightRigManager::sceneData() const
     }
     data["live_probe"] = ALCineLightRigManagerModel::liveProbeConfigToLLSD(
         liveProbeConfigFromSettings());
+    if (!mExtraRims.empty() || mExtraRimSource != 0) data["extra_rims"] = extraRimsSceneData();
     persist();
     return data;
 }
@@ -2314,11 +2755,13 @@ void ALCineLightRigManager::applySceneData(const LLSD& data)
     if (!data.isMap() || !data.has("version") ||
         (data["version"].isInteger() && data["version"].asInteger() == 1))
     {
+        ++mExtraRimSceneEpoch;
         mBorrowRekeys.clear();
         mBorrowPicks.clear();
         mBorrowAnchorsDirty = true;
         for (auto& entry : mMirrors) entry.second->shutdown();
         mMirrors.clear();
+        replaceExtraRims(data["extra_rims"], mLoginRecovery);
         for (auto& inst : ALGhostStudio::instance().getInstances())
             inst.mMirrorLightRig = false;
         rebuildActorOnlyRegistry();

@@ -12,6 +12,7 @@
 #include "../test/lltut.h"
 #include "../alcinelightrigmanager.h"
 #include "../alcinelightrigmodel.h"
+#include "../alextrarimmodel.h"
 #include "../alcineliveproberefresh.h" // [LiveProbeRefresh]
 #include "../alprobeschedule.h"        // [ProbeOnDemand]
 #include "../llviewercamera.h"
@@ -549,7 +550,8 @@ struct cine_light_rig_model_data {};
 // geometry, transition continuity and persistence. 124..125 cover the bounded
 // mixture and repeated-interruption weight invariant. 126..127 cover
 // overflow continuity, endpoint ordering and 2000 random interruption chains.
-typedef test_group<cine_light_rig_model_data, 136> cine_light_rig_model_group;
+// 137..141 cover Extra rims world placement, manual source and scene validity.
+typedef test_group<cine_light_rig_model_data, 141> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -8183,6 +8185,113 @@ void cine_light_rig_model_object::test<136>()
     const auto unique = litGroupMembers(ids, [](S32 id) { return id == 0 ? 7 : id; });
     ensure_equals("You in cast deduped against self", unique.size(), size_t(4));
     ensure("cast order preserved", unique == std::vector<S32>({7, 1, 2, 3}));
+}
+
+// [ExtraRims] These names are also the mutation gate's failure oracles.
+template<> template<>
+void cine_light_rig_model_object::test<137>()
+{
+    const LLVector3d source(103., 196., 302.), source_centre(100., 200., 300.);
+    const LLVector3d destination(1000., -2000., 20.);
+    const auto placed = ALExtraRimModel::placement(source, source_centre, 2.f, 1.f, destination, 1.f);
+    ensure("xr_dir_mirrored", placed.mPosition == LLVector3d(1003., -2004., 22.));
+    // Translating the source rig never changes the world direction.
+    const LLVector3d translation(10., 20., 30.);
+    const auto moved = ALExtraRimModel::placement(source + translation, source_centre + translation,
+                                                2.f, 1.f, destination, 1.f);
+    ensure("xr_dir_mirrored", moved.mPosition == placed.mPosition);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<138>()
+{
+    const LLVector3d origin(0., 0., 0.), source(4., -2., 6.), destination(10., 20., 30.);
+    const auto small = ALExtraRimModel::placement(source, origin, 2.f, 2.f, destination, .5f);
+    ensure("xr_scale_ignored", small.mScale == .25f && small.mPosition == LLVector3d(11., 19.5, 31.5));
+    const auto clamped = ALExtraRimModel::placement(source, origin, 2.f, .001f, destination, 1000.f);
+    ensure("xr_scale_ignored", std::fabs(clamped.mScale - SCALED_RADIUS_CEIL / SCALED_RADIUS_FLOOR) < .0001f);
+    // The actual renderer preserves out-of-range nominal radii at scale 1.
+    ensure("xr_scale_ignored", ALExtraRimModel::effectiveRadius(30.f, 1.f) == 30.f);
+    ensure("xr_scale_ignored", ALExtraRimModel::effectiveRadius(.05f, 1.f) == .05f);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<139>()
+{
+    using namespace ALExtraRimModel;
+    const auto off = resolveSource(2, 1u | 8u, 1u | 8u);
+    ensure("xr_source_auto_fallback", off.mSlot == 2 && off.mDark == SourceDark::RIG_OFF && !off.lit());
+    const auto back_off = resolveSource(2, 31u, 1u | 8u);
+    ensure("xr_source_auto_fallback", back_off.mSlot == 2 && back_off.mDark == SourceDark::RIM_OFF && !back_off.lit());
+    for (S32 slot = 0; slot < 5; ++slot)
+    {
+        const auto picked = resolveSource(slot, 31u, 31u);
+        ensure("xr_source_auto_fallback", picked.mSlot == slot && picked.lit());
+    }
+    ensure_equals("manual source defaults to You", State().mSource, 0);
+    ensure_equals("invalid source defaults to You", sourceSlot(-1), 0);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<140>()
+{
+    using namespace ALExtraRimModel;
+    State state;
+    const LLUUID ids[] = {LLUUID("00000000-0000-0000-0000-000000000001"),
+        LLUUID("00000000-0000-0000-0000-000000000002"),
+        LLUUID("00000000-0000-0000-0000-000000000003"),
+        LLUUID("00000000-0000-0000-0000-000000000004"),
+        LLUUID("00000000-0000-0000-0000-000000000005")};
+    ensure("null extra refused", !add(state, LLUUID::null));
+    ensure("first extra admitted", add(state, ids[0]));
+    ensure("duplicate refused below cap", !add(state, ids[0]));
+    for (S32 i = 1; i < 4; ++i) ensure("four extras admitted", add(state, ids[i]));
+    ensure("xr_cap_exceeded", !add(state, ids[4]) && state.mItems.size() == 4);
+    ensure("duplicate extra refused", !add(state, ids[0]));
+    ensure("remove extra", remove(state, ids[1]) && !remove(state, ids[1]));
+    ensure("vacated capacity reusable", add(state, ids[4]));
+    LLSD block = toLLSD(state);
+    LLSD fifth = LLSD::emptyMap(); fifth["actor"] = ids[1]; fifth["trim"] = 1.;
+    block["items"].append(fifth);
+    State loaded;
+    ensure("scene readable", fromLLSD(block, loaded));
+    ensure("xr_cap_exceeded", loaded.mItems.size() == 4);
+    block["items"] = LLSD::emptyArray();
+    block["items"].append(fifth); block["items"].append(fifth);
+    LLSD null_row = fifth; null_row["actor"] = LLUUID::null; block["items"].append(null_row);
+    ensure("scene deduped and null dropped below cap", fromLLSD(block, loaded) && loaded.mItems.size() == 1);
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<141>()
+{
+    using namespace ALExtraRimModel;
+    const LLUUID actor("00000000-0000-0000-0000-000000000001");
+    LLSD block = LLSD::emptyMap(); block["version"] = 1; block["source"] = 4;
+    for (F64 trim : {-1., 2.00000001, std::numeric_limits<F64>::infinity(),
+                     -std::numeric_limits<F64>::infinity(), std::numeric_limits<F64>::quiet_NaN()})
+    {
+        block["items"] = LLSD::emptyArray();
+        LLSD row = LLSD::emptyMap(); row["actor"] = actor; row["trim"] = trim;
+        block["items"].append(row);
+        State loaded;
+        ensure("xr_scene_bad_trim_accepted", fromLLSD(block, loaded) && loaded.mItems.empty());
+    }
+    State state; state.mSource = 4;
+    ensure("trim zero accepted", add(state, actor, 0.f));
+    State roundtrip;
+    ensure("roundtrip scene", fromLLSD(toLLSD(state), roundtrip) && roundtrip.mSource == 4 &&
+           roundtrip.mItems.size() == 1 && roundtrip.mItems[0].mTrim == 0.f);
+    block = toLLSD(state); block["items"][0]["trim"] = "1";
+    ensure("xr_scene_bad_trim_accepted", fromLLSD(block, roundtrip) && roundtrip.mItems.empty());
+    block = toLLSD(state); block["version"] = 2;
+    ensure("unknown version keeps live extras", !fromLLSD(block, state) && state.mItems.size() == 1 && state.mSource == 4);
+    ensure("legacy scene clears extras and source", fromLLSD(LLSD(), state) && state.mItems.empty() && state.mSource == 0);
+    for (const LLSD& invalid : {LLSD(-1), LLSD(5), LLSD("auto"), LLSD(2.)})
+    {
+        block = LLSD::emptyMap(); block["version"] = 1; block["source"] = invalid;
+        ensure("invalid scene source defaults to You", fromLLSD(block, state) && state.mSource == 0);
+    }
 }
 
 } // namespace tut

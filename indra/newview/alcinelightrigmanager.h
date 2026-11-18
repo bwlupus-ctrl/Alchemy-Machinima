@@ -838,11 +838,28 @@ struct ActorOnlyRegistry
     }
 };
 
-inline ActorOnlyRegistry buildActorOnlyRegistry(
-    const std::vector<ActorOnlyRig>& rigs, bool disabled)
+// Reuse each input's recipient storage when extra rims extend the registry.
+inline ActorOnlyRig& acquireActorOnlyRig(std::vector<ActorOnlyRig>& rigs, size_t& used)
 {
-    ActorOnlyRegistry result;
-    if (disabled) return result;
+    if (used == rigs.size()) rigs.emplace_back();
+    ActorOnlyRig& input = rigs[used++];
+    std::vector<ActorOnlyIdentity> recipients;
+    recipients.swap(input.mRecipients);
+    input = ActorOnlyRig();
+    input.mRecipients.swap(recipients);
+    input.mRecipients.clear();
+    return input;
+}
+
+inline void fillActorOnlyRegistry(
+    const std::vector<ActorOnlyRig>& rigs, bool disabled, ActorOnlyRegistry& result)
+{
+    result.mRecipients.clear();
+    result.mLights.clear();
+    result.mDrawBytes.clear();
+    result.mOverflow = false;
+    result.mLiveRecipientBits = 0;
+    if (disabled) return;
     for (const auto& rig : rigs)
     {
         if (!rig.mEnabled || rig.mObjectTarget) continue;
@@ -915,6 +932,13 @@ inline ActorOnlyRegistry buildActorOnlyRegistry(
         add_draw_byte(recipient.mBit);
         add_draw_byte(result.drawByte(recipient.mFxOwner, recipient.mFallbackOwner));
     }
+}
+
+inline ActorOnlyRegistry buildActorOnlyRegistry(
+    const std::vector<ActorOnlyRig>& rigs, bool disabled)
+{
+    ActorOnlyRegistry result;
+    fillActorOnlyRegistry(rigs, disabled, result);
     return result;
 }
 
@@ -1406,6 +1430,27 @@ public:
     const std::vector<ActorOnlyRecipient>& actorOnlyRecipients() const;
     bool isActorOnlyRecipient(const LLVOAvatar* av) const;
     void removeMirror(const LLUUID& clone_id);
+    struct ExtraRimInfo
+    {
+        LLUUID mActor;
+        F32 mTrim = 1.f;
+        std::string mStatus;
+    };
+    std::vector<ExtraRimInfo> extraRims() const;
+    bool hasExtraRim(const LLUUID& actor) const;
+    bool canAddExtraRim(const LLUUID& actor, std::string* why = nullptr) const;
+    bool addExtraRim(const LLUUID& actor);
+    void removeExtraRim(const LLUUID& actor);
+    void setExtraRimTrim(const LLUUID& actor, F32 trim);
+    void setExtraRimSource(S32 source);
+    S32 extraRimSource() const { return mExtraRimSource; }
+    U64 extraRimRevision() const { return mExtraRimRevision; }
+    U64 extraRimSceneEpoch() const { return mExtraRimSceneEpoch; }
+    std::string extraRimStatus(const LLUUID& actor = LLUUID::null) const;
+    LLSD captureExtraRims() const;
+    void restoreExtraRims(const LLSD& data);
+    LLSD extraRimsSceneData() const;
+    void replaceExtraRims(const LLSD& data, bool login_recovery);
     void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
     // Group history restores exact binding deltas instead of following names.
@@ -1488,6 +1533,38 @@ private:
     // [ActorMask] Rebuilt after rig evaluation, before the Live probe update.
     void rebuildActorOnlyRegistry();
     void updateMirrors();
+    enum class ExtraRimState : U8 { WAITING, ACTIVE, SOURCE_OFF, BACK_OFF, AWAY, OWN_RIG, MASK_DISABLED, MASK_OVERFLOW };
+    struct ExtraRim
+    {
+        LLUUID mActor;
+        F32 mTrim = 1.f;
+        bool mEnrolled = false;
+        ExtraRimState mState = ExtraRimState::WAITING;
+        LLUUID mRecipient;
+        LLUUID mFxOwner;
+        LLUUID mFallbackOwner;
+        const LLVOAvatar* mRecipientObject = nullptr; // compared, never dereferenced
+        std::unique_ptr<ALCineLightRig> mRig;
+    };
+    void updateExtraRims(F64 presentation_time);
+    void appendExtraRimActorOnly(std::vector<ALCineLightRigManagerModel::ActorOnlyRig>& rigs,
+                                std::vector<LLVOAvatar*>& avatars, size_t& used);
+    void setExtraRimState(ExtraRim& extra, ExtraRimState state);
+    void clearExtraRims();
+    void shutdownExtraRims();
+    void rewriteExtraRimActorReferences(const LLUUID& old_id, const LLUUID& new_id);
+    void pruneRemovedExtraRims();
+    bool extraRimRegistryNeedsRebuild() const;
+    bool hasOwnLitRig(const LLUUID& actor) const;
+    void finishExtraRimActorOnlyRegistry();
+    std::vector<ExtraRim> mExtraRims;
+    S32 mExtraRimSource = 0; // Manual You/A/B/C/D; session-only, no Auto.
+    U64 mExtraRimRevision = 1;
+    U64 mExtraRimSceneEpoch = 1;
+    bool mExtraRimRegistryDirty = true;
+    bool mExtraRimRegistryOnly = false;
+    std::vector<ALCineLightRigManagerModel::ActorOnlyRig> mExtraRimRegistryInputs;
+    std::vector<LLVOAvatar*> mExtraRimRegistryAvatars;
     // Session-only derived copies of Self. Keys are clone runtime avatar IDs.
     std::map<LLUUID, std::unique_ptr<ALCineLightRig>> mMirrors;
     static bool sAnyActorOnly;

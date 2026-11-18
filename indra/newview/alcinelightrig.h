@@ -345,6 +345,9 @@ public:
     // Derived emitters only: never tick, edit, persist or resolve another rig.
     void mirrorFrom(const ALCineLightRig& source, const LLVector3d& point,
                     const LLVector3& normal);
+    // One derived Back projector, evaluated from the source's world frame.
+    bool extraRimFrom(const ALCineLightRig& source, LLVOAvatar* actor,
+                      F32 trim, F64 presentation_time);
 
 private:
     friend struct ALCineLightRigParamBlob;
@@ -508,6 +511,13 @@ private:
 
     LLVector3d mSmoothedCentre;
     F32 mSmoothedScale = 1.f;
+    struct ExtraRimBasis
+    {
+        S32 mTrackMode = 0;
+        F32 mOffsetZ = 0.f;
+        F32 mDamping = 0.f;
+        bool mScaleAware = true;
+    } mExtraRimBasis;
     bool mHaveSmoothedCentre = false;
     bool mShaftEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     bool mHeroEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
