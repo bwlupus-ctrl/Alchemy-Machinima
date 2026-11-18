@@ -551,7 +551,7 @@ struct cine_light_rig_model_data {};
 // mixture and repeated-interruption weight invariant. 126..127 cover
 // overflow continuity, endpoint ordering and 2000 random interruption chains.
 // 137..141 cover Extra rims world placement, manual source and scene validity.
-typedef test_group<cine_light_rig_model_data, 141> cine_light_rig_model_group;
+typedef test_group<cine_light_rig_model_data, 142> cine_light_rig_model_group;
 typedef cine_light_rig_model_group::object cine_light_rig_model_object;
 cine_light_rig_model_group cine_light_rig_model_tests(
     "ALCineLightRigModel");
@@ -8293,6 +8293,21 @@ void cine_light_rig_model_object::test<141>()
     {
         block = LLSD::emptyMap(); block["version"] = 1; block["source"] = invalid;
         ensure("invalid scene source defaults to You", fromLLSD(block, state) && state.mSource == 0);
+    }
+}
+
+template<> template<>
+void cine_light_rig_model_object::test<142>()
+{
+    using namespace ALExtraRimModel;
+    const LLUUID actor("00000000-0000-0000-0000-000000000001");
+    LLSD future = LLSD::emptyMap(); future["version"] = 2;
+    for (const LLSD& rejected : {future, LLSD::emptyMap(), LLSD("malformed")})
+    {
+        State live; live.mSource = 4; add(live, actor);
+        ensure("rejected undo preserves extras", !fromLLSD(rejected, live) && live.mItems.size() == 1);
+        ensure("xr_rejected_scene_clears", !fromSceneLLSD(rejected, live) &&
+               live.mItems.empty() && live.mSource == 0);
     }
 }
 

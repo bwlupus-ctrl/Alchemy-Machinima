@@ -14,11 +14,11 @@ def run_unit(root=ROOT):
     rig = (root / 'indra/newview/alcinelightrig.cpp').read_text(encoding='utf8')
     manager = (root / 'indra/newview/alcinelightrigmanager.cpp').read_text(encoding='utf8')
     derived = function(rig, 'ALCineLightRig::ExtraRimResult ALCineLightRig::extraRimFrom(')
-    own = function(manager, 'bool ALCineLightRigManager::hasOwnLitRig(')
+    own = function(manager, 'ALCineLightRigManager::ExtraRimRecipientCache ALCineLightRigManager::extraRimRecipientCache(') + '\n' + function(manager, 'bool ALCineLightRigManager::hasOwnLitRig(')
     add = function(manager, 'bool ALCineLightRigManager::canAddExtraRim(')
     update = function(manager, 'void ALCineLightRigManager::updateExtraRims(')
     admission = 'if (hasOwnLitRig(id)) return refuse("Has own rig");'
-    pause = 'if (hasOwnLitRig(extra.mActor)) state = ExtraRimState::OWN_RIG;'
+    pause = 'if (hasOwnLitRig(extra.mActor, &recipients)) state = ExtraRimState::OWN_RIG;'
     assert admission in add and pause in update, 'xr_mirror_double_rim'
     basis_begin = rig.index('    if (mCaptureExtraRimBasis)')
     basis = rig[basis_begin:rig.index('    for (S32 i = 0; i < LIGHT_COUNT;', basis_begin)]
@@ -32,9 +32,12 @@ def run_unit(root=ROOT):
 #include "v4math.h"
 #include <memory>
 #include <map>
+#include <array>
 #include <iostream>
 #include <cstdlib>
 struct Region {};
+Region sharedRegion;
+int emitterCreates=0;
 struct Drawable { enum { FORCE_INVISIBLE }; void setState(int) {} };
 using LLDrawable=Drawable;
 template<class T> struct Ptr : std::shared_ptr<T> {
@@ -43,9 +46,9 @@ template<class T> struct Ptr : std::shared_ptr<T> {
 };
 struct Emitter {
     LLVector3d pos; LLQuaternion rot; bool dead=false, light=true;
-    Ptr<Drawable> mDrawable; Region region;
+    Ptr<Drawable> mDrawable; Region* region=&sharedRegion;
     bool isDead()const{return dead;} bool getIsLight()const{return light;}
-    Region* getRegion()const{return const_cast<Region*>(&region);}
+    Region* getRegion()const{return region;}
     LLVector3d getPositionGlobal()const{return pos;}
     LLQuaternion getRotation()const{return rot;}
     LLUUID getID()const{return LLUUID::null;}
@@ -64,6 +67,7 @@ struct Emitter {
 };
 struct LLVOAvatar {
     LLVector3 point; bool dead=false;
+    LLVOAvatar* asAvatar(){return this;}
     bool isDead()const{return dead;} float getUniformScale()const{return 1;}
 };
 struct Agent { LLVector3d getPosGlobalFromAgent(LLVector3 p){return LLVector3d(p);} } gAgent;
@@ -86,16 +90,31 @@ struct ALCineLightRig {
     double mLastPresentationTime=-1;
     struct Basis { int mTrackMode=0; float mOffsetZ=0,mDamping=1; bool mScaleAware=true; } mExtraRimBasis;
     bool mCaptureExtraRimBasis=false;
+    LLUUID objectTarget; std::string group; bool grouped=false; U32 groupSlots=0;
+    std::vector<LLUUID> members; LLVOAvatar* anchor=nullptr;
+    LLUUID getObjectTarget()const{return objectTarget;}
+    const std::string& getLitGroup()const{return group;}
+    const std::vector<LLUUID>& lastResolvedMembers()const{return members;}
+    bool isGroupEnabled()const{return grouped;} U32 lastResolvedGroupSlots()const{return groupSlots;}
+    LLVOAvatar* resolveSlotAvatar()const{return anchor;}
     void captureBasis(int track_mode_setting,float offset_z_setting,float damping_setting,bool scale_aware_setting) {
         BASIS
     }
     LLVector4 mRigRim[4],mLightShapeSource[4];
     void shutdown(){for(auto& p:mProjectors)p.reset();mHaveSmoothedCentre=false;}
     void destroyEmitter(Ptr<Emitter>& p){p.reset();}
-    bool createEmitter(Region*,bool,const std::string&,Ptr<Emitter>& p){p=Ptr<Emitter>(new Emitter);return true;}
+    bool createEmitter(Region* region,bool,const std::string&,Ptr<Emitter>& p){++emitterCreates;p=Ptr<Emitter>(new Emitter);p->region=region;return true;}
     ExtraRimResult extraRimFrom(const ALCineLightRig&,LLVOAvatar*,float,double);
 };
-struct LLDirectorCast { static LLUUID canonicalActorId(LLUUID id){return id;} };
+struct LLDirectorCast {
+    static LLUUID canonicalActorId(LLUUID id){return id;}
+    static LLDirectorCast& instance(){static LLDirectorCast c;return c;}
+    std::map<LLUUID,LLVOAvatar*> bodies;
+    LLVOAvatar* resolve(LLUUID id,bool){auto i=bodies.find(id);return i==bodies.end()?nullptr:i->second;}
+};
+struct ObjectList {
+    LLVOAvatar* findObject(LLUUID id){return LLDirectorCast::instance().resolve(id,false);}
+} gObjectList;
 struct ALCineLightRigManager {
     using Slot=int; static constexpr int SLOT_COUNT=5,SLOT_SELF=0;
     std::map<LLUUID,std::unique_ptr<ALCineLightRig>> mMirrors;
@@ -103,8 +122,13 @@ struct ALCineLightRigManager {
     void beginCapture(){ENABLE}
     void endCapture(){DISABLE}
     LLUUID actors[5]; bool lit[5]{};
-    LLUUID slotActor(Slot s)const{return actors[s];} bool isSlotLit(Slot s)const{return lit[s];}
-    bool hasOwnLitRig(const LLUUID&)const;
+    LLUUID slotActor(Slot s)const{return actors[s];}
+    LLUUID groupSlotActor(Slot s)const{return actors[s];} bool isSlotLit(Slot s)const{return lit[s];}
+        struct ExtraRimRecipientCache {
+        U32 mLit=0; std::array<LLVOAvatar*,SLOT_COUNT> mAnchors{},mGroupSlots{};
+    };
+    ExtraRimRecipientCache extraRimRecipientCache()const;
+    bool hasOwnLitRig(const LLUUID&,const ExtraRimRecipientCache* = nullptr)const;
     bool admit(LLUUID id)const {
         const auto refuse=[](const char*){return false;};
         ADMISSION
@@ -114,6 +138,7 @@ struct ALCineLightRigManager {
     ExtraRimState stateFor(LLUUID actor)const {
         struct { LLUUID mActor; } extra{actor};
         ExtraRimState state=ExtraRimState::ACTIVE;
+        ExtraRimRecipientCache recipients=extraRimRecipientCache();
         PAUSE
         return state;
     }
@@ -140,6 +165,7 @@ int main(){
             src.mCurrentRadius,src.mSmoothedScale,dst.mSmoothedCentre,dst.mSmoothedScale);
         require((dst.mProjectors[2]->pos-expected.mPosition).length()<1.e-6,"xr_scaled_world_offset");
     }
+    require(emitterCreates==1,"xr_emitter_churn");
     src.mHaveSmoothedCentre=false;
     require(dst.extraRimFrom(src,&actor,1,3)==ALCineLightRig::ExtraRimResult::WAITING,"xr_failure_reason");
     src.mHaveSmoothedCentre=true; src.mProjectors[2]->pos=src.mSmoothedCentre;
@@ -155,6 +181,20 @@ int main(){
     require(mgr.stateFor(clone)==ALCineLightRigManager::ExtraRimState::OWN_RIG,"xr_mirror_double_rim");
     mgr.mMirrors.clear();
     require(mgr.stateFor(clone)==ALCineLightRigManager::ExtraRimState::ACTIVE,"xr_mirror_double_rim");
+    LLVOAvatar member; LLDirectorCast::instance().bodies[clone]=&member;
+    mgr.mInstances[0].group="cast group";mgr.mInstances[0].members.push_back(clone);
+    require(!mgr.admit(clone) && mgr.stateFor(clone)==ALCineLightRigManager::ExtraRimState::OWN_RIG,"xr_double_rim_group_member");
+    mgr.mInstances[0].group.clear();mgr.mInstances[0].members.clear();
+    mgr.actors[2]=clone;mgr.mInstances[0].grouped=true;mgr.mInstances[0].groupSlots=1u<<2;
+    require(!mgr.admit(clone) && mgr.stateFor(clone)==ALCineLightRigManager::ExtraRimState::OWN_RIG,"xr_double_rim_group_slots");
+    // Cast treats null as You; the registry deliberately skips an empty slot.
+    mgr.actors[2]=LLUUID::null;LLDirectorCast::instance().bodies[LLUUID::null]=&member;
+    require(mgr.admit(clone),"xr_empty_group_slot_is_not_self");
+    mgr.mInstances[0].grouped=false;mgr.mInstances[0].groupSlots=0;
+    mgr.mInstances[0].anchor=&member;
+    require(!mgr.admit(clone),"xr_anchor_recipient");
+    mgr.actors[0]=clone;mgr.mInstances[0].objectTarget=LLUUID("00000000-0000-0000-0000-000000000002");
+    require(mgr.admit(clone) && mgr.stateFor(clone)==ALCineLightRigManager::ExtraRimState::ACTIVE,"xr_self_object_rig_pauses");
     mgr.beginCapture();
     for(auto& instance:mgr.mInstances){
         instance.captureBasis(1,3,2,false);
@@ -178,6 +218,11 @@ int main(){
     assert baseline.returncode == 0, output
     print(baseline.stdout, end='', flush=True)
     mutations = {
+        'xr_emitter_churn': ('if (dst.notNull() && (dst->isDead() || dst->getRegion() != src->getRegion()))', 'if (dst.notNull())'),
+        'xr_double_rim_group_member': ('if (object && object->asAvatar() == avatar) return true;', 'if (false) return true;'),
+        'xr_double_rim_group_slots': ('if ((slots & (1u << j)) && cache.mGroupSlots[j] == avatar) return true;', 'if (false) return true;'),
+        'xr_empty_group_slot_is_not_self': ('if (actor.notNull()) cache.mGroupSlots[i]', 'cache.mGroupSlots[i]'),
+        'xr_self_object_rig_pauses': ('|| rig.getObjectTarget().notNull()) continue;', ') continue;'),
         'xr_damped_parallel': ('dst->setRotation(src->getRotation(), false);',
             'LLVector3 aim(mSmoothedCentre - placement.mPosition); aim.normalize(); '
             'LLQuaternion rotation; rotation.shortestArc(LLVector3(0,0,-1),aim); dst->setRotation(rotation,false);'),

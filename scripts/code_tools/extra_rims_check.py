@@ -152,8 +152,10 @@ def contracts(b):
             '(!cast.contains(it->mActor) && it->mEnrolled)' in prune,
         'xr_double_rim':
             'if (hasOwnLitRig(id)) return refuse("Has own rig");' in add and
-            'if (hasOwnLitRig(extra.mActor)) state = ExtraRimState::OWN_RIG;' in update and
-            'isSlotLit(slot)' in manager('bool ALCineLightRigManager::hasOwnLitRig('),
+            'if (hasOwnLitRig(extra.mActor, &recipients)) state = ExtraRimState::OWN_RIG;' in update and
+            'if (!isSlotLit(static_cast<Slot>(i)) || rig.getObjectTarget().notNull()) continue;' in
+                manager('ALCineLightRigManager::ExtraRimRecipientCache ALCineLightRigManager::extraRimRecipientCache(') and
+            'if (!(cache.mLit & (1u << i))) continue;' in manager('bool ALCineLightRigManager::hasOwnLitRig('),
         'xr_preset_owned':
             not re.search(r'extra_?rims?', custom, re.I) and 'keys = owned(RIM);' in custom,
         'xr_menu_one_registrar':
@@ -210,7 +212,7 @@ def planted_negatives(b):
         'xr_premature_prune': mutation(b, 'manager',
             '(!cast.contains(it->mActor) && it->mEnrolled)', '(!cast.contains(it->mActor))'),
         'xr_double_rim': mutation(b, 'manager',
-            'if (hasOwnLitRig(extra.mActor)) state = ExtraRimState::OWN_RIG;',
+            'if (hasOwnLitRig(extra.mActor, &recipients)) state = ExtraRimState::OWN_RIG;',
             'if (false) state = ExtraRimState::OWN_RIG;'),
         'xr_preset_owned': mutation(b, 'preset', 'case RIM_CUSTOM:\n        keys = owned(RIM);',
                                     'case RIM_CUSTOM:\n        keys = owned(RIM);\n        keys.emplace_back("extra_rims");'),
@@ -276,3 +278,6 @@ if __name__ == '__main__':
 
     from extra_rims_round3_check import run_unit as run_round3
     run_round3(ROOT)
+
+    from extra_rims_round4_check import run_unit as run_round4
+    run_round4(ROOT)

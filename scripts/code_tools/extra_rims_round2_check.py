@@ -39,10 +39,12 @@ def run_unit(root=ROOT):
 #include "alextrarimmodel.h"
 #include "llsdutil.h"
 #include <map>
+#include <array>
 #include <set>
 #include <memory>
 #include <iostream>
 #include <cstdlib>
+#include <sstream>
 #define LL_INFOS(x) std::cerr
 #define LL_ENDL std::endl
 struct LLVOAvatar;
@@ -83,10 +85,16 @@ struct LLDirectorCast {
 
 };
 std::map<LLUUID,LLUUID> LLDirectorCast::aliases;
-struct Rig {void shutdown(){}};
+struct Rig {
+ void shutdown(){} LLUUID getObjectTarget()const{return LLUUID::null;}
+ const std::string& getLitGroup()const{static std::string s;return s;}
+ const std::vector<LLUUID>& lastResolvedMembers()const{static std::vector<LLUUID> v;return v;}
+ bool isGroupEnabled()const{return false;} U32 lastResolvedGroupSlots()const{return 0;}
+ LLVOAvatar* resolveSlotAvatar()const{return nullptr;}
+};
 struct ALCineLightRigManager {
  enum class ExtraRimState {ACTIVE,SOURCE_OFF,BACK_OFF,AWAY,GEOMETRY,EMITTER_UNAVAILABLE,OWN_RIG,MASK_DISABLED,MASK_OVERFLOW,WAITING};
- struct ExtraRim {ExtraRimState mState=ExtraRimState::WAITING; LLUUID mActor;F32 mTrim=1;bool mEnrolled=false;std::unique_ptr<Rig> mRig;};
+ struct ExtraRim {ExtraRimState mState=ExtraRimState::WAITING; LLUUID mActor;F32 mTrim=1;bool mEnrolled=false; bool mAtMaxBrightness=false,mLoggedAtMaxBrightness=false; LLVOAvatar* mRecipientBody=nullptr;std::unique_ptr<Rig> mRig;};
  std::vector<ExtraRim> mExtraRims; int mExtraRimSource=0;
  U64 mExtraRimRevision=1,mConfigurationRevision=1;
  bool mExtraRimRegistryDirty=false,mBorrowAnchorsDirty=false;
@@ -96,11 +104,20 @@ struct ALCineLightRigManager {
  std::map<LLUUID,std::unique_ptr<Rig>> mMirrors;
  LLUUID actors[5];bool lit[5]{};
  LLUUID slotActor(Slot s)const{return actors[s];} bool isSlotLit(Slot s)const{return lit[s];}
- bool hasOwnLitRig(const LLUUID&)const;
+     struct ExtraRimRecipientCache {
+        U32 mLit=0; std::array<LLVOAvatar*,SLOT_COUNT> mAnchors{},mGroupSlots{};
+    };
+    ExtraRimRecipientCache extraRimRecipientCache()const;
+    bool hasOwnLitRig(const LLUUID&,const ExtraRimRecipientCache* = nullptr)const;
+ Rig mInstances[5];
+ LLUUID groupSlotActor(Slot s)const{return actors[s];}
  LLUUID resolveBorrowActor(const LLUUID&,bool=false)const;
  static bool validSlotValue(int s){return s>=0 && s<5;}
  void rebuildActorOnlyRegistry(){}
- void shutdownExtraRims(){}
+ void shutdownExtraRims(); void clearExtraRims();
+ void replaceExtraRims(const LLSD&,bool);
+ const char* extraRimSummary()const{return "Waiting";}
+ std::string extraRimStatus(const LLUUID& = LLUUID::null)const;
  LLUUID resolveRigActorIdentity(const LLUUID&)const;
  bool hasExtraRim(const LLUUID&)const;
  bool canAddExtraRim(const LLUUID&,std::string* = nullptr,bool=false)const;
@@ -116,7 +133,7 @@ struct ALCineLightRigManager {
     for sig in ('void LLDirectorCast::add(', 'bool LLDirectorCast::contains(', 'bool LLDirectorCast::containsStored(', 'LLVOAvatar* LLDirectorCast::resolve('):
         source += function(cast,sig)+'\n'
     source += function(manager,'LLUUID ALCineLightRigManager::resolveBorrowActor(')+'\n'
-    for sig in ('bool ALCineLightRigManager::hasOwnLitRig(', 'LLUUID ALCineLightRigManager::resolveRigActorIdentity(', 'bool ALCineLightRigManager::hasExtraRim(', 'bool ALCineLightRigManager::canAddExtraRim(', 'bool ALCineLightRigManager::addExtraRim(', 'void ALCineLightRigManager::removeExtraRim(', 'void ALCineLightRigManager::setExtraRimTrim(', 'void ALCineLightRigManager::setExtraRimSource(', 'LLSD ALCineLightRigManager::captureExtraRims(', 'void ALCineLightRigManager::restoreExtraRims(', 'void ALCineLightRigManager::setExtraRimState('):
+    for sig in ('ALCineLightRigManager::ExtraRimRecipientCache ALCineLightRigManager::extraRimRecipientCache(', 'bool ALCineLightRigManager::hasOwnLitRig(', 'LLUUID ALCineLightRigManager::resolveRigActorIdentity(', 'bool ALCineLightRigManager::hasExtraRim(', 'bool ALCineLightRigManager::canAddExtraRim(', 'bool ALCineLightRigManager::addExtraRim(', 'void ALCineLightRigManager::removeExtraRim(', 'void ALCineLightRigManager::setExtraRimTrim(', 'void ALCineLightRigManager::setExtraRimSource(', 'LLSD ALCineLightRigManager::captureExtraRims(', 'void ALCineLightRigManager::restoreExtraRims(', 'void ALCineLightRigManager::setExtraRimState(', 'void ALCineLightRigManager::shutdownExtraRims(', 'void ALCineLightRigManager::clearExtraRims(', 'void ALCineLightRigManager::replaceExtraRims(', 'std::string ALCineLightRigManager::extraRimStatus('):
         source += function(manager,sig)+'\n'
     source += r"""
 struct ALKitShell { void ensurePageBuilt(const char*){} };
@@ -193,6 +210,22 @@ int main(){
  require(m.mConfigurationRevision>stamp,"xr_scene_dirty_stamp");
  stamp=m.mConfigurationRevision;m.setExtraRimSource(2);m.removeExtraRim(id(99));
  require(m.mConfigurationRevision==stamp,"xr_scene_noop_clean");
+ // Scene rejection clears live extras; history rejection preserves them.
+ LLSD future=LLSD::emptyMap();future["version"]=2;
+ for(const LLSD& rejected:{future,LLSD::emptyMap(),LLSD("malformed")}){
+  m.addExtraRim(id(1));m.setExtraRimSource(4);m.mExtraRims.front().mRig=std::make_unique<Rig>();
+  m.restoreExtraRims(rejected);require(m.hasExtraRim(id(1)),"xr_rejected_undo_preserves");
+  m.replaceExtraRims(rejected,false);
+  require(m.mExtraRims.empty() && m.mExtraRimSource==0,"xr_rejected_scene_emitters");
+ }
+ m.addExtraRim(id(1));auto& extra=m.mExtraRims.front();
+ extra.mAtMaxBrightness=true;std::ostringstream messages;auto* previous=std::cerr.rdbuf(messages.rdbuf());
+ m.setExtraRimState(extra,ALCineLightRigManager::ExtraRimState::ACTIVE);
+ std::cerr.rdbuf(previous);
+ require(m.extraRimStatus(id(1))=="At max brightness" && messages.str().find("status=At max brightness")!=std::string::npos,"xr_max_brightness_status");
+ auto revision=m.mExtraRimRevision;extra.mAtMaxBrightness=false;
+ m.setExtraRimState(extra,ALCineLightRigManager::ExtraRimState::ACTIVE);
+ require(m.extraRimStatus(id(1))=="Lit" && m.mExtraRimRevision>revision,"xr_max_brightness_transition");
  std::cout<<"PASS: production dirty stamps, clone identities and optional-shell menu mutations\n";
 }
 """
@@ -201,6 +234,9 @@ int main(){
     assert 'mConfigurationRevision' not in function(manager,'void ALCineLightRigManager::updateExtraRims('), 'xr_transient_clean'
     flags,libs=viewer_native_flags();directory=check_directory('extra_rims_round2')
     mutations={
+      'xr_rejected_scene_emitters':('if (!ALExtraRimModel::fromSceneLLSD(data, parsed)) { clearExtraRims(); return; }','if (!ALExtraRimModel::fromSceneLLSD(data, parsed)) { return; }'),
+      'xr_max_brightness_status':('return extra.mAtMaxBrightness ? "At max brightness" : "Lit";', 'return "Lit";'),
+      'xr_max_brightness_transition':('extra.mState == state && extra.mLoggedAtMaxBrightness == at_max', 'extra.mState == state'),
       'xr_uncast_enrolment': ('auto* avatar = cast.resolve(id, false);', 'auto* avatar = cast.contains(id) ? cast.resolve(id, false) : nullptr;'),
       'xr_transient_clean': ('    extra.mState = state;', '    extra.mState = state; ++mConfigurationRevision;'),
       'xr_scene_dirty_stamp':('++mExtraRimRevision; ++mConfigurationRevision;', '++mExtraRimRevision;'),

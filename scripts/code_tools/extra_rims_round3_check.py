@@ -39,6 +39,8 @@ def run_unit(root=ROOT):
 #include <vector>
 #include <iostream>
 #include <cstdlib>
+#define LL_INFOS(x) std::cerr
+#define LL_ENDL std::endl
 struct LLVOAvatar : LLRefCount {
  LLUUID id, owner; bool dead=false;
  bool isDead()const{return dead;}
@@ -54,7 +56,7 @@ struct LLDirectorCast {
 };
 int gSavedSettings=0;
 template<class T>struct LLCachedControl {T value;LLCachedControl(int,const char*,T v):value(v){} operator T()const{return value;}};
-struct Emitter {bool isDead()const{return false;} bool getIsLight()const{return true;}};
+struct Emitter {F32 intensity=1.f; bool isDead()const{return false;} bool getIsLight()const{return true;} F32 getLightIntensity()const{return intensity;}};
 struct ALCineLightRig {
  enum class ExtraRimResult{ACTIVE,WAITING,AWAY,GEOMETRY,EMITTER_UNAVAILABLE};
  LLPointer<LLRefCount> unused;
@@ -73,15 +75,18 @@ struct ALCineLightRigManager {
  ALCineLightRig source;
  const ALCineLightRig& at(Slot)const{return source;}
  bool isSlotLit(Slot)const{return true;}
- bool hasOwnLitRig(LLUUID)const{return false;}
+ struct ExtraRimRecipientCache {};
+ ExtraRimRecipientCache extraRimRecipientCache()const{return {};}
+ bool hasOwnLitRig(LLUUID,const ExtraRimRecipientCache*)const{return false;}
  void pruneRemovedExtraRims(){}
- void setExtraRimState(ExtraRim& extra,ExtraRimState state){extra.mState=state;}
+ U64 mExtraRimRevision=0;
+ void setExtraRimState(ExtraRim&,ExtraRimState);
  void updateExtraRims(F64);
 };
 '''
     extra = header[header.index('    struct ExtraRim\n'):header.index('    void updateExtraRims(', header.index('    struct ExtraRim\n'))]
     source = source.replace(' EXTRA',extra)
-    source += function(manager,'void ALCineLightRigManager::updateExtraRims(') + r'''
+    source += function(manager,'void ALCineLightRigManager::setExtraRimState(') + '\n' + function(manager,'void ALCineLightRigManager::updateExtraRims(') + r'''
 void require(bool ok,const char* name){if(!ok){std::cerr<<name<<"\n";std::exit(1);}}
 int main(){
  ALCineLightRigManager m;m.mExtraRims.emplace_back();
@@ -102,6 +107,14 @@ int main(){
  require(registryBody==second.get(),"xr_same_uuid_body_replacement");
  m.mExtraRimRegistryDirty=false;m.updateExtraRims(4);
  require(!m.mExtraRimRegistryDirty,"xr_body_steady_no_rebuild");
+ m.mExtraRims.front().mTrim=2.f;auto revision=m.mExtraRimRevision;m.updateExtraRims(4.1);
+ require(m.mExtraRims.front().mLoggedAtMaxBrightness && m.mExtraRimRevision>revision &&
+         !m.mExtraRimRegistryDirty,"xr_active_max_brightness_transition");
+ m.source.mProjectors[2].value.intensity=.4f;revision=m.mExtraRimRevision;m.updateExtraRims(4.2);
+ require(!m.mExtraRims.front().mLoggedAtMaxBrightness && m.mExtraRimRevision>revision &&
+         !m.mExtraRimRegistryDirty,"xr_active_max_brightness_transition");
+ second->dead=true;LLDirectorCast::instance().body=nullptr;m.updateExtraRims(5);
+ require(m.mExtraRims.front().mRecipientBody.isNull(),"xr_away_body_release");
  std::cout<<"PASS: same UUID/owner replacement invalidates without an away tick or dead-body dereference; stable body keeps cache\n";
 }
 '''
@@ -109,7 +122,7 @@ int main(){
     directory = check_directory('extra_rims_round3')
     old = 'extra.mRecipientBody.get() != avatar || '
     assert old in source
-    for name, src in [('baseline',source), ('xr_same_uuid_body_replacement',source.replace(old,'',1))]:
+    for name, src in [('baseline',source), ('xr_same_uuid_body_replacement',source.replace(old,'',1)), ('xr_away_body_release',source.replace('if (state != ExtraRimState::ACTIVE) extra.mRecipientBody = nullptr;', '', 1)), ('xr_active_max_brightness_transition',source.replace('if (extra.mState == ExtraRimState::ACTIVE)\n                    setExtraRimState(extra, ExtraRimState::ACTIVE);', '', 1))]:
         result = compile_run(directory,src,name,flags,libs)
         output=result.stdout+result.stderr
         (directory/(name+'.log')).write_bytes(output.encode('utf8'))

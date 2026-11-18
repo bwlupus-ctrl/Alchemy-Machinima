@@ -154,5 +154,12 @@ inline bool fromLLSD(const LLSD& block, State& state)
     state = parsed;
     return true;
 }
+// Scene replacement owns the whole list, including when its block is rejected.
+// History continues to use fromLLSD's leave-on-rejection policy.
+inline bool fromSceneLLSD(const LLSD& block, State& state)
+{
+    state = State{};
+    return fromLLSD(block, state);
+}
 } // namespace ALExtraRimModel
 #endif // AL_EXTRA_RIM_MODEL_H

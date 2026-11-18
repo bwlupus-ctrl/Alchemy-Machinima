@@ -1857,7 +1857,7 @@ std::string ALCineLightRigManager::extraRimStatus(const LLUUID& actor) const
         if (extra.mActor != id) continue;
         switch (extra.mState)
         {
-            case ExtraRimState::ACTIVE: return "Lit";
+            case ExtraRimState::ACTIVE: return extra.mAtMaxBrightness ? "At max brightness" : "Lit";
             case ExtraRimState::SOURCE_OFF:
             case ExtraRimState::BACK_OFF: return extraRimStatus();
             case ExtraRimState::AWAY: return "Away";
@@ -1967,6 +1967,10 @@ void ALCineLightRigManager::restoreExtraRims(const LLSD& data)
 void ALCineLightRigManager::replaceExtraRims(const LLSD& data, bool login_recovery)
 {
     if (login_recovery) { clearExtraRims(); return; }
+    // Scene replacement must never keep the preceding scene's emitters when
+    // its inner block is rejected. History restore deliberately keeps its state.
+    ALExtraRimModel::State parsed;
+    if (!ALExtraRimModel::fromSceneLLSD(data, parsed)) { clearExtraRims(); return; }
     restoreExtraRims(data);
 }
 
@@ -2006,6 +2010,7 @@ void ALCineLightRigManager::rewriteExtraRimActorReferences(const LLUUID& old_id,
             if (it->mRig) it->mRig->shutdown();
             it = mExtraRims.erase(it);
             ++mExtraRimRevision;
+            mExtraRimRegistryDirty = true;
         }
         else ++it;
     }
@@ -2031,8 +2036,11 @@ void ALCineLightRigManager::pruneRemovedExtraRims()
 
 void ALCineLightRigManager::setExtraRimState(ExtraRim& extra, ExtraRimState state)
 {
-    if (extra.mState == state) return;
+    if (state != ExtraRimState::ACTIVE) extra.mRecipientBody = nullptr;
+    const bool at_max = state == ExtraRimState::ACTIVE && extra.mAtMaxBrightness;
+    if (extra.mState == state && extra.mLoggedAtMaxBrightness == at_max) return;
     extra.mState = state;
+    extra.mLoggedAtMaxBrightness = at_max;
     ++mExtraRimRevision;
     const char* verdict = "DARK(waiting)";
     switch (state)
@@ -2049,7 +2057,8 @@ void ALCineLightRigManager::setExtraRimState(ExtraRim& extra, ExtraRimState stat
         default: break;
     }
     LL_INFOS("CineRig") << "#ExtraRim actor=" << extra.mActor
-        << " source=" << mExtraRimSource << " verdict=" << verdict << LL_ENDL;
+        << " source=" << mExtraRimSource << " verdict=" << verdict
+        << (at_max ? " status=At max brightness" : "") << LL_ENDL;
 }
 
 void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
@@ -2064,17 +2073,19 @@ void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
     const auto resolved = ALExtraRimModel::resolveSource(mExtraRimSource,
         isSlotLit(picked) ? bit : 0,
         rim.notNull() && !rim->isDead() && rim->getIsLight() ? bit : 0);
+    const auto recipients = extraRimRecipientCache();
     for (auto& extra : mExtraRims)
     {
         ExtraRimState state = ExtraRimState::ACTIVE;
         auto* avatar = LLDirectorCast::instance().resolve(extra.mActor, false);
-        if (hasOwnLitRig(extra.mActor)) state = ExtraRimState::OWN_RIG;
+        if (hasOwnLitRig(extra.mActor, &recipients)) state = ExtraRimState::OWN_RIG;
         else if (mask_disabled) state = ExtraRimState::MASK_DISABLED;
         else if (resolved.mDark == ALExtraRimModel::SourceDark::RIG_OFF) state = ExtraRimState::SOURCE_OFF;
         else if (resolved.mDark == ALExtraRimModel::SourceDark::RIM_OFF) state = ExtraRimState::BACK_OFF;
         else if (!avatar || avatar->isDead()) state = ExtraRimState::AWAY;
         if (state == ExtraRimState::ACTIVE)
         {
+            extra.mAtMaxBrightness = rim->getLightIntensity() * std::clamp(extra.mTrim, 0.f, 2.f) > 1.f;
             LLUUID fallback;
             if (avatar->isControlAvatar())
             {
@@ -2106,6 +2117,8 @@ void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
             {
                 if (extra.mState != ExtraRimState::ACTIVE && extra.mState != ExtraRimState::MASK_OVERFLOW)
                     mExtraRimRegistryDirty = true;
+                if (extra.mState == ExtraRimState::ACTIVE)
+                    setExtraRimState(extra, ExtraRimState::ACTIVE);
                 continue;
             }
         }
@@ -2154,16 +2167,59 @@ bool ALCineLightRigManager::extraRimRegistryNeedsRebuild() const
         ALCineLightRig::sActorOnlyRequestedSlots || mActorOnlyObjectSlots || !mMirrors.empty();
 }
 
-bool ALCineLightRigManager::hasOwnLitRig(const LLUUID& actor) const
+ALCineLightRigManager::ExtraRimRecipientCache ALCineLightRigManager::extraRimRecipientCache() const
+{
+    ExtraRimRecipientCache cache;
+    U32 group_slots = 0;
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+    {
+        const auto& rig = mInstances[i];
+        if (!isSlotLit(static_cast<Slot>(i)) || rig.getObjectTarget().notNull()) continue;
+        cache.mLit |= 1u << i;
+        if (!rig.getLitGroup().empty()) continue; // Evaluated members are already cached by the rig tick.
+        if (rig.isGroupEnabled()) group_slots |= rig.lastResolvedGroupSlots();
+        else cache.mAnchors[i] = rig.resolveSlotAvatar();
+    }
+    for (S32 i = 0; i < SLOT_COUNT; ++i)
+        if (group_slots & (1u << i))
+        {
+            const LLUUID actor = groupSlotActor(static_cast<Slot>(i));
+            if (actor.notNull()) cache.mGroupSlots[i] = LLDirectorCast::instance().resolve(actor, false);
+        }
+    return cache;
+}
+
+bool ALCineLightRigManager::hasOwnLitRig(const LLUUID& actor, const ExtraRimRecipientCache* cached) const
 {
     const LLUUID id = LLDirectorCast::canonicalActorId(actor);
     if (id.isNull()) return false;
     const auto mirror = mMirrors.find(id);
     if (mirror != mMirrors.end() && isSlotLit(SLOT_SELF)) return true;
+    const auto* avatar = LLDirectorCast::instance().resolve(id, false);
+    if (!avatar || avatar->isDead()) return false;
+    // Admission resolves on demand; the update loop shares one fixed-size
+    // snapshot per tick. Match the registry's live recipient resolution.
+    const auto local = cached ? ExtraRimRecipientCache{} : extraRimRecipientCache();
+    const auto& cache = cached ? *cached : local;
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
-        const Slot slot = static_cast<Slot>(i);
-        if (LLDirectorCast::canonicalActorId(slotActor(slot)) == id && isSlotLit(slot)) return true;
+        if (!(cache.mLit & (1u << i))) continue;
+        const auto& rig = mInstances[i];
+        if (!rig.getLitGroup().empty())
+        {
+            for (const auto& member : rig.lastResolvedMembers())
+            {
+                auto* object = gObjectList.findObject(member);
+                if (object && object->asAvatar() == avatar) return true;
+            }
+        }
+        else if (rig.isGroupEnabled())
+        {
+            const U32 slots = rig.lastResolvedGroupSlots();
+            for (S32 j = 0; j < SLOT_COUNT; ++j)
+                if ((slots & (1u << j)) && cache.mGroupSlots[j] == avatar) return true;
+        }
+        else if (cache.mAnchors[i] == avatar) return true;
     }
     return false;
 }

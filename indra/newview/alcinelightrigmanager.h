@@ -1542,6 +1542,8 @@ private:
         F32 mTrim = 1.f;
         bool mEnrolled = false;
         ExtraRimState mState = ExtraRimState::WAITING;
+        bool mAtMaxBrightness = false;
+        bool mLoggedAtMaxBrightness = false;
         // Retain the instance safely across same-UUID body replacement.
         LLPointer<LLVOAvatar> mRecipientBody;
         LLUUID mRecipient;
@@ -1558,7 +1560,14 @@ private:
     void rewriteExtraRimActorReferences(const LLUUID& old_id, const LLUUID& new_id);
     void pruneRemovedExtraRims();
     bool extraRimRegistryNeedsRebuild() const;
-    bool hasOwnLitRig(const LLUUID& actor) const;
+    struct ExtraRimRecipientCache
+    {
+        U32 mLit = 0;
+        std::array<LLVOAvatar*, SLOT_COUNT> mAnchors{};
+        std::array<LLVOAvatar*, SLOT_COUNT> mGroupSlots{};
+    };
+    ExtraRimRecipientCache extraRimRecipientCache() const;
+    bool hasOwnLitRig(const LLUUID& actor, const ExtraRimRecipientCache* cache = nullptr) const;
     void finishExtraRimActorOnlyRegistry();
     std::vector<ExtraRim> mExtraRims;
     S32 mExtraRimSource = 0; // Manual You/A/B/C/D; session-only, no Auto.

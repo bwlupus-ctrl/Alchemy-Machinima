@@ -116,8 +116,9 @@ void ALPanelRigRim::draw()
 void ALPanelRigRim::idle(void* data)
 {
     auto* panel = static_cast<ALPanelRigRim*>(data);
+    if (!panel->mExtraRefreshClock.due()) return;
     panel->mExtras.finishTrim();
-    if (isWidgetOnScreen(panel) && panel->mExtraRefreshClock.due())
+    if (isWidgetOnScreen(panel))
         panel->mExtras.refresh();
 }
 
@@ -497,6 +498,7 @@ void ALExtraRimUI::showMenu(S32 x, S32 y)
 void ALExtraRimUI::refresh()
 {
     if (!mList || !isWidgetOnScreen(mRoot)) return;
+    if (mTrim && (mTrim->isMouseHeldDown() || mTrim->isWheelSettlePending())) return;
     auto& rigs = ALCineLightRigManager::instance();
     const char* summary = rigs.extraRimSummary();
     if (mSummary != summary)
