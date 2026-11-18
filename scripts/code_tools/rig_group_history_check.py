@@ -11,6 +11,8 @@ def history_fixture(root: Path) -> str:
     header = (root / 'indra/newview/alkithistory.h').read_text(encoding='utf8')
     source = (root / 'indra/newview/alkithistory.cpp').read_text(encoding='utf8')
     support = r'''
+// This fixture has no Rim editors; gesture settlement is exercised by extra_rims_ui_check.
+struct ALExtraRimUI { static void finishPendingTrims() {} };
 template<class T> struct LLHandle {
     T* ptr=nullptr;
     LLHandle()=default; LLHandle(T* p):ptr(p){}

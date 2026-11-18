@@ -8286,6 +8286,8 @@ void cine_light_rig_model_object::test<141>()
     ensure("xr_scene_bad_trim_accepted", fromLLSD(block, roundtrip) && roundtrip.mItems.empty());
     block = toLLSD(state); block["version"] = 2;
     ensure("unknown version keeps live extras", !fromLLSD(block, state) && state.mItems.size() == 1 && state.mSource == 4);
+    block = LLSD::emptyMap();
+    ensure("xr_scene_missing_version", !fromLLSD(block, state) && state.mItems.size() == 1 && state.mSource == 4);
     ensure("legacy scene clears extras and source", fromLLSD(LLSD(), state) && state.mItems.empty() && state.mSource == 0);
     for (const LLSD& invalid : {LLSD(-1), LLSD(5), LLSD("auto"), LLSD(2.)})
     {

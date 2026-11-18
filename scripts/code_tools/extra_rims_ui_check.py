@@ -153,10 +153,19 @@ int main() {
         strength.first["items"][1]==strength.last["items"][1],"xr_ui_strength_unrelated");
     strength.control.value=50;strength.commit();strength.finishTrim();
     require(strength.steps==3,"xr_ui_strength_gesture");
+    strength.control.wheel=true;strength.control.value=30;strength.commit();
+    strength.finishTrim(true); // menu boundary, before membership disappears
+    LLSD removed = ALCineLightRigManager::instance().live;
+    ALCineLightRigManager::instance().live["items"]=LLSD::emptyArray();
+    require(strength.steps==4 && fabs(strength.first["items"][0]["trim"].asReal()-.5)<1.e-6 &&
+        fabs(strength.last["items"][0]["trim"].asReal()-.3)<1.e-6,"xr_ui_strength_removal");
+    ALCineLightRigManager::instance().live=removed; // undo removal
+    ALCineLightRigManager::instance().live=strength.first; // undo Strength
+    require(fabs(ALCineLightRigManager::instance().live["items"][0]["trim"].asReal()-.5)<1.e-6,"xr_ui_strength_removal");
     strength.control.wheel=true;strength.control.value=25;strength.commit();
     ++ALCineLightRigManager::instance().sceneEpoch;
     strength.control.wheel=false;strength.finishTrim();
-    require(strength.steps==3 && strength.mTrimBefore.isUndefined(),"xr_ui_strength_epoch");
+    require(strength.steps==4 && strength.mTrimBefore.isUndefined(),"xr_ui_strength_epoch");
     ALCineLightRigManager::instance().sceneEpoch=1;
     QueueProbe pending{1}; int owner=1, page=1, unrelatedHistoryRevision=1;
     require(queueAllowed(&owner,&page,&pending), "xr_ui_epoch_guard");
@@ -221,6 +230,7 @@ int main() {
     assert baseline.returncode == 0, output
     print(baseline.stdout, end='', flush=True)
     mutations = {
+        'xr_ui_strength_removal': ('strength.finishTrim(true); // menu boundary', 'strength.finishTrim(); // menu boundary'),
         'xr_ui_row_conflict': ('a->second != c->second', 'false'),
         'xr_ui_source_conflict': ('current["source"] != expected["source"]', 'false'),
         'xr_ui_cap_conflict': ('if (live.size() > 4)', 'if (live.size() > 5)'),

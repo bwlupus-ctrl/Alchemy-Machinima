@@ -8960,6 +8960,7 @@ void LLFloaterDirector::updateCastExtraRimMenu(LLContextMenu* menu)
 }
 void LLFloaterDirector::onCastExtraRimToggle()
 {
+    ALExtraRimUI::finishPendingTrims();
     auto& rigs = ALCineLightRigManager::instance();
     const LLUUID actor = mExtraRimMenuPick ? rigs.resolveBorrowActor(*mExtraRimMenuPick, true) : LLUUID::null;
     if (actor.isNull()) return;

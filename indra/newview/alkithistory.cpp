@@ -1,5 +1,6 @@
 #include "llviewerprecompiledheaders.h"
 #include "alkithistory.h"
+#include "alpanelrigrim.h"
 #include "alpanelweathersettings.h"
 #include "alkitbinding.h"
 #include "alkitpage.h"
@@ -684,6 +685,7 @@ void ALKitHistory::discardRedo(const std::string& page)
 
 void ALKitHistory::undo(const std::string& page)
 {
+    ALExtraRimUI::finishPendingTrims();
     finishGesture();
     mTimer.reset();
     std::string reason;
@@ -708,6 +710,7 @@ void ALKitHistory::undo(const std::string& page)
 }
 void ALKitHistory::redo(const std::string& page)
 {
+    ALExtraRimUI::finishPendingTrims();
     finishGesture();
     mTimer.reset();
     std::string reason;

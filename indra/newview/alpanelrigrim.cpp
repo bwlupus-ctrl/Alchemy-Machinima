@@ -350,13 +350,24 @@ void ALExtraRimUI::recordEdit(ALKitShell* shell, const LLSD& before, const std::
             pending->actors.push_back(ALCineLightRigManager::instance().retainBorrowActor(item["actor"].asUUID()));
 }
 
+namespace
+{
+std::set<ALExtraRimUI*> extraRimEditors;
+}
+void ALExtraRimUI::finishPendingTrims()
+{
+    for (auto* editor : extraRimEditors) editor->finishTrim(true);
+}
+
 ALExtraRimUI::~ALExtraRimUI()
 {
     finishTrim(true);
+    extraRimEditors.erase(this);
     if (auto* menu = mMenu.get()) { menu->hide(); menu->die(); }
 }
 void ALExtraRimUI::attach(LLPanel* root)
 {
+    extraRimEditors.insert(this);
     mRoot = root;
     mList = root->findChild<LLScrollListCtrl>("cine_extra_rim_list");
     mSource = root->findChild<LLComboBox>("cine_extra_rim_source");
@@ -468,6 +479,7 @@ void ALExtraRimUI::showMenu(S32 x, S32 y)
     const LLUUID picked = selectedActor();
     remove.on_click.function = [this, picked, retained = ALCineLightRigManager::instance().retainBorrowActor(picked)](LLUICtrl*, const LLSD&)
     {
+        finishPendingTrims();
         auto& rigs = ALCineLightRigManager::instance();
         const LLUUID actor = rigs.resolveBorrowActor(picked, true);
         const LLSD before = rigs.captureExtraRims();
@@ -482,6 +494,18 @@ void ALExtraRimUI::refresh()
 {
     if (!mList || !isWidgetOnScreen(mRoot)) return;
     auto& rigs = ALCineLightRigManager::instance();
+    const char* summary = rigs.extraRimSummary();
+    if (mSummary != summary)
+    {
+        setTextIfChanged(mStatus, summary);
+        mSummary = summary;
+    }
+    auto* shell = ALKitShell::find(mRoot);
+    const LLUUID cast_actor = shell && !shell->castSelection().empty() ? shell->castSelection().front() : LLUUID::null;
+    if (mRevision == rigs.extraRimRevision() && mCastActor == cast_actor &&
+        mConfigurationRevision == rigs.configurationRevision()) return;
+    mCastActor = cast_actor;
+    mConfigurationRevision = rigs.configurationRevision();
     if (mRevision != rigs.extraRimRevision())
     {
         mRevision = rigs.extraRimRevision();
@@ -503,8 +527,6 @@ void ALExtraRimUI::refresh()
         syncSelection();
     }
     setValueIfChanged(mSource, rigs.extraRimSource());
-    setTextIfChanged(mStatus, rigs.extraRimStatus());
-    auto* shell = ALKitShell::find(mRoot);
     std::string why = "Select an actor in Cast";
     const bool can_add = shell && !shell->castSelection().empty() &&
         rigs.canAddExtraRim(shell->castSelection().front(), &why);

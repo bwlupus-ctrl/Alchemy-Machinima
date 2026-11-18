@@ -47,6 +47,9 @@ def run_unit(root=ROOT):
     assert baseline.returncode == 0, baseline.stdout + baseline.stderr
     print(baseline.stdout, end='', flush=True)
     mutations = {
+        'xr_scene_missing_version': (
+            '!block.has("version") || !block["version"].isInteger() ||\n        block["version"].asInteger() != 1',
+            '(block.has("version") && (!block["version"].isInteger() || block["version"].asInteger() != 1))'),
         'xr_dir_mirrored': (
             'dst_centre + (src_pos - src_centre)',
             'dst_centre + (src_centre - src_pos)'),

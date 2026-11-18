@@ -2091,10 +2091,11 @@ void actAvatarRim()
     const bool present = rigs.hasExtraRim(actor);
     std::string why;
     if (!present && !rigs.canAddExtraRim(actor, &why, true)) { tip(why); return; }
-    // Create the history host before any change, even when Director is closed.
+    ALExtraRimUI::finishPendingTrims();
+    // Use v2 history when available; menu mutation also works without a shell.
     LLFloater* director = LLFloaterReg::getInstance("director");
     ALKitShell* shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
-    if (!shell || !shell->ensurePageBuilt("light_group/light_rim_tab")) return;
+    if (shell) shell->ensurePageBuilt("light_group/light_rim_tab");
     if (!present && !ensureAvatarGazeCast(actor)) return;
     const LLSD before = rigs.captureExtraRims();
     if (present) rigs.removeExtraRim(actor);

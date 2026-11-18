@@ -270,3 +270,6 @@ if __name__ == '__main__':
     run_registry(ROOT)
     from extra_rims_engine_check import run_unit as run_engine
     run_engine(ROOT)
+
+    from extra_rims_round2_check import run_unit as run_round2
+    run_round2(ROOT)

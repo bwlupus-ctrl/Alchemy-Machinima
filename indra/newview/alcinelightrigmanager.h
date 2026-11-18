@@ -1447,6 +1447,7 @@ public:
     S32 extraRimSource() const { return mExtraRimSource; }
     U64 extraRimRevision() const { return mExtraRimRevision; }
     U64 extraRimSceneEpoch() const { return mExtraRimSceneEpoch; }
+    const char* extraRimSummary() const;
     std::string extraRimStatus(const LLUUID& actor = LLUUID::null) const;
     LLSD captureExtraRims() const;
     void restoreExtraRims(const LLSD& data);
@@ -1544,7 +1545,6 @@ private:
         LLUUID mRecipient;
         LLUUID mFxOwner;
         LLUUID mFallbackOwner;
-        const LLVOAvatar* mRecipientObject = nullptr; // compared, never dereferenced
         std::unique_ptr<ALCineLightRig> mRig;
     };
     void updateExtraRims(F64 presentation_time);

@@ -126,8 +126,8 @@ inline LLSD toLLSD(const State& state)
 inline bool fromLLSD(const LLSD& block, State& state)
 {
     if (!block.isUndefined() && (!block.isMap() ||
-        (block.has("version") && (!block["version"].isInteger() ||
-                                  block["version"].asInteger() != 1))))
+        !block.has("version") || !block["version"].isInteger() ||
+        block["version"].asInteger() != 1))
         return false;
     State parsed;
     if (block["source"].isInteger())

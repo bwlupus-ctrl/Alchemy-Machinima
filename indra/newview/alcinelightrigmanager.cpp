@@ -1758,7 +1758,7 @@ void ALCineLightRigManager::updateMirrors()
 
 bool ALCineLightRigManager::hasExtraRim(const LLUUID& actor) const
 {
-    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    const LLUUID id = resolveRigActorIdentity(actor);
     return std::any_of(mExtraRims.begin(), mExtraRims.end(),
         [&id](const ExtraRim& extra) { return extra.mActor == id; });
 }
@@ -1791,7 +1791,7 @@ bool ALCineLightRigManager::addExtraRim(const LLUUID& actor)
     extra.mActor = resolveRigActorIdentity(actor);
     extra.mEnrolled = LLDirectorCast::instance().contains(extra.mActor);
     mExtraRims.push_back(std::move(extra));
-    ++mExtraRimRevision;
+    ++mExtraRimRevision; ++mConfigurationRevision;
     mExtraRimRegistryDirty = true;
     mBorrowAnchorsDirty = true;
     return true;
@@ -1799,14 +1799,14 @@ bool ALCineLightRigManager::addExtraRim(const LLUUID& actor)
 
 void ALCineLightRigManager::removeExtraRim(const LLUUID& actor)
 {
-    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    const LLUUID id = resolveRigActorIdentity(actor);
     for (auto it = mExtraRims.begin(); it != mExtraRims.end(); ++it)
     {
         if (it->mActor != id) continue;
         if (it->mRig) it->mRig->shutdown();
         LL_INFOS("CineRig") << "#ExtraRim actor=" << id << " verdict=DARK(removed)" << LL_ENDL;
         mExtraRims.erase(it);
-        ++mExtraRimRevision;
+        ++mExtraRimRevision; ++mConfigurationRevision;
         mExtraRimRegistryDirty = true;
         rebuildActorOnlyRegistry();
         return;
@@ -1817,10 +1817,10 @@ void ALCineLightRigManager::setExtraRimTrim(const LLUUID& actor, F32 trim)
 {
     if (!std::isfinite(trim)) return;
     trim = std::clamp(trim, 0.f, 2.f);
-    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    const LLUUID id = resolveRigActorIdentity(actor);
     for (auto& extra : mExtraRims)
         if (extra.mActor == id && extra.mTrim != trim)
-        { extra.mTrim = trim; ++mExtraRimRevision; }
+        { extra.mTrim = trim; ++mExtraRimRevision; ++mConfigurationRevision; }
 }
 
 void ALCineLightRigManager::setExtraRimSource(S32 source)
@@ -1829,23 +1829,29 @@ void ALCineLightRigManager::setExtraRimSource(S32 source)
     if (source == mExtraRimSource) return;
     shutdownExtraRims();
     mExtraRimSource = source;
-    ++mExtraRimRevision;
+    ++mExtraRimRevision; ++mConfigurationRevision;
+}
+
+// Literal-backed summary: the unchanged visible UI tick allocates nothing.
+const char* ALCineLightRigManager::extraRimSummary() const
+{
+    if (mExtraRims.empty()) return "Add up to 4 cast actors";
+    static const char* off[] = {"Waiting: You is off", "Waiting: A is off", "Waiting: B is off", "Waiting: C is off", "Waiting: D is off"};
+    static const char* back[] = {"You Back light is off", "A Back light is off", "B Back light is off", "C Back light is off", "D Back light is off"};
+    static const char* count[] = {"", "1 / 4 extra rims", "2 / 4 extra rims", "3 / 4 extra rims", "4 / 4 extra rims"};
+    if (!isSlotLit(static_cast<Slot>(mExtraRimSource))) return off[mExtraRimSource];
+    const auto& rim = at(static_cast<Slot>(mExtraRimSource)).mProjectors[2];
+    if (rim.isNull() || rim->isDead() || !rim->getIsLight()) return back[mExtraRimSource];
+    return count[mExtraRims.size()];
 }
 
 std::string ALCineLightRigManager::extraRimStatus(const LLUUID& actor) const
 {
     if (actor.isNull())
     {
-        if (mExtraRims.empty()) return "Add up to 4 cast actors";
-        const Slot source = static_cast<Slot>(mExtraRimSource);
-        const std::string label = mExtraRimSource == 0 ? "You" : std::string(1, 'A' + mExtraRimSource - 1);
-        if (!isSlotLit(source)) return "Waiting: " + label + " is off";
-        const auto& rim = at(source).mProjectors[2];
-        if (rim.isNull() || rim->isDead() || !rim->getIsLight())
-            return label + " Back light is off";
-        return std::to_string(mExtraRims.size()) + " / 4 extra rims";
+        return extraRimSummary();
     }
-    const LLUUID id = LLDirectorCast::canonicalActorId(actor);
+    const LLUUID id = resolveRigActorIdentity(actor);
     for (const auto& extra : mExtraRims)
     {
         if (extra.mActor != id) continue;
@@ -1953,7 +1959,7 @@ void ALCineLightRigManager::restoreExtraRims(const LLSD& data)
         }
     mExtraRims = std::move(reconciled);
     mExtraRimSource = resolved.mSource;
-    ++mExtraRimRevision;
+    ++mExtraRimRevision; ++mConfigurationRevision;
     mExtraRimRegistryDirty = true;
     mBorrowAnchorsDirty = true;
 }
@@ -2076,12 +2082,11 @@ void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
                 if (wearer && !wearer->isDead()) fallback = wearer->getActorFxOwnerId();
             }
             if (extra.mRecipient != avatar->getID() || extra.mFxOwner != avatar->getActorFxOwnerId() ||
-                extra.mFallbackOwner != fallback || extra.mRecipientObject != avatar)
+                extra.mFallbackOwner != fallback)
             {
                 extra.mRecipient = avatar->getID();
                 extra.mFxOwner = avatar->getActorFxOwnerId();
                 extra.mFallbackOwner = fallback;
-                extra.mRecipientObject = avatar;
                 mExtraRimRegistryDirty = true;
             }
             if (!extra.mRig) extra.mRig = std::make_unique<ALCineLightRig>();

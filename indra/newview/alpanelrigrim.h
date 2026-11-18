@@ -19,6 +19,7 @@ public:
     void refresh();
     void onReveal() { mRevision = 0; }
     void finishTrim(bool force = false);
+    static void finishPendingTrims();
     static void recordEdit(ALKitShell* shell, const LLSD& before, const std::string& label);
 private:
     LLUUID selectedActor() const;
@@ -34,6 +35,9 @@ private:
     LLButton* mRemove = nullptr;
     LLHandle<LLContextMenu> mMenu;
     U64 mRevision = 0;
+    U64 mConfigurationRevision = 0;
+    LLUUID mCastActor;
+    const char* mSummary = nullptr;
     LLSD mTrimBefore;
     LLUUID mTrimActor;
     std::shared_ptr<const LLUUID> mTrimPick;
