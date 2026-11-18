@@ -1534,7 +1534,7 @@ private:
     // [ActorMask] Rebuilt after rig evaluation, before the Live probe update.
     void rebuildActorOnlyRegistry();
     void updateMirrors();
-    enum class ExtraRimState : U8 { WAITING, ACTIVE, SOURCE_OFF, BACK_OFF, AWAY, OWN_RIG, MASK_DISABLED, MASK_OVERFLOW };
+    enum class ExtraRimState : U8 { WAITING, ACTIVE, SOURCE_OFF, BACK_OFF, AWAY, OWN_RIG, MASK_DISABLED, MASK_OVERFLOW, GEOMETRY, EMITTER_UNAVAILABLE };
     struct ExtraRim
     {
         LLUUID mActor;

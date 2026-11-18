@@ -1855,6 +1855,8 @@ std::string ALCineLightRigManager::extraRimStatus(const LLUUID& actor) const
             case ExtraRimState::SOURCE_OFF:
             case ExtraRimState::BACK_OFF: return extraRimStatus();
             case ExtraRimState::AWAY: return "Away";
+            case ExtraRimState::GEOMETRY: return "Unlit - invalid geometry";
+            case ExtraRimState::EMITTER_UNAVAILABLE: return "Waiting - emitter unavailable";
             case ExtraRimState::OWN_RIG: return "Has own rig";
             case ExtraRimState::MASK_DISABLED: return "Unlit - Actor Mask disabled";
             case ExtraRimState::MASK_OVERFLOW: return "Unlit - actor mask full";
@@ -2033,6 +2035,8 @@ void ALCineLightRigManager::setExtraRimState(ExtraRim& extra, ExtraRimState stat
         case ExtraRimState::SOURCE_OFF: verdict = "DARK(source rig off)"; break;
         case ExtraRimState::BACK_OFF: verdict = "DARK(Back light off)"; break;
         case ExtraRimState::AWAY: verdict = "DARK(away)"; break;
+        case ExtraRimState::GEOMETRY: verdict = "DARK(invalid geometry)"; break;
+        case ExtraRimState::EMITTER_UNAVAILABLE: verdict = "DARK(emitter unavailable)"; break;
         case ExtraRimState::OWN_RIG: verdict = "PAUSED(own rig)"; break;
         case ExtraRimState::MASK_DISABLED: verdict = "DARK(Actor Mask disabled)"; break;
         case ExtraRimState::MASK_OVERFLOW: verdict = "OVERFLOW"; break;
@@ -2082,8 +2086,14 @@ void ALCineLightRigManager::updateExtraRims(F64 presentation_time)
             }
             if (!extra.mRig) extra.mRig = std::make_unique<ALCineLightRig>();
             const LLUUID old_light = extra.mRig->projectorId(2);
-            if (!extra.mRig->extraRimFrom(source, avatar, extra.mTrim, presentation_time))
-                state = ExtraRimState::AWAY;
+            switch (extra.mRig->extraRimFrom(source, avatar, extra.mTrim, presentation_time))
+            {
+                case ALCineLightRig::ExtraRimResult::ACTIVE: break;
+                case ALCineLightRig::ExtraRimResult::WAITING: state = ExtraRimState::WAITING; break;
+                case ALCineLightRig::ExtraRimResult::AWAY: state = ExtraRimState::AWAY; break;
+                case ALCineLightRig::ExtraRimResult::GEOMETRY: state = ExtraRimState::GEOMETRY; break;
+                case ALCineLightRig::ExtraRimResult::EMITTER_UNAVAILABLE: state = ExtraRimState::EMITTER_UNAVAILABLE; break;
+            }
             if (extra.mRig->projectorId(2) != old_light) mExtraRimRegistryDirty = true;
             // Publish PASS only after the registry has assigned a live bit.
             if (state == ExtraRimState::ACTIVE)
@@ -2142,6 +2152,8 @@ bool ALCineLightRigManager::hasOwnLitRig(const LLUUID& actor) const
 {
     const LLUUID id = LLDirectorCast::canonicalActorId(actor);
     if (id.isNull()) return false;
+    const auto mirror = mMirrors.find(id);
+    if (mirror != mMirrors.end() && isSlotLit(SLOT_SELF)) return true;
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         const Slot slot = static_cast<Slot>(i);
@@ -2168,6 +2180,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
     updateRandomCycle(presentation_time);
     resolveCameraFocus();
     const U32 enabled_mask = enabledMask();
+    if (!mExtraRims.empty()) mInstances[mExtraRimSource].mCaptureExtraRimBasis = true;
     for (S32 i = 0; i < SLOT_COUNT; ++i)
     {
         const Slot slot = static_cast<Slot>(i);
@@ -2190,6 +2203,7 @@ void ALCineLightRigManager::tick(F64 presentation_time)
                 break;
         }
     }
+    if (!mExtraRims.empty()) mInstances[mExtraRimSource].mCaptureExtraRimBasis = false;
     updateMirrors();
     updateExtraRims(presentation_time);
     // [ActorMask] Include session-only derived lights in the existing registry.

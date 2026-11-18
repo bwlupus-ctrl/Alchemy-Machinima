@@ -346,7 +346,8 @@ public:
     void mirrorFrom(const ALCineLightRig& source, const LLVector3d& point,
                     const LLVector3& normal);
     // One derived Back projector, evaluated from the source's world frame.
-    bool extraRimFrom(const ALCineLightRig& source, LLVOAvatar* actor,
+    enum class ExtraRimResult { ACTIVE, WAITING, AWAY, GEOMETRY, EMITTER_UNAVAILABLE };
+    ExtraRimResult extraRimFrom(const ALCineLightRig& source, LLVOAvatar* actor,
                       F32 trim, F64 presentation_time);
 
 private:
@@ -518,6 +519,7 @@ private:
         F32 mDamping = 0.f;
         bool mScaleAware = true;
     } mExtraRimBasis;
+    bool mCaptureExtraRimBasis = false;
     bool mHaveSmoothedCentre = false;
     bool mShaftEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};
     bool mHeroEnabled[ALCineLightRigModel::LIGHT_COUNT] = {};

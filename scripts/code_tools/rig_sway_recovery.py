@@ -72,6 +72,7 @@ public:
     bool mGroupEnabled = false;
     U32 mGroupSlots = 0;
     S32 mSelectedTicks = 0, mBlobTicks = 0;
+    bool mCaptureExtraRimBasis = false;
     void shutdown() { mEmitters = 0; }
     void tickSelected(F64, bool) { ++mSelectedTicks; mEmitters = gSavedSettings.getBOOL("CineLightRigEnabled") ? 0xffu : 0; }
     void tickFromBlob(const ALCineLightRigParamBlob&, F64, bool);

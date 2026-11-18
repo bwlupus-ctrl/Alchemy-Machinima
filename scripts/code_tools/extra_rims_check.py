@@ -94,7 +94,7 @@ def contracts(b):
     scene = manager('void ALCineLightRigManager::applySceneData(')
     saved = manager('LLSD ALCineLightRigManager::extraRimsSceneData() const')
     registry = manager('void ALCineLightRigManager::appendExtraRimActorOnly(')
-    derived = body(b, 'rig', 'bool ALCineLightRig::extraRimFrom(')
+    derived = body(b, 'rig', 'ALCineLightRig::ExtraRimResult ALCineLightRig::extraRimFrom(')
     area = manager('bool ALCineLightRigManager::isMirrorLight(')
     rim = manager('bool ALCineLightRigManager::rigRimParamsFor(')
     rekey = manager('void ALCineLightRigManager::rewriteExtraRimActorReferences(')
@@ -102,6 +102,20 @@ def contracts(b):
     add = manager('bool ALCineLightRigManager::canAddExtraRim(')
     update = manager('void ALCineLightRigManager::updateExtraRims(')
     draw = body(b, 'ui', 'void ALPanelRigRim::draw()')
+    # Follow every local UI helper reachable from draw, including future
+    # indirection through refresh. Idle is deliberately not a draw root.
+    helpers = {}
+    for match in re.finditer(r'void\s+(?:ALPanelRigRim|ALExtraRimUI)::(\w+)\([^)]*\)\s*\{', b['ui']):
+        helpers[match[1]] = function(b['ui'], match[0][:-1].strip())
+    reachable, pending = {}, ['draw']
+    while pending:
+        name = pending.pop()
+        if name in reachable:
+            continue
+        reachable[name] = helpers[name]
+        pending += [callee for callee in helpers if callee not in reachable and
+                    re.search(r'\b' + callee + r'\s*\(', helpers[name].split('{', 1)[1])]
+    draw_path = '\n'.join(reachable.values())
     custom = b['preset'].split('case RIM_CUSTOM:', 1)[1].split('break;', 1)[0]
     return {
         **menu_contracts(b),
@@ -147,8 +161,9 @@ def contracts(b):
             body(b, 'director', 'void LLFloaterDirector::bindChrome(').count('"Director.ExtraRimToggle"') == 1 and
             'function="Director.ExtraRimToggle"' in b['menu'],
         'xr_draw_work':
-            not re.search(r'getChild|findChild|gSavedSettings|asString\(|deleteAllItems|->setText\(', draw) and
+            not re.search(r'getChild|findChild|gSavedSettings|asString\(|deleteAllItems|addElement|->setText\(', draw_path) and
             'if (mRefreshClock.due())' in draw and
+            'panel->mExtras.refresh();' in body(b, 'ui', 'void ALPanelRigRim::idle(') and
             'if (mRevision != rigs.extraRimRevision())' in b['ui'] and
             '!isWidgetOnScreen(mRoot)' in b['ui'],
     }
@@ -200,8 +215,8 @@ def planted_negatives(b):
         'xr_preset_owned': mutation(b, 'preset', 'case RIM_CUSTOM:\n        keys = owned(RIM);',
                                     'case RIM_CUSTOM:\n        keys = owned(RIM);\n        keys.emplace_back("extra_rims");'),
         'xr_menu_one_registrar': mutation(b, 'director', '"Director.ExtraRimToggle"', '"Director.PlantedUnusedAction"'),
-        'xr_draw_work': mutation(b, 'ui', 'void ALPanelRigRim::draw()\n{',
-                                 'void ALPanelRigRim::draw()\n{\n    (void)gSavedSettings.getBOOL("CineRigRimEnabled");'),
+        'xr_draw_work': mutation(b, 'ui', '    mRim.tickFrame();',
+                                 '    mRim.tickFrame();\n    mExtras.refresh();'),
     }
 
 
@@ -253,3 +268,5 @@ if __name__ == '__main__':
     run_ui(ROOT)
     from extra_rims_registry_check import run_unit as run_registry
     run_registry(ROOT)
+    from extra_rims_engine_check import run_unit as run_engine
+    run_engine(ROOT)

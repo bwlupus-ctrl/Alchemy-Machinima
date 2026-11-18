@@ -2077,6 +2077,7 @@ bool enableAvatarRim(LLUICtrl* ctrl)
     std::string why;
     const bool allowed = actor.notNull() && (rigs.hasExtraRim(actor) || rigs.canAddExtraRim(actor, &why, true));
     if (actor.isNull()) why = "Avatar unavailable or overlay/proxy";
+    if (sMenuHud) why = "Rim light is set on the avatar, not attachments";
     // The toggle label stays fixed, including while disabled.
     ctrl->setToolTip(allowed ? "One actor-only rim, following Direction from on Light > Rim" : why);
     return allowed;

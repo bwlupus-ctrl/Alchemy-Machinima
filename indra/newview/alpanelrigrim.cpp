@@ -11,6 +11,8 @@
 #include "lldirectorcast.h"
 #include "llmenugl.h"
 #include "llcallbacklist.h"
+#include "llfloaterreg.h"
+#include "llfloater.h"
 #include "llscrolllistctrl.h"
 #include "llscrolllistitem.h"
 #include "llsliderctrl.h"
@@ -82,11 +84,17 @@ static LLPanelInjector<ALPanelRigRim> register_panel_rig_rim("panel_rig_rim");
 ALPanelRigRim::ALPanelRigRim()
 { registerProvider(); }
 
+ALPanelRigRim::~ALPanelRigRim()
+{
+    gIdleCallbacks.deleteFunction(idle, this);
+}
+
 bool ALPanelRigRim::postBuild()
 {
     registerProvider();
     mRim.attach(this);
     mExtras.attach(this);
+    gIdleCallbacks.addFunction(idle, this);
     return LLPanel::postBuild();
 }
 
@@ -101,9 +109,16 @@ void ALPanelRigRim::draw()
     if (mRefreshClock.due())
     {
         mRim.tickRefresh();
-        mExtras.refresh();
     }
     LLPanel::draw();
+}
+
+void ALPanelRigRim::idle(void* data)
+{
+    auto* panel = static_cast<ALPanelRigRim*>(data);
+    panel->mExtras.finishTrim();
+    if (isWidgetOnScreen(panel) && panel->mExtraRefreshClock.due())
+        panel->mExtras.refresh();
 }
 
 void ALPanelRigRim::onVisibilityChange(bool visible)
@@ -113,6 +128,7 @@ void ALPanelRigRim::onVisibilityChange(bool visible)
         mRim.onReveal();
         mExtras.onReveal();
         mRefreshClock.forceDue();
+        mExtraRefreshClock.forceDue();
     }
     LLPanel::onVisibilityChange(visible);
 }
@@ -311,6 +327,12 @@ void ALExtraRimUI::recordEdit(ALKitShell* shell, const LLSD& before, const std::
                 pendingExtraRimHistory.erase(found);
             auto* shell = dynamic_cast<ALKitShell*>(pending->shell.get());
             auto* page = pending->page.get();
+            if (!shell || !page)
+            {
+                LLFloater* director = LLFloaterReg::getInstance("director");
+                shell = director ? director->findChild<ALKitShell>("director_shell") : nullptr;
+                page = shell ? shell->ensurePageBuilt("light_group/light_rim_tab") : nullptr;
+            }
             // A scene/reset boundary cancels deferred provenance. Unrelated
             // history edits must never discard this extra-rim undo step.
             if (!shell || !page || ALCineLightRigManager::instance().extraRimSceneEpoch() != pending->sceneEpoch) return;
@@ -330,6 +352,7 @@ void ALExtraRimUI::recordEdit(ALKitShell* shell, const LLSD& before, const std::
 
 ALExtraRimUI::~ALExtraRimUI()
 {
+    finishTrim(true);
     if (auto* menu = mMenu.get()) { menu->hide(); menu->die(); }
 }
 void ALExtraRimUI::attach(LLPanel* root)
@@ -342,10 +365,11 @@ void ALExtraRimUI::attach(LLPanel* root)
     mAdd = root->findChild<LLButton>("cine_extra_rim_add");
     mRemove = root->findChild<LLButton>("cine_extra_rim_remove");
     if (!mList || !mSource || !mTrim || !mStatus || !mAdd || !mRemove) return;
-    mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { syncSelection(); });
+    mList->setCommitCallback([this](LLUICtrl*, const LLSD&) { finishTrim(true); syncSelection(); });
     mList->setRightMouseDownCallback([this](LLUICtrl*, S32 x, S32 y, MASK) { showMenu(x, y); });
     mSource->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
+        finishTrim(true);
         auto& rigs = ALCineLightRigManager::instance();
         const LLSD before = rigs.captureExtraRims();
         rigs.setExtraRimSource(mSource->getValue().asInteger());
@@ -354,13 +378,21 @@ void ALExtraRimUI::attach(LLPanel* root)
     mTrim->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         auto& rigs = ALCineLightRigManager::instance();
-        const LLSD before = rigs.captureExtraRims();
+        if (mTrimBefore.isUndefined() || mTrimSceneEpoch != rigs.extraRimSceneEpoch())
+        {
+            mTrimBefore = rigs.captureExtraRims();
+            mTrimActor = selectedActor();
+            mTrimPick = rigs.retainBorrowActor(mTrimActor);
+            mTrimSceneEpoch = rigs.extraRimSceneEpoch();
+        }
         rigs.setExtraRimTrim(selectedActor(), (F32)mTrim->getValue().asReal() * .01f);
-        recordEdit(ALKitShell::find(mRoot), before, "Extra rim strength");
     });
+    // LLSlider synthesises this callback once when a wheel gesture settles.
+    mTrim->setSliderMouseUpCallback([this](LLUICtrl*, const LLSD&) { finishTrim(); });
     mRemove->setCommitCallback([this](LLUICtrl*, const LLSD&) { removeSelected(); });
     mAdd->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
+        finishTrim(true);
         auto* shell = ALKitShell::find(mRoot);
         if (!shell || shell->castSelection().empty()) return;
         auto& rigs = ALCineLightRigManager::instance();
@@ -378,6 +410,30 @@ LLUUID ALExtraRimUI::selectedActor() const
     const auto* row = mList ? mList->getFirstSelected() : nullptr;
     return row ? row->getValue().asUUID() : LLUUID::null;
 }
+void ALExtraRimUI::finishTrim(bool force)
+{
+    if (mTrimBefore.isUndefined() || (!force && mTrim &&
+        (mTrim->isMouseHeldDown() || mTrim->isWheelSettlePending()))) return;
+    auto& rigs = ALCineLightRigManager::instance();
+    if (mTrimSceneEpoch != rigs.extraRimSceneEpoch())
+    {
+        mTrimBefore = LLSD();
+        mTrimPick.reset();
+        return;
+    }
+    LLSD before = rigs.captureExtraRims();
+    const LLUUID actor = rigs.resolveBorrowActor(mTrimActor, true);
+    // Rebase unrelated changes made while the gesture was pending. The undo
+    // delta owns only this actor's trim, never another command's add/source.
+    for (const auto& original : llsd::inArray(mTrimBefore["items"]))
+        if (original["actor"].asUUID() == mTrimActor)
+            for (S32 i = 0; i < before["items"].size(); ++i)
+                if (before["items"][i]["actor"].asUUID() == actor)
+                    before["items"][i]["trim"] = original["trim"];
+    recordEdit(ALKitShell::find(mRoot), before, "Extra rim strength");
+    mTrimBefore = LLSD();
+    mTrimPick.reset();
+}
 void ALExtraRimUI::syncSelection()
 {
     const LLUUID id = selectedActor();
@@ -391,6 +447,7 @@ void ALExtraRimUI::syncSelection()
 }
 void ALExtraRimUI::removeSelected()
 {
+    finishTrim(true);
     auto& rigs = ALCineLightRigManager::instance();
     const LLSD before = rigs.captureExtraRims();
     rigs.removeExtraRim(selectedActor());
@@ -398,6 +455,7 @@ void ALExtraRimUI::removeSelected()
 }
 void ALExtraRimUI::showMenu(S32 x, S32 y)
 {
+    finishTrim(true);
     auto* row = mList->hitItem(x, y);
     if (!row) return;
     mList->selectNthItem(mList->getItemIndex(row));

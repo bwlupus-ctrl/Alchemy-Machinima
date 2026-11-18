@@ -1215,16 +1215,20 @@ void ALCineLightRig::mirrorFrom(const ALCineLightRig& source,
     copy(source.mCatchlight, mCatchlight);
 }
 
-bool ALCineLightRig::extraRimFrom(const ALCineLightRig& source,
+ALCineLightRig::ExtraRimResult ALCineLightRig::extraRimFrom(const ALCineLightRig& source,
                                  LLVOAvatar* actor, F32 trim, F64 presentation_time)
 {
     constexpr S32 RIM = 2;
     const auto& src = source.mProjectors[RIM];
-    if (!actor || actor->isDead() || src.isNull() || src->isDead() ||
-        !src->getIsLight() || !source.mHaveSmoothedCentre)
+    if (!actor || actor->isDead())
     {
         shutdown();
-        return false;
+        return ExtraRimResult::AWAY;
+    }
+    if (src.isNull() || src->isDead() || !src->getIsLight() || !source.mHaveSmoothedCentre)
+    {
+        shutdown();
+        return ExtraRimResult::WAITING;
     }
     const auto& basis = source.mExtraRimBasis;
     const F32 scale = sanitizeSubjectScale(basis.mScaleAware ? actor->getUniformScale() : 1.f);
@@ -1232,11 +1236,11 @@ bool ALCineLightRig::extraRimFrom(const ALCineLightRig& source,
     if (!memberTrackPoint(actor, basis.mTrackMode, scale, point))
     {
         shutdown();
-        return false;
+        return ExtraRimResult::GEOMETRY;
     }
     point.mV[VZ] += basis.mOffsetZ * scale;
     const LLVector3d centre = gAgent.getPosGlobalFromAgent(point);
-    if (!centre.isFinite()) { shutdown(); return false; }
+    if (!centre.isFinite()) { shutdown(); return ExtraRimResult::GEOMETRY; }
     // Each recipient has its own damping history, using the source's basis.
     if (!mHaveSmoothedCentre || basis.mDamping <= 0.f ||
         mLastPresentationTime < 0.0 || presentation_time < mLastPresentationTime)
@@ -1255,17 +1259,17 @@ bool ALCineLightRig::extraRimFrom(const ALCineLightRig& source,
     const auto placement = ALExtraRimModel::placement(src->getPositionGlobal(),
         source.mSmoothedCentre, source.mCurrentRadius, source.mSmoothedScale,
         mSmoothedCentre, mSmoothedScale);
+    if (!placement.mPosition.isFinite() || !src->getRotation().isFinite() ||
+        (src->getPositionGlobal() - source.mSmoothedCentre).length() <= F_APPROXIMATELY_ZERO)
+    { shutdown(); return ExtraRimResult::GEOMETRY; }
     auto& dst = mProjectors[RIM];
     if (dst.notNull() && (dst->isDead() || dst->getRegion() != src->getRegion()))
         destroyEmitter(dst);
     if (dst.isNull() && !createEmitter(src->getRegion(), true,
-            src->getLightTextureID().asString(), dst)) return false;
-    LLVector3 aim(mSmoothedCentre - placement.mPosition);
-    if (aim.normalize() <= F_APPROXIMATELY_ZERO) { shutdown(); return false; }
-    LLQuaternion rotation;
-    rotation.shortestArc(LLVector3(0.f, 0.f, -1.f), aim);
+            src->getLightTextureID().asString(), dst)) return ExtraRimResult::EMITTER_UNAVAILABLE;
     dst->setPositionGlobal(placement.mPosition, false);
-    dst->setRotation(rotation, false);
+    // The source aims at its true centre, which can lead its damped position.
+    dst->setRotation(src->getRotation(), false);
     const F32 edge = emitterBoxEdge(source.mCurrentRadius, mSmoothedScale);
     dst->setScale(LLVector3(edge, edge, edge), false);
     dst->setIsLight(src->getIsLight());
@@ -1292,7 +1296,7 @@ bool ALCineLightRig::extraRimFrom(const ALCineLightRig& source,
         dst->mDrawable->setState(LLDrawable::FORCE_INVISIBLE);
         if (dst->getIsLight() && dst->isLightSpotlight()) dst->updateSpotLightPriority();
     }
-    return true;
+    return ExtraRimResult::ACTIVE;
 }
 
 void ALCineLightRig::setAnchor(const LLUUID& id)
@@ -2801,13 +2805,16 @@ void ALCineLightRig::tickShared(
     Transforms& transforms)
 {
     F32 effective_shadow_softness[LIGHT_COUNT] = {};
-    // Retain the selected/blob tracking basis, without a second settings read.
-    mExtraRimBasis.mTrackMode = track_mode_setting == 1 ? 1 : 0;
-    mExtraRimBasis.mOffsetZ = std::isfinite(offset_z_setting)
-        ? std::clamp(offset_z_setting, -10.f, 10.f) : 0.f;
-    mExtraRimBasis.mDamping = std::isfinite(damping_setting)
-        ? std::clamp(damping_setting, 0.f, 10.f) : 0.f;
-    mExtraRimBasis.mScaleAware = scale_aware_setting;
+    // Only the picked source retains this basis, while extras exist.
+    if (mCaptureExtraRimBasis)
+    {
+        mExtraRimBasis.mTrackMode = track_mode_setting == 1 ? 1 : 0;
+        mExtraRimBasis.mOffsetZ = std::isfinite(offset_z_setting)
+            ? std::clamp(offset_z_setting, -10.f, 10.f) : 0.f;
+        mExtraRimBasis.mDamping = std::isfinite(damping_setting)
+            ? std::clamp(damping_setting, 0.f, 10.f) : 0.f;
+        mExtraRimBasis.mScaleAware = scale_aware_setting;
+    }
     for (S32 i = 0; i < LIGHT_COUNT; ++i)
     {
         effective_shadow_softness[i] = shadow_softness
