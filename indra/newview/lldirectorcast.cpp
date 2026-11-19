@@ -24,6 +24,7 @@
 #include "alpanellensgaze.h"
 #include "alpanelghoststudio.h"
 #include "alprojectortracker.h"
+#include "alvirtuallights.h"
 #include "llcinematiccamera.h"
 #include "llfloaterdirector.h"
 #include "alghoststudio.h"
@@ -1185,7 +1186,7 @@ void LLDirectorCast::add(const LLUUID& id, bool touch_scene)
 {
     if (ALGhostStudio::instance().isPrivateOverlayRuntime(id)) return;
     LLViewerObject* candidate = gObjectList.findObject(id);
-    if (candidate && candidate->isColorChart()) return; // session prop cannot enter scene capture
+    if (candidate && (candidate->isColorChart() || candidate->isVirtualLight())) return; // session prop cannot enter scene capture
     const LLUUID actor_id = canonicalActorId(id);
     if (actor_id.isNull() || contains(actor_id))
     {
@@ -1282,6 +1283,8 @@ bool LLDirectorCast::rewriteActorReferences(const LLUUID& old_id, const LLUUID& 
     ALAvatarSubjectPicker::rewriteActorReferences(old_id, new_id);
     ALKitHistory::rewriteActorReferences(old_id, new_id);
     ALProjectorTracker::instance().rewriteActorReferences(old_id, new_id);
+    // Virtual-light Track / Aim references follow the same clone replacement (feature-off: one integer compare).
+    if (ALVirtualLights::anyPlaced()) ALVirtualLights::instance().rewriteActorReferences(old_id, new_id);
     ALKeyframePlayer::instance().rewriteActorReferences(ALKeyframeViewer::id(old_id), ALKeyframeViewer::id(new_id));
     ALDirectorAnimSwitcher::instance().rewriteActorReferences(old_id, new_id);
     LLCinematicCamera::onRuntimeTargetReplaced(old_id, new_id);

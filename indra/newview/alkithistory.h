@@ -65,6 +65,9 @@ public:
     static void notePointer(LLView*);
     void        watchSettings(const std::string&, const std::vector<std::string>&);
     void        recordWidget(LLUICtrl*, const LLSD&, const LLSD&, const std::string&);
+    // A page that records its own snapshot step for some of its widgets (the Practicals page aimed at a virtual
+    // light) registers a predicate: recordWidget skips every control it returns true for, so one edit is one step.
+    static void setWidgetSuppressor(bool (*suppress)(LLUICtrl*)) { sWidgetSuppressor = suppress; }
     void        normalizeWidgetValue(LLUICtrl*, const LLSD& transient, const LLSD& final_value);
     void        recordCustom(LLView*, const std::string&, const std::string&, std::function<bool(bool, std::string&)>, bool join_gesture = false,
                              std::function<bool(bool, std::string&)> validate = {},
@@ -122,6 +125,7 @@ public:
     static bool replaying();
 
 private:
+    static bool (*sWidgetSuppressor)(LLUICtrl*);
     class GestureTimer;
     void                          captureSetting(const std::string&, const std::string&, const LLSD&, const LLSD&);
     void                          addEntry(Entry, const std::string&, const std::string& label_page = std::string());

@@ -31,6 +31,7 @@
 #include "alcleanframe.h"
 #include "alcleantelemetry.h"
 #include "alkeyframeplayer.h"
+#include "alvirtuallights.h"
 #include "alactorkeycapture.h"
 #include "alpovblink.h"
 #include "alcolorchart.h"
@@ -26915,6 +26916,7 @@ void LLPipeline::renderFinalize()
         // modes and scene-depth occlusion without sending guides to the sensor.
         static LLCachedControl<bool> show_heading(gSavedSettings, "ActorMoverShowHeading", true);
         const bool guide_work = ALKeyframePlayer::instance().hasGuideDraw() ||
+            ALVirtualLights::wantsGuides() ||
             (show_heading && (LLFloaterReg::instanceVisible("actor_mover") ||
                               LLFloaterReg::instanceVisible("director") ||
                               LLFloaterReg::instanceVisible("prop_mover"))) ||
@@ -27008,6 +27010,8 @@ void LLPipeline::renderActorPathGuides(LLRenderTarget* target, const glm::mat4& 
         }
         // Existing Actor Mover/path guides keep their baseline pass eligibility above; only the
         // keyframe guides are restricted to the live main user view.
+        // Virtual light markers: drawGuides() applies the full main-view and clean-frame guard itself.
+        if (ALVirtualLights::wantsGuides()) ALVirtualLights::drawGuides();
         if (isTagRecordView() && !sReflectionRender && !sShadowRender)
             ALKeyframePlayer::instance().drawGuides();
         target->flush();

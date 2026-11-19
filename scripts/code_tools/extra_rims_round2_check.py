@@ -60,6 +60,7 @@ struct ALGhostStudio {
 struct LLVOAvatar {
  bool dead=false; bool isDead()const{return dead;} bool isGhostAvatar()const{return false;}
  bool isColorChart()const{return false;}
+ bool isVirtualLight()const{return false;} // 2026-11-18: LLDirectorCast::add now refuses virtual lights too; an avatar is never one
  LLVOAvatar* asAvatar(){return this;} LLVOAvatar* getRootEdit(){return this;}
  LLVOAvatar* getControlAvatar(){return nullptr;} std::string getFullname(){return "Test";}
 };

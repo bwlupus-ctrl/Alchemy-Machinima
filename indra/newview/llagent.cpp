@@ -31,6 +31,7 @@
 
 #include "llagent.h"
 #include "alprojectortracker.h"
+#include "alvirtuallights.h"
 #include "alreflectanim.h"
 
 #include "pipeline.h"
@@ -1089,6 +1090,9 @@ void LLAgent::setRegion(LLViewerRegion *regionp)
     {
         // Restore before the agent coordinate frame / region origin changes.
         ALProjectorTracker::instance().clear();
+        // Virtual lights are client-only and belong to the region they were placed in: a real region
+        // change removes them (a same-region teleport never reaches this branch).
+        ALVirtualLights::instance().clearAll("region-clear");
         gPipeline.resetShadowSlotTimers();
         if (!mRegionp || gDisconnected || getTeleportState() != TELEPORT_NONE)
             ALPanelWeatherSettings::suspendLibraryWeather();

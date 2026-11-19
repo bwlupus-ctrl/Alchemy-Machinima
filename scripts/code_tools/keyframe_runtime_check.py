@@ -54,6 +54,9 @@ CENSUS={'alghoststudio.cpp :: ALGhostStudio::updateNameplates :: gPipeline.hasRe
 
 # 2026-11-17: WP6 overlay is table-A row 7, with its own snapshot/Prism/reflection/clean guards.
 CENSUS['alkeyframeoverlay.cpp :: ALKeyframeOverlay::draw :: !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI)) return;'] = 1
+# 2026-11-18: virtual light markers (ALVirtualLights::drawGuides) are a second table-A row 7 consumer: the guide
+# composite only, behind the same UI-flag, clean-frame, snapshot, Prism, reflection and shadow guard as the overlay.
+CENSUS['alvirtuallights.cpp :: ALVirtualLights::drawGuides :: !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI)) return;'] = 1
 # C8: stock rawSnapshot forces UI on after capture, including when it began off.
 CENSUS['llviewerwindow.cpp :: LLViewerWindow::rawSnapshot :: if (!gPipeline.hasRawRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI))'] = 1
 
@@ -122,6 +125,24 @@ GUIDE_CENSUS={'alkeyframeplayer.cpp :: ALKeyframePlayer::drawGuides :: void ALKe
  'pipeline.cpp :: LLPipeline::renderActorPathGuides :: ALKeyframePlayer::instance().drawGuides();': 1,
  'pipeline.h :: <declaration> :: void renderActorPathGuides(LLRenderTarget* target, const glm::mat4& projection,': 1}
 
+# 2026-11-18: virtual lights add clean-frame guards only (no new unguarded work): the marker draw and its wants-guides
+# gate refuse during a Play take, placement/aim refuse during one, and the edit tool is inert during one. 57 -> 64 tokens.
+CLEAN_CENSUS.update({
+ 'altoolvirtuallightedit.cpp :: allowed :: return !ALCleanFrame::active() && gAgent.getRegion() != nullptr;': 1,
+ 'altoolvirtuallightplace.cpp :: ALToolVirtualLightPlace::armAim :: if (light_key.isNull() || !ALVirtualLights::instance().find(light_key) || ALCleanFrame::active())': 1,
+ 'altoolvirtuallightplace.cpp :: ALToolVirtualLightPlace::armPlace :: if (ALCleanFrame::active())': 1,
+ 'alvirtuallights.cpp :: ALVirtualLights::drawGuides :: if (!wantsGuides() || ALCleanFrame::active() || ALKeyframePlayer::instance().rlvHandbackActive() ||': 1,
+ 'alvirtuallights.cpp :: ALVirtualLights::place :: const Refusal refusal = placementRefusal(count(), region != nullptr, true, ALCleanFrame::active());': 1,
+ 'alvirtuallights.cpp :: ALVirtualLights::placeAtGlobal :: const Refusal refusal = placementRefusal(count(), region != nullptr, inside, ALCleanFrame::active());': 1,
+ 'alvirtuallights.cpp :: ALVirtualLights::wantsGuides :: if (sPlaced <= 0 || ALCleanFrame::active()) return false;': 1})
+# 2026-11-18: the virtual light marker draw is a third guide-composite caller. Its own main-view guard (isTagRecordView,
+# reflection, shadow, snapshot, Prism, clean frame, UI flag) lives inside drawGuides(), so the pinned keyframe statement
+# in renderActorPathGuides stays byte-identical.
+GUIDE_CENSUS.update({
+ 'alvirtuallights.cpp :: ALVirtualLights::drawGuides :: void ALVirtualLights::drawGuides()': 1,
+ 'alvirtuallights.h :: <declaration> :: static void drawGuides();': 1,
+ 'pipeline.cpp :: LLPipeline::renderActorPathGuides :: if (ALVirtualLights::wantsGuides()) ALVirtualLights::drawGuides();': 1})
+
 def assertions(f):
     errors=[]
     def need(n,condition):
@@ -157,7 +178,7 @@ def assertions(f):
          killed.index('BlockAttachmentKillsOnTeleport') < killed.index('targetRemoved') and
          'targetRemoved(' not in f['llviewerobjectlist.cpp'] and 'targetRemoved(' not in f['llviewerobject.cpp'])
     need(19,census(f,CLEAN_TOKEN)==CLEAN_CENSUS and
-         sum(len(CLEAN_TOKEN.findall(text)) for text in f.values())==57)
+         sum(len(CLEAN_TOKEN.findall(text)) for text in f.values())==64)
     guides=body(pipe,'void LLPipeline::renderActorPathGuides(')
     overlay=body(f['alkeyframeoverlay.cpp'],'void ALKeyframeOverlay::draw()')
     main=body(pipe,'bool LLPipeline::isTagRecordView() const')

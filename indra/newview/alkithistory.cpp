@@ -223,9 +223,14 @@ void ALKitHistory::watchSettings(const std::string& page, const std::vector<std:
     }
 }
 
+bool (*ALKitHistory::sWidgetSuppressor)(LLUICtrl*) = nullptr;
+
 void ALKitHistory::recordWidget(LLUICtrl* c, const LLSD& oldv, const LLSD& newv, const std::string& label)
 {
     if (suspended() || mReplaying || !c || oldv == newv)
+        return;
+    // A page that records its own snapshot step for some widgets (virtual lights) must not also get a widget step.
+    if (sWidgetSuppressor && sWidgetSuppressor(c))
         return;
     ALKitPage* input = sKitInputSourceSet ? dynamic_cast<ALKitPage*>(inputPage()) : nullptr;
     const std::string page = input ? input->pageKey() : rowPage(c);

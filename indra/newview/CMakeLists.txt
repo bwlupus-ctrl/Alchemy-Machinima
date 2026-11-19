@@ -423,6 +423,9 @@ set(viewer_SOURCE_FILES
     altoolcrowdplace.cpp
     altooldirectorpick.cpp # [CloneMenu] Actor bar Select pick mode
     altoolfocuspick.cpp
+    altoolvirtuallightedit.cpp
+    altoolvirtuallightplace.cpp
+    alvirtuallights.cpp
     altoolghostedit.cpp
     altoolghostplace.cpp
     altoolpathedit.cpp
@@ -1438,6 +1441,10 @@ set(viewer_HEADER_FILES
     altoolcrowdplace.h
     altooldirectorpick.h
     altoolfocuspick.h
+    altoolvirtuallightedit.h
+    altoolvirtuallightplace.h
+    alvirtuallights.h
+    alvirtuallightsmodel.h
     altoolghostedit.h
     altoolghostplace.h
     altoolpathedit.h
@@ -3070,6 +3077,14 @@ if (BUILD_TESTING)
   # [ClientHeight] The pure store / per-avatar resolve model is header-only
   # (alclientheightmodel.h), so its TUT is registered directly like ALGazeMath.
   LL_ADD_INTEGRATION_TEST(alclientheightmodel
+    ""
+    "${test_libs}"
+    "${test_project}"
+  )
+
+  # Virtual lights: the pure per-light model, prim ranges, placement rules and scene block are
+  # header-only (alvirtuallightsmodel.h), so the TUT is registered directly like ALClientHeight.
+  LL_ADD_INTEGRATION_TEST(alvirtuallightsmodel
     ""
     "${test_libs}"
     "${test_project}"

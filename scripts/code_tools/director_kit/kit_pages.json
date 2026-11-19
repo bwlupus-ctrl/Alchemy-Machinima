@@ -457,6 +457,31 @@
   "light_group/practicals_tab": {
    "v1_sources": ["panel_practicals_src.xml"],
    "root_class": "panel_practicals", "root_name": "practicals_tab_logic",
+   "row_overrides": {
+    "vl_status": {"no_widget_history": true},
+    "vl_place": {"no_widget_history": true},
+    "vl_edit": {"no_widget_history": true},
+    "vl_list": {"no_widget_history": true},
+    "vl_delete": {"no_widget_history": true},
+    "vl_on": {"no_widget_history": true},
+    "vl_type": {"no_widget_history": true},
+    "vl_color": {"no_widget_history": true},
+    "vl_intensity": {"no_widget_history": true},
+    "vl_radius": {"no_widget_history": true},
+    "vl_falloff": {"no_widget_history": true},
+    "vl_fov": {"no_widget_history": true},
+    "vl_focus": {"no_widget_history": true},
+    "vl_ambiance": {"no_widget_history": true},
+    "vl_texture": {"no_widget_history": true},
+    "vl_texture_name": {"no_widget_history": true},
+    "vl_x": {"no_widget_history": true},
+    "vl_y": {"no_widget_history": true},
+    "vl_z": {"no_widget_history": true},
+    "vl_yaw": {"no_widget_history": true},
+    "vl_pitch": {"no_widget_history": true},
+    "vl_aim_pick": {"no_widget_history": true},
+    "vl_vcam": {"no_widget_history": true}
+   },
    "label_names": {}
   },
   "light_group/projector_shafts_tab": {

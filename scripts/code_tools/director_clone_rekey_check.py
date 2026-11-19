@@ -215,6 +215,9 @@ struct ALPanelGhostStudio {static void rewriteActorReferences(LLUUID,LLUUID){}};
 struct ALFloaterGazeCues{static void rewriteActorReferences(LLUUID,LLUUID){}};
 
 struct ALPanelLensGaze{static void rewriteActorReferences(LLUUID,LLUUID){}};
+// [VirtualLights] truthful stand-in: no virtual light is ever placed in this fixture, so the production hook in
+// LLDirectorCast::rewriteActorReferences is a no-op here (its own rules live in virtual_lights_check).
+struct ALVirtualLights { static bool anyPlaced() { return false; } static ALVirtualLights& instance() { static ALVirtualLights s; return s; } void rewriteActorReferences(const LLUUID&, const LLUUID&) {} };
 struct ALClientHeight {static ALClientHeight& instance(){static ALClientHeight s;return s;} void reset(LLUUID){}};
 struct ALAvatarLightResponse {
  std::map<LLUUID,int> mEntries,mPersistExtras;std::set<LLUUID> mPersistSuppressed;int changes=0;
