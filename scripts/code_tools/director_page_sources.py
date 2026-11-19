@@ -106,7 +106,7 @@ PAGE_OWNER_CLASSES = {
     "cine_light_rig_tab": {"ALPanelCineLightRig"},
     "light_rim_tab": {"ALPanelCineLightRig", "ALPanelRigRim", "ALRigRimController", "ALExtraRimUI"},
     "exposure_tab": {"ALPanelExposureHub", "LLFloaterDirector", "ALPanelExposurePage"},
-    "practicals_tab": {"ALFloaterLightBox", "ALPanelPracticals"},
+    "practicals_tab": {"ALFloaterLightBox", "ALPanelPracticals", "ALVirtualLightsUI"},
     "actors_tab": {"ALPanelAvatarLightResponse", "ALFloaterLightBox", "LLFloaterDirector"},
     "light_cues_tab": {"ALFloaterCineLightCues"},
     "image_tab": {"ALFloaterLightBox"},

@@ -390,8 +390,9 @@ def validate_data(data: dict) -> None:
     # Go, Cancel, Status), 2529 -> 2537 (11/16).
     # 2026-11-17: Keyframes 57 rows + Takes link 1; census 40/2537 -> 41/2595.
     # 2026-11-18: Extra rims adds six session targeting rows on Light > Rim; 41/2595 -> 41/2601.
-    if len(pages) != 41 or row_count != 2601:
-        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 41/2601")
+    # 2026-11-18: Virtual lights adds a 21-row Virtual card on Light > Practicals; 41/2601 -> 41/2622.
+    if len(pages) != 41 or row_count != 2622:
+        raise GenError(f"mockup completeness drift: {len(pages)} pages, {row_count} rows; expected 41/2622")
     stay = [row for _, page in pages if page["name"] == "ghosts_tab"
             for card in page["cards"] if card["id"] == "pose"
             for row in card["rows"] if row.get("w") == "stay_in_place_check"]

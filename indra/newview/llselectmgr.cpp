@@ -192,7 +192,8 @@ static bool selectionHasGhostManipProxy(LLObjectSelectionHandle selection)
 static void synthesizeLocalPreviewNode(LLSelectNode* nodep, LLViewerObject* objectp)
 {
     if (!nodep || !isLocalPreviewObject(objectp) ||
-        objectp->isCineRigEmitter() || objectp->isCineRigProbe() || objectp->isColorChart())
+        objectp->isCineRigEmitter() || objectp->isCineRigProbe() || objectp->isColorChart() ||
+        objectp->isVirtualLight())
     {
         return;
     }
@@ -8312,7 +8313,7 @@ void LLSelectMgr::validateSelection()
 bool LLSelectMgr::canSelectObject(LLViewerObject* object, bool ignore_select_owned)
 {
     // Never select dead objects
-    if (!object || object->isDead() || object->isColorChart())
+    if (!object || object->isDead() || object->isColorChart() || object->isVirtualLight())
     {
         return false;
     }

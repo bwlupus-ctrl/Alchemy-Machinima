@@ -25,7 +25,7 @@
     ["actor", "avatar", "subject", "cast"],
     ["clone", "clones", "ghost", "ghosts"],
     ["animation", "anim", "motion"],
-    ["light", "lamp", "fixture"],
+    ["light", "lamp", "fixture", "virtual light", "fake light", "local light", "place light", "light prim"],
     ["projector", "gobo", "cookie"],
     ["cue", "keyframe", "mark"],
     ["look", "grade", "lut", "preset"],

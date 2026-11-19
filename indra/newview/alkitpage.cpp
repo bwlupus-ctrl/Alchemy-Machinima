@@ -2,6 +2,7 @@
 #include "alpresetlook.h"
 #include "alkitpage.h"
 #include "alpanelrigrim.h"
+#include "alpanelpracticals.h"
 #include "alpanelprojectorshafts.h"
 #include "alshaftselftest.h"
 #include "alsettingsundohistory.h"
@@ -2114,6 +2115,8 @@ void ALKitPage::undoOnPage(bool redo)
     if (ALKitShell* shell = ALKitShell::find(this))
     {
         // Finish before choosing any owner, so a delayed drag cannot reappear after undo.
+        // A pending virtual-light edit closes into its own step first (after the history gesture).
+        ALVirtualLightsUI::finishAllPending();
         shell->history().finishGesture();
         ALExposureSettingsHistory::finishPage(this);
         const U64 kit = shell->history().stepSequence(mPage, redo);

@@ -384,12 +384,13 @@ private:
         U64 mRig = 1;
         U64 mLightResponse = 1;
         U64 mWorldPicks = 0;     // [World Shadow pick] LLPipeline::worldShadowPickRevision(): the picks are scene data
+        U64 mVirtualLights = 0;  // ALVirtualLights::revision() while any are placed: they are scene data
         bool operator==(const SceneChangeStamp& other) const
         {
             return mKeyframes == other.mKeyframes && mSettings == other.mSettings && mCast == other.mCast &&
                    mPaths == other.mPaths && mPrism == other.mPrism &&
                    mRig == other.mRig && mLightResponse == other.mLightResponse &&
-                   mWorldPicks == other.mWorldPicks;
+                   mWorldPicks == other.mWorldPicks && mVirtualLights == other.mVirtualLights;
         }
         bool operator!=(const SceneChangeStamp& other) const { return !(*this == other); }
     };

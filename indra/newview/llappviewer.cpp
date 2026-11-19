@@ -82,6 +82,7 @@
 #include "llactormover.h"    // TP-away walk suspend/resume state machine (idle tick)
 #include "alobjectpathmover.h"
 #include "alprojectortracker.h" // post-animation projector drives
+#include "alvirtuallights.h"
 #include "alghoststudio.h"
 #include "alclonetransitions.h"   // [CloneTransition] clock tick, shutdown
 #include "llghostavatar.h"      // per-instance Keep facing transforms (idle tick)
@@ -1959,6 +1960,7 @@ bool LLAppViewer::cleanup()
 {
     ALKeyframePlayer::instance().shutdown();
     ALProjectorTracker::instance().clear();
+    ALVirtualLights::instance().clearAll("shutdown-clear");
     ALColorChart::shutdownSession(); // release chart GL resources before context shutdown
     ALMediaFile::beginShutdown(gSavedSettings.getBOOL("VCamMediaCacheKeepBetweenSessions"));
     LLPrismLens::shutdownMediaFiles();
@@ -6090,6 +6092,7 @@ void LLAppViewer::idle()
     // then finish their drawable/bounds/child mesh work before display() can
     // enter its earliest hero, mirror or cube-probe render pass.
     ALProjectorTracker::instance().update(dt_raw);
+    ALVirtualLights::instance().tick(dt_raw);   // virtual lights: apply edits, tracking; free when none are placed
 
     // Handle shutdown process, for example,
     // wait for floaters to close, send quit message,
@@ -6572,6 +6575,9 @@ void LLAppViewer::disconnectViewer()
     // Local light emitters must leave mLights before the region/object list is
     // torn down. This is idempotent on logout, relog, and final shutdown.
     ALCineLightRigManager::instance().shutdown();
+
+    // Virtual lights are session-only: gone at logout/relog (and again, idempotently, on final quit).
+    ALVirtualLights::instance().clearAll("logout-clear");
 
     // [DirFix] The path editor's shared edit session (edit owner/actor/node,
     // the transient path-edit tool, a held path-camera preview) is per-session

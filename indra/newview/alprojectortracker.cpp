@@ -99,6 +99,10 @@ bool subjectFrame(LLVOAvatar* avatar, LLJoint* joint, Pose& frame)
     return frame.position.isFinite() && frame.rotation.isFinite();
 }
 }
+bool ALProjectorTracker::subjectFrame(LLVOAvatar* avatar, LLJoint* joint, ALProjectorTrackMath::Pose& frame)
+{
+    return ::subjectFrame(avatar, joint, frame);
+}
 bool ALProjectorTracker::isTrackingMove(const LLViewerObject* object)
 {
     return placingRoot && object && object->getRootEdit() == placingRoot;

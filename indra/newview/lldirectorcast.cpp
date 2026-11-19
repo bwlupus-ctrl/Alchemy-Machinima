@@ -1185,7 +1185,7 @@ void LLDirectorCast::add(const LLUUID& id, bool touch_scene)
 {
     if (ALGhostStudio::instance().isPrivateOverlayRuntime(id)) return;
     LLViewerObject* candidate = gObjectList.findObject(id);
-    if (candidate && candidate->isColorChart()) return; // session prop cannot enter scene capture
+    if (candidate && (candidate->isColorChart() || candidate->isVirtualLight())) return; // session prop cannot enter scene capture
     const LLUUID actor_id = canonicalActorId(id);
     if (actor_id.isNull() || contains(actor_id))
     {

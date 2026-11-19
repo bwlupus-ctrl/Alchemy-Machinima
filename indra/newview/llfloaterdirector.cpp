@@ -55,6 +55,7 @@
 #include "alpanelsteppedanim.h"
 #include "alsteppedanim.h"
 #include "alcinelightrigmanager.h"
+#include "alvirtuallights.h"
 #include "alrotoink.h"
 #include "altron.h"
 #include "alkitpresets.h"
@@ -5251,8 +5252,22 @@ LLSD LLFloaterDirector::captureSceneData()
         const LLSD prism = LLPrismLens::sceneData();
         scene["prism_captures"] = prism["prism_captures"];
         scene["prism_displays"] = prism["prism_displays"];
-        scene["prism_projectors"] = prism["prism_projectors"];
+        // A virtual light's object id is session-only: its VCam binding is stored in the virtual block
+        // (as a capture id) and rebound after the lights are recreated, never as a Prism projector.
+        LLSD projectors = LLSD::emptyArray();
+        for (const LLSD& item : llsd::inArray(prism["prism_projectors"]))
+        {
+            if (ALVirtualLights::instance().isVirtualObject(item["object_id"].asUUID())) continue;
+            projectors.append(item);
+        }
+        scene["prism_projectors"] = projectors;
         scene["prism_gates"] = prism["prism_gates"];
+    }
+    // Virtual lights (client-only, region-local positions). Omitted when none are placed, so a scene
+    // without them reads exactly as before.
+    {
+        const LLSD virtual_lights = ALVirtualLights::instance().sceneData();
+        if (virtual_lights.size() > 0) scene["virtual_lights"] = virtual_lights;
     }
     if (ALCineLightRigManager::instanceExists())
         scene["light_rig"] = ALCineLightRigManager::instance().sceneData();
@@ -5720,6 +5735,10 @@ bool LLFloaterDirector::loadScene(const std::string& name, bool recovery,
     // FX phase, plus a denormalized base setup for self-contained scenes.
     ALCineLightRigManager::instance().applySceneData(scene["light_rig"]);
 
+    // Virtual lights come after Prism (their VCam bindings rebind against the new registry). A scene with
+    // no block clears the live ones; crash/login recovery never restores them (L7).
+    ALVirtualLights::instance().applySceneData(scene["virtual_lights"], recovery);
+
     // [World Shadow pick] Replace the session picks with this scene's list. An old scene (no key) or a malformed value loads with NO picks,
     // so the previous scene's picks never leak into this one. A pick whose object is not in the region stays in the list as "(away)" and
     // takes its world slot back when the object appears. The list is normalised (nulls dropped, de-duplicated, capped) and read at most
@@ -5829,6 +5848,7 @@ LLFloaterDirector::SceneChangeStamp LLFloaterDirector::currentSceneStamp()
     if (ALAvatarLightResponse::instanceExists())
         stamp.mLightResponse = ALAvatarLightResponse::instance().revision();
     stamp.mWorldPicks = LLPipeline::worldShadowPickRevision();   // [World Shadow pick] the picks are scene data
+    stamp.mVirtualLights = ALVirtualLights::anyPlaced() ? ALVirtualLights::instance().revision() : 0;
     return stamp;
 }
 

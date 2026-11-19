@@ -9,8 +9,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+class LLJoint;
 class LLViewerObject;
 class LLViewerRegion;
+class LLVOAvatar;
 class ALProjectorTracker
 {
 public:
@@ -66,6 +68,8 @@ public:
     // Only true synchronously inside render-only placement of this linkset.
     static bool isTrackingMove(const LLViewerObject* object);
     static const char* jointName(S32 index);
+    // The rendered body frame of a subject joint. Shared with the virtual-light Track backend.
+    static bool subjectFrame(LLVOAvatar* avatar, LLJoint* joint, ALProjectorTrackMath::Pose& frame);
 private:
     bool holdMissingSubject(const LLUUID& id, State& state, F64 now);
     void stop(const LLUUID& id, const std::string& status);
