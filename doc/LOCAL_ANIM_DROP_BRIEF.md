@@ -1,11 +1,11 @@
 # Drop-to-play: drag an animation onto any avatar to play it locally — design brief
 
-**Date:** 2026-11-19 · **rev 2**
+**Date:** 2026-11-19 · **rev 3**
 **Status:** DESIGN ONLY. Nothing implemented, nothing built.
 
 - **rev 1** was adversarially reviewed by an Opus sub-agent: 6 must-fix, 8 should-fix and 9 nits.
 - **rev 2** applies all of them; §8 is the change log.
-- The rev 2 changes still need a re-review before Codex starts.
+- **rev 3** applies the re-review of rev 2: 4 must-fix, 4 should-fix and 2 nits (see §8).
 
 **Process (per `CLAUDE.md`):**
 1. Codex implements (`--write`, `--prompt-file`).
@@ -103,7 +103,8 @@ by the hover tip. This is INFERENCE: the RLVa API was not checked.
 - **Entity clone** (`findInstanceByRuntime(hit_avatar_id)` non-null): `setInstanceDriveMode(inst->mId,
   DRIVE_DIRECTED, anim)`. Store the instance id, plus the previous `mDriveMode` and directed anim (§3.3).
   If the clone is in a **locked group**, apply it to **every member**, as the panel does
-  (`alpanelghoststudio.cpp:2255`), with one entry per member.
+  (`alpanelghoststudio.cpp:2255`), with one entry per member. A re-drop (toggle) or Stop on any member
+  applies to **all** members of that group, matching the drop.
 - **Other ghosts** (harness ghosts, ghosts outside the Studio): play locally, like a resident.
 
 **Acceptance (both calls, no side effects in `drop=false`):**
@@ -121,8 +122,12 @@ by the hover tip. This is INFERENCE: the RLVa API was not checked.
 **Multiple items:**
 - Local play accepts `ACCEPT_YES_MULTI`. Each animation is processed once per drop: **deduplicate asset
   ids** inside one drop, so two copies don't toggle each other off.
-- If the drop is mixed (some items would give, some play), resolve it per item. Never reject the whole
-  drop because of a single-item give rule.
+- The handler runs once per item (`mCurItemIndex`) and never learns where a drop starts. Keep a
+  per-drop `std::set<LLUUID>` that is **cleared when `drop && mCurItemIndex == 0`**.
+- **Mixed drops:** a multi-item drop whose result for some item is a give gets the stock "must drop one
+  at a time" rejection. `dad3dGiveInventory` returns `ACCEPT_YES_SINGLE` (`:3266`), and `pick()` rejects
+  multi-item cargo below `ACCEPT_YES_COPY_MULTI` (`:897-916`). This is accepted: the give path is
+  off-limits.
 
 ### 3.2 Playback
 
@@ -133,9 +138,15 @@ av->LLCharacter::startMotion(anim, 0.f);   // NOT av->startMotion(): bypasses th
 av->LLCharacter::stopMotion(anim, false);  // AOEngine remap + gAgent.sendAnimationRequest
 ```
 
-This is what guarantees nothing reaches the region, even on self with an AO. It is used for residents
-too, for uniformity; for non-self avatars, `LLVOAvatar` only adds `remapMotionID`, which is irrelevant
-for inventory animations.
+This is what guarantees nothing reaches the region, even on self with an AO.
+
+- **It is callable (PROVEN):** the inheritance is public (`LLVOAvatar` → `LLAvatarAppearance` →
+  `LLCharacter`), and `aoengine.cpp:154-165` already calls `gAgentAvatarp->LLCharacter::stopMotion`.
+- **It is used for every target, for uniformity.** What we skip is `remapMotionID` (built-in walk, run
+  and sit ids) and, on self, `setAFK`/`onAnimStop`. All of these touch **only built-in ids**, which §3.1
+  rejects; that rejection is what makes the bypass safe.
+- **Reject built-ins** with `gAnimLibrary.animStateToString(id) != nullptr`, the same test
+  `createMotion` uses (`llmotioncontroller.cpp:379`).
 
 **Priority:**
 - Setting **`AlchemyDropAnimPriority`** (S32, default **5**, range −1..6; −1 = the animation's baked
@@ -165,7 +176,11 @@ struct Entry {
     S32      priority;         // desired override (-1 = baked)
     enum Phase { PENDING, ACTIVE } phase;
     bool     loop_known = false, loops = false;
-    F64      started_at;       // frame time, for the PENDING timeout
+    bool     retried = false;  // PENDING: one restart allowed
+    bool     suspended = false, failed = false;
+    S32      fail_count = 0;   // consecutive restarts that never reached playing
+    F64      started_at;       // frame time, for the PENDING timeout (never reset on retry)
+    F64      next_retry_at;    // backoff for restarts
     // CLONE only: what to restore on Stop
     S32      prev_drive_mode;  LLUUID prev_directed_anim;
 };
@@ -180,22 +195,29 @@ on every tick.
 2. Avatar found but `getOverallAppearance() != AOA_NORMAL` (jellydoll or visually muted): if the motion
    is active, stop it, then **suspend** the entry (keep it, don't restart). When the avatar is normal
    again, the next step restarts it.
-3. `m = av->findMotion(anim)`:
+3. `m = av->findMotion(anim)`. "Playing" means `m && getMotionController().isMotionActive(m) &&
+   !m->isStopped()`. A motion that is stopped but still active is **easing out**: leave it alone, and
+   neither restart nor remove it until it is inactive.
    - **`m` non-null and `isMotionLoading(m)`**: still loading, so wait.
    - **`m` non-null and loaded:**
      - Record `loop_known = true`, `loops = m->getLoop()`.
-     - If active: phase = `ACTIVE`; if `m->getPriorityOverride() != priority`, call
+     - Playing: phase = `ACTIVE`, `fail_count = 0`; if `m->getPriorityOverride() != priority`, call
        `setPriorityOverride(priority)`. This covers flush, blend-out and deactivate wiping the override.
-     - If not active / `isStopped()`:
+     - Active but stopped (easing out): wait.
+     - Inactive:
        - `loops`: restart with the start helper, then apply the override;
        - else: **finished**, so remove the entry. This also catches a short one-shot that started and
          finished between ticks.
    - **`m` null:**
-     - `loop_known && loops`: restart (the avatar was rebuilt or the motion purged).
+     - `loop_known && loops`: restart (the avatar was rebuilt or the motion purged), with
+       `++fail_count`. Each restart creates a new instance and a new asset request: `markBad` is
+       effectively a no-op, since a NULL constructor falls back to `LLKeyframeMotion::create`
+       (`llmotioncontroller.cpp:95-117`). So **back off**: retry after 1, 2, 4, … s, capped at 30 s.
+       After 5 consecutive failures, mark the entry `FAILED` (shown in the floater, never retried, and
+       removable). `fail_count` resets when the motion is seen playing.
      - `loop_known && !loops`: remove.
-     - `!loop_known` and phase `PENDING` and `now - started_at > 30 s`: remove, logging "asset never
-       loaded". If under 30 s, call the start helper once more, since the first start may have been
-       purged.
+     - `!loop_known` and phase `PENDING`: retry **once** (`retried` flag, `started_at` **not** reset).
+       If `now - started_at > 30 s`, remove, logging "asset never loaded".
 
 **Clone entries:**
 - If the instance no longer exists, remove the entry.
@@ -216,10 +238,20 @@ on every tick.
   - rows refresh on a registry-changed signal.
 - **Chat:** `/localanim list` and `/localanim stop <name-substring|all>`. Output goes to **local chat
   as a system line** (or a notification), not `LL_INFOS`.
-- **Hooks:**
-  - "Stop Animating Me" (`llagent.cpp:4794` path) also clears **self** entries;
-  - "Reset Skeleton & Animations" on an avatar clears that avatar's entries;
-  - otherwise the tick would revive looping ones.
+- **Hooks.** Each hook **stops** every entry's motion on that avatar with `stop_immediate = true`
+  (through the `LLCharacter::` helper), **then** removes the entries. Removing entries alone is not
+  enough: a non-self reset calls `flushAllMotions()`, which restarts every motion still in
+  `mActiveMotions`, including ones easing out, without the override, leaving it untracked.
+  - **"Stop Animating Me":** one line in `LLToolsStopAllAnimations::handleEvent`
+    (`llviewermenu.cpp:6207-6213`), before `gAgent.stopCurrentAnimations()`, clearing **self** entries.
+    - Not in `LLAgent::stopCurrentAnimations` itself: that is also called by AO disable/reload
+      (`aoengine.cpp:1612`), the pose stand (`fsfloaterposestand.cpp:81`, `:108`) and self reset.
+    - An AO reload must not kill drops.
+  - **"Reset Skeleton & Animations":** one line at the top of the `if (reset_animations)` block in
+    `LLVOAvatar::resetSkeleton` (`llvoavatar.cpp:2406-2419`), before either branch. It clears that
+    avatar's entries (self or not).
+    - This is the single point that all four menu callers reach (`llviewermenu.cpp:7078`, `:7125`,
+      `:7155`; `alviewermenu.cpp:135`).
 
 **Stopping an entry:**
 - **Self, resident, ghost-local:**
@@ -229,9 +261,14 @@ on every tick.
 - **Clone:**
   - Restore only if the instance is still `DRIVE_DIRECTED` with `mDirectedAnim == anim_id`. Otherwise the
     user has since changed it: remove the entry and leave the clone alone.
-  - If the previous mode was `DRIVE_FROZEN`, restore with `setInstancePaused(inst, true)`, which keeps
-    `mResumeDriveMode` correct.
-  - Otherwise call `setInstanceDriveMode(inst, prev_drive_mode, prev_directed_anim)`.
+  - Restore with `setInstanceDriveMode(inst, prev_drive_mode, prev_directed_anim)`, **including when
+    the previous mode was `DRIVE_FROZEN`**.
+    - `setInstanceDriveMode` leaves `mResumeDriveMode`/`mResumeDirectedAnim` alone (`:2526-2546`), so
+      un-pausing later resumes the clone's original mode.
+    - **Never** use `setInstancePaused(inst, true)` here. The clone is DIRECTED at that moment, so it
+      would overwrite `mResume*` with the dropped animation (`:1346-1352`).
+    - INFERENCE: a clone restored to Frozen holds the pose where the dropped animation left it, not its
+      original frozen pose. Documented.
 
 **Session only:** logout clears everything, so nothing persists into a later session.
 
@@ -279,8 +316,10 @@ on every tick.
 2. **`ALLocalAnimDrop` + `allocalanimdropmodel.h`:**
    - registry, start/stop helpers (`LLCharacter::` qualified), the tick, clone restore logic, and a
      changed signal.
-3. **Hooks:** a tick call at `llappviewer.cpp:5555`, a clear in the "Stop Animating Me" path, and a clear
-   on "Reset Skeleton & Animations".
+3. **Hooks (explicitly allowed one-line edits):**
+   - the tick call at `llappviewer.cpp:5555`;
+   - `LLToolsStopAllAnimations::handleEvent` in `llviewermenu.cpp`;
+   - the top of the `reset_animations` block in `LLVOAvatar::resetSkeleton`.
 4. **Menus:** "Stop local animations" in the four menus, with an enable callback.
 5. **Floater:** the XUI and class, registered in `llviewerfloaterreg.cpp`, with a Me-menu item.
 6. **Chat:** `/localanim` in `alchatcommand.cpp`.
@@ -289,7 +328,9 @@ on every tick.
 
 **OFF-LIMITS:**
 - the give path's own code (`dad3dGiveInventory`, `LLGiveInventory`);
-- `LLVOAvatar::startMotion`/`stopMotion` and `processAnimationStateChanges`;
+- `LLVOAvatar::startMotion`/`stopMotion` and `processAnimationStateChanges`, plus everything else in
+  `llvoavatar.cpp` except the one `resetSkeleton` hook line;
+- `LLAgent::stopCurrentAnimations`;
 - `LLMotion` and `LLMotionController`;
 - the Switchboard;
 - AOEngine;
@@ -309,8 +350,13 @@ on every tick.
   - looping + null motion restarts;
   - a not-loaded entry times out at 30 s;
   - the override is re-applied when it's wrong;
+  - stopped-but-active (easing out) is neither restarted nor removed;
+  - looping + repeated null motion backs off and goes FAILED after 5;
+  - PENDING retries only once;
   - a suspended (jellydoll) entry is never restarted.
-- **Clone Stop:** restores only when still DIRECTED with our anim. FROZEN restores through pause.
+- **Clone Stop:** restores only when still DIRECTED with our anim. FROZEN restores through
+  `setInstanceDriveMode` and **leaves `mResume*` unchanged**.
+- **Per-drop dedup:** the set is cleared at `mCurItemIndex == 0`.
 - **Stop with the id also sim-signalled:** no stop call is made.
 
 **In-world (outcomes stated in advance):**
@@ -322,9 +368,13 @@ on every tick.
    playing again. Shift-drop a bow: **PASS** if it plays once and its row disappears.
 5. **Self with an AO:** drop on yourself. It plays over the AO at priority 5, and a second viewer sees
    only your AO. **PASS** also requires no `AgentAnimation` message in the log.
-6. **Clones:** drop on a clone in True Mirror. It goes Directed; Stop returns it to **True Mirror**. Drop
-   on a Frozen clone, then Stop: it returns to Frozen.
-7. **Reset and jellydoll:** "Reset Skeleton & Animations" on the resident removes their entries.
+6. **Clones:**
+   - Drop on a clone in True Mirror. It goes Directed; Stop returns it to **True Mirror**.
+   - Pause a Mirror clone (Frozen), drop on it, then Stop: it returns to Frozen. **Then un-pause it:
+     PASS if it resumes Mirror.** FAIL if it resumes Directed with the dropped animation.
+7. **Reset and jellydoll:** "Reset Skeleton & Animations" on the resident removes their entries, and
+   the dance is **gone**, not restarted at baked priority. "Stop Animating Me" clears your self entries.
+   An AO off/on does **not** clear them.
    Jellydoll them: the dance stops and doesn't restart until un-jellydolled.
 8. **Chat:** `/localanim list` prints to chat, and `/localanim stop all` clears everything.
 
@@ -364,6 +414,23 @@ on every tick.
 - `@shownames`;
 - no local stop of a sim-playing id;
 - the idle hook is named.
+
+**rev 3 (re-review of rev 2) must-fixes:**
+1. Frozen restore uses `setInstanceDriveMode`; `setInstancePaused` would corrupt `mResume*`.
+2. The hooks stop motions immediately before removing entries.
+3. Hooks are placed at `LLToolsStopAllAnimations` and `resetSkeleton` and explicitly allowed. They are
+   not in `stopCurrentAnimations`, which the AO also calls.
+4. The mixed-drop claim is withdrawn; a mixed drop gets the stock single-drop rejection.
+
+**rev 3 should-fixes:**
+- restart backoff and a FAILED state; PENDING retries once;
+- easing-out (stopped but active) defined;
+- the per-drop dedup set is specified;
+- locked-group toggle and Stop apply to all members.
+
+**rev 3 nits:**
+- un-pause added to test 6;
+- the built-in rejection is cross-referenced as the reason the `LLCharacter::` bypass is safe.
 
 **rev 2 nits:**
 - the twice-called handler stays side-effect free on hover;
