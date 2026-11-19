@@ -17,6 +17,7 @@
 #include "alkitshell.h"
 #include "alprojectortracker.h"
 #include "altoolvirtuallightedit.h"
+#include "alpanelpracticals.h"
 #include "alvcampagemodel.h"
 #include "llagent.h"
 #include "llapp.h"
@@ -281,6 +282,14 @@ void ALVirtualLights::releaseEditor()
         tool->cancelGesture();
 }
 
+void ALVirtualLights::releaseEditorIfEmpty()
+{
+    if (sPlaced > 0) return;
+    // Drop (never roll back) a drag in flight: the light it was moving is gone.
+    if (ALToolVirtualLightEdit::instanceExists()) ALToolVirtualLightEdit::getInstance()->dropGesture();
+    releaseEditor();
+}
+
 void ALVirtualLights::logEvent(const char* event, const std::string& detail, const char* verdict)
 {
     LL_INFOS("VirtualLight") << "#VirtualLight " << event << " " << detail << " verdict=" << verdict << LL_ENDL;
@@ -496,7 +505,7 @@ void ALVirtualLights::syncVCam(Entry& entry)
 }
 
 bool ALVirtualLights::setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason,
-                              const LLSD& settings)
+                              LLSD settings)
 {
     Entry* entry = findEntry(key);
     if (!entry || entry->mObject.isNull() || entry->mObject->isDead())
@@ -589,6 +598,54 @@ bool ALVirtualLights::verifyApplied(const Entry& entry, const char* event)
 }
 
 // ---- tracking (virtual backend of the Practicals Track card) -------------------------------
+bool ALVirtualLights::subjectFrameOf(const Light& light, ALProjectorTrackMath::Pose& frame) const
+{
+    LLVOAvatar* avatar = LLDirectorCast::instance().resolve(light.mTrack.mSubject);
+    LLJoint* joint = avatar && !avatar->isDead() && avatar->mDrawable.notNull()
+        ? avatar->getJoint(ALProjectorTracker::jointName(light.mTrack.mJoint)) : nullptr;
+    return ALProjectorTracker::subjectFrame(avatar, joint, frame);
+}
+
+ALProjectorTrackMath::Pose ALVirtualLights::poseOf(const Entry& entry) const
+{
+    const Light& light = entry.mLight;
+    const LLVector3 here = gAgent.getPosAgentFromGlobal(
+        entry.mRegion->getPosGlobalFromRegion(vec_of(light.mPos)));
+    F32 d[3];
+    directionFromAngles(light.mYawDeg, light.mPitchDeg, d);
+    return ALProjectorTrackMath::Pose{here, ALProjectorTrackMath::aim(LLVector3(d[0], d[1], d[2]), entry.mRot)};
+}
+
+// Measures the light's offset against the subject's current frame. False = no usable frame yet (the caller keeps
+// the capture pending and the first tick with a frame takes it).
+bool ALVirtualLights::captureOffsetNow(Entry& entry)
+{
+    ALProjectorTrackMath::Pose frame;
+    if (!entry.mRegion || !entry.mLight.mTrack.mHasSubject || !subjectFrameOf(entry.mLight, frame)) return false;
+    const ALProjectorTrackMath::Pose now_pose = poseOf(entry);
+    entry.mOffset = ALProjectorTrackMath::relative(now_pose, frame);
+    entry.mOffsetCaptured = true;
+    entry.mCapturePending = false;
+    entry.mCurrent = now_pose;
+    return true;
+}
+
+// Puts an undo snapshot's captured offset (and its captured/not-captured state) back on the entry.
+void ALVirtualLights::restoreOffset(Entry& entry, const LLSD& data)
+{
+    entry.mCapturePending = false;
+    F32 pos[3], rot[4];
+    if (!trackOffsetFromLLSD(data, pos, rot))
+    {
+        entry.mOffsetCaptured = false;   // the snapshot never had a captured offset: Follow measures one
+        return;
+    }
+    entry.mOffset.position = LLVector3(pos[0], pos[1], pos[2]);
+    entry.mOffset.rotation = LLQuaternion(rot[0], rot[1], rot[2], rot[3]);
+    entry.mOffsetCaptured = true;
+    if (entry.mRegion) entry.mCurrent = poseOf(entry);
+}
+
 void ALVirtualLights::updateTracking(Entry& entry, F32 dt, F64 now)
 {
     Light& light = entry.mLight;
@@ -609,11 +666,8 @@ void ALVirtualLights::updateTracking(Entry& entry, F32 dt, F64 now)
 
     if (light.mTrack.mEnabled && light.mTrack.mHasSubject)
     {
-        LLVOAvatar* avatar = LLDirectorCast::instance().resolve(light.mTrack.mSubject);
-        LLJoint* joint = avatar && !avatar->isDead() && avatar->mDrawable.notNull()
-            ? avatar->getJoint(ALProjectorTracker::jointName(light.mTrack.mJoint)) : nullptr;
         ALProjectorTrackMath::Pose frame;
-        if (!ALProjectorTracker::subjectFrame(avatar, joint, frame))
+        if (!subjectFrameOf(light, frame))
         {
             if (!entry.mMissingSince) entry.mMissingSince = now;
             if (now - entry.mMissingSince > 2.)
@@ -673,6 +727,7 @@ void ALVirtualLights::tick(F32 dt)
     LL_PROFILE_ZONE_SCOPED;
     LLViewerRegion* region = gAgent.getRegion();
     const F64 now = LLTimer::getTotalSeconds();
+    bool lost_any = false;
     for (size_t index = 0; index < mEntries.size();)
     {
         Entry& entry = mEntries[index];
@@ -688,6 +743,7 @@ void ALVirtualLights::tick(F32 dt)
             ++mListRevision;
             bump();
             logEvent("lost", "key=" + key.asString() + " count=" + std::to_string(count()), "INCONCLUSIVE");
+            lost_any = true;
             continue;
         }
         ++index;
@@ -697,6 +753,7 @@ void ALVirtualLights::tick(F32 dt)
         else if (entry.mObject->mDrawable.notNull())
             entry.mObject->mDrawable->setState(LLDrawable::FORCE_INVISIBLE);
     }
+    if (lost_any) releaseEditorIfEmpty();   // after the loop: the release may touch the tool, never the entries
 }
 
 // ---- commands ---------------------------------------------------------------------------------
@@ -704,6 +761,7 @@ void ALVirtualLights::connectSelection()
 {
     if (mSelectionConnected) return;
     mSelectionConnected = true;
+    seedPrimary();
     LLSelectMgr::getInstance()->mUpdateSignal.connect([this]()
     {
         // The signal fires on every selection refresh. The focus ends only when the primary selection CHANGES
@@ -717,10 +775,18 @@ void ALVirtualLights::connectSelection()
     });
 }
 
+void ALVirtualLights::seedPrimary()
+{
+    LLViewerObject* object = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    mLastPrimaryId = object ? object->getID() : LLUUID::null;
+}
+
 void ALVirtualLights::setFocus(const LLUUID& key)
 {
     if (key.notNull() && !findEntry(key)) return;
     connectSelection();
+    // An already-selected real prim is the baseline, not a "change": the next refresh must not clear this focus.
+    seedPrimary();
     if (mFocusKey == key) return;
     mFocusKey = key;
     bump();
@@ -780,6 +846,7 @@ LLUUID ALVirtualLights::place(const F32 hit[3], const F32 normal[3], std::string
     mEntries.push_back(std::move(entry));
     sPlaced = count();
     connectSelection();
+    seedPrimary();
     mFocusKey = key;
     ++mListRevision;
     bump();
@@ -801,6 +868,7 @@ bool ALVirtualLights::remove(const LLUUID& key)
         bump();
         const bool gone = object.isNull() || object->isDead();
         logEvent("remove", "key=" + key.asString() + " count=" + std::to_string(count()), gone ? "PASS" : "FAIL");
+        releaseEditorIfEmpty();
         return true;
     }
     return false;
@@ -829,6 +897,7 @@ void ALVirtualLights::clearAll(const char* reason)
     bump();
     logEvent(reason, "removed=" + std::to_string(total) + " leaked=" + std::to_string(leaked),
              leaked == 0 ? "PASS" : "FAIL");
+    releaseEditorIfEmpty();
 }
 
 bool ALVirtualLights::edit(const LLUUID& key, const std::function<void(Light&)>& change)
@@ -894,7 +963,9 @@ void ALVirtualLights::captureTrack(const LLUUID& key)
 {
     Entry* entry = findEntry(key);
     if (!entry || entry->mLight.mTrack.mMode != 1) return;
-    entry->mCapturePending = true;
+    // Measured NOW so the undo snapshot taken right after the press holds the new offset; with no usable frame the
+    // first tick that has one takes it.
+    if (!captureOffsetNow(*entry)) entry->mCapturePending = true;
     ++entry->mLight.mTrack.mCaptures;   // the press is data, so the Practicals edit wrapper records one undo step
     bump();
 }
@@ -902,6 +973,11 @@ void ALVirtualLights::captureTrack(const LLUUID& key)
 void ALVirtualLights::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
 {
     if (old_id.isNull() || old_id == new_id) return;
+    // Snapshots that are not in the history yet (a Practicals edit in flight, an edit-tool drag in flight) name the
+    // retired actor too: rewrite them in the same transaction, or the step recorded later restores a dead actor.
+    ALVirtualLightsUI::rewritePendingAll(old_id, new_id);
+    if (ALToolVirtualLightEdit::instanceExists())
+        ALToolVirtualLightEdit::getInstance()->rewritePending(old_id, new_id);
     bool any = false;
     for (Entry& entry : mEntries)
     {
@@ -930,7 +1006,15 @@ LLSD ALVirtualLights::capture()
     {
         syncPracticals(entry);
         syncVCam(entry);
-        out.append(toLLSD(entry.mLight));
+        LLSD item = toLLSD(entry.mLight);
+        if (entry.mOffsetCaptured && entry.mOffset.position.isFinite() && entry.mOffset.rotation.isFinite())
+        {
+            const F32 pos[3] = {entry.mOffset.position.mV[0], entry.mOffset.position.mV[1], entry.mOffset.position.mV[2]};
+            const F32 rot[4] = {entry.mOffset.rotation.mQ[0], entry.mOffset.rotation.mQ[1],
+                                entry.mOffset.rotation.mQ[2], entry.mOffset.rotation.mQ[3]};
+            item["track_offset"] = trackOffsetToLLSD(pos, rot);
+        }
+        out.append(item);
     }
     return out;
 }
@@ -948,6 +1032,13 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
         return false;
     }
     const std::vector<Light> wanted = parseScene(snapshot, []() { return LLUUID::generateNewID(); });
+    // The captured Follow offset rides next to each light map (key "track_offset"); undefined = none was captured.
+    auto offset_of = [&snapshot](const LLUUID& key)
+    {
+        for (S32 i = 0; i < snapshot.size(); ++i)
+            if (snapshot[i]["key"].asUUID() == key) return snapshot[i]["track_offset"];
+        return LLSD();
+    };
     std::vector<Entry> next;
     next.reserve(wanted.size());
     std::vector<LLUUID> to_bind;
@@ -958,7 +1049,7 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
         {
             existing->mLight = light;
             existing->mDirty = true;
-            existing->mOffsetCaptured = false;
+            restoreOffset(*existing, offset_of(light.mKey));
             const LLUUID object_id = existing->mObject.notNull() ? existing->mObject->getID() : LLUUID::null;
             if (light.mVCamCapture != vcamOf(light.mKey) ||
                 (light.mVCamCapture.notNull() && light.mVCamSettings.isMap() &&
@@ -977,6 +1068,7 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
             continue;
         }
         applyEntry(fresh);
+        restoreOffset(fresh, offset_of(light.mKey));
         verifyApplied(fresh, "undo-recreate");
         if (light.mVCamCapture.notNull()) to_bind.push_back(light.mKey);
         next.push_back(std::move(fresh));
@@ -1003,6 +1095,7 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
     if (mFocusKey.notNull() && !findEntry(mFocusKey)) mFocusKey.setNull();
     ++mListRevision;
     bump();
+    releaseEditorIfEmpty();   // undoing the placement of the last light leaves nothing for the edit tool
     return true;
 }
 
@@ -1146,10 +1239,12 @@ void ALVirtualLights::drawGuides()
     // (shader, texture unit 0, active unit) and put it back at the end, like the keyframe overlay.
     gGL.flush();
     LLGLSLShader* const previous_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const LLColor4U previous_color = gGL.getCurrentColor();
     const U32 previous_unit = gGL.getCurrentTexUnitIndex();
     LLTexUnit* const unit0 = gGL.getTexUnit(0);
     const LLTexUnit::eTextureType previous_type = unit0->getCurrType();
     const U32 previous_texture = unit0->getCurrTexture();
+    const bool previous_mips = unit0->hasMipMaps();
     LLGLEnable blend(GL_BLEND);
     LLGLDisable cull(GL_CULL_FACE);
     LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
@@ -1185,9 +1280,12 @@ void ALVirtualLights::drawGuides()
         }
     }
     gGL.flush();
-    // The guide composite after us expects its own state: white current colour, the shader, the bound texture.
-    gGL.color4f(1.f, 1.f, 1.f, 1.f);
+    // Put back exactly what we found: the shader, texture unit 0 (binding, type and mip state, also the unbound
+    // case), the active unit, and the incoming current colour (after the shader: where it is written depends on it).
     if (previous_shader) previous_shader->bind(); else LLGLSLShader::unbind();
-    if (previous_texture) unit0->bindManual(previous_type, previous_texture);
+    if (previous_texture) unit0->bindManual(previous_type, previous_texture, previous_mips);
+    else unit0->unbind(previous_type);
+    unit0->setHasMipMaps(previous_mips);
+    gGL.color4ubv(previous_color.mV);
     gGL.getTexUnit(previous_unit)->activate();
 }

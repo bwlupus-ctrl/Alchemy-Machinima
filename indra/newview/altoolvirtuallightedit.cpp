@@ -67,6 +67,8 @@ bool ALToolVirtualLightEdit::handleMouseDown(S32 x, S32 y, MASK)
             nearest = &pick;
         }
     }
+    // Nothing to grab (no lights left, or none under the cursor with none placed): the click belongs to the world.
+    if (picks.empty()) return false;
     if (!nearest) return true;
 
     mKey = nearest->mKey;
@@ -157,6 +159,18 @@ void ALToolVirtualLightEdit::cancelGesture()
     mDragging = false;
     mMoved = false;
     if (hasMouseCapture()) setMouseCapture(false);
+}
+
+void ALToolVirtualLightEdit::dropGesture()
+{
+    mDragging = false;
+    mMoved = false;
+    if (hasMouseCapture()) setMouseCapture(false);
+}
+
+void ALToolVirtualLightEdit::rewritePending(const LLUUID& old_id, const LLUUID& new_id)
+{
+    ALVirtualLightsModel::rewriteActorInSnapshot(mBefore, old_id, new_id);
 }
 
 bool ALToolVirtualLightEdit::handleKey(KEY key, MASK mask)

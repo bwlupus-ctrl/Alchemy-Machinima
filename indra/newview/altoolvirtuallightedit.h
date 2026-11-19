@@ -26,6 +26,10 @@ class ALToolVirtualLightEdit final : public LLTool, public LLSingleton<ALToolVir
 
 public:
     void cancelGesture();
+    // Ends a drag WITHOUT rolling it back (the light it moved is gone).
+    void dropGesture();
+    // A clone replacement: the drag's "before" snapshot names the retired actor too.
+    void rewritePending(const LLUUID& old_id, const LLUUID& new_id);
     bool handleMouseDown(S32 x, S32 y, MASK mask) override;
     bool handleMouseUp(S32 x, S32 y, MASK mask) override;
     bool handleHover(S32 x, S32 y, MASK mask) override;

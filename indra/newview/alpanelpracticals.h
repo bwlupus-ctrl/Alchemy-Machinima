@@ -54,6 +54,10 @@ public:
     // A Practicals-card edit (cast shadows, gobo, track, ...) aimed at a virtual light.
     void practicalsEdit(const LLUUID& key, const char* label, LLUICtrl* control, const std::function<void()>& fn);
     static void finishAllPending();
+    // A clone replacement: the pending "before" snapshots of every open Practicals card name the retired actor too.
+    static void rewritePendingAll(const LLUUID& old_id, const LLUUID& new_id);
+    // A slider's mouse-up / wheel-settle: the edit gesture on that control ends here.
+    void gestureEnd(LLUICtrl* control);
 
 private:
     void refresh(bool force);
@@ -67,6 +71,8 @@ private:
     void finishPending(bool force);
     void onTexturePick();
     void onTexturePicked();
+    void onTexturePickCancelled();
+    void createTexturePicker();
     void onPlace();
     void onAimPick();
     void onDelete();

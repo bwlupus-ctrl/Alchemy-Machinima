@@ -80,7 +80,8 @@ public:
     // VCam feed: null capture = Off. Reason filled on refusal.
     // `settings` (a saved Prism projector settings block) is applied after the bind: a recreated light keeps
     // its authored fit / exposure / lamp power / flips / effects / look.
-    bool setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason, const LLSD& settings = LLSD());
+    // `settings` is taken BY VALUE: callers pass a member of the very light being rebound, which setVCam clears.
+    bool setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason, LLSD settings = LLSD());
     LLUUID vcamOf(const LLUUID& key) const;            // the live registry binding, not the request
 
     // ---- Practicals / Track (virtual backend) ------------------------------------------
@@ -97,11 +98,15 @@ public:
     void clearFocus();
     // The Practicals page (or the edit tool) calls this each frame it is visible.
     void noteEditorVisible();
-    // The edit tool is active: the marker shows even when the Practicals page is not on screen.
+    // The edit tool is active: the marker is owned by the tool, but it still draws only while a live, visible
+    // Director exists (wantsGuides checks that at draw time; releaseEditor ends the ownership on every hide).
     void setEditTool(bool active);
     // Synchronous release of the edit tool AND the guide ownership: Practicals page hide, Director hide /
     // minimise / close, teardown. After it returns no frame can draw the marker.
     static void releaseEditor();
+    // The last light is gone: the edit tool has nothing to edit, so it is released too (a drag in flight is dropped,
+    // not rolled back, because the light it moved no longer exists).
+    static void releaseEditorIfEmpty();
 
     // ---- undo / scene snapshots ----------------------------------------------------------
     LLSD capture();                                    // array of light maps (Practicals synced)
@@ -147,8 +152,14 @@ private:
     void syncVCam(Entry& entry);
     void unbindVCam(const LLViewerObject* object);
     void updateTracking(Entry& entry, F32 dt, F64 now);
+    // The Follow offset: measured now (Capture press, first tick) and carried inside undo snapshots.
+    bool subjectFrameOf(const Light& light, ALProjectorTrackMath::Pose& frame) const;
+    ALProjectorTrackMath::Pose poseOf(const Entry& entry) const;
+    bool captureOffsetNow(Entry& entry);
+    void restoreOffset(Entry& entry, const LLSD& data);
     void bump() { ++mRevision; }
     void connectSelection();
+    void seedPrimary();   // baseline for the focus rule: the primary selection as it is right now
     static void logEvent(const char* event, const std::string& detail, const char* verdict);
 
     std::vector<Entry> mEntries;

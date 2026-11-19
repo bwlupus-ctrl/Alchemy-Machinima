@@ -159,6 +159,9 @@ bool ALPanelPracticals::postBuild()
     {
         control->setCommitCallback([this, control](LLUICtrl*, const LLSD&) { onGoboChanged(control); });
     }
+    for (LLSliderCtrl* slider : { mGoboSpeed, mGoboZoom, mGoboDispersion, mGoboVar1, mGoboVar2, mGoboSoft,
+                                  mTrackSmoothing })
+        slider->setSliderMouseUpCallback([this, slider](LLUICtrl*, const LLSD&) { mVirtualUI.gestureEnd(slider); });
 
     refreshFromSelection();
     return LLPanel::postBuild();
@@ -588,6 +591,19 @@ void ALVirtualLightsUI::finishAllPending()
     for (ALVirtualLightsUI* editor : sVirtualEditors) editor->finishPending(true);
 }
 
+void ALVirtualLightsUI::rewritePendingAll(const LLUUID& old_id, const LLUUID& new_id)
+{
+    for (ALVirtualLightsUI* editor : sVirtualEditors)
+        ALVirtualLightsModel::rewriteActorInSnapshot(editor->mPendingBefore, old_id, new_id);
+}
+
+void ALVirtualLightsUI::gestureEnd(LLUICtrl* control)
+{
+    // A slider's mouse-up or wheel settle is the real end of its gesture: the step is recorded here, so one wheel
+    // gesture (or drag) is one undo step however many frames it spans.
+    if (control && control == mPendingControl) finishPending(true);
+}
+
 void ALVirtualLightsUI::attach(LLPanel* root)
 {
     mRoot = root;
@@ -672,6 +688,8 @@ void ALVirtualLightsUI::attach(LLPanel* root)
             const F32 value = static_cast<F32>(ctrl->getValue().asReal());
             edit(label, ctrl, [value, field](ALVirtualLights::Light& light) { light.*field = value; });
         });
+        // Without a mouse-up consumer a wheel gesture never settles (LLSlider::scheduleWheelSettle refuses to arm).
+        ctrl->setSliderMouseUpCallback([this, ctrl](LLUICtrl*, const LLSD&) { gestureEnd(ctrl); });
     }
     struct SpinBinding { LLSpinCtrl* mCtrl; const char* mLabel; S32 mAxis; };   // 0..2 position, 3 yaw, 4 pitch
     for (const SpinBinding& binding : {
@@ -698,19 +716,6 @@ void ALVirtualLightsUI::attach(LLPanel* root)
         });
     }
     mVCam->setCommitCallback([this](LLUICtrl*, const LLSD&) { onVCam(); });
-    // The standard viewer texture picker (the one Build > Features uses for the projector texture), driven by
-    // a hidden texture control so no new kit row kind is needed.
-    LLTextureCtrl::Params picker;
-    picker.name("vl_texture_picker");
-    picker.rect(LLRect(0, 64, 64, 0));
-    picker.visible(false);
-    picker.allow_no_texture(true);
-    mTexturePicker = LLUICtrlFactory::create<LLTextureCtrl>(picker);
-    if (mTexturePicker)
-    {
-        root->addChild(mTexturePicker);
-        mTexturePicker->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTexturePicked(); });
-    }
     mTexture->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTexturePick(); });
     refresh(true);
 }
@@ -802,20 +807,57 @@ void ALVirtualLightsUI::practicalsEdit(const LLUUID& key, const char* label, LLU
     notePending(before, label, control);
 }
 
+// The standard viewer texture picker (the one Build > Features uses for the projector texture), driven by a hidden
+// texture control so no new kit row kind is needed. A picker remembers the texture it was CONSTRUCTED with and
+// writes it back on Cancel, so it is never reused: every open builds a fresh one for the light being edited
+// (retargeting an open picker would let Cancel write the old light's texture onto the new one). The picker
+// commits only on Select; Cancel changes nothing. Local and bake textures are not offered: a virtual light is
+// session-only and a local file or a bake has no meaning for it.
+void ALVirtualLightsUI::createTexturePicker()
+{
+    if (mTexturePicker)
+    {
+        // Closes its picker floater (owner cleared first, so a late button press reaches nothing).
+        if (mRoot) mRoot->removeChild(mTexturePicker);
+        delete mTexturePicker;
+        mTexturePicker = nullptr;
+    }
+    LLTextureCtrl::Params picker;
+    picker.name("vl_texture_picker");
+    picker.rect(LLRect(0, 64, 64, 0));
+    picker.visible(false);
+    picker.allow_no_texture(true);
+    picker.no_commit_on_selection(true);
+    mTexturePicker = LLUICtrlFactory::create<LLTextureCtrl>(picker);
+    if (!mTexturePicker) return;
+    mRoot->addChild(mTexturePicker);
+    mTexturePicker->setAllowLocalTexture(false);
+    mTexturePicker->setBakeTextureEnabled(false);
+    mTexturePicker->setOnSelectCallback([this](LLUICtrl*, const LLSD&) { onTexturePicked(); });
+    mTexturePicker->setOnCancelCallback([this](LLUICtrl*, const LLSD&) { onTexturePickCancelled(); });
+}
+
 void ALVirtualLightsUI::onTexturePick()
 {
     ALVirtualLights& lights = ALVirtualLights::instance();
     const ALVirtualLights::Light* light = lights.find(lights.focusKey());
-    if (!light || !mTexturePicker) return;
+    if (!light || !mRoot) return;
     finishPending(true);
+    createTexturePicker();
+    if (!mTexturePicker) return;
     mTextureKey = light->mKey;
     mTexturePicker->setImageAssetID(light->mTexture);
     mTexturePicker->showPicker(true);
 }
 
+void ALVirtualLightsUI::onTexturePickCancelled()
+{
+    mTextureKey.setNull();   // nothing was committed while the picker was open; nothing to write back
+}
+
 void ALVirtualLightsUI::onTexturePicked()
 {
-    if (!mTexturePicker) return;
+    if (!mTexturePicker || mTextureKey.isNull()) return;
     const LLUUID id = mTexturePicker->getImageAssetID();
     if (const LLInventoryItem* item = gInventory.getItem(mTexturePicker->getImageItemID()))
     {
@@ -825,6 +867,7 @@ void ALVirtualLightsUI::onTexturePicked()
     // The light the picker was opened for, not whatever has the focus now.
     editKey(mTextureKey, "Virtual light projector texture", mTexture,
             [id](ALVirtualLights::Light& light) { light.mTexture = id; });
+    mTextureKey.setNull();
     mForce = true;
 }
 

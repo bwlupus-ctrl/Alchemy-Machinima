@@ -215,6 +215,33 @@ inline void vec3FromLLSD(const LLSD& data, F32 out[3])
     for (S32 i = 0; i < 3; ++i) out[i] = static_cast<F32>(data[i].asReal());
 }
 
+// The Follow offset (subject-relative position + rotation quaternion x,y,z,w) of one light, carried NEXT TO the
+// light map inside an undo snapshot (key "track_offset"), so undo restores the offset that was captured, not a
+// fresh one measured against wherever the subject has walked to. Scenes do not carry it (toLLSD never writes it).
+inline LLSD trackOffsetToLLSD(const F32 pos[3], const F32 rot[4])
+{
+    LLSD out = LLSD::emptyMap();
+    out["pos"] = vec3ToLLSD(pos);
+    LLSD q = LLSD::emptyArray();
+    for (S32 i = 0; i < 4; ++i) q.append(LLSD::Real(rot[i]));
+    out["rot"] = q;
+    return out;
+}
+// False (outputs untouched) for a missing, malformed or non-finite block: the caller recaptures.
+inline bool trackOffsetFromLLSD(const LLSD& data, F32 pos[3], F32 rot[4])
+{
+    if (!data.isMap() || !data["pos"].isArray() || data["pos"].size() != 3 ||
+        !data["rot"].isArray() || data["rot"].size() != 4) return false;
+    F32 p[3], r[4];
+    for (S32 i = 0; i < 3; ++i) p[i] = static_cast<F32>(data["pos"][i].asReal());
+    for (S32 i = 0; i < 4; ++i) r[i] = static_cast<F32>(data["rot"][i].asReal());
+    for (F32 v : p) if (!std::isfinite(v)) return false;
+    for (F32 v : r) if (!std::isfinite(v)) return false;
+    for (S32 i = 0; i < 3; ++i) pos[i] = p[i];
+    for (S32 i = 0; i < 4; ++i) rot[i] = r[i];
+    return true;
+}
+
 inline LLSD toLLSD(const Light& light)
 {
     LLSD out = LLSD::emptyMap();

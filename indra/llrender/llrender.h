@@ -458,6 +458,9 @@ public:
     void color3f(const GLfloat& r, const GLfloat& g, const GLfloat& b);
     void color3fv(const GLfloat* c);
     void color4ubv(const GLubyte* c);
+    // The current vertex colour (the one the next vertex inherits): lets a pass that must write its own colours
+    // put the incoming one back. White before the vertex buffer exists.
+    LLColor4U getCurrentColor() { return mColorsp.get() ? mColorsp[mCount] : LLColor4U::white; }
 
     void diffuseColor3f(F32 r, F32 g, F32 b);
     void diffuseColor3fv(const F32* c);

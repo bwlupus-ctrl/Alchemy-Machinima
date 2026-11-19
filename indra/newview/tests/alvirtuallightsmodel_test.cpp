@@ -348,4 +348,42 @@ namespace tut
         Light other = light;
         ensure("other actors untouched", !rewriteActorInLight(other, mint(), new_id) && other.mTrack.mSubject == old_id);
     }
+
+    // Undo restores the Follow offset that was captured (old vs new, after the subject has moved), not a fresh one.
+    template<> template<>
+    void virtual_lights_object::test<14>()
+    {
+        const F32 old_pos[3] = {1.f, 2.f, 3.f}, old_rot[4] = {0.f, 0.f, 0.f, 1.f};
+        const F32 new_pos[3] = {-4.f, 5.5f, 0.25f}, new_rot[4] = {0.f, 0.70710678f, 0.f, 0.70710678f};
+        Light light;
+        light.mKey = mint();
+        LLSD before = LLSD::emptyArray(), after = LLSD::emptyArray();
+        LLSD before_item = toLLSD(light), after_item = toLLSD(light);
+        before_item["track_offset"] = trackOffsetToLLSD(old_pos, old_rot);
+        after_item["track_offset"] = trackOffsetToLLSD(new_pos, new_rot);
+        before.append(before_item);
+        after.append(after_item);
+
+        F32 pos[3] = {0.f, 0.f, 0.f}, rot[4] = {0.f, 0.f, 0.f, 1.f};
+        ensure("old offset parses", trackOffsetFromLLSD(before[0]["track_offset"], pos, rot));
+        ensure("vl_track_offset_lost", pos[0] == old_pos[0] && pos[1] == old_pos[1] && pos[2] == old_pos[2] &&
+            rot[0] == old_rot[0] && rot[3] == old_rot[3]);
+        F32 redo_pos[3], redo_rot[4];
+        ensure("new offset parses", trackOffsetFromLLSD(after[0]["track_offset"], redo_pos, redo_rot));
+        ensure("old and new offsets stay distinct", redo_pos[0] == new_pos[0] && redo_pos[1] == new_pos[1] &&
+            redo_pos[2] == new_pos[2] && redo_rot[1] == new_rot[1] && redo_pos[0] != pos[0] && redo_rot[1] != rot[1]);
+        // The light map itself ignores the extra key, and a scene (toLLSD of the parsed light) never carries it.
+        Light parsed;
+        ensure("snapshot light parses", fromLLSD(before[0], parsed) && parsed.mKey == light.mKey);
+        ensure("scenes carry no offset", !toLLSD(parsed).has("track_offset"));
+        // A missing, malformed or non-finite block means "recapture", and never touches the outputs.
+        F32 keep_pos[3] = {9.f, 9.f, 9.f}, keep_rot[4] = {0.f, 0.f, 0.f, 1.f};
+        ensure("a missing offset is refused", !trackOffsetFromLLSD(LLSD(), keep_pos, keep_rot));
+        LLSD bad = trackOffsetToLLSD(old_pos, old_rot);
+        bad["rot"].erase(0);
+        ensure("a malformed offset is refused", !trackOffsetFromLLSD(bad, keep_pos, keep_rot));
+        const F32 nan_pos[3] = {std::numeric_limits<F32>::quiet_NaN(), 0.f, 0.f};
+        ensure("a non-finite offset is refused", !trackOffsetFromLLSD(trackOffsetToLLSD(nan_pos, old_rot), keep_pos, keep_rot) &&
+            keep_pos[0] == 9.f);
+    }
 }
