@@ -1,0 +1,54 @@
+BUILD FIX — Cine Light Rig enhancements. Three compile errors, mechanical API mismatches. Do NOT
+build, cmake, or run the viewer.
+
+The Release build produced exactly three errors:
+
+  alpanelcinelightrig.cpp(156,41): error C2039: 'getColor': is not a member of 'LLTextBox'
+  alcinelightrig.cpp(189,56): error C2065: 'MIPMAP_YES': undeclared identifier
+  alcinelightrig.cpp(187,24): error C2593: 'operator =' is ambiguous
+
+=============================================================================
+E1 + E2 (alcinelightrig.cpp — the gobo texture fetch) — likely one root cause
+=============================================================================
+MIPMAP_YES is `const bool MIPMAP_YES = true;` defined in indra/newview/llviewertexturelist.h:41.
+alcinelightrig.cpp includes llviewertexture.h but NOT llviewertexturelist.h, so MIPMAP_YES is
+undeclared, which makes the whole getFetchedTextureFromFile(...) call ill-formed and cascades into the
+C2593 'operator =' ambiguous at line 187 (assigning the malformed expression to
+LLPointer<LLViewerFetchedTexture> cache[index]).
+
+FIX: add `#include "llviewertexturelist.h"` to alcinelightrig.cpp (with the other includes). That
+declares MIPMAP_YES (E2) and, by making the call well-formed, should resolve the operator= ambiguity
+(E1/187). The working callers in llviewertexturelist.cpp use this exact API, e.g.
+`getFetchedTextureFromFile("white.tga", FTT_LOCAL_FILE, MIPMAP_NO, LLViewerFetchedTexture::BOOST_UI)`.
+If the operator= ambiguity SURVIVES after the include (it shouldn't), it means getFetchedTextureFromFile's
+return type doesn't assign cleanly to LLPointer — in that case store the raw return in a local
+`LLViewerFetchedTexture*` first and assign that, and say what you did. Keep the boost level you have
+(LLGLTexture::BOOST_NONE) unless it is itself ambiguous — if so, match the working callers'
+`LLViewerFetchedTexture::BOOST_UI` idiom.
+
+=============================================================================
+E3 (alpanelcinelightrig.cpp:156 — the radius amber cue) — LLTextBox has no getColor()
+=============================================================================
+Line 156: `mRadiusDefaultColor = mRadiusLabel->getColor();` — LLTextBox exposes no getColor().
+
+FIX: capture the default label colour a SUPPORTED way instead of reading it off the widget. Read
+indra/llui/lltextbox.h for its actual colour API. LLTextBox has setColor() but (per the compiler) no
+public getColor(); options, pick the one matching fork idiom:
+  - read the default from the UI colour table: `LLUIColorTable::instance().getColor("LabelTextColor")`
+    (or whatever named colour the label's XUI `text_color` uses) into mRadiusDefaultColor; OR
+  - store mRadiusDefaultColor as a fixed constant equal to the label's normal colour, and an amber
+    constant for the cue.
+Then the amber cue toggles `mRadiusLabel->setColor(over_range ? amber : mRadiusDefaultColor)` exactly as
+intended. Do NOT change the cue's trigger logic (SCALED_RADIUS_CEIL threshold) — only how the default
+colour is obtained. If mRadiusDefaultColor is now a constant/table value, make sure its member type and
+initialization still compile.
+
+=============================================================================
+OFF-LIMITS / SCOPE
+=============================================================================
+Only the alcinelightrig.cpp include (E1/E2) and the alpanelcinelightrig.cpp colour capture (E3). Do NOT
+change the gobo logic, the colour math, the presets, or anything else. These are pure
+compile-conformance fixes.
+
+REPORT: the include added; how the operator= ambiguity resolved; how you captured the default radius
+label colour (which API) and that the amber cue still toggles on the same threshold. Do not build.

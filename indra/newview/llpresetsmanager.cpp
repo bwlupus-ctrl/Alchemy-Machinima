@@ -339,8 +339,16 @@ void LLPresetsManager::getGraphicsControlNames(std::vector<std::string>& names)
         "RenderTreeLODFactor",
         "RenderVolumeLODFactor",
         "RenderScreenSpaceReflections",
+        // [ProbeOnDemand]
+        "RenderProbeOnDemand",
+        "RenderProbeMinInterval",
+        "RenderProbeMaxAge",
+        "RenderProbeDirtySunDeg",
+        "RenderProbeRealtimeFacesPerFrame",
+        "RenderProbeTinyCullPixels",
+        "RenderProbeUpdateEveryNFrames", // [ProbeManualRate]
         "RenderReflectionProbeDetail",
-        "RenderReflectionProbeLevel"
+        "RenderReflectionProbeLevel", // [ProbeManualRate] was missing its comma
         "RenderCASSharpness",
     };
     names = camera_controls;

@@ -46,6 +46,7 @@ using std::make_pair;
 using std::string;
 
 LLShaderMgr * LLShaderMgr::sInstance = NULL;
+U32 LLShaderMgr::sAvatarLightResponseAttachCount = 0; // [AvatarLightResponse]
 
 LLShaderMgr::LLShaderMgr()
 {
@@ -192,6 +193,48 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         return false;
     }
 
+    if (features->hasActorFx || features->hasActorFxShadow)
+    {
+        // Beauty and dissolve/shadow coverage form one Actor FX contract. If
+        // either primary module failed to load, use identity fallbacks for
+        // both so the color and shadow passes cannot disagree about coverage.
+        const bool actor_fx_primary_available =
+            mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") != 0 &&
+            mFragmentShaderObjects.count("alchemy/actorFxF.glsl") != 0;
+
+        if (!actor_fx_primary_available)
+        {
+            LL_WARNS("Shader") << "Actor FX primary modules unavailable for "
+                                << shader->mName << "; attaching coupled identity fallbacks" << LL_ENDL;
+        }
+
+        const char* dissolve_module = actor_fx_primary_available
+                                          ? "alchemy/actorFxDissolveF.glsl"
+                                          : "alchemy/actorFxDissolveFallbackF.glsl";
+        if (!shader->attachFragmentObject(dissolve_module))
+        {
+            return false;
+        }
+
+        if (features->hasActorFx)
+        {
+            const char* beauty_module = actor_fx_primary_available
+                                            ? "alchemy/actorFxF.glsl"
+                                            : "alchemy/actorFxFallbackF.glsl";
+            if (!shader->attachFragmentObject(beauty_module))
+            {
+                return false;
+            }
+
+            // [AvatarLightResponse] per-avatar response trim; identity while alrEnabled == 0.
+            if (!shader->attachFragmentObject("alchemy/avatarLightResponseF.glsl"))
+            {
+                return false;
+            }
+            ++sAvatarLightResponseAttachCount;
+        }
+    }
+
     if (features->hasSrgb || features->hasAtmospherics || features->calculatesAtmospherics || features->isDeferred)
     {
         if (!shader->attachFragmentObject("environment/srgbF.glsl"))
@@ -280,6 +323,15 @@ bool LLShaderMgr::attachShaderFeatures(LLGLSLShader * shader)
         }
 
         if (!shader->attachFragmentObject("windlight/atmosphericsF.glsl"))
+        {
+            return false;
+        }
+
+        // [Cine Haze] shared transmittance / atmosphere-colour library.  Pure
+        // functions + uniforms (all uniform-gated), attached to exactly the set of
+        // programs that can call it: the deferred haze pass and every forward
+        // shader that links environment/waterFogF.glsl (hasAtmospherics).
+        if (!shader->attachFragmentObject("windlight/cineHazeF.glsl"))
         {
             return false;
         }
@@ -646,7 +698,32 @@ GLuint LLShaderMgr::loadShaderFile(const std::string& filename, S32 & shader_lev
     extra_code_text[extra_code_count++] = strdup("#define GBUFFER_FLAG_HAS_ATMOS    0.34\n"); // bit 0
     extra_code_text[extra_code_count++] = strdup("#define GBUFFER_FLAG_HAS_PBR      0.67\n"); // bit 1
     extra_code_text[extra_code_count++] = strdup("#define GBUFFER_FLAG_HAS_HDRI      1.0\n");  // bit 2
-    extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(data-flag)< 0.1)\n");
+    // [TronA0] Per-pixel avatar tag in the flag channel. The preamble TEXT is
+    // chosen here from the HASH-TOKEN global define GBUFFER_AVATAR_TAG_ENABLED
+    // (set by LLViewerShaderMgr::setShaders under exactly the RGBA16-normals
+    // predicate, and part of the binary-cache key) so that every compile unit
+    // of every program -- utility files included -- sees ONE definition of
+    // GBUFFER_AVATAR_TAG. The utility files' own `defines` loop below emits
+    // GBUFFER_AVATAR_TAG_ENABLED (a different token), never a duplicate.
+    // Encoding 2: .w is a 7-level code at multiples of 1/6. Even codes are the
+    // existing flags (0 SKIP_ATMOS, 2 HAS_ATMOS, 4 HAS_PBR, 6 HAS_HDRI -- all
+    // inside the 0.1 window of the constants above); odd codes are
+    // "avatar + next even flag" (1 = 0.1667, 3 = 0.5, 5 = 0.8333). UNTAG
+    // rounds an odd code up to its even neighbour so every existing reader
+    // keeps seeing the flag it always saw. With the tag off, today's exact
+    // text is emitted (byte-identical preamble by construction).
+    const bool avatar_tag = LLGLSLShader::sGlobalDefines.count("GBUFFER_AVATAR_TAG_ENABLED") > 0;
+    if (!avatar_tag)
+    {
+        extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(data-flag)< 0.1)\n");
+    }
+    else
+    {
+        extra_code_text[extra_code_count++] = strdup("#define GBUFFER_AVATAR_TAG 1\n");
+        extra_code_text[extra_code_count++] = strdup("#define GBUFFER_UNTAG(d) ((floor((d)*6.0+0.5) + mod(floor((d)*6.0+0.5), 2.0)) / 6.0)\n");
+        extra_code_text[extra_code_count++] = strdup("#define GBUFFER_AVATAR_TAG_OF(d) (mod(floor((d)*6.0+0.5), 2.0) > 0.5)\n");
+        extra_code_text[extra_code_count++] = strdup("#define GET_GBUFFER_FLAG(data, flag)    (abs(GBUFFER_UNTAG(data)-(flag)) < 0.1)\n");
+    }
 
     if (defines)
     {
@@ -1123,6 +1200,16 @@ void LLShaderMgr::persistShaderCacheMetadata()
 
 bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
 {
+    // Fallback Actor FX programs share the primary program feature/hash key.
+    // Ignore a cached primary binary while either primary module is missing,
+    // otherwise cache loading can defeat the coupled degradation above.
+    if (shader && (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow) &&
+        (mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") == 0 ||
+         mFragmentShaderObjects.count("alchemy/actorFxF.glsl") == 0))
+    {
+        return false;
+    }
+
     if (!mShaderCacheEnabled) return false;
 
     glProgramParameteri(shader->mProgramObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
@@ -1170,6 +1257,15 @@ bool LLShaderMgr::loadCachedProgramBinary(LLGLSLShader* shader)
 
 bool LLShaderMgr::saveCachedProgramBinary(LLGLSLShader* shader)
 {
+    // Do not cache a fallback program under the primary key. A later run with
+    // working modules must relink the real Actor FX implementation.
+    if (shader && (shader->mFeatures.hasActorFx || shader->mFeatures.hasActorFxShadow) &&
+        (mFragmentShaderObjects.count("alchemy/actorFxDissolveF.glsl") == 0 ||
+         mFragmentShaderObjects.count("alchemy/actorFxF.glsl") == 0))
+    {
+        return true;
+    }
+
     if (!mShaderCacheEnabled) return true;
 
     ProgramBinaryData binary_info = ProgramBinaryData();
@@ -1314,6 +1410,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("sky_hdr_scale");
     mReservedUniforms.push_back("sky_sunlight_scale");
     mReservedUniforms.push_back("sky_ambient_scale");
+    mReservedUniforms.push_back("sky_gi_scale");     // [EnvIntensity] keep in lockstep with LLShaderMgr::SKY_GI_SCALE
+    mReservedUniforms.push_back("sky_sun_ev_scale"); // [EnvIntensity] keep in lockstep with LLShaderMgr::SKY_SUN_EV_SCALE
     mReservedUniforms.push_back("classic_mode");
     mReservedUniforms.push_back("blue_horizon");
     mReservedUniforms.push_back("blue_density");
@@ -1435,8 +1533,12 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("shadowMap7");
     mReservedUniforms.push_back("shadowMap8");
     mReservedUniforms.push_back("shadowMap9");
+    mReservedUniforms.push_back("shadowMap10");
+    mReservedUniforms.push_back("shadowMap11");
+    mReservedUniforms.push_back("shadowMap12");
+    mReservedUniforms.push_back("shadowMap13");
 
-    llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW5+1);
+    llassert(mReservedUniforms.size() == LLShaderMgr::DEFERRED_SHADOW13+1);
 
     mReservedUniforms.push_back("positionMap");
     mReservedUniforms.push_back("diffuseRect");
@@ -1575,6 +1677,8 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("tonemap_params");
     mReservedUniforms.push_back("tonemap_amd");
     mReservedUniforms.push_back("tonemap_amd_shoulder");
+    mReservedUniforms.push_back("tonemap_khronos_params");
+    mReservedUniforms.push_back("tonemap_grade");
 
     // Alchemy Effects Stack
     mReservedUniforms.push_back("uFrameId");
@@ -1614,6 +1718,59 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("uLensFlareStarburstFalloff");
     mReservedUniforms.push_back("uLensFlareOcclusionTaps");
     mReservedUniforms.push_back("uLensFlareLightColor");
+
+    // Cine rig flare sources (Group 1 — rig source arrays)
+    mReservedUniforms.push_back("uCineFlareShaft");
+    mReservedUniforms.push_back("uCineFlareCount");
+    mReservedUniforms.push_back("uCineFlareA");
+    mReservedUniforms.push_back("uCineFlareColor");
+    mReservedUniforms.push_back("uCineFlareThreshold");
+    mReservedUniforms.push_back("uCineFlareProbeRadius");
+
+    // Lens flare polished-stack additions (Group 2 — element intensities)
+    mReservedUniforms.push_back("uLensFlareGhostChroma");
+    mReservedUniforms.push_back("uLensFlareHaloChroma");
+    mReservedUniforms.push_back("uLensFlareIris");
+    mReservedUniforms.push_back("uLensFlareRing");
+    mReservedUniforms.push_back("uLensFlareCircle");
+    mReservedUniforms.push_back("uLensFlareArc");
+    mReservedUniforms.push_back("uLensFlareWarp");
+    mReservedUniforms.push_back("uLensFlareStreakTipAmount");
+    mReservedUniforms.push_back("uLensFlareSrcColorAmount");
+
+    // Lens flare polished-stack shape params (Group 3)
+    mReservedUniforms.push_back("uLensFlareIrisCount");
+    mReservedUniforms.push_back("uLensFlareIrisSides");
+    mReservedUniforms.push_back("uLensFlareIrisSize");
+    mReservedUniforms.push_back("uLensFlareRingRadius");
+    mReservedUniforms.push_back("uLensFlareRingWidth");
+    mReservedUniforms.push_back("uLensFlareRingDispersion");
+    mReservedUniforms.push_back("uLensFlareRingCount");
+    mReservedUniforms.push_back("uLensFlareCircleScale");
+    mReservedUniforms.push_back("uLensFlareCircleSpacing");
+    mReservedUniforms.push_back("uLensFlareCircleCount");
+    mReservedUniforms.push_back("uLensFlareStreakTipTint");
+
+    // Lens flare master (Group 4)
+    mReservedUniforms.push_back("uLensFlareMaster");
+
+    // Graduated ND (pre-tonemap exposure region)
+    mReservedUniforms.push_back("gradnd_params");
+    mReservedUniforms.push_back("gradnd_params2");
+    mReservedUniforms.push_back("gradnd_sun");
+
+    // Polarizer (pre-tonemap on-lens filter; shares gradnd_sun)
+    mReservedUniforms.push_back("polarizer_params");
+    mReservedUniforms.push_back("polarizer_params2");
+
+    // Night Mask (subject-anchored darkness mask; pre-tonemap on-lens filter)
+    mReservedUniforms.push_back("night_mask_params");
+    mReservedUniforms.push_back("night_mask_params2");
+    mReservedUniforms.push_back("night_mask_anchor_view");
+    mReservedUniforms.push_back("night_mask_box_basis");
+    mReservedUniforms.push_back("night_mask_tint");
+    mReservedUniforms.push_back("night_mask_shape");
+    mReservedUniforms.push_back("night_mask_inv_proj");
 
     // Color Correction LUT
     mReservedUniforms.push_back("uColorGradeLut");
@@ -1757,8 +1914,25 @@ void LLShaderMgr::initAttribsAndUniforms()
     // the SOFT_SHADOW_VOGEL / SOFT_SHADOW_TAPS enum block in llshadermgr.h)
     mReservedUniforms.push_back("soft_shadow_vogel");
     mReservedUniforms.push_back("soft_shadow_taps");
+    mReservedUniforms.push_back("spot_shadow_softness");
     // [BDMerge Batch 2] Feature 2: gobo anisotropic/mip filtering
     mReservedUniforms.push_back("gobo_aniso");
+    // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.
+    mReservedUniforms.push_back("gobo_time");
+    mReservedUniforms.push_back("gobo_pattern");
+    mReservedUniforms.push_back("gobo_anim_params");
+    // [Gobo v2] colored gel tint + per-pattern variation params.
+    mReservedUniforms.push_back("gobo_tint");
+    mReservedUniforms.push_back("gobo_pattern_params");
+
+    // [Cine Outline Phase 1] deferred normal/depth outline post pass.
+    mReservedUniforms.push_back("outline_color");
+    mReservedUniforms.push_back("outline_params");
+    mReservedUniforms.push_back("outline_params2");
+
+    // [Pedro Cam Phase 1] fisheye / peephole late post pass.
+    mReservedUniforms.push_back("fisheye_params");
+    mReservedUniforms.push_back("fisheye_params2");
 
     // [BDMerge A5.4-1a] velocity / motion-vector buffer (must stay in lockstep
     // with the enum block in llshadermgr.h)
@@ -1789,6 +1963,14 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxel_noise_speed");
     mReservedUniforms.push_back("froxel_wind"); // [F5] wind_dir * noise_speed
     mReservedUniforms.push_back("froxel_time");
+    // [Local Fog] Flattened eight-volume media arrays.
+    mReservedUniforms.push_back("localfog_center");
+    mReservedUniforms.push_back("localfog_extents");
+    mReservedUniforms.push_back("localfog_inv_rot");
+    mReservedUniforms.push_back("localfog_params");
+    mReservedUniforms.push_back("localfog_tint");
+    mReservedUniforms.push_back("localfog_noise");
+    mReservedUniforms.push_back("localfog_count");
     mReservedUniforms.push_back("froxel_debug_mode");
     mReservedUniforms.push_back("froxel_debug_slice");
 
@@ -1808,11 +1990,159 @@ void LLShaderMgr::initAttribsAndUniforms()
     mReservedUniforms.push_back("froxelLightHistory");
     mReservedUniforms.push_back("froxel_prev_modelview");
     mReservedUniforms.push_back("froxel_temporal_blend");
+    mReservedUniforms.push_back("froxel_temporal_reject");
     mReservedUniforms.push_back("froxel_jitter");
     mReservedUniforms.push_back("froxel_frame");
 
     mReservedUniforms.push_back("weather_rain_map");
     mReservedUniforms.push_back("weather_rain_occlusion_map");
+
+    // [Ultimate Diopter] must stay in lockstep with the enum block in llshadermgr.h
+    mReservedUniforms.push_back("diopter_shape");
+    mReservedUniforms.push_back("diopter_shape2");
+    mReservedUniforms.push_back("diopter_shape3");
+    mReservedUniforms.push_back("diopter_shape4");
+    mReservedUniforms.push_back("diopter_shape5");
+    mReservedUniforms.push_back("diopter_shape6");
+    mReservedUniforms.push_back("diopter_shape7");
+    mReservedUniforms.push_back("diopter_focus");
+    mReservedUniforms.push_back("diopter_focus2");
+    mReservedUniforms.push_back("diopter_focus3");
+    mReservedUniforms.push_back("diopter_focus4");
+    mReservedUniforms.push_back("diopter_aperture");
+    mReservedUniforms.push_back("diopter_aperture2");
+    mReservedUniforms.push_back("diopter_glass");
+    mReservedUniforms.push_back("diopter_glass2");
+    mReservedUniforms.push_back("diopter_halo");
+    mReservedUniforms.push_back("diopter_halo2");
+    mReservedUniforms.push_back("diopter_pattern");
+    mReservedUniforms.push_back("diopter_comp");
+    mReservedUniforms.push_back("diopter_comp2");
+    mReservedUniforms.push_back("diopter_ghost");
+    mReservedUniforms.push_back("diopter_ghost2");
+
+    // [Ultimate Diopter] warped present depth for ReShade alignment (lockstep
+    // with the enum block appended in llshadermgr.h)
+    mReservedUniforms.push_back("diopterWarpMap");
+    mReservedUniforms.push_back("depth_warp_params");
+
+    // [Ultimate Kaleidoscope] (lockstep with the enum block in llshadermgr.h)
+    mReservedUniforms.push_back("kal_pattern");
+    mReservedUniforms.push_back("kal_shape");
+    mReservedUniforms.push_back("kal_center");
+    mReservedUniforms.push_back("kal_source");
+    mReservedUniforms.push_back("kal_fx");
+    mReservedUniforms.push_back("kal_protect");
+    mReservedUniforms.push_back("kal_depth");
+    mReservedUniforms.push_back("kal_wave");
+    mReservedUniforms.push_back("kal_look");
+    mReservedUniforms.push_back("kal_cell");
+    mReservedUniforms.push_back("kal_cell2");
+
+    // [Cine Haze] Cinematic Depth Atmosphere (lockstep with the enum block
+    // appended in llshadermgr.h)
+    mReservedUniforms.push_back("cine_haze_active");
+    mReservedUniforms.push_back("cine_haze_params");
+    mReservedUniforms.push_back("cine_haze_height");
+    mReservedUniforms.push_back("cine_haze_up");
+    mReservedUniforms.push_back("cine_haze_color");
+    mReservedUniforms.push_back("cine_haze_color_mode");
+    mReservedUniforms.push_back("cine_haze_sun");
+    mReservedUniforms.push_back("cine_haze_debug");
+    mReservedUniforms.push_back("cine_haze_additive");
+
+    // [RigRim] Rig Rim Light (lockstep with the enum block appended in
+    // llshadermgr.h)
+    mReservedUniforms.push_back("rig_rim_mode");
+    mReservedUniforms.push_back("rig_rim_globals");
+    mReservedUniforms.push_back("rig_rim_light");
+    mReservedUniforms.push_back("rig_rim_lights");
+    mReservedUniforms.push_back("rig_rim_shadow"); // [RigRim] Rim shadow
+
+    // [RotoInk] Rotoscope Ink post pass (cineOutlineF.glsl); lockstep with
+    // the ROTO_* block at the end of the enum in llshadermgr.h.
+    mReservedUniforms.push_back("rotoScene");
+    mReservedUniforms.push_back("roto_line");
+    mReservedUniforms.push_back("roto_ink");
+    mReservedUniforms.push_back("roto_subject");
+    mReservedUniforms.push_back("roto_subject2");
+    mReservedUniforms.push_back("roto_subject3");
+    mReservedUniforms.push_back("roto_sketch");
+    mReservedUniforms.push_back("roto_sketch2");
+    mReservedUniforms.push_back("roto_motion");
+    mReservedUniforms.push_back("roto_motion2");
+
+    // [RotoInk Anim] animated patterns + extended subject isolation;
+    // lockstep with the ROTO_MOTION3.. block at the end of the enum.
+    mReservedUniforms.push_back("roto_motion3");
+    mReservedUniforms.push_back("roto_motion4");
+    mReservedUniforms.push_back("roto_motion5");
+    mReservedUniforms.push_back("roto_pattern");
+    mReservedUniforms.push_back("roto_pattern2");
+    mReservedUniforms.push_back("roto_color2");
+    mReservedUniforms.push_back("roto_color2b");
+    mReservedUniforms.push_back("roto_subject4");
+    mReservedUniforms.push_back("roto_targets");
+    mReservedUniforms.push_back("roto_targets2");
+
+    // [TronT1] Tron World post pass (tronWorldF.glsl); lockstep with the
+    // TRON_* block at the end of the enum in llshadermgr.h. TRON_TRACE* /
+    // TRON_RIM* are T2 reservations.
+    mReservedUniforms.push_back("tronScene");
+    mReservedUniforms.push_back("tron_inv_proj");
+    mReservedUniforms.push_back("tron_inv_modelview");
+    mReservedUniforms.push_back("tron_cam_rel");
+    mReservedUniforms.push_back("tron_master");
+    mReservedUniforms.push_back("tron_palette0");
+    mReservedUniforms.push_back("tron_palette1");
+    mReservedUniforms.push_back("tron_palette2");
+    mReservedUniforms.push_back("tron_palette3");
+    mReservedUniforms.push_back("tron_grade");
+    mReservedUniforms.push_back("tron_grade2");
+    mReservedUniforms.push_back("tron_grade3");
+    mReservedUniforms.push_back("tron_grid");
+    mReservedUniforms.push_back("tron_grid2");
+    mReservedUniforms.push_back("tron_grid3");
+    mReservedUniforms.push_back("tron_grid4");
+    mReservedUniforms.push_back("tron_grid5");
+    mReservedUniforms.push_back("tron_water");
+    mReservedUniforms.push_back("tron_pulse");
+    mReservedUniforms.push_back("tron_pulse2");
+    mReservedUniforms.push_back("tron_subject");
+    mReservedUniforms.push_back("tron_subject2");
+    mReservedUniforms.push_back("tron_targets");
+    mReservedUniforms.push_back("tron_targets2");
+    mReservedUniforms.push_back("tron_anchors");
+    mReservedUniforms.push_back("tron_anchor_count");
+    mReservedUniforms.push_back("tron_lattice_r");
+    mReservedUniforms.push_back("tron_lattice_k");
+    mReservedUniforms.push_back("tron_trace");   // [T2 reserved]
+    mReservedUniforms.push_back("tron_trace2");  // [T2 reserved]
+    mReservedUniforms.push_back("tron_trace3");  // [T2 reserved]
+    mReservedUniforms.push_back("tron_rim");     // [T2 reserved]
+    mReservedUniforms.push_back("tron_rim2");    // [T2 reserved]
+    mReservedUniforms.push_back("tron_rim3");    // [T2 reserved]
+
+    // [TronT1] Rig Rim "Tron" palette tint (deferredUtil.glsl rigRimTerm());
+    // lockstep with RIG_RIM_TRON / RIG_RIM_TRON_COLOR in llshadermgr.h.
+    mReservedUniforms.push_back("rig_rim_tron");
+    mReservedUniforms.push_back("rig_rim_tron_color");
+
+    // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl);
+    // lockstep with TRON_TRAIL_COLOR..TRON_TRAIL_PARAMS3 in llshadermgr.h.
+    mReservedUniforms.push_back("tron_trail_color");
+    mReservedUniforms.push_back("tron_trail_params");
+    mReservedUniforms.push_back("tron_trail_params2");
+    mReservedUniforms.push_back("tron_trail_params3");
+
+    // [EnvIntensity v2] exposure strip uniforms; lockstep with
+    // SKY_AMB_SCALE..SHADOW_LIFT_GAIN in llshadermgr.h (same order).
+    mReservedUniforms.push_back("sky_amb_scale");       // SKY_AMB_SCALE
+    mReservedUniforms.push_back("sky_probe_rad_scale"); // SKY_PROBE_RAD_SCALE
+    mReservedUniforms.push_back("sky_sun_tint");        // SKY_SUN_TINT
+    mReservedUniforms.push_back("sky_amb_tint");        // SKY_AMB_TINT
+    mReservedUniforms.push_back("shadow_lift_gain");    // SHADOW_LIFT_GAIN
+
     llassert(mReservedUniforms.size() == END_RESERVED_UNIFORMS);
 
     std::set<std::string> dupe_check;

@@ -31,6 +31,14 @@
 #include "llviewerprecompiledheaders.h"
 #include "alfloaterlightbox.h"
 #include "alscrollfocus.h"
+#include "alprojectorshaftpresets.h"
+#include "alcinehaze.h"
+#include "alrotoink.h"
+#include "alpanelcinelightrig.h" // [TronT1] applyRigRimPresetByName
+#include "altron.h" // [TronT1]
+
+#include "llagent.h" // [TronT1] gAgent.getPosGlobalFromAgent (grid origin snap)
+#include "llviewercamera.h" // [TronT1]
 
 #include "bdmergemeshpool.h"
 #include "bdmergetexpool.h"
@@ -43,29 +51,92 @@
 #include "lltextbox.h"
 #include "llcombobox.h"
 #include "llcheckboxctrl.h"
+#include "llcolorswatch.h"
 #include "llbutton.h"
 
 // [BDMerge G3.3 Batch 3] Selected Light quick panel plumbing.
 #include "llselectmgr.h"
 #include "llvovolume.h"
 #include "pipeline.h"
+#include "llviewershadermgr.h" // [TronT1] LLViewerShaderMgr::gbufferAvatarTagActive()
+#include <algorithm> // [RotoInk Anim] std::clamp (updateRotoInkAnimVisibility)
 
 ALFloaterLightBox::ALFloaterLightBox(const LLSD& key)
 :   LLFloater(key)
 {
     mCommitCallbackRegistrar.add("LightBox.ResetControlDefault", std::bind(&ALFloaterLightBox::onClickResetControlDefault, this, std::placeholders::_2));
     mCommitCallbackRegistrar.add("LightBox.ResetGroupDefault", std::bind(&ALFloaterLightBox::onClickResetGroupDefault, this, std::placeholders::_2));
+    // [ProbeOnDemand] "Refresh all probes now": re-capture every relevant probe
+    // (and the Live Probe pair); the status text is updated in draw().
+    mCommitCallbackRegistrar.add("LightBox.RefreshAllProbes",
+        [](LLUICtrl*, const LLSD&) { gPipeline.mReflectionMapManager.requestRefreshAllProbes(); });
     // [BDMerge G3.3 Batch 3] Selected Light quick panel actions.
     mCommitCallbackRegistrar.add("LightBox.SelLightCastShadows", std::bind(&ALFloaterLightBox::onSelLightCastShadows, this));
     mCommitCallbackRegistrar.add("LightBox.SelLightVolumetric", std::bind(&ALFloaterLightBox::onSelLightVolumetric, this));
     mCommitCallbackRegistrar.add("LightBox.SelLightCaptureOverride", std::bind(&ALFloaterLightBox::onSelLightCaptureOverride, this));
     mCommitCallbackRegistrar.add("LightBox.SelLightClearOverride", std::bind(&ALFloaterLightBox::onSelLightClearOverride, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboPattern", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboAnimMode", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboSpeed", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboZoom", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboDispersion", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboTint", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboVar1", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboVar2", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboSoft", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    mCommitCallbackRegistrar.add("LightBox.SelGoboInvert", std::bind(&ALFloaterLightBox::onSelGoboChanged, this));
+    // [Cine Haze] Depth Haze tab actions (value controls are XML-bound).
+    mCommitCallbackRegistrar.add("LightBox.CineHazePreset", std::bind(&ALFloaterLightBox::onCineHazePreset, this, std::placeholders::_2));
+    mCommitCallbackRegistrar.add("LightBox.CineHazeRefFromCamera", std::bind(&ALFloaterLightBox::onCineHazeRefFromCamera, this));
+    // [RotoInk] Roto Ink tab actions (value controls are XML-bound).
+    mCommitCallbackRegistrar.add("LightBox.RotoInkPreset", std::bind(&ALFloaterLightBox::onRotoInkPreset, this, std::placeholders::_2));
+    // [TronT1] Tron tab actions (value controls are XML-bound).
+    mCommitCallbackRegistrar.add("LightBox.TronPreset", std::bind(&ALFloaterLightBox::onTronPreset, this, std::placeholders::_2));
+    mCommitCallbackRegistrar.add("LightBox.TronPaletteSelected", std::bind(&ALFloaterLightBox::onTronPaletteSelected, this));
+    mCommitCallbackRegistrar.add("LightBox.TronColorEdited", std::bind(&ALFloaterLightBox::onTronColorEdited, this));
+    mCommitCallbackRegistrar.add("LightBox.TronGridOriginSnap", std::bind(&ALFloaterLightBox::onTronGridOriginSnap, this));
+    mCommitCallbackRegistrar.add("LightBox.TronGridOriginClear", std::bind(&ALFloaterLightBox::onTronGridOriginClear, this));
+    mCommitCallbackRegistrar.add("LightBox.TronApplyRotoPreset", std::bind(&ALFloaterLightBox::onTronApplyRotoPreset, this));
+    mCommitCallbackRegistrar.add("LightBox.TronApplyRigRimPreset", std::bind(&ALFloaterLightBox::onTronApplyRigRimPreset, this));
+    // [TronT3] "Clear trails" button -- works even while Tron/trails are
+    // disabled (the button has no enabled_control).
+    mCommitCallbackRegistrar.add("LightBox.TronClearTrails", [](LLUICtrl*, const LLSD&) { ALTron::clearTrails(); });
 }
 
 ALFloaterLightBox::~ALFloaterLightBox()
 {
     mTonemapConnection.disconnect();
     mCASConnection.disconnect();
+    mRotoInkDepthModeConnection.disconnect();
+    // [RotoInk Anim]
+    mRotoInkMotionStyleConnection.disconnect();
+    mRotoInkMotion2StyleConnection.disconnect();
+    mRotoInkMotionTempoConnection.disconnect();
+    mRotoInkPatternTypeConnection.disconnect();
+    mRotoInkColor2ModeConnection.disconnect();
+    mRotoInkSubjectModeConnection.disconnect();
+    mRotoInkSubjectTargetSetConnection.disconnect();
+    mRotoInkInkColorModeConnection.disconnect();
+    mRotoInkBlendModeConnection.disconnect();
+    // [TronT1]
+    mTronLayerConnection.disconnect();
+    mTronGradeStrengthConnection.disconnect();
+    mTronGridEnabledConnection.disconnect();
+    mTronPulseGridAmountConnection.disconnect();
+    mTronGridSubjectExcludeConnection.disconnect();
+    mTronGridSubjectRadiusConnection.disconnect();
+    mTronGradeKeepSubjectConnection.disconnect();
+    mTronSubjectTargetSetConnection.disconnect();
+    // [TronT2]
+    mTronTraceEnabledConnection.disconnect();
+    mTronTracePulseAmountConnection.disconnect();
+    mTronRimEnabledConnection.disconnect();
+    mTronRimScanAmountConnection.disconnect();
+    // [TronT3]
+    mTronTrailEnabledConnection.disconnect();
+    mTronTrailStyleConnection.disconnect();
+    mTronTrailFogConnection.disconnect();
+    mTronTrailTargetSetConnection.disconnect();
 }
 
 bool ALFloaterLightBox::postBuild()
@@ -74,6 +145,51 @@ bool ALFloaterLightBox::postBuild()
     ALScrollFocus::install(this, "projshaft_settings_scroll", "projshaft_settings_scroll_content");
     ALScrollFocus::install(this, "froxel_settings_scroll", "froxel_settings_scroll_content");
     ALScrollFocus::install(this, "weather_settings_scroll", "weather_settings_scroll_content");
+    ALScrollFocus::install(this, "cinehaze_settings_scroll", "cinehaze_settings_scroll_content");
+    ALScrollFocus::install(this, "rotoink_settings_scroll", "rotoink_settings_scroll_content");
+    ALScrollFocus::install(this, "tron_settings_scroll", "tron_settings_scroll_content");
+
+    getChild<LLComboBox>("ps_preset")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            ALProjectorShaftPresets::apply(control->getValue().asInteger());
+        });
+
+    getChild<LLComboBox>("ch_preset_combo")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            const std::string preset = control->getValue().asString();
+            if (!preset.empty() && preset != "custom")
+            {
+                ALCineHaze::applyPreset(preset);
+            }
+            // Action combo: snap back to the header so re-picking the same preset re-applies.
+            control->setValue(LLSD("custom"));
+        });
+
+    // [RotoInk] Same action-combo idiom as ch_preset_combo above.
+    getChild<LLComboBox>("ri_preset_combo")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            const std::string preset = control->getValue().asString();
+            if (!preset.empty() && preset != "custom")
+            {
+                ALRotoInk::applyPreset(preset);
+            }
+            control->setValue(LLSD("custom"));
+        });
+
+    // [TronT1] Same action-combo idiom as ri_preset_combo above.
+    getChild<LLComboBox>("tr_preset_combo")->setCommitCallback(
+        [](LLUICtrl* control, const LLSD&)
+        {
+            const std::string preset = control->getValue().asString();
+            if (!preset.empty() && preset != "custom")
+            {
+                ALTron::applyPreset(preset);
+            }
+            control->setValue(LLSD("custom"));
+        });
 
     populateLUTCombo();
     updateTonemapper();
@@ -82,11 +198,64 @@ bool ALFloaterLightBox::postBuild()
     mTonemapConnection = gSavedSettings.getControl("AlchemyRenderTonemapType")->getSignal()->connect([&](LLControlVariable* control, const LLSD&, const LLSD&) { updateTonemapper(); });
     //mCASConnection = gSavedSettings.getControl("RenderSharpenMethod")->getSignal()->connect([&](LLControlVariable* control, const LLSD&, const LLSD&) { updateCAS(); });
 
+    // [RotoInk]
+    updateRotoInkDepthMode();
+    mRotoInkDepthModeConnection = gSavedSettings.getControl("CineOutlineDepthMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkDepthMode(); });
+
+    // [RotoInk Anim] One show/hide pass, re-run whenever any of the six
+    // driving settings changes (style/mode combos and the tempo/target-set
+    // gates -- see updateRotoInkAnimVisibility()'s own header comment).
+    updateRotoInkAnimVisibility();
+    mRotoInkMotionStyleConnection = gSavedSettings.getControl("CineOutlineMotionStyle")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkMotion2StyleConnection = gSavedSettings.getControl("CineOutlineMotion2Style")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkMotionTempoConnection = gSavedSettings.getControl("CineOutlineMotionTempo")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkPatternTypeConnection = gSavedSettings.getControl("CineOutlinePatternType")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkColor2ModeConnection = gSavedSettings.getControl("CineOutlineColor2Mode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkSubjectModeConnection = gSavedSettings.getControl("CineOutlineSubjectMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkSubjectTargetSetConnection = gSavedSettings.getControl("CineOutlineSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkInkColorModeConnection = gSavedSettings.getControl("CineOutlineInkColorMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+    mRotoInkBlendModeConnection = gSavedSettings.getControl("CineOutlineBlendMode")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateRotoInkAnimVisibility(); });
+
+    // [TronT1] One show/hide pass, re-run whenever any of the eight driving
+    // settings changes -- see updateTronVisibility()'s own header comment.
+    updateTronVisibility();
+    mTronLayerConnection = gSavedSettings.getControl("TronLayer")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGradeStrengthConnection = gSavedSettings.getControl("TronGradeStrength")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGridEnabledConnection = gSavedSettings.getControl("TronGridEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronPulseGridAmountConnection = gSavedSettings.getControl("TronPulseGridAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGridSubjectExcludeConnection = gSavedSettings.getControl("TronGridSubjectExclude")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGridSubjectRadiusConnection = gSavedSettings.getControl("TronGridSubjectRadius")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronGradeKeepSubjectConnection = gSavedSettings.getControl("TronGradeKeepSubject")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronSubjectTargetSetConnection = gSavedSettings.getControl("TronSubjectTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    // [TronT2]
+    mTronTraceEnabledConnection = gSavedSettings.getControl("TronTraceEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTracePulseAmountConnection = gSavedSettings.getControl("TronTracePulseAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronRimEnabledConnection = gSavedSettings.getControl("TronRimEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronRimScanAmountConnection = gSavedSettings.getControl("TronRimScanAmount")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    // [TronT3] Light-cycle trails.
+    mTronTrailEnabledConnection = gSavedSettings.getControl("TronTrailEnabled")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTrailStyleConnection = gSavedSettings.getControl("TronTrailStyle")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTrailFogConnection = gSavedSettings.getControl("TronTrailFog")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+    mTronTrailTargetSetConnection = gSavedSettings.getControl("TronTrailTargetSet")->getSignal()->connect([&](LLControlVariable*, const LLSD&, const LLSD&) { updateTronVisibility(); });
+
     return LLFloater::postBuild();
 }
 
 void ALFloaterLightBox::draw()
 {
+    // [ProbeOnDemand] Refresh-all readout, at most 4 Hz; the manager holds a
+    // terminal text for 10 s. findChild-guarded so it is a no-op until the
+    // Rendering tab's widgets exist.
+    static LLFrameTimer probe_status_timer;
+    if (probe_status_timer.getElapsedTimeF32() > 0.25f)
+    {
+        probe_status_timer.reset();
+        if (LLTextBox* probe_status = findChild<LLTextBox>("probe_refresh_status"))
+        {
+            probe_status->setValue(gPipeline.mReflectionMapManager.getRefreshAllStatus());
+        }
+    }
+
     // [BDMerge B-2b.3] live RAM-pool readouts on the Machinima tab
     static LLFrameTimer pool_stats_timer;
     if (pool_stats_timer.getElapsedTimeF32() > 1.f)
@@ -112,6 +281,44 @@ void ALFloaterLightBox::draw()
         }
         getChild<LLTextBox>("bd_texpool_stats")->setValue("Textures: " + BDMergeTexPool::shortStatus());
         getChild<LLTextBox>("bd_meshpool_stats")->setValue("Meshes: " + BDMergeMeshPool::shortStatus());
+
+        // [TronT1] Read-only origin readout (TronGridOriginGlobal); throttled
+        // on the same 1 s timer as the pool stats above, findChild-guarded so
+        // it's a no-op before the Tron tab's widgets are ever built.
+        if (LLTextBox* origin_status = findChild<LLTextBox>("tr_grid_origin_status"))
+        {
+            const LLVector3d origin = gSavedSettings.getVector3d("TronGridOriginGlobal");
+            origin_status->setValue(llformat("Origin: (%.1f, %.1f, %.1f)",
+                origin.mdV[VX], origin.mdV[VY], origin.mdV[VZ]));
+        }
+
+        // [ShadowDist P1] Read-only effective sun-cascade split distances (the
+        // planes the main maps were actually built from, after the Sharp
+        // shadow range override and the far-clip clamp) -- design v2 s2.2.
+        // Same 1 s throttle; findChild-guarded.
+        if (LLTextBox* splits_status = findChild<LLTextBox>("sd_effective_splits"))
+        {
+            // [ShadowDist P1 fix] no fitted maps yet (reset, sun shadows off)
+            // -> the meta holds placeholder planes; don't present them as real.
+            if (gPipeline.mMainRT.shadowMeta.validCascades == 0)
+            {
+                splits_status->setValue(std::string("Effective cascade splits: -"));
+            }
+            else
+            {
+                const LLVector4& c = gPipeline.mMainRT.shadowMeta.clip;
+                if (gPipeline.mMainRT.shadowMeta.subject)
+                {   // [ShadowDist P3 fix] cascade 0 is the subject column, not a camera slice
+                    splits_status->setValue(llformat("Effective cascade splits: column / %.1f / %.1f / %.1f m",
+                        c.mV[1], c.mV[2], c.mV[3]));
+                }
+                else
+                {
+                    splits_status->setValue(llformat("Effective cascade splits: %.1f / %.1f / %.1f / %.1f m",
+                        c.mV[0], c.mV[1], c.mV[2], c.mV[3]));
+                }
+            }
+        }
     }
     // [BDMerge G3.3 Batch 3] Reflect the live selection in the Selected Light tab.
     updateSelectedLightPanel();
@@ -132,6 +339,16 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     LLButton*       cap_btn = findChild<LLButton>("sl_capture");
     LLButton*       clr_btn = findChild<LLButton>("sl_clear");
     LLTextBox*      status  = findChild<LLTextBox>("sl_status");
+    LLComboBox*     gobo_pattern = findChild<LLComboBox>("sl_gobo");
+    LLComboBox*     gobo_anim = findChild<LLComboBox>("sl_gobo_animmode");
+    LLSliderCtrl*   gobo_speed = findChild<LLSliderCtrl>("sl_gobo_speed");
+    LLSliderCtrl*   gobo_zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
+    LLSliderCtrl*   gobo_dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
+    LLColorSwatchCtrl* gobo_tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
+    LLSliderCtrl*   gobo_var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
+    LLSliderCtrl*   gobo_var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
+    LLSliderCtrl*   gobo_soft = findChild<LLSliderCtrl>("sl_gobo_soft");
+    LLCheckBoxCtrl* gobo_invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
 
     LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
@@ -140,6 +357,16 @@ void ALFloaterLightBox::updateSelectedLightPanel()
     cast_cb->setEnabled(is_projector);
     vol_cb->setEnabled(is_projector);
     cap_btn->setEnabled(is_projector);
+    if (gobo_pattern) gobo_pattern->setEnabled(is_projector);
+    if (gobo_anim) gobo_anim->setEnabled(is_projector);
+    if (gobo_speed) gobo_speed->setEnabled(is_projector);
+    if (gobo_zoom) gobo_zoom->setEnabled(is_projector);
+    if (gobo_dispersion) gobo_dispersion->setEnabled(is_projector);
+    if (gobo_tint) gobo_tint->setEnabled(is_projector);
+    if (gobo_var1) gobo_var1->setEnabled(is_projector);
+    if (gobo_var2) gobo_var2->setEnabled(is_projector);
+    if (gobo_soft) gobo_soft->setEnabled(is_projector);
+    if (gobo_invert) gobo_invert->setEnabled(is_projector);
 
     if (is_projector)
     {
@@ -147,7 +374,19 @@ void ALFloaterLightBox::updateSelectedLightPanel()
         // Checked = casts shadows (default), i.e. NOT in the opt-out set.
         cast_cb->set(!LLPipeline::isProjectorNoShadow(id));
         vol_cb->set(LLPipeline::isVolumetricShaftEnabled(id));
-        clr_btn->setEnabled(LLPipeline::hasVolumetricShaftOverride(id));
+        clr_btn->setEnabled(LLPipeline::hasVolumetricShaftOverride(id) ||
+                            LLPipeline::hasGoboOverride(id));
+        const LLPipeline::GoboOverride gobo = LLPipeline::getGoboOverride(id);
+        if (gobo_pattern) gobo_pattern->setValue(LLSD(gobo.mPattern));
+        if (gobo_anim) gobo_anim->setValue(LLSD(gobo.mAnimMode));
+        if (gobo_speed) gobo_speed->setValue(LLSD((F64)gobo.mSpeed));
+        if (gobo_zoom) gobo_zoom->setValue(LLSD((F64)gobo.mZoom));
+        if (gobo_dispersion) gobo_dispersion->setValue(LLSD((F64)gobo.mDispersion));
+        if (gobo_tint) gobo_tint->set(LLColor4(gobo.mTint), TRUE);
+        if (gobo_var1) gobo_var1->setValue(LLSD((F64)gobo.mPatternParams.mV[0]));
+        if (gobo_var2) gobo_var2->setValue(LLSD((F64)gobo.mPatternParams.mV[1]));
+        if (gobo_soft) gobo_soft->setValue(LLSD((F64)gobo.mPatternParams.mV[2]));
+        if (gobo_invert) gobo_invert->set(gobo.mPatternParams.mV[3] >= 0.5f);
         if (status)
         {
             LLSelectNode* node = LLSelectMgr::getInstance()->getSelection()->getFirstRootNode();
@@ -160,6 +399,11 @@ void ALFloaterLightBox::updateSelectedLightPanel()
         cast_cb->set(false);
         vol_cb->set(false);
         clr_btn->setEnabled(false);
+        if (gobo_pattern) gobo_pattern->setValue(LLSD(-1));
+        if (gobo_anim) gobo_anim->setValue(LLSD(0));
+        if (gobo_speed) gobo_speed->setValue(LLSD(1.0));
+        if (gobo_zoom) gobo_zoom->setValue(LLSD(1.0));
+        if (gobo_dispersion) gobo_dispersion->setValue(LLSD(0.0));
         if (status)
             status->setValue("Select a spotlight projector in-world to edit it here.");
     }
@@ -186,6 +430,7 @@ void ALFloaterLightBox::onSelLightCaptureOverride()
         return;
     LLPipeline::VolumetricShaftOverride ov;
     ov.multiplier   = gSavedSettings.getF32("BDMergeProjectorVolumetricsMultiplier");
+    ov.maxDistance  = gSavedSettings.getF32("BDMergeProjectorVolumetricsMaxDistance");
     ov.feather      = gSavedSettings.getF32("BDMergeProjectorVolumetricsFeather");
     ov.anisotropy   = gSavedSettings.getF32("BDMergeProjectorVolumetricsAnisotropy");
     ov.density      = gSavedSettings.getF32("BDMergeProjectorVolumetricsDensity");
@@ -203,7 +448,565 @@ void ALFloaterLightBox::onSelLightClearOverride()
 {
     LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
     if (pObj && pObj->getID().notNull())
+    {
         LLPipeline::clearVolumetricShaftOverride(pObj->getID());
+        LLPipeline::clearGoboOverride(pObj->getID());
+    }
+}
+
+void ALFloaterLightBox::onSelGoboChanged()
+{
+    LLViewerObject* pObj = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+    LLVOVolume* pVol = dynamic_cast<LLVOVolume*>(pObj);
+    if (!pVol || !pVol->isLightSpotlight() || pObj->getID().isNull())
+    {
+        return;
+    }
+
+    LLComboBox* pattern = findChild<LLComboBox>("sl_gobo");
+    LLComboBox* anim = findChild<LLComboBox>("sl_gobo_animmode");
+    LLSliderCtrl* speed = findChild<LLSliderCtrl>("sl_gobo_speed");
+    LLSliderCtrl* zoom = findChild<LLSliderCtrl>("sl_gobo_zoom");
+    LLSliderCtrl* dispersion = findChild<LLSliderCtrl>("sl_gobo_dispersion");
+    if (!pattern || !anim || !speed || !zoom || !dispersion)
+    {
+        return;
+    }
+
+    LLColorSwatchCtrl* tint = findChild<LLColorSwatchCtrl>("sl_gobo_tint");
+    LLSliderCtrl* var1 = findChild<LLSliderCtrl>("sl_gobo_var1");
+    LLSliderCtrl* var2 = findChild<LLSliderCtrl>("sl_gobo_var2");
+    LLSliderCtrl* soft = findChild<LLSliderCtrl>("sl_gobo_soft");
+    LLCheckBoxCtrl* invert = findChild<LLCheckBoxCtrl>("sl_gobo_invert");
+
+    LLPipeline::GoboOverride gobo;
+    gobo.mPattern = pattern->getValue().asInteger();
+    gobo.mAnimMode = anim->getValue().asInteger();
+    gobo.mSpeed = static_cast<F32>(speed->getValue().asReal());
+    gobo.mZoom = static_cast<F32>(zoom->getValue().asReal());
+    gobo.mDispersion = static_cast<F32>(dispersion->getValue().asReal());
+    // Gobo v2: fresh GoboOverride defaults keep tint white / params zero if a
+    // control is absent, so nothing here can perturb the off-path.
+    if (tint)
+    {
+        const LLColor4 c = tint->get();
+        gobo.mTint = LLColor3(c.mV[0], c.mV[1], c.mV[2]);
+    }
+    if (var1) gobo.mPatternParams.mV[0] = static_cast<F32>(var1->getValue().asReal());
+    if (var2) gobo.mPatternParams.mV[1] = static_cast<F32>(var2->getValue().asReal());
+    if (soft) gobo.mPatternParams.mV[2] = static_cast<F32>(soft->getValue().asReal());
+    if (invert) gobo.mPatternParams.mV[3] = invert->get() ? 1.f : 0.f;
+    LLPipeline::setGoboOverride(pObj->getID(), gobo);
+}
+
+// [Cine Haze] Depth Haze tab: "subtle" preset or "reset" (all controls to default).
+void ALFloaterLightBox::onCineHazePreset(const LLSD& userdata)
+{
+    const std::string& preset = userdata.asString();
+    if (preset == "reset")
+    {
+        ALCineHaze::resetToDefaults();
+    }
+    else
+    {
+        ALCineHaze::applyPreset(preset);
+    }
+}
+
+void ALFloaterLightBox::onCineHazeRefFromCamera()
+{
+    ALCineHaze::setReferenceHeightFromCamera();
+}
+
+// [RotoInk] Roto Ink tab: "reset" (all controls to default) or an
+// ALRotoInk preset key (the combo itself is wired directly in postBuild;
+// this registrar entry only ever receives "reset" from ri_reset_all today,
+// mirroring onCineHazePreset's shape for consistency).
+void ALFloaterLightBox::onRotoInkPreset(const LLSD& userdata)
+{
+    const std::string& preset = userdata.asString();
+    if (preset == "reset")
+    {
+        ALRotoInk::resetToDefaults();
+    }
+    else
+    {
+        ALRotoInk::applyPreset(preset);
+    }
+}
+
+// [RotoInk] Silhouette threshold only means anything in Relative depth mode
+// (dz/z) and Metric threshold only in Metric mode (metres); show only the
+// row that matches CineOutlineDepthMode, same findChild+setVisible idiom as
+// updateTonemapper()'s AMD/Khronos/S-Log3 widget groups above.
+void ALFloaterLightBox::updateRotoInkDepthMode()
+{
+    const bool metric = (gSavedSettings.getS32("CineOutlineDepthMode") == 1);
+
+    static const std::string relative_widgets[] = {
+        "ri_sil_thr_label", "ri_sil_thr_slider", "ri_reset_CineOutlineSilhouetteThreshold",
+    };
+    static const std::string metric_widgets[] = {
+        "ri_metric_thr_label", "ri_metric_thr_slider", "ri_reset_CineOutlineMetricThreshold",
+    };
+    for (const std::string& name : relative_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(!metric);
+    }
+    for (const std::string& name : metric_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(metric);
+    }
+}
+
+// [RotoInk Anim] Contract A.8. Same findChild+setVisible idiom as
+// updateRotoInkDepthMode()/updateTonemapper(); one pass covers every rule
+// (layer 1/2 motion Shape/Angle/anchor-hint per style, the Tempo Phase row,
+// the Pattern group's per-type rows plus the Ratio label wording, the Ink
+// group's Colour-swatch/Match-reach rows per ink colour mode, the Colour
+// effects group's secondary-colour swatch and Speed/Length rows per colour
+// mode, and the Subject "extras" per CineOutlineSubjectMode). Re-run
+// whenever any of the seven driving settings changes (wired in postBuild).
+void ALFloaterLightBox::updateRotoInkAnimVisibility()
+{
+    const S32 motion_style  = gSavedSettings.getS32("CineOutlineMotionStyle");
+    const S32 motion2_style = gSavedSettings.getS32("CineOutlineMotion2Style");
+    const F32 motion_tempo  = gSavedSettings.getF32("CineOutlineMotionTempo");
+    const S32 pattern_type  = gSavedSettings.getS32("CineOutlinePatternType");
+    const S32 ink_mode      = gSavedSettings.getS32("CineOutlineInkColorMode");
+    const S32 color2_mode   = gSavedSettings.getS32("CineOutlineColor2Mode");
+    const S32 subject_mode  = gSavedSettings.getS32("CineOutlineSubjectMode");
+
+    // A "row" = its label (name "<key>_row_label", tagged by the round-A XUI
+    // generator), the control itself, and its reset button ("ri_reset_<key>")
+    // when it has one -- findChild returns null for widgets that don't
+    // (combos/checkboxes/spinners), which the existing idiom already no-ops on.
+    auto set_row = [this](const char* key, const char* widget_name, bool visible)
+    {
+        if (LLView* v = findChild<LLView>(widget_name)) v->setVisible(visible);
+        if (LLView* v = findChild<LLView>(std::string(key) + "_row_label")) v->setVisible(visible);
+        if (LLView* v = findChild<LLView>(std::string("ri_reset_") + key)) v->setVisible(visible);
+    };
+
+    // A.3: styles with no per-style Shape / no Angle meaning / anchor-based.
+    auto needs_shape = [](S32 style)
+    {
+        switch (style)
+        {
+            case 0: case 1: case 2: case 3: case 4: case 5: case 21: case 32: case 33:
+                return false;
+            default:
+                return true;
+        }
+    };
+    auto needs_angle = [](S32 style)
+    {
+        return style == 3 || style == 10 || style == 17 || style == 31 || style == 34;
+    };
+    auto needs_anchor_hint = [](S32 style)
+    {
+        return style == 9 || style == 10 || style == 23 || style == 24 || style == 35;
+    };
+
+    // Motion layer 1.
+    set_row("CineOutlineMotionShape", "ri_motion_shape_slider", needs_shape(motion_style));
+    set_row("CineOutlineMotionAngle", "ri_motion_angle_slider", needs_angle(motion_style));
+    if (LLView* v = findChild<LLView>("ri_motion_anchor_hint")) v->setVisible(needs_anchor_hint(motion_style));
+
+    // Motion layer 2 -- Speed/Amount/Scale stay unconditional (same as layer
+    // 1's own Speed/Amount/Scale); only Shape/Angle/the anchor hint depend on
+    // ITS OWN style value.
+    set_row("CineOutlineMotion2Shape", "ri_motion2_shape_slider", needs_shape(motion2_style));
+    set_row("CineOutlineMotion2Angle", "ri_motion2_angle_slider", needs_angle(motion2_style));
+    if (LLView* v = findChild<LLView>("ri_motion2_anchor_hint")) v->setVisible(needs_anchor_hint(motion2_style));
+
+    // Timing: Phase only means anything once Tempo has locked every speed to
+    // the beat.
+    set_row("CineOutlineMotionPhase", "ri_motion_phase_slider", motion_tempo > 0.f);
+
+    // Pattern group: size/ratio hidden for None; drift only for Dashed/
+    // Dotted; the hatch trio only for Hatch. The Ratio slider's label wording
+    // changes per type (A.8's "label per type").
+    const bool pattern_active = (pattern_type != 0);
+    if (LLView* v = findChild<LLView>("ri_pattern_size_slider")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("CineOutlinePatternSize_row_label")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_reset_CineOutlinePatternSize")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_pattern_ratio_slider")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_pattern_ratio_label")) v->setVisible(pattern_active);
+    if (LLView* v = findChild<LLView>("ri_reset_CineOutlinePatternRatio")) v->setVisible(pattern_active);
+    if (LLTextBox* label = findChild<LLTextBox>("ri_pattern_ratio_label"))
+    {
+        static const char* const kRatioLabels[6] = {
+            "Ratio:", "Dash fill:", "Dot size:", "Stroke fraction:", "Hatch fill:", "Min width:"
+        };
+        label->setValue(kRatioLabels[std::clamp(pattern_type, 0, 5)]);
+    }
+    set_row("CineOutlinePatternDrift", "ri_pattern_drift_slider", pattern_active && (pattern_type == 1 || pattern_type == 2));
+    const bool hatch_active = (pattern_type == 4);
+    set_row("CineOutlineHatchAngle", "ri_hatch_angle_slider", hatch_active);
+    set_row("CineOutlineHatchReach", "ri_hatch_reach_slider", hatch_active);
+    if (LLView* v = findChild<LLView>("ri_hatch_cross_check")) v->setVisible(hatch_active);
+
+    // [RotoInk UI] Ink group: the Colour swatch is the ink colour for Fixed
+    // colour. In Match nearby light with Normal/Multiply blend the shader
+    // still reads it as the dark-area FALLBACK (rotoMatchLight fades toward
+    // outline_color when the surroundings are dark, and uses it when there
+    // is no peak); with Add blend the fallback is black, so it's unused.
+    // Match reach only matters for Match nearby light.
+    const S32 blend_mode = gSavedSettings.getS32("CineOutlineBlendMode");
+    const bool color_used = (ink_mode == 0) || (ink_mode == 1 && blend_mode != 2);
+    set_row("CineOutlineColor", "ri_color_swatch", color_used);
+    if (LLTextBox* color_label = findChild<LLTextBox>("CineOutlineColor_row_label"))
+    {
+        color_label->setText(ink_mode == 1 ? std::string("Fallback colour:") : std::string("Colour:"));
+    }
+    set_row("CineOutlineMatchReach", "ri_match_reach_slider", ink_mode == 1);
+
+    // [RotoInk UI] Colour effects group. Secondary colour swatch: cmode 1
+    // (two-tone) and 3/4 (highlight/heat) read roto_color2.xyz directly;
+    // cmode 2 (rainbow cycle) computes a pure hue from time/position alone
+    // and never reads col2 at all (see cineOutlineF.glsl's cmode==2 branch),
+    // so the swatch is hidden there even though it's a "cycling" mode.
+    // Speed/Length only matter for the two cycling modes (Two-tone, Rainbow);
+    // Highlight/Heat are purely spatial.
+    set_row("CineOutlineColor2", "ri_color2_swatch",
+            color2_mode == 1 || color2_mode == 3 || color2_mode == 4);
+    const bool color2_cycling = (color2_mode == 1 || color2_mode == 2);
+    set_row("CineOutlineColor2Speed", "ri_color2_speed_slider", color2_cycling);
+    set_row("CineOutlineColor2Length", "ri_color2_length_slider", color2_cycling);
+
+    // Subject: mode-3 target-set controls, invert (modes 3-9), the manual
+    // depth band (mode 4) and the screen rectangle/ellipse (modes 7/8).
+    // Existing Target / manual-depth / range / feather / ellipse controls
+    // are left alone -- they stay visible in every mode (A.8).
+    const bool mode3 = (subject_mode == 3);
+    // [TronA0] Mask source applies to the single-subject modes and the target set.
+    set_row("CineOutlineSubjectSource", "ri_subject_source_combo", subject_mode >= 1 && subject_mode <= 3);
+    set_row("CineOutlineSubjectTargetSet", "ri_subject_targetset_combo", mode3);
+    set_row("CineOutlineSubjectMaxTargets", "ri_subject_max_spinner", mode3);
+    set_row("CineOutlineSubjectShape", "ri_subject_shape_combo", mode3);
+    if (LLView* v = findChild<LLView>("ri_subject_target_color_check")) v->setVisible(mode3);
+
+    if (LLView* v = findChild<LLView>("ri_subject_invert_check"))
+    {
+        v->setVisible(subject_mode >= 3 && subject_mode <= 9);
+    }
+
+    const bool mode4 = (subject_mode == 4);
+    set_row("CineOutlineSubjectDepthNear", "ri_subject_near_slider", mode4);
+    set_row("CineOutlineSubjectDepthFar", "ri_subject_far_slider", mode4);
+
+    const bool mode78 = (subject_mode == 7 || subject_mode == 8);
+    set_row("CineOutlineSubjectScreenCX", "ri_subject_screen_cx_slider", mode78);
+    set_row("CineOutlineSubjectScreenCY", "ri_subject_screen_cy_slider", mode78);
+    set_row("CineOutlineSubjectScreenRX", "ri_subject_screen_rx_slider", mode78);
+    set_row("CineOutlineSubjectScreenRY", "ri_subject_screen_ry_slider", mode78);
+}
+
+// [TronT1] Tron tab: "reset" (all controls to default) or an ALTron look-
+// preset key. tr_preset_combo is wired directly in postBuild (see the
+// ri_preset_combo idiom above); this registrar entry only ever receives
+// "reset" from tr_reset_all today.
+void ALFloaterLightBox::onTronPreset(const LLSD& userdata)
+{
+    const std::string& preset = userdata.asString();
+    if (preset == "reset")
+    {
+        ALTron::resetToDefaults();
+    }
+    else
+    {
+        ALTron::applyPreset(preset);
+    }
+}
+
+// [TronT1] tr_palette_combo already persisted TronPalette via its own
+// control_name binding by the time this fires; apply the matching swatch
+// values (id 0 Custom is a no-op, per ALTron::applyPalettePreset's contract).
+void ALFloaterLightBox::onTronPaletteSelected()
+{
+    if (LLComboBox* combo = findChild<LLComboBox>("tr_palette_combo"))
+    {
+        ALTron::applyPalettePreset(combo->getValue().asInteger());
+    }
+}
+
+// [TronT1] Any of the four tr_color_* swatches: a hand-edited swatch no
+// longer matches a named palette, so fall back to Custom rather than let the
+// palette combo silently disagree with the actual colours.
+void ALFloaterLightBox::onTronColorEdited()
+{
+    gSavedSettings.setS32("TronPalette", 0);
+}
+
+// [TronT1] Sets the grid/pulse lattice origin to the camera's current agent
+// position (converted to global coordinates, same idiom ALTron::
+// computeLattice's own TronGridOriginGlobal read expects).
+void ALFloaterLightBox::onTronGridOriginSnap()
+{
+    if (LLViewerCamera* camera = LLViewerCamera::getInstance())
+    {
+        gSavedSettings.setVector3d("TronGridOriginGlobal",
+            gAgent.getPosGlobalFromAgent(camera->getOrigin()));
+    }
+}
+
+void ALFloaterLightBox::onTronGridOriginClear()
+{
+    gSavedSettings.setVector3d("TronGridOriginGlobal", LLVector3d::zero);
+}
+
+// [TronT1] Integration group: apply the Roto Ink / Rig Rim preset linked to
+// the most recently applied Tron look preset even if the matching
+// "+ Roto Ink"/"+ Rig Rim" checkbox was off when it was applied.
+void ALFloaterLightBox::onTronApplyRotoPreset()
+{
+    const std::string& key = ALTron::lastPresetRotoKey();
+    if (!key.empty())
+    {
+        ALRotoInk::applyPreset(key);
+    }
+}
+
+void ALFloaterLightBox::onTronApplyRigRimPreset()
+{
+    const std::string& label = ALTron::lastPresetRigRimLabel();
+    if (!label.empty() && ALPanelCineLightRig::applyRigRimPresetByName(label))
+    {
+        gSavedSettings.setS32("CineRigRimTronMode", ALTron::lastPresetRigRimTronMode());
+    }
+}
+
+// [TronT1] Contract section 7. Same findChild+setVisible idiom as
+// updateRotoInkAnimVisibility()/updateRotoInkDepthMode(); hidden rows leave
+// blank space in the scroll area rather than reflowing what follows (same
+// as every other mode-dependent group on the Roto Ink tab above).
+void ALFloaterLightBox::updateTronVisibility()
+{
+    const bool scene_layer   = (gSavedSettings.getS32("TronLayer") == 0);
+    const bool grade_on      = gSavedSettings.getF32("TronGradeStrength") > 0.f;
+    const bool grid_on       = gSavedSettings.getBOOL("TronGridEnabled");
+    const bool pulses_on     = gSavedSettings.getF32("TronPulseGridAmount") > 0.f;
+    const bool trace_on      = gSavedSettings.getBOOL("TronTraceEnabled");
+    const bool trace_pulses_on = gSavedSettings.getF32("TronTracePulseAmount") > 0.f;
+    const bool rim_on        = gSavedSettings.getBOOL("TronRimEnabled");
+    const bool rim_scan_on   = gSavedSettings.getF32("TronRimScanAmount") > 0.f;
+    // [TronT2] Subject group now also gates on the neon rim (it reads the
+    // subject mask -- contract section 7.1).
+    const bool subject_group = gSavedSettings.getF32("TronGridSubjectExclude") > 0.f ||
+                                gSavedSettings.getF32("TronGridSubjectRadius") > 0.f ||
+                                gSavedSettings.getF32("TronGradeKeepSubject") > 0.f ||
+                                rim_on;
+    const bool single_subject = (gSavedSettings.getS32("TronSubjectTargetSet") == 0);
+    const bool tag_active     = LLViewerShaderMgr::gbufferAvatarTagActive();
+
+    if (LLView* v = findChild<LLView>("tr_layer_hint")) v->setVisible(scene_layer);
+
+    static const std::string grade_widgets[] = {
+        "tr_grade_darken_ev_label", "tr_grade_darken_ev_slider", "tr_reset_TronGradeDarkenEV",
+        "tr_grade_desaturate_label", "tr_grade_desaturate_slider", "tr_reset_TronGradeDesaturate",
+        "tr_grade_crush_label", "tr_grade_crush_slider", "tr_reset_TronGradeCrush",
+        "tr_grade_tint_label", "tr_grade_tint_swatch", "tr_reset_TronGradeTint",
+        "tr_grade_tint_amount_label", "tr_grade_tint_amount_slider", "tr_reset_TronGradeTintAmount",
+        "tr_grade_keep_bright_lo_label", "tr_grade_keep_bright_lo_slider", "tr_reset_TronGradeKeepBrightLo",
+        "tr_grade_keep_bright_hi_label", "tr_grade_keep_bright_hi_slider", "tr_reset_TronGradeKeepBrightHi",
+        "tr_grade_keep_subject_label", "tr_grade_keep_subject_slider", "tr_reset_TronGradeKeepSubject",
+        "tr_grade_sky_darken_label", "tr_grade_sky_darken_slider", "tr_reset_TronGradeSkyDarken",
+    };
+    for (const std::string& name : grade_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(grade_on);
+    }
+
+    static const std::string grid_widgets[] = {
+        "tr_grid_intensity_label", "tr_grid_intensity_slider", "tr_reset_TronGridIntensity",
+        "tr_grid_spacing_label", "tr_grid_spacing_slider", "tr_reset_TronGridSpacing",
+        "tr_grid_width_label", "tr_grid_width_slider", "tr_reset_TronGridWidth",
+        "tr_grid_min_width_px_label", "tr_grid_min_width_px_slider", "tr_reset_TronGridMinWidthPx",
+        "tr_grid_major_every_label", "tr_grid_major_every_spinner",
+        "tr_grid_major_width_label", "tr_grid_major_width_slider", "tr_reset_TronGridMajorWidth",
+        "tr_grid_major_intensity_label", "tr_grid_major_intensity_slider", "tr_reset_TronGridMajorIntensity",
+        "tr_grid_floor_label", "tr_grid_floor_slider", "tr_reset_TronGridFloor",
+        "tr_grid_wall_label", "tr_grid_wall_slider", "tr_reset_TronGridWall",
+        "tr_grid_ceiling_label", "tr_grid_ceiling_slider", "tr_reset_TronGridCeiling",
+        "tr_grid_sharpness_label", "tr_grid_sharpness_slider", "tr_reset_TronGridSharpness",
+        "tr_grid_normal_source_label", "tr_grid_normal_source_combo",
+        "tr_grid_far_fade_label", "tr_grid_far_fade_slider", "tr_reset_TronGridFarFade",
+        "tr_grid_water_mode_label", "tr_grid_water_mode_combo",
+        "tr_grid_water_tolerance_label", "tr_grid_water_tolerance_slider", "tr_reset_TronGridWaterTolerance",
+        "tr_grid_glow_label", "tr_grid_glow_slider", "tr_reset_TronGridGlow",
+        "tr_grid_origin_label", "tr_grid_origin_snap_btn", "tr_grid_origin_clear_btn", "tr_grid_origin_status",
+        "tr_pulse_header",
+    };
+    for (const std::string& name : grid_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(grid_on);
+    }
+
+    static const std::string pulse_widgets[] = {
+        "tr_pulse_grid_speed_label", "tr_pulse_grid_speed_slider", "tr_reset_TronPulseGridSpeed",
+        "tr_pulse_grid_length_label", "tr_pulse_grid_length_slider", "tr_reset_TronPulseGridLength",
+        "tr_pulse_grid_wavelength_label", "tr_pulse_grid_wavelength_slider", "tr_reset_TronPulseGridWavelength",
+        "tr_pulse_grid_density_label", "tr_pulse_grid_density_slider", "tr_reset_TronPulseGridDensity",
+        "tr_pulse_grid_direction_label", "tr_pulse_grid_direction_combo",
+        "tr_pulse_grid_color_mode_label", "tr_pulse_grid_color_mode_combo",
+        "tr_pulse_seed_label", "tr_pulse_seed_slider", "tr_reset_TronPulseSeed",
+    };
+    const bool pulse_rows_visible = grid_on && pulses_on;
+    for (const std::string& name : pulse_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(pulse_rows_visible);
+    }
+    // tr_pulse_grid_amount_slider itself stays visible whenever the grid does
+    // (it is the row that turns the rest of the sub-group on).
+    if (LLView* v = findChild<LLView>("tr_pulse_grid_amount_label")) v->setVisible(grid_on);
+    if (LLView* v = findChild<LLView>("tr_pulse_grid_amount_slider")) v->setVisible(grid_on);
+    if (LLView* v = findChild<LLView>("tr_reset_TronPulseGridAmount")) v->setVisible(grid_on);
+
+    // [TronT2] Circuit traces: every row but the enable is hidden when
+    // TronTraceEnabled is off; the three pulse rows are also hidden when
+    // TronTracePulseAmount == 0 (contract section 7.1).
+    static const std::string trace_widgets[] = {
+        "tr_trace_intensity_label", "tr_trace_intensity_slider", "tr_reset_TronTraceIntensity",
+        "tr_trace_cell_label", "tr_trace_cell_slider", "tr_reset_TronTraceCell",
+        "tr_trace_width_label", "tr_trace_width_slider", "tr_reset_TronTraceWidth",
+        "tr_trace_density_label", "tr_trace_density_slider", "tr_reset_TronTraceDensity",
+        "tr_trace_pad_radius_label", "tr_trace_pad_radius_slider", "tr_reset_TronTracePadRadius",
+        "tr_trace_diagonal_label", "tr_trace_diagonal_slider", "tr_reset_TronTraceDiagonal",
+        "tr_trace_walls_label", "tr_trace_walls_slider", "tr_reset_TronTraceWalls",
+        "tr_trace_floors_label", "tr_trace_floors_slider", "tr_reset_TronTraceFloors",
+    };
+    for (const std::string& name : trace_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trace_on);
+    }
+    static const std::string trace_pulse_widgets[] = {
+        "tr_trace_pulse_speed_label", "tr_trace_pulse_speed_slider", "tr_reset_TronTracePulseSpeed",
+        "tr_trace_pulse_length_label", "tr_trace_pulse_length_slider", "tr_reset_TronTracePulseLength",
+        "tr_trace_seed_label", "tr_trace_seed_slider", "tr_reset_TronTraceSeed",
+    };
+    const bool trace_pulse_rows_visible = trace_on && trace_pulses_on;
+    for (const std::string& name : trace_pulse_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trace_pulse_rows_visible);
+    }
+    if (LLView* v = findChild<LLView>("tr_trace_pulse_amount_label")) v->setVisible(trace_on);
+    if (LLView* v = findChild<LLView>("tr_trace_pulse_amount_slider")) v->setVisible(trace_on);
+    if (LLView* v = findChild<LLView>("tr_reset_TronTracePulseAmount")) v->setVisible(trace_on);
+
+    // [TronT2] Neon rim: every row but the enable is hidden when
+    // TronRimEnabled is off; scan speed/width are also hidden when
+    // TronRimScanAmount == 0.
+    static const std::string rim_widgets[] = {
+        "tr_rim_gain_label", "tr_rim_gain_slider", "tr_reset_TronRimGain",
+        "tr_rim_exponent_label", "tr_rim_exponent_slider", "tr_reset_TronRimExponent",
+        "tr_rim_silhouette_gain_label", "tr_rim_silhouette_gain_slider", "tr_reset_TronRimSilhouetteGain",
+        "tr_rim_silhouette_threshold_label", "tr_rim_silhouette_threshold_slider", "tr_reset_TronRimSilhouetteThreshold",
+        "tr_rim_pulse_amount_label", "tr_rim_pulse_amount_slider", "tr_reset_TronRimPulseAmount",
+        "tr_rim_scan_amount_label", "tr_rim_scan_amount_slider", "tr_reset_TronRimScanAmount",
+        "tr_rim_color_mode_label", "tr_rim_color_mode_combo",
+        "tr_rim_reject_floors_check",
+    };
+    for (const std::string& name : rim_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(rim_on);
+    }
+    static const std::string rim_scan_widgets[] = {
+        "tr_rim_scan_speed_label", "tr_rim_scan_speed_slider", "tr_reset_TronRimScanSpeed",
+        "tr_rim_scan_width_label", "tr_rim_scan_width_slider", "tr_reset_TronRimScanWidth",
+    };
+    const bool rim_scan_rows_visible = rim_on && rim_scan_on;
+    for (const std::string& name : rim_scan_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(rim_scan_rows_visible);
+    }
+
+    static const std::string subject_widgets[] = {
+        "tr_subject_header",
+        "tr_subject_target_set_label", "tr_subject_target_set_combo",
+        "tr_subject_max_targets_label", "tr_subject_max_targets_spinner",
+        "tr_subject_shape_label", "tr_subject_shape_combo",
+        "tr_subject_feather_label", "tr_subject_feather_slider", "tr_reset_TronSubjectFeather",
+        "tr_subject_depth_range_label", "tr_subject_depth_range_slider", "tr_reset_TronSubjectDepthRange",
+        "tr_subject_ellipse_scale_label", "tr_subject_ellipse_scale_slider", "tr_reset_TronSubjectEllipseScale",
+        "tr_subject_source_grid_label", "tr_subject_source_grid_combo",
+        "tr_subject_source_rim_label", "tr_subject_source_rim_combo",
+        "tr_subject_source_hint",
+        "tr_subject_invert_check",
+        "tr_grid_subject_exclude_label", "tr_grid_subject_exclude_slider", "tr_reset_TronGridSubjectExclude",
+        "tr_grid_subject_radius_label", "tr_grid_subject_radius_slider", "tr_reset_TronGridSubjectRadius",
+        "tr_grid_subject_radius_feather_label", "tr_grid_subject_radius_feather_slider", "tr_reset_TronGridSubjectRadiusFeather",
+    };
+    for (const std::string& name : subject_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(subject_group);
+    }
+    if (LLView* v = findChild<LLView>("tr_subject_target_label")) v->setVisible(subject_group && single_subject);
+    if (LLView* v = findChild<LLView>("tr_subject_target_combo")) v->setVisible(subject_group && single_subject);
+    if (LLView* v = findChild<LLView>("tr_subject_source_hint")) v->setVisible(subject_group && !tag_active);
+
+    // [TronT3] Light-cycle trails: every row but the header/enable is hidden
+    // when TronTrailEnabled is off; Height/Width/Fog density/Single subject
+    // additionally depend on Style/Fog mode/Target set (T3 contract section 6).
+    const bool trail_on    = gSavedSettings.getBOOL("TronTrailEnabled");
+    const S32  trail_style = gSavedSettings.getS32("TronTrailStyle");
+    const S32  trail_fog   = gSavedSettings.getS32("TronTrailFog");
+    const S32  trail_set   = gSavedSettings.getS32("TronTrailTargetSet");
+    static const std::string trail_widgets[] = {
+        "tr_trail_style_label", "tr_trail_style_combo",
+        "tr_trail_target_set_label", "tr_trail_target_set_combo",
+        "tr_trail_max_actors_label", "tr_trail_max_actors_spinner",
+        "tr_trail_intensity_label", "tr_trail_intensity_slider", "tr_reset_TronTrailIntensity",
+        "tr_trail_color_mode_label", "tr_trail_color_mode_combo",
+        "tr_trail_scale_check",
+        "tr_trail_lift_label", "tr_trail_lift_slider", "tr_reset_TronTrailLift",
+        "tr_trail_fade_time_label", "tr_trail_fade_time_slider", "tr_reset_TronTrailFadeTime",
+        "tr_trail_fade_curve_label", "tr_trail_fade_curve_slider", "tr_reset_TronTrailFadeCurve",
+        "tr_trail_edge_label", "tr_trail_edge_slider", "tr_reset_TronTrailEdge",
+        "tr_trail_edge_gain_label", "tr_trail_edge_gain_slider", "tr_reset_TronTrailEdgeGain",
+        "tr_trail_body_gain_label", "tr_trail_body_gain_slider", "tr_reset_TronTrailBodyGain",
+        "tr_trail_glow_label", "tr_trail_glow_slider", "tr_reset_TronTrailGlow",
+        "tr_trail_fog_label", "tr_trail_fog_combo",
+        "tr_trail_spacing_label", "tr_trail_spacing_slider", "tr_reset_TronTrailSpacing",
+        "tr_trail_min_speed_label", "tr_trail_min_speed_slider", "tr_reset_TronTrailMinSpeed",
+        "tr_trail_idle_break_label", "tr_trail_idle_break_slider", "tr_reset_TronTrailIdleBreak",
+        "tr_trail_break_distance_label", "tr_trail_break_distance_slider", "tr_reset_TronTrailBreakDistance",
+        "tr_trail_max_points_label", "tr_trail_max_points_spinner",
+        "tr_trail_max_segments_label", "tr_trail_max_segments_spinner",
+        "tr_trail_clear_on_cut_check",
+        "tr_trail_clear_btn",
+    };
+    for (const std::string& name : trail_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_on);
+    }
+    static const std::string trail_height_widgets[] = {
+        "tr_trail_height_label", "tr_trail_height_slider", "tr_reset_TronTrailHeight",
+    };
+    const bool trail_height_visible = trail_on && (trail_style != 1);
+    for (const std::string& name : trail_height_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_height_visible);
+    }
+    static const std::string trail_width_widgets[] = {
+        "tr_trail_width_label", "tr_trail_width_slider", "tr_reset_TronTrailWidth",
+    };
+    const bool trail_width_visible = trail_on && (trail_style != 0);
+    for (const std::string& name : trail_width_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_width_visible);
+    }
+    static const std::string trail_fog_density_widgets[] = {
+        "tr_trail_fog_density_label", "tr_trail_fog_density_slider", "tr_reset_TronTrailFogDensity",
+    };
+    const bool trail_fog_density_visible = trail_on && (trail_fog != 0);
+    for (const std::string& name : trail_fog_density_widgets)
+    {
+        if (LLView* v = findChild<LLView>(name)) v->setVisible(trail_fog_density_visible);
+    }
+    const bool trail_single_target_visible = trail_on && (trail_set == 0);
+    if (LLView* v = findChild<LLView>("tr_trail_target_label")) v->setVisible(trail_single_target_visible);
+    if (LLView* v = findChild<LLView>("tr_trail_target_combo")) v->setVisible(trail_single_target_visible);
 }
 
 void ALFloaterLightBox::populateLUTCombo()
@@ -290,6 +1093,22 @@ void ALFloaterLightBox::onClickResetGroupDefault(const LLSD& userdata)
     {
         {
             LLControlVariable* controlp = gSavedSettings.getControl("RenderExposure");
+            if (controlp)
+            {
+                controlp->resetToDefault(true);
+            }
+        }
+
+        // Post-tonemap grade (Khronos Neutral only, tonemap type 0) parameters.
+        static const char* const khronos_grade_controls[] = {
+            "AlchemyToneMapSaturation",
+            "AlchemyToneMapContrast",
+            "AlchemyToneMapKhronosDesaturation",
+            "AlchemyToneMapKhronosStartCompression",
+        };
+        for (const char* control_name : khronos_grade_controls)
+        {
+            LLControlVariable* controlp = gSavedSettings.getControl(control_name);
             if (controlp)
             {
                 controlp->resetToDefault(true);
@@ -442,6 +1261,42 @@ void ALFloaterLightBox::updateTonemapper()
         if (LLView* v = findChild<LLView>(widget_name))
         {
             v->setVisible(amd);
+        }
+    }
+
+    // [Grade] The post-tonemap Saturation/Contrast and Khronos highlight
+    // Desat/Knee sliders only apply to (and are only shown for) tonemap
+    // type 0 (Khronos Neutral); hide them for every other tonemapper.
+    static const std::string khronos_widgets[] = {
+        "tm_saturation_label",    "tm_saturation_slider",    "tm_saturation_spinner",
+        "tm_contrast_label",      "tm_contrast_slider",      "tm_contrast_spinner",
+        "tm_khronos_desat_label", "tm_khronos_desat_slider", "tm_khronos_desat_spinner",
+        "tm_khronos_knee_label",  "tm_khronos_knee_slider",  "tm_khronos_knee_spinner",
+    };
+    const bool khronos = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 0);
+    for (const std::string& widget_name : khronos_widgets)
+    {
+        if (LLView* v = findChild<LLView>(widget_name))
+        {
+            v->setVisible(khronos);
+        }
+    }
+
+    // [S-Log3] The S-Log3 capture controls (curve family, encoding range,
+    // shadow toe, EV offset) only apply to tonemap type 8; show them only when
+    // S-Log3 Capture is selected and hide them for every other tonemapper.
+    static const std::string slog_widgets[] = {
+        "slog_curve_label", "slog_curve_combo",
+        "slog_range_label", "slog_range_combo",
+        "slog_toe_label",   "slog_toe_slider",   "slog_toe_spinner",
+        "slog_ev_label",    "slog_ev_slider",    "slog_ev_spinner",
+    };
+    const bool slog = (gSavedSettings.getS32("AlchemyRenderTonemapType") == 8);
+    for (const std::string& widget_name : slog_widgets)
+    {
+        if (LLView* v = findChild<LLView>(widget_name))
+        {
+            v->setVisible(slog);
         }
     }
 }

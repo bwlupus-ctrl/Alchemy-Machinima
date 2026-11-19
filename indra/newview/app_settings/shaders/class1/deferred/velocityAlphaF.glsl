@@ -30,18 +30,33 @@
 out vec4 frag_color;
 
 uniform sampler2D diffuseMap;
+uniform float minimum_alpha;
+uniform int velocity_texture_alpha_only;
 
 in vec4 vary_cur_clip;
 in vec4 vary_last_clip;
 in vec2 vary_texcoord0;
 in vec4 vertex_color;
+in vec3 vary_actor_fx_position;
+
+bool actorFxDissolveDiscard(vec3 raw_object_position);
 
 void main()
 {
-    float alpha = texture(diffuseMap, vary_texcoord0.xy).a * vertex_color.a;
+    float alpha = texture(diffuseMap, vary_texcoord0.xy).a;
+    if (velocity_texture_alpha_only == 0)
+    {
+        alpha *= vertex_color.a;
+    }
 
-    // Match the deferred alpha-mask cutoff closely enough for a coverage mask.
-    if (alpha < 0.5)
+    if (alpha < minimum_alpha)
+    {
+        discard;
+    }
+
+    // Keep the authored cutout test above on its original UV. Actor FX only
+    // subtracts further coverage and never changes the material's alpha.
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
     {
         discard;
     }

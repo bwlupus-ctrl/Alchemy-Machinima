@@ -27,6 +27,7 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "llappviewer.h"
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
 
 // Viewer includes
 #include "llversioninfo.h"
@@ -70,7 +71,11 @@
 #include "alghoststudio.h"      // per-instance Keep facing transforms (idle tick)
 #include "altoolghostedit.h"    // [GhostStudio] per-frame manip-proxy sync (idle tick)
 #include "aldirectoranimswitcher.h" // presentation-time animation switchboard
+#include "allocalfogmanager.h"      // client-only atmospheric volumes
+#include "alcinelightrigmanager.h"  // client-only cinematic lights
+#include "alvcambonepov.h"          // skeleton-attached prim-free cameras
 #include "aldirectorswitcher.h" // presentation-time camera switch schedule
+#include "altron.h"             // [TronT0] shared clock latch (idle tick)
 #include "llcinematiccamera.h"
 #include "llflycamrecorder.h"
 #include "llpathcamera.h"    // per-node path camera source (authored actor+camera TAKE)
@@ -1324,15 +1329,21 @@ void LLAppViewer::initMaxHeapSize()
     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32("MaxHeapSize") ;
 #else
     F32Gigabytes max_heap_size_gb = (F32Gigabytes)gSavedSettings.getF32("MaxHeapSize64");
-    // [BDMerge G5.0] 0 = auto-size: 7/8 of installed physical RAM, never below
-    // the legacy 16GB default. A fixed cap makes updateMemoryInfo() report
-    // available memory as min(true available, cap - RSS), so a machine with
+    // [BDMerge G5.0] 0 = auto-size from installed physical RAM.
+    // A fixed cap makes updateMemoryInfo() report
+    // available memory as min(true available, cap - private commit), so a machine with
     // far more RAM than the cap can misread as "low system memory" and
     // trigger the emergency texture purge with plenty actually free.
     if (max_heap_size_gb.value() <= 0.f)
     {
         const F32Gigabytes phys_gb = F32Gigabytes::convert(gSysMemory.getPhysicalMemoryKB());
-        max_heap_size_gb = F32Gigabytes(llmax(phys_gb.value() * 0.875f, 16.f));
+        // Leave proportionally more room for Windows and other applications
+        // on small machines. The ratio rises smoothly from ~75% at 4 GB to
+        // 87.5% at 64 GB and stays there for large workstations.
+        const F32 auto_ratio = llclamp(0.75f + llmin(phys_gb.value(), 64.f) / 512.f,
+                                       0.75f,
+                                       0.875f);
+        max_heap_size_gb = F32Gigabytes(phys_gb.value() * auto_ratio);
     }
 #endif
 
@@ -2284,7 +2295,21 @@ bool LLAppViewer::initThreads()
     // (measured: ~45 threads' worth of queued decode demand on 32 threads);
     // 0 = stock ceiling of 16
     U32 decode_ceiling = gSavedSettings.getU32("BDMergeDecodeThreadCeiling");
-    S32 image_decode_count = llclamp(cores - 6, 2, decode_ceiling > 0 ? (S32)decode_ceiling : 16);
+    const U32 configured_decode_ceiling = decode_ceiling > 0 ? llmin(decode_ceiling, 256u) : 16u;
+    const U32 physical_mb = gSysMemory.getPhysicalMemoryKB().value() / 1024u;
+    // A decoder can transiently hold a full raw image plus conversion and
+    // cache copies. Limit concurrency to one worker per 2 GB of installed RAM
+    // before applying the CPU/configured ceilings: 4/8/16/32 GB -> 2/4/8/16.
+    const U32 memory_decode_ceiling = llclamp(physical_mb / 2048u, 2u, 256u);
+    const S32 effective_decode_ceiling = (S32)llmin(configured_decode_ceiling,
+                                                    memory_decode_ceiling);
+    S32 image_decode_count = llclamp(cores - 6, 2, effective_decode_ceiling);
+
+    LL_INFOS("ThreadPool") << "ImageDecode workers: " << image_decode_count
+                            << " (cores " << cores
+                            << ", configured ceiling " << configured_decode_ceiling
+                            << ", memory ceiling " << memory_decode_ceiling << ")"
+                            << LL_ENDL;
 
     threadCounts["ImageDecode"] = image_decode_count;
     gSavedSettings.setLLSD("ThreadPoolSizes", threadCounts);
@@ -5067,6 +5092,11 @@ void LLAppViewer::idle()
     // idle() or in the following display(). Wall/network time is untouched.
     // See doc/TEMPORAL_CAPTURE_WORLD_TIME_SCALE_BRIEF.md.
     LLPresentationTime::instance().tick();
+    // [TronT0] Latch the shared Tron clock immediately after the
+    // presentation clock ticks, before any consumer runs later this
+    // iteration -- see altron.h. Cheap no-op work while TronEnabled is off
+    // (a handful of cached-setting reads and a fmod).
+    ALTron::latchFrame();
     LLEventTimer::updateClass();
     LLPerfStats::updateClass();
 
@@ -5380,6 +5410,13 @@ void LLAppViewer::idle()
         if (!(logoutRequestSent() && hasSavedFinalSnapshot()))
         {
             gObjectList.update(gAgent);
+            // [GhostStudio] TRUE-mirror clones copy their source's FINAL pose
+            // (post-motion, post-gaze/IK) -- which only exists once every
+            // avatar's updateCharacter() has run above. Must stay immediately
+            // after gObjectList.update() and before any render-side consumer.
+            ALGhostStudio::instance().updatePostObjectList();
+            // [AvatarLightResponse] per-frame table rebuild / counter roll / 1 Hz debug log
+            ALAvatarLightResponse::tick();
         }
     }
 
@@ -5516,6 +5553,13 @@ void LLAppViewer::idle()
     // [Anim Switchboard] Resolve the directed-animation program for this same
     // frozen presentation frame. Inert while disarmed.
     ALDirectorAnimSwitcher::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+
+    ALLocalFogManager::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+    ALCineLightRigManager::instance().tick(
+        LLPresentationTime::currentFrame().presentation_time);
+    ALVCamBonePov::instance().tick(
         LLPresentationTime::currentFrame().presentation_time);
 
     if (gAgentPilot.isPlaying() && gAgentPilot.getOverrideCamera())
@@ -6046,6 +6090,10 @@ void LLAppViewer::disconnectViewer()
     {
         LLSelectMgr::getInstance()->deselectAll();
     }
+
+    // Local light emitters must leave mLights before the region/object list is
+    // torn down. This is idempotent on logout, relog, and final shutdown.
+    ALCineLightRigManager::instance().shutdown();
 
     // [BDMerge G3.3 Phase 2] Session-only projector volumetric-shaft opt-in set
     // must not survive a session; clear it on logout/relog (this runs before

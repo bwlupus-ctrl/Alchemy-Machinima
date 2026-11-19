@@ -32,6 +32,17 @@
      top="19"
      left_pad="4"
      width="300"/>
+    <check_box
+     control_name="JoystickAutoFlycamEnabled"
+     follows="left|top"
+     height="18"
+     label="Auto-detect Xbox for Flycam"
+     layout="topleft"
+     left="375"
+     name="JoystickAutoFlycamEnabled"
+     tool_tip="Poll every three seconds for an Xbox controller and automatically select it for Flycam. Saved controller mappings are never changed."
+     top="21"
+     width="180" />
     <spinner
      bottom="56"
      height="10"

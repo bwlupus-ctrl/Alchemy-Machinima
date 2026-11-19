@@ -410,8 +410,14 @@ void LLDrawPoolBump::renderGroup(LLSpatialGroup* group, U32 type, bool texture =
     {
         LLDrawInfo& params = **k;
 
+        if (shouldSuppressSharedActorFx(params))
+        {
+            continue;
+        }
+
         applyModelMatrix(params);
 
+        uploadActorFx(params);
         params.mVertexBuffer->setBuffer();
         params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
     }
@@ -957,7 +963,7 @@ void LLBumpImageList::onSourceUpdated(LLViewerTexture* src, EBumpEffect bump_cod
 
         gGL.getTexUnit(0)->bind(bump);
 
-        LLImageGL::setManualImage(GL_TEXTURE_2D, 0, dst_img->getPrimaryFormat(), dst_img->getWidth(), dst_img->getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, nullptr, false);
+        LLImageGL::setManualImage(GL_TEXTURE_2D, 0, dst_img->getPrimaryFormat(), dst_img->getWidth(), dst_img->getHeight(), GL_RGBA, GL_UNSIGNED_BYTE, nullptr, false, true);
 
         LLGLuint tex_name = dst_img->getTexName();
         // point render target at empty buffer
@@ -1059,6 +1065,11 @@ void LLDrawPoolBump::pushBumpBatches(U32 type)
 void LLRenderPass::pushBumpBatch(LLDrawInfo& params, bool texture, bool batch_textures)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
+    if (shouldSuppressSharedActorFx(params))
+    {
+        return;
+    }
+
     applyModelMatrix(params);
 
     bool tex_setup = false;
@@ -1109,6 +1120,7 @@ void LLRenderPass::pushBumpBatch(LLDrawInfo& params, bool texture, bool batch_te
         }
     }
 
+    uploadActorFx(params);
     params.mVertexBuffer->setBuffer();
     params.mVertexBuffer->drawRange(LLRender::TRIANGLES, params.mStart, params.mEnd, params.mCount, params.mOffset);
 
@@ -1127,4 +1139,3 @@ void LLRenderPass::pushBumpBatch(LLDrawInfo& params, bool texture, bool batch_te
         gGL.matrixMode(LLRender::MM_MODELVIEW);
     }
 }
-

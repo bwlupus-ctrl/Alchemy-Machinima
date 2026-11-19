@@ -42,6 +42,7 @@
 #include "raytrace.h"
 
 #include "alavatargroups.h"
+#include "alavatarlightresponse.h" // [AvatarLightResponse]
 #include "aoengine.h"
 #include "llagent.h" //  Get state values from here
 #include "llagentbenefits.h"
@@ -49,6 +50,7 @@
 #include "llagentwearables.h"
 #include "llanimationstates.h"
 #include "llactormover.h"   // [ActorMover] local ghost locomotion
+#include "lldirectorcast.h" // cinematic Actor FX live-detail policy
 #include "alobjectpathmover.h"  // [ObjectPath] driven-object undamped seat sync
 #include "llavatarnamecache.h"
 #include "llavatarpropertiesprocessor.h"
@@ -2156,16 +2158,29 @@ LLVOAvatar* LLVOAvatar::asAvatar()
 //-----------------------------------------------------------------------------
 void LLVOAvatar::startDefaultMotions()
 {
-    //-------------------------------------------------------------------------
-    // start default motions
-    //-------------------------------------------------------------------------
-    startMotion( ANIM_AGENT_HEAD_ROT );
-    startMotion( ANIM_AGENT_EYE );
-    startMotion( ANIM_AGENT_BODY_NOISE );
-    startMotion( ANIM_AGENT_BREATHE_ROT );
-    startMotion( ANIM_AGENT_PHYSICS_MOTION );
-    startMotion( ANIM_AGENT_HAND_MOTION );
-    startMotion( ANIM_AGENT_PELVIS_FIX );
+    // [Alchemy] Honor mEnableDefaultMotions HERE, not only at the buildCharacter()
+    // call site. LLControlAvatar (llcontrolavatar.cpp:58) and LLGhostAvatar
+    // (llghostavatar.cpp:100) clear the flag on purpose, and every other
+    // default-motion start in this file already checks it (buildCharacter,
+    // processAnimationStateChanges, getOffObject). This was the one unguarded
+    // entry: FSPoserAnimator::tryPosingAvatar() calls it for whatever it poses,
+    // which on an animesh strands head-rot/eye/breathe/pelvis-fix drivers on the
+    // object's rig after posing stops (stopPosingAvatar() only stops the posing
+    // motion, and flushAllMotions() restarts active motions, so a skeleton reset
+    // did not clear them either).
+    if (mEnableDefaultMotions)
+    {
+        //---------------------------------------------------------------------
+        // start default motions
+        //---------------------------------------------------------------------
+        startMotion( ANIM_AGENT_HEAD_ROT );
+        startMotion( ANIM_AGENT_EYE );
+        startMotion( ANIM_AGENT_BODY_NOISE );
+        startMotion( ANIM_AGENT_BREATHE_ROT );
+        startMotion( ANIM_AGENT_PHYSICS_MOTION );
+        startMotion( ANIM_AGENT_HAND_MOTION );
+        startMotion( ANIM_AGENT_PELVIS_FIX );
+    }
 
     //-------------------------------------------------------------------------
     // restart any currently active motions
@@ -2403,6 +2418,11 @@ void LLVOAvatar::resetSkeleton(bool reset_animations)
             resetAnimations();
         }
     }
+
+    // [Machinima] The skeleton was rebuilt: joint pointers and bone lengths
+    // changed, so drop all Pose Polish shadow state (cached IK setup, contact
+    // locks, inertia offsets) to reseed fresh against the new skeleton.
+    mPosePolish.reset();
 
     LL_DEBUGS("Avatar") << avString() << " reset ends" << LL_ENDL;
 }
@@ -4144,6 +4164,9 @@ void LLVOAvatar::slamPosition()
         gPipeline.updateMoveNormalAsync(mDrawable);
     }
     mRoot->updateWorldMatrixChildren();
+    // [Machinima] A position slam (teleport / region cross) is a discontinuity:
+    // drop Pose Polish shadow state so it never smooths across the jump.
+    mPosePolish.reset();
 }
 
 bool LLVOAvatar::isVisuallyMuted()
@@ -4174,6 +4197,13 @@ bool LLVOAvatar::isVisuallyMuted()
         else if (isInMuteList())
         {
             muted = true;
+        }
+        else if (hasEffectiveActorFx())
+        {
+            // Actor FX needs the authored live avatar, not a complexity/ART
+            // stand-in. Explicit mute-list and Never Render policy above remain
+            // authoritative; only automatic performance muting is bypassed.
+            muted = false;
         }
         else if (mIsControlAvatar)
         {
@@ -4599,8 +4629,18 @@ void LLVOAvatar::updateFootstepSounds()
 // ------------------------------------------------------------------------
 void LLVOAvatar::computeUpdatePeriod()
 {
-    // A client-only ghost clone always updates every frame (never impostor-throttled).
-    if (isGhostAvatar())
+    // Ghost clones and styled cinematic actors always update their authored
+    // skeleton every frame. Actor FX cannot use temporally throttled jelly or
+    // impostor state without visibly freezing animation and attachments.
+    if (isGhostAvatar() || hasEffectiveActorFx())
+    {
+        mUpdatePeriod = 1;
+        return;
+    }
+    // [AvatarLightResponse] An adjusted avatar is kept live: full geometry and per-frame
+    // animation, so it never renders through an impostor bake (which cannot carry the
+    // trim). Muted / Never Render / too-complex avatars stay authoritative.
+    if (ALAvatarLightResponse::keepsLive(this) && !isVisuallyMuted())
     {
         mUpdatePeriod = 1;
         return;
@@ -4753,6 +4793,7 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
             pelvis_rot_threshold *= DEG_TO_RAD;
 
             F32 angle = angle_between( pelvisDir, fwdDir );
+            const bool actor_mover_driving = LLActorMover::instance().isDriving(getID());
 
             // The avatar's root is allowed to have a yaw that deviates widely
             // from the forward direction, but if roll or pitch are off even
@@ -4761,9 +4802,16 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
                && root_pitch < 5.f * DEG_TO_RAD)
             {
                 // smaller correction vector means pelvis follows prim direction more closely
-                if (!mTurning && angle > pelvis_rot_threshold*0.75f)
+                if (actor_mover_driving)
                 {
-                    mTurning = true;
+                    mTurning = false;
+                }
+                else
+                {
+                    if (!mTurning && angle > pelvis_rot_threshold*0.75f)
+                    {
+                        mTurning = true;
+                    }
                 }
 
                 // use tighter threshold when turning
@@ -4801,15 +4849,18 @@ void LLVOAvatar::updateOrientation(LLAgent& agent, F32 speed, F32 delta_time)
             fwdDir = leftDir % upDir;
             LLQuaternion wQv( fwdDir, leftDir, upDir );
 
-            if (isSelf() && mTurning)
+            if (!actor_mover_driving)
             {
-                if ((fwdDir % pelvisDir) * upDir > 0.f)
+                if (isSelf() && mTurning)
                 {
-                    gAgent.setControlFlags(AGENT_CONTROL_TURN_RIGHT);
-                }
-                else
-                {
-                    gAgent.setControlFlags(AGENT_CONTROL_TURN_LEFT);
+                    if ((fwdDir % pelvisDir) * upDir > 0.f)
+                    {
+                        gAgent.setControlFlags(AGENT_CONTROL_TURN_RIGHT);
+                    }
+                    else
+                    {
+                        gAgent.setControlFlags(AGENT_CONTROL_TURN_LEFT);
+                    }
                 }
             }
 
@@ -5098,9 +5149,513 @@ bool LLVOAvatar::computeNeedsUpdate()
 // simulator.
 //
 //------------------------------------------------------------------------
+// [Machinima] Post-blend Pose Polish stage (alposepolish.h). Defined here
+// because it operates on the full LLVOAvatar. Master gate ALPolishEnabled
+// defaults false -> pure no-op, displayed pose bit-identical to today. Each
+// milestone's pure math lives in its own header-only module and is invoked
+// from here as it lands.
+//------------------------------------------------------------------------
+namespace
+{
+// [Machinima] M1 joint table: the major body joints the inertializer polishes,
+// grouped so each gets a suitable decay half-life. Fingers/face are deliberately
+// omitted (per the plan); mPelvis is omitted in v1 so continuity never fights
+// root turning/locomotion. getJoint() is null-guarded, so rigs missing a Bento
+// spine joint simply skip it.
+enum { PJ_SPINE = 0, PJ_ARM, PJ_LEG, PJ_HEAD, PJ_GROUPS };
+struct PolishJointEntry { const char* mName; S32 mGroup; };
+const PolishJointEntry kPolishJoints[] = {
+    {"mTorso", PJ_SPINE}, {"mChest", PJ_SPINE},
+    {"mSpine1", PJ_SPINE}, {"mSpine2", PJ_SPINE},
+    {"mSpine3", PJ_SPINE}, {"mSpine4", PJ_SPINE},
+    {"mNeck", PJ_HEAD}, {"mHead", PJ_HEAD},
+    {"mCollarLeft", PJ_ARM}, {"mShoulderLeft", PJ_ARM},
+    {"mElbowLeft", PJ_ARM}, {"mWristLeft", PJ_ARM},
+    {"mCollarRight", PJ_ARM}, {"mShoulderRight", PJ_ARM},
+    {"mElbowRight", PJ_ARM}, {"mWristRight", PJ_ARM},
+    // Legs are deliberately NOT inertialized here: the M2 contact stage owns
+    // hip/knee/ankle and runs AFTER M1, so inertializing them would make M1
+    // record a pre-IK "displayed" pose and mis-capture the next transition
+    // (Codex finding). Leg continuity, when wanted, comes from contact.
+};
+const S32 kPolishJointCount = (S32)(sizeof(kPolishJoints) / sizeof(kPolishJoints[0]));
+}
+
+void ALPosePolish::runInertialization(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<F32> hl_spine(gSavedSettings, "ALPolishInertiaHalfLifeSpine", 0.13f);
+    static LLCachedControl<F32> hl_arm(gSavedSettings,   "ALPolishInertiaHalfLifeArm",   0.09f);
+    static LLCachedControl<F32> hl_leg(gSavedSettings,   "ALPolishInertiaHalfLifeLeg",   0.09f);
+    static LLCachedControl<F32> hl_head(gSavedSettings,  "ALPolishInertiaHalfLifeHead",  0.07f);
+    const F32 group_hl[PJ_GROUPS] = {
+        (F32)hl_spine, (F32)hl_arm, (F32)hl_leg, (F32)hl_head };
+
+    if ((S32)mInertiaJoints.size() != kPolishJointCount)
+    {
+        mInertiaJoints.assign(kPolishJointCount, ALPoseContinuity::InertiaJoint());
+    }
+    // A hitch / teleport / scrub shows up as a very large dt: reseed (raw pose)
+    // instead of smoothing across the discontinuity.
+    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+
+    for (S32 i = 0; i < kPolishJointCount; ++i)
+    {
+        LLJoint* j = av->getJoint(kPolishJoints[i].mName);
+        if (!j)
+        {
+            continue;
+        }
+        ALPoseContinuity::InertiaJoint& s = mInertiaJoints[i];
+        if (big_dt)
+        {
+            ALPoseContinuity::resetJoint(s);
+        }
+        LLQuaternion rot = j->getRotation();      // freshly blended local rotation
+        LLVector3    pos = j->getPosition();
+        // Rotation-only v1: pos half-life 0 snaps that channel closed, so pos is
+        // returned untouched (position inertialization is a later refinement).
+        ALPoseContinuity::inertialize(
+            s, rot, pos, dt, group_hl[kPolishJoints[i].mGroup],
+            /*pos_half_life=*/0.f, /*transition=*/false);
+        // Write only while the offset actually contributes. When settled, `rot`
+        // is a bit-copy of the blended input, so skipping the write leaves the
+        // joint exactly as animated AND avoids the redundant touch()/dirty
+        // (true execution-path no-op, per Codex).
+        if (!s.mSettled)
+        {
+            j->setRotation(rot);
+            mSeeded = true;
+            ++mDiagInertia;   // M5 diagnostic
+        }
+    }
+}
+
+// [Machinima] M2 contact stabilizer: hold planted feet in world space with the
+// proven LLJointSolverRP3 two-bone leg IK, mirroring llkeyframestandmotion.cpp's
+// internal-joint-copy setup (onActivate pole/BAxis, setupJoints, per-frame
+// propagation of the REAL joint transforms into the copies, solve, readback).
+// Contact inference (when/where a foot is locked) is the pure ALContactStab
+// module; this function only wires it to the skeleton. Writes ONLY hip/knee/
+// ankle LOCAL rotations, blended by a ramped correction weight — never mRoot,
+// never sim position, never joint positions.
+void ALPosePolish::runContact(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<F32> contact_weight(gSavedSettings, "ALPolishContactWeight", 0.75f);
+
+    const F32 BLEND_IN_TIME  = 0.15f;  // s: correction ramp-in (never hard-on)
+    const F32 BLEND_OUT_TIME = 0.08f;  // s: correction ramp-out on release
+    const F32 REACH_CLAMP    = 0.95f;  // fraction of full leg length: beyond => release
+    const F32 MAX_CORRECTION = 0.35f;  // m: lock this far from the raw foot is stale => drop it
+
+    LLJoint* hip_l   = av->getJoint("mHipLeft");
+    LLJoint* knee_l  = av->getJoint("mKneeLeft");
+    LLJoint* ankle_l = av->getJoint("mAnkleLeft");
+    LLJoint* hip_r   = av->getJoint("mHipRight");
+    LLJoint* knee_r  = av->getJoint("mKneeRight");
+    LLJoint* ankle_r = av->getJoint("mAnkleRight");
+    LLJoint* pelvis  = av->getJoint("mPelvis");
+
+    const bool joints_ok = pelvis && hip_l && knee_l && ankle_l
+                                  && hip_r && knee_r && ankle_r;
+    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+    const bool have_mover_hints =
+        mContactHints.mFrame == LLFrameTimer::getFrameCount() &&
+        mContactHints.mMoverOwnsRoot;
+    if (have_mover_hints && mContactHints.mDiscontinuity)
+    {
+        ALContactStab::resetFoot(mFoot[0]);
+        ALContactStab::resetFoot(mFoot[1]);
+        mContactBlend[0] = mContactBlend[1] = 0.f;
+    }
+    const bool airborne = have_mover_hints
+        ? !mContactHints.mGrounded : av->mInAir;
+
+    // Grounded biped locomotion only (plan rule 5): sitting, flying / in-air,
+    // underwater / swimming, an incomplete leg rig, or a dt discontinuity
+    // (teleport / hitch / scrub, rule 4) skips the stage entirely and drops all
+    // contact state so nothing stale survives. The leg then keeps its authored
+    // animation untouched. NOTE: a standard skeleton always has the six leg
+    // bones, so joint presence is not proof of a walking biped -- a grounded
+    // full-body dance can still qualify; the contact inference's speed/height
+    // gating is the practical filter there (documented limitation for v1).
+    if (!joints_ok || big_dt || av->isSitting() || airborne || av->mBelowWater)
+    {
+        ALContactStab::resetFoot(mFoot[0]);
+        ALContactStab::resetFoot(mFoot[1]);
+        mContactBlend[0] = mContactBlend[1] = 0.f;
+        return;
+    }
+
+    // No valid world position for this avatar yet (mirror stand motion's
+    // root_world_pos check): drop contact state (do not hold a stale lock across
+    // an invalid frame) and do nothing this frame.
+    const LLVector3 pelvis_world = pelvis->getWorldPosition();
+    if (pelvis_world.isExactlyZero())
+    {
+        ALContactStab::resetFoot(mFoot[0]);
+        ALContactStab::resetFoot(mFoot[1]);
+        mContactBlend[0] = mContactBlend[1] = 0.f;
+        return;
+    }
+
+    //-------------------------------------------------------------------------
+    // propagate the REAL joint transforms into the internal copies
+    // (mirror of llkeyframestandmotion.cpp onUpdate :205-247): the pelvis copy
+    // anchors the chains in world space; hips/knees/ankles carry their live
+    // local position/scale/rotation so the copies reproduce the blended pose.
+    //-------------------------------------------------------------------------
+    // SL-315
+    mPelvisJoint.setPosition(pelvis_world);
+    mPelvisJoint.setRotation(pelvis->getWorldRotation());
+    // Copy the pelvis SCALE too: shaped avatars (Hip Width/Length) scale the
+    // pelvis, and child offsets are multiplied by the parent scale, so without
+    // this the copied ankle world positions (and thus the solve) are wrong.
+    mPelvisJoint.setScale(pelvis->getScale());
+
+    // SL-315
+    mHipLeftJoint.setPosition(hip_l->getPosition());
+    mKneeLeftJoint.setPosition(knee_l->getPosition());
+    mAnkleLeftJoint.setPosition(ankle_l->getPosition());
+
+    mHipLeftJoint.setScale(hip_l->getScale());
+    mKneeLeftJoint.setScale(knee_l->getScale());
+    mAnkleLeftJoint.setScale(ankle_l->getScale());
+
+    // SL-315
+    mHipRightJoint.setPosition(hip_r->getPosition());
+    mKneeRightJoint.setPosition(knee_r->getPosition());
+    mAnkleRightJoint.setPosition(ankle_r->getPosition());
+
+    mHipRightJoint.setScale(hip_r->getScale());
+    mKneeRightJoint.setScale(knee_r->getScale());
+    mAnkleRightJoint.setScale(ankle_r->getScale());
+
+    mHipLeftJoint.setRotation(hip_l->getRotation());
+    mKneeLeftJoint.setRotation(knee_l->getRotation());
+    mAnkleLeftJoint.setRotation(ankle_l->getRotation());
+
+    mHipRightJoint.setRotation(hip_r->getRotation());
+    mKneeRightJoint.setRotation(knee_r->getRotation());
+    mAnkleRightJoint.setRotation(ankle_r->getRotation());
+
+    //-------------------------------------------------------------------------
+    // one-time IK setup (mirror of llkeyframestandmotion.cpp onActivate
+    // :137-140 and setupJoints :252-253), done AFTER the first propagation so
+    // the cached bone lengths / base rotations come from the live skeleton.
+    // reset() clears mContactInit so a skeleton rebuild re-caches lengths.
+    //-------------------------------------------------------------------------
+    if (!mContactInit)
+    {
+        mIKLeft.setPoleVector(LLVector3(1.0f, 0.0f, 0.0f));
+        mIKRight.setPoleVector(LLVector3(1.0f, 0.0f, 0.0f));
+        mIKLeft.setBAxis(LLVector3(0.05f, 1.0f, 0.0f));
+        mIKRight.setBAxis(LLVector3(-0.05f, 1.0f, 0.0f));
+        mIKLeft.setupJoints(&mHipLeftJoint, &mKneeLeftJoint, &mAnkleLeftJoint, &mTargetLeft);
+        mIKRight.setupJoints(&mHipRightJoint, &mKneeRightJoint, &mAnkleRightJoint, &mTargetRight);
+        mContactInit = true;
+    }
+
+    struct ContactLeg
+    {
+        LLJoint* mRealHip;  LLJoint* mRealKnee;  LLJoint* mRealAnkle;   // live skeleton
+        LLJoint* mCopyHip;  LLJoint* mCopyKnee;  LLJoint* mCopyAnkle;   // internal copies
+        LLJoint* mTarget;
+        LLJointSolverRP3* mIK;
+    };
+    const ContactLeg legs[2] = {
+        { hip_l, knee_l, ankle_l, &mHipLeftJoint,  &mKneeLeftJoint,  &mAnkleLeftJoint,  &mTargetLeft,  &mIKLeft  },
+        { hip_r, knee_r, ankle_r, &mHipRightJoint, &mKneeRightJoint, &mAnkleRightJoint, &mTargetRight, &mIKRight },
+    };
+
+    const ALContactStab::ContactParams default_params;
+    const F32 max_weight = llclamp((F32)contact_weight, 0.f, 1.f);
+
+    for (S32 i = 0; i < 2; ++i)
+    {
+        const ContactLeg& leg = legs[i];
+
+        // Raw (animated) ankle world position from the freshly propagated copy,
+        // and the ground height under it (mirror stand motion's getGround use).
+        const LLVector3 foot_pos = leg.mCopyAnkle->getWorldPosition();
+        LLVector3 ground_pos, ground_norm;
+        if (have_mover_hints && mContactHints.mHaveGround[i])
+        {
+            ground_pos = foot_pos;
+            ground_pos.mV[VZ] = mContactHints.mGroundZ[i];
+            ground_norm = mContactHints.mGroundNormal[i];
+        }
+        else
+        {
+            av->getGround(foot_pos, ground_pos, ground_norm);
+        }
+
+        bool planted = false;
+        LLVector3 hold = foot_pos;
+        const F32 expected = have_mover_hints
+            ? mContactHints.mExpectedPlant[i] : -1.f;
+        if (expected >= 0.f && expected < 0.5f)
+        {
+            // Expected swing accelerates release through the existing blend-out
+            // path; it never teleports a planted lock or writes a joint here.
+            ALContactStab::resetFoot(mFoot[i]);
+        }
+        else
+        {
+            ALContactStab::ContactParams params = default_params;
+            if (expected >= 0.5f)
+            {
+                params.mPlantDwell *= 0.5f; // height/reach/speed gates still apply
+            }
+            hold = ALContactStab::updateFoot(
+                mFoot[i], params, foot_pos, ground_pos.mV[VZ], dt, planted);
+        }
+
+        F32 want = 0.f;
+        if (planted)
+        {
+            mContactHold[i] = hold;   // live lock: ramp the correction in
+            want = 1.f;
+        }
+        // While ramping out after a release we keep solving toward the LAST
+        // hold so the correction fades smoothly instead of switching off hard
+        // (the classic knee-pop; plan M2 step 5).
+        const bool solving = planted || mContactBlend[i] > 0.f;
+
+        if (solving)
+        {
+            // Safety release: never fabricate reach. If the hold demands (near)
+            // full leg extension, or the lock has drifted absurdly far from the
+            // animated foot (yank/glitch), release immediately: skip applying,
+            // weight -> 0, rather than hyperextending or dragging the leg.
+            const LLVector3 hip_w  = leg.mCopyHip->getWorldPosition();
+            const LLVector3 knee_w = leg.mCopyKnee->getWorldPosition();
+            const F32 reach = (knee_w - hip_w).magVec() + (foot_pos - knee_w).magVec();
+            const F32 dist  = (mContactHold[i] - hip_w).magVec();
+            const F32 corr  = (mContactHold[i] - foot_pos).magVec();
+            if (corr > MAX_CORRECTION)
+            {
+                ALContactStab::resetFoot(mFoot[i]);   // stale lock: re-plant fresh
+                mContactBlend[i] = 0.f;
+                continue;
+            }
+            if (dist > reach * REACH_CLAMP)
+            {
+                // Beyond reach: release AND drop the plant, so an unreachable
+                // stationary lock cannot stay planted forever (it would re-engage
+                // with no dwell the instant it became reachable). Re-plants fresh.
+                ALContactStab::resetFoot(mFoot[i]);
+                mContactBlend[i] = 0.f;
+                continue;
+            }
+        }
+
+        // Ramp the correction weight toward its target (in slower than out).
+        if (want > mContactBlend[i])
+        {
+            mContactBlend[i] = llmin(want, mContactBlend[i] + dt / BLEND_IN_TIME);
+        }
+        else
+        {
+            mContactBlend[i] = llmax(want, mContactBlend[i] - dt / BLEND_OUT_TIME);
+        }
+
+        const F32 weight = mContactBlend[i] * max_weight;
+        if (!solving || weight <= 0.001f)
+        {
+            continue;   // not planted / ramped out: the leg keeps its animation
+        }
+
+        // Solve the two-bone chain toward the hold point on the copies
+        // (mirror stand motion :272-280). The target joint is parentless, so
+        // its local position IS the world goal.
+        // SL-315
+        leg.mTarget->setPosition(mContactHold[i]);
+        const LLQuaternion foot_world_rot = leg.mCopyAnkle->getWorldRotation();
+        leg.mIK->solve();
+        // Preserve the ANIMATED foot orientation: counter-rotate the ankle copy
+        // so the hip/knee correction never swivels the foot (we deliberately do
+        // not re-aim to the ground normal in v1 — gentler than stand motion).
+        leg.mCopyAnkle->setWorldRotation(foot_world_rot);
+
+        // Read the solved LOCAL rotations back and blend them onto the real
+        // joints by the ramped weight (rotations only; positions untouched).
+        leg.mRealHip->setRotation(nlerp(weight, leg.mRealHip->getRotation(), leg.mCopyHip->getRotation()));
+        leg.mRealKnee->setRotation(nlerp(weight, leg.mRealKnee->getRotation(), leg.mCopyKnee->getRotation()));
+        leg.mRealAnkle->setRotation(nlerp(weight, leg.mRealAnkle->getRotation(), leg.mCopyAnkle->getRotation()));
+        mSeeded = true;
+        ++mDiagContact;   // M5 diagnostic
+    }
+}
+
+// [Machinima] M6 procedural secondary motion: subtle ambient life (breath +
+// idle weight-shift sway) layered ADDITIVELY on the post-blend pose. The math
+// is the pure ALPoseSecondary::evalSecondary() (alposesecondary.h) — a
+// deterministic function of the driving clock — so this wiring only advances
+// the clock and composes the tiny rotation deltas over the current joint
+// rotations (delta * current, same additive-over-animation discipline as the
+// gaze overlay). Rotation-only, chest/torso only — never mRoot, never pelvis
+// translation, never sim state.
+void ALPosePolish::runSecondary(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<F32> breath_amp(gSavedSettings, "ALPolishSecondaryBreathAmp", 1.f);
+    static LLCachedControl<F32> sway_amp(gSavedSettings, "ALPolishSecondarySwayAmp", 1.f);
+
+    // A hitch / teleport / scrub shows up as a very large (or invalid) dt:
+    // restart the ambient clock instead of jumping phase (mirror the other
+    // stages' big_dt reseed). The zero-time pose is evaluated next frame.
+    const bool big_dt = !(dt > 0.f) || dt > 0.25f;
+    if (big_dt)
+    {
+        mSecondaryTime = 0.f;
+        return;
+    }
+    // Advance the driving clock, wrapping at the waves' common period so F32
+    // precision never degrades over a long session (phase-exact by design:
+    // every component completes an integer cycle count per period).
+    mSecondaryTime += dt;
+    if (mSecondaryTime >= ALPoseSecondary::COMMON_PERIOD_SEC)
+    {
+        mSecondaryTime -= ALPoseSecondary::COMMON_PERIOD_SEC;
+    }
+
+    ALPoseSecondary::SecondaryParams params;
+    params.mBreathAmp = (F32)breath_amp;
+    params.mSwayAmp   = (F32)sway_amp;
+    const ALPoseSecondary::SecondaryPose pose =
+        ALPoseSecondary::evalSecondary((F64)mSecondaryTime, params);
+
+    // Below this the delta is visually nothing: skip the write entirely so a
+    // zero-amplitude (or zero-crossing) frame never touches/dirties the joint
+    // (M1's settled-path discipline; the "amps 0 => no visible change" and
+    // ideally no-write contract).
+    const F32 WRITE_EPS = 1e-7f;   // rad
+
+    // Breath: tiny chest pitch (rotation about the joint's local Y / left
+    // axis = rise-and-fall). Falls back to mTorso on rigs without mChest.
+    if (fabsf(pose.mChestPitch) > WRITE_EPS)
+    {
+        LLJoint* chest = av->getJoint("mChest");
+        if (!chest)
+        {
+            chest = av->getJoint("mTorso");
+        }
+        if (chest)
+        {
+            const LLQuaternion delta(pose.mChestPitch, LLVector3(0.f, 1.f, 0.f));
+            chest->setRotation(delta * chest->getRotation());
+            mSeeded = true;
+            ++mDiagSecondary;   // M5 diagnostic
+        }
+    }
+
+    // Sway: tiny spine roll (lateral weight shift) + coupled pitch on the
+    // lower spine (mTorso is the joint directly above the pelvis).
+    if (fabsf(pose.mSpineRoll) > WRITE_EPS || fabsf(pose.mSpinePitch) > WRITE_EPS)
+    {
+        if (LLJoint* torso = av->getJoint("mTorso"))
+        {
+            LLQuaternion delta;
+            delta.setEulerAngles(pose.mSpineRoll, pose.mSpinePitch, 0.f);
+            torso->setRotation(delta * torso->getRotation());
+            mSeeded = true;
+            ++mDiagSecondary;   // M5 diagnostic
+        }
+    }
+}
+
+void ALPosePolish::run(LLVOAvatar* av, F32 dt)
+{
+    static LLCachedControl<bool> polish_enabled(gSavedSettings, "ALPolishEnabled", false);
+    if (!polish_enabled || !av)
+    {
+        return;   // master gate off (default) -> no-op
+    }
+    // [Alchemy] A WORN animesh (control avatar whose root volume is an attachment)
+    // rides the wearer's attachment point: no ground, no locomotion, and often a
+    // repurposed rig. Contact IK, inertialization and breath/sway on it can only
+    // disfigure. Rezzed animesh actors keep polish (the Actor Mover feeds them
+    // contact hints).
+    //
+    // A GHOST clone (entity clone) is likewise excluded: its pose is driven by the
+    // Ghost Studio system (mirror/directed/frozen), not by a fresh per-frame motion
+    // blend, so polish's additive deltas (delta * current) multiply onto the
+    // previous frame's already-polished result and accumulate into a slow
+    // rotational drift ("clone drifts in a slow anticlockwise circle"). The clone
+    // already mirrors a source whose pose includes that source's own polish, so
+    // re-running it here is double application anyway.
+    //
+    // Drop shadow state so nothing stale survives detach/re-attach or a drive-mode
+    // change.
+    if ((av->isControlAvatar() && av->getAttachedAvatar()) || av->isGhostAvatar())
+    {
+        if (mSeeded)
+        {
+            reset();
+        }
+        return;
+    }
+    mDiagInertia = mDiagContact = mDiagSecondary = 0;   // M5 per-frame counts
+    static LLCachedControl<bool> inertia_enabled(gSavedSettings, "ALPolishInertiaEnabled", false);
+    if (inertia_enabled)
+    {
+        runInertialization(av, dt);
+    }
+    static LLCachedControl<bool> contact_enabled(gSavedSettings, "ALPolishContactEnabled", false);
+    if (contact_enabled)
+    {
+        runContact(av, dt);
+    }
+    static LLCachedControl<bool> secondary_enabled(gSavedSettings, "ALPolishSecondaryEnabled", false);
+    if (secondary_enabled)
+    {
+        runSecondary(av, dt);
+    }
+    // [Machinima] M5 layer diagnostic: surface which polish stages actually
+    // touched joints this frame (the testable core of the NLA "current owner"
+    // tooling; full Director layer UI is a follow-on). Off = zero cost.
+    static LLCachedControl<bool> layer_diag(gSavedSettings, "ALPolishLayerDiagnostic", false);
+    if (layer_diag)
+    {
+        av->addDebugText(llformat("Polish inertia:%d contact:%d secondary:%d",
+                                  mDiagInertia, mDiagContact, mDiagSecondary));
+    }
+}
+
+void ALPosePolish::reset()
+{
+    mSeeded = false;
+    mLastFrame = 0xFFFFFFFF;
+    for (ALPoseContinuity::InertiaJoint& s : mInertiaJoints)
+    {
+        ALPoseContinuity::resetJoint(s);
+    }
+    // M2: drop contact locks and force IK re-setup (a skeleton rebuild changes
+    // bone lengths, which setupJoints caches).
+    mContactInit = false;
+    ALContactStab::resetFoot(mFoot[0]);
+    ALContactStab::resetFoot(mFoot[1]);
+    mContactBlend[0] = mContactBlend[1] = 0.f;
+    // M6: restart the ambient clock (breath/sway resume from phase zero).
+    mSecondaryTime = 0.f;
+}
+
+//------------------------------------------------------------------------
 bool LLVOAvatar::updateCharacter(LLAgent &agent)
 {
     updateDebugText();
+
+    // [Machinima] Push the Pose Polish M3 phase-aware-locomotion gate into the
+    // walk motion. llcharacter has no settings access, so mirror the
+    // LLHeadRotMotion/LLEyeMotion static-push pattern; do it once per frame from
+    // self. Default false => the walk cadence is byte-identical to stock.
+    if (isSelf())
+    {
+        static LLCachedControl<bool> polish_en(gSavedSettings, "ALPolishEnabled", false);
+        static LLCachedControl<bool> phase_en(gSavedSettings, "ALPolishPhaseMatchEnabled", false);
+        static LLCachedControl<bool> loopseam_en(gSavedSettings, "ALPolishLoopSeamEnabled", false);
+        LLKeyframeWalkMotion::setPhaseAwareLocomotionEnabled(polish_en && phase_en);
+        LLKeyframeMotion::setLoopSeamRepairEnabled(polish_en && loopseam_en);
+    }
 
     if (!mIsBuilt)
     {
@@ -5210,6 +5765,31 @@ bool LLVOAvatar::updateCharacter(LLAgent &agent)
     {
         // Might be better to do HIDDEN_UPDATE if cloud
         updateMotions(LLCharacter::NORMAL_UPDATE);
+    }
+
+    // [Machinima] Pose Polish: on the freshly blended pose, repair transition
+    // discontinuities and stabilize foot contact BEFORE the gaze layer paints
+    // on top, so gaze solves against a continuous, grounded pose. No-op unless
+    // ALPolishEnabled. See docs/pose_polish_integration_plan.md.
+    //
+    // [Alchemy fix] Pose Polish composes its deltas ADDITIVELY over the current
+    // joint rotations (delta * current), which is only correct on a freshly
+    // blended pose. When the motion controller is PAUSED -- e.g. selecting/editing
+    // an attachment pauses the wearer's avatar (LLSelectMgr::pauseAssociatedAvatars
+    // -> requestPause), so blendAndApply() no longer runs -- there is no fresh pose
+    // to offset from, and the secondary/inertia stages multiply their deltas onto
+    // the previous frame's already-polished result every frame. That accumulates
+    // into a growing chest/torso bend ("avatar drifts about the torso while editing
+    // an attachment"). Skip and reset polish while paused so it resumes cleanly on
+    // unpause. The Animation Preview path (mSpecialRenderMode == 1) FORCE_UPDATEs
+    // the blend above, so it still has a fresh pose and must keep running.
+    if (areAnimationsPaused() && mSpecialRenderMode != 1)
+    {
+        mPosePolish.reset();
+    }
+    else
+    {
+        mPosePolish.run(this, gFrameIntervalSeconds.value());
     }
 
     // [Director/ActorMover] arbitrate the post-motion look-at layer. Director gets
@@ -5852,7 +6432,8 @@ U32 LLVOAvatar::renderTransparent(bool first_pass)
             }
             first_pass = false;
         }
-        if (isTextureVisible(TEX_HAIR_BAKED) && (getOverallAppearance() != AOA_JELLYDOLL))
+        if (isTextureVisible(TEX_HAIR_BAKED) &&
+            (getOverallAppearance() != AOA_JELLYDOLL || hasEffectiveActorFx()))
         {
             LLViewerJoint* hair_mesh = getViewerJoint(MESH_ID_HAIR);
             if (hair_mesh)
@@ -6676,7 +7257,38 @@ bool LLVOAvatar::isAnyAnimationSignaled(const LLUUID *anim_array, const S32 num_
 void LLVOAvatar::resetAnimations()
 {
     LLKeyframeMotion::flushKeyframeCache();
-    flushAllMotions();
+    if (!isControlAvatar())
+    {
+        // Stock: rebuild every active motion instance and restart it at its
+        // current time offset. Unchanged for normal (non-self) avatars.
+        flushAllMotions();
+        return;
+    }
+
+    // [Alchemy] Animesh: flushAllMotions() RESTARTS whatever is active, so a
+    // stranded local driver (poser default motions, an FSPosingMotion, a
+    // switchboard or Actor Mover local anim) survives "Reset Skeleton &
+    // Animations". Do a real stop: stop every active instance immediately (marks
+    // it stopped, removes it from the active list, clears any client-side priority
+    // override), forget the playing set, and re-derive it from what the simulator
+    // signals. This has to happen here because LLControlAvatar::updateAnimations()
+    // is event-driven (ObjectAnimation message / volume change), not per-frame.
+    //
+    // Simulator-signaled object animations are NOT lost: processAnimationStateChanges()
+    // restarts them from t=0 immediately out of the signaled-animation map. A
+    // "stuck" starred animation is owned by the object's script and cannot be
+    // stopped from the client.
+    std::vector<LLUUID> active_ids;
+    for (LLMotion* motionp : getMotionController().getActiveMotions())
+    {
+        active_ids.push_back(motionp->getID());
+    }
+    for (const LLUUID& id : active_ids)
+    {
+        LLCharacter::stopMotion(id, true);   // never self: bypass AO/remap on purpose
+    }
+    mPlayingAnimations.clear();
+    processAnimationStateChanges();
 }
 
 //-----------------------------------------------------------------------------
@@ -7956,6 +8568,106 @@ void LLVOAvatar::dirtyMesh(S32 priority)
 //-----------------------------------------------------------------------------
 // getViewerJoint()
 //-----------------------------------------------------------------------------
+void LLVOAvatar::uploadActorGhostPalette()
+{
+    // Every weighted classic body mesh uses the same reference palette.  Pick
+    // the first built core mesh; doing the private lookup here avoids exposing
+    // mesh-LOD internals to ActorMover while keeping an interleaved alpha replay
+    // independent of whichever actor last used the shader program.
+    for (S32 mesh_id : { (S32)MESH_ID_HEAD,
+                         (S32)MESH_ID_UPPER_BODY,
+                         (S32)MESH_ID_LOWER_BODY })
+    {
+        if (LLViewerJointMesh* mesh =
+                dynamic_cast<LLViewerJointMesh*>(getViewerJoint(mesh_id)))
+        {
+            if (mesh->isActorGhostPaletteReady())
+            {
+                mesh->uploadJointMatrices();
+                return;
+            }
+        }
+    }
+}
+
+bool LLVOAvatar::isActorGhostSystemReplayReady()
+{
+    if (!isBuilt() || mDrawable.isNull()
+        || mDrawable->isState(LLDrawable::REBUILD_GEOMETRY)
+        || mDirtyMesh)
+    {
+        return false;
+    }
+
+    LLFace* shared_face = mDrawable->getFace(0);
+    if (!shared_face || !shared_face->getVertexBuffer())
+    {
+        return false;
+    }
+
+    const bool render_head = !isSelf() || gAgent.needsRenderHead();
+    const bool jelly = getOverallAppearance() == AOA_JELLYDOLL;
+    const bool head_visible = render_head
+        && (isTextureVisible(TEX_HEAD_BAKED) || jelly);
+    const bool upper_visible = isTextureVisible(TEX_UPPER_BAKED) || jelly;
+    const bool lower_visible = isTextureVisible(TEX_LOWER_BAKED) || jelly;
+    const bool skirt_visible = isWearingWearableType(LLWearableType::WT_SKIRT)
+        && isTextureVisible(TEX_SKIRT_BAKED);
+    const bool eyelash_visible = render_head
+        && isTextureVisible(TEX_HEAD_BAKED);
+    const bool hair_visible = render_head
+        && isTextureVisible(TEX_HAIR_BAKED)
+        && (getOverallAppearance() != AOA_JELLYDOLL || hasEffectiveActorFx());
+    const bool eyes_visible = isTextureVisible(TEX_EYES_BAKED) || jelly;
+
+    auto mesh_ready = [&](S32 mesh_id, bool required) -> bool
+    {
+        if (!required)
+        {
+            return true;
+        }
+        LLViewerJointMesh* mesh =
+            dynamic_cast<LLViewerJointMesh*>(getViewerJoint(mesh_id));
+        return mesh && mesh->isActorGhostReplayReady();
+    };
+
+    if (!mesh_ready(MESH_ID_HEAD, head_visible)
+        || !mesh_ready(MESH_ID_UPPER_BODY, upper_visible)
+        || !mesh_ready(MESH_ID_LOWER_BODY, lower_visible)
+        || !mesh_ready(MESH_ID_SKIRT, skirt_visible)
+        || !mesh_ready(MESH_ID_EYELASH, eyelash_visible)
+        || !mesh_ready(MESH_ID_HAIR, hair_visible)
+        || !mesh_ready(MESH_ID_EYEBALL_LEFT, eyes_visible)
+        || !mesh_ready(MESH_ID_EYEBALL_RIGHT, eyes_visible))
+    {
+        return false;
+    }
+
+    const bool needs_weighted_palette = head_visible || upper_visible
+        || lower_visible || skirt_visible || eyelash_visible || hair_visible;
+    if (needs_weighted_palette)
+    {
+        bool have_palette_source = false;
+        for (S32 mesh_id : { (S32)MESH_ID_HEAD,
+                             (S32)MESH_ID_UPPER_BODY,
+                             (S32)MESH_ID_LOWER_BODY })
+        {
+            LLViewerJointMesh* mesh =
+                dynamic_cast<LLViewerJointMesh*>(getViewerJoint(mesh_id));
+            if (mesh && mesh->isActorGhostPaletteReady())
+            {
+                have_palette_source = true;
+                break;
+            }
+        }
+        if (!have_palette_source)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 LLViewerJoint*  LLVOAvatar::getViewerJoint(S32 idx)
 {
     return dynamic_cast<LLViewerJoint*>(mMeshLOD[idx]);
@@ -11645,18 +12357,75 @@ void LLVOAvatar::updateImpostors()
     LLCharacter::sAllowInstancesChange = true;
 }
 
+bool LLVOAvatar::isHardVisualMute() const
+{
+    return isInMuteList() || mVisuallyMuteSetting == AV_DO_NOT_RENDER;
+}
+
+LLUUID LLVOAvatar::getActorFxOwnerId() const
+{
+    if (isControlAvatar())
+    {
+        const LLControlAvatar* control =
+            static_cast<const LLControlAvatar*>(this);
+        if (control->mRootVolp)
+        {
+            LLViewerObject* root = control->mRootVolp->getRootEdit();
+            return root ? root->getID() : control->mRootVolp->getID();
+        }
+    }
+
+    return getID();
+}
+
+bool LLVOAvatar::hasEffectiveActorFx() const
+{
+    const LLVOAvatar* actor_fx_avatar = this;
+    const LLUUID self_actor_fx_id = getActorFxOwnerId();
+    if (!LLDirectorCast::instance().containsStored(self_actor_fx_id) && getAttachedAvatar())
+    {
+        actor_fx_avatar = getAttachedAvatar();
+    }
+
+    // An explicitly cast animated attachment may own its style, but the
+    // wearer's hard visibility choice still governs whether it may render.
+    const LLVOAvatar* attached_avatar = getAttachedAvatar();
+    if (isUIAvatar() || isHardVisualMute() ||
+        (attached_avatar && attached_avatar->isHardVisualMute()))
+    {
+        return false;
+    }
+
+    const LLUUID actor_fx_id = actor_fx_avatar->getActorFxOwnerId();
+    const LLDirectorCast::ActorStyle& actor_fx_style =
+        LLDirectorCast::instance().getActorStyle(actor_fx_id);
+    return actor_fx_style.mEnabled &&
+        (actor_fx_style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE ||
+         actor_fx_style.mAlpha > 0.001f);
+}
+
 // virtual
 bool LLVOAvatar::isImpostor()
 {
+    const bool visually_muted = isVisuallyMuted();
+
+    // Actor FX is evaluated on live geometry. Keep a styled cinematic actor
+    // out of the impostor lifecycle as well as the draw-pool shortcut so its
+    // skeleton/LOD continues updating. Hard visual mutes remain authoritative.
+    if (hasEffectiveActorFx())
+    {
+        return false;
+    }
+
     // [BDMerge Batch4] Machinima High-LOD: while filming, disable the rank/count-based
     // impostor path (equivalent to RenderAvatarMaxNonImpostors=0) so all avatars render
     // full 3D. Manual visual mutes still impostor. No saved settings are touched.
     static LLCachedControl<bool> machinima(gSavedSettings, "BDMergeMachinimaHighLOD", false);
     if (machinima)
     {
-        return isVisuallyMuted();
+        return visually_muted;
     }
-    return isVisuallyMuted() || (sLimitNonImpostors && (mUpdatePeriod > 1));
+    return visually_muted || (sLimitNonImpostors && (mUpdatePeriod > 1));
 }
 
 bool LLVOAvatar::shouldImpostor(const F32 rank_factor)
@@ -12203,7 +12972,18 @@ void LLVOAvatar::setVisualMuteSettings(VisualMuteSettings set)
 void LLVOAvatar::setOverallAppearanceNormal()
 {
     if (isControlAvatar())
+    {
+        // Control avatars do not rebuild the system-avatar skeleton, but they
+        // still need alternate-bind position/scale overrides from their live
+        // animated linkset when Actor FX lifts a performance-jelly state.
+        updateAttachmentOverrides();
+        // Animation messages received while performance-jellied retain their
+        // signaled state but shelve mPlayingAnimations.  Resume that state as
+        // part of the effective-normal transition rather than waiting for a
+        // later simulator animation message that may never arrive.
+        processAnimationStateChanges();
         return;
+    }
 
     LLVector3 pelvis_pos = getJoint("mPelvis")->getPosition();
     if (isControlAvatar() || mLastProcessedAppearance)
@@ -12353,13 +13133,16 @@ LLVOAvatar::AvatarOverallAppearance LLVOAvatar::getOverallAppearance() const
         {
             result = AOA_INVISIBLE;
         }
-        else if (mVisuallyMuteSetting == AV_ALWAYS_RENDER)
-        {
-            result = AOA_NORMAL;
-        }
         else if (mVisuallyMuteSetting == AV_DO_NOT_RENDER)
-        {   // Always want to see this AV as an impostor
+        {   // Hard user choice: Actor FX must never revive this avatar.
             result = AOA_JELLYDOLL;
+        }
+        else if (mVisuallyMuteSetting == AV_ALWAYS_RENDER || hasEffectiveActorFx())
+        {
+            // A styled cinematic actor needs its authored skeleton, animation,
+            // attachments, mesh visibility/extents and root placement. Treat it
+            // as normal only after the hard visibility policy above.
+            result = AOA_NORMAL;
         }
         else if (isTooComplex() || isTooSlow())
         {

@@ -67,7 +67,8 @@ public:
         Optional<std::string>       type,
                                     column;
 
-        Optional<S32>               width;
+        Optional<S32>               width,
+                                    icon_size;
         Optional<bool>              enabled,
                                     visible;
 
@@ -91,6 +92,7 @@ public:
         :   type("type", "text"),
             column("column"),
             width("width"),
+            icon_size("icon_size", 0),
             enabled("enabled", true),
             visible("visible", true),
 // [SL:KB] - Patch: Control-ScrollList | Checked: Catznip-5.2

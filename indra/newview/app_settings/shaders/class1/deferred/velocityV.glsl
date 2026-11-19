@@ -46,6 +46,7 @@ in vec3 position;
 
 out vec4 vary_cur_clip;
 out vec4 vary_last_clip;
+out vec3 vary_actor_fx_position;
 
 #ifdef HAS_SKIN
 mat4 getObjectSkinnedTransform();
@@ -54,6 +55,9 @@ mat4 getLastObjectSkinnedTransform();
 
 void main()
 {
+    // Dissolve uses the same pre-skin object-space domain as beauty/shadow, so
+    // motion vectors cannot survive in pixels the styled actor has removed.
+    vary_actor_fx_position = position;
 #ifdef HAS_SKIN
     // [BDMerge A5.4-1b] Skinned/rigged path. getLastObjectSkinnedTransform is
     // defined in avatar/objectSkinV.glsl against lastMatrixPalette (the

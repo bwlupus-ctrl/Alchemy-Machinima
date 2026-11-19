@@ -1148,32 +1148,32 @@
 					<panel
 						follows="all"
 						background_visible="false"
-						height="302"
+						height="295"
 						layout="topleft"
 						left="0"
 						title="Anims"
 						name="animation_playback_panel"
 						top="0"
-						width="481">
+						width="178">
 						<text
 							follows="left|top"
-							height="24"
+							height="34"
 							layout="topleft"
 							left="2"
 							name="anim_playback_label"
 							top="2"
-							width="475"
+							width="170"
 							wrap="true">
-							Animations seen playing nearby. Select one and play it LOCALLY on the selected avatar/animesh (only you see it).
+							Nearby anims: play one locally, or send it to a Switchboard slot.
 						</text>
 						<scroll_list
 							column_padding="2"
-							height="228"
-							follows="top|left|right"
+							height="150"
+							follows="top|left"
 							can_sort="true"
 							layout="topleft"
 							left="2"
-							width="479"
+							width="170"
 							multi_select="false"
 							name="poser_anim_scroll"
 							tool_tip="Animations currently signaled on nearby avatars and animesh."
@@ -1181,14 +1181,14 @@
 							<scroll_list.columns
 								label="Animation (asset UUID)"
 								name="anim"
-								relative_width="0.72"/>
+								relative_width="0.70"/>
 							<scroll_list.columns
 								label="Seen"
 								name="count"
-								relative_width="0.28"/>
+								relative_width="0.30"/>
 						</scroll_list>
 						<button
-							follows="bottom|left"
+							follows="left|top"
 							height="22"
 							label="Play on Selected"
 							layout="topleft"
@@ -1196,37 +1196,67 @@
 							top_pad="4"
 							name="poser_anim_play"
 							tool_tip="Play the selected animation locally on the avatar/animesh selected in the Model tab."
-							width="140" />
+							width="170" />
 						<button
-							follows="bottom|left"
+							follows="left|top"
 							height="22"
 							label="Stop"
 							layout="topleft"
-							left_pad="4"
-							top_delta="0"
+							left="2"
+							top_pad="4"
 							name="poser_anim_stop"
 							tool_tip="Stop the selected animation on the selected avatar (locally-played only)."
-							width="80" />
+							width="50" />
 						<button
-							follows="bottom|left"
+							follows="left|top"
 							height="22"
 							label="Stop All"
 							layout="topleft"
-							left_pad="4"
+							left_pad="3"
 							top_delta="0"
 							name="poser_anim_stopall"
 							tool_tip="Stop every animation this floater started locally, on all targets."
-							width="90" />
+							width="60" />
 						<button
-							follows="bottom|left"
+							follows="left|top"
 							height="22"
 							label="Refresh"
 							layout="topleft"
-							left_pad="4"
+							left_pad="3"
 							top_delta="0"
 							name="poser_anim_refresh"
 							tool_tip="Rescan nearby avatars and animesh for playing animations."
-							width="90" />
+							width="56" />
+						<combo_box
+							follows="left|top"
+							height="20"
+							layout="topleft"
+							left="2"
+							top_pad="4"
+							allow_text_entry="false"
+							name="poser_anim_slot_combo"
+							tool_tip="Which Anim Switchboard slot (1-12) the Send button drops the selected animation into."
+							width="114" />
+						<button
+							follows="left|top"
+							height="20"
+							label="Send"
+							layout="topleft"
+							left_pad="3"
+							top_delta="0"
+							name="poser_anim_to_switchboard"
+							tool_tip="Copy the selected nearby animation into the chosen Anim Switchboard slot (Director Console)."
+							width="54" />
+						<text
+							follows="left|top"
+							height="14"
+							layout="topleft"
+							left="2"
+							name="poser_anim_switchboard_status"
+							top_pad="3"
+							use_ellipses="true"
+							width="170">
+							</text>
 					</panel>
 				</tab_container>
 				<button
@@ -1944,7 +1974,7 @@
 			 width="275">
 				<scroll_list
 				 column_padding="0"
-				 height="280"
+				 height="208"
 				 follows="left|top|right"
 				 layout="topleft"
 				 tool_tip="Load a pose for who you are animating."
@@ -1968,11 +1998,61 @@
 					 name="load_file_date_sort_column"
 					 width="-1"/>
 				</scroll_list>
+				<combo_box
+				 allow_text_entry="false"
+				 follows="left|top"
+				 height="20"
+				 layout="topleft"
+				 name="poser_pose_load_method_combo"
+				 tool_tip="Pose load method saved into the selected Switchboard slot. Loading a pose from the poser menu also updates this choice."
+				 top_pad="2"
+				 width="275">
+					<combo_box.item label="Load: Rotations + positions + scales" name="all" value="7" />
+					<combo_box.item label="Load: Rotations only" name="rotations" value="1" />
+					<combo_box.item label="Load: Positions only" name="positions" value="2" />
+					<combo_box.item label="Load: Scales only" name="scales" value="3" />
+					<combo_box.item label="Load: Rotations + positions" name="rot_pos" value="4" />
+					<combo_box.item label="Load: Rotations + scales" name="rot_scale" value="5" />
+					<combo_box.item label="Load: Positions + scales" name="pos_scale" value="6" />
+					<combo_box.item label="Load: Right hand" name="right_hand" value="8" />
+					<combo_box.item label="Load: Left hand" name="left_hand" value="9" />
+					<combo_box.item label="Load: Face only" name="face" value="10" />
+					<combo_box.item label="Load: Selective" name="selective" value="11" />
+					<combo_box.item label="Load: Selective rotations" name="selective_rot" value="12" />
+				</combo_box>
+				<combo_box
+				 allow_text_entry="false"
+				 follows="left|top"
+				 height="20"
+				 layout="topleft"
+				 name="poser_pose_slot_combo"
+				 tool_tip="Which unified Director Switchboard slot receives the selected saved pose."
+				 top_pad="2"
+				 width="196" />
+				<button
+				 follows="left|top"
+				 height="20"
+				 label="Send pose"
+				 layout="topleft"
+				 left_pad="4"
+				 name="poser_pose_to_switchboard"
+				 tool_tip="Copy the selected saved pose and load method into the chosen Director Switchboard slot."
+				 top_delta="0"
+				 width="75" />
+				<text
+				 follows="left|top"
+				 height="13"
+				 layout="topleft"
+				 name="poser_pose_switchboard_status"
+				 top_pad="1"
+				 use_ellipses="true"
+				 width="275">
+					</text>
 				<line_editor
 				 follows="top|left"
 				 layout="topleft"
 				 height="21"
-				 top_pad="-2"
+				 top_pad="1"
 				 commit_on_focus_lost="false"
 				 label="Enter Pose Name To Save..."
 				 name="pose_save_name"

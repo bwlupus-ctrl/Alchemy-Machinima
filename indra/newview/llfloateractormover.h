@@ -26,6 +26,8 @@ public:
 private:
     void refreshRoster();
     LLUUID selectedActor() const;   // null when nothing selected
+    uuid_vec_t selectedActors() const;
+    void onOpenActorGaze();
 
     LLScrollListCtrl*   mRosterList = nullptr;
     ALPanelActorMover*  mMoverPanel = nullptr;  // shared transport (scope, heading, params, Walk/Stop)

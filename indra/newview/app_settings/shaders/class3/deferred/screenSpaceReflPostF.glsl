@@ -41,6 +41,7 @@ uniform sampler2D diffuseRect;
 uniform sampler2D diffuseMap;
 
 vec4 getNorm(vec2 screenpos);
+vec4 getNormRaw(vec2 screenpos);
 float getDepth(vec2 pos_screen);
 float linearDepth(float d, float znear, float zfar);
 float linearDepth01(float d, float znear, float zfar);
@@ -56,7 +57,11 @@ void main()
 {
     vec2  tc = vary_fragcoord.xy;
     float depth = linearDepth01(getDepth(tc), zNear, zFar);
-    vec4 norm = getNorm(tc); // need `norm.w` for GET_GBUFFER_FLAG()
+    vec4 norm = getNorm(tc);
+    // [SSRFlagFix] The G-buffer flag lives in the RAW attachment's .w;
+    // decodeNormal() (globalF.glsl) never writes .w, so getNorm(tc).w was
+    // undefined here and the PBR branch below was decided on garbage.
+    float gbuffer_flag = getNormRaw(tc).w;
     vec3 pos = getPositionWithDepth(tc, getDepth(tc)).xyz;
     vec4 spec    = texture(specularRect, tc);
     vec2 hitpixel;
@@ -66,7 +71,7 @@ void main()
 
     vec4 fcol = texture(diffuseMap, tc);
 
-    if (GET_GBUFFER_FLAG(norm.w, GBUFFER_FLAG_HAS_PBR))
+    if (GET_GBUFFER_FLAG(gbuffer_flag, GBUFFER_FLAG_HAS_PBR))
     {
         vec3 orm = specCol.rgb;
         float perceptualRoughness = orm.g;

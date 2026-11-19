@@ -1,0 +1,153 @@
+IMPLEMENTATION TASK — Cinematic Light Rig: five cinematographer features.
+
+Repo: I:\alchemy-machinima, branch feature/cine-light-rig (has multi-instance + the shadow-suppression
+fix + a throttled CineRigShadow diagnostic in updateProjectorFlags — leave that diagnostic alone). You
+IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds; codex review adversarially reviews
+before any build. Locate by symbol/context, not line number.
+
+=============================================================================
+GROUND RULES (apply to ALL five features)
+=============================================================================
+- PER-INSTANCE AWARE. The rig is now multi-instance (ALCineLightRigManager owns 5 ALCineLightRig, one
+  per Director cast slot; the ~49 CineLightRig* settings keys are the live editing buffer for the
+  SELECTED instance; each instance carries a ParamBlob). Any NEW per-light/per-rig state you add must:
+  (a) live in the settings buffer AND the ParamBlob (add to fromSettingsStore/toSettingsStore,
+  toLLSD/fromLLSD, blobMapWellFormed type-checks, captureRigState/applyRigState if session-state), and
+  (b) be captured/restored on selector switch and scene round-trip. A new per-light key that is NOT in
+  the blob is a cross-instance leak bug. Enumerate every key you add against the blob.
+- PRESERVE THE FINALS. Do NOT change the pure model's exposure/EV chain (SA-9: distance_ev reads
+  NOMINAL radius; mSubjectScale enters geometry only), the mirror reflection, scaledPoint's body, the
+  master colour-temp Planckian gain, or the gobo path — EXCEPT where a feature explicitly composes with
+  them (ratio feeds EV; gels layer on the temp gain — see below). One-rig behaviour with these features
+  OFF must be byte-identical to today.
+- DO NOT re-introduce the blanket shadow suppression that was just removed (applyShadowSuppression is
+  intentionally dead code). Each rig casts per its own ShadowMode; the pipeline caps at 6.
+- TESTS: pure-model logic gets TUT tests (tests/alcinelightrigmodel_test.cpp) that FAIL on regression
+  and assert independent expected values — NO tautological/self-comparison tests.
+- Mini reset buttons for every new adjustable value (match the existing weather-panel Refresh_Off
+  idiom already used across the panel). New controls are per selected instance.
+
+=============================================================================
+FEATURE 1 — KEY:FILL RATIO CONTROL  (simple, model + UI)
+=============================================================================
+A single "lighting ratio" control that auto-derives the FILL light's EV from the KEY light's EV.
+- New per-rig setting CineLightRigRatioLock (bool) + CineLightRigRatio (F32 stops, or an enum of
+  1:1/2:1/4:1/8:1/16:1 mapped to 0/1/2/3/4 stops — you choose; a continuous stops slider 0..5 is
+  fine and more flexible). Ratio R:1 => fill_EV = key_EV - log2(R) = key_EV - stops.
+- When RatioLock is ON: the model derives FILL mEV = KEY mEV - stops each evaluation (the Fill EV
+  control is display-only/driven; grey it or show the derived value). When OFF: today's independent
+  Fill EV (byte-identical). Implement the derivation in the pure model (computeLive/base assembly) so
+  it is TUT-testable; the UI just exposes the lock + stops.
+- TUT: ratio-lock ON with key EV = e and stops = s yields fill EV == e - s (independent literals);
+  ratio-lock OFF leaves fill EV untouched (byte-identical to the input).
+- UI: a ratio combo/slider + lock toggle near the Fill controls; reset button. Per instance (blob).
+
+=============================================================================
+FEATURE 2 — CATCHLIGHT / EYE LIGHT  (new optional emitter, moderate)
+=============================================================================
+A tiny dedicated light that puts a specular catchlight ("sparkle") in the subject's eyes.
+- DESIGN DECISION (fixed): do NOT change LIGHT_COUNT or add a 5th logical light (that ripples the
+  arrays/presets/exposure). Implement the catchlight as a SEPARATE optional emitter the rig creates
+  when enabled — parallel to the existing projector/omni emitters, its own LLPointer, its own
+  lifecycle (create on enable, destroy on disable/power-off/shutdown, per instance).
+- Placement: a small, bright, small-radius emitter positioned at the subject's EYE joint (reuse the
+  lens-gaze eye handling / ANIM_AGENT_EYE eye position; if unavailable, fall back to head joint +
+  forward offset), through the finalized foot-pivot scaledPoint()/getUniformScale() so it scales with
+  clones. Aim it along the eye->camera axis so the catchlight reflects toward the camera (a catchlight
+  is a reflection; position it slightly off the camera-subject axis, near the key side by default).
+- Config (per rig, in blob): CineLightRigCatchlight (bool on/off), CineLightRigCatchlightEV (intensity),
+  CineLightRigCatchlightSize (radius, small), CineLightRigCatchlightColor or reuse master-temp, and an
+  offset/angle so the operator can place the sparkle (classic upper-key-side "11 o'clock"). Keep it OUT
+  of the shadow/shaft system (it's a specular accent; it must NOT consume a shadow slot).
+- SA/exposure: the catchlight is a fixed small accent; it does NOT participate in the KEY/FILL/RIM/BG
+  EV chain or the ratio. Its intensity is its own control.
+- TUT where pure-testable (placement scale composition); the emitter lifecycle is review-verified.
+
+=============================================================================
+FEATURE 3 — THEATRICAL GEL LIBRARY  (per-light colour modifier, moderate)
+=============================================================================
+Named theatrical gels (Rosco/Lee style) applied PER LIGHT, layered on top of the existing profile
+colour and master colour-temp.
+- A curated gel table (name -> transform). Two kinds: (a) colour-TEMPERATURE gels — CTO, 1/2 CTO,
+  1/4 CTO (warm), CTB, 1/2 CTB, 1/4 CTB (cool) — expressed as MIRED shifts and run through the SAME
+  Planckian-locus gain the master colour-temp already uses (reuse that code path, do not fork it);
+  (b) COLOUR-CORRECTION / party gels — Plus Green, Minus Green (magenta), plus a handful of saturated
+  looks (e.g. Bastard Amber, Steel Blue, Congo Blue, Primary Red/Green/Blue) — expressed as linear
+  sRGB multipliers.
+- New per-LIGHT setting CineLightRig{Key,Fill,Rim,Bg}Gel (S32 index into the gel table, 0 = none =
+  byte-identical to today). The gel transform composes AFTER the profile colour and the master-temp
+  gain, before the light is emitted. Gel 0 must be a bitwise no-op.
+- Put the gel table + the apply function in the pure model so it is TUT-testable; reuse the master-temp
+  mired->Planckian->gain for the CT gels (green-normalized like the master temp).
+- TUT: gel 0 == no-op (bitwise); a CT gel equals the equivalent master-temp mired shift applied to a
+  known colour (independent expected value); a party-gel multiplier applied to white equals the table
+  value.
+- UI: a per-light Gel dropdown (grouped: "Colour Temp" gels / "Colour" gels), reset button. Per
+  instance (all four ...Gel keys in the blob).
+
+=============================================================================
+FEATURE 4 — GENRE / MOOD PRESET PACKS  (curated master presets, simple)
+=============================================================================
+Expand the read-only MASTER preset library with curated multi-light genre/mood looks, grouped
+separately from the existing master presets (a new subgroup/category in the setup combo).
+- Author >= 6 looks, each a full Setup (KEY/FILL/RIM/BG angles, profiles, EVs, beams, plus radius/
+  master EV/temp as appropriate): Film Noir (hard low-key, single hard key, deep shadow, high ratio),
+  Horror Underlight (up-angled key, cold, sinister), Romance Soft (soft wrap, warm, low ratio, gentle
+  rim), Sci-Fi Rim (cool strong rims, dark centre, teal/blue), Music-Video Neon (saturated split
+  colour key vs fill, e.g. magenta/cyan), Golden Hour (warm low key + soft fill). Add 2-4 more if
+  natural. Use tasteful, cinema-accurate values — reuse the existing master-preset data format and the
+  built-in library loader; do NOT add a new file format.
+- These are read-only built-ins in the SAME curated group mechanism as the existing masters, tagged as
+  a "Genre / Mood" subgroup so they list separately from the plain masters and from local presets.
+- No model/logic change — pure data + grouping. Confirm they load, apply, and round-trip like the
+  existing masters, and respect scale/mirror/temp (they are just Setups).
+
+=============================================================================
+FEATURE 5 — SHADOW SOFTNESS PER LIGHT  (RENDERER-TOUCHING — INVESTIGATE FIRST, FENCED)
+=============================================================================
+A per-light penumbra/softness knob so a KEY can be hard while a FILL is soft.
+- This is the ONE feature that touches the shadow shader path (softness/PCF lives globally in
+  app_settings/shaders/class1/deferred/shadowUtil.glsl + pipeline.cpp; prior rig designs kept shaders
+  OFF-LIMITS because they affect ALL shadows).
+- REQUIRED APPROACH: FIRST investigate the existing spot-shadow sampling (shadowUtil.glsl, the spot
+  shadow lookup; pipeline.cpp spot-shadow setup) and determine whether a PER-PROJECTOR softness can be
+  threaded as an ADDITIVE per-projector uniform/parameter (like the existing per-projector volumetric-
+  shaft override system sVolumetricShaftOverrides) such that:
+    * non-rig / world projectors and all existing shadows are BYTE-IDENTICAL when no rig softness is
+      set (the new param defaults to the current global behaviour), and
+    * only rig projectors with an explicit softness use the new path.
+  If YES: implement it — per-light setting CineLightRig{Key,Fill,Rim,Bg}ShadowSoft (F32, 0 = current
+  default = byte-identical), a per-projector softness registry mirroring the shaft-override pattern,
+  and the minimal shadowUtil.glsl change gated so the default is unchanged. Per instance (blob).
+  If NO (it cannot be done without regressing world shadows): STOP on this feature, do NOT hack the
+  global shader, and instead WRITE a short design note (doc/CINE_LIGHT_RIG_SHADOWSOFT_NOTE.md)
+  explaining the constraint and a proposed approach, and implement the OTHER four features. Do not gate
+  the other four on this one.
+- If implemented: TUT/where possible for the registry mapping; the shader change is review-verified;
+  explicitly confirm the default path is byte-identical for non-rig shadows.
+
+=============================================================================
+FILES (expected; confirm/adjust)
+=============================================================================
+alcinelightrigmodel.h/.cpp (ratio derivation; gel table + apply; catchlight placement math if pure),
+alcinelightrig.h/.cpp (catchlight emitter lifecycle; wiring new settings into readSettings/tick),
+alcinelightrigmanager.h (ParamBlob: add ratio/gel/catchlight/(softness) fields to struct + all
+serializers + blobMapWellFormed type checks), alpanelcinelightrig.h/.cpp + panel_cine_light_rig.xml
+(new controls + reset buttons + M1 reflow if height grows: bump panel AND both wrapper heights
+floater_cine_light_rig.xml / floater_director.xml), app_settings/settings.xml (new keys),
+cine_light_rig_presets.xml (genre/mood master presets), tests/alcinelightrigmodel_test.cpp (ratio/gel
+tests), and for Feature 5 ONLY-IF-FEASIBLE the per-projector softness registry (pipeline.*) + the
+minimal shadowUtil.glsl change. CMakeLists only if you add a source (you shouldn't need to).
+
+NOT touched: the exposure/EV chain (except ratio feeding fill EV via the model), scaledPoint body, the
+mirror line, master-temp Planckian core (reuse for gels), the multi-instance tick/shadow interlock
+removal, lldirectorcast.*, the vcam/lens-gaze code.
+
+=============================================================================
+REPORT
+=============================================================================
+Per feature: files changed, the new settings keys and their presence in the ParamBlob (list them),
+how each composes with the finals, and the tests added. For Feature 5: your feasibility finding
+(implemented additively / deferred with a note) and, if implemented, the byte-identical-default proof.
+Confirm one-rig behaviour with all five OFF is byte-identical to today. Note anything you think is
+wrong. Do not build.

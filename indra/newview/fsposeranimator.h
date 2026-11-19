@@ -33,6 +33,25 @@
 #include "fsmaniprotatejoint.h"
 
 /// <summary>
+/// Describes how to load a pose file.
+/// </summary>
+typedef enum E_LoadPoseMethods
+{
+    ROTATIONS               = 1,
+    POSITIONS               = 2,
+    SCALES                  = 3,
+    ROTATIONS_AND_POSITIONS = 4,
+    ROTATIONS_AND_SCALES    = 5,
+    POSITIONS_AND_SCALES    = 6,
+    ROT_POS_AND_SCALES      = 7,
+    HAND_RIGHT              = 8,
+    HAND_LEFT               = 9,
+    FACE_ONLY               = 10,
+    SELECTIVE               = 11,
+    SELECTIVE_ROT           = 12,
+} E_LoadPoseMethods;
+
+/// <summary>
 /// Describes how we will cluster the joints/bones/thingos.
 /// Each joint/bone/thingo should have one of these, FSPoserAnimator.PoserJoints.
 /// </summary>
@@ -702,6 +721,15 @@ public:
     /// </remarks>
     bool tryGetJointSaveVectors(LLVOAvatar* avatar, const FSPoserJoint& joint, LLVector3* rot, LLVector3* pos, LLVector3* scale,
                                 bool* baseRotationIsZero, bool* userSetBaseRotZero);
+
+    /// <summary>
+    /// Loads a saved pose file onto an avatar that is already being posed.
+    /// </summary>
+    /// <param name="avatar">The avatar to load the pose onto.</param>
+    /// <param name="poseFileBaseName">The pose filename without the .xml extension.</param>
+    /// <param name="loadMethod">The subset of pose data to load.</param>
+    /// <returns>True if the pose file was opened and applied, otherwise false.</returns>
+    bool loadPoseFileOntoAvatar(LLVOAvatar* avatar, const std::string& poseFileBaseName, E_LoadPoseMethods loadMethod);
 
     /// <summary>
     /// Loads a joint rotation for the supplied joint on the supplied avatar.

@@ -1,0 +1,44 @@
+IMPLEMENTATION TASK — add ONE new FX ("Rock With You", id 48) + ONE companion preset to the Cinematic
+Light Rig. Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build/cmake/run. Locate by symbol/context.
+
+=============================================================================
+STATE OF THE TREE (important — this is a DELTA on already-implemented work)
+=============================================================================
+The tree ALREADY contains FX ids 0-47 (FX_COUNT is currently 48) and the 14 presets from the previous
+expansion. You are ADDING ONLY the delta: FX id 48 "Rock With You" and its companion preset. Do NOT
+re-add or alter FX 33-47 or the existing presets — they are already present and must stay byte-identical.
+
+=============================================================================
+SPEC (NORMATIVE)
+=============================================================================
+doc/CINE_FX_PRESETS_EXPANSION.md — the "Rock With You" sections: the FX 48 spec (KEY overhead spot / RIM
+green sweep / BG blue counter-sweep / FILL void, with haze shimmer, starburst flare on beam crossings,
+green<->blue hue swap) with initializeFX base-pose args + evalFX pseudocode + interval 0.1s + seed-
+dependent; the companion preset "Rock With You" [Genre/Mood]; and the shaft/shadow operator note.
+Transcribe FX 48 faithfully. It fits the existing evalFX contract (pure closed-form of (fx,seed,t);
+phaseSin/phaseCos/unitHash/valueNoise/positiveFmod/Mod only; 24-profile table; EV -10 = black; NEVER
+set gel; no new capability).
+
+=============================================================================
+IMPLEMENT (the delta only)
+=============================================================================
+1. alcinelightrigmodel.h: FX_COUNT 48 -> 49.
+2. alcinelightrigmodel.cpp: add id 48 "Rock With You" at all FOUR sites — FX_NAMES (append the name),
+   FX_INTERVALS (append 0.1f), initializeFX (case 48 base pose per the spec), evalFX (case 48 animation
+   per the spec pseudocode). Pure closed-form, no gel, no state.
+3. cine_light_rig_presets.xml: append the ONE companion "Rock With You" preset map (Genre/Mood tagged),
+   in the exact schema (radius, ratio, 4 lights; colour via profiles only, no gels) per the spec.
+4. tests/alcinelightrigmodel_test.cpp: bump the FX count golden 48 -> 49; extend the mirrored name/
+   interval golden rows by one (id 48); add 48 to the random_fx seed-separation list (the spec flags 48
+   as seed-dependent). The all-FX gobo invariant (test<14>) already special-cases Night Train (fx 40);
+   FX 48 sets NO gobo, so no further change there — but confirm FX 48 leaves all mGobo == 0.
+
+=============================================================================
+CONSTRAINTS / REPORT
+=============================================================================
+- FX 0-47 and the 14 existing presets stay byte-identical. No schema/version/XUI change. FX 48 pure
+  closed-form + scrub-safe (same t -> same output) so the golden scrub tests pass; sets no gel; sets no
+  gobo.
+- REPORT: FX_COUNT 48->49; FX 48 added at all four sites (confirm pure/no-gel/no-gobo/scrub-safe); the
+  one preset appended; the test count/name/interval/random_fx updates (48 added); existing FX/presets
+  untouched. Note anything in the spec that can't be expressed purely. Do not build.

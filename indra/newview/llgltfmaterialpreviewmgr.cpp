@@ -33,6 +33,7 @@
 #include <memory>
 #include <vector>
 
+#include "alenvintensity.h" // [EnvIntensity v2]
 #include "llavatarappearancedefines.h"
 #include "llenvironment.h"
 #include "llselectmgr.h"
@@ -390,6 +391,22 @@ void fixup_shader_constants(LLGLSLShader& shader)
     shader.uniform3fv(LLShaderMgr::SUNLIGHT_COLOR, 1, LLColor3::white.mV);
     shader.uniform1f(LLShaderMgr::DENSITY_MULTIPLIER, 0.0f);
 
+    // [EnvIntensity v2] Neutral direct / sampling terms for the thumbnail: the
+    // preview may render before the per-frame environment refresh and would
+    // otherwise inherit whatever (possibly capture-time) exposure-strip factors
+    // the SG_ANY cache holds. Force identity so no Sun/Moon EV, GI, probe
+    // reflections EV, tint or shadow lift leaks into thumbnails. The baked IBL
+    // (default probe) is NOT neutralised: after that probe's next refresh the
+    // thumbnail follows the current Sun/Moon EV + colour via the sky probe
+    // (documented behaviour, design 3.5).
+    shader.uniform1f(LLShaderMgr::SKY_SUN_EV_SCALE, 1.0f);
+    shader.uniform1f(LLShaderMgr::SKY_GI_SCALE, 1.0f);
+    shader.uniform1f(LLShaderMgr::SKY_AMB_SCALE, 1.0f);
+    shader.uniform1f(LLShaderMgr::SKY_PROBE_RAD_SCALE, 1.0f);
+    shader.uniform3fv(LLShaderMgr::SKY_SUN_TINT, 1, LLColor3::white.mV);
+    shader.uniform3fv(LLShaderMgr::SKY_AMB_TINT, 1, LLColor3::white.mV);
+    shader.uniform1f(LLShaderMgr::SHADOW_LIFT_GAIN, 0.0f);
+
     // Ignore sun shadow (if enabled)
     for (U32 i = 0; i < 6; i++)
     {
@@ -473,7 +490,14 @@ bool LLGLTFPreviewTexture::render()
     // discarded, but the sphere should be cached in LLVolumeMgr.)
     PreviewSphere& preview_sphere = get_preview_sphere(mGLTFMaterial, object_transform);
 
-    gPipeline.setupHWLights();
+    {
+        // [EnvIntensity v2] This setupHWLights() must see Local lights EV == 1 so
+        // the preview's own lights are never scaled by the exposure strip. Scoped
+        // to this call only: the clean-up setupHWLights() at the end of render()
+        // restores the normal (scaled) world lights.
+        ALEnvIntensity::ScopedNeutral neutral_env_intensity;
+        gPipeline.setupHWLights();
+    }
     glm::mat4 mat = get_current_modelview();
     glm::vec4 transformed_light_dir(light_dir);
     transformed_light_dir = mat * transformed_light_dir;

@@ -383,6 +383,19 @@
 
 <!-- End of Basic Settings block -->
 
+  <check_box
+    control_name="BDMergeCineModeAuto"
+    follows="left|top"
+    height="16"
+    initial_value="true"
+    label="Auto cinematic capture mode"
+    layout="topleft"
+    left="30"
+    name="cine mode auto"
+    tool_tip="When on (default), the viewer auto-arms capture mode while you're filming -- e.g. when you hide the UI, use the Flycam or Cinematic Camera, or run a Director action -- which pins scene textures at full resolution so they don't downrez. Turning this off disables ALL automatic capture-mode activation and releases it immediately, which can lower CPU/GPU load when you're not filming. (A manual capture-mode pin still overrides this.)"
+    top="290"
+    width="400" />
+
   <button
     follows="top|left"
     height="23"

@@ -95,6 +95,7 @@ void LLCubeMap::initGL()
                 mImages[i]->setAddressMode(LLTexUnit::TAM_CLAMP);
                 stop_glerror();
             }
+            LLImageGLMemory::update_tex_image(texname, 6, false);
             gGL.getTexUnit(0)->disable();
         }
         disable();
@@ -161,6 +162,7 @@ void LLCubeMap::initGLData()
     {
         mImages[i]->setSubImage(mRawImages[i], 0, 0, RESOLUTION, RESOLUTION);
     }
+    LLImageGLMemory::update_tex_image(mImages[0]->getTexName(), 6, false);
 }
 
 void LLCubeMap::init(const std::vector<LLPointer<LLImageRaw> >& rawimages)
@@ -217,6 +219,7 @@ void LLCubeMap::initEnvironmentMap(const std::vector<LLPointer<LLImageRaw> >& ra
 
         mImages[i]->setSubImage(mRawImages[i], 0, 0, resolution, resolution);
     }
+    LLImageGLMemory::update_tex_image(texname, 6, true);
     enableTexture(0);
     bind();
     mImages[0]->setFilteringOption(LLTexUnit::TFO_ANISOTROPIC);
@@ -238,6 +241,7 @@ void LLCubeMap::generateMipMaps()
         LL_PROFILE_ZONE_NAMED_CATEGORY_TEXTURE("cmgmm - glGenerateMipmap");
         glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
     }
+    LLImageGLMemory::update_tex_image(mImages[0]->getTexName(), 6, true);
     gGL.getTexUnit(0)->disable();
     disable();
 }

@@ -37,6 +37,19 @@ uniform sampler2D emissiveRect;
 uniform sampler2D normalMap;
 uniform float diffuse_luminance_scale;
 
+// [Night Mask B1] emissiveRect (bloomMip[0]) here is LAST frame's bloom, which
+// generateBloomHDR() builds from the (possibly masked) scene AFTER this same
+// luminance pass runs each frame. When Night Mask is active, that bloom was
+// generated from the darkened scene, so folding it into metering indirectly
+// suppresses next frame's exposure compensation and exposure creeps upward
+// over time. LLPipeline::generateLuminance uploads a value exponentially
+// ramped toward 0 while Night Mask is active (from the same FINAL
+// will-render resolve applyOnLensFilters reads via mActive) and back toward 1
+// otherwise — B1(b): ramped, not snapped, so a Night Mask toggle can't pump
+// exposure in a single frame. Metering is unaffected (scale settles at 1)
+// when the feature is off.
+uniform float night_mask_bloom_scale;
+
 float lum(vec3 col)
 {
     vec3 l = vec3(0.2126, 0.7152, 0.0722);
@@ -60,7 +73,7 @@ void main()
         c *= diffuse_luminance_scale;
     }
 
-    c += texture(emissiveRect, tc).rgb;
+    c += texture(emissiveRect, tc).rgb * night_mask_bloom_scale;
 
     float L = lum(c);
     frag_color = vec4(max(L, 0.0));

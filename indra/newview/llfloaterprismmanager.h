@@ -20,6 +20,7 @@ class LLSliderCtrl;
 class LLSpinCtrl;
 class LLTextBox;
 class LLView;
+class LLVOAvatar;
 
 class LLFloaterPrismManager final : public LLFloater
 {
@@ -38,10 +39,13 @@ private:
     void refreshSelectionActions();
     void refreshCaptureEditor();
     void refreshCaptureRuntimeReadouts();
+    void refreshBoneJointChoices(bool force);
     void refreshDisplayEditor();
     void refreshDisplayRateReadout();
+    void refreshGateEditor();
     void rebuildCaptureList();
     void rebuildDisplayList();
+    void rebuildGateArmedList();
 
     void installDocumentFocusReveal();
     void revealDocumentView(LLView* view, LLPanel* document,
@@ -49,6 +53,7 @@ private:
 
     void onCaptureSelectionChanged();
     void onDisplaySelectionChanged();
+    void onGateSelectionChanged();
     void onAddCamera();
     void onAddLens();
     void onRemoveCapture();
@@ -56,7 +61,7 @@ private:
     void onPlaceEyeInFront();
     void onSnapVirtualCameraToView();
     void onNewVirtualCamera();
-    void onCommitCameraSettings();
+    void onCommitCameraSettings(bool commit_bone_joint = false);
     void onCommitRateSettings();
     void onRatePresetChanged();
     void onAddDisplay();
@@ -67,6 +72,11 @@ private:
     void onCommitVirtualScreenSize();
     void onRepositionVirtualScreen();
     void onCommitDisplayEffects();
+    void onCommitDisplayGateSource();
+    void onGateArm();
+    void onGateDisarm();
+    void onGateTake();
+    void onCommitGateSettings();
     void onApplyEffectsPreset(const LLPrismLens::ScreenEffects& preset);
     LLPrismLens::ScreenEffects effectsFromUI() const;
     void setUIFromEffects(const LLPrismLens::ScreenEffects& effects);
@@ -78,13 +88,25 @@ private:
 
     LLPrismLens::CaptureHandle mSelectedCapture;
     LLPrismLens::DisplayHandle mSelectedDisplay;
+    LLUUID mSelectedGateArm;
     LLPrismLens::RegistrySnapshot mRegistrySnapshot;
     LLPrismLens::PerformanceSnapshot mPerformanceSnapshot;
+    LLPrismLens::GateSnapshot mGateSnapshot;
     bool mHaveRegistrySnapshot = false;
     bool mHavePerformanceSnapshot = false;
     U64 mConfigurationRevision = 0;
     U64 mRuntimeRevision = 0;
     U64 mPerformanceRevision = 0;
+    U64 mGateRevision = 0;
+    LLVOAvatar* mBoneJointAvatar = nullptr;
+    LLUUID mBoneJointAvatarId;
+    U32 mBoneJointSkeletonSerial = 0;
+    U8 mBoneJointAnchorSlot = LLPrismLens::BONE_ANCHOR_ME;
+    bool mBoneJointChoicesInitialized = false;
+    bool mBoneJointUsingAvatarSkeleton = false;
+    // Retains a scene's named selection while only the static fallback list is
+    // available, so first avatar resolve can restore a Bento/extra joint.
+    std::string mBoneJointPreferredValue;
     LLFrameTimer mRefreshTimer;
     LLFrameTimer mAgeRefreshTimer;
     // Last Add-Display reject reason surfaced through the status line by
@@ -112,6 +134,7 @@ private:
     LLTextBox* mStatusText = nullptr;
     LLScrollListCtrl* mCaptureList = nullptr;
     LLScrollListCtrl* mDisplayList = nullptr;
+    LLScrollListCtrl* mGateArmedList = nullptr;
 
     LLButton* mAddCameraButton = nullptr;
     LLButton* mAddLensButton = nullptr;
@@ -124,6 +147,11 @@ private:
     LLButton* mAddVirtualScreenButton = nullptr;
     LLButton* mRemoveDisplayButton = nullptr;
     LLButton* mLocateDisplayButton = nullptr;
+    LLButton* mGateArmButton = nullptr;
+    LLButton* mGateDisarmButton = nullptr;
+    LLButton* mGateTakeButton = nullptr;
+    LLButton* mGateIntervalResetButton = nullptr;
+    LLButton* mGatePrewarmResetButton = nullptr;
     // Prim-free virtual-screen editor controls (shown for a virtual display).
     LLButton* mRepositionScreenButton = nullptr;
     LLSliderCtrl* mScreenHeightSlider = nullptr;
@@ -132,15 +160,20 @@ private:
     LLScrollContainer* mCaptureScroll = nullptr;
     LLPanel* mCaptureDocument = nullptr;
     LLPanel* mCameraSettingsPanel = nullptr;
+    LLPanel* mBonePovPanel = nullptr;
     LLPanel* mLensSettingsPanel = nullptr;
     LLPanel* mRateSettingsPanel = nullptr;
     LLScrollContainer* mPerformanceScroll = nullptr;
     LLPanel* mPerformanceDocument = nullptr;
+    LLScrollContainer* mGateScroll = nullptr;
+    LLPanel* mGateDocument = nullptr;
 
     LLTextBox* mCaptureTitle = nullptr;
     LLTextBox* mSourceText = nullptr;
     LLTextBox* mRateReadout = nullptr;
     LLTextBox* mDisplaySourceRate = nullptr;
+    LLTextBox* mGateLiveText = nullptr;
+    LLTextBox* mGateReasonText = nullptr;
     LLComboBox* mFovModeCombo = nullptr;
     LLSpinCtrl* mVerticalFovSpinner = nullptr;
     LLSpinCtrl* mNearClipSpinner = nullptr;
@@ -156,6 +189,26 @@ private:
     LLSpinCtrl* mExposureBiasSpinner = nullptr;
     // Prim-free virtual-camera toggle (stored transform instead of a prim).
     LLCheckBoxCtrl* mVirtualCameraCheck = nullptr;
+    // Per-capture avatar/clone skeleton attachment (virtual cameras only).
+    LLCheckBoxCtrl* mBonePovEnabledCheck = nullptr;
+    LLComboBox* mBoneAnchorCombo = nullptr;
+    LLComboBox* mBoneJointCombo = nullptr;
+    LLComboBox* mBoneAimCombo = nullptr;
+    LLComboBox* mBoneRollCombo = nullptr;
+    LLSpinCtrl* mBoneOffsetXSpinner = nullptr;
+    LLSpinCtrl* mBoneOffsetYSpinner = nullptr;
+    LLSpinCtrl* mBoneOffsetZSpinner = nullptr;
+    LLSpinCtrl* mBoneTrimPitchSpinner = nullptr;
+    LLSpinCtrl* mBoneTrimYawSpinner = nullptr;
+    LLSpinCtrl* mBoneFovSpinner = nullptr;
+    LLSpinCtrl* mBoneSmoothingSpinner = nullptr;
+    LLCheckBoxCtrl* mBoneScaleAwareCheck = nullptr;
+    LLButton* mBoneOffsetResetButton = nullptr;
+    LLButton* mBoneTrimResetButton = nullptr;
+    LLButton* mBoneFovResetButton = nullptr;
+    LLButton* mBoneSmoothingResetButton = nullptr;
+    LLButton* mBoneAllResetButton = nullptr;
+    LLTextBox* mBoneStatusText = nullptr;
     // Render-only camera guide (frustum gizmo) toggles.
     LLCheckBoxCtrl* mShowGuideCheck = nullptr;
     LLCheckBoxCtrl* mGuideThirdsCheck = nullptr;
@@ -166,6 +219,11 @@ private:
     LLSpinCtrl* mTargetFpsSpinner = nullptr;
     LLComboBox* mRatePresetCombo = nullptr;
     LLComboBox* mNewDisplayFitCombo = nullptr;
+    LLCheckBoxCtrl* mDisplayGateSourceCheck = nullptr;
+    LLCheckBoxCtrl* mGateActiveCheck = nullptr;
+    LLComboBox* mGateModeCombo = nullptr;
+    LLSpinCtrl* mGateIntervalSpinner = nullptr;
+    LLSpinCtrl* mGatePrewarmSpinner = nullptr;
     LLComboBox* mDisplayFitCombo = nullptr;
     LLSpinCtrl* mAnchorXSpinner = nullptr;
     LLSpinCtrl* mAnchorYSpinner = nullptr;

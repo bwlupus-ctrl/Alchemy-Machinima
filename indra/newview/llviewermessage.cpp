@@ -28,6 +28,7 @@
 #include "llviewermessage.h"
 
 // Linden libraries
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llanimationstates.h"
 #include "llaudioengine.h"
 #include "llavataractions.h"
@@ -3985,6 +3986,10 @@ void process_kill_object(LLMessageSystem *mesgsys, void **user_data)
             // never kill our avatar
             continue;
         }
+
+        // [ProbeOnDemand] An authoritative kill clears cache provenance even
+        // when the object is currently culled (no drawable to note).
+        ALProbeDirty::noteServerUpdate(id);
 
         LLViewerObject *objectp = gObjectList.findObject(id);
         if (objectp)

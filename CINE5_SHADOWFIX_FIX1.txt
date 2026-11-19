@@ -1,0 +1,80 @@
+FIX ROUND — Cine Light Rig 5 cinema features + shadow-priority fix. A codex review CONFIRMED per-light
+shadow softness is byte-identical for world shadows at softness 0 (the renderer risk is clear). Four
+findings remain: 1 must-fix (the shadow-priority encoding) + 3 should-fix. Do NOT build/cmake/run.
+Locate by symbol/context. Do NOT disturb: the softness registry/shader (verified correct), the multi-
+instance tick, the SA-9 exposure chain except as F3 requires, the mirror line, scaledPoint's body.
+
+=============================================================================
+F1 (MUST-FIX) — make rig-vs-world shadow-slot ranking CATEGORICAL, not a finite numeric base
+=============================================================================
+The recent fix set rig emitters to mSpotLightPriority = 1e9 + r^3 (llvovolume.cpp updateSpotLightPriority,
+the isCineRigEmitter() branch). TWO defects:
+ (a) NOT ROBUST: calcPixelArea scales ~ (window_height / FOV)^2; at the 5-degree min FOV on a 1440p+
+     display a nearby large WORLD projector's pixel-area priority can EXCEED 1e9 and still evict a rig
+     projector — reproducing the "zoom to activate shadows" bug the branch was meant to kill.
+ (b) ORDERING LOST: an F32 near 1e9 has ~64-unit ULP, so distinct rig radii (r^3 = 35.9 vs 57.1)
+     collapse to the same stored priority; with >6 rig projectors the winners become traversal-order
+     dependent, not radius-dependent.
+
+FIX (two parts):
+ 1. llvovolume.cpp updateSpotLightPriority: for isCineRigEmitter(), set mSpotLightPriority = r * r * r
+    (world-size, camera-independent) — DROP the 1e9 base entirely. This restores clean r^3 ordering
+    among rig lights and removes the camera dependence. (Keep it gated on isCineRigEmitter(); non-rig
+    and the existing stable_spots/pixel-area paths stay byte-identical.)
+ 2. pipeline.cpp setupSpotLight — the spot-shadow slot AUCTION/ranking (the m_pri > pri comparison that
+    fills mTargetShadowSpotLight[], ~the block guarded by !gCubeSnapshot && !sPrismLensRender &&
+    !isProjectorShadowSuppressed). Make the comparison CATEGORICAL: a candidate that isCineRigEmitter()
+    outranks any NON-rig incumbent regardless of numeric priority; a non-rig candidate never displaces a
+    rig incumbent; when both candidate and incumbent are the same kind (both rig OR both non-rig),
+    compare numeric priority EXACTLY as today. Net effect: enabled rig projectors deterministically hold
+    up to 6 slots (the largest r^3 among them win when >6), and world projectors fill any remaining
+    slots by their existing pixel-area priority.
+ 3. Keep the applyFrame projector->updateSpotLightPriority() seed (still needed so a fresh projector has
+    a valid priority before the auction). Keep the 6-slot cap (MAX_SPOT_SHADOWS) and isProjectorShadow
+    Suppressed intact — a rig projector in sNoShadowProjectors (ShadowMode gating) is still excluded.
+
+FENCE: a scene with NO rig projectors present must be BYTE-IDENTICAL (the categorical tier only changes
+an ordering when a rig and a non-rig projector compete; among world projectors, unchanged). State this
+explicitly. If a pure-testable helper factors the categorical comparison, add a TUT test (rig beats
+non-rig regardless of numeric; same-kind falls back to numeric; disabled/suppressed excluded).
+
+=============================================================================
+F2 (SHOULD-FIX) — subsumed by F1
+=============================================================================
+Dropping the 1e9 base (F1.1) restores r^3 ordering among rig lights. Confirm in your report that rig
+radii 1.5 vs 1.75 now produce distinct priorities and that the >6-rig-projector winners are the largest
+by radius, not traversal order.
+
+=============================================================================
+F3 (SHOULD-FIX) — ratio-locked FILL EV must equal KEY EV - stops even at the EV floor
+=============================================================================
+alcinelightrigmodel.cpp (~the mRatioLock block): out[1].mEV = clamp(out[0].mEV - mRatioStops, MIN_EV,
+MAX_EV). For the reachable input KEY EV = -20, ratio = 5 stops, the spec is fill EV = -25, but the clamp
+to MIN_EV returns -20 — the ratio is silently NOT honored, and with a positive master EV the fill can be
+up to 32x brighter than the requested ratio.
+FIX: honor the ratio across the whole selectable domain. Preferred: preserve the derived fill EV through
+the render chain (do not clamp the ratio-derived value to the same MIN_EV floor used for a user-entered
+EV; the derived value is a relative offset from the key and must survive). If a floor is required for
+numerical safety, widen it so KEY_EV_MIN - MAX_RATIO_STOPS is representable, OR constrain the exposed
+key-EV / ratio-stops domain so every selectable combination stays representable. Add a BOUNDARY TUT test:
+key EV at its minimum + max ratio stops yields exactly key - stops (not clamped), and ratio-lock OFF
+leaves fill EV byte-identical.
+
+=============================================================================
+F4 (SHOULD-FIX) — catchlight must use the TARGET AVATAR's scale, not the aggregate group scale
+=============================================================================
+alcinelightrig.cpp (~the applyCatchlight call, and applyCatchlight itself): it passes
+globals.mSubjectScale to place/size the catchlight. In a MULTI-ANCHOR GROUP, globals.mSubjectScale =
+groupSubjectScale() which folds in group SPREAD (max member scale + R_spread/r_nom), NOT the target
+avatar's clone scale — so scaledPoint() can place the catchlight far ABOVE the avatar's actual eyes.
+FIX: place and size the catchlight using the CHOSEN eye-joint avatar's own getUniformScale() (the
+avatar the catchlight is attached to), not globals.mSubjectScale. Single-anchor is unchanged (there the
+two are equal). Confirm single-anchor byte-identical and group placement now sits on the avatar's eyes.
+
+=============================================================================
+REPORT
+=============================================================================
+F1: the categorical auction change + r^3 rig priority, and the world-only byte-identical fence (+ any
+test). F2: r^3 ordering confirmed distinct. F3: derived fill EV honored at the floor (+ boundary test).
+F4: target-avatar scale for the catchlight (+ single-anchor byte-identical). Confirm the softness shader/
+registry and the multi-instance finals are untouched. Note anything you think is wrong. Do not build.

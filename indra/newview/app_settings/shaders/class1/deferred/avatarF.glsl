@@ -37,9 +37,27 @@ in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
+vec3 srgb_to_linear(vec3 c);
+vec3 linear_to_srgb(vec3 c);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+vec3 alrDebugEmission(vec3 e);
+#endif
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     vec4 diff = texture(diffuseMap, vary_texcoord0.xy);
@@ -49,13 +67,44 @@ void main()
         discard;
     }
 
+    vec3 nvn = normalize(vary_normal);
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    vec3 actor_fx_styled_linear = vec3(0.0);
+    if (actor_fx_active)
+    {
+        vec2 fx_uv = vary_texcoord0.xy;
+        if (actorFxUvTransformEnabled())
+        {
+            fx_uv = actorFxUv(fx_uv, vary_position);
+            diff.rgb = texture(diffuseMap, fx_uv).rgb;
+        }
+        if (actorFxRgbSplitEnabled())
+        {
+            diff.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+            diff.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+        }
+        actor_fx_styled_linear = actorFxApply(srgb_to_linear(diff.rgb), nvn,
+                                               vary_position, vary_texcoord0.xy);
+        diff.rgb = linear_to_srgb(actor_fx_styled_linear);
+    }
+#endif
+#ifdef HAS_ACTOR_FX
+    diff.rgb = alrAlbedoSrgb(diff.rgb); // [AvatarLightResponse] presented surface
+#endif
     frag_data[0] = vec4(diff.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0);
-    vec3 nvn = normalize(vary_normal);
-    frag_data[2] = encodeNormal(nvn.xyz, 0, GBUFFER_FLAG_HAS_ATMOS);
+    // [TronA0] system avatar mesh: always avatar geometry -> tagged flag
+    frag_data[2] = encodeNormal(nvn.xyz, 0, gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+    }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
+#endif
 #endif
 }
-

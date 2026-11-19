@@ -48,6 +48,14 @@
 //-----------------------------------------------------------------------------
 LLKeyframeDataCache::keyframe_data_map_t    LLKeyframeDataCache::sKeyframeDataMap;
 
+// [PosePolish M4] Loop-seam repair statics. docs/pose_polish_integration_plan.md
+// "Milestone 4". Cache is keyed by clip asset id, mirroring
+// LLKeyframeWalkMotion::sPhaseInfoCache's per-asset caching for Milestone 3.
+bool LLKeyframeMotion::sLoopSeamRepairEnabled = false;
+std::map<LLUUID, LLKeyframeMotion::LoopSeamInfo> LLKeyframeMotion::sLoopSeamCache;
+std::map<LLUUID, LLKeyframeMotion::LocomotionPhaseInfo>
+    LLKeyframeMotion::sLocomotionPhaseCache;
+
 //-----------------------------------------------------------------------------
 // Globals
 //-----------------------------------------------------------------------------
@@ -60,6 +68,21 @@ static F32 MIN_PIXEL_AREA_CONSTRAINTS = 1000.f;
 static F32 MIN_ACCELERATION_SQUARED = 0.0005f * 0.0005f;
 
 static F32 MAX_CONSTRAINTS = 10;
+
+//-----------------------------------------------------------------------------
+// [PosePolish M4] Loop-seam repair constants.
+// docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+// All of this is only ever touched when sLoopSeamRepairEnabled is true.
+//-----------------------------------------------------------------------------
+const F32 LOOP_SEAM_MIN_LOOP_LENGTH   = 0.15f;   // seconds; shorter loops aren't trusted (mirrors M3's PHASE_MIN_CYCLE_LENGTH)
+const F32 LOOP_SEAM_BLEND_WINDOW_SEC  = 0.15f;   // seconds; post-wrap decay window
+const F32 LOOP_SEAM_WRAP_EPSILON      = 0.0005f; // seconds; float-jitter guard for wrap-edge detection
+const F32 LOOP_SEAM_ROT_THRESHOLD     = 0.0175f; // radians (~1 degree); below this a joint's rotation seam is treated as already continuous
+const F32 LOOP_SEAM_POS_THRESHOLD     = 0.003f;  // meters (3 mm); below this a joint's position seam is treated as already continuous
+const F32 LOOP_SEAM_SCALE_THRESHOLD   = 0.003f;  // scale units; below this a joint's scale seam is treated as already continuous
+const F32 LOOP_SEAM_VEL_SAMPLE_FRAC   = 0.05f;   // fraction of loop length used as the finite-difference sample step near each end
+const F32 LOOP_SEAM_WEIGHT_EPSILON    = 0.001f;  // skip the per-joint ease math once it's this close to zero
+const F32 LOOP_SEAM_MAX_TRUSTED_DT_SEC = 2.f;    // seconds; a raw-time jump at or beyond this is treated as a scrub/teleport/long-pause, not a wrap to ease across (mirrors llkeyframewalkmotion.cpp's MAX_TIME_DELTA)
 
 //-----------------------------------------------------------------------------
 // JointMotionList
@@ -436,7 +459,14 @@ LLKeyframeMotion::LLKeyframeMotion(const LLUUID &id)
         mLastSkeletonSerialNum(0),
         mLastUpdateTime(0.f),
         mLastLoopedTime(0.f),
-        mAssetStatus(ASSET_UNDEFINED)
+        mAssetStatus(ASSET_UNDEFINED),
+        mLocomotionSeedPending(false),
+        mLocomotionSeedBaseTime(0.0),
+        mLocomotionSeedPhase(-1.f),
+        // [PosePolish M4] loop-seam repair runtime state; see llkeyframemotion.h.
+        mSeamHavePrevLoopedTime(false),
+        mSeamBlendActive(false),
+        mSeamBlendElapsed(0.f)
 {
 
 }
@@ -688,6 +718,8 @@ bool LLKeyframeMotion::setupPose()
 //-----------------------------------------------------------------------------
 bool LLKeyframeMotion::onActivate()
 {
+    applyExternalLocomotionSeed();
+
     // If the keyframe anim has an associated emote, trigger it.
     if (mJointMotionList->mEmoteID.notNull())
     {
@@ -700,6 +732,33 @@ bool LLKeyframeMotion::onActivate()
 
     mLastLoopedTime = 0.f;
 
+    // [PosePolish M4] Loop-seam repair: a fresh activation must never carry over a
+    // mid-window blend (or a previous-time reference for wrap detection) from a
+    // prior play of this same motion instance. Also force the (cached, once-per-
+    // asset) seam analysis and this instance's captured-pose buffer to exist now,
+    // before any onUpdate()/wrap can occur, so the first wrap never has to
+    // allocate on the frame it fires. No-op unless sLoopSeamRepairEnabled is true.
+    // docs/pose_polish_integration_plan.md "Milestone 4".
+    if (sLoopSeamRepairEnabled)
+    {
+        mSeamHavePrevLoopedTime = false;
+        mSeamBlendActive = false;
+        mSeamBlendElapsed = 0.f;
+
+        getLoopSeamInfo();
+        if (mSeamCapturedPose.size() != mJointStates.size())
+        {
+            mSeamCapturedPose.resize(mJointStates.size());
+        }
+    }
+    else if (mSeamBlendActive)
+    {
+        // gate turned off (possibly mid-correction) since this instance last
+        // played -- never resume a stale window (fix for "disable mid-correction
+        // then re-enable must not inject a stale correction").
+        mSeamBlendActive = false;
+    }
+
     return true;
 }
 
@@ -709,8 +768,19 @@ bool LLKeyframeMotion::onActivate()
 bool LLKeyframeMotion::onUpdate(F32 time, U8* joint_mask)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_AVATAR;
+    time = getEffectiveUpdateTime(time);
     // llassert(time >= 0.f);       // This will fire
     time = llmax(0.f, time);
+
+    // [PosePolish M4] Loop-seam repair: capture this clip's in-cycle time from
+    // *before* the stock computation below overwrites it, so a wrap edge can be
+    // detected afterward. No-op unless sLoopSeamRepairEnabled is true (see
+    // detectSeamWrap()).
+    F32 seam_prev_looped_time = 0.f;
+    if (sLoopSeamRepairEnabled)
+    {
+        seam_prev_looped_time = mLastLoopedTime;
+    }
 
     if (mJointMotionList->mLoop)
     {
@@ -746,7 +816,41 @@ bool LLKeyframeMotion::onUpdate(F32 time, U8* joint_mask)
         mLastLoopedTime = time;
     }
 
+    // [PosePolish M4] Loop-seam repair: detect a just-occurred wrap and, if so,
+    // capture the pose actually displayed *last* frame (still sitting in
+    // mJointStates -- applyKeyframes() below hasn't overwritten it yet) as the
+    // seam-start snapshot for the upcoming blend window. Must run before
+    // applyKeyframes() so the capture reflects last frame's output, not this
+    // frame's fresh curve sample. Strict no-op -- no joint is touched, no read of
+    // mJointStates -- unless sLoopSeamRepairEnabled is true.
+    if (sLoopSeamRepairEnabled)
+    {
+        if (mJointMotionList->mLoop
+            && (mJointMotionList->mLoopOutPoint - mJointMotionList->mLoopInPoint) >= LOOP_SEAM_MIN_LOOP_LENGTH
+            && detectSeamWrap(time, seam_prev_looped_time))
+        {
+            captureSeamPose();
+            mSeamBlendActive = true;
+            mSeamBlendElapsed = 0.f;
+        }
+    }
+    else if (mSeamBlendActive)
+    {
+        // gate turned off mid-correction -- drop the stale state so re-enabling
+        // later starts a fresh window instead of resuming a blend against a
+        // long-stale captured pose.
+        mSeamBlendActive = false;
+    }
+
     applyKeyframes(mLastLoopedTime);
+
+    // [PosePolish M4] Loop-seam repair: blend a brief, decaying ease from the
+    // captured seam-start pose back to the stock pose applyKeyframes() just wrote.
+    // Strict no-op -- no joint is touched -- unless sLoopSeamRepairEnabled is true.
+    if (sLoopSeamRepairEnabled)
+    {
+        applySeamEase(time);
+    }
 
     applyConstraints(mLastLoopedTime, joint_mask);
 
@@ -784,6 +888,533 @@ void LLKeyframeMotion::applyKeyframes(F32 time)
     }
 }
 
+namespace
+{
+constexpr S32 GENERIC_PHASE_SAMPLES = 24;
+
+F32 wrap_generic_phase(F32 phase)
+{
+    phase = fmodf(phase, 1.f);
+    return phase < 0.f ? phase + 1.f : phase;
+}
+
+bool find_generic_plant_window(const std::vector<F32>& activity,
+                               F32 threshold, F32& center, F32& length)
+{
+    const S32 count = static_cast<S32>(activity.size());
+    S32 best_start = -1, best_length = 0, run_start = -1, run_length = 0;
+    for (S32 i = 0; i < count * 2; ++i)
+    {
+        if (activity[i % count] <= threshold)
+        {
+            if (run_length == 0) run_start = i;
+            ++run_length;
+            if (run_length > best_length && run_length <= count)
+            {
+                best_start = run_start;
+                best_length = run_length;
+            }
+        }
+        else
+        {
+            run_length = 0;
+        }
+    }
+    if (best_start < 0) return false;
+    length = static_cast<F32>(best_length) / count;
+    center = wrap_generic_phase(
+        (static_cast<F32>(best_start) + 0.5f * (best_length - 1)) / count);
+    return true;
+}
+}
+
+const LLKeyframeMotion::LocomotionPhaseInfo&
+LLKeyframeMotion::getGenericLocomotionPhaseInfo()
+{
+    // Loading is not a stable analysis result.  In particular, do not poison
+    // the asset-wide cache with NOT_LOOPING before the async asset callback has
+    // populated mJointMotionList; the next mover frame must be able to analyze
+    // the newly available curves.
+    if (!mJointMotionList)
+    {
+        static const LocomotionPhaseInfo loading_info;
+        return loading_info;
+    }
+
+    auto cached = sLocomotionPhaseCache.find(getID());
+    if (cached != sLocomotionPhaseCache.end()) return cached->second;
+
+    LocomotionPhaseInfo info;
+    info.mStatus = LocomotionPhaseInfo::NOT_LOOPING;
+    if (mJointMotionList && mJointMotionList->mLoop &&
+        mJointMotionList->mDuration > 1e-4f)
+    {
+        const F32 cycle_start = mJointMotionList->mLoopInPoint;
+        const F32 cycle_length = mJointMotionList->mLoopOutPoint - cycle_start;
+        if (cycle_length >= 0.15f)
+        {
+            JointMotion* left = nullptr;
+            JointMotion* right = nullptr;
+            for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); ++i)
+            {
+                JointMotion* joint = mJointMotionList->getJointMotion(i);
+                if (!joint) continue;
+                if (joint->mJointName == "mAnkleLeft") left = joint;
+                else if (joint->mJointName == "mAnkleRight") right = joint;
+            }
+            info.mStatus = LocomotionPhaseInfo::MISSING_ANKLES;
+            if (left && right)
+            {
+                std::vector<F32> la(GENERIC_PHASE_SAMPLES, 0.f);
+                std::vector<F32> ra(GENERIC_PHASE_SAMPLES, 0.f);
+                const F32 step = cycle_length / GENERIC_PHASE_SAMPLES;
+                const F32 duration = mJointMotionList->mDuration;
+                F32 left_max = 0.f, right_max = 0.f;
+                for (S32 i = 0; i < GENERIC_PHASE_SAMPLES; ++i)
+                {
+                    const F32 t0 = cycle_start + step * i;
+                    const F32 t1 = cycle_start + step * (i + 1);
+                    const LLQuaternion lr0 = left->mRotationCurve.getValue(t0, duration);
+                    const LLQuaternion lr1 = left->mRotationCurve.getValue(t1, duration);
+                    const LLQuaternion rr0 = right->mRotationCurve.getValue(t0, duration);
+                    const LLQuaternion rr1 = right->mRotationCurve.getValue(t1, duration);
+                    la[i] = 2.f * acosf(llclamp(fabsf(dot(lr0, lr1)), 0.f, 1.f));
+                    ra[i] = 2.f * acosf(llclamp(fabsf(dot(rr0, rr1)), 0.f, 1.f));
+                    if (left->mPositionCurve.mNumKeys > 0)
+                    {
+                        la[i] += (left->mPositionCurve.getValue(t1, duration) -
+                                  left->mPositionCurve.getValue(t0, duration)).magVec() * 2.f;
+                    }
+                    if (right->mPositionCurve.mNumKeys > 0)
+                    {
+                        ra[i] += (right->mPositionCurve.getValue(t1, duration) -
+                                  right->mPositionCurve.getValue(t0, duration)).magVec() * 2.f;
+                    }
+                    left_max = llmax(left_max, la[i]);
+                    right_max = llmax(right_max, ra[i]);
+                }
+
+                F32 left_center = 0.f, left_window = 0.f;
+                F32 right_center = 0.f, right_window = 0.f;
+                const bool left_ok = left_max > 0.f &&
+                    find_generic_plant_window(la, left_max * 0.35f,
+                                              left_center, left_window);
+                const bool right_ok = right_max > 0.f &&
+                    find_generic_plant_window(ra, right_max * 0.35f,
+                                              right_center, right_window);
+                const F32 offset = wrap_generic_phase(right_center - left_center);
+                info.mStatus = LocomotionPhaseInfo::NO_ALTERNATING_PLANTS;
+                if (left_ok && right_ok && left_window >= 0.12f && left_window <= 0.55f &&
+                    right_window >= 0.12f && right_window <= 0.55f &&
+                    offset >= 0.20f && offset <= 0.80f)
+                {
+                    info.mStatus = LocomotionPhaseInfo::VALID;
+                    info.mCycleStart = cycle_start;
+                    info.mCycleLength = cycle_length;
+                    info.mLeftPlantPhase = left_center;
+                    info.mRightOffset = offset;
+                    info.mLeftPlantWindow = left_window;
+                    info.mRightPlantWindow = right_window;
+                    const F32 alternation = 1.f -
+                        llclamp(fabsf(offset - 0.5f) / 0.3f, 0.f, 1.f);
+                    info.mConfidence = llclamp(
+                        0.5f * alternation +
+                        0.5f * (1.f - fabsf(left_window - right_window)),
+                        0.f, 1.f);
+                }
+            }
+        }
+    }
+    return sLocomotionPhaseCache.insert(std::make_pair(getID(), info))
+        .first->second;
+}
+
+void LLKeyframeMotion::setExternalLocomotionSeed(const LLUUID& owner,
+                                                  F64 base_time,
+                                                  F32 normalized_phase)
+{
+    if (!isPresentationControlledBy(owner) || !usesExternalSampleClock() ||
+        !llfinite(base_time) || !llfinite(normalized_phase))
+    {
+        return;
+    }
+    mLocomotionSeedPending = true;
+    mLocomotionSeedBaseTime = base_time;
+    mLocomotionSeedPhase = normalized_phase;
+    applyExternalLocomotionSeed();
+}
+
+void LLKeyframeMotion::applyExternalLocomotionSeed()
+{
+    if (!mLocomotionSeedPending || !mJointMotionList ||
+        !usesExternalSampleClock())
+    {
+        return;
+    }
+
+    F64 sample = mLocomotionSeedBaseTime;
+    const F64 cycle_start = mJointMotionList->mLoopInPoint;
+    const F64 cycle_length = mJointMotionList->mLoopOutPoint - cycle_start;
+    if (mJointMotionList->mLoop && cycle_length > 0.001)
+    {
+        F32 phase = mLocomotionSeedPhase;
+        if (phase < 0.f)
+        {
+            const LocomotionPhaseInfo& info = getGenericLocomotionPhaseInfo();
+            phase = info.valid() ? info.mLeftPlantPhase : 0.f;
+        }
+        phase = fmodf(llmax(phase, 0.f), 1.f);
+        F64 cycle_offset = fmod(mLocomotionSeedBaseTime +
+                                (F64)phase * cycle_length, cycle_length);
+        if (cycle_offset < 0.0)
+        {
+            cycle_offset += cycle_length;
+        }
+        sample = cycle_start + cycle_offset;
+    }
+    else
+    {
+        sample = llclamp(sample, 0.0,
+                         llmax(0.0, (F64)mJointMotionList->mDuration));
+    }
+    mExternalSampleTime = (F32)sample;
+    mLocomotionSeedPending = false;
+}
+
+//-----------------------------------------------------------------------------
+// [PosePolish M4] LLKeyframeMotion::getLoopSeamInfo()
+// docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+//
+// Computes and caches, per clip *asset* (LLKeyframeDataCache already shares one
+// JointMotionList across every instance of the same clip, so this mirrors that
+// sharing rather than redoing the analysis per avatar), which animated joints of a
+// LOOPING clip have a loop-out pose (and/or incoming/outgoing velocity) that
+// disagrees with the loop-in pose by more than a small threshold -- i.e. which
+// joints are actually worth capturing+easing on a wrap. This is pure *gating*
+// data: no correction offset is stored (the runtime correction is a
+// capture-and-ease of the live displayed pose, see captureSeamPose()/
+// applySeamEase()). Reads only the already-loaded keyframe curve data
+// (mJointMotionList) -- no character/skeleton stepping needed -- so it is cheap
+// and safe to force-compute once at onActivate(), before any wrap can occur, so
+// the first wrap never has to allocate (fix: no heap alloc on the seam frame).
+// Only ever called when sLoopSeamRepairEnabled is true. The asset/curves are
+// never written to.
+//-----------------------------------------------------------------------------
+const LLKeyframeMotion::LoopSeamInfo& LLKeyframeMotion::getLoopSeamInfo()
+{
+    const LLUUID& asset_id = getID();
+    std::map<LLUUID, LoopSeamInfo>::iterator cached = sLoopSeamCache.find(asset_id);
+    if (cached != sLoopSeamCache.end())
+    {
+        return cached->second;
+    }
+
+    LoopSeamInfo info;
+
+    if (mJointMotionList
+        && mJointMotionList->mLoop
+        && (mJointMotionList->mLoopOutPoint - mJointMotionList->mLoopInPoint) >= LOOP_SEAM_MIN_LOOP_LENGTH
+        && mJointMotionList->mDuration > 0.f)
+    {
+        F32 duration = mJointMotionList->mDuration;
+        F32 loop_in = mJointMotionList->mLoopInPoint;
+        F32 loop_out = mJointMotionList->mLoopOutPoint;
+        F32 loop_length = loop_out - loop_in;
+
+        // finite-difference sample step for incoming/outgoing velocity near each
+        // end of the loop; bounded well inside the loop window so the two samples
+        // taken at each end (t0+step, t1-step) never cross past the other end.
+        F32 vel_dt = llmin(loop_length * LOOP_SEAM_VEL_SAMPLE_FRAC, loop_length * 0.25f);
+
+        U32 num_joints = mJointMotionList->getNumJointMotions();
+        info.mJointDeltas.resize(num_joints);
+
+        for (U32 i = 0; i < num_joints; ++i)
+        {
+            JointMotion* jm = mJointMotionList->getJointMotion(i);
+            if (!jm)
+            {
+                continue;
+            }
+
+            LoopSeamJointDelta& delta = info.mJointDeltas[i];
+            bool joint_needs_repair = false;
+
+            //---------------------------------------------------------------
+            // rotation: compare the loop-in and loop-out authored rotation,
+            // plus incoming/outgoing angular speed near each end.
+            //---------------------------------------------------------------
+            if (jm->mRotationCurve.mNumKeys > 0)
+            {
+                LLQuaternion start_rot = jm->mRotationCurve.getValue(loop_in, duration);
+                LLQuaternion end_rot   = jm->mRotationCurve.getValue(loop_out, duration);
+
+                F32 mismatch_angle = 2.f * acosf(llclamp(fabsf(dot(start_rot, end_rot)), 0.f, 1.f));
+
+                F32 speed_mismatch = 0.f;
+                if (vel_dt > 0.f)
+                {
+                    LLQuaternion start_next = jm->mRotationCurve.getValue(loop_in + vel_dt, duration);
+                    LLQuaternion end_prev   = jm->mRotationCurve.getValue(loop_out - vel_dt, duration);
+                    F32 start_speed = 2.f * acosf(llclamp(fabsf(dot(start_rot, start_next)), 0.f, 1.f)) / vel_dt;
+                    F32 end_speed   = 2.f * acosf(llclamp(fabsf(dot(end_prev, end_rot)), 0.f, 1.f)) / vel_dt;
+                    // scaled back down to an angle-like magnitude so it can share
+                    // the same threshold as mismatch_angle above
+                    speed_mismatch = fabsf(end_speed - start_speed) * vel_dt;
+                }
+
+                if (mismatch_angle > LOOP_SEAM_ROT_THRESHOLD || speed_mismatch > LOOP_SEAM_ROT_THRESHOLD)
+                {
+                    delta.mHasRotation = true;
+                    joint_needs_repair = true;
+                }
+            }
+
+            //---------------------------------------------------------------
+            // position: same idea, linear rather than spherical.
+            //---------------------------------------------------------------
+            if (jm->mPositionCurve.mNumKeys > 0)
+            {
+                LLVector3 start_pos = jm->mPositionCurve.getValue(loop_in, duration);
+                LLVector3 end_pos   = jm->mPositionCurve.getValue(loop_out, duration);
+                F32 pos_mismatch = (end_pos - start_pos).magVec();
+
+                F32 vel_mismatch = 0.f;
+                if (vel_dt > 0.f)
+                {
+                    LLVector3 start_next = jm->mPositionCurve.getValue(loop_in + vel_dt, duration);
+                    LLVector3 end_prev   = jm->mPositionCurve.getValue(loop_out - vel_dt, duration);
+                    LLVector3 start_vel = (start_next - start_pos) * (1.f / vel_dt);
+                    LLVector3 end_vel   = (end_pos - end_prev) * (1.f / vel_dt);
+                    vel_mismatch = (end_vel - start_vel).magVec() * vel_dt;
+                }
+
+                if (pos_mismatch > LOOP_SEAM_POS_THRESHOLD || vel_mismatch > LOOP_SEAM_POS_THRESHOLD)
+                {
+                    delta.mHasPosition = true;
+                    joint_needs_repair = true;
+                }
+            }
+
+            //---------------------------------------------------------------
+            // scale: direct mismatch only (no velocity term -- scale seams from
+            // velocity alone are vanishingly rare and not worth the extra cost).
+            //---------------------------------------------------------------
+            if (jm->mScaleCurve.mNumKeys > 0)
+            {
+                LLVector3 start_scale = jm->mScaleCurve.getValue(loop_in, duration);
+                LLVector3 end_scale   = jm->mScaleCurve.getValue(loop_out, duration);
+                F32 scale_mismatch = (end_scale - start_scale).magVec();
+
+                if (scale_mismatch > LOOP_SEAM_SCALE_THRESHOLD)
+                {
+                    delta.mHasScale = true;
+                    joint_needs_repair = true;
+                }
+            }
+
+            if (joint_needs_repair)
+            {
+                delta.mHasCorrection = true;
+                info.mNeedsRepair = true;
+            }
+        }
+    }
+    // else: not a looping clip, loop window too short/degenerate, or zero duration --
+    // info stays "no repair needed" and every caller falls back to stock forever.
+
+    info.mValid = true;
+
+    std::pair<std::map<LLUUID, LoopSeamInfo>::iterator, bool> inserted =
+        sLoopSeamCache.insert(std::make_pair(asset_id, info));
+    return inserted.first->second;
+}
+
+//-----------------------------------------------------------------------------
+// [PosePolish M4] LLKeyframeMotion::detectSeamWrap()
+// docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+//
+// Called once per onUpdate(), before applyKeyframes() overwrites mJointStates,
+// only when sLoopSeamRepairEnabled is true and the clip has a real loop window
+// (checked by the caller). Detects a just-occurred loop wrap two ways, since
+// either alone can miss cases the other catches:
+//   (a) this frame's in-cycle time dropped below last frame's -- the ordinary,
+//       one-cycle-at-a-time wrap (same edge the stock fmod() branch in onUpdate()
+//       produces once per cycle);
+//   (b) the real elapsed time since last update is at least one full loop length
+//       -- a low-FPS/hitch frame that can cross an entire cycle (or more) without
+//       (a) ever showing a decrease, e.g. in-cycle 0.2 -> +1.1s raw dt -> 0.3: no
+//       decrease, but clearly at least one full cycle was skipped.
+// Only ordinary forward playback deltas are trusted (0 <= raw_dt <
+// LOOP_SEAM_MAX_TRUSTED_DT_SEC); a negative or huge raw_dt means a scrub,
+// pause/resume-after-a-long-time, or teleport-like time jump -- not a smooth loop
+// wrap worth easing across -- so it is never treated as a wrap, and a low-FPS
+// multi-cycle skip within the trusted range still triggers exactly one repair,
+// never one per skipped cycle.
+//-----------------------------------------------------------------------------
+bool LLKeyframeMotion::detectSeamWrap(F32 raw_time, F32 prev_looped_time)
+{
+    bool have_prev = mSeamHavePrevLoopedTime;
+    mSeamHavePrevLoopedTime = true;
+    if (!have_prev)
+    {
+        // no meaningful "previous" in-cycle time yet (first update after
+        // onActivate()) -- can never be mistaken for a wrap.
+        return false;
+    }
+
+    F32 raw_dt = raw_time - mLastUpdateTime;
+    if (raw_dt < 0.f || raw_dt >= LOOP_SEAM_MAX_TRUSTED_DT_SEC)
+    {
+        return false;
+    }
+
+    F32 loop_length = mJointMotionList->mLoopOutPoint - mJointMotionList->mLoopInPoint;
+
+    bool decreased = (mLastLoopedTime + LOOP_SEAM_WRAP_EPSILON) < prev_looped_time;
+    bool cycle_crossed = (loop_length > 0.f) && (raw_dt >= loop_length);
+
+    return decreased || cycle_crossed;
+}
+
+//-----------------------------------------------------------------------------
+// [PosePolish M4] LLKeyframeMotion::captureSeamPose()
+// docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+//
+// Called immediately after detectSeamWrap() returns true, still before
+// applyKeyframes() overwrites mJointStates this frame -- so every joint_state
+// read here still holds exactly what was displayed *last* frame (curve value
+// plus any correction already in flight), i.e. the true "last emitted" pose.
+// Snapshots that pose, for every joint getLoopSeamInfo() flagged as
+// seam-relevant, into mSeamCapturedPose, where it stays fixed for the whole
+// upcoming blend window (see applySeamEase()). mSeamCapturedPose is already
+// sized to mJointStates.size() from onActivate() -- this never allocates.
+//-----------------------------------------------------------------------------
+void LLKeyframeMotion::captureSeamPose()
+{
+    if (mSeamCapturedPose.size() != mJointStates.size())
+    {
+        // defensive only -- onActivate() already sizes this so the wrap frame
+        // itself never has to allocate.
+        mSeamCapturedPose.resize(mJointStates.size());
+    }
+
+    const LoopSeamInfo& seam = getLoopSeamInfo();
+    if (!seam.mNeedsRepair)
+    {
+        return;
+    }
+
+    U32 num_joints = llmin((U32)seam.mJointDeltas.size(),
+                            llmin((U32)mJointStates.size(), (U32)mSeamCapturedPose.size()));
+    for (U32 i = 0; i < num_joints; ++i)
+    {
+        if (!seam.mJointDeltas[i].mHasCorrection)
+        {
+            continue;
+        }
+
+        LLPointer<LLJointState>& joint_state = mJointStates[i];
+        if (joint_state.isNull() || !joint_state->getJoint())
+        {
+            continue;
+        }
+
+        SeamCapturedJoint& captured = mSeamCapturedPose[i];
+        captured.mRotation = joint_state->getRotation();
+        captured.mPosition = joint_state->getPosition();
+        captured.mScale = joint_state->getScale();
+    }
+}
+
+//-----------------------------------------------------------------------------
+// [PosePolish M4] LLKeyframeMotion::applySeamEase()
+// docs/pose_polish_integration_plan.md "Milestone 4 -- Loop-seam repair".
+//
+// Called once per onUpdate(), immediately after applyKeyframes() has written the
+// fresh stock authored pose into mJointStates, only when sLoopSeamRepairEnabled
+// is true (checked by the caller). While a blend window is active (mSeamBlendActive,
+// set by a wrap detected earlier this same onUpdate()), blends each seam-relevant
+// joint from the pose captureSeamPose() captured (the pose actually displayed the
+// instant before the wrap) back to the freshly-applied curve pose, via an ease
+// that goes 1 -> 0 over the window (smoothstep, zero slope at both ends): at the
+// first post-wrap frame the output equals the captured pre-wrap pose exactly (no
+// snap, and robust to any frame overshoot -- there is no fixed delta computed
+// from a possibly-overshot curve sample), and once the ease reaches 0 the output
+// is exactly the authored curve value -- stock. On every frame this function is
+// not mid-window, no joint is touched and applyKeyframes()'s stock output is left
+// exactly as it was written.
+//-----------------------------------------------------------------------------
+void LLKeyframeMotion::applySeamEase(F32 raw_time)
+{
+    if (!mSeamBlendActive)
+    {
+        return;
+    }
+
+    if (mSeamBlendElapsed >= LOOP_SEAM_BLEND_WINDOW_SEC)
+    {
+        mSeamBlendActive = false;
+        return;
+    }
+
+    const LoopSeamInfo& seam = getLoopSeamInfo();
+    if (!seam.mNeedsRepair)
+    {
+        // nothing to correct on this clip, ever -- stop tracking the window.
+        mSeamBlendActive = false;
+        return;
+    }
+
+    F32 window_t = llclamp(mSeamBlendElapsed / LOOP_SEAM_BLEND_WINDOW_SEC, 0.f, 1.f);
+    F32 remain = 1.f - window_t;
+    F32 ease = remain * remain * (3.f - 2.f * remain); // smoothstep ease-out: 1 -> 0, zero slope at both ends
+
+    if (ease > LOOP_SEAM_WEIGHT_EPSILON)
+    {
+        U32 num_joints = llmin((U32)seam.mJointDeltas.size(),
+                                llmin((U32)mJointStates.size(), (U32)mSeamCapturedPose.size()));
+        for (U32 i = 0; i < num_joints; ++i)
+        {
+            const LoopSeamJointDelta& delta = seam.mJointDeltas[i];
+            if (!delta.mHasCorrection)
+            {
+                continue;
+            }
+
+            LLPointer<LLJointState>& joint_state = mJointStates[i];
+            if (joint_state.isNull() || !joint_state->getJoint())
+            {
+                continue;
+            }
+            const SeamCapturedJoint& captured = mSeamCapturedPose[i];
+            U32 usage = joint_state->getUsage();
+
+            // slerp/lerp(t, a, b): t==0 -> a (the freshly-applied curve value),
+            // t==1 -> b (the captured pre-wrap pose); ease runs 1 -> 0 across the
+            // window, so this eases FROM the captured pose TO the curve value.
+            if (delta.mHasRotation && (usage & LLJointState::ROT))
+            {
+                joint_state->setRotation(slerp(ease, joint_state->getRotation(), captured.mRotation));
+            }
+            if (delta.mHasPosition && (usage & LLJointState::POS))
+            {
+                joint_state->setPosition(lerp(joint_state->getPosition(), captured.mPosition, ease));
+            }
+            if (delta.mHasScale && (usage & LLJointState::SCALE))
+            {
+                joint_state->setScale(lerp(joint_state->getScale(), captured.mScale, ease));
+            }
+        }
+    }
+
+    // advance the window by real elapsed time; clamp a negative delta (stopped
+    // clock/scrub) to zero and a huge one (frame hitch) to the window length so
+    // the timer can neither run backward nor silently skip the whole window.
+    F32 dt = llclamp(raw_time - mLastUpdateTime, 0.f, LOOP_SEAM_BLEND_WINDOW_SEC);
+    mSeamBlendElapsed += dt;
+}
+
 //-----------------------------------------------------------------------------
 // applyConstraints()
 //-----------------------------------------------------------------------------
@@ -813,6 +1444,9 @@ void LLKeyframeMotion::applyConstraints(F32 time, U8* joint_mask)
 //-----------------------------------------------------------------------------
 void LLKeyframeMotion::onDeactivate()
 {
+    mLocomotionSeedPending = false;
+    mLocomotionSeedBaseTime = 0.0;
+    mLocomotionSeedPhase = -1.f;
     for (JointConstraint* constraintp : mConstraints)
     {
         deactivateConstraint(constraintp);
@@ -2354,6 +2988,7 @@ void LLKeyframeMotion::setEaseOut(F32 ease_in)
 //-----------------------------------------------------------------------------
 void LLKeyframeMotion::flushKeyframeCache()
 {
+    sLocomotionPhaseCache.clear();
     // TODO: Make this safe to do
 //  LLKeyframeDataCache::clear();
 }
@@ -2367,6 +3002,17 @@ void LLKeyframeMotion::setLoop(bool loop)
     {
         mJointMotionList->mLoop = loop;
         mSendStopTimestamp = F32_MAX;
+        sLocomotionPhaseCache.erase(getID());
+
+        // [PosePolish M4] the cached seam analysis (getLoopSeamInfo()) was
+        // computed against the *previous* loop window; a preview/edit-tool
+        // mutation of it must invalidate the shared per-asset cache entry so a
+        // stale seam is never applied. No-op unless sLoopSeamRepairEnabled is
+        // true (the cache is otherwise always empty).
+        if (sLoopSeamRepairEnabled)
+        {
+            sLoopSeamCache.erase(getID());
+        }
     }
 }
 
@@ -2379,6 +3025,7 @@ void LLKeyframeMotion::setLoopIn(F32 in_point)
     if (mJointMotionList)
     {
         mJointMotionList->mLoopInPoint = in_point;
+        sLocomotionPhaseCache.erase(getID());
 
         // set up loop keys
         for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); i++)
@@ -2397,6 +3044,13 @@ void LLKeyframeMotion::setLoopIn(F32 in_point)
             rot_curve->mLoopInKey.mRotation = rot_curve->getValue(mJointMotionList->mLoopInPoint, mJointMotionList->mDuration);
             scale_curve->mLoopInKey.mScale = scale_curve->getValue(mJointMotionList->mLoopInPoint, mJointMotionList->mDuration);
         }
+
+        // [PosePolish M4] see setLoop() -- invalidate the stale cached seam
+        // analysis for this asset. No-op unless sLoopSeamRepairEnabled is true.
+        if (sLoopSeamRepairEnabled)
+        {
+            sLoopSeamCache.erase(getID());
+        }
     }
 }
 
@@ -2408,6 +3062,7 @@ void LLKeyframeMotion::setLoopOut(F32 out_point)
     if (mJointMotionList)
     {
         mJointMotionList->mLoopOutPoint = out_point;
+        sLocomotionPhaseCache.erase(getID());
 
         // set up loop keys
         for (U32 i = 0; i < mJointMotionList->getNumJointMotions(); i++)
@@ -2425,6 +3080,13 @@ void LLKeyframeMotion::setLoopOut(F32 out_point)
             pos_curve->mLoopOutKey.mPosition = pos_curve->getValue(mJointMotionList->mLoopOutPoint, mJointMotionList->mDuration);
             rot_curve->mLoopOutKey.mRotation = rot_curve->getValue(mJointMotionList->mLoopOutPoint, mJointMotionList->mDuration);
             scale_curve->mLoopOutKey.mScale = scale_curve->getValue(mJointMotionList->mLoopOutPoint, mJointMotionList->mDuration);
+        }
+
+        // [PosePolish M4] see setLoop() -- invalidate the stale cached seam
+        // analysis for this asset. No-op unless sLoopSeamRepairEnabled is true.
+        if (sLoopSeamRepairEnabled)
+        {
+            sLoopSeamCache.erase(getID());
         }
     }
 }

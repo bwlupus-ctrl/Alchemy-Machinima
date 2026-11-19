@@ -36,6 +36,16 @@ uniform vec2 screen_res;
 uniform vec3 kern[4];
 uniform float kern_scale;
 
+// [ShadowDist P1] Control D: sun-shadow (.r) softening decoupled from the SSAO
+// (.g) blur. 0 = stock (the shadow channel shares the SSAO kernel; the original
+// code below runs untouched), 1 = Gaussian sigma in pixels, 2 = Gaussian sigma
+// in world metres (converted per pixel from depth, so fine shadows survive as
+// the camera pulls back), 3 = no shadow blur at all. SSAO is identical in every
+// mode. GLSL initialisers keep a program that never receives these stock.
+uniform int   shadow_soften_mode = 0;
+uniform float shadow_soften_sigma = 1.0;   // pixels (mode 1) or metres (mode 2)
+uniform float shadow_px_per_m = 1.0;       // light-target pixels per metre at 1 m depth (H * P11 / 2)
+
 in vec2 vary_fragcoord;
 
 vec4 getPosition(vec2 pos_screen);
@@ -107,6 +117,71 @@ void main()
 
     col /= defined_weight.xyxx;
     //col.y *= col.y;
+
+    // [ShadowDist P1] Control D. The stock loops above have already produced
+    // .g (SSAO) -- and .b/.a, which softenLight never reads -- exactly as
+    // before; only the shadow channel is replaced here. Dedicated taps sit on
+    // the UNPERTURBED pixel grid at whole-pixel offsets (the light map is
+    // point-sampled; fractional offsets would round asymmetrically) and take
+    // their weights from the real integer distances (design v4 s4.2, v5 s4).
+    // Each tap keeps the stock plane test so depth-edge behaviour matches.
+    if (shadow_soften_mode != 0)
+    {
+        float shadow_soft = ccol.r;                 // mode 3: centre only (pass-through)
+        if (shadow_soften_mode != 3)
+        {
+            float s = shadow_soften_sigma;
+            if (shadow_soften_mode == 2)
+            {
+                // world metres -> pixels at this pixel's depth
+                s = s * shadow_px_per_m / max(-pos.z, 0.05);
+            }
+            // [ShadowDist P1 fix] cap: extreme mm radii / tiny FOVs would give
+            // sigma in the thousands of px (taps spread over the whole screen).
+            s = clamp(s, 0.5, 64.0);
+            float acc  = ccol.r;
+            float wsum = 1.0;
+            // s <= 2 px: three taps per side at round(t*s), t = 1..3;
+            // s >  2 px: six taps per side at round(t*s/2), t = 1..6, so the tap
+            //            spacing stays <= sigma (no comb / ghost copies).
+            int   ntaps = (s > 2.0) ? 6 : 3;
+            float pitch = (s > 2.0) ? (0.5 * s) : s;
+            int   prev  = 0;
+            vec2  tc_px = vary_fragcoord.xy * screen_res;   // unperturbed pixel position
+            for (int t = 1; t <= 6; ++t)
+            {
+                if (t > ntaps)
+                {
+                    break;
+                }
+                int n = max(prev + 1, int(floor(float(t) * pitch + 0.5)));
+                prev = n;
+                float q = float(n) / s;                    // [ShadowDist P1 fix] no int n*n overflow
+                float w = exp(-0.5 * q * q);
+                vec2 off = float(n) * delta;                // delta is a unit axis vector (pixels)
+
+                vec2 tcp = (tc_px + off) / screen_res;
+                vec3 pp  = getPosition(tcp).xyz;
+                float dp = dot(norm.xyz, pp - pos);
+                if (dp * dp <= pointplanedist_tolerance_pow2)
+                {
+                    acc  += texture(lightMap, tcp).r * w;
+                    wsum += w;
+                }
+
+                vec2 tcm = (tc_px - off) / screen_res;
+                vec3 pm  = getPosition(tcm).xyz;
+                float dm = dot(norm.xyz, pm - pos);
+                if (dm * dm <= pointplanedist_tolerance_pow2)
+                {
+                    acc  += texture(lightMap, tcm).r * w;
+                    wsum += w;
+                }
+            }
+            shadow_soft = acc / wsum;
+        }
+        col.r = shadow_soft;
+    }
 
     frag_color = max(col, vec4(0));
 

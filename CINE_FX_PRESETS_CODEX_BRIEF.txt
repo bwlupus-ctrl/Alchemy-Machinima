@@ -1,0 +1,52 @@
+IMPLEMENTATION TASK — add 15 new animated FX + 14 new cinematic presets to the Cinematic Light Rig.
+Repo: I:\alchemy-machinima, branch feature/cine-light-rig (large uncommitted work present — build on top).
+You IMPLEMENT. Do NOT build/cmake/run. Claude builds; codex review reviews before build.
+
+=============================================================================
+READ FIRST — the spec is NORMATIVE
+=============================================================================
+doc/CINE_FX_PRESETS_EXPANSION.md — Fable's spec. Part A = the existing evalFX contract + preset schema
+(with citations); Part B = the 15 new FX (ids 33-47) with base pose + concrete evalFX pseudocode +
+interval/loop/seed-dependence; Part C = the 14 new presets with full field tables in the exact XML
+vocabulary; plus per-section IMPLEMENTATION NOTES naming every edit site. Follow it EXACTLY.
+
+=============================================================================
+IMPLEMENT
+=============================================================================
+1. FX (ids 33-47): bump FX_COUNT 33 -> 48 in alcinelightrigmodel.h; add the 15 effects at the FOUR
+   table/switch sites the spec names in alcinelightrigmodel.cpp (the FX name table, the initializeFX
+   base-pose switch, the evalFX switch, and any per-FX metadata the spec lists). Transcribe each FX's
+   pseudocode faithfully.
+2. Presets (14): append the 14 preset maps to indra/newview/app_settings/cine_light_rig_presets.xml in
+   the exact schema/vocabulary the spec gives (profile/beam/gel indices + byte-exact names; the 5
+   tagged Genre/Mood ones grouped as genre). The loader + FX combo pick everything up automatically —
+   NO XUI change, NO new settings, NO schema change.
+3. Tests: update the THREE golden-test sites in indra/newview/tests/alcinelightrigmodel_test.cpp the
+   spec names, INCLUDING extending the random_fx seed-separation list with the flagged seed-dependent
+   ids {33,34,35,37,41,42,43,44} (use the spec's list verbatim).
+
+=============================================================================
+HARD CONSTRAINTS (from the spec's Part A contract — a reviewer will check these)
+=============================================================================
+- FX MUST be PURE CLOSED-FORM functions of (fx, seed, t): byte-stable and scrub-safe. Use ONLY the
+  existing helpers phaseSin/phaseCos, unitHash, valueNoise, positiveFmod/Mod. NO Math.random, NO frame
+  counters, NO persistent state, NO wall-clock. Phase convention: fs = t/interval, step = floor(fs).
+  EV -10 is the idiomatic "black". Colour animates by STEPPING the 24-profile table (do not synthesize
+  colours). Per-light independent phase is available via the light/draw hash args — no new capability.
+- FX MUST NEVER set gel — the rig re-layers the operator's gel after FX (alcinelightrig.cpp:1806-1811).
+- PRESETS carry ONLY radius, ratio lock/stops, and the 4 lights (KEY/FILL/RIM/BG yaw/pitch/profile/EV/
+  beam/gobo/gel) — master EV / master mired temp / mirror / orbit are NOT serialized by a preset, so
+  express colour temperature via profiles + temperature GELS (as the spec does). Do not invent fields.
+- The existing 33 FX and 35 presets are UNCHANGED (byte-identical) — you only ADD ids 33-47 and append
+  presets. Do not renumber or edit existing entries.
+- Existing golden/byte-stability + exposure tests must still pass; the new FX must satisfy the same
+  scrub-invariance the suite enforces (that's why they must be pure closed-form).
+
+=============================================================================
+REPORT
+=============================================================================
+Confirm: FX_COUNT 33->48; the 15 FX added at all four sites with pure closed-form bodies (no random/
+state/gel); the 14 presets appended in the exact schema (list them, note the 5 genre-tagged); the three
+test sites updated incl. the random_fx seed list; existing FX/presets untouched; no XUI/schema/settings
+change. Note anything in the spec you believe is wrong or any FX whose pseudocode can't be expressed
+purely (and how you resolved it). Do not build.

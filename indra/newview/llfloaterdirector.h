@@ -19,6 +19,7 @@
 #define LL_LLFLOATERDIRECTOR_H
 
 #include "llfloater.h"
+#include "llframetimer.h"
 
 #include <string>
 #include <utility>
@@ -29,11 +30,13 @@ class ALPanelAnimPreview;
 class ALPanelCineCamParams;
 class ALPanelPathEditor;
 class LLButton;
+class LLCheckBoxCtrl;
 class LLComboBox;
 class LLContextMenu;
 class LLLineEditor;
 class LLPanel;
 class LLScrollListCtrl;
+class LLSliderCtrl;
 class LLSpinCtrl;
 class LLTabContainer;
 class LLTextBox;
@@ -87,14 +90,18 @@ private:
     void refreshCastList();
     void onCastRightClick(LLUICtrl* ctrl, S32 x, S32 y);
     void onClickAddYou();
+    void onClickAddAnimesh();            // add in-world-selected animesh object(s) to the cast
     void onClickFocusActor();           // frame the selected member in the camera
     uuid_vec_t selectedCastIds() const;
     LLUUID     firstSelectedCastId() const;
     // context-menu / button ops (act on the list selection)
-    void onCastSetSubject(bool subject_a);
+    void onCastSetSubject(S32 subject);
     void onCastSetMarkHere();
     void onCastResetToMark();
     void onCastClearLocoAnim();
+    // [AutoAnimate] Runtime cast ids are resolved to stable Studio instance ids.
+    bool castHasGhostEntity() const;
+    void onCastAutoAnim(S32 operation);
     void onCastCopyUUID();
     void onCastRemove();
     // ---- groups ----
@@ -116,17 +123,30 @@ private:
     // ---- Path tab ----
     void refreshPathTab();              // point the embedded editor at the selection
 
+    // ---- Actor FX tab ----
+    void refreshActorStyleTab();        // roster + model -> controls
+    void onActorStyleTargetChanged();
+    void onActorStyleControlChanged();  // controls -> selected actor's style
+    void onActorStyleReset();
+    bool hasActorStyleTarget() const;
+    LLUUID actorStyleTargetId() const;   // null is the explicit "You" row
+
     // ---- Animate tab ----
     void refreshAnimateTab();
     void onAnimRightClick(LLUICtrl* ctrl, S32 x, S32 y);
     LLUUID selectedAnimId() const;      // selected row's anim asset id
     LLUUID pasteAnimId() const;         // validated paste-row UUID (null = invalid)
     void onAnimCopyUUID();
-    void onAnimSetLoco();               // row -> selected member's loco anim
+    void onAnimSetLoco();               // row -> selected member's selected locomotion role
     void onAnimPlayLocal(bool play);    // start/stopMotion, client-side only
     void onPastePlayLocal(bool play);
     void onPasteSetLoco();
     void onClickClearLoco();
+    S32 selectedLocomotionRole() const;
+    void onLocomotionRoleChanged();
+    void onLocomotionMetadataCommit();
+    void applySelectedLocomotion(const LLUUID& anim);
+    void refreshLocomotionRoleEditor(const LLUUID& member_id);
     // The shared preview panel is fed the anim to show + the object playing it:
     LLUUID previewAnimId() const;                       // selected row, else pasted uuid
     LLUUID animSourceObject(const LLUUID& anim_id) const; // the object playing it on you
@@ -135,8 +155,11 @@ private:
     static LLUUID avatarFromSelection();
     void onClickSetSubjectFromSelection(S32 subject);
     void onClickClearSubject(S32 subject);
-    void onClickSetLookAtCamera(bool selected);
+    void onOpenActorGaze();
     void onClickManagePrism();
+    void onClickBuildOtsPair();
+    void onClickZolly();
+    void onClickHeroArc();
     void refreshCameraTab();
 
     // ---- Takes tab ----
@@ -215,6 +238,34 @@ private:
     // Path tab (dedicated) -- shared waypoint editor, targets the selection
     ALPanelPathEditor* mPathPanel = nullptr;
 
+    // Actor FX tab -- a direct editor over LLDirectorCast::ActorStyle. The
+    // selector is intentionally independent of Subjects A-D; null UUID means
+    // You, while non-null entries are stable cast-member ids (away actors keep
+    // their authored style for when they return).
+    LLComboBox*      mActorStyleTarget = nullptr;
+    LLCheckBoxCtrl*  mActorStyleEnabled = nullptr;
+    LLComboBox*      mActorStyleMode = nullptr;
+    LLComboBox*      mActorStyleLook = nullptr;
+    LLCheckBoxCtrl*  mActorStyleUseActorHue = nullptr;
+    LLSliderCtrl*    mActorStyleHue = nullptr;
+    LLSliderCtrl*    mActorStyleAlpha = nullptr;
+    LLSliderCtrl*    mActorStyleDissolveProgress = nullptr;
+    LLSliderCtrl*    mActorStylePixel = nullptr;
+    LLSliderCtrl*    mActorStyleShimmerSpeed = nullptr;
+    LLSliderCtrl*    mActorStyleShimmerAmount = nullptr;
+    LLSliderCtrl*    mActorStyleGlitch = nullptr;
+    LLComboBox*      mActorStyleDistortion = nullptr;
+    LLSliderCtrl*    mActorStyleDistortionAmount = nullptr;
+    LLSliderCtrl*    mActorStyleBrightness = nullptr;
+    LLSpinCtrl*      mActorStyleEffectFps = nullptr;
+    LLButton*        mActorStyleReset = nullptr;
+    LLTextBox*       mActorStyleStatus = nullptr;
+    std::string      mActorStyleRosterSignature;
+    std::string      mActorStyleSnapshot;
+    LLUUID           mActorStyleShownFor;
+    bool             mActorStyleHadTarget = false;
+    bool             mRefreshingActorStyle = false;
+
     // Camera tab
     LLTextBox* mSubjectAText = nullptr;
     LLTextBox* mSubjectBText = nullptr;
@@ -228,13 +279,15 @@ private:
     LLButton*  mClearBBtn = nullptr;
     LLButton*  mClearCBtn = nullptr;
     LLButton*  mClearDBtn = nullptr;
-    LLButton*  mLookAtSetBtn = nullptr;
-    LLButton*  mLookAtClearBtn = nullptr;
     LLTextBox* mPrismSummaryText = nullptr;
     LLButton*  mPrismManageBtn = nullptr;
+    LLButton*  mOtsPairBtn = nullptr;
+    LLButton*  mZollyBtn = nullptr;
+    LLButton*  mHeroArcBtn = nullptr;
     U64        mPrismConfigurationRevision = 0;
     U64        mPrismRuntimeRevision = 0;
     bool       mHavePrismSummary = false;
+    LLFrameTimer mPrismRefreshTimer;
 
     // Animate tab
     LLTextBox*        mAnimateHeader = nullptr;
@@ -248,9 +301,20 @@ private:
     LLButton*         mPastePlayBtn = nullptr;
     LLButton*         mPasteStopBtn = nullptr;
     LLButton*         mPasteSetLocoBtn = nullptr;
+    LLComboBox*       mLocomotionRoleCombo = nullptr;
+    LLSpinCtrl*       mLocomotionSpeed = nullptr;
+    LLSpinCtrl*       mLocomotionPhase = nullptr;
+    LLCheckBoxCtrl*   mLocomotionAllowAO = nullptr;
     LLTextBox*        mLocoText = nullptr;
     LLButton*         mClearLocoBtn = nullptr;
     LLHandle<LLContextMenu> mAnimMenuHandle;
+    LLUUID mLocomotionEditorMember;
+    LLUUID mLocomotionEditorAnim;
+    S32    mLocomotionEditorRole = -1;
+    F32    mLocomotionEditorSpeed = -1.f;
+    F32    mLocomotionEditorPhase = -2.f;
+    bool   mLocomotionEditorAllowAO = false;
+    bool   mLocomotionEditorLoaded = false;
     // shared preview pane + own-avatar controls (owns its own dummy); fed the
     // selected/pasted anim + its source object each draw
     ALPanelAnimPreview* mAnimPreviewPanel = nullptr;

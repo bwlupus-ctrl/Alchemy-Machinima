@@ -35,10 +35,13 @@ in vec4 post_pos;
 in float target_pos_x;
 in vec4 vertex_color;
 in vec2 vary_texcoord0;
+in vec3 vary_actor_fx_position;
 
 uniform float mat_minimum_alpha[GLTF_INDEXED_CHANNELS];
 
 uniform sampler2D diffuse0;
+
+bool actorFxDissolveDiscard(vec3 object_position);
 #if GLTF_INDEXED_CHANNELS > 1
 uniform sampler2D diffuse1;
 #endif
@@ -91,6 +94,11 @@ float sample_diffuse_alpha(vec2 uv)
 void main()
 {
     if (sample_diffuse_alpha(vary_texcoord0.xy) < mat_minimum_alpha[vary_material_index])
+    {
+        discard;
+    }
+
+    if (actorFxDissolveDiscard(vary_actor_fx_position))
     {
         discard;
     }

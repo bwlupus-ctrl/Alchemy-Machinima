@@ -55,6 +55,7 @@ in vec2 vary_fragcoord;
 
 uniform sampler2D froxelLight;         // RGBA16F current light atlas (rgb = injected source)
 uniform sampler2D froxelLightHistory;  // RGBA16F previous RESOLVED light atlas (trilinear)
+uniform sampler2D froxelMedia;         // current media; alpha is extinction density
 
 uniform vec3  froxel_grid;             // (GridX, GridY, GridZ)
 uniform vec4  froxel_atlas;            // (tilesX, tilesY, atlasW, atlasH)
@@ -63,6 +64,7 @@ uniform vec2  froxel_tan_half_fov;     // (tan(fovx/2), tan(fovy/2)) for view-po
 uniform mat4  froxel_inv_modelview;    // current view -> agent(world)
 uniform mat4  froxel_prev_modelview;   // agent(world) -> PREVIOUS-frame view
 uniform float froxel_temporal_blend;   // EMA history weight (0 => pure current)
+uniform float froxel_temporal_reject;  // density-edge history rejection strength
 
 // froxelUtil.glsl
 float froxelSliceToViewZ(float slice, vec2 nf, float gz);
@@ -167,6 +169,21 @@ void main()
     // can be NaN, and mix(cur, NaN, 0.0) would poison the froxel to NaN. When w<=0
     // (first frame / invalidated history / off-grid reprojection) we output cur exactly.
     float w    = clamp(froxel_temporal_blend * validity, 0.0, 0.95);
+    if (froxel_temporal_reject > 0.0)
+    {
+        float density = texelFetch(froxelMedia, apix, 0).a;
+        float density_min = density;
+        float density_max = density;
+        if (fx - 1 >= 0) { float d = texelFetch(froxelMedia, froxelAtlasPixel(fx - 1, fy, fz, gx, gy, tilesX), 0).a; density_min = min(density_min, d); density_max = max(density_max, d); }
+        if (fx + 1 < gx) { float d = texelFetch(froxelMedia, froxelAtlasPixel(fx + 1, fy, fz, gx, gy, tilesX), 0).a; density_min = min(density_min, d); density_max = max(density_max, d); }
+        if (fy - 1 >= 0) { float d = texelFetch(froxelMedia, froxelAtlasPixel(fx, fy - 1, fz, gx, gy, tilesX), 0).a; density_min = min(density_min, d); density_max = max(density_max, d); }
+        if (fy + 1 < gy) { float d = texelFetch(froxelMedia, froxelAtlasPixel(fx, fy + 1, fz, gx, gy, tilesX), 0).a; density_min = min(density_min, d); density_max = max(density_max, d); }
+        if (fz - 1 >= 0) { float d = texelFetch(froxelMedia, froxelAtlasPixel(fx, fy, fz - 1, gx, gy, tilesX), 0).a; density_min = min(density_min, d); density_max = max(density_max, d); }
+        if (fz + 1 < gz) { float d = texelFetch(froxelMedia, froxelAtlasPixel(fx, fy, fz + 1, gx, gy, tilesX), 0).a; density_min = min(density_min, d); density_max = max(density_max, d); }
+        float change = (density_max - density_min) /
+                       (density_max + density_min + 1e-3);
+        w *= exp(-froxel_temporal_reject * change);
+    }
     vec3  outc = (w > 0.0) ? mix(cur, hclamp, w) : cur;
 
     frag_color = vec4(outc, 0.0);

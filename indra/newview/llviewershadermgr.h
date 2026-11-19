@@ -35,6 +35,11 @@
 
 #define LL_DEFERRED_MULTI_LIGHT_COUNT 16
 
+// Cine-rig lens flare: max rig projector sources uploaded per frame to
+// uCineFlareA/uCineFlareColor (postEffectUtilsF.glsl AL_CINE_FLARE_MAX must
+// match — LIGHT_COUNT(4) rig lights per rig, cap sized for ~2 subjects).
+#define AL_CINE_FLARE_MAX 8
+
 class LLViewerShaderMgr: public LLShaderMgr
 {
 public:
@@ -57,6 +62,15 @@ public:
     void unloadShaders();
     S32  getShaderLevel(S32 type);
 
+    // [TronA0] Per-pixel avatar tag in the G-buffer normal .w.
+    // gbufferAvatarTagWanted(): the settings predicate (RenderGBufferAvatarTag
+    // && the GL_RGBA16 normal-format predicate of addDeferredAttachments).
+    // gbufferAvatarTagActive(): what the CURRENTLY LOADED shaders were built
+    // with (the hash-token global define) -- uploaders and the ReShade bridge
+    // must key on this one, never on the raw setting.
+    static bool gbufferAvatarTagWanted();
+    static bool gbufferAvatarTagActive();
+
     // loadBasicShaders in case of a failure returns
     // name of a file error happened at, otherwise
     // returns an empty string
@@ -67,6 +81,15 @@ public:
     bool loadShadersAvatar();
     bool loadShadersWater();
     bool loadShadersInterface();
+
+    // True only while both authored Actor FX fragment modules are available.
+    // Shared replay must not publish programs linked against identity fallbacks,
+    // because it suppresses the matching native material pass after preflight.
+    static bool hasPrimaryActorFxModules();
+
+    // True only when every shared Actor FX forward-PBR beauty/glow program,
+    // including its rigged variant, is linked and safe for replay dispatch.
+    static bool hasSharedActorFxPBRShaders();
 
     std::vector<S32> mShaderLevel;
     S32 mMaxAvatarShaderLevel;
@@ -211,6 +234,19 @@ extern LLGLSLShader         gHighlightSpecularProgram;
 // what drawGeometryGhost binds. Optional: draw code falls back to the classic
 // ghost when this failed to compile.
 extern LLGLSLShader         gActorGhostProgram;
+// Main-world/HDR variants used only by shared live Actor FX. Ghost Studio keeps
+// gActorGhostProgram's historical display-space path.
+extern LLGLSLShader         gWorldActorGhostProgram;
+extern LLGLSLShader         gWorldSkinnedActorGhostProgram;
+// One-draw indexed legacy variants for shared live Actor FX. These use the
+// full native tex0..texN width for simple and material batches; Ghost Studio
+// deliberately remains on its historical scalar per-slot program.
+extern LLGLSLShader         gWorldActorGhostIndexedProgram;
+extern LLGLSLShader         gWorldSkinnedActorGhostIndexedProgram;
+// World/HDR classic-avatar replays of actorghostF.  The skinned program consumes
+// the system avatar's classic palette; the rigid program covers eyeballs.
+extern LLGLSLShader         gAvatarActorGhostProgram;
+extern LLGLSLShader         gAvatarEyeballActorGhostProgram;
 
 extern LLGLSLShader         gDeferredHighlightProgram;
 
@@ -266,8 +302,21 @@ extern LLGLSLShader         gSMAAEdgeDetectProgram[4];
 extern LLGLSLShader         gSMAABlendWeightsProgram[4];
 extern LLGLSLShader         gSMAANeighborhoodBlendProgram[4];
 extern LLGLSLShader         gCASProgram;
+extern LLGLSLShader         gCineFisheyeProgram;
+// [Ultimate Diopter] pass 1 gather at four tap-count quality tiers + pass 2 composite
+extern LLGLSLShader         gUltimateDiopterGatherProgram[4];
+extern LLGLSLShader         gUltimateDiopterProgram;
+// [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post pass:
+// single MRT pass, no permutations
+extern LLGLSLShader         gUltimateKaleidoProgram;
 // [BDMerge G3.2] volumetric lighting (donor: Black Dragon)
 extern LLGLSLShader         gVolumetricLightProgram;
+// [Cine Outline Phase 1] deferred normal/depth outline post pass
+extern LLGLSLShader         gCineOutlineProgram;
+// [TronT1] Tron World post pass (dark grade + world grid + pulses)
+extern LLGLSLShader         gTronWorldProgram;
+// [TronT3] Tron light-cycle trail ribbons (immediate-mode strips drawn inside renderTronWorld)
+extern LLGLSLShader         gTronTrailProgram;
 // [BDMerge G3.3] per-projector volumetric light cones (visible spotlight shafts)
 extern LLGLSLShader         gDeferredProjectorVolumetricProgram;
 extern LLGLSLShader         gDeferredProjectorVolumetricUpsampleProgram; // [BDMerge G3.3 P1 item 3]
@@ -284,6 +333,7 @@ extern LLGLSLShader         gDeferredWeatherLightningQualityProgram;
 extern LLGLSLShader         gDeferredPostNoDoFProgram;
 extern LLGLSLShader         gExposureProgram;
 extern LLGLSLShader         gExposureProgramNoFade;
+extern LLGLSLShader         gOnLensFiltersProgram; // ND + polarizer pre-pass (pre-bloom)
 extern LLGLSLShader         gLuminanceProgram;
 extern LLGLSLShader         gDeferredAvatarShadowProgram;
 extern LLGLSLShader         gDeferredAvatarAlphaShadowProgram;
@@ -299,6 +349,8 @@ extern LLGLSLShader         gDeferredFullbrightAlphaMaskAlphaProgram;
 extern LLGLSLShader         gHUDFullbrightAlphaMaskAlphaProgram;
 extern LLGLSLShader         gDeferredEmissiveProgram;
 extern LLGLSLShader         gDeferredEmissiveIndexedProgram; // multi-material indexed legacy glow
+extern LLGLSLShader         gActorFxGlowProgram;              // zero-authored-glow legacy alpha
+extern LLGLSLShader         gActorFxPBRGlowProgram;           // zero-authored-glow PBR alpha
 extern LLGLSLShader         gDeferredAvatarEyesProgram;
 extern LLGLSLShader         gDeferredAvatarAlphaProgram;
 extern LLGLSLShader         gEnvironmentMapProgram;
@@ -318,9 +370,15 @@ extern LLGLSLShader         gDeferredBufferVisualProgram;
 // Skinned/rigged + avatar variants are Phase 1b.
 extern LLGLSLShader         gVelocityProgram;
 extern LLGLSLShader         gVelocityAlphaProgram;
+extern LLGLSLShader         gVelocityPBRAlphaProgram;
+extern LLGLSLShader         gVelocityAlphaIndexedProgram;
+extern LLGLSLShader         gVelocityPBRAlphaIndexedProgram;
 extern LLGLSLShader         gVelocityDebugProgram;
 extern LLGLSLShader         gVelocitySkinnedProgram;        // [BDMerge A5.4-1b]
 extern LLGLSLShader         gVelocityAlphaSkinnedProgram;   // [BDMerge A5.4-1b]
+extern LLGLSLShader         gVelocityPBRAlphaSkinnedProgram;
+extern LLGLSLShader         gVelocityAlphaIndexedSkinnedProgram;
+extern LLGLSLShader         gVelocityPBRAlphaIndexedSkinnedProgram;
 extern LLGLSLShader         gAvatarVelocityProgram;         // [BDMerge A5.4-1b] classic avatar
 extern LLGLSLShader         gDeferredMotionBlurProgram;     // [BDMerge A5.4-3]
 // [BDMerge A5.4-1c] fullscreen camera-motion fallback (fills avatar/sky/uncovered
@@ -360,6 +418,41 @@ extern LLGLSLShader         gDeferredPBROpaqueProgram;
 extern LLGLSLShader         gDeferredPBROpaqueIndexedProgram; // multi-material indexed PBR opaque
 extern LLGLSLShader         gDeferredPBRAlphaProgram;
 extern LLGLSLShader         gHUDPBRAlphaProgram;
+
+// Optional, fail-open forward PBR family for the shared live Actor FX replay.
+// The alpha-mode index is a replay API contract rather than LLMaterial's enum
+// ordering (LLMaterial orders BLEND before MASK).
+enum ESharedActorFxPBRAlphaMode : U32
+{
+    SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE = 0,
+    SHARED_ACTOR_FX_PBR_ALPHA_MASK,
+    SHARED_ACTOR_FX_PBR_ALPHA_BLEND,
+    SHARED_ACTOR_FX_PBR_ALPHA_COUNT
+};
+
+extern LLGLSLShader gSharedActorFxPBRProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+// Slot-named variants advertise TYPE_TEXTURE_INDEX and evaluate the complete
+// indexed material array in one geometry draw. Scalar variants deliberately do
+// not expose that input.
+extern LLGLSLShader gSharedActorFxPBRSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+// Authored glow consumes TYPE_EMISSIVE; synthetic glow intentionally consumes
+// only the colour stream so zero-glow PBR VBOs remain replayable.
+extern LLGLSLShader gSharedActorFxPBRGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxPBRGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxPBRSyntheticGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRSyntheticGlowProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxPBRSyntheticGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+// Minimal solid depth prime. Only OPAQUE and MASK elements are linked/used;
+// BLEND never writes the shared solid depth surface.
+extern LLGLSLShader gSharedActorFxPBRDepthProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRDepthProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxPBRDepthSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
+extern LLGLSLShader gSharedActorFxSkinnedPBRDepthSlotProgram[SHARED_ACTOR_FX_PBR_ALPHA_COUNT];
 
 // Encodes detail level for dropping textures, in accordance with the GLTF spec where possible
 // 0 is highest detail, -1 drops emissive, etc

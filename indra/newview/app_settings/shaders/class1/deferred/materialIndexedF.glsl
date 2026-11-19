@@ -217,11 +217,28 @@ vec4 sample_spec(vec2 uv)
 
 void mirrorClip(vec3 pos);
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
+vec3 srgb_to_linear(vec3 cs);
+vec3 linear_to_srgb(vec3 cl);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+float actorFxAuthoredMaterialResponse();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
+vec3 alrDebugEmission(vec3 e);
+#endif
 
-vec3 getNormal(int mi, inout float glossiness)
+vec3 getNormal(int mi, inout float glossiness, vec2 normal_uv)
 {
 #ifdef HAS_NORMAL_MAP
-    vec4 vNt = sample_bump(vary_texcoord1.xy);
+    vec4 vNt = sample_bump(normal_uv);
     glossiness *= vNt.a;
     vNt.xyz = vNt.xyz * 2 - 1;
     float sign = vary_sign;
@@ -235,10 +252,17 @@ vec3 getNormal(int mi, inout float glossiness)
 #endif
 }
 
-vec4 getSpecular(int mi)
+vec4 getSpecular(int mi, vec2 spec_uv, bool fx_rgb_split)
 {
 #ifdef HAS_SPECULAR_MAP
-    vec4 spec = sample_spec(vary_texcoord2.xy);
+    vec4 spec = sample_spec(spec_uv);
+#ifdef HAS_ACTOR_FX
+    if (fx_rgb_split)
+    {
+        spec.r = sample_spec(actorFxRgbSplitUv(spec_uv, -1.0)).r;
+        spec.b = sample_spec(actorFxRgbSplitUv(spec_uv,  1.0)).b;
+    }
+#endif
     spec.rgb *= mat_specular_color[mi].rgb;
 #else
     vec4 spec = vec4(mat_specular_color[mi].rgb, 1.0);
@@ -257,6 +281,9 @@ float getEmissive(int mi, vec4 diffcol)
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 
     int mi = vary_material_index;
@@ -272,14 +299,71 @@ void main()
     }
 #endif
 
-    vec4 spec = getSpecular(mi);
+    vec2 fx_diffuse_uv = vary_texcoord0.xy;
+    vec2 fx_normal_uv = vec2(0.0);
+    vec2 fx_spec_uv = vec2(0.0);
+#ifdef HAS_NORMAL_MAP
+    fx_normal_uv = vary_texcoord1.xy;
+#endif
+#ifdef HAS_SPECULAR_MAP
+    fx_spec_uv = vary_texcoord2.xy;
+#endif
+    bool fx_rgb_split = false;
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    bool fx_uv_transform = actor_fx_active && actorFxUvTransformEnabled();
+    fx_rgb_split = actor_fx_active && actorFxRgbSplitEnabled();
+    if (fx_uv_transform)
+    {
+        fx_diffuse_uv = actorFxUv(fx_diffuse_uv, vary_position);
+#ifdef HAS_NORMAL_MAP
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+#endif
+#ifdef HAS_SPECULAR_MAP
+        fx_spec_uv = actorFxUv(fx_spec_uv, vary_position);
+#endif
+        diffcol.rgb = sample_diffuse(fx_diffuse_uv).rgb * vertex_color.rgb;
+    }
+    if (fx_rgb_split)
+    {
+        diffcol.r = sample_diffuse(actorFxRgbSplitUv(fx_diffuse_uv, -1.0)).r
+                    * vertex_color.r;
+        diffcol.b = sample_diffuse(actorFxRgbSplitUv(fx_diffuse_uv,  1.0)).b
+                    * vertex_color.b;
+    }
+#endif
+
+    vec4 spec = getSpecular(mi, fx_spec_uv, fx_rgb_split);
     float env = mat_env_intensity[mi] * spec.a;
     float glossiness = mat_specular_color[mi].a;
-    vec3 norm = getNormal(mi, glossiness);
+    vec3 norm = getNormal(mi, glossiness, fx_normal_uv);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    spec.rgb *= actor_fx_material_response;
+    glossiness *= actor_fx_material_response;
+    env *= actor_fx_material_response;
+
+    vec3 actor_fx_styled_linear = vec3(0.0);
+    if (actor_fx_active)
+    {
+        actor_fx_styled_linear = actorFxApply(srgb_to_linear(diffcol.rgb),
+                                               norm, vary_position,
+                                               vary_texcoord0.xy);
+        diffcol.rgb = linear_to_srgb(actor_fx_styled_linear);
+    }
+#endif
+
+#ifdef HAS_ACTOR_FX
+    diffcol.rgb = alrAlbedoSrgb(diffcol.rgb); // [AvatarLightResponse] presented legacy surface
+    alrLegacySpec(spec.rgb, glossiness, env);
+#endif
 
     float emissive = getEmissive(mi, diffcol);
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
+#ifdef HAS_SKIN
+    flag = gbufferAvatarFlag(flag);   // [TronA0] rigged mesh: avatar geometry -> tagged flag
+#endif
 
     frag_data[0] = max(vec4(diffcol.rgb, emissive), vec4(0)); // gbuffer is sRGB for legacy materials
     frag_data[1] = max(vec4(spec.rgb, glossiness), vec4(0));  // XYZ = Specular color. W = Specular exponent.
@@ -287,5 +371,12 @@ void main()
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0, 0, 0, 0);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+    }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
+#endif
 #endif
 }

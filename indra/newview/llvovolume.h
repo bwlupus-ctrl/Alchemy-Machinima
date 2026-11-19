@@ -397,6 +397,11 @@ public:
     void updateVisualComplexity();
 
     void notifyMeshLoaded();
+    // [ProbeOnDemand] MS: true when a mesh / sculpt (re)build is a pure LOD /
+    // refinement of an asset this volume already built (same sculpt id + type,
+    // ready). Marks the pending rebuild as a LOD arrival. Only meaningful while
+    // RenderProbeOnDemand is ON; never writes anything when recording is off.
+    bool probeNoteAssetArrival();
     void notifySkinInfoLoaded(const LLMeshSkinInfo* skin);
     void notifySkinInfoUnavailable();
 
@@ -495,6 +500,13 @@ private:
 
     bool mSkinInfoUnavaliable;
     LLConstPointer<LLMeshSkinInfo> mSkinInfo;
+
+    // [ProbeOnDemand] Built-asset identity for the probe dirty recorder (MS /
+    // H4). Written ONLY while RenderProbeOnDemand is ON.
+    LLUUID mProbeAssetId;
+    U8     mProbeAssetType = 0;
+    bool   mProbeAssetReady = false;
+    bool   mProbeLodArrival = false;
     // statics
 public:
     static F32 sLODSlopDistanceFactor;// Changing this to zero, effectively disables the LOD transition slop

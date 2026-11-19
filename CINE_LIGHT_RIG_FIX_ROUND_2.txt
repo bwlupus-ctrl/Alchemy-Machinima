@@ -1,0 +1,181 @@
+FIX ROUND 2 — Cinematic Light Rig. Findings from four round-2 adversarial reviews.
+
+Repo: I:\alchemy-machinima. You implemented this feature. Do NOT build, do NOT run cmake,
+do NOT run the viewer. Apply ALL items below in ONE pass; the batch then goes back for
+re-review before the build.
+
+Round 2 returned ZERO must-fix on all four slices — the code is sound. These are should-fix
+behaviour bugs, test-coverage gaps, and nits. The user has asked for ALL of them fixed before
+the build.
+
+LOCATE BY SYMBOL AND CONTEXT, not by line number — line numbers drift between rounds. If a cited
+line does not contain what the finding describes, find the real site. If you believe a finding is
+wrong, implement nothing for it and say so with your reasoning.
+
+TWO USER DECISIONS fixed for this round (do not deviate):
+  - An OLD scene with NO light_rig block at all: CLEAR Shaft/Hero to off. This is the current
+    behaviour and is CORRECT — keep it. (This retires review finding "SHOULD-FIX 1: pre-feature
+    scene wipes live Shaft/Hero" — the wipe is intended. Do NOT make a no-block load preserve
+    them.) See B2 for the one part that DOES change.
+  - Fix the full backlog (all should-fix + all nits) before building.
+
+=============================================================================
+BEHAVIOUR BUGS
+=============================================================================
+
+--- B1. Seed 0 is accepted by the UI but silently aliased to the default by the model
+
+  alcinelightrigmodel.cpp coalesces seed 0 to DEFAULT_SEED in three places (`seed ? seed :
+  DEFAULT_SEED` at ~163, ~400, ~591), so seed 0 renders bit-identical to 324508639. Meanwhile
+  the panel alert (alpanelcinelightrig.cpp ~455) says "Seed must be an integer from 0 through
+  4294967295" and settings.xml (~84) comment says "Nonzero". Three sources disagree.
+
+  DECISION: reject 0 at the input; the valid range is 1..4294967295. Do NOT change the model's
+  three zero-guards — they stay as defense-in-depth.
+
+  FIX:
+    - commitSeed (alpanelcinelightrig.cpp): reject 0 the same way it rejects out-of-range /
+      non-numeric input (distinct alert, revert via syncSeedEditor).
+    - The seed line editor min is now effectively 1; update the alert text to "1 through
+      4294967295".
+    - settings.xml: the CineLightRigSeed comment already says "Nonzero" — leave it, or make it
+      say "1..4294967295 (0 is invalid; the model substitutes the default)". Keep the default
+      value (324508639) as-is.
+    - Randomize must never produce 0 (LLUUID::getCRC32 can in principle return 0). If it yields
+      0, substitute 1 (or re-roll).
+
+--- B2. An unknown future light_rig version half-applies with no warning
+
+  applySceneData clears mShaftEnabled/mHeroEnabled and resets pending FX BEFORE the version
+  check, then early-returns for anything that is not a valid v1 block. For a genuinely OLD scene
+  (not a map, or no light_rig block) the clear is correct and stays (user decision above). But
+  for a scene that DOES carry a light_rig block of a version we do not understand (a future
+  version 2), clearing destroys live rig intent based on data we could not parse — the opposite
+  of the outer scene loader's policy, which warns and PRESERVES (llfloaterdirector.cpp ~1005,
+  the Prism precedent: LL_WARNS + leave existing state).
+
+  FIX: restructure applySceneData into three cases:
+    1. Not a map, OR no "version" key at all (old/neutral/no-block scene): CLEAR Shaft/Hero and
+       pending FX, updateProjectorFlags(), return. (Current behaviour — user-confirmed.)
+    2. A map WITH a "version" key whose value is NOT 1 (unknown/future version): LL_WARNS naming
+       the version, do NOT clear, do NOT apply — PRESERVE current state and return. Mirror the
+       llfloaterdirector.cpp:1005 warn-and-preserve wording.
+    3. version == 1: the existing apply path (clear-then-apply the arrays, so a v1 block that
+       omits the arrays still clears them — that omission IS a statement, unlike case 1).
+  Keep the distinction sharp and comment it: no-block == "scene says nothing, clean the intent";
+  unknown-version == "scene says something we can't read, don't touch it".
+
+--- B3. The creation-retry backoff is keyed to presentation time; a frozen clock strands the rig
+
+  N5 set mEmitterRetryAfter = presentation_time + 1.0. If creation fails once and the
+  presentation clock then freezes (paused transport / a scrub hold), presentation_time <
+  mEmitterRetryAfter stays true forever and the rig never retries — pre-fix it retried every
+  frame and recovered. Also: an omni-only creation failure destroys just the omnis, but the
+  tick-level backoff then calls setEmittersDark(), blacking out the HEALTHY projectors for the
+  whole backoff window.
+
+  FIX:
+    - Make the retry gate robust to a non-advancing clock. Options: count ticks rather than
+      presentation seconds for the backoff (a frame counter is not the deterministic render
+      path, so a non-monotonic-safe counter is fine here), or treat "presentation_time did not
+      advance since last tick" as a permission to retry. Pick one; the requirement is that a
+      transient creation failure recovers even while the transport is paused, without
+      per-frame thrash when failures persist.
+    - Do NOT let an omni-only failure dark the projectors. A partial failure should keep the
+      successfully-created emitters lit and retry only the missing ones.
+
+=============================================================================
+TEST-COVERAGE GAPS  (each would let a real regression through undetected)
+=============================================================================
+
+--- T1. Omni intensity is never asserted away from saturation
+
+  Both existing omni-intensity assertions sit at the clamp ceiling (EV 4, where every candidate
+  implementation gives 1.0), so the exact bug class S2 fixed — which value the bounce is computed
+  from — is untested. Add an assertion with a discriminating input:
+    EV 0, headroom 2, ratio 0.45  ->  correct omni.mIntensity == 0.1125
+    (the pre-headroom-intensity regression would give 0.45; the clamped-projector-times-ratio
+     variant would give something else again). Pin the exact expected value.
+
+--- T2. The omni ON gate's pre-headroom placement is untested on the ON side
+
+  Regressing the gate from pre-headroom to post-headroom passes the whole suite (at EV -9 both
+  say off; at EV 4 both say on). Add the discriminator:
+    EV -8.5, headroom 2, ratio 0.45  ->  pre-headroom = 0.00124 > 0.001, so omni MUST be ON;
+    the post-headroom regression (0.00031) would be off. Assert mOn == true here.
+  This also covers the -8.81 boundary that currently has no on-side test.
+
+--- T3. Explosion's beat-44 ember replay is unpinned
+
+  The code is correct (cycle_start + 44 == the counter at beat 44; last_ember_base is the
+  identical expression tree to the live branch). But no test asserts it — the latch assertion
+  checks light 2's decay latch, not light 1's hash-keyed ember. Corrupting `cycle_start + 44`
+  to `counter` breaks scrub reproducibility and passes every test.
+  Add: assert sample(seed, fx=Explosion, at a presentation time in beat 45+, light 1).mEV is
+  bit-equal to the value at beat 44 of the same cycle — i.e. that the ember does NOT re-roll
+  across afterglow steps. Make the assertion fail if the key changes to `counter`.
+
+=============================================================================
+UI
+=============================================================================
+
+--- U1. Delete/reset resets EVERY live panel's setup combo to "Classic 3-Point" without loading it
+
+  S7's cross-instance refresh spread a pre-existing single-panel wart to both hosts. With both
+  hosts open and the floater showing setup "Noir": deleting an unrelated setup from the Director
+  tab jumps the floater's combo to "Classic 3-Point" while live settings remain Noir's — the
+  label lies and Delete disables. refreshSetupList (alpanelcinelightrig.cpp ~308) selects Classic
+  when select_name is empty, and deleteSetupCallback / resetAllCallback drive it via
+  refreshAllSetupLists.
+
+  FIX: on a cross-instance refresh, each panel preserves its OWN current selection if that setup
+  still exists; only fall back to Classic when the previously-selected setup was the one deleted.
+  Do not change what the acting panel does on its own delete/reset beyond this.
+
+=============================================================================
+NITS  (apply all; skip and say so only if one would destabilise something)
+=============================================================================
+
+N1. rigCookie() string-parses CineLightRigCookieUUID every tick (applyFrame ~697) and warn-spams
+    per frame on a malformed UUID. Parse once per settings change (the LLCachedControl is already
+    there) or fall back silently.
+N2. Leading zeros persist in the seed display: commitSeed stores the parsed value but never
+    renormalizes the text, and syncSeedEditor skips because value==displayed. After typing "0042"
+    the editor shows "0042" though the stored value is 42. Renormalize the text on commit.
+N3. Scene seed parse failure is silent: if a hand-edited scene's seed string fails convertToU32,
+    seed stays 0 and is written (then B1's model guard aliases it). LL_WARNS on the parse failure
+    and substitute DEFAULT_SEED explicitly rather than leaving 0.
+N4. shutdown()'s "idempotent full reset" is gated on mRegion != nullptr (tick ~789), so disabling
+    the rig after power-off/anchor-loss (which nulled mRegion) skips the reset of
+    mActiveFX/pending-FX/mLastPresentationTime. Gate on "anything to do" or call unconditionally.
+N5. draw() rebuilds the cast-signature string every frame (alpanelcinelightrig.cpp ~211) and
+    re-calls mShadowHint->setText every frame while visible. Cache and only update on change.
+N6. Table tests: a shrunk name table dereferences nullptr (std::string(nullptr) / name[0]) rather
+    than failing cleanly. Assert fxName(i)/profileName(i) != nullptr first.
+N7. Interior positional-table entries are unpinned: changing a middle FX interval self-normalizes
+    (beat tests sample in units of fxInterval), and swapping beams 0<->1 passes. All 33 intervals
+    and 3 beams were hand-verified against the LSL, so this is a regression-guard gap, not a
+    present bug — add exact per-row golden assertions for all FX_INTERVALS and all BEAMS entries,
+    plus the two currently-unpinned profile-table interior rows, so a future shift is caught.
+N8. The omni mClipped flag is not separated from the projector's in the tests: at EV 4 both clip,
+    so an omni mClipped that mistakenly mirrored the projector's flag passes. Add: EV 3,
+    headroom 2 -> projector raw 2.0 (clipped), omni raw 0.9 (must be !mClipped).
+
+=============================================================================
+OFF-LIMITS — unchanged
+=============================================================================
+
+indra/llprimitive/* (the [0,1] intensity and 20m radius clamps are DESIGN INPUTS); all GLSL
+shaders; llpresentationtime.* / lltemporalframecontext.*; alweathermodel.* and its test; the
+BODIES of bdmerge_should_render_light / bdmerge_should_render_projector; the pipeline's
+count-before-filter ordering in renderDeferredLighting; llprismlens.* (precedent, not a host);
+lldirectorcast.* (consumed); alghostmanipproxy.* / lllocalmesh.* (templates). The nine gate
+exemptions and the llselectmgr rejection from round 1 are FINAL — do not revisit them.
+
+=============================================================================
+REPORT
+=============================================================================
+
+For EACH item B1-B3, T1-T3, U1, N1-N8: what you changed and where, or why you did not.
+Then anything you believe a reviewer got wrong, and anything you are unsure about.
+Do not build.

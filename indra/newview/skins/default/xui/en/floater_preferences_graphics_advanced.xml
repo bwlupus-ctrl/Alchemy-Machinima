@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 <floater
-  height="492"
+  height="672"
   layout="topleft"
   name="prefs_graphics_advanced"
   help_topic="Preferences_Graphics_Advanced"
   single_instance="true"
   save_rect="true"
   title="ADVANCED GRAPHICS PREFERENCES"
-  width="800">
+  width="825">
 
 <!-- This block shows Advanced Settings -->
 
@@ -154,6 +154,27 @@
           value="2048"/>
     </combo_box>
 
+  <slider
+    control_name="RenderMaxVRAMBudget"
+    decimal_digits="0"
+    follows="left|top"
+    height="18"
+    increment="256"
+    initial_value="0"
+    label="VRAM cap (0 = Auto):"
+    label_width="185"
+    layout="topleft"
+    left="30"
+    min_val="0"
+    max_val="32768"
+    name="VRAMCap"
+    show_text="true"
+    top_delta="20"
+    tool_tip="Maximum VRAM the viewer may manage, in MB. Zero automatically uses detected VRAM. Custom caps take effect immediately; the effective cap may rise if fixed render targets and buffers already exceed it."
+    width="336">
+    <slider.commit_callback
+      function="Pref.UpdateVRAMCap" />
+  </slider>
   <check_box
     control_name="RenderVSyncEnable"
     height="16"
@@ -161,7 +182,7 @@
     label="Enable VSync"
     layout="topleft"
     left="30"
-    top_delta="16"
+    top_delta="24"
     name="vsync"
     tool_tip="Synchronizes the frame rate to the refresh rate of the monitor, which results in smooth performance."
     width="315" />
@@ -665,7 +686,7 @@
   </text>
    <view_border
       bevel_style="in"
-      height="417"
+      height="453"
       layout="topleft"
       left="385"
       name="vert_border"
@@ -778,7 +799,19 @@
         <check_box.commit_callback
           function="Pref.RenderOptionUpdate" />
     </check_box>
-    
+
+    <check_box
+      control_name="RenderHDR16BitColor"
+      height="16"
+      initial_value="false"
+      label="16-bit color (requires restart)"
+      layout="topleft"
+      left="420"
+      name="HDR16BitColor"
+      top_delta="20"
+      tool_tip="Renders the post-processing color chain at 16-bit float instead of 10-bit. Removes banding in heavy color grades, at a real frame-rate cost (heaviest at 4K and above). Only applies while HDR and Emissive is on. Takes effect after a restart."
+      width="240" />
+
   <text
     type="string"
     length="1"
@@ -948,6 +981,22 @@
           name="256"
           value="256"/>
     </combo_box>
+
+  <!-- [ProbeOnDemand] -->
+  <check_box
+    control_name="RenderProbeOnDemand"
+    height="16"
+    initial_value="false"
+    label="Update reflection probes on demand"
+    layout="topleft"
+    left="420"
+    name="ProbeOnDemand"
+    top_delta="22"
+    tool_tip="Update each reflection probe only when what it shows changes, plus a safety refresh, instead of continuously. Continuous motion (spinners, flexi, media, water) is frozen until it stops; use Refresh all probes now (Lightbox) before a take."
+    width="300">
+    <check_box.commit_callback
+      function="Pref.RenderOptionUpdate" />
+  </check_box>
 
   <slider
     control_name="RenderExposure"
@@ -1137,6 +1186,10 @@
        label="AMD LPM"
        name="7"
        value="7"/>
+      <combo_box.item
+       label="S-Log3 Capture"
+       name="8"
+       value="8"/>
   </combo_box>
   <slider
    control_name="RenderTonemapMix"
@@ -1159,15 +1212,63 @@
   </slider>
   <!-- End of Tone Mapping Settings-->
   <!-- End of Advanced Settings block -->
+
+  <view_border
+    bevel_style="in"
+    follows="left|right|bottom"
+    height="128"
+    layout="topleft"
+    left="20"
+    name="vram_status_border"
+    top="480"
+    width="785" />
+  <text
+    type="string"
+    length="1"
+    follows="left|right|bottom"
+    font.style="BOLD"
+    height="18"
+    layout="topleft"
+    left="32"
+    name="VRAMStatusTitle"
+    top="488"
+    width="761">
+      VRAM GOVERNOR — LIVE STATUS
+  </text>
+  <text
+    type="string"
+    length="1"
+    follows="left|right|bottom"
+    height="58"
+    layout="topleft"
+    left="32"
+    name="VRAMStatus"
+    top="506"
+    width="761"
+    word_wrap="true">
+      Mode: Auto | Requested: Auto | Configured: 0 MB | Effective: 0 MB | State: Normal
+  </text>
+  <check_box
+    control_name="RenderVRAMGovernorEnabled"
+    follows="left|right|bottom"
+    height="20"
+    initial_value="false"
+    label="Enable VRAM governor (cap enforcement)"
+    layout="topleft"
+    left="32"
+    name="VRAMGovernorEnabled"
+    top="580"
+    tool_tip="Off (default): the viewer's original discard-bias memory management runs unchanged - full quality, no VRAM cap enforcement, even during capture. On: the adaptive VRAM budget governor above enforces the cap and only pins full quality during capture while VRAM pressure is Normal."
+    width="500" />
+
 	<view_border
       bevel_style="in"
       height="0"
       layout="topleft"
       left="13"
       name="horiz_border"
-      top="455"
-      top_delta="45"
-      width="774"/>
+      top="614"
+      width="799"/>
   <button
     follows="top|left"
     height="23"

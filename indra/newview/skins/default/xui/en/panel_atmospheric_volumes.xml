@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<panel
+ follows="left|top|right"
+ height="650"
+ layout="topleft"
+ name="panel_atmospheric_volumes"
+ width="350">
+    <check_box
+     control_name="BDMergeLocalFogVolumes"
+     follows="left|top"
+     height="18"
+     label="Enable local atmospheric volumes"
+     layout="topleft"
+     left="8"
+     name="localfog_master"
+     top="8"
+     tool_tip="Client-render-only fog volumes. Requires Froxel Air to be enabled."
+     width="330" />
+    <text
+     follows="left|top|right"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="localfog_froxel_requirement"
+     text_color="EmphasisColor"
+     top="30"
+     width="334">Requires the Froxel Air master in Lightbox &gt; Froxel Air.</text>
+    <scroll_list
+     draw_heading="true"
+     draw_stripes="true"
+     follows="left|top|right"
+     height="126"
+     layout="topleft"
+     left="8"
+     multi_select="false"
+     name="localfog_volume_list"
+     top="48"
+     width="334">
+        <scroll_list.columns label="Volume" name="label" width="190" />
+        <scroll_list.columns label="State" name="enabled" width="52" />
+        <scroll_list.columns label="Shape" name="shape" width="84" />
+    </scroll_list>
+    <button follows="left|top" height="22" label="+ Add" layout="topleft" left="8" name="localfog_add" top="180" width="76" />
+    <button follows="left|top" height="22" label="Duplicate" layout="topleft" left="90" name="localfog_duplicate" top="180" width="92" />
+    <button follows="left|top" height="22" label="Delete" layout="topleft" left="188" name="localfog_delete" top="180" width="76" />
+    <check_box follows="left|top" height="18" label="Enabled" layout="topleft" left="8" name="localfog_enabled" top="214" width="90" />
+    <text follows="left|top" height="16" layout="topleft" left="104" top="216" width="42">Label:</text>
+    <line_editor follows="left|top|right" height="22" layout="topleft" left="148" max_length_chars="40" name="localfog_label" top="212" width="194" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="246" width="330">Transform (agent metres / degrees)</text>
+    <text follows="left|top" height="16" layout="topleft" left="8" top="272" width="68">Center XYZ</text>
+    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" layout="topleft" left="82" max_val="8192" min_val="-8192" name="localfog_center_x" top="268" width="82" />
+    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" layout="topleft" left="170" max_val="8192" min_val="-8192" name="localfog_center_y" top="268" width="82" />
+    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" layout="topleft" left="258" max_val="8192" min_val="-8192" name="localfog_center_z" top="268" width="82" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="300" width="68">Radius XYZ</text>
+    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" layout="topleft" left="82" max_val="256" min_val="0.05" name="localfog_size_x" top="296" width="82" />
+    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" layout="topleft" left="170" max_val="256" min_val="0.05" name="localfog_size_y" top="296" width="82" />
+    <spinner decimal_digits="2" follows="left|top" height="22" increment="0.1" layout="topleft" left="258" max_val="256" min_val="0.05" name="localfog_size_z" top="296" width="82" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="328" width="68">Rotate XYZ</text>
+    <spinner decimal_digits="1" follows="left|top" height="22" increment="1" layout="topleft" left="82" max_val="180" min_val="-180" name="localfog_rotation_x" top="324" width="82" />
+    <spinner decimal_digits="1" follows="left|top" height="22" increment="1" layout="topleft" left="170" max_val="180" min_val="-180" name="localfog_rotation_y" top="324" width="82" />
+    <spinner decimal_digits="1" follows="left|top" height="22" increment="1" layout="topleft" left="258" max_val="180" min_val="-180" name="localfog_rotation_z" top="324" width="82" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="358" width="68">Shape</text>
+    <combo_box follows="left|top" height="22" layout="topleft" left="82" name="localfog_shape" top="352" width="130">
+        <combo_box.item label="Box" value="0" />
+        <combo_box.item label="Ellipsoid" value="1" />
+    </combo_box>
+    <button follows="left|top" height="22" label="Move to camera" layout="topleft" left="218" name="localfog_move_camera" top="352" width="122" />
+
+    <text follows="left|top" font="SansSerifBold" height="16" layout="topleft" left="8" top="388" width="330">Medium</text>
+    <text follows="left|top" height="16" layout="topleft" left="8" top="416" width="118">Density</text>
+    <slider can_edit_text="true" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="126" max_val="4" min_val="0" name="localfog_density" show_text="true" top="410" width="214" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="446" width="118">Edge feather</text>
+    <slider can_edit_text="true" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="126" max_val="1" min_val="0" name="localfog_feather" show_text="true" top="440" width="214" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="476" width="118">Height falloff</text>
+    <slider can_edit_text="true" decimal_digits="2" follows="left|top" height="20" increment="0.05" layout="topleft" left="126" max_val="16" min_val="0" name="localfog_height_falloff" show_text="true" top="470" width="214" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="506" width="118">Turbulence scale</text>
+    <slider can_edit_text="true" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="126" max_val="8" min_val="0" name="localfog_noise_scale" show_text="true" top="500" width="214" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="536" width="118">Turbulence speed</text>
+    <slider can_edit_text="true" decimal_digits="2" follows="left|top" height="20" increment="0.01" layout="topleft" left="126" max_val="8" min_val="-8" name="localfog_noise_speed" show_text="true" top="530" width="214" />
+    <text follows="left|top" height="16" layout="topleft" left="8" top="568" width="118">Scattering tint</text>
+    <color_swatch can_apply_immediately="true" follows="left|top" height="38" label_height="0" layout="topleft" left="126" name="localfog_tint" top="560" width="78" />
+    <text follows="left|top|right" height="36" layout="topleft" left="8" name="localfog_hint" text_color="LtGray_50" top="610" width="334" word_wrap="true">Numeric placement and the in-world cage are local render tools. No volume is rezzed or sent to the simulator.</text>
+</panel>

@@ -57,10 +57,82 @@ uniform float froxel_noise_speed;         // master noise scroll speed (m/s); fo
 uniform vec3  froxel_wind;                // [F5] scroll velocity in agent axes = wind_dir * noise_speed (m/s)
 uniform float froxel_time;                // continuous seconds (noise scroll)
 
+const int LOCALFOG_MAX_VOLUMES = 8;
+uniform vec3 localfog_center[LOCALFOG_MAX_VOLUMES];
+uniform vec3 localfog_extents[LOCALFOG_MAX_VOLUMES];
+uniform mat3 localfog_inv_rot[LOCALFOG_MAX_VOLUMES];
+uniform vec4 localfog_params[LOCALFOG_MAX_VOLUMES]; // density, feather, shape, height falloff
+uniform vec3 localfog_tint[LOCALFOG_MAX_VOLUMES];
+uniform vec4 localfog_noise[LOCALFOG_MAX_VOLUMES];  // scale, speed, reserved, reserved
+uniform int localfog_count;
+
 // froxelUtil.glsl
 float froxelSliceToViewZ(float slice, vec2 nf, float gz);
 vec3  froxelViewPos(vec2 fxy, float viewz, vec3 grid, vec2 thf);
 float froxelFbm(vec3 p);
+
+float localFogDensity(vec3 wpos, out vec3 tint_accum, out float tint_w)
+{
+    float density_accum = 0.0;
+    tint_accum = vec3(0.0);
+    tint_w = 0.0;
+    for (int i = 0; i < LOCALFOG_MAX_VOLUMES; ++i)
+    {
+        if (i >= localfog_count)
+        {
+            break;
+        }
+
+        vec3 extents = max(localfog_extents[i], vec3(0.001));
+        // Conservative world AABB reject comes before the OBB/ellipsoid
+        // transform, SDF and noise. transpose(inv_rot) is local-to-world.
+        mat3 world_rotation = transpose(localfog_inv_rot[i]);
+        vec3 world_extent = abs(world_rotation[0]) * extents.x +
+                            abs(world_rotation[1]) * extents.y +
+                            abs(world_rotation[2]) * extents.z;
+        vec3 world_delta = abs(wpos - localfog_center[i]);
+        if (any(greaterThan(world_delta, world_extent)))
+        {
+            continue;
+        }
+
+        vec3 p = localfog_inv_rot[i] * (wpos - localfog_center[i]);
+        float feather = clamp(localfog_params[i].y, 0.0, 1.0);
+        float mask;
+        if (localfog_params[i].z < 0.5)
+        {
+            vec3 d = abs(p) - extents;
+            float dist = max(d.x, max(d.y, d.z));
+            float edge = max(feather * min(extents.x, min(extents.y, extents.z)), 0.0001);
+            mask = 1.0 - smoothstep(-edge, 0.0, dist);
+        }
+        else
+        {
+            vec3 ep = p / extents;
+            float q = dot(ep, ep);
+            mask = 1.0 - smoothstep(1.0 - max(feather, 0.0001), 1.0, q);
+        }
+
+        if (localfog_params[i].w > 0.0)
+        {
+            float height01 = clamp((p.z + extents.z) / (2.0 * extents.z), 0.0, 1.0);
+            mask *= exp(-height01 * localfog_params[i].w);
+        }
+
+        float turbulence = 1.0;
+        if (localfog_noise[i].x > 0.0)
+        {
+            vec3 noise_pos = wpos * localfog_noise[i].x +
+                             vec3(localfog_noise[i].y * froxel_time);
+            turbulence = mix(0.65, 1.35, froxelFbm(noise_pos));
+        }
+        float density = mask * max(localfog_params[i].x, 0.0) * turbulence;
+        density_accum += density;
+        tint_accum += density * max(localfog_tint[i], vec3(0.0));
+        tint_w += density;
+    }
+    return density_accum;
+}
 
 void main()
 {
@@ -122,6 +194,17 @@ void main()
     // Scattering coefficient sigma_s = sigma_t * albedo (albedo = 1.0 this batch).
     const float albedo = 1.0;
     vec3 sigma_s = vec3(sigma_t * albedo);
+    if (localfog_count > 0)
+    {
+        vec3 local_tint;
+        float local_tint_w;
+        float local_density = localFogDensity(wpos, local_tint, local_tint_w);
+        sigma_t += local_density;
+        if (local_tint_w > 0.0)
+        {
+            sigma_s += local_tint * albedo;
+        }
+    }
 
     frag_color = vec4(sigma_s, sigma_t);
 }

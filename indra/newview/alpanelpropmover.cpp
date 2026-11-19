@@ -15,6 +15,7 @@
 #include "alobjectproperties.h"     // cached object names (populated by selection replies)
 #include "llactormover.h"           // shared Path store + per-node accessors
 #include "llbutton.h"
+#include "llcheckboxctrl.h"
 #include "llcombobox.h"
 #include "llscrolllistctrl.h"
 #include "llselectmgr.h"            // "Enroll selected" reads the in-world selection
@@ -59,6 +60,28 @@ bool ALPanelPropMover::postBuild()
     mNodeSpeedSpin = getChild<LLSpinCtrl>("node_speed_spin");
     mStatusText    = getChild<LLTextBox>("status_text");
 
+    mBtnCaptureOrient  = getChild<LLButton>("btn_capture_orient");
+    mRotationModeCombo = getChild<LLComboBox>("rotation_mode_combo");
+
+    mHoverOnCheck   = getChild<LLCheckBoxCtrl>("hover_on_check");
+    mHoverWaveCombo = getChild<LLComboBox>("hover_wave_combo");
+    mHoverAmpSpin   = getChild<LLSpinCtrl>("hover_amp_spin");
+    mHoverFreqSpin  = getChild<LLSpinCtrl>("hover_freq_spin");
+    mRockOnCheck    = getChild<LLCheckBoxCtrl>("rock_on_check");
+    mRockAxisCombo  = getChild<LLComboBox>("rock_axis_combo");
+    mRockAmpSpin    = getChild<LLSpinCtrl>("rock_amp_spin");
+    mRockFreqSpin   = getChild<LLSpinCtrl>("rock_freq_spin");
+
+    mSpinOnCheck   = getChild<LLCheckBoxCtrl>("spin_on_check");
+    mSpinAxisCombo = getChild<LLComboBox>("spin_axis_combo");
+    mSpinSpeedSpin = getChild<LLSpinCtrl>("spin_speed_spin");
+
+    mShuttleAxisCombo    = getChild<LLComboBox>("shuttle_axis_combo");
+    mShuttleSignCombo    = getChild<LLComboBox>("shuttle_sign_combo");
+    mShuttleDistanceSpin = getChild<LLSpinCtrl>("shuttle_distance_spin");
+    mShuttleSpeedSpin    = getChild<LLSpinCtrl>("shuttle_speed_spin");
+    mShuttleSlopeSpin    = getChild<LLSpinCtrl>("shuttle_slope_spin");
+
     mPropList->setCommitCallback(boost::bind(&ALPanelPropMover::onSelectProp, this));
     mNodeList->setCommitCallback(boost::bind(&ALPanelPropMover::onSelectNode, this));
 
@@ -76,6 +99,24 @@ bool ALPanelPropMover::postBuild()
     mEndModeCombo->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEndMode, this));
     mNodeSkidSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitNodeSkid, this));
     mNodeSpeedSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitNodeSpeed, this));
+
+    mBtnCaptureOrient->setClickedCallback(boost::bind(&ALPanelPropMover::onCaptureOrient, this));
+    mRotationModeCombo->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitRotationMode, this));
+
+    mHoverOnCheck->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mHoverWaveCombo->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mHoverAmpSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mHoverFreqSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mRockOnCheck->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mRockAxisCombo->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mRockAmpSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mRockFreqSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mSpinOnCheck->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mSpinAxisCombo->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+    mSpinSpeedSpin->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitEffects, this));
+
+    mShuttleAxisCombo->setCommitCallback(boost::bind(&ALPanelPropMover::onCommitShuttleAxis, this));
+    getChild<LLButton>("btn_shuttle")->setClickedCallback(boost::bind(&ALPanelPropMover::onClickShuttle, this));
 
     refresh();
     return LLPanel::postBuild();
@@ -211,10 +252,12 @@ void ALPanelPropMover::refreshNodePane()
     const bool has_path = path != nullptr;
     mPathSpeedSpin->setEnabled(has_path);
     mEndModeCombo->setEnabled(has_path);
+    mRotationModeCombo->setEnabled(has_path);
     if (has_path)
     {
         mPathSpeedSpin->setValue(path->mSpeed);
         mEndModeCombo->setCurrentByIndex(llclamp(path->mEndMode, 0, 2));
+        mRotationModeCombo->setCurrentByIndex(llclamp(path->mRotationMode, 0, 2));
     }
 
     // per-node params mirror the selected node
@@ -222,11 +265,57 @@ void ALPanelPropMover::refreshNodePane()
     const bool has_node = path && cur >= 0 && cur < (S32)path->mNodes.size();
     mNodeSkidSpin->setEnabled(has_node);
     mNodeSpeedSpin->setEnabled(has_node);
+    mBtnCaptureOrient->setEnabled(has_node);
     if (has_node)
     {
         mNodeSkidSpin->setValue(path->mNodes[cur].mYawOffset * RAD_TO_DEG);
         mNodeSpeedSpin->setValue(path->mNodes[cur].mSpeedOverride);
     }
+
+    // ---- oscillation / rock / spin (keyed by the PROP, not the path/node) ----
+    const bool has_prop = sel.notNull();
+    mHoverOnCheck->setEnabled(has_prop);
+    mHoverWaveCombo->setEnabled(has_prop);
+    mHoverAmpSpin->setEnabled(has_prop);
+    mHoverFreqSpin->setEnabled(has_prop);
+    mRockOnCheck->setEnabled(has_prop);
+    mRockAxisCombo->setEnabled(has_prop);
+    mRockAmpSpin->setEnabled(has_prop);
+    mRockFreqSpin->setEnabled(has_prop);
+    mSpinOnCheck->setEnabled(has_prop);
+    mSpinAxisCombo->setEnabled(has_prop);
+    mSpinSpeedSpin->setEnabled(has_prop);
+    if (has_prop)
+    {
+        // a prop with no configured effects yet reads as an all-off default
+        // (ALObjectPathMover::Effects()), not a blank/undefined UI state
+        ALObjectPathMover::Effects fx;
+        if (const ALObjectPathMover::Effects* cfg = ALObjectPathMover::instance().getEffects(sel))
+        {
+            fx = *cfg;
+        }
+        mHoverOnCheck->setValue(fx.mHover.mOn);
+        mHoverWaveCombo->setCurrentByIndex(llclamp(fx.mHover.mWave, 0, 1));
+        mHoverAmpSpin->setValue(fx.mHover.mAmpMeters);
+        mHoverFreqSpin->setValue(fx.mHover.mFreqHz);
+        mRockOnCheck->setValue(fx.mRock.mOn);
+        mRockAxisCombo->setCurrentByIndex(llclamp(fx.mRock.mAxis, 0, 2));
+        mRockAmpSpin->setValue(fx.mRock.mAmpDeg);
+        mRockFreqSpin->setValue(fx.mRock.mFreqHz);
+        mSpinOnCheck->setValue(fx.mSpin.mOn);
+        mSpinAxisCombo->setCurrentByIndex(llclamp(fx.mSpin.mAxis, 0, 2));
+        mSpinSpeedSpin->setValue(fx.mSpin.mDegPerSec);
+    }
+
+    // ---- shuttle: a one-shot builder, not persisted state -- just gate it on
+    // a prop being selected, and keep the slope spinner XZ-only ---------------
+    mShuttleAxisCombo->setEnabled(has_prop);
+    mShuttleSignCombo->setEnabled(has_prop);
+    mShuttleDistanceSpin->setEnabled(has_prop);
+    mShuttleSpeedSpin->setEnabled(has_prop);
+    mShuttleSlopeSpin->setEnabled(has_prop &&
+        mShuttleAxisCombo->getCurrentIndex() == ALObjectPathMover::SHUTTLE_AXIS_XZ);
+    getChild<LLButton>("btn_shuttle")->setEnabled(has_prop);
 }
 
 // ---------------------------------------------------------------------------
@@ -424,4 +513,97 @@ void ALPanelPropMover::onCommitNodeSpeed()
             sel, idx, (F32)mNodeSpeedSpin->getValue().asReal());
         refreshNodePane();
     }
+}
+
+// ---------------------------------------------------------------------------
+// orientation
+// ---------------------------------------------------------------------------
+void ALPanelPropMover::onCaptureOrient()
+{
+    const LLUUID sel = selectedProp();
+    const S32    idx = selectedNode();
+    if (sel.isNull() || idx < 0)
+    {
+        setStatus("Select a node first");
+        return;
+    }
+    LLQuaternion rot;
+    if (!ALObjectPathMover::getWorldRotation(sel, rot))
+    {
+        setStatus("Prop not in view/resolvable - orientation not captured");
+        return;
+    }
+    if (!LLActorMover::instance().setNodeOrient(sel, idx, rot))
+    {
+        setStatus("Could not store orientation on that node");
+        return;
+    }
+    setStatus(llformat("Orientation captured at node %d", idx + 1));
+}
+
+void ALPanelPropMover::onCommitRotationMode()
+{
+    const LLUUID sel = selectedProp();
+    if (sel.notNull() && LLActorMover::instance().getPath(sel))
+    {
+        LLActorMover::Path& path = LLActorMover::instance().editPath(sel);
+        path.mRotationMode = llclamp(mRotationModeCombo->getCurrentIndex(), 0, 2);
+        path.markDirty();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// oscillation / rock / spin -- one handler re-reads every control in the
+// group and writes the whole Effects struct, since they're one logical unit
+// per prop (mirrors how refreshNodePane populates them together)
+// ---------------------------------------------------------------------------
+void ALPanelPropMover::onCommitEffects()
+{
+    const LLUUID sel = selectedProp();
+    if (sel.isNull())
+    {
+        return;
+    }
+    ALObjectPathMover::Effects& fx = ALObjectPathMover::instance().editEffects(sel);
+    fx.mHover.mOn        = mHoverOnCheck->getValue().asBoolean();
+    fx.mHover.mWave      = mHoverWaveCombo->getCurrentIndex();
+    fx.mHover.mAmpMeters = (F32)mHoverAmpSpin->getValue().asReal();
+    fx.mHover.mFreqHz    = llmax((F32)mHoverFreqSpin->getValue().asReal(), 0.f);
+    fx.mRock.mOn      = mRockOnCheck->getValue().asBoolean();
+    fx.mRock.mAxis    = mRockAxisCombo->getCurrentIndex();
+    fx.mRock.mAmpDeg  = (F32)mRockAmpSpin->getValue().asReal();
+    fx.mRock.mFreqHz  = llmax((F32)mRockFreqSpin->getValue().asReal(), 0.f);
+    fx.mSpin.mOn        = mSpinOnCheck->getValue().asBoolean();
+    fx.mSpin.mAxis      = mSpinAxisCombo->getCurrentIndex();
+    fx.mSpin.mDegPerSec = (F32)mSpinSpeedSpin->getValue().asReal();
+}
+
+// ---------------------------------------------------------------------------
+// simple axis shuttle
+// ---------------------------------------------------------------------------
+void ALPanelPropMover::onCommitShuttleAxis()
+{
+    // slope only means anything for the XZ axis -- keep it disabled otherwise
+    // so it never reads as "in effect" when it silently isn't
+    refreshNodePane();
+}
+
+void ALPanelPropMover::onClickShuttle()
+{
+    const LLUUID sel = selectedProp();
+    if (sel.isNull())
+    {
+        setStatus("Select an enrolled prop first");
+        return;
+    }
+    const bool negative = mShuttleSignCombo->getCurrentIndex() == 1;   // 0 = "+", 1 = "-"
+    const bool ok = ALObjectPathMover::instance().buildAxisShuttle(
+        sel,
+        mShuttleAxisCombo->getCurrentIndex(),
+        negative,
+        (F32)mShuttleDistanceSpin->getValue().asReal(),
+        (F32)mShuttleSpeedSpin->getValue().asReal(),
+        (F32)mShuttleSlopeSpin->getValue().asReal());
+    setStatus(ok ? ("Shuttling " + prop_display_name(sel))
+                 : "Prop not in view/resolvable - shuttle not built");
 }

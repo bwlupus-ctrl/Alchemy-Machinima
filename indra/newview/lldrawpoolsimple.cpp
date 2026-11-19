@@ -37,6 +37,8 @@
 #include "llviewershadermgr.h"
 #include "llrender.h"
 
+static LLStaticHashedString sActorFxUseCoverageAlpha("actorFxUseCoverageAlpha");
+
 void LLDrawPoolGlow::renderPostDeferred(S32 pass)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_DRAWPOOL;
@@ -63,6 +65,7 @@ void LLDrawPoolGlow::renderPostDeferred(S32 pass)
 
     //first pass -- static objects
     shader->bind();
+    shader->uniform1i(sActorFxUseCoverageAlpha, 0);
     if (glow_indexed)
     {
         pushEmissiveBatchesScalar(LLRenderPass::PASS_GLOW, false);
@@ -75,6 +78,7 @@ void LLDrawPoolGlow::renderPostDeferred(S32 pass)
     // second pass -- rigged objects
     shader = shader->mRiggedVariant;
     shader->bind();
+    shader->uniform1i(sActorFxUseCoverageAlpha, 0);
     if (glow_indexed)
     {
         pushEmissiveBatchesScalar(LLRenderPass::PASS_GLOW_RIGGED, true);
@@ -341,6 +345,8 @@ void LLDrawPoolAlphaMask::beginVelocityPass(S32 pass)
 {
     gVelocityAlphaProgram.bind();
     bindVelocityUniforms(gVelocityAlphaProgram);
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    gVelocityAlphaProgram.uniform1i(sTextureAlphaOnly, 0);
 }
 
 void LLDrawPoolAlphaMask::endVelocityPass(S32 pass)
@@ -357,6 +363,8 @@ void LLDrawPoolAlphaMask::renderVelocity(S32 pass)
     // [BDMerge A5.4-1b] rigged (worn masked hair/clothing -- the machinima case)
     gVelocityAlphaProgram.bind(true);
     bindVelocityUniforms(*gVelocityAlphaProgram.mRiggedVariant);
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    gVelocityAlphaProgram.mRiggedVariant->uniform1i(sTextureAlphaOnly, 0);
     pushRiggedVelocityBatchesTextured(LLRenderPass::PASS_ALPHA_MASK_RIGGED);
 }
 
@@ -364,6 +372,8 @@ void LLDrawPoolFullbrightAlphaMask::beginVelocityPass(S32 pass)
 {
     gVelocityAlphaProgram.bind();
     bindVelocityUniforms(gVelocityAlphaProgram);
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    gVelocityAlphaProgram.uniform1i(sTextureAlphaOnly, 0);
 }
 
 void LLDrawPoolFullbrightAlphaMask::endVelocityPass(S32 pass)
@@ -380,6 +390,8 @@ void LLDrawPoolFullbrightAlphaMask::renderVelocity(S32 pass)
     // [BDMerge A5.4-1b] rigged
     gVelocityAlphaProgram.bind(true);
     bindVelocityUniforms(*gVelocityAlphaProgram.mRiggedVariant);
+    static const LLStaticHashedString sTextureAlphaOnly("velocity_texture_alpha_only");
+    gVelocityAlphaProgram.mRiggedVariant->uniform1i(sTextureAlphaOnly, 0);
     pushRiggedVelocityBatchesTextured(LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED);
 }
 

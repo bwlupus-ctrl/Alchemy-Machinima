@@ -52,7 +52,12 @@ public:
 
     // bind this material for rendering
     //   media_tex - optional media texture that may override the base color texture
-    void bind(LLViewerTexture* media_tex = nullptr);
+    //   alpha_cutoff_override - effective DrawInfo cutoff; [-1,1] overrides
+    //       shared material alpha state, while values below -1 retain authored
+    //       behavior. During BLEND shadow rendering -1 preserves the shadow
+    //       pass's coverage threshold instead of uploading a material cutoff.
+    void bind(LLViewerTexture* media_tex = nullptr,
+              F32 alpha_cutoff_override = -2.f);
 
     bool isFetching() const { return mFetching; }
     bool isLoaded() const { return !mFetching && mFetchSuccess; }
@@ -85,4 +90,3 @@ protected:
     bool mFetchSuccess = false;
     std::vector<std::function<void()>> materialCompleteCallbacks;
 };
-

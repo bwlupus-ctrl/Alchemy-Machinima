@@ -1,0 +1,156 @@
+IMPLEMENTATION TASK — Cinematic Light Rig: MULTI-INSTANCE (per-subject independent rigs).
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds; an
+adversarial review reviews before any build. Locate code by symbol/context; line numbers drift.
+
+=============================================================================
+READ FIRST — the design is NORMATIVE
+=============================================================================
+1. doc/CINE_LIGHT_RIG_MULTIINSTANCE_DESIGN.md  <-- THE SPEC. Read ALL of it. Sections: 0 exec summary;
+   1 verified current code (V1-V46, cited); A manager+state; B budget+shadow (INCLUDING §B.2a "the
+   updateShadowPolicy interlock" and §B.3 hysteresis); C UI selector; D scene; E finals/ship-risk;
+   5 TUT tests; 6 file checklist; 7 risks; 8 deferred; 9 OFF-LIMITS; 10 seed corrections. Follow it
+   EXACTLY. The design WINS over this brief on any conflict (except "do not build").
+2. doc/CINE_LIGHT_RIG_MULTIINSTANCE_SEED.md — the fixed user decisions (but note §10: three seed
+   code-facts are WRONG; the design's citations supersede them).
+3. doc/CINE_LIGHT_RIG_MULTIANCHOR_DESIGN.md — the group-as-one-unit feature, now a PER-INSTANCE mode.
+   Its §F.2.3 "same statements, not equivalent" discipline is the bar for the tick split here.
+4. doc/CINE_LIGHT_RIG_MASTER_PRESETS_DESIGN.md — the scale-aware/exposure finals (SA-9) you must not
+   disturb.
+
+USER DECISION (fixed): CONCURRENT per-subject rigs, one independent rig per Director cast slot
+{You,A,B,C,D} (max 5), all runnable at once; the cine_anchor combo becomes the EDITOR SELECTOR
+(pick which slot's rig you edit); the CAMERA-FOCUSED rig gets shadow priority, never exceeding
+MAX_SPOT_SHADOWS=6. Group multi-anchor stays a per-instance mode.
+
+=============================================================================
+WHAT IT IS (from the design — build to §6 exactly)
+=============================================================================
+- NEW singleton ALCineLightRigManager (indra/newview/alcinelightrigmanager.{h,cpp}) owning
+  ALCineLightRig mInstances[5] keyed by Slot {SELF,A,B,C,D} and a ParamBlob mBlobs[5]. (§A.1/MI-1)
+- ALCineLightRig LOSES `static instance()`; the 5 call sites (alcinelightrig.cpp, alpanelcinelightrig
+  .cpp, llfloaterdirector.cpp:888/1057, llviewerdisplay.cpp:1814, llappviewer.cpp:5525/6059) route to
+  the manager or manager.selected(). (§A.1, V5) The deleted static means a missed call site FAILS TO
+  COMPILE — good, let the compiler enforce completeness.
+- The ~49 CineLightRig* settings keys stay the LIVE EDITING BUFFER for the SELECTED instance only.
+  The panel's control_name bindings are UNCHANGED. Each instance holds a ParamBlob snapshot. (§A.2)
+- tick routing (§A.2/MI-4): manager.tick(t) => (1) mBlobs[mSelected]=fromSettings(); (2)
+  resolveCameraFocus(); (3) per slot, owns_shadows=(slot==mFocusSlot); selected => tickSelected(t,
+  owns_shadows) VERBATIM today's tick reading gSavedSettings; else enabled => tickFromBlob(blob,t,
+  owns_shadows); else shutdown(); (4) applyShadowSuppression() AFTER all ticks.
+- Selector switch (§A.2/MI-5): setSelectedSlot flushes settings->outgoing blob, loads incoming
+  blob->settings, panel re-syncs on next draw.
+- Persistence (§A.4/MI-8): ONE new hidden LLSD settings key CineLightRigInstances holds the 5 blobs +
+  selected slot. The ONLY new settings key. No others, no renames.
+- Shadow priority (§B): camera-focused = enabled instance nearest gAgentCamera.getFocusTargetGlobal()
+  with margin+dwell hysteresis and a stable fallback; only the focus rig's <=4 projectors compete for
+  <=6 slots; all others LIT but shadowless via the EXISTING toggleProjectorCastShadows set.
+- UI (§C): cine_anchor -> five-slot selector with lit markers; drop the setEnabled at :386; per-
+  instance enable/power edit the selected instance; both hosts lockstep; NO panel reflow.
+- Scene (§D): additive `instances` array + `selected_slot` read AFTER the frozen three-way split;
+  legacy single block still written for the selected instance; old-scene migration by anchor->slot;
+  NO version bump. All four cross-version cases per §D.4.
+
+=============================================================================
+THE TRAPS — get these right (§7 risks + §9 off-limits). These are where a review WILL probe.
+=============================================================================
+1. R1 — SINGLE-RIG BITWISE (highest). tickSelected(t, owns_shadows=true) MUST be today's tick body
+   VERBATIM (statement-identical, not "equivalent"): the enable/power gates, the slot resolve (for
+   SELF, resolve(LLUUID::null) == today's resolve(mAnchor) with null mAnchor), facing, scale,
+   memberTrackPoint+OffsetZ, the smoother, FX/transition, render+applyFrame, and the FINAL
+   updateShadowPolicy (see trap 2). tickFromBlob is the SAME statements with ONLY the value source
+   swapped (ParamBlob member <-> LLCachedControl). Factor the shared body so both paths run identical
+   statements. The reviewer diffs both against today's tick. Read §E/MI-22..25 and the R1 "two legs"
+   correction in MI-23 — do NOT rely on "one enabled => selected"; it is false when a user enables
+   SELF then selects a disabled slot to peek. Correctness rests on tickFromBlob OUTPUT == tickSelected.
+
+2. THE updateShadowPolicy INTERLOCK (§B.2a/MI-10a — a real hazard, do not skip). updateShadowPolicy
+   (alcinelightrig.cpp:812-830) is the LAST step of tick and MUTATES the shared sNoShadowProjectors
+   set, reading the GLOBAL CineLightRigShadowMode. Required behaviour:
+   - Add `bool owns_shadows` to tick/tickSelected/tickFromBlob. The final updateShadowPolicy() call
+     runs ONLY when owns_shadows (the focus rig). When false, the tick does NOT touch the shadow set.
+   - Parameterize updateShadowPolicy(S32 shadow_mode) so the focus rig applies its OWN mode
+     (gSavedSettings when it is also selected, else its ParamBlob.mShadowMode). No path reads another
+     instance's mode.
+   - applyShadowSuppression() (manager, MI-4 step 4, AFTER all ticks) force-adds all 4 projectors of
+     every ENABLED NON-focus instance to sNoShadowProjectors (idempotent via isProjectorNoShadow).
+   - On shutdown() the manager removes every rig UUID it added.
+   For the single-rig user SELF is focus+selected => owns_shadows=true => updateShadowPolicy runs
+   verbatim and applyShadowSuppression is a no-op => sNoShadowProjectors membership is byte-identical
+   to today.
+
+3. BLOB COMPLETENESS (§A.2/MI-3a — correctness, not illustrative). ParamBlob MUST capture EVERY
+   settings key ANY per-instance path reads: readSettings' 40 (V11) + the tick-only 6 (V12:
+   Enabled,FX,OffsetZ,Damping,TrackMode,ScaleAware) + CineLightRigShadowMode (updateShadowPolicy) +
+   CineLightRigGizmo (renderGizmo) + non-settings session state (mGroupEnabled, mGroupSlots,
+   mShaftEnabled[4], mHeroEnabled[4], FX phase). Enumerate ALL ~49 keys; prove each per-instance read
+   is sourced from the blob (non-selected) or gSavedSettings (selected), NEVER mixed. A missed key =
+   a non-selected rig silently reads the SELECTED rig's value (cross-instance leak). Runtime-derived
+   state (mSmoothedCentre, mSmoothedScale, mLastFrame, emitter ptrs, retry counters) is NOT in the
+   blob.
+
+4. SLOT ANCHOR IS IMPLICIT (§A.1/MI-2). Group OFF => resolve THIS SLOT (SELF=resolve(null),
+   A=resolveSubjectA(), ... via LLDirectorCast), NOT mAnchor. Group ON => today's gatherGroupMembers
+   with the instance's OWN mGroupSlots. mAnchor is retained ONLY as the old-scene migration carrier
+   (§D.2 step 3). A resolved-null avatar => today's dark path, WITHOUT touching the other four
+   instances (each owns its emitters/state).
+
+5. THE ANCHOR COMBO IS A REWRITE, NOT A RELABEL (§10.2/MI-13). updateAnchorList currently lists "You"
+   + EVERY cast member (can exceed 5). Rewrite it to FIVE fixed slot rows in slot order with lit
+   markers (text decoration, no per-row icons in this codebase). Row value = slot index 0..4 (LLSD
+   int), not a UUID. onAnchorSelected -> setSelectedSlot((Slot)value). DROP mAnchorCombo->setEnabled(
+   !enabled) at :386 (that lock is GROUP mode, not rig-enable — §10.1). Invalidate the panel's cached
+   displayed-state on switch so syncGroupControls/syncSeedEditor/updateDerivedStatus re-read (MI-16).
+
+6. HYSTERESIS (§B.3/MI-11). margin (FOCUS_MARGIN_M~0.75m) + dwell (FOCUS_DWELL_TICKS~20) so a camera
+   pan across two actors does not flip shadow ownership every frame. Named, tunable constants. The
+   focus filter must not oscillate faster than the dwell.
+
+7. SCENE CROSS-VERSION (§D). `instances`/`selected_slot` are ADDITIVE, read AFTER the frozen three-way
+   split (alcinelightrig.cpp ~:1855-1881 — do NOT touch the split). Keep WRITING the legacy single
+   block for the selected instance. Old-scene migration: anchor==null->SELF; anchor==getSubjectA..D->
+   A..D; unknown UUID->SELF with mAnchor kept. NO version bump. Verify all 4 cases in §D.4 by reading,
+   not running.
+
+8. FINALS UNTOUCHED (§E/§9). This is a MULTIPLICATION of instances. NO changes to alcinelightrigmodel
+   .*, scaledPoint's body, the exposure/EV chain + distance_ev (SA-9 byte-frozen), the mirror line,
+   master-temp gain, gobo path, track-mode, or the group centre/scale/facing math. NO pipeline.cpp/
+   .h/GLSL/llprimitive edits — the shadow policy uses ONLY the existing public
+   toggleProjectorCastShadows/isProjectorNoShadow. lldirectorcast.* is READ-ONLY.
+
+=============================================================================
+TESTS — §5 cluster (put pure helpers behind free functions; no viewer singletons). NONE tautological.
+=============================================================================
+Implement all 8 §5 tests (slot<->bit pin; blob LLSD round-trip bitwise; blob<->settings round-trip
+exercising EVERY field incl. ShadowMode/Gizmo; camera-focus argmin+tie-break determinism; hysteresis
+anti-thrash + single clean hand-off; shadow-eligibility count <=4<=6 over all enabledMask in [1,31];
+single-instance==legacy routing predicate + normalizeSelected; migration anchor->slot table). Each
+asserts against an INDEPENDENT expected value or the shipped baseline and FAILS on regression. Add to
+tests/alcinelightrigmodel_test.cpp or a new tests/alcinelightrigmanager_test.cpp (add to CMake if new).
+
+=============================================================================
+FILES — create/modify EXACTLY per §6 (2 new sources, 1 new settings key, no version bump)
+=============================================================================
+NEW: alcinelightrigmanager.{h,cpp}. MODIFY: alcinelightrig.{h,cpp} (retire instance(); Slot mSlot;
+tickSelected/tickFromBlob + shared body + readSettings(ParamBlob) overload; updateShadowPolicy(mode);
+slot-resolve selector; keep legacy sceneData/applySceneData bodies for reuse), alpanelcinelightrig
+.{h,cpp} (selector rewrite; route to manager.selected(); cache invalidation; optional double-light
+advisory), llfloaterdirector.cpp (:888/:1057 -> manager), llviewerdisplay.cpp (:1814 -> manager,
+selected instance's gizmo), llappviewer.cpp (:5525/:6059 -> manager), settings.xml (ONE key
+CineLightRigInstances), CMakeLists.txt (2 new sources), the test file.
+NOT touched: alcinelightrigmodel.*; pipeline.*/GLSL/llprimitive; lldirectorcast.*; llvovolume.*/
+llviewerobject.* (isCineRigEmitter consumed as-is); SCENE_VERSION + preset versions; the panel/floater
+XML layout (no reflow); the FX/gobo/master-temp/preset/reset-button code.
+
+=============================================================================
+REPORT
+=============================================================================
+Every file created/modified and what changed. Explicitly confirm: (1) tickSelected is statement-
+identical to today's tick for owns_shadows=true, and tickFromBlob is the same statements with only the
+value source swapped; (2) the updateShadowPolicy interlock per §B.2a (owns_shadows gate + mode param +
+applyShadowSuppression after ticks + shutdown cleanup); (3) ParamBlob enumerates ALL ~49 keys +
+session state, each per-instance read sourced correctly (list the keys); (4) slot anchor implicit,
+null-avatar dark path per instance; (5) anchor combo rewritten to 5 slots, :386 lock dropped, caches
+invalidated; (6) scene additive + migration + no version bump, all 4 cross-version cases; (7) NO
+model/pipeline/shader/llprimitive/lldirectorcast changes; (8) the 8 tests fail on regression. Note
+anything in the design you believe is wrong. Do not build.

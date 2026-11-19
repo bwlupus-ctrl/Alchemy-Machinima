@@ -19,7 +19,7 @@
      name="anim_switcher_title"
      top="5"
      width="140">
-        ANIM SWITCHBOARD
+        POSE / ANIM BOARD
     </text>
     <check_box
      control_name="DirectorAnimSwitcherArmed"
@@ -79,9 +79,31 @@
      left="8"
      name="anim_selected_slot"
      top="132"
-     width="120">
+     width="104">
         Slot 1 setup
     </text>
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="116"
+     name="anim_slot_kind_text"
+     top="132"
+     width="30">
+        Kind
+    </text>
+    <combo_box
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="148"
+     name="anim_slot_kind"
+     tool_tip="Choose whether this slot plays an animation asset or applies a saved local poser pose."
+     top="129"
+     width="92">
+        <combo_box.item label="Anim" name="anim" value="0" />
+        <combo_box.item label="Pose" name="pose" value="1" />
+    </combo_box>
     <button
      follows="left|top"
      height="18"
@@ -89,7 +111,7 @@
      layout="topleft"
      left="250"
      name="anim_slot_reset"
-     tool_tip="Clear this slot's animation, label, target, priority, speed and flags back to defaults. Does not change Armed or Auto."
+     tool_tip="Clear this slot's animation or pose, label, target, load settings and flags back to defaults. Does not change Armed or Auto."
      top="129"
      width="80" />
 
@@ -130,6 +152,53 @@
      height="16"
      layout="topleft"
      left="8"
+     name="anim_pose_name_text"
+     top="153"
+     visible="false"
+     width="40">
+        Pose
+    </text>
+    <combo_box
+     allow_text_entry="false"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="50"
+     name="anim_pose_name"
+     tool_tip="Saved pose file from the user settings poses folder."
+     top="151"
+     visible="false"
+     width="150" />
+    <combo_box
+     allow_text_entry="false"
+     follows="left|top"
+     height="20"
+     layout="topleft"
+     left="204"
+     name="anim_pose_load_method"
+     tool_tip="Which transforms or poser subset to apply from this pose file."
+     top="151"
+     visible="false"
+     width="128">
+        <combo_box.item label="Rot + pos + scales" name="all" value="7" />
+        <combo_box.item label="Rotations only" name="rotations" value="1" />
+        <combo_box.item label="Positions only" name="positions" value="2" />
+        <combo_box.item label="Scales only" name="scales" value="3" />
+        <combo_box.item label="Rot + positions" name="rot_pos" value="4" />
+        <combo_box.item label="Rot + scales" name="rot_scale" value="5" />
+        <combo_box.item label="Pos + scales" name="pos_scale" value="6" />
+        <combo_box.item label="Right hand" name="right_hand" value="8" />
+        <combo_box.item label="Left hand" name="left_hand" value="9" />
+        <combo_box.item label="Face only" name="face" value="10" />
+        <combo_box.item label="Selective" name="selective" value="11" />
+        <combo_box.item label="Selective rot" name="selective_rot" value="12" />
+    </combo_box>
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
      name="anim_slot_label_text"
      top="177"
      width="40">
@@ -143,7 +212,7 @@
      left="50"
      max_length_chars="40"
      name="anim_slot_label"
-     tool_tip="Operator label shown on the program button. Empty falls back to the animation id."
+     tool_tip="Operator label shown on the program button. Empty falls back to the pose name or animation id."
      top="175"
      width="282" />
 
@@ -310,4 +379,17 @@
      tool_tip="On: cut slots in order. Off: deterministic random selection."
      top="296"
      width="80" />
+
+    <text
+     follows="left|top"
+     height="16"
+     layout="topleft"
+     left="8"
+     name="anim_help_hint"
+     tool_tip="Click a slot to select it, choose Anim or Pose, then pick its animation asset or local pose file. The poser can also send either kind directly to a slot."
+     top="318"
+     use_ellipses="true"
+     width="324">
+        Fill a slot with an animation asset or a saved poser pose
+    </text>
 </panel>

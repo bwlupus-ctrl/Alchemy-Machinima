@@ -1,0 +1,120 @@
+IMPLEMENTATION TASK — Cinematic Light Rig enhancements: Master Colour Temp (relative) + per-light
+gobos + bundled gobo library + gobo presets + shadow fix-it button + radius UX.
+
+Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build, cmake, or run the viewer. Claude builds; an
+adversarial Opus review reviews before any build.
+
+=============================================================================
+READ FIRST — the design is NORMATIVE
+=============================================================================
+1. doc/CINE_LIGHT_RIG_ENHANCE_DESIGN.md  <-- THE SPEC. Read ALL 849 lines. Sections A-F are the
+   six features; §5 = the TUT tests; §6 = the file/function checklist; §7 = risks; §9 = OFF-LIMITS.
+   Follow it exactly. Where this brief and the design differ, the DESIGN WINS (except "do not build").
+2. doc/CINE_LIGHT_RIG_ENHANCE_SEED.md — the brief it answers (user decisions).
+3. doc/CINE_LIGHT_RIG_MASTER_PRESETS_DESIGN.md + doc/CINE_LIGHT_RIG_STATUS.md — the existing feature
+   and its finals (scale-aware + mirror code are FINALS; touch only where §6 names a new-field thread).
+
+Verified before you start (do not re-fix): colour is per-light profile-index -> sRGB, controller
+pushes setLightSRGBColor per emitter (alcinelightrig.cpp:809); per-projector setLightTextureID is
+already per-light; local PNGs load via getFetchedTextureFromFile(FTT_LOCAL_FILE) and need NO
+textures.xml and NO viewer_manifest change (manifest already globs skins/*/textures/*/*.png);
+MasterEV is not stored in presets, so master temp isn't either. NO version bumps anywhere.
+
+=============================================================================
+SCOPE — SHIP WHOLE (one delivery). Gizmo drag-editing is EXCLUDED (deferred).
+=============================================================================
+All six: (A) Master Colour Temp relative shift; (B) per-light gobos; (C) 7 bundled gobo PNGs + a
+generator script; (D) 5 gobo master presets; (E) shadow fix-it button; (F) radius UX. Implement the
+complete §6 checklist.
+
+=============================================================================
+FILES — create/modify EXACTLY per design §6 (reproduced; the design table is authoritative)
+=============================================================================
+MODIFY:
+  alcinelightrigmodel.h    Globals::mMasterTempMired; LightBase::mGobo; EmitterState::mGobo; consts
+                           MASTER_TEMP_MIRED_MIN/MAX, MASTER_TEMP_PIVOT_KELVIN, GOBO_COUNT; declare
+                           masterTempGain, goboName
+  alcinelightrigmodel.cpp  temp-shift sanitize clamp (§A.3); locus/matrix/gamma helpers + masterTempGain
+                           (§A.2); gain application in render() WITH the shift==0 BITWISE fast path;
+                           thread mGobo through EVERY field-by-field copier (§B.2 list: cleanLight,
+                           copyCleanLights, computeLive, blendLight, render) + goboName table
+  alcinelightrig.cpp       GOBO_FILES + rigGoboTexture registry (§B.3); per-light cookie in applyFrame;
+                           readSettings/writeSetupToSettings + lightToLLSD/setupFromLLSD (+goboIndex) for
+                           gobo and temp; include llviewertexture.h; sameLight gains mGobo (transition
+                           trigger)
+  alpanelcinelightrig.cpp/.h  gobo combo population (§B.5); computeRequestedShadowSlots() factor-out +
+                           onClickShadowFixIt + fix-it visibility/label in updateDerivedStatus (§E);
+                           radius label amber cue (§F.2); cache the new widget pointers
+  skins/default/xui/en/panel_cine_light_rig.xml  4 gobo rows, Warmth row, fix-it button, radius
+                           increment 0.25 + tooltips, reflow (height 1130 -> 1286); 5 new reset buttons
+                           (roster becomes 34)
+  app_settings/settings.xml   5 new keys: CineLightRigMasterTempMired (F32 default 0);
+                           CineLightRig{Key,Fill,Rim,Bg}Gobo (S32 default 0)
+  llfloaterdirector.cpp    sceneSettingsList() += the 5 new keys
+  app_settings/cine_light_rig_presets.xml  append the 5 §D gobo presets (26 -> 31 entries)
+  tests/alcinelightrigmodel_test.cpp  golden-gain assertions + mGobo line; test<13> (master temp) and
+                           test<14> (gobo threading) per §5
+CREATE:
+  skins/default/textures/cine_gobos/*.png   7 generated gobos (§C.1)
+  scripts/gen_cine_gobos.py   deterministic generator (§C.2), Pillow+NumPy, pinned seeds; committed
+                           artifacts; the build does NOT run it. Run it once so the PNGs exist and are
+                           byte-stable (git status clean after a re-run).
+
+NOT touched (verify none appear in your diff): CMake, viewer_manifest.py, textures.xml,
+notifications.xml, scene/preset VERSION numbers, applySceneData's three-way split, the masterSetups
+loader.
+
+=============================================================================
+THE TRAPS — get these right (from §7 risks)
+=============================================================================
+1. FIELD THREADING (R4 — top hazard). LightBase::mGobo MUST be copied in `copyCleanLights` AND
+   `computeLive` (the two field-by-field copiers) or gobos silently never render despite compiling.
+   test<14>.3/.4 are the tripwires — make them fail if mGobo is dropped in either copier.
+2. BACK-COMPAT FAST PATHS. mMasterTempMired default 0 = NO colour change, a BITWISE no-op (like the
+   scale s==1 path) — every existing colour test must pass UNTOUCHED. mGobo default 0 = today's
+   default cookie. An absent gobo/temp field in an old preset/scene = these defaults. NO version bump;
+   a `version` edit anywhere in your diff is a DEFECT (design §9).
+3. COLOUR MATH (R3). Master temp is a MIRED trim -> Planckian-locus -> XYZ -> linear-sRGB green-
+   normalized GAIN applied to each light's LINEAR rgb, per §A.2. It must PRESERVE relative gel order
+   (a cool light stays cooler than a warm one after the shift) and compose correctly with the existing
+   setLightSRGBColor linearization and the [0,1] clamp — NOT interact with intensity/headroom (colour
+   and intensity are separate channels, proven §1.1). Pin the design's computed gain LITERALS in the
+   TUT (e.g. +100 mired -> R x1.4663, B x0.5349 — take the exact table from §A.2). The model does NOT
+   gamma-correct; do not add gamma to it.
+4. GOBOS ARE PROJECTOR-ONLY. Omni emitters keep null texture. Patterned gobos ride STANDARD beams in
+   the presets (Snoot compresses the pattern, Softbox stretches it) — the §D table already encodes
+   this; transcribe it exactly.
+5. POSITIONAL TABLES (CLAUDE.md rule 6). The 5 gobo presets (§D) and the 7 gobo file names/indices:
+   after writing, VERIFY BY COUNTING and cross-check every value against the §D table and §C.1 table.
+   All profile idx in [0,23], beam in [0,2], gobo in [0,7], pitch within ±85. A slip ships a scrambled
+   preset that compiles fine.
+6. GOBO FALLBACK (§C.4). Out-of-range gobo index -> clamp -> default cookie; missing PNG -> default
+   cookie + one LL_WARNS; never a black projection. rigGoboTexture holds an LLPointer so the decode
+   stays resident.
+7. SHADOW FIX-IT (§E). The button and the yellow hint MUST share ONE computeRequestedShadowSlots()
+   helper (agreement by construction). The button setU32("BDMergeMaxSpotShadows", clamp[2,6]).
+   No pipeline edit — settings write only.
+8. PANEL REFLOW. Height 1130 -> 1286; 34 reset buttons total; no overlaps (verify by rect arithmetic);
+   both hosts (Director tab + standalone floater) stay coherent.
+
+=============================================================================
+OFF-LIMITS (design §9 — verbatim intent)
+=============================================================================
+pipeline.cpp entirely (per-object light-image bind is CONSUMED, not touched — this is what keeps the
+feature shader-free); all GLSL; indra/llprimitive/* (the [0,1] colour clamp + 20 m radius clamp are
+design inputs the maths DERIVE from); llvovolume.cpp / llviewertexture.* / llviewertexturelist.*
+(read-only consumers — the local-PNG chain works BECAUSE they're unmodified); llmath.h / v3color.h
+(copy the two gamma formulas by value if needed, do not include); the avatar/ghost/actormover/
+cinematiccamera precedents (read-only); lldirectorcast.*; llselectmgr.*; bdmerge bodies; the
+applySceneData three-way split semantics (only the `base` payload contents grow); the scale-aware and
+mirror code (finals — touch only at §6-named new-field threads); viewer_manifest.py; textures.xml;
+BOTH version numbers.
+
+=============================================================================
+REPORT
+=============================================================================
+Every file created/modified with what changed. Confirm: shift==0 and gobo==0 are bitwise no-ops vs
+current; mGobo threaded through BOTH copiers; the 5 presets + 7 gobos verified by count with all
+indices in range; NO version number changed (grep-confirm); NO pipeline/shader/manifest/textures.xml
+edit; the gen script re-run leaves git clean. Anything in the design you believe is wrong, say so.
+Do not build.

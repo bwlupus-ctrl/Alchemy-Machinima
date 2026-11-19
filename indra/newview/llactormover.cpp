@@ -11,8 +11,14 @@
 #include "llpresentationtime.h"    // [Temporal Capture]
 
 #include "llactormover.h"
+#include "algazemath.h"
+#include "algazemotor.h"           // coordinated gaze motor program assembly (spec 6A)
+#include "altron.h"                // [TronT2] ghostTronParams/2/Color (look 36 "Tron Suit")
 
 #include <algorithm>                // std::reverse (path reverse op)
+#include <cmath>                    // std::isfinite
+#include <functional>               // bounded adaptive arc subdivision
+#include <limits>                   // bounded activation offset conversion
 #include <set>                      // collectGhostBatches (wanted-actor set)
 
 #include "alobjectpathmover.h"      // heading preview also draws enrolled PROP paths
@@ -28,34 +34,52 @@
 #include "llagentcamera.h"          // cameraMouselook gaze feedback interlock
 #include "llanimationstates.h"      // ANIM_AGENT_WALK
 #include "llappviewer.h"            // gFrameIntervalSeconds
+#include "llsdutil_math.h"          // versioned path vector/quaternion LLSD
 #include "llcontrolavatar.h"        // animesh attachments bucket under the wearer (model ghost)
 #include "lldirectorcast.h"         // [Director] roster storage + per-actor loco anim
 #include "lldrawpool.h"             // LLRenderPass (rigged pass enum + uploadMatrixPalette)
+#include "lldrawpoolavatar.h"       // classic/BOM Actor FX replay sweeps
 #include "llflycamrecorder.h"       // sync-to-take: the recorder playhead is the clock
 #include "llfloaterreg.h"           // heading preview only draws with the floater open
 #include "llframetimer.h"           // per-frame idempotency for applyOverride()
+#include "llghostavatar.h"          // clone eye-motion lifecycle for procedural gaze
 #include "llmaterial.h"             // legacy alpha-mode classification (static ghost faces)
+#include "noise.h"                  // classic cloth ripple matches the stock avatar pass
 #include "llcinematiccamera.h"      // camera-gaze feedback interlock
+#include "llprismlens.h"            // [Prism] Vcam Gate on-air camera eye resolution
 #include "llmotion.h"               // LLMotion::setPriorityOverride (custom-anim priority)
+#include "llkeyframemotion.h"       // loop metadata for distance-driven local sampling
 #include "llgl.h"
 #include "llglstates.h"             // LLGLSUIDefault (heading preview)
 #include "lljoint.h"
 #include "llrender.h"               // gGL (heading preview)
+#include "llrendertarget.h"         // shared PBR HDR-only draw-buffer scope
 #include "llspatialpartition.h"     // LLDrawInfo / LLCullResult (model-ghost geometry sweep)
 #include "lltoolmgr.h"              // [R2-3] edit-tool gate for the highlight ring
 #include "llvector4a.h"             // downward ground raycast (pathing ground-follow)
 #include "llvertexbuffer.h"         // draw the actor's rigged batches for the model ghost
 #include "llviewercamera.h"         // camera basis for billboarded path node numbers
 #include "llviewercontrol.h"        // gSavedSettings, LLCachedControl
+#include "llviewerobjectlist.h"     // gObjectList (object gaze targets)
 #include "llviewershadermgr.h"      // gUIProgram / gHighlightProgram (heading preview + model ghost)
 #include "llviewertexture.h"        // sWhiteImagep (flat-tint texture for the model ghost)
+#include "llviewerwindow.h"         // raw snapshot tile dimensions for Actor FX
 #include "llvoavatar.h"
 #include "llvoavatarself.h"         // gAgentAvatarp, isAgentAvatarValid()
 #include "llworld.h"                // resolveLandHeightAgent (pathing ground-follow)
 #include "pipeline.h"               // gPipeline.lineSegmentIntersectInWorld (raycast)
 
+extern bool gSnapshot;
+extern bool gCubeSnapshot;
+
 namespace
 {
+// Scene loading and live authoring share these hard path compilation bounds.
+constexpr S32 MAX_PATH_NODES = 4096;
+constexpr S32 MAX_ARC_SAMPLES_PER_SEGMENT = 4096;
+constexpr S32 MAX_ARC_SAMPLES_PER_PATH = 65536;
+constexpr F32 SYNC_SEEK_SNAP_M = 1.0f;
+
 // [Director] roster storage moved into LLDirectorCast (the roster IS the
 // cast); this stays the single resolution path for mover call sites.
 // null id = my avatar; a stale roster id (actor left the region) resolves to
@@ -64,6 +88,46 @@ namespace
 LLVOAvatar* resolve_actor(const LLUUID& id)
 {
     return LLDirectorCast::instance().resolve(id);
+}
+
+// Shared activation owns every effective Director look.  IDs outside the
+// actorghost contract are not silently clamped into a different cinematic
+// treatment: leaving native beauty active is the fail-open result.
+bool actor_style_wants_shared_replay(const LLDirectorCast::ActorStyle& style)
+{
+    if (!style.mEnabled || !LLDirectorCast::isActorStyleLook(style.mStyle))
+    {
+        return false;
+    }
+
+    // Exact-zero Cover is implemented by native-pass suppression and emits no
+    // replacement colour or depth.  Do not harvest geometry or build replay
+    // queues for an effect that has no shared draw work.  Preserve every
+    // positive Cover value; Layer keeps its historical noise-floor threshold.
+    return style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+        ? style.mAlpha > 0.f
+        : style.mAlpha > 0.001f;
+}
+
+// Actor FX is a live rendering treatment, never an off-camera Ghost Studio
+// instance. Keep its queue and readiness scoped to exactly the main world
+// beauty view. Every auxiliary view fails open to ordinary native rendering.
+bool shared_actor_main_world_context()
+{
+    // The only shared replay consumer is LLDrawPoolAlpha's post-deferred
+    // interleaved stream.  Forward rendering has no equivalent consumer, so it
+    // must remain native/fail-open even though its avatar shaders support the
+    // legacy Actor FX uniforms.
+    return LLPipeline::sRenderDeferred
+        && !gCubeSnapshot
+        && !LLPipeline::sPrismLensRender
+        && !LLPipeline::sReflectionRender
+        && !LLPipeline::sImpostorRender
+        && !LLPipeline::sRenderingHUDs
+        && !LLPipeline::sShadowRender
+        && !LLPipeline::sVelocityRender
+        && !gPipeline.mHeroProbeManager.isMirrorPass()
+        && LLViewerCamera::sCurCameraID == LLViewerCamera::CAMERA_WORLD;
 }
 
 // the locomotion anim a new Move should start for THIS actor: the cast
@@ -114,6 +178,736 @@ void apply_custom_anim_priority(LLVOAvatar* av, const LLUUID& anim)
         m->setPriorityOverride(prio);
     }
 }
+} // anonymous namespace
+
+bool LLActorMover::startLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle,
+                                    const LLUUID& source_anim, bool allow_ao,
+                                    F32 initial_weight,
+                                    bool external_sample,
+                                    F64 sample_base_time,
+                                    F32 sample_phase)
+{
+    stopLocalMotion(av, handle);
+    if (!av || source_anim.isNull())
+    {
+        return false;
+    }
+
+    handle.mSourceAnim = source_anim;
+    handle.mActualAnim = source_anim;
+    handle.mOwnerToken.generate();
+
+    // AO discovery must be observational. AOEngine::override() is a global
+    // state transition that can stop the current stand/gait and send simulator
+    // requests; a local Director clip must never use it as a lookup function.
+    if (allow_ao && av->isSelf() &&
+        gSavedPerAccountSettings.getBOOL("AlchemyAOEnable"))
+    {
+        const LLUUID replacement = AOEngine::instance().resolveAnimation(source_anim);
+        if (replacement.notNull())
+        {
+            handle.mActualAnim = replacement;
+        }
+    }
+
+    const bool was_active = av->isMotionActive(handle.mActualAnim);
+    const bool signaled = av->isAnyAnimationSignaled(&handle.mActualAnim, 1);
+    if (was_active && signaled)
+    {
+        handle.clear();
+        return false;
+    }
+
+    LLMotion* motion = av->createMotion(handle.mActualAnim);
+    if (!motion ||
+        (external_sample && (!motion->supportsExternalSampling() ||
+         !motion->claimPresentationControl(handle.mOwnerToken))))
+    {
+        handle.clear();
+        return false;
+    }
+    handle.mControlsMotion = external_sample;
+    handle.mPendingLoad = false;
+    if (external_sample)
+    {
+        motion->setPresentationWeight(handle.mOwnerToken, initial_weight);
+        motion->setExternalSampleTime(handle.mOwnerToken, 0.f);
+    }
+    F32 activation_offset = 0.f;
+    if (LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(motion))
+    {
+        handle.mPendingLoad = !keyframe->isLoaded();
+        if (external_sample)
+        {
+            keyframe->setExternalLocomotionSeed(handle.mOwnerToken,
+                                                 sample_base_time,
+                                                 sample_phase);
+        }
+        if (external_sample && !handle.mPendingLoad)
+        {
+            const F64 loop_in = (F64)keyframe->getLoopIn();
+            const F64 cycle = (F64)keyframe->getLoopOut() - loop_in;
+            F64 bounded_offset = loop_in;
+            if (cycle > 0.001f)
+            {
+                const F64 threshold = (F64)motion->getEaseInDuration() + 0.001;
+                if (bounded_offset <= threshold)
+                {
+                    // Small authoring cycles and large ease values must not
+                    // turn activation into an unbounded per-frame loop.
+                    const F64 cycles = std::floor((threshold - bounded_offset) /
+                                                  cycle) + 1.0;
+                    bounded_offset += cycles * cycle;
+                }
+            }
+            activation_offset = (F32)llmin(
+                bounded_offset,
+                (F64)std::numeric_limits<F32>::max());
+        }
+    }
+
+
+    if (!was_active)
+    {
+        handle.mOwnsMotion = av->LLCharacter::startMotion(handle.mActualAnim,
+                                                           activation_offset);
+        if (!handle.mOwnsMotion)
+        {
+            if (handle.mControlsMotion)
+            {
+                motion->releasePresentationControl(handle.mOwnerToken);
+            }
+            handle.clear();
+            return false;
+        }
+    }
+    if (handle.mOwnsMotion)
+    {
+        apply_custom_anim_priority(av, handle.mActualAnim);
+    }
+    return true;
+}
+
+void LLActorMover::stopLocalMotion(LLVOAvatar* av, LocalMotionHandle& handle)
+{
+    if (!handle.valid())
+    {
+        handle.clear();
+        return;
+    }
+    if (av && handle.mActualAnim.notNull())
+    {
+        if (LLMotion* motion = av->findMotion(handle.mActualAnim))
+        {
+            if (handle.mControlsMotion)
+            {
+                motion->releasePresentationControl(handle.mOwnerToken);
+            }
+        }
+        // Ownership can change after a local start: if the simulator now
+        // signals this UUID, release presentation control but leave the
+        // simulator-owned motion alive for both self and non-self avatars.
+        const bool signaled =
+            av->isAnyAnimationSignaled(&handle.mActualAnim, 1);
+        if (handle.mOwnsMotion && !signaled)
+        {
+            av->LLCharacter::stopMotion(handle.mActualAnim, true);
+        }
+    }
+    handle.clear();
+}
+
+bool LLActorMover::setLocalMotionSample(LLVOAvatar* av, LocalMotionHandle& handle,
+                                        F64 traveled_distance, F32 nominal_speed,
+                                        F32 phase_origin)
+{
+    if (!av || !handle.mControlsMotion || !llfinite(traveled_distance) ||
+        !llfinite(nominal_speed) || !llfinite(phase_origin) || nominal_speed <= 0.f)
+    {
+        return false;
+    }
+    LLMotion* motion = av->findMotion(handle.mActualAnim);
+    if (!motion || !motion->isPresentationControlledBy(handle.mOwnerToken))
+    {
+        return false;
+    }
+
+    const F64 base_time = llmax(0.0, traveled_distance) / (F64)nominal_speed;
+    F64 sample = base_time;
+    if (LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(motion))
+    {
+        keyframe->setExternalLocomotionSeed(handle.mOwnerToken, base_time,
+                                             phase_origin);
+
+        const F32 loop_in = keyframe->getLoopIn();
+        const F32 cycle = keyframe->getLoopOut() - loop_in;
+        if (cycle > 0.001f)
+        {
+            sample += (F64)llmax(phase_origin, 0.f) * (F64)cycle;
+            sample = (F64)loop_in + fmod(sample, (F64)cycle);
+            if (sample < loop_in)
+            {
+                sample += cycle;
+            }
+        }
+    }
+    return motion->setExternalSampleTime(handle.mOwnerToken, (F32)sample);
+}
+
+bool LLActorMover::setLocalMotionWeight(LLVOAvatar* av, LocalMotionHandle& handle,
+                                        F32 weight)
+{
+    if (!av || !handle.mControlsMotion)
+    {
+        return false;
+    }
+    if (LLMotion* motion = av->findMotion(handle.mActualAnim))
+    {
+        return motion->setPresentationWeight(handle.mOwnerToken, weight);
+    }
+    return false;
+}
+
+bool LLActorMover::resolveLocomotionRole(LLVOAvatar* av, S32 requested_role,
+                                         LLUUID& anim, F32& nominal_speed,
+                                         F32& phase_origin, bool& allow_ao) const
+{
+    using Cast = LLDirectorCast;
+    anim.setNull();
+    nominal_speed = 3.f;
+    phase_origin = -1.f;
+    allow_ao = false;
+    if (!av)
+    {
+        return false;
+    }
+
+    const Cast::CastMember* member = Cast::instance().getMember(av->getID());
+    auto load_entry = [&](S32 role) -> bool
+    {
+        if (!member)
+        {
+            return false;
+        }
+        const auto* entry = member->mLocomotionSet.get(
+            static_cast<Cast::ELocomotionRole>(role));
+        if (!entry || entry->mAnim.isNull())
+        {
+            return false;
+        }
+        anim = entry->mAnim;
+        nominal_speed = llmax(entry->mNominalSpeed, 0.05f);
+        phase_origin = entry->mManualLeftPlantPhase;
+        allow_ao = entry->mAllowAO;
+        return true;
+    };
+
+    if (load_entry(requested_role))
+    {
+        return true;
+    }
+    switch (requested_role)
+    {
+        case Cast::LOCO_RUN_FORWARD:
+        case Cast::LOCO_WALK_BACKWARD:
+        case Cast::LOCO_STRAFE_LEFT:
+        case Cast::LOCO_STRAFE_RIGHT:
+            return resolveLocomotionRole(av, Cast::LOCO_WALK_FORWARD,
+                                         anim, nominal_speed, phase_origin, allow_ao);
+        case Cast::LOCO_HOVER:
+            return resolveLocomotionRole(av, Cast::LOCO_IDLE,
+                                         anim, nominal_speed, phase_origin, allow_ao);
+        case Cast::LOCO_TAKEOFF:
+        case Cast::LOCO_LAND:
+            if (resolveLocomotionRole(av, Cast::LOCO_FLY,
+                                      anim, nominal_speed, phase_origin, allow_ao))
+            {
+                return true;
+            }
+            return resolveLocomotionRole(av, Cast::LOCO_HOVER,
+                                         anim, nominal_speed, phase_origin, allow_ao);
+        case Cast::LOCO_WALK_FORWARD:
+        {
+            anim = locomotion_anim(av->getID());
+            static LLCachedControl<F32> nominal(
+                gSavedSettings, "ActorMoverWalkNominal", 3.0f);
+            nominal_speed = llmax((F32)nominal, 0.05f);
+            allow_ao = anim == ANIM_AGENT_WALK;
+            return anim.notNull();
+        }
+        default:
+            return false;
+    }
+}
+
+S32 LLActorMover::desiredLocomotionRole(LLVOAvatar* av, const Move& mv,
+                                        F32 speed) const
+{
+    using Cast = LLDirectorCast;
+    if (mv.mAirborne)
+    {
+        // Air paths never silently fall back to a walking body clip. Hover is
+        // the low-speed boundary role; separate entry/exit thresholds prevent
+        // noisy speeds around the boundary from rebuilding the gait each frame.
+        // Missing sparse roles still fail soft to no clip.
+        constexpr F32 HOVER_TO_FLY_MPS = 0.20f;
+        constexpr F32 FLY_TO_HOVER_MPS = 0.10f;
+        const F32 threshold = mv.mRole == Cast::LOCO_FLY
+            ? FLY_TO_HOVER_MPS : HOVER_TO_FLY_MPS;
+        return speed < threshold ? Cast::LOCO_HOVER : Cast::LOCO_FLY;
+    }
+    LLUUID walk_anim, run_anim;
+    F32 walk_nominal = 3.f, run_nominal = 3.f;
+    F32 phase = 0.f;
+    bool allow_ao = false;
+    if (!resolveLocomotionRole(av, Cast::LOCO_WALK_FORWARD,
+                               walk_anim, walk_nominal, phase, allow_ao))
+    {
+        return Cast::LOCO_NONE;
+    }
+    if (!resolveLocomotionRole(av, Cast::LOCO_RUN_FORWARD,
+                               run_anim, run_nominal, phase, allow_ao) ||
+        run_anim == walk_anim)
+    {
+        return Cast::LOCO_WALK_FORWARD;
+    }
+
+    const F32 midpoint = 0.5f * (walk_nominal + run_nominal);
+    const F32 hysteresis = llmax(0.1f, fabsf(run_nominal - walk_nominal) * 0.1f);
+    const F32 threshold = mv.mRole == Cast::LOCO_RUN_FORWARD
+        ? midpoint - hysteresis : midpoint + hysteresis;
+    return speed >= threshold ? Cast::LOCO_RUN_FORWARD
+                              : Cast::LOCO_WALK_FORWARD;
+}
+
+void LLActorMover::beginLocomotionTransition(LLVOAvatar* av, Move& mv,
+                                              S32 target_role)
+{
+    if (!av || target_role == mv.mRole)
+    {
+        return;
+    }
+
+    LLUUID target_anim;
+    F32 target_nominal = 3.f;
+    F32 target_phase = 0.f;
+    bool allow_ao = false;
+    if (!resolveLocomotionRole(av, target_role, target_anim, target_nominal,
+                               target_phase, allow_ao))
+    {
+        return;
+    }
+    if (target_anim == mv.mFailedLocomotionAnim)
+    {
+        return;
+    }
+    if (target_anim == mv.mLocomotion.mSourceAnim)
+    {
+        target_phase = resolveLocalMotionPhase(av, mv.mLocomotion, target_phase);
+        mv.mRole = target_role;
+        mv.mAnim = target_anim;
+        mv.mNominal = target_nominal;
+        mv.mPhaseOrigin = target_phase;
+        return;
+    }
+
+    if (mv.mSecondaryLocomotion.valid())
+    {
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+    }
+    if (!mv.mLocomotion.valid())
+    {
+        mv.mRole = target_role;
+        mv.mAnim = target_anim;
+        mv.mNominal = target_nominal;
+        if (startLocalMotion(av, mv.mLocomotion, target_anim, allow_ao, 1.f,
+                             true, mv.mTravelOdometer / target_nominal,
+                             target_phase))
+        {
+            if (mv.mFailedLocomotionAnim == target_anim)
+            {
+                mv.mFailedLocomotionAnim.setNull();
+            }
+            target_phase = resolveLocalMotionPhase(av, mv.mLocomotion, target_phase);
+        }
+        else
+        {
+            mv.mFailedLocomotionAnim = target_anim;
+            mv.mRole = LLDirectorCast::LOCO_NONE;
+            mv.mAnim.setNull();
+        }
+        mv.mPhaseOrigin = target_phase;
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    if (!startLocalMotion(av, mv.mSecondaryLocomotion,
+                          target_anim, allow_ao, 0.f, true,
+                          mv.mTravelOdometer / target_nominal, target_phase))
+    {
+        mv.mFailedLocomotionAnim = target_anim;
+        return;
+    }
+    if (mv.mFailedLocomotionAnim == target_anim) mv.mFailedLocomotionAnim.setNull();
+    target_phase = resolveLocalMotionPhase(
+        av, mv.mSecondaryLocomotion, target_phase);
+    mv.mSecondaryRole = target_role;
+    mv.mSecondaryNominal = target_nominal;
+    mv.mSecondaryPhaseOrigin = target_phase;
+    mv.mTransitionElapsed = 0.f;
+    static LLCachedControl<F32> transition_time(
+        gSavedSettings, "ActorMoverGaitTransitionTime", 0.25f);
+    mv.mTransitionDuration = llclamp((F32)transition_time, 0.05f, 2.f);
+    setLocalMotionSample(av, mv.mSecondaryLocomotion, mv.mTravelOdometer,
+                         mv.mSecondaryNominal, mv.mSecondaryPhaseOrigin);
+}
+
+void LLActorMover::updateLocomotionGait(LLVOAvatar* av, Move& mv, F32 speed,
+                                        F32 dt, bool discontinuity)
+{
+    using Cast = LLDirectorCast;
+    const S32 desired = desiredLocomotionRole(av, mv, llmax(speed, 0.f));
+    if (desired == Cast::LOCO_NONE)
+    {
+        return;
+    }
+
+    if (discontinuity && desired != mv.mRole)
+    {
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        stopLocalMotion(av, mv.mLocomotion);
+        mv.mRole = Cast::LOCO_NONE;
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        LLUUID target;
+        bool allow_ao = false;
+        if (resolveLocomotionRole(av, desired, target, mv.mNominal,
+                                  mv.mPhaseOrigin, allow_ao))
+        {
+            mv.mRole = desired;
+            mv.mAnim = target;
+            if (!startLocalMotion(av, mv.mLocomotion, target, allow_ao, 1.f,
+                                  true, mv.mTravelOdometer / mv.mNominal,
+                                  mv.mPhaseOrigin))
+            {
+                mv.mFailedLocomotionAnim = target;
+                mv.mRole = Cast::LOCO_NONE;
+                mv.mAnim.setNull();
+            }
+            else if (mv.mFailedLocomotionAnim == target)
+            {
+                mv.mFailedLocomotionAnim.setNull();
+            }
+        }
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    if (mv.mSecondaryLocomotion.valid() && desired == mv.mRole)
+    {
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+    else if (!mv.mSecondaryLocomotion.valid() && desired != mv.mRole)
+    {
+        beginLocomotionTransition(av, mv, desired);
+    }
+
+    if (!mv.mSecondaryLocomotion.valid())
+    {
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    LLKeyframeMotion* secondary = dynamic_cast<LLKeyframeMotion*>(
+        av->findMotion(mv.mSecondaryLocomotion.mActualAnim));
+    if (secondary && secondary->hasLoadFailed())
+    {
+        mv.mFailedLocomotionAnim = mv.mSecondaryLocomotion.mSourceAnim;
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+        updateLocomotionSample(av, mv);
+        return;
+    }
+    if (secondary)
+    {
+        mv.mSecondaryLocomotion.mPendingLoad = !secondary->isLoaded();
+    }
+    if (mv.mSecondaryLocomotion.mPendingLoad)
+    {
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+        setLocalMotionWeight(av, mv.mSecondaryLocomotion, 0.f);
+        // Loading the incoming role must not freeze the outgoing stride.
+        updateLocomotionSample(av, mv);
+        return;
+    }
+
+    mv.mTransitionElapsed += llmax(dt, 0.f);
+    const F32 u = llclamp(mv.mTransitionElapsed /
+                          llmax(mv.mTransitionDuration, 0.001f), 0.f, 1.f);
+    const F32 weight = u * u * u * (u * (u * 6.f - 15.f) + 10.f);
+    setLocalMotionWeight(av, mv.mLocomotion, 1.f - weight);
+    setLocalMotionWeight(av, mv.mSecondaryLocomotion, weight);
+    updateLocomotionSample(av, mv);
+
+    if (u >= 1.f)
+    {
+        stopLocalMotion(av, mv.mLocomotion);
+        mv.mLocomotion = mv.mSecondaryLocomotion;
+        mv.mSecondaryLocomotion.clear();
+        mv.mRole = mv.mSecondaryRole;
+        mv.mSecondaryRole = Cast::LOCO_NONE;
+        mv.mNominal = mv.mSecondaryNominal;
+        mv.mPhaseOrigin = mv.mSecondaryPhaseOrigin;
+        mv.mAnim = mv.mLocomotion.mSourceAnim;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+}
+
+F32 LLActorMover::resolveLocalMotionPhase(LLVOAvatar* av,
+                                           const LocalMotionHandle& handle,
+                                           F32 configured_phase) const
+{
+    if (configured_phase >= 0.f)
+    {
+        return fmodf(configured_phase, 1.f);
+    }
+    if (handle.mPendingLoad)
+    {
+        return -1.f;
+    }
+    if (av && handle.valid())
+    {
+        if (LLKeyframeMotion* keyframe =
+                dynamic_cast<LLKeyframeMotion*>(av->findMotion(handle.mActualAnim)))
+        {
+            const LLKeyframeMotion::LocomotionPhaseInfo& info =
+                keyframe->getGenericLocomotionPhaseInfo();
+            if (info.valid())
+            {
+                return info.mLeftPlantPhase;
+            }
+        }
+    }
+    return -1.f;
+}
+
+void LLActorMover::startLocomotion(LLVOAvatar* av, Move& mv)
+{
+    using Cast = LLDirectorCast;
+    stopLocalMotion(av, mv.mSecondaryLocomotion);
+    stopLocalMotion(av, mv.mLocomotion);
+    mv.mSecondaryRole = Cast::LOCO_NONE;
+    const S32 role = desiredLocomotionRole(av, mv, mv.mSpeed);
+    mv.mRole = Cast::LOCO_NONE;
+    mv.mAnim.setNull();
+    LLUUID anim;
+    bool allow_ao = false;
+    if (resolveLocomotionRole(av, role, anim, mv.mNominal,
+                              mv.mPhaseOrigin, allow_ao))
+    {
+        mv.mRole = role;
+        mv.mAnim = anim;
+        if (startLocalMotion(av, mv.mLocomotion, anim, allow_ao, 1.f, true,
+                             mv.mTravelOdometer / mv.mNominal,
+                             mv.mPhaseOrigin))
+        {
+            if (mv.mFailedLocomotionAnim == anim)
+            {
+                mv.mFailedLocomotionAnim.setNull();
+            }
+            mv.mPhaseOrigin = resolveLocalMotionPhase(
+                av, mv.mLocomotion, mv.mPhaseOrigin);
+        }
+        else
+        {
+            mv.mFailedLocomotionAnim = anim;
+            mv.mRole = Cast::LOCO_NONE;
+            mv.mAnim.setNull();
+        }
+        updateLocomotionSample(av, mv);
+    }
+}
+
+void LLActorMover::stopLocomotion(LLVOAvatar* av, Move& mv)
+{
+    stopLocalMotion(av, mv.mDwellMotion);
+    stopLocalMotion(av, mv.mSecondaryLocomotion);
+    stopLocalMotion(av, mv.mLocomotion);
+    mv.mDwellAnim.setNull();
+}
+
+void LLActorMover::updateLocomotionSample(LLVOAvatar* av, Move& mv)
+{
+    auto clean_lost_motion = [this, av](LocalMotionHandle& handle)
+    {
+        if (!av || !handle.valid())
+        {
+            return false;
+        }
+        LLMotion* motion = av->findMotion(handle.mActualAnim);
+        if (!motion)
+        {
+            // A missing pending instance is the controller's failed-load shape;
+            // leave it for quarantine below. A previously loaded instance can
+            // instead disappear after external deactivation/purge, which is a
+            // recoverable loss and must not poison the asset UUID.
+            if (handle.mPendingLoad)
+            {
+                return false;
+            }
+            stopLocalMotion(av, handle);
+            return true;
+        }
+        const bool active_or_loading = handle.mPendingLoad ||
+            av->isMotionActive(handle.mActualAnim);
+        if (active_or_loading &&
+            (!handle.mControlsMotion ||
+             motion->isPresentationControlledBy(handle.mOwnerToken)))
+        {
+            return false;
+        }
+        stopLocalMotion(av, handle);
+        return true;
+    };
+    if (clean_lost_motion(mv.mLocomotion))
+    {
+        // Do not quarantine an externally stopped/ownership-lost clip as bad;
+        // clear the role marker so the next gait update can reacquire it.
+        mv.mRole = LLDirectorCast::LOCO_NONE;
+        mv.mAnim.setNull();
+    }
+    if (clean_lost_motion(mv.mSecondaryLocomotion))
+    {
+        mv.mSecondaryRole = LLDirectorCast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+
+    auto clean_failed_motion = [this, av](LocalMotionHandle& handle)
+    {
+        if (!av || !handle.valid())
+        {
+            return false;
+        }
+        LLMotion* motion = av->findMotion(handle.mActualAnim);
+        if (!motion)
+        {
+            // The controller deletes a failed loading motion from its canonical
+            // map. Clear our token even when there is no longer an instance on
+            // which presentation control can be released.
+            stopLocalMotion(av, handle);
+            return true;
+        }
+        LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(motion);
+        if (!keyframe || !keyframe->hasLoadFailed())
+        {
+            return false;
+        }
+        stopLocalMotion(av, handle);
+        return true;
+    };
+    const LLUUID failed_primary = mv.mLocomotion.mSourceAnim;
+    if (clean_failed_motion(mv.mLocomotion))
+    {
+        mv.mFailedLocomotionAnim = failed_primary;
+        mv.mRole = LLDirectorCast::LOCO_NONE;
+        mv.mAnim.setNull();
+    }
+    const LLUUID failed_secondary = mv.mSecondaryLocomotion.mSourceAnim;
+    if (clean_failed_motion(mv.mSecondaryLocomotion))
+    {
+        mv.mFailedLocomotionAnim = failed_secondary;
+        mv.mSecondaryRole = LLDirectorCast::LOCO_NONE;
+        mv.mTransitionElapsed = 0.f;
+        setLocalMotionWeight(av, mv.mLocomotion, 1.f);
+    }
+
+    auto refresh_load_state = [av](LocalMotionHandle& handle)
+    {
+        if (!av || !handle.valid())
+        {
+            return false;
+        }
+        LLKeyframeMotion* keyframe =
+            dynamic_cast<LLKeyframeMotion*>(av->findMotion(handle.mActualAnim));
+        const bool loaded = keyframe && keyframe->isLoaded();
+        handle.mPendingLoad = !loaded;
+        return loaded;
+    };
+
+    const bool primary_loaded = refresh_load_state(mv.mLocomotion);
+    if (mv.mPhaseOrigin < 0.f && primary_loaded)
+    {
+        mv.mPhaseOrigin = resolveLocalMotionPhase(
+            av, mv.mLocomotion, mv.mPhaseOrigin);
+    }
+    const bool secondary_loaded = refresh_load_state(mv.mSecondaryLocomotion);
+    if (mv.mSecondaryPhaseOrigin < 0.f && secondary_loaded)
+    {
+        mv.mSecondaryPhaseOrigin = resolveLocalMotionPhase(
+            av, mv.mSecondaryLocomotion, mv.mSecondaryPhaseOrigin);
+    }
+
+    setLocalMotionSample(av, mv.mLocomotion, mv.mTravelOdometer,
+                         llmax(mv.mNominal, 0.05f),
+                         mv.mPhaseOrigin);
+    setLocalMotionSample(av, mv.mSecondaryLocomotion, mv.mTravelOdometer,
+                         llmax(mv.mSecondaryNominal, 0.05f),
+                         mv.mSecondaryPhaseOrigin);
+}
+
+void LLActorMover::updatePathFacing(Move& mv, F32 target_yaw, F32 target_pitch,
+                                    F32 dt, bool discontinuity)
+{
+    mv.mYawClock += llmax(0.f, dt);
+    if (discontinuity)
+    {
+        mv.mCurRot.setEulerAngles(0.f, target_pitch, target_yaw);
+        mv.mYawProgramValid = false;
+        mv.mYawTarget = target_yaw;
+        return;
+    }
+
+    LLVector3 current_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
+    ALTrajectory::ScalarSample state = {
+        atan2f(current_at.mV[VY], current_at.mV[VX]), 0.f, 0.f };
+    if (mv.mYawProgramValid)
+    {
+        state = ALTrajectory::sample(mv.mYawProgram, mv.mYawClock);
+    }
+
+    // Retarget only when the desired look-ahead heading changes materially.
+    // Sampling and rebuilding at the same absolute local epoch preserves C2
+    // state; a stable target keeps the existing closed-form program untouched.
+    const bool retarget = !mv.mYawProgramValid ||
+        fabsf(ALTrajectory::shortestArcDelta(mv.mYawTarget, target_yaw)) >
+            0.5f * DEG_TO_RAD;
+    if (retarget)
+    {
+        static LLCachedControl<F32> turn_rate(
+            gSavedSettings, "PathTurnRateDegPerSec", 180.f);
+        const F32 rate = llmax(1.f, (F32)turn_rate) * DEG_TO_RAD;
+        const F32 angle = fabsf(
+            ALTrajectory::shortestArcDelta(state.mP, target_yaw));
+        const F64 duration = llclamp((F64)(angle / rate), 0.08, 0.75);
+        mv.mYawProgram = ALTrajectory::solveShortestArc(
+            mv.mYawClock, duration, state.mP, state.mV, state.mA,
+            target_yaw, 0.f, 0.f, true, 0, 1);
+        mv.mYawTarget = target_yaw;
+        mv.mYawProgramValid = true;
+        state = ALTrajectory::sample(mv.mYawProgram, mv.mYawClock);
+    }
+
+    mv.mCurRot.setEulerAngles(0.f, target_pitch,
+                              ALTrajectory::wrapToPi(state.mP));
+}
+
+namespace
+{
 
 // ===========================================================================
 // Actor pathing (P1) -- spline + traversal math
@@ -153,7 +947,8 @@ LLVector3d centripetalCR(const LLVector3d& p0, const LLVector3d& p1,
 }
 
 // ground speed at arc distance d: the per-node speed override blended across
-// nodes (so cadence never step-discontinuities), then the ease-in/out ramp.
+// nodes (so node speed changes never step-discontinue), the exact-corner
+// approach/exit envelope, then the ease-in/out ramp.
 F32 pathSpeedAt(const LLActorMover::Path& path, F32 d, bool skip_ease)
 {
     F32 base = llmax(path.mSpeed, 0.05f);
@@ -177,6 +972,7 @@ F32 pathSpeedAt(const LLActorMover::Path& path, F32 d, bool skip_ease)
         const F32 f = (db > da) ? llclamp((d - da) / (db - da), 0.f, 1.f) : 0.f;
         base = llmax(eff(i) * (1.f - f) + eff(i + 1) * f, 0.05f);
     }
+    base = llmin(base, path.cornerSpeedLimitAt(d));
     if (skip_ease)
     {
         return base;
@@ -229,6 +1025,113 @@ F32 pathNodeScalarAt(const LLActorMover::Path& path, F32 d,
     return va * (1.f - f) + vb * f;
 }
 
+// [ObjectPath] pure geometric path-tangent facing (world yaw only, no start-
+// alignment, no skid) at arc distance d -- the "keep facing the path" fallback
+// used by evalPathOrientation. Guarded against a degenerate/vertical tangent:
+// tests the HORIZONTAL magnitude (not 3D) so a pure-Z segment holds yaw 0 rather
+// than taking atan2 of a tiny noise x/y (or a signed zero) and spinning.
+LLQuaternion pathTangentFacingAt(const LLActorMover::Path& path, F32 d)
+{
+    LLVector3d pos, tangent;
+    path.evalAtDistance(d, pos, tangent);
+    const F32 tx = (F32)tangent.mdV[VX], ty = (F32)tangent.mdV[VY];
+    const F32 yaw = (tx * tx + ty * ty > 1.0e-8f) ? atan2f(ty, tx) : 0.f;
+    LLQuaternion q;
+    q.setEulerAngles(0.f, 0.f, yaw);
+    return q;
+}
+
+// [ObjectPath] evalPathOrientation's per-node value, mirroring pathNodeScalarAt's
+// bracketing but for a quaternion with a mode-dependent fallback/derivation:
+//  - as_offset == false (AUTHORED): an authored node contributes its mOrient
+//    verbatim (an absolute world pose); an un-authored node contributes its OWN
+//    tangent-facing quaternion (so it reads as "keep facing the path here").
+//  - as_offset == true (FACE_PATH_PLUS_OFFSET): "Capture Orient" always stores
+//    the SAME thing (the prop's live world rotation) regardless of mode, so an
+//    authored node's contribution is derived by factoring the tangent-facing
+//    component at THAT node back out: offset = tangent_facing(node)^-1 *
+//    mOrient, i.e. "whatever was left over after just facing the path there" --
+//    the same delta-from-a-captured-reference idiom ALObjectPathMover::start()
+//    already uses for the start-alignment capture. An un-authored node
+//    contributes identity (no extra rotation).
+// Per-node orientation contribution (only ever called for mHasOrient nodes --
+// bracketing skips the rest):
+//  - AUTHORED (as_offset false): the node's absolute world mOrient.
+//  - FACE_PATH_PLUS_OFFSET (as_offset true): the LOCAL offset that, pre-applied
+//    to the pure tangent facing at this node, reproduces the captured mOrient.
+//    LL a*b applies a first, so with q_off = mOrient * ~facing(node):
+//    q_off * facing = mOrient*(~facing*facing) = mOrient at the node. (The
+//    previous ~facing * mOrient was the wrong side and double-applied heading.)
+LLQuaternion pathOrientNodeValue(const LLActorMover::Path& path, S32 idx, F32 node_d,
+                                 bool as_offset)
+{
+    const S32 n = (S32)path.mNodes.size();
+    const LLActorMover::Waypoint& w = path.mNodes[llclamp(idx, 0, n - 1)];
+    if (as_offset)
+    {
+        return w.mOrient * ~pathTangentFacingAt(path, node_d);
+    }
+    return w.mOrient;
+}
+
+// Bracket by ORIENTED nodes ONLY. Un-oriented nodes are transparent, so an
+// authored orientation holds/interpolates across gaps rather than snapping to a
+// tangent facing at every un-authored node; loops wrap across the last->first
+// seam. Returns the mode-appropriate fallback (tangent facing / identity offset)
+// when the path has no authored orientation at all.
+LLQuaternion pathOrientationAt(const LLActorMover::Path& path, F32 d, bool as_offset)
+{
+    const S32 n  = (S32)path.mNodes.size();
+    const S32 nd = (S32)path.mNodeDist.size();
+    if (n == 0 || nd == 0)
+    {
+        return as_offset ? LLQuaternion() : pathTangentFacingAt(path, d);
+    }
+    const bool loop  = (path.mEndMode == 1);
+    const F32  total = llmax(path.mTotalLength, 0.01f);
+    const S32  lim   = llmin(n, nd);
+
+    S32 ia = -1, ib = -1, first = -1, last = -1;
+    for (S32 k = 0; k < lim; ++k)
+    {
+        if (!path.mNodes[k].mHasOrient) { continue; }
+        if (first < 0) { first = k; }
+        last = k;
+        if (path.mNodeDist[k] <= d)      { ia = k; }
+        else if (ib < 0)                 { ib = k; }
+    }
+    if (first < 0)
+    {
+        return as_offset ? LLQuaternion() : pathTangentFacingAt(path, d);   // nothing authored
+    }
+
+    F32 da, db;
+    if (ia < 0)                     // before the first oriented node
+    {
+        if (!loop) { return pathOrientNodeValue(path, first, path.mNodeDist[first], as_offset); }
+        ia = last;  da = path.mNodeDist[last] - total;      // wrap the closing seam
+    }
+    else { da = path.mNodeDist[ia]; }
+    if (ib < 0)                     // after the last oriented node
+    {
+        if (!loop) { return pathOrientNodeValue(path, last, path.mNodeDist[last], as_offset); }
+        ib = first; db = path.mNodeDist[first] + total;
+    }
+    else { db = path.mNodeDist[ib]; }
+
+    const F32 f = (db - da > 1.0e-4f) ? llclamp((d - da) / (db - da), 0.f, 1.f) : 0.f;
+    const LLQuaternion qa = pathOrientNodeValue(path, ia, path.mNodeDist[ia], as_offset);
+    LLQuaternion       qb = pathOrientNodeValue(path, ib, path.mNodeDist[ib], as_offset);
+    // Shortest-arc guard: nearest hemisphere so the slerp turns <=180 deg and
+    // f==0/1 return qa/qb exactly.
+    if (dot(qa, qb) < 0.f) { qb = -qb; }
+    // LL slerp's near-identical branch is an UNnormalized lerp -> normalize or a
+    // driven prop gets a non-unit rotation (visible scale/shear).
+    LLQuaternion out = slerp(f, qa, qb);
+    out.normalize();
+    return out;
+}
+
 F32 pathGroundOffsetAt(const LLActorMover::Path& path, F32 d)
 {
     return pathNodeScalarAt(path, d,
@@ -260,15 +1163,169 @@ F32 LLActorMover::evalPathYawOffset(const Path& path, F32 dist)
                             [](const Waypoint& w) { return w.mYawOffset; });
 }
 
+LLQuaternion LLActorMover::evalPathOrientation(const Path& path, F32 dist, bool as_offset)
+{
+    return pathOrientationAt(path, dist, as_offset);
+}
+
 // ---------------------------------------------------------------------------
 // Path compilation (arc-length table) + evaluation
 // ---------------------------------------------------------------------------
+ALPathGeometry::Primitive LLActorMover::Path::primitive() const
+{
+    ALPathGeometry::Primitive out;
+    out.mType = mShape;
+    out.mCenter = mPrimitiveCenterGlobal;
+    out.mRadiusX = mPrimitiveRadiusX;
+    out.mRadiusY = mPrimitiveRadiusY;
+    out.mStartDeg = mPrimitiveStartDeg;
+    out.mSweepDeg = mPrimitiveSweepDeg;
+    out.mYawDeg = mPrimitiveYawDeg;
+    out.mPitchDeg = mPrimitivePitchDeg;
+    out.mRollDeg = mPrimitiveRollDeg;
+    out.mRise = mPrimitiveRise;
+    return out;
+}
+
+LLVector3d LLActorMover::Path::evalPrimitive(F32 u) const
+{
+    return ALPathGeometry::evaluate(primitive(), static_cast<F64>(u));
+}
+
+void LLActorMover::Path::syncPrimitiveNodes()
+{
+    if (!isPrimitive() || mNodes.size() < 2)
+    {
+        return;
+    }
+    const F32 denom = static_cast<F32>(mNodes.size() - 1);
+    for (S32 i = 0; i < static_cast<S32>(mNodes.size()); ++i)
+    {
+        mNodes[i].mPosGlobal = evalPrimitive(static_cast<F32>(i) / denom);
+    }
+}
+
+void LLActorMover::Path::compileCornerPieces()
+{
+    mCornerPieces.clear();
+    const S32 n = static_cast<S32>(mNodes.size());
+    if (mShape != ALPathGeometry::WAYPOINTS || n < 3)
+    {
+        return;
+    }
+
+    const bool loop = mEndMode == 1;
+    bool any_requested = false;
+    for (S32 i = loop ? 0 : 1; i < (loop ? n : n - 1); ++i)
+    {
+        any_requested = any_requested || mNodes[i].mCornerRadius > 0.001f;
+    }
+    if (!any_requested)
+    {
+        return; // preserve the historical tension-blended waypoint path exactly
+    }
+
+    std::vector<ALPathGeometry::CornerFillet> fillets(n);
+    std::vector<bool> valid(n, false);
+    bool any_valid = false;
+    for (S32 i = loop ? 0 : 1; i < (loop ? n : n - 1); ++i)
+    {
+        const S32 prev = (i + n - 1) % n;
+        const S32 next = (i + 1) % n;
+        valid[i] = ALPathGeometry::buildCornerFillet(
+            mNodes[prev].mPosGlobal, mNodes[i].mPosGlobal,
+            mNodes[next].mPosGlobal, mNodes[i].mCornerRadius, fillets[i]);
+        any_valid = any_valid || valid[i];
+    }
+    if (!any_valid)
+    {
+        return;
+    }
+
+    auto add_line = [this](const LLVector3d& start, const LLVector3d& end,
+                           S32 node_at_end)
+    {
+        CompiledPiece piece;
+        piece.mStart = start;
+        piece.mEnd = end;
+        piece.mNodeAtEnd = node_at_end;
+        mCornerPieces.push_back(piece);
+    };
+    auto add_arc = [this](const ALPathGeometry::CornerFillet& fillet,
+                          F32 u0, F32 u1, S32 node_at_end)
+    {
+        CompiledPiece piece;
+        piece.mIsArc = true;
+        piece.mFillet = fillet;
+        piece.mArcStart = u0;
+        piece.mArcEnd = u1;
+        piece.mStart = ALPathGeometry::evaluateCornerFillet(fillet, u0);
+        piece.mEnd = ALPathGeometry::evaluateCornerFillet(fillet, u1);
+        piece.mNodeAtEnd = node_at_end;
+        mCornerPieces.push_back(piece);
+    };
+
+    LLVector3d cursor;
+    if (loop && valid[0])
+    {
+        // Put the logical start node at the rounded corner's midpoint. The
+        // second half opens the loop; the first half closes back to the seam.
+        cursor = ALPathGeometry::evaluateCornerFillet(fillets[0], 0.5);
+        add_arc(fillets[0], 0.5f, 1.f, -1);
+        cursor = fillets[0].mExit;
+    }
+    else
+    {
+        cursor = mNodes[0].mPosGlobal;
+    }
+
+    for (S32 i = 1; i < n; ++i)
+    {
+        if (valid[i])
+        {
+            add_line(cursor, fillets[i].mEntry, -1);
+            add_arc(fillets[i], 0.f, 0.5f, i);
+            add_arc(fillets[i], 0.5f, 1.f, -1);
+            cursor = fillets[i].mExit;
+        }
+        else
+        {
+            add_line(cursor, mNodes[i].mPosGlobal, i);
+            cursor = mNodes[i].mPosGlobal;
+        }
+    }
+
+    if (loop)
+    {
+        if (valid[0])
+        {
+            add_line(cursor, fillets[0].mEntry, -1);
+            add_arc(fillets[0], 0.f, 0.5f, -1);
+        }
+        else
+        {
+            add_line(cursor, mNodes[0].mPosGlobal, -1);
+        }
+    }
+}
+
 S32 LLActorMover::Path::segmentCount() const
 {
+    if (!mCornerPieces.empty())
+    {
+        return static_cast<S32>(mCornerPieces.size());
+    }
     const S32 n = (S32)mNodes.size();
     if (n < 2)
     {
         return 0;
+    }
+    // Exact primitives already include their authored sweep, including the
+    // closing seam of a full turn. Loop playback wraps arc distance; adding a
+    // synthetic last->first segment here would double that seam.
+    if (isPrimitive())
+    {
+        return n - 1;
     }
     // loop wraps the last node back to the first (one extra segment)
     return (mEndMode == 1) ? n : (n - 1);
@@ -276,7 +1333,27 @@ S32 LLActorMover::Path::segmentCount() const
 
 LLVector3d LLActorMover::Path::evalSegment(S32 seg, F32 t) const
 {
+    if (!mCornerPieces.empty())
+    {
+        const CompiledPiece& piece =
+            mCornerPieces[llclamp(seg, 0,
+                static_cast<S32>(mCornerPieces.size()) - 1)];
+        const F64 u = llclamp(static_cast<F64>(t), 0.0, 1.0);
+        if (piece.mIsArc)
+        {
+            const F64 arc_u =
+                piece.mArcStart + (piece.mArcEnd - piece.mArcStart) * u;
+            return ALPathGeometry::evaluateCornerFillet(piece.mFillet, arc_u);
+        }
+        return piece.mStart * (1.0 - u) + piece.mEnd * u;
+    }
     const S32 n = (S32)mNodes.size();
+    if (isPrimitive())
+    {
+        const F32 denom = static_cast<F32>(llmax(1, n - 1));
+        return evalPrimitive((static_cast<F32>(seg) + llclamp(t, 0.f, 1.f)) /
+                             denom);
+    }
     const bool loop = (mEndMode == 1);
     auto node = [&](S32 i) -> LLVector3d
     {
@@ -315,6 +1392,9 @@ void LLActorMover::Path::rebuild()
 {
     mArc.clear();
     mNodeDist.clear();
+    mCornerPieces.clear();
+    syncPrimitiveNodes();
+    compileCornerPieces();
     mTotalLength = 0.f;
     mDirty = false;
 
@@ -324,32 +1404,229 @@ void LLActorMover::Path::rebuild()
         return;
     }
 
-    // sub-sample each segment and integrate chord length into a cumulative
-    // arc-length table, so traversal can advance at CONSTANT GROUND SPEED
-    // (distance) rather than constant spline parameter. 24 samples/segment is
-    // plenty for a handful of actors and the table only rebuilds on edit.
-    const S32 SUB = 24;
+    // Circle/arc and circular helix have constant speed in normalized
+    // parameter and therefore exact distance inversion. Retain four samples
+    // per event span for speed/duration integration while keeping the same
+    // whole-path bound as waypoint adaptive subdivision.
+    F64 exact_length = 0.0;
+    if (isPrimitive() &&
+        ALPathGeometry::analyticLength(primitive(), exact_length))
+    {
+        mTotalLength = static_cast<F32>(llclamp(
+            exact_length, 0.0, static_cast<F64>(std::numeric_limits<F32>::max())));
+        mNodeDist.reserve(mNodes.size());
+        mArc.reserve(static_cast<size_t>(segs) * 4 + 1);
+        mNodeDist.push_back(0.f);
+        mArc.push_back({ 0.f, 0, 0.f });
+        for (S32 s = 0; s < segs; ++s)
+        {
+            for (S32 i = 1; i <= 4; ++i)
+            {
+                const F32 local_t = static_cast<F32>(i) * 0.25f;
+                const F32 u = (static_cast<F32>(s) + local_t) /
+                              static_cast<F32>(segs);
+                mArc.push_back({ mTotalLength * u, s, local_t });
+            }
+            mNodeDist.push_back(mTotalLength *
+                static_cast<F32>(s + 1) / static_cast<F32>(segs));
+        }
+        return;
+    }
+
+    // Build an error-bounded inversion table rather than assigning every span
+    // the same parameter density.  The midpoint alone is insufficient for an
+    // S-shaped interval, so each acceptance test uses the quarter, midpoint,
+    // and three-quarter samples.  The position test catches lateral bowing;
+    // fine-polyline minus chord length catches curves that double back close to
+    // the chord.  Hard limits make coincident/pathological authored data safe.
+    constexpr F64 POSITION_TOLERANCE_M = 0.005;
+    constexpr F64 LENGTH_EXCESS_TOLERANCE_M = 0.002;
+    constexpr S32 MAX_RECURSION_DEPTH = 12;
+
     F64 acc = 0.0;
     LLVector3d prev = evalSegment(0, 0.f);
-    mNodeDist.push_back(0.f);               // node 0 sits at distance 0
+    const bool rounded_corners = !mCornerPieces.empty();
+    if (rounded_corners)
+    {
+        mNodeDist.assign(mNodes.size(), 0.f);
+    }
+    else
+    {
+        mNodeDist.push_back(0.f);           // node 0 sits at distance 0
+    }
     mArc.push_back({ 0.f, 0, 0.f });
+
+    auto point_line_distance = [](const LLVector3d& p,
+                                  const LLVector3d& a,
+                                  const LLVector3d& b) -> F64
+    {
+        const LLVector3d ab = b - a;
+        const F64 ab_len_sq = ab.mdV[VX] * ab.mdV[VX] +
+                              ab.mdV[VY] * ab.mdV[VY] +
+                              ab.mdV[VZ] * ab.mdV[VZ];
+        if (ab_len_sq <= 1e-18)
+        {
+            return (p - a).length();
+        }
+        const LLVector3d ap = p - a;
+        const F64 u = llclamp((ap.mdV[VX] * ab.mdV[VX] +
+                               ap.mdV[VY] * ab.mdV[VY] +
+                               ap.mdV[VZ] * ab.mdV[VZ]) / ab_len_sq,
+                              0.0, 1.0);
+        return (p - (a + ab * u)).length();
+    };
+
+    // One accepted leaf retains four evaluator samples. Reserve one leaf for
+    // every remaining segment; unused leaves roll forward to later segments.
+    S32 remaining_leaf_budget = (MAX_ARC_SAMPLES_PER_PATH - 1) / 4;
     for (S32 s = 0; s < segs; ++s)
     {
-        for (S32 j = 1; j <= SUB; ++j)
+        const LLVector3d p0 = evalSegment(s, 0.f);
+        const LLVector3d p1 = evalSegment(s, 1.f);
+        if (rounded_corners)
         {
-            const F32 lt = (F32)j / (F32)SUB;
-            const LLVector3d p = evalSegment(s, lt);
-            acc += (p - prev).length();
-            prev = p;
-            mArc.push_back({ (F32)acc, s, lt });
+            mCornerPieces[s].mStartDistance = static_cast<F32>(acc);
         }
-        mNodeDist.push_back((F32)acc);      // node (s+1) at the end of segment s
+        std::function<void(F32, const LLVector3d&, F32, const LLVector3d&,
+                           S32, S32)>
+            subdivide;
+        S32 leaves_used = 0;
+        subdivide = [&](F32 t0, const LLVector3d& a,
+                        F32 t1, const LLVector3d& b, S32 depth,
+                        S32 leaf_budget)
+        {
+            const F32 span = t1 - t0;
+            const F32 tq = t0 + span * 0.25f;
+            const F32 tm = t0 + span * 0.50f;
+            const F32 tr = t0 + span * 0.75f;
+            const LLVector3d q = evalSegment(s, tq);
+            const LLVector3d m = evalSegment(s, tm);
+            const LLVector3d r = evalSegment(s, tr);
+            const F64 chord = (b - a).length();
+            const F64 fine_length = (q - a).length() + (m - q).length() +
+                                    (r - m).length() + (b - r).length();
+            const F64 deviation = llmax(point_line_distance(q, a, b),
+                                  llmax(point_line_distance(m, a, b),
+                                        point_line_distance(r, a, b)));
+            const bool within_error =
+                deviation <= POSITION_TOLERANCE_M &&
+                fine_length - chord <= LENGTH_EXCESS_TOLERANCE_M;
+            const bool at_limit = depth >= MAX_RECURSION_DEPTH || leaf_budget <= 1;
+
+            if (!within_error && !at_limit)
+            {
+                // Allocate disjoint leaf budgets to the two branches. A leaf
+                // retains exactly four samples, so no recursion/unwind order
+                // can exceed its segment or whole-path sample budget.
+                const S32 left_budget = leaf_budget / 2;
+                subdivide(t0, a, tm, m, depth + 1, left_budget);
+                subdivide(tm, m, t1, b, depth + 1,
+                          leaf_budget - left_budget);
+                return;
+            }
+
+            // Retain all samples used by the accepted error estimate. This
+            // keeps distance-to-parameter inversion faithful without a second
+            // evaluator pass and guarantees the authored endpoint is present.
+            ++leaves_used;
+            const F32 times[4] = { tq, tm, tr, t1 };
+            const LLVector3d points[4] = { q, m, r, b };
+            for (S32 i = 0; i < 4; ++i)
+            {
+                acc += (points[i] - prev).length();
+                prev = points[i];
+                mArc.push_back({ (F32)acc, s, times[i] });
+            }
+        };
+
+        const S32 remaining_segments = segs - s;
+        const S32 segment_leaf_budget = llclamp(
+            remaining_leaf_budget / remaining_segments, 1,
+            MAX_ARC_SAMPLES_PER_SEGMENT / 4);
+        subdivide(0.f, p0, 1.f, p1, 0, segment_leaf_budget);
+        remaining_leaf_budget -= leaves_used;
+        if (rounded_corners)
+        {
+            mCornerPieces[s].mEndDistance = static_cast<F32>(acc);
+            const S32 node = mCornerPieces[s].mNodeAtEnd;
+            if (node >= 0 && node < static_cast<S32>(mNodeDist.size()))
+            {
+                // A rounded corner's logical event/camera mark is the arc
+                // midpoint, not the unreachable geometric pivot.
+                mNodeDist[node] = static_cast<F32>(acc);
+            }
+        }
+        else
+        {
+            mNodeDist.push_back((F32)acc);  // node (s+1) at segment end
+        }
     }
     mTotalLength = (F32)acc;
 }
 
+F32 LLActorMover::Path::cornerSpeedLimitAt(F32 d) const
+{
+    if (mCornerPieces.empty() || mArc.size() < 2 || mTotalLength <= 0.f)
+    {
+        return std::numeric_limits<F32>::max();
+    }
+
+    d = llclamp(d, 0.f, mTotalLength);
+    const bool loop = mEndMode == 1;
+    F32 limit = std::numeric_limits<F32>::max();
+
+    // Comfortable lateral acceleration cap: v_curve = sqrt(a_lat*r). On each
+    // adjoining straight, v^2 = v_curve^2 + 2*a_long*distance creates a
+    // continuous deterministic braking/acceleration envelope. Taking the
+    // minimum across every arc also handles consecutive corners and loops.
+    constexpr F32 CORNER_LATERAL_ACCEL_MPS2 = 2.5f;
+    constexpr F32 CORNER_LONGITUDINAL_ACCEL_MPS2 = 2.5f;
+    for (const CompiledPiece& piece : mCornerPieces)
+    {
+        if (!piece.mIsArc)
+        {
+            continue;
+        }
+
+        const F32 curve_limit = llmax(0.2f, std::sqrt(
+            CORNER_LATERAL_ACCEL_MPS2 *
+            static_cast<F32>(piece.mFillet.mRadius)));
+        F32 distance = 0.f;
+        if (d < piece.mStartDistance || d > piece.mEndDistance)
+        {
+            auto endpoint_distance = [&](F32 endpoint)
+            {
+                const F32 direct = fabsf(d - endpoint);
+                return loop ? llmin(direct, mTotalLength - direct) : direct;
+            };
+            distance = llmin(endpoint_distance(piece.mStartDistance),
+                             endpoint_distance(piece.mEndDistance));
+        }
+        const F32 envelope = std::sqrt(
+            curve_limit * curve_limit +
+            2.f * CORNER_LONGITUDINAL_ACCEL_MPS2 * distance);
+        limit = llmin(limit, envelope);
+    }
+    return limit;
+}
+
 void LLActorMover::Path::evalAtDistance(F32 d, LLVector3d& pos, LLVector3d& tangent) const
 {
+    F64 exact_length = 0.0;
+    if (isPrimitive() &&
+        ALPathGeometry::analyticLength(primitive(), exact_length) &&
+        exact_length > 1e-9)
+    {
+        // Runtime distance is F32 and terminates at mTotalLength; divide by the
+        // same stored value so the authored endpoint and loop seam hit u==1.
+        const F64 distance_length = llmax(1e-9, static_cast<F64>(mTotalLength));
+        const F64 u = llclamp(static_cast<F64>(d) / distance_length, 0.0, 1.0);
+        const ALPathGeometry::Primitive p = primitive();
+        pos = ALPathGeometry::evaluate(p, u);
+        tangent = ALPathGeometry::derivative(p, u);
+        return;
+    }
+
     if (mArc.empty())
     {
         pos = mNodes.empty() ? LLVector3d() : mNodes[0].mPosGlobal;
@@ -419,6 +1696,108 @@ LLUUID path_key(const LLUUID& actor_id)
     }
     return actor_id;
 }
+
+// Shared easing curve for gaze preset transitions (DirectorGazeEasing).
+// 0 Linear, 1 Smoothstep, 2 Ease-In-Out (cubic), 3 Ease-Out (cubic).
+// t is the normalized 0..1 transition progress; returns the eased fraction.
+F32 gazeTransitionEase(U32 mode, F32 t)
+{
+    if (!std::isfinite(t))
+    {
+        // Non-finite progress (e.g. a poisoned duration setting) must never
+        // NaN-poison the blended params: treat the transition as completed.
+        return 1.f;
+    }
+    t = llclamp(t, 0.f, 1.f);
+    switch (mode)
+    {
+        case 1:  // smoothstep
+            return t * t * (3.f - 2.f * t);
+        case 2:  // ease-in-out cubic
+            if (t < 0.5f)
+            {
+                return 4.f * t * t * t;
+            }
+            else
+            {
+                const F32 u = -2.f * t + 2.f;
+                return 1.f - (u * u * u) * 0.5f;
+            }
+        case 3:  // ease-out cubic
+        {
+            const F32 u = 1.f - t;
+            return 1.f - u * u * u;
+        }
+        default: // 0: linear
+            return t;
+    }
+}
+
+// Full-config equality for GazeTarget (every authored field, raw sentinels
+// included). Used by the transition guard in setGazeTargetConfig() to tell a
+// re-snap of the identical config (the cast mirror forwarding our own blended
+// write) from a genuinely new authoring that must cancel a running blend.
+// Exact float compares are intended: both sides are copies of the same struct.
+bool sameGazeTargetConfigFields(const LLActorMover::GazeTarget& a,
+                                const LLActorMover::GazeTarget& b)
+{
+    return a.mMode == b.mMode &&
+           a.mCastRef == b.mCastRef &&
+           a.mFixedPoint == b.mFixedPoint &&
+           a.mObjectRef == b.mObjectRef &&
+           a.mPersonaDominance == b.mPersonaDominance &&
+           a.mPersonaAffection == b.mPersonaAffection &&
+           a.mPersonaAnxiety == b.mPersonaAnxiety &&
+           a.mPersonaOverride == b.mPersonaOverride &&
+           a.mHeadEyeBlendOverride == b.mHeadEyeBlendOverride &&
+           a.mTorsoAmountOverride == b.mTorsoAmountOverride &&
+           a.mIntensityOverride == b.mIntensityOverride &&
+           a.mSmoothingOverride == b.mSmoothingOverride &&
+           a.mEyelineOverride == b.mEyelineOverride &&
+           a.mEyelineYawDegOverride == b.mEyelineYawDegOverride &&
+           a.mEyelinePitchDegOverride == b.mEyelinePitchDegOverride &&
+           a.mMicroLifeOverride == b.mMicroLifeOverride &&
+           a.mBlinksOverride == b.mBlinksOverride &&
+           a.mVariationOverride == b.mVariationOverride &&
+           a.mBreakFrequencyOverride == b.mBreakFrequencyOverride &&
+           a.mEaseAcquireOverride == b.mEaseAcquireOverride &&
+           a.mEaseReleaseOverride == b.mEaseReleaseOverride &&
+           a.mDeadZoneDegOverride == b.mDeadZoneDegOverride &&
+           a.mBlinkRateScale == b.mBlinkRateScale &&
+           a.mVergenceScale == b.mVergenceScale &&
+           a.mCameraRollOverride == b.mCameraRollOverride &&
+           a.mExaggerateOverride == b.mExaggerateOverride &&
+           a.mGazePriorityOverride == b.mGazePriorityOverride &&
+           a.mAnimPriorityOverride == b.mAnimPriorityOverride &&
+           a.mCameraModeOverride == b.mCameraModeOverride &&
+           a.mCompositionOverride == b.mCompositionOverride &&
+           a.mCompositionMixOverride == b.mCompositionMixOverride &&
+           a.mChestShareOverride == b.mChestShareOverride &&
+           a.mLimitProfileModeOverride == b.mLimitProfileModeOverride &&
+           a.mLimitProfile.mEyeYawDeg == b.mLimitProfile.mEyeYawDeg &&
+           a.mLimitProfile.mEyePitchDeg == b.mLimitProfile.mEyePitchDeg &&
+           a.mLimitProfile.mHeadYawDeg == b.mLimitProfile.mHeadYawDeg &&
+           a.mLimitProfile.mHeadPitchDeg == b.mLimitProfile.mHeadPitchDeg &&
+           a.mLimitProfile.mNeckYawDeg == b.mLimitProfile.mNeckYawDeg &&
+           a.mLimitProfile.mNeckPitchDeg == b.mLimitProfile.mNeckPitchDeg &&
+           a.mLimitProfile.mSpineYawDeg == b.mLimitProfile.mSpineYawDeg &&
+           a.mLimitProfile.mSpinePitchDeg == b.mLimitProfile.mSpinePitchDeg &&
+           a.mLimitProfile.mHipsYawDeg == b.mLimitProfile.mHipsYawDeg &&
+           a.mLimitProfile.mHipsPitchDeg == b.mLimitProfile.mHipsPitchDeg &&
+           a.mLimitProfile.mEyeApplyYawDeg == b.mLimitProfile.mEyeApplyYawDeg &&
+           a.mLimitProfile.mEyeApplyPitchDeg == b.mLimitProfile.mEyeApplyPitchDeg &&
+           a.mLimitProfile.mEyeRadialDeg == b.mLimitProfile.mEyeRadialDeg &&
+           a.mLimitProfile.mEyePitchUpDeg == b.mLimitProfile.mEyePitchUpDeg &&
+           a.mLimitProfile.mHeadPitchUpDeg == b.mLimitProfile.mHeadPitchUpDeg &&
+           a.mLimitProfile.mNeckPitchUpDeg == b.mLimitProfile.mNeckPitchUpDeg &&
+           a.mLimitProfile.mSpinePitchUpDeg == b.mLimitProfile.mSpinePitchUpDeg &&
+           a.mLimitProfile.mHipsPitchUpDeg == b.mLimitProfile.mHipsPitchUpDeg &&
+           a.mLimitProfile.mEyeApplyPitchUpDeg == b.mLimitProfile.mEyeApplyPitchUpDeg &&
+           a.mLeanCurveOverride == b.mLeanCurveOverride &&
+           a.mLeanThresholdDegOverride == b.mLeanThresholdDegOverride &&
+           a.mLeanSoftnessDegOverride == b.mLeanSoftnessDegOverride &&
+           a.mLeanMaxDegOverride == b.mLeanMaxDegOverride;
+}
 } // anonymous namespace
 
 LLActorMover::Path& LLActorMover::editPath(const LLUUID& actor_id)
@@ -440,13 +1819,534 @@ bool LLActorMover::hasWalkablePath(const LLUUID& actor_id) const
 
 void LLActorMover::clearPath(const LLUUID& actor_id)
 {
-    mPaths.erase(path_key(actor_id));
+    const LLUUID key = path_key(actor_id);
+    // Clearing during a Director group-delay window must also disarm the queued
+    // start; otherwise it can later fall through to a surprise legacy move.
+    LLDirectorCast::instance().cancelPendingStart(key);
+
+    // Destruction is a transaction: retire an active path Move (and its local
+    // locomotion handles) before erasing the geometry it references. This also
+    // makes hasActivePathCamera() false in the same frame, so camera dispatch
+    // falls through to the normal owner instead of sampling an empty path at
+    // global origin on the next update.
+    auto move = mMoves.find(key);
+    if (move != mMoves.end() && move->second.mIsPath)
+    {
+        stop(key);
+    }
+    mPaths.erase(key);
+    if (mEditActor == key)
+    {
+        mEditNode = -1;
+    }
+}
+
+LLSD LLActorMover::pathSceneData(const LLUUID& actor_id) const
+{
+    const Path* path = getPath(actor_id);
+    if (!path || path->mNodes.empty())
+    {
+        return LLSD();
+    }
+
+    LLSD data = LLSD::emptyMap();
+    data["schema"] = 4;
+    data["speed"] = path->mSpeed;
+    data["cadence"] = path->mCadence;
+    data["end_mode"] = path->mEndMode;
+    data["tension"] = path->mTension;
+    data["ease_in"] = path->mEaseIn;
+    data["ease_out"] = path->mEaseOut;
+    data["arrival_facing_mode"] = path->mArrivalFacingMode;
+    data["arrival_dir"] = path->mArrivalDir;
+    data["arrival_target"] = path->mArrivalTarget;
+    data["ground_follow"] = path->mGroundFollow;
+    data["pitch_to_slope"] = path->mPitchToSlope;
+    data["airborne"] = path->mAirborne;
+    data["sync_to_take"] = path->mSyncToTake;
+    data["sync_lead_trail"] = path->mSyncLeadTrail;
+    data["shape"] = path->mShape;
+    if (path->isPrimitive())
+    {
+        data["primitive_center"] = ll_sd_from_vector3d(path->mPrimitiveCenterGlobal);
+        data["primitive_radius_x"] = path->mPrimitiveRadiusX;
+        data["primitive_radius_y"] = path->mPrimitiveRadiusY;
+        data["primitive_start_deg"] = path->mPrimitiveStartDeg;
+        data["primitive_sweep_deg"] = path->mPrimitiveSweepDeg;
+        data["primitive_yaw_deg"] = path->mPrimitiveYawDeg;
+        data["primitive_pitch_deg"] = path->mPrimitivePitchDeg;
+        data["primitive_roll_deg"] = path->mPrimitiveRollDeg;
+        data["primitive_rise"] = path->mPrimitiveRise;
+    }
+
+    LLSD nodes = LLSD::emptyArray();
+    for (const Waypoint& node : path->mNodes)
+    {
+        LLSD value = LLSD::emptyMap();
+        value["position"] = ll_sd_from_vector3d(node.mPosGlobal);
+        value["root_above"] = node.mRootAbove;
+        value["dwell"] = node.mDwell;
+        value["speed_override"] = node.mSpeedOverride;
+        value["anim"] = node.mAnim;
+        value["ground_offset"] = node.mGroundOffset;
+        value["corner_radius"] = node.mCornerRadius;
+        value["yaw_offset"] = node.mYawOffset;
+        value["has_camera"] = node.mHasCam;
+        if (node.mHasCam)
+        {
+            value["camera_position"] = ll_sd_from_vector3d(node.mCamPosGlobal);
+            value["camera_rotation"] = ll_sd_from_quaternion(node.mCamRot);
+            value["camera_fov"] = node.mCamFov;
+            value["camera_transition"] = node.mCamTransition;
+        }
+        nodes.append(value);
+    }
+    data["nodes"] = nodes;
+    return data;
+}
+
+bool LLActorMover::applyPathSceneData(const LLUUID& actor_id, const LLSD& data)
+{
+    constexpr S32 PATH_SCHEMA_MIN = 1;
+    constexpr S32 PATH_SCHEMA_MAX = 4;
+    const S32 schema = data["schema"].asInteger();
+    if (!data.isMap() || schema < PATH_SCHEMA_MIN || schema > PATH_SCHEMA_MAX ||
+        !data["nodes"].isArray() ||
+        data["nodes"].size() > MAX_PATH_NODES)
+    {
+        return false;
+    }
+    auto finite_f32 = [](const LLSD& value, F32 fallback)
+    {
+        if (value.isUndefined())
+        {
+            return fallback;
+        }
+        const F64 number = value.asReal();
+        return std::isfinite(number) ? static_cast<F32>(number) : fallback;
+    };
+
+    Path loaded;
+    loaded.mSpeed = llclamp(finite_f32(data["speed"], 1.f), 0.05f, 100.f);
+    loaded.mCadence = schema >= 3
+        ? llclamp(finite_f32(data["cadence"], 3.f), 0.5f, 12.f) : 3.f;
+    loaded.mEndMode = llclamp(data["end_mode"].asInteger(), 0, 2);
+    loaded.mTension = llclamp(finite_f32(data["tension"], 0.5f), 0.f, 1.f);
+    loaded.mEaseIn = llclamp(finite_f32(data["ease_in"], 0.f), 0.f, 60.f);
+    loaded.mEaseOut = llclamp(finite_f32(data["ease_out"], 0.f), 0.f, 60.f);
+    loaded.mArrivalFacingMode = llclamp(
+        data["arrival_facing_mode"].asInteger(), 0, 2);
+    loaded.mArrivalDir = ALTrajectory::wrapToPi(
+        finite_f32(data["arrival_dir"], 0.f));
+    loaded.mArrivalTarget = data["arrival_target"].asUUID();
+    loaded.mGroundFollow = data["ground_follow"].asBoolean();
+    loaded.mPitchToSlope = data["pitch_to_slope"].asBoolean();
+    loaded.mAirborne = data["airborne"].asBoolean();
+    if (loaded.mAirborne)
+    {
+        loaded.mGroundFollow = false;
+    }
+    loaded.mSyncToTake = data["sync_to_take"].asBoolean();
+    loaded.mSyncLeadTrail = llclamp(
+        finite_f32(data["sync_lead_trail"], 0.f), -3600.f, 3600.f);
+
+    if (schema >= 2)
+    {
+        loaded.mShape = llclamp(data["shape"].asInteger(),
+                                static_cast<S32>(ALPathGeometry::WAYPOINTS),
+                                static_cast<S32>(schema >= 3 ? ALPathGeometry::SINE_WAVE
+                                                             : ALPathGeometry::HELIX));
+        if (loaded.isPrimitive())
+        {
+            if (!data.has("primitive_center"))
+            {
+                return false;
+            }
+            loaded.mPrimitiveCenterGlobal =
+                ll_vector3d_from_sd(data["primitive_center"]);
+            if (!loaded.mPrimitiveCenterGlobal.isFinite())
+            {
+                return false;
+            }
+            loaded.mPrimitiveRadiusX = llclamp(
+                finite_f32(data["primitive_radius_x"], 3.f), 0.01f, 10000.f);
+            loaded.mPrimitiveRadiusY = llclamp(
+                finite_f32(data["primitive_radius_y"], 2.f), 0.01f, 10000.f);
+            loaded.mPrimitiveStartDeg = llclamp(
+                finite_f32(data["primitive_start_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitiveSweepDeg = llclamp(
+                finite_f32(data["primitive_sweep_deg"], 360.f), -36000.f, 36000.f);
+            loaded.mPrimitiveYawDeg = llclamp(
+                finite_f32(data["primitive_yaw_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitivePitchDeg = llclamp(
+                finite_f32(data["primitive_pitch_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitiveRollDeg = llclamp(
+                finite_f32(data["primitive_roll_deg"], 0.f), -36000.f, 36000.f);
+            loaded.mPrimitiveRise = llclamp(
+                finite_f32(data["primitive_rise"], 3.f), -10000.f, 10000.f);
+            if (loaded.mShape == ALPathGeometry::CIRCLE_ARC ||
+                loaded.mShape == ALPathGeometry::HELIX)
+            {
+                loaded.mPrimitiveRadiusY = loaded.mPrimitiveRadiusX;
+            }
+            if (loaded.mShape == ALPathGeometry::HELIX)
+            {
+                loaded.mAirborne = true;
+                loaded.mGroundFollow = false;
+                if (loaded.mEndMode == 1 &&
+                    std::fabs(loaded.mPrimitiveRise) > 0.001f)
+                {
+                    // A rising helix cannot wrap without teleporting vertically.
+                    loaded.mEndMode = 2;
+                }
+            }
+            if (loaded.mShape == ALPathGeometry::SINE_WAVE && loaded.mEndMode == 1)
+            {
+                loaded.mEndMode = 2;
+            }
+            if (loaded.mEndMode == 1)
+            {
+                // A looped primitive must end on its own seam. Sanitize scene
+                // data just as the editor does so hand-edited/older files cannot
+                // introduce an endpoint-to-start teleport.
+                const F32 direction = loaded.mPrimitiveSweepDeg < 0.f ? -1.f : 1.f;
+                const F32 turns = static_cast<F32>(llmax(1,
+                    static_cast<S32>(std::floor(
+                        std::fabs(loaded.mPrimitiveSweepDeg) / 360.f + 0.5f))));
+                loaded.mPrimitiveSweepDeg = direction * turns * 360.f;
+            }
+        }
+    }
+
+    for (LLSD::array_const_iterator it = data["nodes"].beginArray();
+         it != data["nodes"].endArray(); ++it)
+    {
+        const LLSD& value = *it;
+        if (!value.isMap() || !value.has("position"))
+        {
+            return false;
+        }
+        Waypoint node;
+        node.mPosGlobal = ll_vector3d_from_sd(value["position"]);
+        if (!node.mPosGlobal.isFinite())
+        {
+            return false;
+        }
+        node.mRootAbove = llclamp(finite_f32(value["root_above"], 0.f), 0.f, 10.f);
+        node.mDwell = llclamp(finite_f32(value["dwell"], 0.f), 0.f, 3600.f);
+        node.mSpeedOverride = llclamp(
+            finite_f32(value["speed_override"], 0.f), 0.f, 100.f);
+        node.mAnim = value["anim"].asUUID();
+        node.mGroundOffset = llclamp(
+            finite_f32(value["ground_offset"], 0.f), -100.f, 100.f);
+        node.mCornerRadius = schema >= 4
+            ? llclamp(finite_f32(value["corner_radius"], 0.f), 0.f, 10000.f)
+            : 0.f;
+        node.mYawOffset = ALTrajectory::wrapToPi(
+            finite_f32(value["yaw_offset"], 0.f));
+        node.mHasCam = value["has_camera"].asBoolean();
+        if (node.mHasCam)
+        {
+            node.mCamPosGlobal = ll_vector3d_from_sd(value["camera_position"]);
+            node.mCamRot = ll_quaternion_from_sd(value["camera_rotation"]);
+            if (!node.mCamPosGlobal.isFinite() || !node.mCamRot.isFinite())
+            {
+                return false;
+            }
+            node.mCamRot.normalize();
+            node.mCamFov = llclamp(finite_f32(value["camera_fov"], 60.f * DEG_TO_RAD),
+                                   1.f * DEG_TO_RAD, 179.f * DEG_TO_RAD);
+            node.mCamTransition = llclamp(
+                value["camera_transition"].asInteger(), 0, 1);
+        }
+        loaded.mNodes.push_back(node);
+    }
+
+    if (loaded.isPrimitive() && loaded.mNodes.size() < 2)
+    {
+        return false;
+    }
+    const LLUUID key = path_key(actor_id);
+    if (key.isNull())
+    {
+        return false;
+    }
+    loaded.markDirty();
+    loaded.rebuild();
+    auto active = mMoves.find(key);
+    if (active != mMoves.end() && active->second.mIsPath)
+    {
+        stop(key);
+    }
+    mPaths[key] = loaded;
+    mHistory.erase(key);
+    return true;
+}
+
+bool LLActorMover::setPathShape(const LLUUID& actor_id, S32 shape)
+{
+    shape = llclamp(shape, static_cast<S32>(ALPathGeometry::WAYPOINTS),
+                    static_cast<S32>(ALPathGeometry::SINE_WAVE));
+    LLVOAvatar* av = resolve_actor(actor_id);
+    if (!av || !av->getRootJoint())
+    {
+        return false;
+    }
+    const LLUUID key = av->getID();
+    auto active = mMoves.find(key);
+    if (active != mMoves.end() && active->second.mIsPath)
+    {
+        stop(key);
+    }
+
+    auto path_it = mPaths.find(key);
+    if (path_it == mPaths.end() && shape == ALPathGeometry::WAYPOINTS)
+    {
+        return false;
+    }
+    if (path_it == mPaths.end())
+    {
+        path_it = mPaths.emplace(key, Path()).first;
+    }
+    Path& path = path_it->second;
+    const bool was_helix = path.mShape == ALPathGeometry::HELIX;
+    if (path.isPrimitive())
+    {
+        path.syncPrimitiveNodes();
+    }
+    if (shape == ALPathGeometry::WAYPOINTS)
+    {
+        path.mShape = shape;
+        if (was_helix)
+        {
+            path.mAirborne = false;
+        }
+        path.markDirty();
+        path.rebuild();
+        return path.mNodes.size() >= 2;
+    }
+
+    const bool new_path = path.mNodes.size() < 2;
+    if (new_path)
+    {
+        path.mNodes.clear();
+        const LLVector3 root_agent = av->getRootJoint()->getWorldPosition();
+        LLVector3d foot_global = gAgent.getPosGlobalFromAgent(root_agent);
+        const F32 root_above = llmax(0.f, av->getPelvisToFoot());
+        foot_global.mdV[VZ] -= root_above;
+        path.mPrimitiveCenterGlobal = foot_global;
+        const S32 anchor_count = shape == ALPathGeometry::FIGURE_EIGHT ? 9 : 5;
+        for (S32 i = 0; i < anchor_count; ++i)
+        {
+            Waypoint node;
+            node.mRootAbove = root_above;
+            path.mNodes.push_back(node);
+        }
+        path.mPrimitiveRadiusX = 3.f;
+        path.mPrimitiveRadiusY = 2.f;
+        path.mPrimitiveStartDeg = 0.f;
+        path.mPrimitiveSweepDeg = 360.f;
+        path.mPrimitiveYawDeg = 0.f;
+        path.mPrimitivePitchDeg = 0.f;
+        path.mPrimitiveRollDeg = 0.f;
+        path.mPrimitiveRise = shape == ALPathGeometry::SINE_WAVE ? 0.f : 3.f;
+    }
+    else if (!path.isPrimitive())
+    {
+        LLVector3d center;
+        for (const Waypoint& node : path.mNodes)
+        {
+            center += node.mPosGlobal;
+        }
+        center *= 1.0 / static_cast<F64>(path.mNodes.size());
+        LLVector3d direction = path.mNodes.back().mPosGlobal -
+                               path.mNodes.front().mPosGlobal;
+        direction.mdV[VZ] = 0.0;
+        if (direction.length() < 1e-6 && path.mNodes.size() > 1)
+        {
+            direction = path.mNodes[1].mPosGlobal - path.mNodes[0].mPosGlobal;
+            direction.mdV[VZ] = 0.0;
+        }
+        const F64 yaw = direction.length() > 1e-6
+            ? std::atan2(direction.mdV[VY], direction.mdV[VX]) : 0.0;
+        const F64 cs = std::cos(yaw);
+        const F64 sn = std::sin(yaw);
+        F64 rx = 0.0;
+        F64 ry = 0.0;
+        for (const Waypoint& node : path.mNodes)
+        {
+            const LLVector3d delta = node.mPosGlobal - center;
+            rx = llmax(rx, std::fabs(delta.mdV[VX] * cs + delta.mdV[VY] * sn));
+            ry = llmax(ry, std::fabs(-delta.mdV[VX] * sn + delta.mdV[VY] * cs));
+        }
+        rx = llmax(rx, 0.5);
+        ry = llmax(ry, llmax(0.5, rx * 0.67));
+        path.mPrimitiveCenterGlobal = center;
+        path.mPrimitiveRadiusX = static_cast<F32>(rx);
+        path.mPrimitiveRadiusY = static_cast<F32>(ry);
+        path.mPrimitiveYawDeg = static_cast<F32>(yaw * RAD_TO_DEG);
+        const LLVector3d first_delta = path.mNodes.front().mPosGlobal - center;
+        const F64 local_x = first_delta.mdV[VX] * cs + first_delta.mdV[VY] * sn;
+        const F64 local_y = -first_delta.mdV[VX] * sn + first_delta.mdV[VY] * cs;
+        path.mPrimitiveStartDeg = static_cast<F32>(
+            std::atan2(local_y / ry, local_x / rx) * RAD_TO_DEG);
+        path.mPrimitiveSweepDeg = 360.f;
+        path.mPrimitivePitchDeg = 0.f;
+        path.mPrimitiveRollDeg = 0.f;
+        path.mPrimitiveRise = static_cast<F32>(
+            path.mNodes.back().mPosGlobal.mdV[VZ] -
+            path.mNodes.front().mPosGlobal.mdV[VZ]);
+        if (shape == ALPathGeometry::SINE_WAVE)
+        {
+            const LLVector3d& first = path.mNodes.front().mPosGlobal;
+            const LLVector3d& last = path.mNodes.back().mPosGlobal;
+            const LLVector3d chord = last - first;
+            const F64 horizontal = std::sqrt(chord.mdV[VX] * chord.mdV[VX] +
+                                             chord.mdV[VY] * chord.mdV[VY]);
+            path.mPrimitiveCenterGlobal = (first + last) * 0.5;
+            path.mPrimitiveRadiusX = static_cast<F32>(llmax(0.5, horizontal * 0.5));
+            path.mPrimitiveRadiusY = static_cast<F32>(llmax(0.5, horizontal * 0.25));
+            path.mPrimitiveYawDeg = static_cast<F32>(
+                std::atan2(chord.mdV[VY], chord.mdV[VX]) * RAD_TO_DEG);
+            path.mPrimitiveStartDeg = 0.f;
+            path.mPrimitiveSweepDeg = 360.f;
+            path.mPrimitivePitchDeg = 0.f;
+            path.mPrimitiveRollDeg = 0.f;
+            path.mPrimitiveRise = static_cast<F32>(chord.mdV[VZ]);
+        }
+        if (shape == ALPathGeometry::HELIX && std::fabs(path.mPrimitiveRise) < 0.1f)
+        {
+            path.mPrimitiveRise = 3.f;
+        }
+        if (shape == ALPathGeometry::HELIX)
+        {
+            path.mPrimitiveCenterGlobal.mdV[VZ] =
+                path.mNodes.front().mPosGlobal.mdV[VZ];
+        }
+    }
+
+    path.mShape = shape;
+    if (shape == ALPathGeometry::CIRCLE_ARC || shape == ALPathGeometry::HELIX)
+    {
+        path.mPrimitiveRadiusY = path.mPrimitiveRadiusX;
+    }
+    if (shape == ALPathGeometry::HELIX)
+    {
+        path.mAirborne = true;
+        path.mGroundFollow = false;
+        path.mEndMode = 0;
+    }
+    else
+    {
+        if (was_helix)
+        {
+            path.mAirborne = false;
+        }
+        if (shape == ALPathGeometry::SINE_WAVE)
+        {
+            path.mEndMode = 2;
+        }
+        else if (new_path)
+        {
+            path.mEndMode = 1;
+        }
+    }
+    path.markDirty();
+    path.rebuild();
+    return true;
+}
+
+bool LLActorMover::fitPathPrimitiveToEndpoints(const LLUUID& actor_id, S32 shape)
+{
+    if ((shape != ALPathGeometry::CIRCLE_ARC &&
+         shape != ALPathGeometry::SINE_WAVE) || isPathWalking(actor_id))
+    {
+        return false;
+    }
+    const Path* current = getPath(actor_id);
+    if (!current || current->mNodes.size() < 2)
+    {
+        return false;
+    }
+    ALPathGeometry::Primitive fitted = current->primitive();
+    if (!ALPathGeometry::fitPrimitiveToEndpoints(
+            fitted, shape,
+            current->mNodes.front().mPosGlobal,
+            current->mNodes.back().mPosGlobal))
+    {
+        return false;
+    }
+
+    snapshotForUndo(actor_id);
+    Path* path = &editPath(actor_id);
+    path->mShape = fitted.mType;
+    path->mPrimitiveCenterGlobal = fitted.mCenter;
+    path->mPrimitiveRadiusX = fitted.mRadiusX;
+    path->mPrimitiveRadiusY = fitted.mRadiusY;
+    path->mPrimitiveStartDeg = fitted.mStartDeg;
+    path->mPrimitiveSweepDeg = fitted.mSweepDeg;
+    path->mPrimitiveYawDeg = fitted.mYawDeg;
+    path->mPrimitivePitchDeg = fitted.mPitchDeg;
+    path->mPrimitiveRollDeg = fitted.mRollDeg;
+    path->mPrimitiveRise = fitted.mRise;
+    if (shape == ALPathGeometry::CIRCLE_ARC)
+    {
+        path->mEndMode = 0;
+    }
+    else
+    {
+        path->mEndMode = 2;
+    }
+    path->mArrivalFacingMode = 0;
+    path->markDirty();
+    path->rebuild();
+    return true;
+}
+
+bool LLActorMover::centerPathPrimitiveOnActor(const LLUUID& actor_id)
+{
+    LLVOAvatar* av = resolve_actor(actor_id);
+    const Path* current = av ? getPath(av->getID()) : nullptr;
+    if (!av || !av->getRootJoint() || !current || !current->isPrimitive())
+    {
+        return false;
+    }
+    Path* path = &editPath(av->getID());
+    if (isPathWalking(av->getID()))
+    {
+        stop(av->getID());
+    }
+    LLVector3d center = gAgent.getPosGlobalFromAgent(
+        av->getRootJoint()->getWorldPosition());
+    center.mdV[VZ] -= llmax(0.f, av->getPelvisToFoot());
+    const LLVector3d delta = center - path->mPrimitiveCenterGlobal;
+    path->mPrimitiveCenterGlobal = center;
+    for (Waypoint& node : path->mNodes)
+    {
+        if (node.mHasCam)
+        {
+            node.mCamPosGlobal += delta;
+        }
+    }
+    path->markDirty();
+    path->rebuild();
+    return true;
 }
 
 void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
 {
     LLVOAvatar* av = resolve_actor(actor_id);
     if (!av || !av->getRootJoint())
+    {
+        return;
+    }
+    const Path* current = getPath(av->getID());
+    if (isPathWalking(av->getID()) || (current && current->isPrimitive()))
+    {
+        return;
+    }
+    Path& path = mPaths[av->getID()];
+    if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
     {
         return;
     }
@@ -470,7 +2370,6 @@ void LLActorMover::appendWaypointHere(const LLUUID& actor_id)
     wp.mPosGlobal = gAgent.getPosGlobalFromAgent(foot);
     wp.mRootAbove = root.mV[VZ] - ground_z;     // captured standing height above ground
 
-    Path& path = mPaths[av->getID()];
     path.mNodes.push_back(wp);
     path.markDirty();
     LL_INFOS("ActorMover") << "path waypoint " << path.mNodes.size()
@@ -509,7 +2408,16 @@ F32 capture_root_above(LLVOAvatar* av)
 
 S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& ground_pos)
 {
+    const Path* current = getPath(actor_id);
+    if (isPathWalking(actor_id) || (current && current->isPrimitive()))
+    {
+        return -1;
+    }
     Path& path = editPath(actor_id);
+    if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
+    {
+        return -1;
+    }
     Waypoint wp;
     wp.mPosGlobal = ground_pos;
     wp.mRootAbove = capture_root_above(resolve_actor(actor_id));
@@ -520,7 +2428,16 @@ S32 LLActorMover::appendWaypointAt(const LLUUID& actor_id, const LLVector3d& gro
 
 S32 LLActorMover::insertWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& ground_pos)
 {
+    const Path* current = getPath(actor_id);
+    if (isPathWalking(actor_id) || (current && current->isPrimitive()))
+    {
+        return -1;
+    }
     Path& path = editPath(actor_id);
+    if (path.mNodes.size() >= static_cast<size_t>(MAX_PATH_NODES))
+    {
+        return -1;
+    }
     const S32 at = llclamp(index, 0, (S32)path.mNodes.size());
     Waypoint wp;
     wp.mPosGlobal = ground_pos;
@@ -533,7 +2450,8 @@ S32 LLActorMover::insertWaypoint(const LLUUID& actor_id, S32 index, const LLVect
 bool LLActorMover::moveWaypoint(const LLUUID& actor_id, S32 index, const LLVector3d& new_ground_pos)
 {
     const Path* cp = getPath(actor_id);
-    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    if (!cp || cp->isPrimitive() || isPathWalking(actor_id) ||
+        index < 0 || index >= (S32)cp->mNodes.size())
     {
         return false;
     }
@@ -550,7 +2468,8 @@ bool LLActorMover::moveWaypoint(const LLUUID& actor_id, S32 index, const LLVecto
 bool LLActorMover::deleteWaypoint(const LLUUID& actor_id, S32 index)
 {
     const Path* cp = getPath(actor_id);
-    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    if (!cp || cp->isPrimitive() || isPathWalking(actor_id) ||
+        index < 0 || index >= (S32)cp->mNodes.size())
     {
         return false;
     }
@@ -618,6 +2537,36 @@ bool LLActorMover::setNodeYawOffset(const LLUUID& actor_id, S32 index, F32 yaw_r
     return true;
 }
 
+// [ObjectPath] authored per-node orientation (same field-setter shape as its
+// siblings). Stores the WORLD rotation verbatim -- what it means is decided at
+// EVAL time by Path::mRotationMode (evalPathOrientation), not here.
+bool LLActorMover::setNodeOrient(const LLUUID& actor_id, S32 index, const LLQuaternion& orient)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mOrient = orient;
+    path.mNodes[index].mHasOrient = true;
+    path.markDirty();
+    return true;
+}
+
+bool LLActorMover::clearNodeOrient(const LLUUID& actor_id, S32 index)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mHasOrient = false;
+    path.markDirty();
+    return true;
+}
+
 bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 offset_m)
 {
     const Path* cp = getPath(actor_id);
@@ -628,6 +2577,23 @@ bool LLActorMover::setNodeGroundOffset(const LLUUID& actor_id, S32 index, F32 of
     Path& path = editPath(actor_id);
     path.mNodes[index].mGroundOffset = offset_m;
     path.markDirty();
+    return true;
+}
+
+bool LLActorMover::setNodeCornerRadius(const LLUUID& actor_id, S32 index,
+                                       F32 radius_m)
+{
+    const Path* cp = getPath(actor_id);
+    if (!cp || cp->isPrimitive() || isPathWalking(actor_id) ||
+        index < 0 || index >= static_cast<S32>(cp->mNodes.size()) ||
+        !std::isfinite(radius_m))
+    {
+        return false;
+    }
+    Path& path = editPath(actor_id);
+    path.mNodes[index].mCornerRadius = llclamp(radius_m, 0.f, 10000.f);
+    path.markDirty();
+    path.rebuild();
     return true;
 }
 
@@ -758,7 +2724,7 @@ bool LLActorMover::isGazeEnabled(const LLUUID& actor_id) const
 
 void LLActorMover::setGazeTargetMode(const LLUUID& actor_id, S32 mode)
 {
-    mGazes[path_key(actor_id)].mTarget = llclamp(mode, (S32)GAZE_TANGENT, (S32)GAZE_POINT);
+    mGazes[path_key(actor_id)].mTarget = llclamp(mode, (S32)GAZE_TANGENT, (S32)GAZE_OBJECT);
 }
 
 S32 LLActorMover::getGazeTargetMode(const LLUUID& actor_id) const
@@ -781,6 +2747,460 @@ LLUUID LLActorMover::getGazeCastTarget(const LLUUID& actor_id) const
 void LLActorMover::setGazePointGlobal(const LLUUID& actor_id, const LLVector3d& p)
 {
     mGazes[path_key(actor_id)].mPoint = p;
+}
+
+LLVector3d LLActorMover::getGazePointGlobal(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mPoint : LLVector3d::zero;
+}
+
+void LLActorMover::setGazeObjectTarget(const LLUUID& actor_id, const LLUUID& object_id)
+{
+    mGazes[path_key(actor_id)].mObjectTarget = object_id;
+}
+
+LLUUID LLActorMover::getGazeObjectTarget(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mObjectTarget : LLUUID::null;
+}
+
+void LLActorMover::setGazeTargetConfig(const LLUUID& actor_id, const GazeTarget& target)
+{
+    Gaze& g = mGazes[path_key(actor_id)];
+    g.mTarget = llclamp(static_cast<S32>(target.mMode), (S32)GAZE_TANGENT, (S32)GAZE_OBJECT);
+    g.mCastTarget = target.mCastRef;
+    g.mPoint = target.mFixedPoint;
+    g.mObjectTarget = target.mObjectRef;
+    g.mPersonaDominance = llclamp(target.mPersonaDominance, -1.f, 1.f);
+    g.mPersonaAffection = llclamp(target.mPersonaAffection, -1.f, 1.f);
+    g.mPersonaAnxiety = llclamp(target.mPersonaAnxiety, -1.f, 1.f);
+    g.mHeadEyeBlendOverride = target.mHeadEyeBlendOverride;
+    g.mTorsoAmountOverride = target.mTorsoAmountOverride;
+    g.mIntensityOverride = target.mIntensityOverride;
+    g.mSmoothingOverride = target.mSmoothingOverride;
+    g.mEyelineOverride = target.mEyelineOverride;
+    g.mEyelineYawDegOverride = target.mEyelineYawDegOverride;
+    g.mEyelinePitchDegOverride = target.mEyelinePitchDegOverride;
+    g.mMicroLifeOverride = target.mMicroLifeOverride;
+    g.mBlinksOverride = target.mBlinksOverride;
+    g.mVariationOverride = target.mVariationOverride;
+    g.mBreakFrequencyOverride = target.mBreakFrequencyOverride;
+    g.mEaseAcquireOverride = target.mEaseAcquireOverride;
+    g.mEaseReleaseOverride = target.mEaseReleaseOverride;
+    g.mDeadZoneDegOverride = target.mDeadZoneDegOverride;
+    g.mBlinkRateScale = llmax(target.mBlinkRateScale, 0.f);
+    g.mVergenceScale = llclamp(target.mVergenceScale, -1.f, 1.f);
+    g.mCameraRollOverride = target.mCameraRollOverride;
+    g.mExaggerateOverride = target.mExaggerateOverride;
+    g.mGazePriorityOverride = target.mGazePriorityOverride;
+    g.mAnimPriorityOverride = target.mAnimPriorityOverride;
+    g.mCompositionOverride = target.mCompositionOverride;
+    g.mCompositionMixOverride = target.mCompositionMixOverride;
+    g.mChestShareOverride = target.mChestShareOverride;
+    g.mLimitProfileModeOverride = target.mLimitProfileModeOverride;
+    g.mLimitProfile = target.mLimitProfile;
+    g.mLeanCurveOverride = target.mLeanCurveOverride;
+    g.mLeanThresholdDegOverride = target.mLeanThresholdDegOverride;
+    g.mLeanSoftnessDegOverride = target.mLeanSoftnessDegOverride;
+    g.mLeanMaxDegOverride = target.mLeanMaxDegOverride;
+    if (target.mHeadEyeBlendOverride >= 0.f)
+    {
+        g.mHeadEyeBlend = llclamp(target.mHeadEyeBlendOverride, 0.f, 1.f);
+    }
+    if (target.mTorsoAmountOverride >= 0.f)
+    {
+        g.mTorsoAmount = llclamp(target.mTorsoAmountOverride, 0.f, 1.f);
+    }
+    if (target.mIntensityOverride >= 0.f)
+    {
+        g.mIntensity = llclamp(target.mIntensityOverride, 0.f, 1.f);
+    }
+    if (target.mSmoothingOverride >= 0.f)
+    {
+        g.mSmoothing = llclamp(target.mSmoothingOverride, 0.f, 1.f);
+    }
+    if (target.mEyelineOverride)
+    {
+        g.mEyelineYawDeg = llclamp(
+            target.mEyelineYawDegOverride, -15.f, 15.f);
+        g.mEyelinePitchDeg = llclamp(
+            target.mEyelinePitchDegOverride, -10.f, 10.f);
+    }
+    // Preset-transition guard: a running blend owns the continuous runtime
+    // params. Re-authoring the IDENTICAL config (the cast mirror forwards the
+    // same struct right after setGazeTargetConfigBlended() installs the
+    // transition) must not flash the endpoint, so re-assert this frame's
+    // blended values. A genuinely different config wins instead: cancel the
+    // blend and accept the snap above (legacy behavior). Inactive transitions
+    // skip this entirely -- the default path stays byte-identical.
+    if (g.mParamTransition.mActive)
+    {
+        if (sameGazeTargetConfigFields(g.mParamTransition.mAuthored, target))
+        {
+            const Gaze::ParamTransition& x = g.mParamTransition;
+            const F32 t = x.mDuration > 0.f
+                ? gazeTransitionEase(x.mEasing, x.mElapsed / x.mDuration)
+                : 1.f;
+            F32 blended[Gaze::ParamTransition::P_COUNT];
+            for (S32 i = 0; i < Gaze::ParamTransition::P_COUNT; ++i)
+            {
+                blended[i] = x.mFrom[i] + (x.mTo[i] - x.mFrom[i]) * t;
+            }
+            writeGazeBlendValues(g, blended);
+        }
+        else
+        {
+            g.mParamTransition.mActive = false;
+        }
+    }
+}
+
+// static
+void LLActorMover::resolveGazeBlendValues(
+    const Gaze& g, F32 out[Gaze::ParamTransition::P_COUNT])
+{
+    // Global fallbacks: identical names/defaults to the LLCachedControls the
+    // consumers use (applyGaze advance block + gazePaint + the panel's
+    // refreshControls override-or-global presentation).
+    static LLCachedControl<F32> gaze_microlife(
+        gSavedSettings, "DirectorGazeMicroLife", 0.4f);
+    static LLCachedControl<F32> gaze_variation(
+        gSavedSettings, "DirectorGazeVariation", 0.3f);
+    static LLCachedControl<F32> gaze_break_freq(
+        gSavedSettings, "DirectorGazeBreakFrequency", 0.3f);
+    static LLCachedControl<F32> gaze_ease_acquire(
+        gSavedSettings, "DirectorGazeEaseAcquireSec", 0.25f);
+    static LLCachedControl<F32> gaze_ease_release(
+        gSavedSettings, "DirectorGazeEaseReleaseSec", 0.60f);
+    static LLCachedControl<F32> dead_zone_deg(
+        gSavedSettings, "BDMergeGazeDeadZone", 3.f);
+    static LLCachedControl<F32> gaze_camera_roll(
+        gSavedSettings, "DirectorGazeCameraRoll", 0.f);
+    static LLCachedControl<F32> gaze_exaggerate(
+        gSavedSettings, "DirectorGazeExaggerate", 1.f);
+    using X = Gaze::ParamTransition;
+    // Direct authored values (no sentinel form exists).
+    out[X::P_DOMINANCE]  = g.mPersonaDominance;
+    out[X::P_AFFECTION]  = g.mPersonaAffection;
+    out[X::P_ANXIETY]    = g.mPersonaAnxiety;
+    out[X::P_BLINK_RATE] = g.mBlinkRateScale;
+    out[X::P_VERGENCE]   = g.mVergenceScale;
+    // Resolved runtime copies: these are what gazePaint() consumes, updated
+    // by setGazeTargetConfig() only when an override is authored, so they ARE
+    // the current effective values.
+    out[X::P_HEAD_EYE]      = g.mHeadEyeBlend;
+    out[X::P_TORSO]         = g.mTorsoAmount;
+    out[X::P_INTENSITY]     = g.mIntensity;
+    out[X::P_SMOOTHING]     = g.mSmoothing;
+    out[X::P_EYELINE_YAW]   = g.mEyelineYawDeg;
+    out[X::P_EYELINE_PITCH] = g.mEyelinePitchDeg;
+    // Override-or-global fields: resolve exactly like the consumers do
+    // (override >= 0 wins, else the matching global control). The llmax(.,0)
+    // keeps every endpoint in the >=0 value domain: these fields are stored
+    // as CONCRETE override values while a blend runs, and their consumers
+    // treat a negative value as the INHERIT sentinel -- a negative global
+    // (debug-set) must therefore never leak into an endpoint, or the lerp
+    // would flip to "inherit" mid-blend when it crosses zero.
+    out[X::P_MICRO_LIFE] = llmax(g.mMicroLifeOverride >= 0.f
+        ? g.mMicroLifeOverride : (F32)gaze_microlife, 0.f);
+    out[X::P_VARIATION] = llmax(g.mVariationOverride >= 0.f
+        ? g.mVariationOverride : (F32)gaze_variation, 0.f);
+    out[X::P_BREAK_FREQ] = llmax(g.mBreakFrequencyOverride >= 0.f
+        ? g.mBreakFrequencyOverride : (F32)gaze_break_freq, 0.f);
+    out[X::P_EASE_ACQ] = llmax(g.mEaseAcquireOverride >= 0.f
+        ? g.mEaseAcquireOverride : (F32)gaze_ease_acquire, 0.f);
+    out[X::P_EASE_REL] = llmax(g.mEaseReleaseOverride >= 0.f
+        ? g.mEaseReleaseOverride : (F32)gaze_ease_release, 0.f);
+    out[X::P_DEAD_ZONE] = llmax(g.mDeadZoneDegOverride >= 0.f
+        ? g.mDeadZoneDegOverride : (F32)dead_zone_deg, 0.f);
+    out[X::P_CAMERA_ROLL] = llmax(g.mCameraRollOverride >= 0.f
+        ? g.mCameraRollOverride : (F32)gaze_camera_roll, 0.f);
+    out[X::P_EXAGGERATE] = llmax(g.mExaggerateOverride >= 0.f
+        ? g.mExaggerateOverride : (F32)gaze_exaggerate, 0.f);
+}
+
+// static
+void LLActorMover::writeGazeBlendValues(
+    Gaze& g, const F32 v[Gaze::ParamTransition::P_COUNT])
+{
+    using X = Gaze::ParamTransition;
+    // Same clamps as setGazeTargetConfig() so a blended frame can never write
+    // a value the snap path could not.
+    g.mPersonaDominance = llclamp(v[X::P_DOMINANCE], -1.f, 1.f);
+    g.mPersonaAffection = llclamp(v[X::P_AFFECTION], -1.f, 1.f);
+    g.mPersonaAnxiety   = llclamp(v[X::P_ANXIETY], -1.f, 1.f);
+    g.mBlinkRateScale   = llmax(v[X::P_BLINK_RATE], 0.f);
+    g.mVergenceScale    = llclamp(v[X::P_VERGENCE], -1.f, 1.f);
+    // Resolved runtime copies consumed by gazePaint().
+    g.mHeadEyeBlend    = llclamp(v[X::P_HEAD_EYE], 0.f, 1.f);
+    g.mTorsoAmount     = llclamp(v[X::P_TORSO], 0.f, 1.f);
+    g.mIntensity       = llclamp(v[X::P_INTENSITY], 0.f, 1.f);
+    g.mSmoothing       = llclamp(v[X::P_SMOOTHING], 0.f, 1.f);
+    g.mEyelineYawDeg   = llclamp(v[X::P_EYELINE_YAW], -15.f, 15.f);
+    g.mEyelinePitchDeg = llclamp(v[X::P_EYELINE_PITCH], -10.f, 10.f);
+    // Override-consumed fields: hold CONCRETE blended values while the
+    // transition runs (the consumers clamp on read); completion restores the
+    // authored raw sentinels via finishGazeParamTransition().
+    g.mMicroLifeOverride      = v[X::P_MICRO_LIFE];
+    g.mVariationOverride      = v[X::P_VARIATION];
+    g.mBreakFrequencyOverride = v[X::P_BREAK_FREQ];
+    g.mEaseAcquireOverride    = v[X::P_EASE_ACQ];
+    g.mEaseReleaseOverride    = v[X::P_EASE_REL];
+    g.mDeadZoneDegOverride    = v[X::P_DEAD_ZONE];
+    g.mCameraRollOverride     = v[X::P_CAMERA_ROLL];
+    g.mExaggerateOverride     = v[X::P_EXAGGERATE];
+}
+
+// static
+void LLActorMover::finishGazeParamTransition(Gaze& g)
+{
+    Gaze::ParamTransition& x = g.mParamTransition;
+    // Land direct + resolved fields on the TO endpoint...
+    writeGazeBlendValues(g, x.mTo);
+    // ...then restore the authored RAW override values (sentinels included)
+    // so the settled state is byte-identical to a legacy snap and future
+    // global-control edits flow through -1/inherit fields again.
+    const GazeTarget& a = x.mAuthored;
+    g.mMicroLifeOverride      = a.mMicroLifeOverride;
+    g.mVariationOverride      = a.mVariationOverride;
+    g.mBreakFrequencyOverride = a.mBreakFrequencyOverride;
+    g.mEaseAcquireOverride    = a.mEaseAcquireOverride;
+    g.mEaseReleaseOverride    = a.mEaseReleaseOverride;
+    g.mDeadZoneDegOverride    = a.mDeadZoneDegOverride;
+    g.mCameraRollOverride     = a.mCameraRollOverride;
+    g.mExaggerateOverride     = a.mExaggerateOverride;
+    x.mActive = false;
+}
+
+void LLActorMover::stepGazeParamTransition(Gaze& g, F32 dt)
+{
+    Gaze::ParamTransition& x = g.mParamTransition;
+    x.mElapsed += dt;            // presentation dt: scrub/timescale-safe
+    // Finish on: expired, zero/negative duration, or ANY non-finite state
+    // (NaN duration/elapsed make both orderings false, so test the inverse --
+    // a NaN must land the transition instantly, never run it forever).
+    if (!std::isfinite(x.mDuration) || x.mDuration <= 0.f ||
+        !(x.mElapsed < x.mDuration))
+    {
+        finishGazeParamTransition(g);
+        return;
+    }
+    const F32 t = gazeTransitionEase(x.mEasing, x.mElapsed / x.mDuration);
+    F32 blended[Gaze::ParamTransition::P_COUNT];
+    for (S32 i = 0; i < Gaze::ParamTransition::P_COUNT; ++i)
+    {
+        blended[i] = x.mFrom[i] + (x.mTo[i] - x.mFrom[i]) * t;
+    }
+    writeGazeBlendValues(g, blended);
+}
+
+void LLActorMover::advanceGazeParamTransition(Gaze& g)
+{
+    Gaze::ParamTransition& x = g.mParamTransition;
+    if (!x.mActive)
+    {
+        return;                 // default: pure no-op, byte-identical
+    }
+    // Once per frame across BOTH callers (applyGaze / applyDirectorLookAt):
+    // the transition keeps its OWN frame guard so it never suppresses -- and
+    // is never suppressed by -- the envelope advance guard (Gaze::mLastFrame).
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (x.mLastFrame == frame)
+    {
+        return;
+    }
+    x.mLastFrame = frame;
+    // Same presentation-clock dt (and 0.25s hitch cap) as the envelope
+    // advance in applyGaze(): scrub/timescale-safe, 0x holds the blend.
+    F32 dt;
+    if (LLPresentationTime::drives(LLTemporalFeature::ANIMATION))
+    {
+        dt = llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f);
+    }
+    else
+    {
+        dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
+    }
+    stepGazeParamTransition(g, dt);
+}
+
+// static
+void LLActorMover::overlayGazeTransition(const Gaze& g, GazeTarget& target)
+{
+    // Continuous fields only; discrete fields always come from the authored
+    // target. During an active blend the runtime Gaze holds concrete blended
+    // values (writeGazeBlendValues), so this is a straight copy of the
+    // current blend frame into the target the Director path resolves from.
+    // Fields the authored target INHERITS (-1) are deliberately left alone:
+    // they keep resolving through the Director path's own base fallbacks
+    // (DirectorLookAtCamera* / globals) and never move.
+    target.mPersonaDominance = g.mPersonaDominance;
+    target.mPersonaAffection = g.mPersonaAffection;
+    target.mPersonaAnxiety   = g.mPersonaAnxiety;
+    target.mBlinkRateScale   = g.mBlinkRateScale;
+    target.mVergenceScale    = g.mVergenceScale;
+    if (target.mHeadEyeBlendOverride >= 0.f)
+    {
+        target.mHeadEyeBlendOverride = g.mHeadEyeBlend;
+    }
+    if (target.mTorsoAmountOverride >= 0.f)
+    {
+        target.mTorsoAmountOverride = g.mTorsoAmount;
+    }
+    if (target.mIntensityOverride >= 0.f)
+    {
+        target.mIntensityOverride = g.mIntensity;
+    }
+    if (target.mSmoothingOverride >= 0.f)
+    {
+        target.mSmoothingOverride = g.mSmoothing;
+    }
+    if (target.mEyelineOverride)
+    {
+        target.mEyelineYawDegOverride = g.mEyelineYawDeg;
+        target.mEyelinePitchDegOverride = g.mEyelinePitchDeg;
+    }
+    if (target.mMicroLifeOverride >= 0.f)
+    {
+        target.mMicroLifeOverride = g.mMicroLifeOverride;
+    }
+    if (target.mVariationOverride >= 0.f)
+    {
+        target.mVariationOverride = g.mVariationOverride;
+    }
+    if (target.mBreakFrequencyOverride >= 0.f)
+    {
+        target.mBreakFrequencyOverride = g.mBreakFrequencyOverride;
+    }
+    if (target.mEaseAcquireOverride >= 0.f)
+    {
+        target.mEaseAcquireOverride = g.mEaseAcquireOverride;
+    }
+    if (target.mEaseReleaseOverride >= 0.f)
+    {
+        target.mEaseReleaseOverride = g.mEaseReleaseOverride;
+    }
+    if (target.mDeadZoneDegOverride >= 0.f)
+    {
+        target.mDeadZoneDegOverride = g.mDeadZoneDegOverride;
+    }
+    if (target.mCameraRollOverride >= 0.f)
+    {
+        target.mCameraRollOverride = g.mCameraRollOverride;
+    }
+    if (target.mExaggerateOverride >= 0.f)
+    {
+        target.mExaggerateOverride = g.mExaggerateOverride;
+    }
+}
+
+void LLActorMover::setGazeTargetConfigBlended(const LLUUID& actor_id, const GazeTarget& target)
+{
+    static LLCachedControl<F32> transition_sec(
+        gSavedSettings, "DirectorGazeTransitionSec", 1.5f);
+    static LLCachedControl<U32> transition_easing(
+        gSavedSettings, "DirectorGazeEasing", 2);
+    const F32 duration = (F32)transition_sec;
+    if (!std::isfinite(duration) || duration <= 0.f)
+    {
+        // Legacy instant snap, byte-identical (a non-finite duration setting
+        // is treated as 0). Hard-cancel any transition still in flight FIRST:
+        // otherwise the identical-config guard in setGazeTargetConfig() would
+        // recognize a re-select of the same preset and keep the partial blend
+        // alive instead of snapping.
+        auto it = mGazes.find(path_key(actor_id));
+        if (it != mGazes.end())
+        {
+            it->second.mParamTransition.mActive = false;
+        }
+        setGazeTargetConfig(actor_id, target);
+        return;
+    }
+    Gaze& g = mGazes[path_key(actor_id)];
+    // FROM endpoint: the actor's CURRENT effective values, captured BEFORE the
+    // snap below. A blend already in flight contributes its current blended
+    // values here, so re-committing mid-transition chains smoothly.
+    F32 from[Gaze::ParamTransition::P_COUNT];
+    resolveGazeBlendValues(g, from);
+    // Drop any running transition so this authoring snap passes the guard in
+    // setGazeTargetConfig() untouched.
+    g.mParamTransition.mActive = false;
+    // Snap: DISCRETE fields (mode, refs, blinks, eyeline flag, priority,
+    // camera mode) apply immediately and permanently; the continuous raw
+    // values land too and are rewound to the FROM endpoint just below.
+    setGazeTargetConfig(actor_id, target);
+    // TO endpoint: the post-snap effective values (preset overrides where
+    // authored, current/global values where the preset inherits).
+    Gaze::ParamTransition& x = g.mParamTransition;
+    resolveGazeBlendValues(g, x.mTo);
+    for (S32 i = 0; i < Gaze::ParamTransition::P_COUNT; ++i)
+    {
+        x.mFrom[i] = from[i];
+    }
+    x.mAuthored = target;
+    x.mElapsed = 0.f;
+    x.mDuration = duration;
+    x.mEasing = llmin((U32)transition_easing, 3u);
+    x.mActive = true;
+    // First visible frame shows the FROM endpoint (no snap flash); the
+    // once-per-frame advance in applyGaze() eases forward from here.
+    writeGazeBlendValues(g, x.mFrom);
+}
+
+LLActorMover::GazeTarget LLActorMover::getGazeTargetConfig(const LLUUID& actor_id) const
+{
+    GazeTarget target;
+    auto it = mGazes.find(path_key(actor_id));
+    if (it != mGazes.end())
+    {
+        if (it->second.mParamTransition.mActive)
+        {
+            // Mid-blend the runtime override fields hold transient CONCRETE
+            // blended values, not authored sentinels. Report the authored
+            // target the transition is landing on instead, so a caller never
+            // persists or re-authors a half-blended frame.
+            return it->second.mParamTransition.mAuthored;
+        }
+        target.mMode = static_cast<GazeTarget::EMode>(it->second.mTarget);
+        target.mCastRef = it->second.mCastTarget;
+        target.mFixedPoint = it->second.mPoint;
+        target.mObjectRef = it->second.mObjectTarget;
+        target.mPersonaDominance = it->second.mPersonaDominance;
+        target.mPersonaAffection = it->second.mPersonaAffection;
+        target.mPersonaAnxiety = it->second.mPersonaAnxiety;
+        target.mHeadEyeBlendOverride = it->second.mHeadEyeBlendOverride;
+        target.mTorsoAmountOverride = it->second.mTorsoAmountOverride;
+        target.mIntensityOverride = it->second.mIntensityOverride;
+        target.mSmoothingOverride = it->second.mSmoothingOverride;
+        target.mEyelineOverride = it->second.mEyelineOverride;
+        target.mEyelineYawDegOverride = it->second.mEyelineYawDegOverride;
+        target.mEyelinePitchDegOverride = it->second.mEyelinePitchDegOverride;
+        target.mMicroLifeOverride = it->second.mMicroLifeOverride;
+        target.mBlinksOverride = it->second.mBlinksOverride;
+        target.mVariationOverride = it->second.mVariationOverride;
+        target.mBreakFrequencyOverride = it->second.mBreakFrequencyOverride;
+        target.mEaseAcquireOverride = it->second.mEaseAcquireOverride;
+        target.mEaseReleaseOverride = it->second.mEaseReleaseOverride;
+        target.mDeadZoneDegOverride = it->second.mDeadZoneDegOverride;
+        target.mBlinkRateScale = it->second.mBlinkRateScale;
+        target.mVergenceScale = it->second.mVergenceScale;
+        target.mCameraRollOverride = it->second.mCameraRollOverride;
+        target.mExaggerateOverride = it->second.mExaggerateOverride;
+        target.mGazePriorityOverride = it->second.mGazePriorityOverride;
+        target.mAnimPriorityOverride = it->second.mAnimPriorityOverride;
+        target.mCompositionOverride = it->second.mCompositionOverride;
+        target.mCompositionMixOverride = it->second.mCompositionMixOverride;
+        target.mChestShareOverride = it->second.mChestShareOverride;
+        target.mLimitProfileModeOverride = it->second.mLimitProfileModeOverride;
+        target.mLimitProfile = it->second.mLimitProfile;
+        target.mLeanCurveOverride = it->second.mLeanCurveOverride;
+        target.mLeanThresholdDegOverride = it->second.mLeanThresholdDegOverride;
+        target.mLeanSoftnessDegOverride = it->second.mLeanSoftnessDegOverride;
+        target.mLeanMaxDegOverride = it->second.mLeanMaxDegOverride;
+    }
+    return target;
 }
 
 void LLActorMover::setGazeHeadEyeBlend(const LLUUID& actor_id, F32 v)
@@ -827,6 +3247,26 @@ F32 LLActorMover::getGazeSmoothing(const LLUUID& actor_id) const
     return it != mGazes.end() ? it->second.mSmoothing : 0.5f;
 }
 
+void LLActorMover::setGazeEyelineOffset(const LLUUID& actor_id,
+                                        F32 yaw_degrees, F32 pitch_degrees)
+{
+    Gaze& gaze = mGazes[path_key(actor_id)];
+    gaze.mEyelineYawDeg = llclamp(yaw_degrees, -15.f, 15.f);
+    gaze.mEyelinePitchDeg = llclamp(pitch_degrees, -10.f, 10.f);
+}
+
+F32 LLActorMover::getGazeEyelineYaw(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mEyelineYawDeg : 0.f;
+}
+
+F32 LLActorMover::getGazeEyelinePitch(const LLUUID& actor_id) const
+{
+    auto it = mGazes.find(path_key(actor_id));
+    return it != mGazes.end() ? it->second.mEyelinePitchDeg : 0.f;
+}
+
 bool LLActorMover::getGazeStatus(const LLUUID& actor_id, std::string& out) const
 {
     if (actor_id.isNull() && !isAgentAvatarValid())
@@ -864,6 +3304,10 @@ bool LLActorMover::getGazeStatus(const LLUUID& actor_id, std::string& out) const
         case GAZE_POINT:
             tgt = g.mPoint.isExactlyZero() ? std::string("a fixed point (unset)")
                                            : std::string("a fixed point");
+            break;
+        case GAZE_OBJECT:
+            tgt = g.mObjectTarget.isNull() ? std::string("an object (none selected)")
+                                           : std::string("target object");
             break;
         case GAZE_TANGENT:
         default:
@@ -937,6 +3381,7 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
         const Path& p = it->second;
         st.mNodes             = p.mNodes;
         st.mSpeed             = p.mSpeed;
+        st.mCadence           = p.mCadence;
         st.mEndMode           = p.mEndMode;
         st.mTension           = p.mTension;
         st.mEaseIn            = p.mEaseIn;
@@ -946,6 +3391,17 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
         st.mArrivalTarget     = p.mArrivalTarget;
         st.mGroundFollow      = p.mGroundFollow;
         st.mPitchToSlope      = p.mPitchToSlope;
+        st.mAirborne          = p.mAirborne;
+        st.mShape             = p.mShape;
+        st.mPrimitiveCenterGlobal = p.mPrimitiveCenterGlobal;
+        st.mPrimitiveRadiusX  = p.mPrimitiveRadiusX;
+        st.mPrimitiveRadiusY  = p.mPrimitiveRadiusY;
+        st.mPrimitiveStartDeg = p.mPrimitiveStartDeg;
+        st.mPrimitiveSweepDeg = p.mPrimitiveSweepDeg;
+        st.mPrimitiveYawDeg   = p.mPrimitiveYawDeg;
+        st.mPrimitivePitchDeg = p.mPrimitivePitchDeg;
+        st.mPrimitiveRollDeg  = p.mPrimitiveRollDeg;
+        st.mPrimitiveRise     = p.mPrimitiveRise;
         st.mSyncToTake        = p.mSyncToTake;
         st.mSyncLeadTrail     = p.mSyncLeadTrail;
     }
@@ -954,15 +3410,21 @@ LLActorMover::PathState LLActorMover::captureState(const LLUUID& key) const
 
 void LLActorMover::applyState(const LLUUID& key, const PathState& st)
 {
+    auto active = mMoves.find(key);
+    if (active != mMoves.end() && active->second.mIsPath)
+    {
+        stop(key);
+    }
     if (st.mNodes.empty())
     {
-        mPaths.erase(key);      // undo of the first placement drops the path
+        mPaths.erase(key);
     }
     else
     {
         Path& p = mPaths[key];
         p.mNodes             = st.mNodes;
         p.mSpeed             = st.mSpeed;
+        p.mCadence           = st.mCadence;
         p.mEndMode           = st.mEndMode;
         p.mTension           = st.mTension;
         p.mEaseIn            = st.mEaseIn;
@@ -972,6 +3434,17 @@ void LLActorMover::applyState(const LLUUID& key, const PathState& st)
         p.mArrivalTarget     = st.mArrivalTarget;
         p.mGroundFollow      = st.mGroundFollow;
         p.mPitchToSlope      = st.mPitchToSlope;
+        p.mAirborne          = st.mAirborne;
+        p.mShape             = st.mShape;
+        p.mPrimitiveCenterGlobal = st.mPrimitiveCenterGlobal;
+        p.mPrimitiveRadiusX  = st.mPrimitiveRadiusX;
+        p.mPrimitiveRadiusY  = st.mPrimitiveRadiusY;
+        p.mPrimitiveStartDeg = st.mPrimitiveStartDeg;
+        p.mPrimitiveSweepDeg = st.mPrimitiveSweepDeg;
+        p.mPrimitiveYawDeg   = st.mPrimitiveYawDeg;
+        p.mPrimitivePitchDeg = st.mPrimitivePitchDeg;
+        p.mPrimitiveRollDeg  = st.mPrimitiveRollDeg;
+        p.mPrimitiveRise     = st.mPrimitiveRise;
         p.mSyncToTake        = st.mSyncToTake;
         p.mSyncLeadTrail     = st.mSyncLeadTrail;
         p.markDirty();
@@ -1063,6 +3536,19 @@ bool LLActorMover::reversePath(const LLUUID& actor_id)
         return false;
     }
     Path& p = editPath(actor_id);
+    if (p.isPrimitive())
+    {
+        p.syncPrimitiveNodes();
+        ALPathGeometry::Primitive primitive = p.primitive();
+        ALPathGeometry::reverse(primitive);
+        p.mPrimitiveCenterGlobal = primitive.mCenter;
+        p.mPrimitiveStartDeg = primitive.mStartDeg;
+        p.mPrimitiveSweepDeg = primitive.mSweepDeg;
+        p.mPrimitiveYawDeg = primitive.mYawDeg;
+        p.mPrimitivePitchDeg = primitive.mPitchDeg;
+        p.mPrimitiveRollDeg = primitive.mRollDeg;
+        p.mPrimitiveRise = primitive.mRise;
+    }
     std::reverse(p.mNodes.begin(), p.mNodes.end());     // per-node data rides each node
     p.markDirty();
     p.rebuild();
@@ -1079,6 +3565,10 @@ bool LLActorMover::mirrorPath(const LLUUID& actor_id)
     if (!cp || cp->mNodes.size() < 2)
     {
         return false;
+    }
+    if (cp->isPrimitive())
+    {
+        return false; // reflected arbitrary planes need an explicit handedness UI
     }
     Path& p = editPath(actor_id);
     const S32 n = (S32)p.mNodes.size();
@@ -1160,6 +3650,24 @@ bool LLActorMover::loopClosePath(const LLUUID& actor_id)
         return false;
     }
     Path& p = editPath(actor_id);
+    if (p.isPrimitive())
+    {
+        if (p.mShape == ALPathGeometry::SINE_WAVE ||
+            (p.mShape == ALPathGeometry::HELIX && std::fabs(p.mPrimitiveRise) > 0.001f))
+        {
+            return false;
+        }
+        const F32 direction = p.mPrimitiveSweepDeg < 0.f ? -1.f : 1.f;
+        const F32 turns = static_cast<F32>(llmax(1,
+            static_cast<S32>(std::floor(
+                std::fabs(p.mPrimitiveSweepDeg) / 360.f + 0.5f))));
+        p.mPrimitiveSweepDeg = direction * turns * 360.f;
+        p.mEndMode = 1;
+        p.mArrivalFacingMode = 0;
+        p.markDirty();
+        p.rebuild();
+        return true;
+    }
     // snap the last node onto the first (position + standing height + nudge) so
     // the loop seam is a single shared point, and set the end mode to loop
     const Waypoint& first = p.mNodes.front();
@@ -1199,6 +3707,7 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     const Path& src = sit->second;
     dst.mNodes             = src.mNodes;
     dst.mSpeed             = src.mSpeed;
+    dst.mCadence           = src.mCadence;
     dst.mEndMode           = src.mEndMode;
     dst.mTension           = src.mTension;
     dst.mEaseIn            = src.mEaseIn;
@@ -1208,6 +3717,18 @@ bool LLActorMover::copyPathTo(const LLUUID& src_actor, const LLUUID& dst_actor)
     dst.mArrivalTarget     = src.mArrivalTarget;
     dst.mGroundFollow      = src.mGroundFollow;
     dst.mPitchToSlope      = src.mPitchToSlope;
+    dst.mAirborne          = src.mAirborne;
+    dst.mShape             = src.mShape;
+    dst.mRotationMode      = src.mRotationMode;   // [ObjectPath] keep authored rot mode on copy (#8)
+    dst.mPrimitiveCenterGlobal = src.mPrimitiveCenterGlobal;
+    dst.mPrimitiveRadiusX  = src.mPrimitiveRadiusX;
+    dst.mPrimitiveRadiusY  = src.mPrimitiveRadiusY;
+    dst.mPrimitiveStartDeg = src.mPrimitiveStartDeg;
+    dst.mPrimitiveSweepDeg = src.mPrimitiveSweepDeg;
+    dst.mPrimitiveYawDeg   = src.mPrimitiveYawDeg;
+    dst.mPrimitivePitchDeg = src.mPrimitivePitchDeg;
+    dst.mPrimitiveRollDeg  = src.mPrimitiveRollDeg;
+    dst.mPrimitiveRise     = src.mPrimitiveRise;
     dst.mSyncToTake        = src.mSyncToTake;
     dst.mSyncLeadTrail     = src.mSyncLeadTrail;
     dst.markDirty();
@@ -1246,7 +3767,15 @@ bool LLActorMover::setNodeCamera(const LLUUID& actor_id, S32 index,
                                  const LLQuaternion& cam_rot, F32 cam_fov, S32 transition)
 {
     const Path* cp = getPath(actor_id);
-    if (!cp || index < 0 || index >= (S32)cp->mNodes.size())
+    if (!cp || index < 0 || index >= (S32)cp->mNodes.size() ||
+        !cam_pos_global.isFinite() || !cam_rot.isFinite() ||
+        !std::isfinite(cam_fov))
+    {
+        return false;
+    }
+    LLQuaternion safe_rot = cam_rot;
+    safe_rot.normalize();
+    if (!safe_rot.isFinite())
     {
         return false;
     }
@@ -1254,8 +3783,8 @@ bool LLActorMover::setNodeCamera(const LLUUID& actor_id, S32 index,
     Waypoint& w = path.mNodes[index];
     w.mHasCam       = true;
     w.mCamPosGlobal = cam_pos_global;
-    w.mCamRot       = cam_rot;
-    w.mCamFov       = cam_fov;
+    w.mCamRot       = safe_rot;
+    w.mCamFov       = cam_fov > 0.01f ? llclamp(cam_fov, 0.1f, 2.9f) : 0.f;
     w.mCamTransition = llclamp(transition, 0, 1);
     return true;
 }
@@ -1584,9 +4113,9 @@ void LLActorMover::start(const LLUUID& actor_id)
     if (isFollowing(av->getID()))
     {
         auto old_it = mMoves.find(av->getID());
-        if (old_it != mMoves.end() && old_it->second.mAnim.notNull())
+        if (old_it != mMoves.end())
         {
-            av->stopMotion(old_it->second.mAnim);
+            stopLocomotion(av, old_it->second);
         }
 
         Move mv;
@@ -1598,10 +4127,20 @@ void LLActorMover::start(const LLUUID& actor_id)
         mv.mNominal  = llmax((F32)nominal, 0.5f);
         mv.mAnim     = locomotion_anim(av->getID());
         mv.mFaceInit = false;
-        mMoves[av->getID()] = mv;
+        const auto follow_it = mFollows.find(path_key(av->getID()));
+        if (follow_it != mFollows.end())
+        {
+            const auto leader_path = mPaths.find(follow_it->second.mLeader);
+            mv.mAirborne = leader_path != mPaths.end() &&
+                           leader_path->second.mAirborne;
+            if (leader_path != mPaths.end())
+            {
+                mv.mNominal = llclamp(leader_path->second.mCadence, 0.5f, 12.f);
+            }
+        }
 
-        av->startMotion(mv.mAnim);          // cadence is retimed per frame by ground speed
-        apply_custom_anim_priority(av, mv.mAnim);
+        startLocomotion(av, mv);
+        mMoves[av->getID()] = mv;
         LL_INFOS("ActorMover") << "ghost follow walk: " << av->getID() << LL_ENDL;
         return;
     }
@@ -1620,9 +4159,9 @@ void LLActorMover::start(const LLUUID& actor_id)
         // restart guard mirrors the legacy path: stop a prior walk's anim so it
         // doesn't keep looping under the new cadence (a placeAt hold has none)
         auto old_it = mMoves.find(av->getID());
-        if (old_it != mMoves.end() && old_it->second.mAnim.notNull())
+        if (old_it != mMoves.end())
         {
-            av->stopMotion(old_it->second.mAnim);
+            stopLocomotion(av, old_it->second);
         }
 
         Move mv;
@@ -1632,16 +4171,13 @@ void LLActorMover::start(const LLUUID& actor_id)
         mv.mDistance = path.mTotalLength;
         mv.mDist     = 0.f;
         mv.mDir      = 1.f;
-        mv.mNominal  = llmax((F32)nominal, 0.5f);
+        mv.mNominal  = llclamp(path.mCadence, 0.5f, 12.f);
         mv.mAnim     = locomotion_anim(av->getID());
+        mv.mAirborne = path.mAirborne;
         mv.mFaceInit = false;
-        mMoves[av->getID()] = mv;
 
-        // cadence-lock seeds from the path speed; advancePath() then tracks the
-        // INSTANTANEOUS ground speed (ease + per-node overrides) each frame
-        av->startMotion(mv.mAnim);
-        apply_custom_anim_priority(av, mv.mAnim);
-        av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f) / mv.mNominal);
+        startLocomotion(av, mv);
+        mMoves[av->getID()] = mv;
 
         LL_INFOS("ActorMover") << "ghost path walk: " << av->getID()
                                << " nodes " << path.mNodes.size()
@@ -1657,7 +4193,7 @@ void LLActorMover::start(const LLUUID& actor_id)
     Move mv;
     mv.mOrigin   = av->getRootJoint()->getWorldPosition();   // rendered pose, incl. a prior move
     mv.mHeading  = yaw;
-    mv.mSpeed    = llclamp((F32)speed, 0.05f, 10.f);
+    mv.mSpeed    = llclamp((F32)speed, 0.05f, 150.f);
     mv.mDistance = llmax((F32)distance, 0.1f);
     mv.mEndMode  = llclamp((S32)end_mode, 0, 2);
     mv.mT        = 0.f;
@@ -1667,20 +4203,14 @@ void LLActorMover::start(const LLUUID& actor_id)
     // it doesn't keep looping under the new cycle (a placeAt() hold has no
     // anim, hence the null guard)
     auto old_it = mMoves.find(av->getID());
-    if (old_it != mMoves.end() && old_it->second.mAnim.notNull()
-        && old_it->second.mAnim != mv.mAnim)
+    if (old_it != mMoves.end())
     {
-        av->stopMotion(old_it->second.mAnim);
+        stopLocomotion(av, old_it->second);
     }
 
+    mv.mNominal = llmax((F32)nominal, 0.5f);
+    startLocomotion(av, mv);
     mMoves[av->getID()] = mv;
-
-    // cadence lock: walk-cycle clock scaled to actual ground speed, so foot
-    // plants match the traversal at ANY speed. Local motion + local clock:
-    // nothing is sent to the sim (custom anims play locally too).
-    av->startMotion(mv.mAnim);
-    apply_custom_anim_priority(av, mv.mAnim);
-    av->setAnimTimeFactor(mv.mSpeed / llmax((F32)nominal, 0.5f));
 
     LL_INFOS("ActorMover") << "ghost move: " << av->getID() << " speed " << mv.mSpeed
                            << " dist " << mv.mDistance << " anim " << mv.mAnim << LL_ENDL;
@@ -1702,24 +4232,13 @@ void LLActorMover::stop(const LLUUID& actor_id)
     // start (group delay), so no Stop button can leave a surprise walk armed
     LLDirectorCast::instance().cancelPendingStart(actor_id);
     LLVOAvatar* av = resolve_actor(actor_id);
-    if (av)
+    const LLUUID key = av ? av->getID() : path_key(actor_id);
+    auto it = mMoves.find(key);
+    if (it != mMoves.end())
     {
-        auto it = mMoves.find(av->getID());
-        if (it != mMoves.end())
-        {
-            const LLUUID anim = it->second.mAnim;
-            const LLUUID dwell_anim = it->second.mDwellAnim;    // path dwell, if any
-            mMoves.erase(it);
-            if (anim.notNull())     // placeAt() holds carry no anim
-            {
-                av->stopMotion(anim);
-            }
-            if (dwell_anim.notNull())   // stopped mid-dwell: kill the node anim too
-            {
-                av->stopMotion(dwell_anim);
-            }
-            av->setAnimTimeFactor(1.f);
-        }
+        Move dying = it->second;
+        mMoves.erase(it);
+        stopLocomotion(av, dying);
     }
 }
 
@@ -1729,18 +4248,8 @@ void LLActorMover::stopAll()
     LLDirectorCast::instance().cancelPendingStarts();
     for (auto& pair : mMoves)
     {
-        if (LLVOAvatar* mav = resolve_actor(pair.first))
-        {
-            if (pair.second.mAnim.notNull())    // placeAt() holds carry no anim
-            {
-                mav->stopMotion(pair.second.mAnim);
-            }
-            if (pair.second.mDwellAnim.notNull())   // path stopped mid-dwell
-            {
-                mav->stopMotion(pair.second.mDwellAnim);
-            }
-            mav->setAnimTimeFactor(1.f);
-        }
+        LLVOAvatar* mav = resolve_actor(pair.first);
+        stopLocomotion(mav, pair.second);
     }
     mMoves.clear();
 }
@@ -1887,6 +4396,17 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
     {
         return false;
     }
+    // [TrueMirror] A TRUE-mirror ghost is stamped from its source's final pose
+    // after gObjectList.update(); the mover must not own its root (it would
+    // fight the stamped facing and walk a pose that is not its own). Returning
+    // false here (before the clock advances) parks the walk: LLGhostAvatar's
+    // idleUpdate takes the foot-lock branch, and the Move resumes from the
+    // same path distance when the clone leaves TRUE_MIRROR.
+    if (av->isGhostAvatar() &&
+        static_cast<LLGhostAvatar*>(av)->isTrueMirrorDriven())
+    {
+        return false;
+    }
 
     Move& mv = it->second;
 
@@ -1947,6 +4467,7 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
         {
             dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
         }
+        mv.mContactDiscontinuity = false;
 
         if (mv.mIsPath)
         {
@@ -1960,12 +4481,21 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
 
             F32 face;
             const F32 s = pathParam(mv, &face);
-
-            if (mv.mEndMode == 0 && s >= mv.mDistance && av->findMotion(mv.mAnim))
+            mv.mTravelOdometer = mv.mEndMode == 0
+                ? (F64)llmin(mv.mSpeed * mv.mT, mv.mDistance)
+                : (F64)(mv.mSpeed * mv.mT);
+            if (mv.mDistance > 0.001f && mv.mSpeed > 0.001f)
             {
-                // arrived: settle into a stand instead of walking in place
-                av->stopMotion(mv.mAnim);
-                av->setAnimTimeFactor(1.f);
+                updateLocomotionGait(av, mv, mv.mSpeed, dt, false);
+            }
+
+            if (mv.mEndMode == 0 && s >= mv.mDistance &&
+                (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
+            {
+                // Arrived: settle instead of leaking either side of a gait fade.
+                stopLocalMotion(av, mv.mSecondaryLocomotion);
+                stopLocalMotion(av, mv.mLocomotion);
+                mv.mAnim.setNull();
             }
 
             const LLVector3 dir(cosf(mv.mHeading), sinf(mv.mHeading), 0.f);
@@ -1976,7 +4506,76 @@ bool LLActorMover::applyOverride(LLVOAvatar* av)
 
     av->getRootJoint()->setWorldPosition(mv.mCurPos);
     av->getRootJoint()->setWorldRotation(mv.mCurRot);
+
+    ALPosePolish::ContactHints hints;
+    hints.mFrame = frame;
+    hints.mMoverOwnsRoot = true;
+    hints.mGrounded = !mv.mAirborne;
+    hints.mDiscontinuity = mv.mContactDiscontinuity;
+
+    // Publish expected plant/swing only when curve analysis proved a genuine
+    // alternating gait. Unknown or invalid metadata leaves -1 and preserves
+    // Pose Polish's existing velocity/height inference. During a crossfade,
+    // the higher-weight side owns the advisory phase.
+    const LocalMotionHandle* phase_handle = &mv.mLocomotion;
+    F32 phase_nominal = mv.mNominal;
+    F32 phase_origin = mv.mPhaseOrigin;
+    if (mv.mSecondaryLocomotion.valid())
+    {
+        LLMotion* secondary = av->findMotion(
+            mv.mSecondaryLocomotion.mActualAnim);
+        if (secondary && secondary->getPresentationWeight() >= 0.5f)
+        {
+            phase_handle = &mv.mSecondaryLocomotion;
+            phase_nominal = mv.mSecondaryNominal;
+            phase_origin = mv.mSecondaryPhaseOrigin;
+        }
+    }
+    if (!mv.mAirborne && phase_handle->valid() && phase_origin >= 0.f)
+    {
+        LLKeyframeMotion* keyframe = dynamic_cast<LLKeyframeMotion*>(
+            av->findMotion(phase_handle->mActualAnim));
+        if (keyframe && keyframe->isLoaded())
+        {
+            const auto& info = keyframe->getGenericLocomotionPhaseInfo();
+            if (info.valid() && info.mCycleLength > 0.001f)
+            {
+                F64 cycle_phase = mv.mTravelOdometer /
+                    ((F64)llmax(phase_nominal, 0.05f) *
+                     (F64)info.mCycleLength) + (F64)phase_origin;
+                cycle_phase = fmod(cycle_phase, 1.0);
+                if (cycle_phase < 0.0)
+                {
+                    cycle_phase += 1.0;
+                }
+                auto circular_distance = [](F32 a, F32 b)
+                {
+                    F32 d = fabsf(a - b);
+                    return llmin(d, 1.f - d);
+                };
+                const F32 left_center = phase_origin;
+                F32 right_center = fmodf(left_center + info.mRightOffset, 1.f);
+                if (right_center < 0.f)
+                {
+                    right_center += 1.f;
+                }
+                hints.mExpectedPlant[0] = circular_distance(
+                    (F32)cycle_phase, left_center) <=
+                    0.5f * info.mLeftPlantWindow ? 1.f : 0.f;
+                hints.mExpectedPlant[1] = circular_distance(
+                    (F32)cycle_phase, right_center) <=
+                    0.5f * info.mRightPlantWindow ? 1.f : 0.f;
+            }
+        }
+    }
+    av->setMoverContactHints(hints);
     return true;
+}
+
+bool LLActorMover::isDriving(const LLUUID& id) const
+{
+    auto it = mMoves.find(id);
+    return it != mMoves.end() && !it->second.mSuspended;
 }
 
 // ===========================================================================
@@ -2016,18 +4615,7 @@ void LLActorMover::enterSuspend(const LLUUID& key, Move& mv, LLVOAvatar* av)
     // a still-present actor (e.g. the user's own avatar on teleport) must not be
     // left standing there walking in place: stop the loco / dwell anim. The walk
     // clock is already frozen because applyOverride() bails while suspended.
-    if (av && !av->isDead())
-    {
-        if (mv.mAnim.notNull() && av->findMotion(mv.mAnim))
-        {
-            av->stopMotion(mv.mAnim);
-        }
-        if (mv.mDwellAnim.notNull() && av->findMotion(mv.mDwellAnim))
-        {
-            av->stopMotion(mv.mDwellAnim);
-        }
-        av->setAnimTimeFactor(1.f);
-    }
+    stopLocomotion(av && !av->isDead() ? av : nullptr, mv);
     LL_INFOS("ActorMover") << "walk SUSPENDED for " << key
                            << " at dist " << mv.mDist << LL_ENDL;
 }
@@ -2046,10 +4634,7 @@ void LLActorMover::resumeMove(const LLUUID& key, Move& mv, LLVOAvatar* av)
         // finished stop-mode walk resumes as a settled stand, facing still eases)
         if (!mv.mArrived && mv.mAnim.notNull())
         {
-            av->startMotion(mv.mAnim);
-            apply_custom_anim_priority(av, mv.mAnim);
-            av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
-                                  / llmax(mv.mNominal, 0.5f));
+            startLocomotion(av, mv);
         }
         // ease facing from the actor's current yaw on the next advance instead
         // of snapping to the stored travel facing
@@ -2244,6 +4829,10 @@ bool LLActorMover::reanchorWalk(const LLUUID& actor_id)
     // translate the WHOLE path (and every node camera) so the current arc
     // position lands on the actor -> the walk continues from here on the new sim
     const LLVector3d delta = foot_global - cur_pos;
+    if (path.isPrimitive())
+    {
+        path.mPrimitiveCenterGlobal += delta;
+    }
     for (Waypoint& w : path.mNodes)
     {
         w.mPosGlobal += delta;
@@ -2269,18 +4858,7 @@ void LLActorMover::cancelSuspended(const LLUUID& actor_id)
     // drop the walk back to idle. enterSuspend() already stopped the loco anim
     // on a resolvable actor, but clear any anim that might still be resolving so
     // a cancel never leaves a looping walk cycle behind.
-    if (LLVOAvatar* av = resolve_actor(key))
-    {
-        if (it->second.mAnim.notNull() && av->findMotion(it->second.mAnim))
-        {
-            av->stopMotion(it->second.mAnim);
-        }
-        if (it->second.mDwellAnim.notNull() && av->findMotion(it->second.mDwellAnim))
-        {
-            av->stopMotion(it->second.mDwellAnim);
-        }
-        av->setAnimTimeFactor(1.f);
-    }
+    stopLocomotion(resolve_actor(key), it->second);
     mMoves.erase(it);
 }
 
@@ -2308,6 +4886,17 @@ void LLActorMover::onActorRuntimeReplaced(const LLUUID& stable_id,
     if (from.isNull() && parked != mParkedWalkKeys.end())
     {
         from = parked->second;
+    }
+
+    // A clone's eye motion owns blink visual params in addition to joints.
+    // Stop and neutralize it before any runtime key is parked, moved or erased.
+    if (from.notNull())
+    {
+        if (LLVOAvatar* avatar = resolve_actor(from);
+            avatar && avatar->isGhostAvatar())
+        {
+            static_cast<LLGhostAvatar*>(avatar)->setEntityEyeMotionEnabled(false);
+        }
     }
 
     if (removing_instance)
@@ -2370,28 +4959,20 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     if (had_move)
     {
         Move mv = mit->second;
+        const LLUUID migrating_dwell_anim = mv.mDwellNode >= 0
+            ? mv.mDwellAnim : LLUUID::null;
+        LLVOAvatar* old_av = resolve_actor(old_id);
         mMoves.erase(mit);
 
         // the doomed old body may still be alive for the rest of this frame
         // (a live refresh replaces first, kills after): silence its loco /
         // dwell anim exactly like enterSuspend()/stop() would, so the corpse
         // doesn't keep cycling until its deferred death lands
-        if (LLVOAvatar* old_av = resolve_actor(old_id))
-        {
-            if (!old_av->isDead())
-            {
-                if (mv.mAnim.notNull() && old_av->findMotion(mv.mAnim))
-                {
-                    old_av->stopMotion(mv.mAnim);
-                }
-                if (mv.mDwellAnim.notNull() &&
-                    old_av->findMotion(mv.mDwellAnim))
-                {
-                    old_av->stopMotion(mv.mDwellAnim);
-                }
-                old_av->setAnimTimeFactor(1.f);
-            }
-        }
+        stopLocomotion(old_av && !old_av->isDead() ? old_av : nullptr, mv);
+        mv.mLocomotion.clear();
+        mv.mSecondaryLocomotion.clear();
+        mv.mDwellMotion.clear();
+        mv.mDwellAnim = migrating_dwell_anim;
 
         // a LIVE (non-suspended) move keeps walking straight through the
         // swap, but its anims died with the old body: restart them on the new
@@ -2416,15 +4997,13 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
                     // (the dwell-complete path restarts the walk itself)
                     if (mv.mDwellAnim.notNull())
                     {
-                        new_av->startMotion(mv.mDwellAnim);
+                        startLocalMotion(new_av, mv.mDwellMotion,
+                                         mv.mDwellAnim, false, 1.f, false);
                     }
                 }
                 else if (!mv.mArrived && !legacy_settled && mv.mAnim.notNull())
                 {
-                    new_av->startMotion(mv.mAnim);
-                    apply_custom_anim_priority(new_av, mv.mAnim);
-                    new_av->setAnimTimeFactor(llclamp(mv.mSpeed, 0.05f, 10.f)
-                                              / llmax(mv.mNominal, 0.5f));
+                    startLocomotion(new_av, mv);
                 }
             }
         }
@@ -2450,6 +5029,10 @@ void LLActorMover::migrateActor(const LLUUID& old_id, const LLUUID& new_id)
     {
         mGazes[new_id] = git->second;
         mGazes.erase(git);
+        // The actor identity (and thus the motor seed) changed: reset the
+        // coordinated motor state so it re-initializes on the current target
+        // under the new key instead of carrying the old body's trajectory.
+        mGazes[new_id].mGazeMotor = ALGazeMotor::GazeMotorState();
     }
 
     // ---- follow relationships: this actor as a FOLLOWER, and as any other
@@ -2499,26 +5082,18 @@ void LLActorMover::dropActor(const LLUUID& actor_id)
     auto it = mMoves.find(actor_id);
     if (it != mMoves.end())
     {
-        // guarded anim stop, mirrors cancelSuspended(): the body is usually
-        // already dead or dying here, but never leave a looping walk behind
-        if (LLVOAvatar* av = resolve_actor(actor_id))
-        {
-            if (it->second.mAnim.notNull() && av->findMotion(it->second.mAnim))
-            {
-                av->stopMotion(it->second.mAnim);
-            }
-            if (it->second.mDwellAnim.notNull() &&
-                av->findMotion(it->second.mDwellAnim))
-            {
-                av->stopMotion(it->second.mDwellAnim);
-            }
-            av->setAnimTimeFactor(1.f);
-        }
+        LLVOAvatar* av = resolve_actor(actor_id);
+        stopLocomotion(av, it->second);
         mMoves.erase(it);
     }
     mPaths.erase(actor_id);
     mHistory.erase(actor_id);
     mGazes.erase(actor_id);
+    if (LLVOAvatar* avatar = resolve_actor(actor_id);
+        avatar && avatar->isGhostAvatar())
+    {
+        static_cast<LLGhostAvatar*>(avatar)->setEntityEyeMotionEnabled(false);
+    }
     // as a follower only: followers OF a removed actor keep the documented
     // graceful leader-gone hold, exactly as if the leader had derezzed
     mFollows.erase(actor_id);
@@ -2545,7 +5120,22 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         return;
     }
 
-    Path& path = mPaths[av->getID()];       // start() guaranteed this exists
+    auto path_it = mPaths.find(av->getID());
+    if (path_it == mPaths.end() || path_it->second.mNodes.size() < 2)
+    {
+        // A path Move must never manufacture missing geometry with operator[].
+        // clearPath() normally retires the Move transactionally; this guard also
+        // contains any future out-of-band erase/load failure at the actor's live
+        // root and releases path-camera ownership immediately.
+        mv.mCurPos = av->getRootJoint()
+            ? av->getRootJoint()->getWorldPosition() : av->getPositionAgent();
+        mv.mArrived = true;
+        enterSuspend(av->getID(), mv, av);
+        return;
+    }
+    Path& path = path_it->second;
+    mv.mAirborne = path.mAirborne;          // path-wide edits take effect next frame
+    mv.mNominal = llclamp(path.mCadence, 0.5f, 12.f);
     if (path.mDirty)
     {
         path.rebuild();
@@ -2582,7 +5172,6 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     // zero duration falls through to the normal walk below (byte-identical), so
     // the flag is safe when no take is loaded. A single-frame arc jump larger than
     // this is a scrub SEEK -> snap facing rather than turn-rate-lag toward it.
-    const F32 SYNC_SEEK_SNAP_M = 1.0f;
     bool sync_active = false;
     bool sync_seek   = false;
     if (path.mSyncToTake)
@@ -2602,16 +5191,12 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         if (mv.mDwellT >= want)
         {
             // resume: stop the dwell anim (if any) and restart the loco walk
-            if (mv.mDwellAnim.notNull())
+            if (mv.mDwellMotion.valid())
             {
-                av->stopMotion(mv.mDwellAnim);
+                stopLocalMotion(av, mv.mDwellMotion);
                 mv.mDwellAnim.setNull();
             }
-            if (mv.mAnim.notNull())
-            {
-                av->startMotion(mv.mAnim);
-                apply_custom_anim_priority(av, mv.mAnim);
-            }
+            startLocomotion(av, mv);
             mv.mLastDwellNode = mv.mDwellNode;
             mv.mDwellNode = -1;
         }
@@ -2619,7 +5204,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
 
     // ---- advance arc-length distance ----
-    F32       speed;
+    F32       speed = 0.f;
     const F32 old_d = mv.mDist;
     F32       nd;
     if (sync_active)
@@ -2631,12 +5216,13 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
         F32 u = (rec.getPlayhead() + path.mSyncLeadTrail) / dur;
         u = llclamp(u, 0.f, 1.f);
         nd = u * path.mTotalLength;
-        // cadence tracks the ground speed IMPLIED by the playhead motion (dArc/dt),
-        // so feet stay planted at any play/scrub rate; a paused playhead -> 0 speed
-        // -> a frozen stride. A large one-frame jump is a scrub seek (snap facing).
+        // A paused playhead freezes the absolute local sample. A large one-frame
+        // jump is a scrub seek (snap facing), and backward scrubbing intentionally
+        // samples the locomotion clip backward.
         const F32 d_arc = nd - old_d;
-        speed     = (dt > 1e-4f) ? fabsf(d_arc) / dt : 0.f;
+        speed = (dt > 1e-4f) ? fabsf(d_arc) / dt : 0.f;
         sync_seek = fabsf(d_arc) > SYNC_SEEK_SNAP_M;
+        mv.mTravelOdometer = llmax(0.0, (F64)nd);
         mv.mDir     = 1.f;      // always face forward along the path
         mv.mArrived = false;    // a synced actor never settles; a scrub can move it
     }
@@ -2644,6 +5230,7 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     {
         speed = pathSpeedAt(path, mv.mDist, loop || pingpong);
         nd    = mv.mDist + mv.mDir * speed * dt;
+        F32 traveled_step = speed * dt;
 
         mv.mArrived = false;
         if (loop)
@@ -2688,26 +5275,39 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
             if (best >= 0)
             {
                 nd = best_d;
+                traveled_step = fabsf(best_d - old_d);
                 mv.mDwellNode = best;
                 mv.mDwellT = 0.f;
                 // switch to a stand (or the node's anim) so the actor isn't walking
-                // in place while held
-                if (mv.mAnim.notNull())
-                {
-                    av->stopMotion(mv.mAnim);
-                    av->setAnimTimeFactor(1.f);
-                }
+                // in place while held; both gait sides belong to this hold.
+                stopLocalMotion(av, mv.mSecondaryLocomotion);
+                stopLocalMotion(av, mv.mLocomotion);
                 const LLUUID& na = path.mNodes[best].mAnim;
                 if (na.notNull())
                 {
-                    av->startMotion(na);
+                    startLocalMotion(av, mv.mDwellMotion, na, false,
+                                     1.f, false);
                     mv.mDwellAnim = na;
                 }
             }
         }
+        mv.mTravelOdometer += (F64)traveled_step;
     }
 
     mv.mDist = nd;
+    if (sync_seek &&
+        (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
+    {
+        updateLocomotionSample(av, mv);
+    }
+    else
+    {
+        // A seek with no owned clip needs a deterministic fallback. Never let
+        // one-frame scrub distance select RUN/FLY and leak history into the
+        // sampled pose; zero selects WALK/HOVER while the absolute odometer
+        // still chooses the authored foot phase.
+        updateLocomotionGait(av, mv, sync_seek ? 0.f : speed, dt, sync_seek);
+    }
 
     // ---- evaluate the spline (global) ----
     LLVector3d pos_global, tan_global;
@@ -2729,12 +5329,13 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     const F32 spline_ground_z = agent.mV[VZ];
     F32 ground_z = spline_ground_z;
     bool ground_hit = false;
-    if (path.mGroundFollow)
+    if (path.mGroundFollow && !path.mAirborne)
     {
         ground_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
     }
     ground_z += pathGroundOffsetAt(path, mv.mDist);
     const F32 root_above = pathRootAboveAt(path, mv.mDist);
+    mv.mContactDiscontinuity = sync_seek;
     agent.mV[VZ] = ground_z + root_above;
     mv.mCurPos = agent;
 
@@ -2786,52 +5387,50 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
     }
     else
     {
-        target_yaw = atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
+        // Look ahead along traveled arc so the body anticipates curvature.
+        // Reverse ping-pong travel samples behind the current arc rather than
+        // deriving a forward tangent and reading as accidental backpedal.
+        const F32 lookahead = llclamp(speed * 0.25f, 0.15f, 2.f);
+        F32 facing_d = mv.mDist + mv.mDir * lookahead;
+        if (loop)
+        {
+            facing_d -= floorf(facing_d / path.mTotalLength) * path.mTotalLength;
+        }
+        else
+        {
+            facing_d = llclamp(facing_d, 0.f, path.mTotalLength);
+        }
+        LLVector3d facing_pos, facing_tan;
+        path.evalAtDistance(facing_d, facing_pos, facing_tan);
+        const LLVector3d look = facing_pos - pos_global;
+        target_yaw = look.length() > 1e-5
+            ? atan2f((F32)look.mdV[VY], (F32)look.mdV[VX])
+            : atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
     }
 
     // optional pitch-to-slope: from the path's climb tangent (a P1 approximation;
     // a surface-normal pitch is a P2 refinement noted in the report)
     F32 target_pitch = 0.f;
-    if (path.mPitchToSlope)
+    if (path.mPitchToSlope || path.mAirborne)
     {
         const F32 horiz = sqrtf((F32)(tan_global.mdV[VX] * tan_global.mdV[VX]
                                     + tan_global.mdV[VY] * tan_global.mdV[VY]));
         target_pitch = atan2f(-(F32)tan_global.mdV[VZ], llmax(horiz, 1e-4f));
+        if (path.mAirborne)
+        {
+            target_pitch = llclamp(target_pitch, -45.f * DEG_TO_RAD, 45.f * DEG_TO_RAD);
+        }
     }
 
-    // max turn-rate clamp on YAW so sharp corners ease instead of snapping;
-    // straightaways (delta ~ 0) are untouched. Pitch tracks directly (slope
-    // changes are gradual).
-    static LLCachedControl<F32> turn_rate(gSavedSettings, "PathTurnRateDegPerSec", 180.f);
-    LLVector3 cur_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
-    const F32 cur_yaw = atan2f(cur_at.mV[VY], cur_at.mV[VX]);
-    F32 dyaw = target_yaw - cur_yaw;
-    while (dyaw >  F_PI) { dyaw -= 2.f * F_PI; }
-    while (dyaw < -F_PI) { dyaw += 2.f * F_PI; }
-    // a scrub seek snaps facing (up to a half turn in one frame); normal playback
-    // and free walks ease at the configured turn rate
-    const F32 max_step = sync_seek ? F_PI
-                                   : llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
-    dyaw = llclamp(dyaw, -max_step, max_step);
-    mv.mCurRot.setEulerAngles(0.f, target_pitch, cur_yaw + dyaw);
-
-    // ---- cadence lock from the instantaneous ground speed ----
-    // TODO(gait): optional walk/run anim swap by a speed threshold -- left as a
-    // hook. Swapping the loco anim mid-walk risks foot-slide/pop and would
-    // override a per-actor custom anim, so it wants its own tuning pass.
-    if (!mv.mArrived && mv.mAnim.notNull())
-    {
-        av->setAnimTimeFactor(speed / llmax(mv.mNominal, 0.5f));
-    }
+    // Ordinary playback uses the shared scalar C2 solver. A recorder seek is
+    // an explicit discontinuity and snaps instead of integrating fake history.
+    updatePathFacing(mv, target_yaw, target_pitch, dt, sync_seek);
 
     // ---- arrival: settle into a stand at the last node (stop mode) ----
-    if (mv.mArrived && mv.mAnim.notNull())
+    if (mv.mArrived && (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
     {
-        if (av->findMotion(mv.mAnim))
-        {
-            av->stopMotion(mv.mAnim);
-        }
-        av->setAnimTimeFactor(1.f);
+        stopLocalMotion(av, mv.mSecondaryLocomotion);
+        stopLocalMotion(av, mv.mLocomotion);
         mv.mAnim.setNull();     // stop() won't double-stop; facing keeps easing
     }
 }
@@ -2846,8 +5445,8 @@ void LLActorMover::advancePath(LLVOAvatar* av, Move& mv, F32 dt)
 // ---------------------------------------------------------------------------
 void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F32 dt)
 {
-    // hold helper: paint the last good pose (seed from the live pose the first
-    // time so we never place at the coordinate origin) with a frozen stride
+    // Hold the last good pose and leave this clip's absolute local sample frozen.
+    // Seed from the live pose the first time so we never place at the origin.
     auto holdInPlace = [&]()
     {
         if (!mv.mFaceInit)
@@ -2856,10 +5455,6 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
             mv.mCurRot          = av->getRenderRotation();
             mv.mFollowRootAbove = llmax(0.f, av->getPelvisToFoot());
             mv.mFaceInit        = true;
-        }
-        if (mv.mAnim.notNull())
-        {
-            av->setAnimTimeFactor(0.f);     // planted stride while waiting
         }
     };
 
@@ -2880,11 +5475,13 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     }
 
     Path& lpath = pit->second;
+    mv.mNominal = llclamp(lpath.mCadence, 0.5f, 12.f);
     if (lpath.mDirty)
     {
         lpath.rebuild();
     }
     const F32 total = lpath.mTotalLength;
+    mv.mAirborne = lpath.mAirborne;
     if (total <= 0.001f)
     {
         holdInPlace();
@@ -2906,11 +5503,37 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     }
 
     const F32 old_d   = mv.mDist;
-    const F32 implied = (dt > 1e-4f) ? fabsf(fArc - old_d) / dt : 0.f;
-    // a loop-seam wrap (arc jumps total->0) would spike the implied speed for one
-    // frame; cap the cadence so the stride never flickers at the seam
-    const F32 cad_speed = llmin(implied, 12.f);
+    F32 traveled_step = fabsf(fArc - old_d);
+    if (lpath.mEndMode == 1)
+    {
+        traveled_step = llmin(traveled_step, total - traveled_step);
+    }
+    const bool follower_seek = traveled_step > SYNC_SEEK_SNAP_M;
+    const F32 follower_speed = (dt > 1e-4f) ? traveled_step / dt : 0.f;
     mv.mDist = fArc;
+    if (follower_seek)
+    {
+        // A scrub is an absolute seek, not traveled history. This makes the
+        // sampled foot phase deterministic for a given leader playhead.
+        mv.mTravelOdometer = llmax(0.0, (F64)fArc);
+    }
+    else
+    {
+        mv.mTravelOdometer += (F64)traveled_step;
+    }
+    mv.mContactDiscontinuity = follower_seek;
+    if (follower_seek &&
+        (mv.mLocomotion.valid() || mv.mSecondaryLocomotion.valid()))
+    {
+        // Snap the owned clocks without interpreting scrub velocity as gait.
+        updateLocomotionSample(av, mv);
+    }
+    else
+    {
+        updateLocomotionGait(av, mv,
+                             follower_seek ? 0.f : follower_speed,
+                             dt, follower_seek);
+    }
 
     // ---- evaluate the LEADER's spline at the follower's arc ----
     LLVector3d pos_global, tan_global;
@@ -2929,7 +5552,7 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     LLVector3 agent = gAgent.getPosAgentFromGlobal(pos_global);
     F32  ground_z   = agent.mV[VZ];
     bool ground_hit = false;
-    if (lpath.mGroundFollow)
+    if (lpath.mGroundFollow && !lpath.mAirborne)
     {
         ground_z = resolveGroundZ(av, agent, agent.mV[VZ], ground_hit);
     }
@@ -2937,30 +5560,38 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
     agent.mV[VZ] = ground_z + mv.mFollowRootAbove;
     mv.mCurPos = agent;
 
-    // ---- facing: leader tangent at the follower's position, turn-rate clamped ----
-    const F32 target_yaw = atan2f((F32)tan_global.mdV[VY], (F32)tan_global.mdV[VX]);
+    // ---- facing: anticipate the leader curve in the leader's travel direction ----
+    const F32 travel_dir = lit->second.mDir;
+    const F32 lookahead = llclamp(follower_speed * 0.25f, 0.15f, 2.f);
+    F32 facing_d = fArc + travel_dir * lookahead;
+    if (lpath.mEndMode == 1)
+    {
+        facing_d -= floorf(facing_d / total) * total;
+    }
+    else
+    {
+        facing_d = llclamp(facing_d, 0.f, total);
+    }
+    LLVector3d facing_pos, facing_tan;
+    lpath.evalAtDistance(facing_d, facing_pos, facing_tan);
+    const LLVector3d look = facing_pos - pos_global;
+    const F32 target_yaw = look.length() > 1e-5
+        ? atan2f((F32)look.mdV[VY], (F32)look.mdV[VX])
+        : atan2f((F32)(tan_global.mdV[VY] * travel_dir),
+                 (F32)(tan_global.mdV[VX] * travel_dir));
     F32 target_pitch = 0.f;
-    if (lpath.mPitchToSlope)
+    if (lpath.mPitchToSlope || lpath.mAirborne)
     {
         const F32 horiz = sqrtf((F32)(tan_global.mdV[VX] * tan_global.mdV[VX]
                                     + tan_global.mdV[VY] * tan_global.mdV[VY]));
         target_pitch = atan2f(-(F32)tan_global.mdV[VZ], llmax(horiz, 1e-4f));
+        if (lpath.mAirborne)
+        {
+            target_pitch = llclamp(target_pitch, -45.f * DEG_TO_RAD, 45.f * DEG_TO_RAD);
+        }
     }
-    static LLCachedControl<F32> turn_rate(gSavedSettings, "PathTurnRateDegPerSec", 180.f);
-    LLVector3 cur_at = LLVector3(1.f, 0.f, 0.f) * mv.mCurRot;
-    const F32 cur_yaw = atan2f(cur_at.mV[VY], cur_at.mV[VX]);
-    F32 dyaw = target_yaw - cur_yaw;
-    while (dyaw >  F_PI) { dyaw -= 2.f * F_PI; }
-    while (dyaw < -F_PI) { dyaw += 2.f * F_PI; }
-    const F32 max_step = llmax(1.f, (F32)turn_rate) * DEG_TO_RAD * dt;
-    dyaw = llclamp(dyaw, -max_step, max_step);
-    mv.mCurRot.setEulerAngles(0.f, target_pitch, cur_yaw + dyaw);
+    updatePathFacing(mv, target_yaw, target_pitch, dt, follower_seek);
 
-    // ---- cadence lock from the follower's own instantaneous ground speed ----
-    if (mv.mAnim.notNull())
-    {
-        av->setAnimTimeFactor(cad_speed / llmax(mv.mNominal, 0.5f));
-    }
 }
 
 // ===========================================================================
@@ -2974,9 +5605,10 @@ void LLActorMover::advanceFollower(LLVOAvatar* av, Move& mv, const Follow& f, F3
 // current anim pose (unlike applyOverride(), which runs pre-motion and only
 // touches the root). Because ANIM_AGENT_HEAD_ROT / ANIM_AGENT_EYE re-pose
 // mHead/mNeck/mTorso/mEye* every frame for ordinary avatars, joint->getRotation()
-// at entry is the anim pose: the nlerp below layers on it, and easing the weight
-// to 0 returns cleanly to it (no frozen head-lock). We never permanently corrupt
-// the skeleton -- the motion controller rebuilds it next frame and we re-assert.
+// at entry is the anim pose. BLEND keeps the legacy partial nlerp onto that pose;
+// priority modes let the eased gaze pose fully own selected joints at lock. We
+// never permanently corrupt the skeleton -- the motion controller rebuilds it
+// next frame, and Director capture/restore brackets its post-animation paint.
 // ===========================================================================
 namespace
 {
@@ -2985,15 +5617,78 @@ const F32 GAZE_TAU_MIN        = 0.04f;   // dir smoothing time constant, s (snap
 const F32 GAZE_TAU_MAX        = 0.50f;   // (very smooth)
 const F32 GAZE_LOOKAHEAD      = 6.0f;    // tangent look-ahead distance, m
 const F32 GAZE_MIN_DIST       = 0.25f;   // ignore a target closer than this to the head
-const F32 GAZE_NECK_LAG       = 0.50f;   // neck vs head split of the remaining aim
-// Stock LLEyeMotion constrains the final head-local eye quaternion to this
-// cone. Director cameras can leave simultaneous yaw and pitch residuals after
-// the head clamp, so its per-axis gaze limits also need this total-angle cap.
-const F32 GAZE_DIRECTOR_EYE_ROT_MAX = F_PI_BY_TWO * 0.3f;
+// Procedural gaze needs a conservative final head-local eye cone in addition
+// to its per-axis limits so combined yaw/pitch stays inside the socket.
+const F32 GAZE_DIRECTOR_EYE_ROT_MAX = F_PI_BY_TWO * 0.22f;
+const F32 GAZE_CAMERA_ROLL_NECK_SHARE = 0.35f;
 const F32 DIRECTOR_BODY_TURN_TAU = 0.22f;
 const F32 DIRECTOR_BODY_TURN_RATE = 180.f * DEG_TO_RAD;
 const F32 DIRECTOR_BODY_TURN_START = 2.f * DEG_TO_RAD;
 const F32 DIRECTOR_BODY_TURN_STOP = 0.75f * DEG_TO_RAD;
+const F32 DIRECTOR_BODY_TURN_SWITCH = 3.f * DEG_TO_RAD;
+const F32 DIRECTOR_BODY_TURN_DEBOUNCE = 0.12f;
+const F32 DIRECTOR_BODY_TURN_RESTART_DELAY = 0.12f;
+
+S32 currentGazePriority()
+{
+    static LLCachedControl<S32> priority(
+        gSavedSettings, "DirectorGazePriority",
+        LLActorMover::GAZE_PRIORITY_HEAD_EYES);
+    return llclamp(
+        static_cast<S32>(priority),
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_BLEND),
+        static_cast<S32>(LLActorMover::GAZE_PRIORITY_PLANTED_SPINE));
+}
+
+// [Machinima] Hybrid strict-yield gate for a single gaze joint write. Returns
+// base_alpha UNCHANGED when the write is allowed (bit-identical to the legacy
+// path), or 0.f when this joint must yield because an animation of strictly
+// higher effective rotation priority reached it in this frame's motion blend.
+// selected_priority: -1 = Legacy final (always apply); 0..6 = SL priority.
+//
+// Observation lifetime (see LLPoseBlender::getLastRegularRotationPriority):
+//   - a joint whose blocking motion STOPPED reads stale on the next blend =>
+//     query false => allow (gaze reacquires);
+//   - a NEVER-animated joint => pool miss => allow;
+//   - PAUSED / LOD-minimal frames run no new blend, so the last real
+//     observation is retained on purpose (it matches the equally frozen pose),
+//     and gaze stays yielded on a joint an anim was holding -- intended.
+static F32 gazeAllowedAlpha(LLVOAvatar* av, LLJoint* joint,
+                            F32 base_alpha, S32 selected_priority)
+{
+    if (selected_priority < 0 || !av || !joint)
+    {
+        return base_alpha;                          // Legacy final / no data
+    }
+    S32 observed = 0;
+    if (!av->getMotionController()
+            .getLastAppliedRegularRotationPriority(joint, observed))
+    {
+        return base_alpha;                          // no current observation => allow
+    }
+    // A normal-blend .anim can carry a hacked per-joint priority of 7
+    // (== ADDITIVE_PRIORITY) -- clamp to the max selectable normal priority so
+    // the "6" selection can still win/tie it instead of yielding forever.
+    observed = llmin(observed, 6);
+    return observed > selected_priority ? 0.f : base_alpha;
+}
+
+// Compose roll after an aim rotation without disturbing its forward axis. The
+// supplied quaternion may be local or world space; its resulting +X is the aim
+// axis in that same frame.
+void applyGazeAimRoll(LLQuaternion& aim_rotation, F32 roll)
+{
+    if (fabsf(roll) <= 1e-6f)
+    {
+        return;
+    }
+    LLVector3 aim_axis = LLVector3::x_axis * aim_rotation;
+    if (aim_axis.normVec() <= 1e-4f)
+    {
+        return;
+    }
+    aim_rotation = aim_rotation * LLQuaternion(roll, aim_axis);
+}
 
 // Joint world positions do not include a ghost avatar's client-only outer
 // render scale.  Match LLGhostAvatar::updateEntityOuterTransform() (and the
@@ -3066,6 +5761,15 @@ bool currentAnimatedGazeDirection(LLVOAvatar* av, LLVector3& direction)
     }
     return count && direction.normVec() > 1e-4f;
 }
+
+bool sameGazeTarget(const LLActorMover::GazeTarget& first,
+                    const LLActorMover::GazeTarget& second)
+{
+    return first.mMode == second.mMode &&
+           first.mCastRef == second.mCastRef &&
+           first.mFixedPoint == second.mFixedPoint &&
+           first.mObjectRef == second.mObjectRef;
+}
 } // anonymous namespace
 
 void LLActorMover::applyGaze(LLVOAvatar* av)
@@ -3080,6 +5784,24 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // this avatar has no gaze entry -> byte-identical
     }
     Gaze& g = git->second;
+
+    // [TrueMirror] The clone's head/eye/torso aim and blink come from the
+    // source's stamped joints + face params (ALGhostStudio::updatePostObjectList
+    // runs after this). Do not paint the clone's own gaze layer or re-enable
+    // its eye motion; the gaze entry is left intact for when the mode changes.
+    if (av->isGhostAvatar() &&
+        static_cast<LLGhostAvatar*>(av)->isTrueMirrorDriven())
+    {
+        return;
+    }
+
+    // Real avatars already run their stock eye motion. Synthetic clones do
+    // not run default motions, so opt only their eye/blink motion in while
+    // authored gaze is enabled (never ANIM_AGENT_HEAD_ROT).
+    if (av->isGhostAvatar())
+    {
+        static_cast<LLGhostAvatar*>(av)->setEntityEyeMotionEnabled(g.mEnabled);
+    }
 
     // Tangent gaze genuinely needs locomotion. Camera/cast/point gaze does not,
     // so a stationary or frozen actor can keep tracking its target.
@@ -3106,10 +5828,28 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mBodyAimValid = false;
         g.mAppliedValid = false;
         g.mAppliedSlewing = false;
+        // [Machinima] behind-shoulder / no-snap: reseed with the applied aim
+        // so a later re-activation starts committed to the then-current side.
+        g.mChainYawValid = false;
+        g.mBehindShoulderSign = 0.f;
+        g.mBehindSweeping = false;
+        // Drop the coordinated motor state so a later re-activation re-inits
+        // on the current target instead of slewing from a stale trajectory.
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
         return;
     }
     const bool needs_move = (g.mTarget == GAZE_TANGENT);
-    const bool active = g.mEnabled && camera_safe && (!needs_move || mv);
+    // [Machinima] True master: "Look at camera (global master)" gates ALL
+    // camera-directed gaze, not just the Director render layer. When it is off,
+    // a Camera-targeted actor eases out through the release path below (active
+    // false), so unchecking the master stops the character looking at the
+    // camera even on this standalone procedural path. Non-camera targets
+    // (cast / fixed point / object / path tangent) are unaffected.
+    static LLCachedControl<bool> lookat_master(
+        gSavedSettings, "DirectorLookAtCameraEnabled", false);
+    const bool camera_gaze_gated = (g.mTarget == GAZE_CAMERA) && !lookat_master;
+    const bool active = g.mEnabled && camera_safe && (!needs_move || mv) &&
+                        !camera_gaze_gated;
 
     // advance the envelope + direction smoothing once per frame; the joint set is
     // re-asserted on every call (same idempotent idiom as applyOverride)
@@ -3130,8 +5870,32 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         {
             dt = llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
         }
-        const F32 step = (GAZE_EASE_TIME > 0.f) ? dt / GAZE_EASE_TIME : 1.f;
-        g.mEnv = llclamp(g.mEnv + (active ? step : -step), 0.f, 1.f);
+        // Preset transition: ease every continuous gaze param between its
+        // resolved endpoints on the presentation clock (scrub-safe) BEFORE
+        // this frame's persona/ease/envelope reads consume them, so a blend
+        // keeps running even with the gaze panel closed. The shared helper
+        // owns its own once-per-frame guard (applyDirectorLookAt also calls
+        // it, since Director-driven actors skip applyGaze entirely).
+        // Inactive by default: the legacy path below is byte-identical.
+        advanceGazeParamTransition(g);
+        static LLCachedControl<F32> gaze_ease_acquire(
+            gSavedSettings, "DirectorGazeEaseAcquireSec", 0.25f);
+        static LLCachedControl<F32> gaze_ease_release(
+            gSavedSettings, "DirectorGazeEaseReleaseSec", 0.60f);
+        ALGazeMath::GazePersona persona;
+        persona.mDominance = g.mPersonaDominance;
+        persona.mAffection = g.mPersonaAffection;
+        persona.mAnxiety = g.mPersonaAnxiety;
+        const ALGazeMath::PersonaModulation persona_mod =
+            ALGazeMath::mapPersona(persona);
+        const F32 acquire = (g.mEaseAcquireOverride >= 0.f
+            ? g.mEaseAcquireOverride : (F32)gaze_ease_acquire) *
+            persona_mod.mAcquireEaseScale;
+        const F32 release = (g.mEaseReleaseOverride >= 0.f
+            ? g.mEaseReleaseOverride : (F32)gaze_ease_release) *
+            persona_mod.mReleaseEaseScale;
+        g.mEnv = ALGazeMath::asymmetricEnvStep(
+            g.mEnv, active, dt, acquire, release);
     }
 
     // fully released and inactive: stop touching the joints entirely (the walk /
@@ -3143,6 +5907,14 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         g.mBodyAimValid = false;
         g.mAppliedValid = false;
         g.mAppliedSlewing = false;
+        // [Machinima] behind-shoulder / no-snap: reseed with the applied aim
+        // so a later re-activation starts committed to the then-current side.
+        g.mChainYawValid = false;
+        g.mBehindShoulderSign = 0.f;
+        g.mBehindSweeping = false;
+        // Drop the coordinated motor state so a later re-activation re-inits
+        // on the current target instead of slewing from a stale trajectory.
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
         return;
     }
     if (av->isDead() || !av->getRootJoint())
@@ -3150,10 +5922,74 @@ void LLActorMover::applyGaze(LLVOAvatar* av)
         return;                 // never paint a dead / rootless actor
     }
 
-    gazePaint(av, g, mv, dt, advance, false);
+    // [Machinima] Goal 3b: standalone path also honors the influence lane (self
+    // or per-cast track) on the presentation clock. Empty track -> exactly 1 ->
+    // gazePaint's legacy env path (byte-identical), so a no-track actor is a
+    // pure no-op here.
+    const F32 timeline_influence = LLDirectorCast::instance().evaluateGazeInfluence(
+        LLDirectorCast::instance().getGazeInfluenceKeys(av->getID()),
+        LLPresentationTime::currentFrame().presentation_time);
+    // [Machinima] Honor an independent eye target ("Eyes look at" != Follow
+    // head) on the STANDALONE path too, not just the Director path -- otherwise
+    // when the camera look-at master is off (so this path runs), the eyes fall
+    // back to the head target and cannot be aimed separately.
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    LLActorMover::GazeTarget eye_target;
+    const LLActorMover::GazeTarget* eye_target_ptr = nullptr;
+    if (cast.hasEyeGazeTarget(av->getID()))
+    {
+        eye_target = cast.getEyeGazeTarget(av->getID());
+        eye_target_ptr = &eye_target;
+    }
+    gazePaint(av, g, mv, dt, advance, true, true, nullptr, 90.f, eye_target_ptr,
+              timeline_influence);
 }
 
-void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime)
+bool LLActorMover::resolveGazeObjectCenter(
+    const LLUUID& object_id, LLVector3& out_agent)
+{
+    LLViewerObject* obj = gObjectList.findObject(object_id);
+    if (!obj || obj->isDead())
+    {
+        return false;
+    }
+    LLViewerObject* root_obj = obj->getRootEdit();
+    if (!root_obj)
+    {
+        root_obj = obj;
+    }
+
+    GazeObjectCenterCache& cache = mGazeObjectCenters[root_obj->getID()];
+    if (cache.mFrame != gFrameCount)
+    {
+        // Object transforms and link changes are consumed at the frame boundary;
+        // rebuild once for that frame, then share the centre across every gaze
+        // subject targeting the same linkset.
+        cache.mFrame = gFrameCount;
+        cache.mValid = false;
+        LLBBox bounds(
+            root_obj->getPositionAgent(), LLQuaternion(), LLVector3(), LLVector3());
+        bounds.addPointLocal(LLVector3());
+        bounds.addBBoxAgent(root_obj->getBoundingBoxAgent());
+        for (LLViewerObject* child : root_obj->getChildren())
+        {
+            if (child && !child->isDead())
+            {
+                bounds.addBBoxAgent(child->getBoundingBoxAgent());
+            }
+        }
+        cache.mCenter = bounds.getCenterAgent();
+        cache.mValid = cache.mCenter.isFinite();
+    }
+    if (cache.mValid)
+    {
+        out_agent = cache.mCenter;
+    }
+    return cache.mValid;
+}
+
+void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime,
+                                             bool capture_blinks)
 {
     auto capture = [&](const char* name, DirectorJointPose& pose)
     {
@@ -3164,36 +6000,69 @@ void LLActorMover::captureDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
             pose.mRotation = joint->getRotation();
         }
     };
+    auto capture_param = [&](const char* name, DirectorVisualParamPose& pose)
+    {
+        LLVisualParam* param = av->getVisualParam(name);
+        pose.mValid = param != nullptr;
+        if (param)
+        {
+            pose.mWeight = av->getVisualParamWeight(param);
+        }
+    };
 
     runtime.mRoot.mValid = false;
+    runtime.mPelvis.mValid = false;
     runtime.mTorso.mValid = false;
+    runtime.mChest.mValid = false;
     runtime.mNeck.mValid = false;
     runtime.mHead.mValid = false;
     runtime.mEyeLeft.mValid = false;
     runtime.mEyeRight.mValid = false;
     runtime.mAltEyeLeft.mValid = false;
     runtime.mAltEyeRight.mValid = false;
+    runtime.mBlinkLeft.mValid = false;
+    runtime.mBlinkRight.mValid = false;
 
     if (runtime.mMode == 1)
     {
         capture("mRoot", runtime.mRoot);
-        return;
     }
 
-    if (runtime.mGaze.mTorsoAmount > 0.f)
+    capture("mPelvis", runtime.mPelvis);
+    const S32 capture_priority = runtime.mGaze.mGazePriorityOverride >= 0
+        ? llclamp(runtime.mGaze.mGazePriorityOverride,
+                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_PLANTED_SPINE)
+        : currentGazePriority();
+    // Torso is gaze-written by any spine-owning scope (Upper body OR Planted
+    // spine), so capture it for both -- otherwise a torso_amount==0 planted
+    // actor would not restore the torso on release.
+    if (runtime.mGaze.mTorsoAmount > 0.f ||
+        capture_priority >= GAZE_PRIORITY_UPPER_BODY)
     {
         capture("mTorso", runtime.mTorso);
+        // [Machinima] Capture mChest beside mTorso whenever the spine can be
+        // gaze-written, so a Planted-spine chest write is released even when the
+        // underlying animation does not key mChest every frame. getJoint-guarded
+        // by capture(); a chest-less rig simply leaves this pose invalid.
+        capture("mChest", runtime.mChest);
     }
     LLJoint* neck = av->getJoint("mNeck");
     if (neck && neck->getParent())
     {
         capture("mNeck", runtime.mNeck);
-        capture("mHead", runtime.mHead);
     }
+    // gazePaint requires and may always own mHead, even on an unusual rig that
+    // omits a usable neck. Keep release restoration symmetrical with apply.
+    capture("mHead", runtime.mHead);
     capture("mEyeLeft", runtime.mEyeLeft);
     capture("mEyeRight", runtime.mEyeRight);
     capture("mFaceEyeAltLeft", runtime.mAltEyeLeft);
     capture("mFaceEyeAltRight", runtime.mAltEyeRight);
+    if (capture_blinks)
+    {
+        capture_param("Blink_Left", runtime.mBlinkLeft);
+        capture_param("Blink_Right", runtime.mBlinkRight);
+    }
 }
 
 void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runtime)
@@ -3213,14 +6082,35 @@ void LLActorMover::restoreDirectorLookAtPose(LLVOAvatar* av, DirectorGaze& runti
             pose.mValid = false;
         }
     };
+    bool visual_params_changed = false;
+    auto restore_param = [&](const char* name, DirectorVisualParamPose& pose)
+    {
+        if (pose.mValid)
+        {
+            if (LLVisualParam* param = av->getVisualParam(name))
+            {
+                visual_params_changed |=
+                    av->setVisualParamWeight(param, pose.mWeight);
+            }
+            pose.mValid = false;
+        }
+    };
     restore("mRoot", runtime.mRoot);
+    restore("mPelvis", runtime.mPelvis);
     restore("mTorso", runtime.mTorso);
+    restore("mChest", runtime.mChest);
     restore("mNeck", runtime.mNeck);
     restore("mHead", runtime.mHead);
     restore("mEyeLeft", runtime.mEyeLeft);
     restore("mEyeRight", runtime.mEyeRight);
     restore("mFaceEyeAltLeft", runtime.mAltEyeLeft);
     restore("mFaceEyeAltRight", runtime.mAltEyeRight);
+    restore_param("Blink_Left", runtime.mBlinkLeft);
+    restore_param("Blink_Right", runtime.mBlinkRight);
+    if (visual_params_changed)
+    {
+        av->updateVisualParams();
+    }
 }
 
 void LLActorMover::stopDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& runtime)
@@ -3274,15 +6164,8 @@ void LLActorMover::updateDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& run
     if (runtime.mTurnSourceAnim == desired &&
         runtime.mTurnAOOverrideActive == use_ao)
     {
-        const LLUUID& opposite = direction > 0
-            ? ANIM_AGENT_TURNRIGHT : ANIM_AGENT_TURNLEFT;
-        if (runtime.mTurnAnim.notNull() &&
-            !av->isMotionActive(runtime.mTurnAnim) &&
-            !av->isMotionActive(opposite))
-        {
-            runtime.mOwnsTurnAnim =
-                av->LLCharacter::startMotion(runtime.mTurnAnim);
-        }
+        // The body-yaw chase is authoritative. Do not rewind a turn motion that
+        // ended or was displaced while the same Director request is still live.
         return;
     }
 
@@ -3319,19 +6202,24 @@ void LLActorMover::updateDirectorTurnAnimation(LLVOAvatar* av, DirectorGaze& run
     }
 }
 
-bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime)
+bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime,
+                                         const LLVector3& target_direction)
 {
     LLJoint* root = av->getRootJoint();
-    LLVector3 to_camera = gAgentCamera.getCameraPositionAgent() - root->getWorldPosition();
-    to_camera.mV[VZ] = 0.f;
-    if (to_camera.magVecSquared() <= 1e-4f)
+    LLVector3 to_target = target_direction;
+    to_target.mV[VZ] = 0.f;
+    if (to_target.magVecSquared() <= 1e-4f)
     {
         stopDirectorTurnAnimation(av, runtime);
         runtime.mBodyYawValid = false;
+        runtime.mTurnPendingDirection = 0;
+        runtime.mTurnPendingSeconds = 0.f;
+        runtime.mTurnStopSeconds = 0.f;
+        runtime.mTurnRestartDelay = 0.f;
         return true;
     }
 
-    const F32 target_yaw = atan2f(to_camera.mV[VY], to_camera.mV[VX]);
+    const F32 target_yaw = atan2f(to_target.mV[VY], to_target.mV[VX]);
     if (!runtime.mBodyYawValid)
     {
         const LLVector3 at = LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
@@ -3340,10 +6228,12 @@ bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime)
     }
 
     const U32 frame = LLFrameTimer::getFrameCount();
-    if (runtime.mBodyLastFrame != frame)
+    const bool advance = runtime.mBodyLastFrame != frame;
+    F32 dt = 0.f;
+    if (advance)
     {
         runtime.mBodyLastFrame = frame;
-        const F32 dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
+        dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
             ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
             : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
         const F32 error = llsimple_angle(target_yaw - runtime.mBodyYaw);
@@ -3360,18 +6250,104 @@ bool LLActorMover::applyDirectorBodyTurn(LLVOAvatar* av, DirectorGaze& runtime)
         remaining = 0.f;
     }
 
-    const F32 anim_threshold = runtime.mTurnAnim.notNull()
-        ? DIRECTOR_BODY_TURN_STOP : DIRECTOR_BODY_TURN_START;
-    if (fabsf(remaining) > anim_threshold)
+    // Animation changes are deliberately slower than the continuous root-yaw
+    // chase. A threshold/sign wobble must persist in presentation time, and an
+    // accepted direction change has a stop/start gap so neither built-in nor AO
+    // turn motions visibly rewind on a one-frame gaze fluctuation.
+    if (advance && runtime.mTurnRestartDelay > 0.f)
     {
-        updateDirectorTurnAnimation(av, runtime, remaining > 0.f ? 1 : -1);
+        runtime.mTurnRestartDelay = llmax(
+            0.f, runtime.mTurnRestartDelay - dt);
+    }
+
+    S32 active_direction = 0;
+    if (runtime.mTurnSourceAnim == ANIM_AGENT_TURNLEFT)
+    {
+        active_direction = 1;
+    }
+    else if (runtime.mTurnSourceAnim == ANIM_AGENT_TURNRIGHT)
+    {
+        active_direction = -1;
+    }
+    const F32 remaining_abs = fabsf(remaining);
+    const S32 desired_direction = remaining > 0.f ? 1 : remaining < 0.f ? -1 : 0;
+
+    auto clear_pending_direction = [&runtime]()
+    {
+        runtime.mTurnPendingDirection = 0;
+        runtime.mTurnPendingSeconds = 0.f;
+    };
+    auto hold_pending_direction = [&runtime, advance, dt](S32 direction)
+    {
+        if (runtime.mTurnPendingDirection != direction)
+        {
+            runtime.mTurnPendingDirection = direction;
+            runtime.mTurnPendingSeconds = 0.f;
+        }
+        if (advance)
+        {
+            runtime.mTurnPendingSeconds += dt;
+        }
+    };
+
+    if (active_direction != 0)
+    {
+        if (remaining_abs <= DIRECTOR_BODY_TURN_STOP)
+        {
+            clear_pending_direction();
+            if (advance)
+            {
+                runtime.mTurnStopSeconds += dt;
+            }
+            if (runtime.mTurnStopSeconds >= DIRECTOR_BODY_TURN_DEBOUNCE)
+            {
+                stopDirectorTurnAnimation(av, runtime);
+                runtime.mTurnStopSeconds = 0.f;
+                runtime.mTurnRestartDelay = DIRECTOR_BODY_TURN_RESTART_DELAY;
+            }
+        }
+        else
+        {
+            runtime.mTurnStopSeconds = 0.f;
+            if (desired_direction == active_direction ||
+                remaining_abs < DIRECTOR_BODY_TURN_SWITCH)
+            {
+                clear_pending_direction();
+            }
+            else
+            {
+                hold_pending_direction(desired_direction);
+                if (runtime.mTurnPendingSeconds >= DIRECTOR_BODY_TURN_DEBOUNCE)
+                {
+                    const S32 pending_direction = runtime.mTurnPendingDirection;
+                    const F32 pending_seconds = runtime.mTurnPendingSeconds;
+                    stopDirectorTurnAnimation(av, runtime);
+                    runtime.mTurnPendingDirection = pending_direction;
+                    runtime.mTurnPendingSeconds = pending_seconds;
+                    runtime.mTurnRestartDelay = DIRECTOR_BODY_TURN_RESTART_DELAY;
+                }
+            }
+        }
     }
     else
     {
-        stopDirectorTurnAnimation(av, runtime);
+        runtime.mTurnStopSeconds = 0.f;
+        if (desired_direction != 0 && remaining_abs > DIRECTOR_BODY_TURN_START)
+        {
+            hold_pending_direction(desired_direction);
+            if (runtime.mTurnPendingSeconds >= DIRECTOR_BODY_TURN_DEBOUNCE &&
+                runtime.mTurnRestartDelay <= 0.f)
+            {
+                updateDirectorTurnAnimation(av, runtime, desired_direction);
+                clear_pending_direction();
+            }
+        }
+        else
+        {
+            clear_pending_direction();
+        }
     }
 
-    captureDirectorLookAtPose(av, runtime);
     LLQuaternion upright_yaw;
     upright_yaw.setEulerAngles(0.f, 0.f, runtime.mBodyYaw);
     root->setWorldRotation(upright_yaw);
@@ -3424,8 +6400,38 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
 
     if (!enabled)
     {
-        clearAllDirectorLookAtRuntime();
-        return false;
+        // Master just turned off. Do NOT hard-clear -- that snaps every pose
+        // to the animation in one frame. Present avatars ease their release
+        // envelope down through the normal per-avatar path below (each still
+        // receives applyDirectorLookAt while rendered, including LOD-skipped
+        // frames via llvoavatar.cpp). `selected` resolves false below because
+        // `enabled` is false, so the release/decay branch runs for this av.
+        //
+        // The one case the per-avatar path cannot service is a runtime whose
+        // avatar has despawned without a cast remove() -- it is never ticked
+        // again, so it can neither ease nor be restored on a missing joint.
+        // Sweep those unresolvable entries (hard-clear is correct there).
+        if (mDirectorGazes.empty())
+        {
+            return false; // fast, byte-identical early-out once fully released
+        }
+        LLDirectorCast& sweep_cast = LLDirectorCast::instance();
+        for (auto it = mDirectorGazes.begin(); it != mDirectorGazes.end();)
+        {
+            if (sweep_cast.resolve(it->first) == nullptr)
+            {
+                stopDirectorTurnAnimation(nullptr, it->second);
+                it = mDirectorGazes.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+        if (mDirectorGazes.empty())
+        {
+            return false;
+        }
     }
     if (!av)
     {
@@ -3439,8 +6445,16 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         return false;
     }
 
-    if (!LLDirectorCast::instance().isLookAtCamera(av->getID()) ||
-        !gazeCameraSafe(av, true))
+    LLDirectorCast& cast = LLDirectorCast::instance();
+    // Master-off (enabled==false) forces deselection for every actor, so the
+    // release envelope below eases the pose out instead of the old hard clear.
+    const bool selected = enabled && cast.isLookAtCamera(av->getID());
+    auto runtime_it = mDirectorGazes.find(av->getID());
+    if (!selected && runtime_it == mDirectorGazes.end())
+    {
+        return false;
+    }
+    if (selected && !gazeCameraSafe(av, true))
     {
         clearDirectorLookAtRuntime(av->getID());
         return false;
@@ -3461,36 +6475,232 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
     static LLCachedControl<S32> mode_setting(
         gSavedSettings, "DirectorLookAtCameraMode", 0);
 
-    const S32 mode = (S32)mode_setting == 1 ? 1 : 0;
-    auto runtime_it = mDirectorGazes.find(av->getID());
-    if (runtime_it != mDirectorGazes.end() && runtime_it->second.mMode != mode)
+    // Per-cast camera-mode override wins over the global (-1 inherits it), so a
+    // Mode change stays scoped to the edited actor instead of retargeting every
+    // camera-facing actor. Read from the member's stored target every frame; it
+    // costs one map lookup and mirrors the selected-path read below.
+    const S32 camera_mode_override =
+        cast.getGazeTarget(av->getID()).mCameraModeOverride;
+    const S32 requested_mode = camera_mode_override >= 0
+        ? (camera_mode_override == 1 ? 1 : 0)
+        : ((S32)mode_setting == 1 ? 1 : 0);
+    if (selected && runtime_it != mDirectorGazes.end() &&
+        runtime_it->second.mMode != requested_mode)
     {
         // Mode changes are a hard ownership handoff: restore the prior paint and
         // stop any locally owned turn before seeding the newly selected mode.
         clearDirectorLookAtRuntime(av->getID());
-    }
-    if (mode == 1 && av->isSitting())
-    {
-        // A seated root is slaved to its seat, including intentional pitch and
-        // roll. Release any prior body-turn paint/animation and leave it alone.
-        clearDirectorLookAtRuntime(av->getID());
-        return true;
-    }
-    if (mode == 1)
-    {
-        DirectorGaze& runtime = mDirectorGazes[av->getID()];
-        runtime.mMode = 1;
-        return applyDirectorBodyTurn(av, runtime);
+        runtime_it = mDirectorGazes.end();
     }
 
-    DirectorGaze& runtime = mDirectorGazes[av->getID()];
+    DirectorGaze& runtime = selected
+        ? mDirectorGazes[av->getID()] : runtime_it->second;
+    if (selected)
+    {
+        runtime.mMode = requested_mode;
+    }
     Gaze& gaze = runtime.mGaze;
-    gaze.mEnabled = true;
-    gaze.mTarget = GAZE_CAMERA;
-    gaze.mHeadEyeBlend = llclamp((F32)head_eye, 0.f, 1.f);
-    gaze.mTorsoAmount = add_torso
-        ? llclamp((F32)torso_amount, 0.f, 1.f) : 0.f;
-    runtime.mTargetStrength = llclamp((F32)strength, 0.f, 1.f);
+
+    // Preset transition (DirectorGazeTransitionSec): this Director path is
+    // taken INSTEAD of applyGaze() for camera-facing cast actors, so the
+    // per-actor blend must tick here too or a preset change would snap and
+    // the transition would never advance. The helper's own once-per-frame
+    // guard makes this safe alongside applyGaze() (whichever runs first in a
+    // frame wins); inactive transitions make this a pure no-op.
+    auto transition_it = mGazes.find(av->getID());
+    if (transition_it != mGazes.end())
+    {
+        advanceGazeParamTransition(transition_it->second);
+    }
+
+    LLActorMover::GazeTarget configured_target = runtime.mLastTarget;
+    const F64 presentation_time =
+        LLPresentationTime::currentFrame().presentation_time;
+    const U64 seed = ALGazeMath::castSeedFromUUID(av->getID());
+    bool cue_override = false;
+    if (selected)
+    {
+        const LLActorMover::GazeTarget live_target =
+            cast.getGazeTarget(av->getID());
+        configured_target = live_target;
+
+        // SAFETY INVARIANT: do not even evaluate the cue path for an empty
+        // list. The configured live GazeTarget and all legacy acquisition
+        // behavior below remain the sole source of aim in that case.
+        const LLDirectorCast::GazeCueList& cues =
+            cast.getGazeCues(av->getID());
+        if (!cues.empty())
+        {
+            const LLDirectorCast::GazeCueEvaluation cue =
+                LLDirectorCast::evaluateGazeCues(
+                    cues, seed, presentation_time);
+            if (cue.mHasOverride)
+            {
+                cue_override = true;
+                configured_target = cue.mEffectiveTarget;
+                if (!configured_target.mPersonaOverride)
+                {
+                    configured_target.mPersonaDominance =
+                        live_target.mPersonaDominance;
+                    configured_target.mPersonaAffection =
+                        live_target.mPersonaAffection;
+                    configured_target.mPersonaAnxiety =
+                        live_target.mPersonaAnxiety;
+                }
+                runtime.mCueOverride = true;
+                runtime.mCueFromBaseTarget = cue.mHasFromBaseTarget
+                    ? cue.mFromBaseTarget : live_target;
+                runtime.mCueFromTarget = cue.mHasFromTarget
+                    ? cue.mFromTarget : live_target;
+                runtime.mCueFromTargetBlend = cue.mHasFromTarget
+                    ? cue.mFromTargetBlend : 1.f;
+                runtime.mCueTargetBlend = cue.mTargetBlend;
+                runtime.mCueEyeWeight = cue.mEyeWeight;
+                runtime.mCueHeadWeight = cue.mHeadWeight;
+                runtime.mCueBodyWeight = cue.mBodyWeight;
+                runtime.mCueLidWiden = cue.mLidWiden;
+                runtime.mCueHeadRecoilPitch = cue.mHeadRecoilPitch;
+            }
+        }
+        if (!cue_override)
+        {
+            runtime.mCueOverride = false;
+            runtime.mCueFromTargetBlend = 1.f;
+            runtime.mCueTargetBlend = 1.f;
+            runtime.mCueEyeWeight = 1.f;
+            runtime.mCueHeadWeight = 1.f;
+            runtime.mCueBodyWeight = 1.f;
+            runtime.mCueLidWiden = 0.f;
+            runtime.mCueHeadRecoilPitch = 0.f;
+        }
+        // A running preset transition owns the continuous fields the authored
+        // target sets: consume the current blended concrete values instead of
+        // the authored endpoint, so Director-driven actors ease preset
+        // changes exactly like the applyGaze() path. Cue overrides keep full
+        // ownership of the aim (the transition still advanced above, so it
+        // lands on schedule underneath the cue).
+        if (!cue_override && transition_it != mGazes.end() &&
+            transition_it->second.mParamTransition.mActive)
+        {
+            overlayGazeTransition(transition_it->second, configured_target);
+        }
+        gaze.mTarget = llclamp(
+            static_cast<S32>(configured_target.mMode),
+            (S32)GAZE_TANGENT, (S32)GAZE_OBJECT);
+        gaze.mCastTarget = configured_target.mCastRef;
+        gaze.mPoint = configured_target.mFixedPoint;
+        gaze.mObjectTarget = configured_target.mObjectRef;
+        gaze.mPersonaDominance = configured_target.mPersonaDominance;
+        gaze.mPersonaAffection = configured_target.mPersonaAffection;
+        gaze.mPersonaAnxiety = configured_target.mPersonaAnxiety;
+        gaze.mHeadEyeBlendOverride = configured_target.mHeadEyeBlendOverride;
+        gaze.mTorsoAmountOverride = configured_target.mTorsoAmountOverride;
+        gaze.mIntensityOverride = configured_target.mIntensityOverride;
+        gaze.mSmoothingOverride = configured_target.mSmoothingOverride;
+        gaze.mEyelineOverride = configured_target.mEyelineOverride;
+        gaze.mEyelineYawDegOverride = configured_target.mEyelineYawDegOverride;
+        gaze.mEyelinePitchDegOverride = configured_target.mEyelinePitchDegOverride;
+        gaze.mMicroLifeOverride = configured_target.mMicroLifeOverride;
+        gaze.mBlinksOverride = configured_target.mBlinksOverride;
+        gaze.mVariationOverride = configured_target.mVariationOverride;
+        gaze.mBreakFrequencyOverride = configured_target.mBreakFrequencyOverride;
+        gaze.mEaseAcquireOverride = configured_target.mEaseAcquireOverride;
+        gaze.mEaseReleaseOverride = configured_target.mEaseReleaseOverride;
+        gaze.mDeadZoneDegOverride = configured_target.mDeadZoneDegOverride;
+        gaze.mBlinkRateScale = configured_target.mBlinkRateScale;
+        gaze.mVergenceScale = configured_target.mVergenceScale;
+        gaze.mCameraRollOverride = configured_target.mCameraRollOverride;
+        gaze.mExaggerateOverride = configured_target.mExaggerateOverride;
+        gaze.mGazePriorityOverride = configured_target.mGazePriorityOverride;
+        gaze.mAnimPriorityOverride = configured_target.mAnimPriorityOverride;
+        gaze.mCompositionOverride = configured_target.mCompositionOverride;
+        gaze.mCompositionMixOverride = configured_target.mCompositionMixOverride;
+        gaze.mChestShareOverride = configured_target.mChestShareOverride;
+        gaze.mLimitProfileModeOverride = configured_target.mLimitProfileModeOverride;
+        gaze.mLimitProfile = configured_target.mLimitProfile;
+        gaze.mLeanCurveOverride = configured_target.mLeanCurveOverride;
+        gaze.mLeanThresholdDegOverride = configured_target.mLeanThresholdDegOverride;
+        gaze.mLeanSoftnessDegOverride = configured_target.mLeanSoftnessDegOverride;
+        gaze.mLeanMaxDegOverride = configured_target.mLeanMaxDegOverride;
+    }
+
+    static LLCachedControl<F32> gaze_microlife(
+        gSavedSettings, "DirectorGazeMicroLife", 0.4f);
+    static LLCachedControl<bool> gaze_blinks(
+        gSavedSettings, "DirectorGazeBlinks", true);
+    static LLCachedControl<F32> gaze_react_min(
+        gSavedSettings, "DirectorGazeReactionMin", 0.1f);
+    static LLCachedControl<F32> gaze_react_max(
+        gSavedSettings, "DirectorGazeReactionMax", 0.6f);
+    static LLCachedControl<F32> gaze_break_freq(
+        gSavedSettings, "DirectorGazeBreakFrequency", 0.3f);
+    static LLCachedControl<F32> gaze_body_turn_thresh(
+        gSavedSettings, "DirectorGazeBodyTurnThresholdDeg", 90.f);
+    static LLCachedControl<F32> gaze_ease_acquire(
+        gSavedSettings, "DirectorGazeEaseAcquireSec", 0.25f);
+    static LLCachedControl<F32> gaze_ease_release(
+        gSavedSettings, "DirectorGazeEaseReleaseSec", 0.60f);
+    static LLCachedControl<F32> gaze_variation(
+        gSavedSettings, "DirectorGazeVariation", 0.3f);
+    static LLCachedControl<F32> gaze_lid_follow(
+        gSavedSettings, "DirectorGazeLidFollow", 0.6f);
+
+    ALGazeMath::GazeLifeParams in_params;
+    in_params.mMicroLife = gaze.mMicroLifeOverride >= 0.f
+        ? llclamp(gaze.mMicroLifeOverride, 0.f, 1.f)
+        : (F32)gaze_microlife;
+    in_params.mBlinks = gaze.mBlinksOverride >= 0
+        ? gaze.mBlinksOverride != 0 : (bool)gaze_blinks;
+    in_params.mBlinkRate = llmax(gaze.mBlinkRateScale, 0.f);
+    in_params.mReactionMin = (F32)gaze_react_min;
+    in_params.mReactionMax = (F32)gaze_react_max;
+    in_params.mBreakFrequency = gaze.mBreakFrequencyOverride >= 0.f
+        ? llclamp(gaze.mBreakFrequencyOverride, 0.f, 1.f)
+        : (F32)gaze_break_freq;
+    in_params.mBodyTurnThresholdDeg = (F32)gaze_body_turn_thresh;
+    in_params.mEaseAcquireSec = gaze.mEaseAcquireOverride >= 0.f
+        ? gaze.mEaseAcquireOverride : (F32)gaze_ease_acquire;
+    in_params.mEaseReleaseSec = gaze.mEaseReleaseOverride >= 0.f
+        ? gaze.mEaseReleaseOverride : (F32)gaze_ease_release;
+    in_params.mVariation = gaze.mVariationOverride >= 0.f
+        ? llclamp(gaze.mVariationOverride, 0.f, 1.f)
+        : (F32)gaze_variation;
+
+    ALGazeMath::GazePersona persona;
+    persona.mDominance = gaze.mPersonaDominance;
+    persona.mAffection = gaze.mPersonaAffection;
+    persona.mAnxiety = gaze.mPersonaAnxiety;
+    const ALGazeMath::PersonaModulation persona_mod =
+        ALGazeMath::mapPersona(persona);
+    ALGazeMath::GazeLifeParams persona_params;
+    ALGazeMath::applyPersona(persona_mod, in_params, persona_params);
+
+    ALGazeMath::GazeLifeParams params;
+    F32 intensity_scale = 1.f;
+    F32 smoothing_scale = 1.f;
+    ALGazeMath::applySubjectVariation(
+        seed, persona_params.mVariation, persona_params,
+        params, intensity_scale, smoothing_scale);
+
+    // The legacy single Ease slider remains the operator-facing master scale.
+    // Its historical default (0.15) maps to 1x for the asymmetric authored pair.
+    const F32 ease_scale = llmax((F32)ease_time_setting, 0.f) / 0.15f;
+    params.mEaseAcquireSec *= ease_scale;
+    params.mEaseReleaseSec *= ease_scale;
+
+    gaze.mHeadEyeBlend = gaze.mHeadEyeBlendOverride >= 0.f
+        ? llclamp(gaze.mHeadEyeBlendOverride, 0.f, 1.f)
+        : llclamp((F32)head_eye, 0.f, 1.f);
+    gaze.mTorsoAmount = gaze.mTorsoAmountOverride >= 0.f
+        ? llclamp(gaze.mTorsoAmountOverride, 0.f, 1.f)
+        : (add_torso ? llclamp((F32)torso_amount, 0.f, 1.f) : 0.f);
+    gaze.mEyelineYawDeg = gaze.mEyelineOverride
+        ? llclamp(gaze.mEyelineYawDegOverride, -15.f, 15.f) : 0.f;
+    gaze.mEyelinePitchDeg = gaze.mEyelineOverride
+        ? llclamp(gaze.mEyelinePitchDegOverride, -10.f, 10.f) : 0.f;
+    runtime.mTargetStrength = gaze.mIntensityOverride >= 0.f
+        ? llclamp(gaze.mIntensityOverride, 0.f, 1.f)
+        : llclamp((F32)strength, 0.f, 1.f);
     if (!runtime.mStrengthValid)
     {
         // Activation is already weighted by the zero-seeded envelope. Seed the
@@ -3498,8 +6708,72 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         gaze.mIntensity = runtime.mTargetStrength;
         runtime.mStrengthValid = true;
     }
-    gaze.mSmoothing = llclamp((F32)smoothing, 0.f, 1.f);
-    const F32 ease_time = llclamp((F32)ease_time_setting, 0.f, 1.f);
+    gaze.mSmoothing = gaze.mSmoothingOverride >= 0.f
+        ? llclamp(gaze.mSmoothingOverride, 0.f, 1.f)
+        : llclamp((F32)smoothing, 0.f, 1.f);
+
+    bool reaction_ready = false;
+    if (selected)
+    {
+        if (cue_override || LLPresentationTime::currentFrame().active())
+        {
+            // Cue envelopes own acquisition/release timing. A presentation
+            // timeline also bypasses the live reaction latch: seeking directly
+            // to a sample must match replaying to it. Stateful reaction latency
+            // remains a live-mode performance detail only.
+            reaction_ready = true;
+            runtime.mReactionPending = false;
+            runtime.mAcquisitionValid = true;
+            runtime.mLastTarget = configured_target;
+            runtime.mWasSelected = true;
+        }
+        else
+        {
+            bool gate_active = false;
+            U64 gate_cut_serial = 0;
+            if (configured_target.mMode == LLActorMover::GazeTarget::CAMERA)
+            {
+                LLVector3 ignored_eye;
+                gate_active = LLPrismLens::gateOnAirCameraEye(
+                    ignored_eye, &gate_cut_serial);
+            }
+
+            const bool target_changed = !runtime.mAcquisitionValid ||
+                !sameGazeTarget(configured_target, runtime.mLastTarget);
+            const bool gate_changed = runtime.mAcquisitionValid &&
+                configured_target.mMode == LLActorMover::GazeTarget::CAMERA &&
+                (gate_active != runtime.mLastGateActive ||
+                 gate_cut_serial != runtime.mLastGateCutSerial);
+            if (!runtime.mWasSelected || target_changed || gate_changed)
+            {
+                runtime.mAcquireStartPresentation = presentation_time;
+                runtime.mReactionDelay = ALGazeMath::evalReactionDelay(
+                    seed, params.mReactionMin, params.mReactionMax);
+                runtime.mReactionPending = true;
+                runtime.mAcquisitionValid = true;
+            }
+            runtime.mLastTarget = configured_target;
+            runtime.mLastGateActive = gate_active;
+            runtime.mLastGateCutSerial = gate_cut_serial;
+            runtime.mWasSelected = true;
+
+            const F64 elapsed = llmax(
+                presentation_time - runtime.mAcquireStartPresentation, 0.0);
+            reaction_ready = !runtime.mReactionPending ||
+                elapsed >= static_cast<F64>(runtime.mReactionDelay);
+            if (reaction_ready)
+            {
+                runtime.mReactionPending = false;
+            }
+        }
+    }
+    else
+    {
+        runtime.mWasSelected = false;
+    }
+    // During reaction latency, retain the old smoothed direction (on a cut) or
+    // the animation pose (fresh acquisition). Breaks are suppressed below.
+    gaze.mEnabled = selected && reaction_ready;
 
     const U32 frame = LLFrameTimer::getFrameCount();
     const bool advance = gaze.mLastFrame != frame;
@@ -3510,26 +6784,265 @@ bool LLActorMover::applyDirectorLookAt(LLVOAvatar* av)
         dt = LLPresentationTime::drives(LLTemporalFeature::ANIMATION)
             ? llclamp(LLPresentationTime::presentationDelta(), 0.f, 0.25f)
             : llclamp(gFrameIntervalSeconds.value(), 0.f, 0.25f);
-        const F32 env_step =
-            (ease_time > 0.f) ? dt / ease_time : 1.f;
-        gaze.mEnv = llclamp(gaze.mEnv + env_step, 0.f, 1.f);
-        const F32 strength_alpha =
-            1.f - expf(-dt / llmax(ease_time, 0.01f));
-        gaze.mIntensity +=
-            (runtime.mTargetStrength - gaze.mIntensity) * strength_alpha;
+        if (!selected || reaction_ready)
+        {
+            gaze.mEnv = ALGazeMath::asymmetricEnvStep(
+                gaze.mEnv, selected, dt,
+                params.mEaseAcquireSec, params.mEaseReleaseSec);
+        }
+        if (selected && reaction_ready)
+        {
+            const F32 strength_alpha =
+                1.f - expf(-dt / llmax(params.mEaseAcquireSec, 0.01f));
+            gaze.mIntensity +=
+                (runtime.mTargetStrength - gaze.mIntensity) * strength_alpha;
+        }
+    }
+
+    if (!selected && gaze.mEnv <= 0.001f)
+    {
+        clearDirectorLookAtRuntime(av->getID());
+        return false;
+    }
+
+    // Releasing (actor deselected, or master toggled off): tear down any
+    // locally owned body turn so a mode-1 actor does not keep root-rotating --
+    // or START a new turn -- part-way through the ease-out, which would leave
+    // the root mid-swing and snap when the captured pose is restored at
+    // env<=0.001. Idempotent; only fires while releasing. Mirrors the seated
+    // guard just below (which also covers the still-selected seated case).
+    if (!selected && runtime.mBodyTurnActive)
+    {
+        stopDirectorTurnAnimation(av, runtime);
+        runtime.mBodyTurnActive = false;
+        runtime.mBodyYawValid = false;
+        runtime.mTurnPendingDirection = 0;
+        runtime.mTurnPendingSeconds = 0.f;
+        runtime.mTurnStopSeconds = 0.f;
+        runtime.mTurnRestartDelay = 0.f;
+    }
+
+    if (runtime.mMode == 1 && av->isSitting() && runtime.mBodyTurnActive)
+    {
+        // Never rotate a seated root; keep upper-body gaze and relinquish any
+        // locally owned turn animation immediately.
+        stopDirectorTurnAnimation(av, runtime);
+        runtime.mBodyTurnActive = false;
+        runtime.mBodyYawValid = false;
+        runtime.mTurnPendingDirection = 0;
+        runtime.mTurnPendingSeconds = 0.f;
+        runtime.mTurnStopSeconds = 0.f;
+        runtime.mTurnRestartDelay = 0.f;
     }
 
     if (!gaze.mDirValid)
     {
         gaze.mDirValid = currentAnimatedGazeDirection(av, gaze.mSmoothDir);
     }
-    captureDirectorLookAtPose(av, runtime);
-    gazePaint(av, gaze, nullptr, dt, advance, true);
+    captureDirectorLookAtPose(
+        av, runtime, params.mBlinks || (F32)gaze_lid_follow > 0.001f ||
+        persona_mod.mLidNarrow > 0.001f ||
+        (runtime.mCueOverride && runtime.mCueLidWiden > 0.001f));
+    LLActorMover::GazeTarget eye_target;
+    const LLActorMover::GazeTarget* eye_target_ptr = nullptr;
+    if (cast.hasEyeGazeTarget(av->getID()))
+    {
+        eye_target = cast.getEyeGazeTarget(av->getID());
+        eye_target_ptr = &eye_target;
+    }
+    // [Machinima] Goal 3b: evaluate the keyframed influence lane on the SAME
+    // presentation clock the cues use. Empty track -> exactly 1 -> gazePaint
+    // takes its legacy env path (byte-identical).
+    const F32 timeline_influence = LLDirectorCast::evaluateGazeInfluence(
+        cast.getGazeInfluenceKeys(av->getID()), presentation_time);
+    gazePaint(
+        av, gaze, nullptr, dt, advance, true,
+        selected && reaction_ready, &runtime,
+        params.mBodyTurnThresholdDeg, eye_target_ptr, timeline_influence);
     return true;
 }
 
+// Near-lens ("just off camera") living off-lens eye offset. The eyes aim at the
+// camera/head direction but sit ~near_deg degrees off the lens, in a direction
+// that drifts slowly and DETERMINISTICALLY from the per-actor seed plus
+// presentation time -- a very low-frequency wander so the eyes hover just off
+// contact and slowly shift which side. Being a pure function of (seed, t) it is
+// scrub-stable, and it reuses ALGazeMath::eyelineOffsetDir exactly like the
+// eyeline / natural-break offsets. Returns the input unchanged when the offset
+// is negligible (near_deg ~ 0), so DirectorGazeNearLensDeg = 0 is a no-op.
+static LLVector3 nearLensOffsetDir(const LLVector3& gaze_dir,
+                                   const LLVector3& up_axis,
+                                   U64 seed, F64 t_sec, F32 near_deg)
+{
+    const F32 deg = llclamp(near_deg, 0.f, 10.f);
+    if (deg <= 1e-4f)
+    {
+        return gaze_dir;
+    }
+    // Per-actor phase so two actors never drift in lockstep.
+    const F32 phase = ALGazeNoise::unitHash(seed, 40u, 0, 0, 0) * (2.f * F_PI);
+    // The offset DIRECTION rotates slowly around the lens (~40 s per turn) with
+    // a gentle secondary wobble, so which side the eyes favour keeps shifting.
+    const F32 ang = phase + static_cast<F32>(t_sec * 0.16) +
+        0.5f * sinf(static_cast<F32>(t_sec * 0.07) + phase);
+    // Gentle amplitude "breathing" within [0.7,1.0]*near_deg keeps it alive
+    // without ever exceeding the configured off-lens angle.
+    const F32 amp = deg * (0.85f + 0.15f *
+        sinf(static_cast<F32>(t_sec * 0.11) + phase * 1.7f));
+    const F32 off_yaw = amp * DEG_TO_RAD * cosf(ang);
+    const F32 off_pitch = amp * DEG_TO_RAD * sinf(ang);
+    return ALGazeMath::eyelineOffsetDir(gaze_dir, up_axis, off_yaw, off_pitch);
+}
+
+// [Machinima] behind-shoulder / no-snap ------------------------------------
+// A neck cannot pass through the back: when the gaze target crosses the
+// +-180 seam behind the actor, the wrapped (llsimple_angle) short way flips
+// sign, and with it the anatomical chain's whole saturated allocation from
+// one shoulder to the other in a single frame -- the visible head snap.
+// This resolver turns the raw (wrapped) chain-feed yaw into a physically
+// reachable one:
+//   - while |raw| stays within the chain's yaw reach the raw value passes
+//     through UNTOUCHED, bit-for-bit (front-only tracking is unchanged);
+//   - once the target exceeds reach the current shoulder is committed;
+//     hovering at the dead-behind seam HOLDS that shoulder's limit (any
+//     |feed| >= reach saturates the chain identically, so the hold itself
+//     is pose-invisible);
+//   - when the target moves clearly past the seam onto the other side, the
+//     feed SWEEPS to the other shoulder through the FRONT (a plain,
+//     unwrapped delta: both endpoints live inside +-pi, so the plain
+//     difference IS the front path; llsimple_angle would take the
+//     unreachable through-the-back shortcut), rate-limited by max_step
+//     (head_slew_rate_deg * dt), then hands back to pass-through.
+// Hysteresis: the shoulder commit releases a band INSIDE reach, and the
+// shoulder flip requires the target a band PAST the seam, so neither edge
+// can chatter; a sweep in flight only reverses when the target crosses back
+// past the same seam band. Pitch never wraps (the chain clamps it inside
+// +-100 deg), so yaw is the only channel needing this. Reach is capped just
+// below pi so the seam stays guarded even when anatomy exaggeration pushes
+// the nominal capacity sum past 180 degrees.
+static F32 resolveBehindShoulderChainYaw(
+    F32 raw_yaw, F32 reach_yaw, F32 max_step, bool advance,
+    bool& io_valid, F32& io_chain_yaw, F32& io_shoulder_sign,
+    bool& io_sweeping)
+{
+    constexpr F32 REACH_HYST = 3.f * DEG_TO_RAD; // commit release band
+    constexpr F32 SEAM_HYST  = 3.f * DEG_TO_RAD; // shoulder-flip band
+    const F32 reach = llclamp(reach_yaw, 0.f, F_PI - 5.f * DEG_TO_RAD);
+
+    if (!io_valid)
+    {
+        // Activation seeds on today's raw value (the same place the
+        // mAppliedValid seed happens): the first frame's output is exactly
+        // the raw feed, with the shoulder pre-committed when the target is
+        // already beyond reach so a later seam crossing is recognized.
+        io_chain_yaw = raw_yaw;
+        io_shoulder_sign = fabsf(raw_yaw) > reach
+            ? (raw_yaw >= 0.f ? 1.f : -1.f) : 0.f;
+        io_sweeping = false;
+        io_valid = true;
+        return io_chain_yaw;
+    }
+    if (!advance)
+    {
+        // Same-frame repaint: never re-step the state machine.
+        return io_chain_yaw;
+    }
+
+    if (io_shoulder_sign == 0.f)
+    {
+        // In-reach tracking: pure pass-through (bit-identical to the raw
+        // feed). Arm the shoulder commit the moment the target exceeds
+        // reach so a later seam crossing is recognized as such.
+        if (fabsf(raw_yaw) > reach)
+        {
+            io_shoulder_sign = raw_yaw >= 0.f ? 1.f : -1.f;
+        }
+        io_chain_yaw = raw_yaw;
+        return io_chain_yaw;
+    }
+
+    const F32 s = io_shoulder_sign;
+    if (raw_yaw * s < 0.f)   // exact zero counts as the committed side
+    {
+        // Target on the opposite side of the committed shoulder: it crossed
+        // the +-180 seam behind the actor (or, for a discontinuous feed,
+        // jumped there). Distance past the seam gates the flip.
+        const F32 past_seam = F_PI - fabsf(raw_yaw);
+        if (past_seam > SEAM_HYST)
+        {
+            // Clearly past dead-behind: (re)commit to the target's shoulder
+            // and sweep through the front. Parking the feed inside +-reach
+            // first is pose-identical under saturation, so the visible sweep
+            // starts exactly at the old limit with no hidden catch-up.
+            if (!io_sweeping)
+            {
+                io_chain_yaw = llclamp(io_chain_yaw, -reach, reach);
+                io_sweeping = true;
+            }
+            io_shoulder_sign = -s;
+        }
+        else if (!io_sweeping)
+        {
+            // Hovering at the seam: hold the committed shoulder's limit
+            // (pose-identical to the raw feed's saturated pose). Real-neck
+            // behavior: pinned on the shoulder while the target is behind.
+            io_chain_yaw = s * reach;
+            return io_chain_yaw;
+        }
+        // else: wobbling near the seam mid-sweep -- keep the sweep goal on
+        // the currently committed side below (no flip inside the band).
+    }
+
+    if (!io_sweeping)
+    {
+        // Same-side tracking while armed: pass-through (bit-identical);
+        // release the commit once safely back inside reach.
+        if (fabsf(raw_yaw) < reach - REACH_HYST)
+        {
+            io_shoulder_sign = 0.f;
+        }
+        io_chain_yaw = raw_yaw;
+        return io_chain_yaw;
+    }
+
+    // Sweep: chase the reachable image of the target -- the target itself
+    // when inside reach, else the committed shoulder's limit -- with a PLAIN
+    // (unwrapped) delta, which is exactly the through-the-front path.
+    const F32 cs = io_shoulder_sign;   // side being swept toward
+    const F32 goal = (raw_yaw * cs >= 0.f)
+        ? cs * llmin(fabsf(raw_yaw), reach)
+        : cs * reach;   // target back across the seam band: keep heading
+    const F32 step = llmax(max_step, 0.f);
+    io_chain_yaw += llclamp(goal - io_chain_yaw, -step, step);
+    if (fabsf(goal - io_chain_yaw) <= 1e-5f)
+    {
+        io_chain_yaw = goal;
+        if (raw_yaw * cs >= 0.f)
+        {
+            // Arrived on the target's side: hand back to pass-through. If
+            // the target is still beyond reach we stay parked at the limit
+            // this frame; next frame's same-side pass-through resumes the
+            // raw feed, which saturation renders identically.
+            io_sweeping = false;
+            if (fabsf(raw_yaw) <= reach)
+            {
+                io_chain_yaw = raw_yaw;   // exact rejoin
+                if (fabsf(raw_yaw) < reach - REACH_HYST)
+                {
+                    io_shoulder_sign = 0.f;
+                }
+            }
+        }
+    }
+    return io_chain_yaw;
+}
+
 void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bool advance,
-                            bool constrain_eye_cone)
+                            bool constrain_eye_cone, bool allow_natural_break,
+                            DirectorGaze* director_runtime,
+                            F32 body_turn_threshold_deg,
+                            const GazeTarget* eye_target,
+                            F32 timeline_influence)
 {
     LLJoint* head = av->getJoint("mHead");
     LLJoint* root = av->getJoint("mRoot");
@@ -3538,14 +7051,83 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         return;                 // no head/root to drive (animesh without them)
     }
 
+    // [Machinima] Goal 2 (phase 5): resolve the gaze pose COMPOSITION once.
+    // Per-actor override wins (>= 0); -1 inherits the global. Default Replace
+    // (0) must stay byte-identical: every joint-write branch below enters the
+    // verbatim pre-existing statements under GAZE_COMPOSE_REPLACE, and the
+    // animation snapshot below is gated on composition != Replace so the
+    // default path takes no new per-frame quaternion work.
+    static LLCachedControl<S32> gaze_composition_global(
+        gSavedSettings, "DirectorGazeComposition", 0);
+    static LLCachedControl<F32> gaze_composition_mix_global(
+        gSavedSettings, "DirectorGazeCompositionMix", 0.5f);
+    const S32 composition = g.mCompositionOverride >= 0
+        ? llclamp(g.mCompositionOverride,
+                  (S32)GAZE_COMPOSE_REPLACE, (S32)GAZE_COMPOSE_BLEND)
+        : llclamp((S32)gaze_composition_global,
+                  (S32)GAZE_COMPOSE_REPLACE, (S32)GAZE_COMPOSE_BLEND);
+    const F32 composition_mix = llclamp(
+        g.mCompositionMixOverride >= 0.f
+            ? g.mCompositionMixOverride
+            : (F32)gaze_composition_mix_global,
+        0.f, 1.f);
+
+    // [Machinima] Goal 2: frame-local ANIMATION pose snapshot, captured at the
+    // very top of gazePaint BEFORE any gaze write. Gaze runs post-animation,
+    // so these local/world rotations ARE this frame's animation pose -- the
+    // additive base for both the Director and standalone Actor Mover paths
+    // (Director's own capture elsewhere is for restoration, not composition).
+    struct GazeAnimSnap
+    {
+        S32 mCount = 0;
+        LLJoint* mJoint[9] = {};
+        LLQuaternion mLocal[9];
+        LLQuaternion mWorld[9];
+        void capture(LLJoint* j)
+        {
+            if (j && mCount < 9)
+            {
+                mJoint[mCount] = j;
+                mLocal[mCount] = j->getRotation();
+                mWorld[mCount] = j->getWorldRotation();
+                ++mCount;
+            }
+        }
+        // Defensive fallback only; every joint written below was captured.
+        LLQuaternion local(LLJoint* j) const
+        {
+            for (S32 i = 0; i < mCount; ++i)
+            {
+                if (mJoint[i] == j)
+                {
+                    return mLocal[i];
+                }
+            }
+            return j->getRotation();
+        }
+    };
+    GazeAnimSnap anim_snap;
+    if (composition != GAZE_COMPOSE_REPLACE)
+    {
+        anim_snap.capture(av->getJoint("mPelvis"));
+        anim_snap.capture(av->getJoint("mTorso"));
+        anim_snap.capture(av->getJoint("mChest"));
+        anim_snap.capture(av->getJoint("mNeck"));
+        anim_snap.capture(head);
+        anim_snap.capture(av->getJoint("mEyeLeft"));
+        anim_snap.capture(av->getJoint("mEyeRight"));
+        anim_snap.capture(av->getJoint("mFaceEyeAltLeft"));
+        anim_snap.capture(av->getJoint("mFaceEyeAltRight"));
+    }
+
     // Aim from the head where it is actually rendered.  Ghost scale is an
     // outer draw transform and is intentionally absent from joint world data.
     const LLVector3 headPos = gazeRenderedJointPosition(av, head);
+    const LLQuaternion rootWorld = root->getWorldRotation();
 
     // ---- resolve the LIVE desired look direction (world / agent frame) --------
     // A direction along the current travel (path tangent, look-ahead) is the
-    // default; camera / cast / point resolve to a world point instead. An
-    // unresolvable cast target or a too-close point falls back to the tangent.
+    // default; camera / cast / point / object resolve to a world point instead.
     auto tangentDir = [&]() -> LLVector3
     {
         if (mv && mv->mIsPath)
@@ -3565,8 +7147,250 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         return mv ? (LLVector3(1.f, 0.f, 0.f) * mv->mCurRot) : LLVector3(1.f, 0.f, 0.f);
     };
 
+    // Shared point resolver for a cue's FROM side and the optional eyes-only
+    // target. The primary target continues through the pre-existing switch
+    // below unchanged. Split-eye resolution declines invalid targets so the
+    // eyes fall back to the primary aim instead of inventing a tangent target.
+    auto resolveTargetDirection = [&](const GazeTarget& from,
+                                      LLVector3& out_dir,
+                                      F32& out_distance,
+                                      bool fallback_to_tangent) -> bool
+    {
+        LLVector3 target(0.f, 0.f, 0.f);
+        bool use_point = false;
+        switch (from.mMode)
+        {
+            case GazeTarget::CAMERA:
+            {
+                LLVector3 gate_eye;
+                target = LLPrismLens::gateOnAirCameraEye(gate_eye)
+                    ? gate_eye : LLViewerCamera::getInstance()->getOrigin();
+                use_point = true;
+                break;
+            }
+            case GazeTarget::FIXED_POINT:
+                if (!from.mFixedPoint.isExactlyZero())
+                {
+                    target = gAgent.getPosAgentFromGlobal(from.mFixedPoint);
+                    use_point = true;
+                }
+                break;
+            case GazeTarget::CAST_MEMBER:
+            {
+                LLVOAvatar* tgt =
+                    (from.mCastRef.notNull() && from.mCastRef != av->getID())
+                    ? LLDirectorCast::instance().resolve(from.mCastRef) : nullptr;
+                if (tgt)
+                {
+                    if (LLJoint* target_head = tgt->getJoint("mHead"))
+                    {
+                        target = gazeRenderedJointPosition(tgt, target_head);
+                        use_point = true;
+                    }
+                }
+                break;
+            }
+            case GazeTarget::OBJECT:
+                use_point = from.mObjectRef.notNull() &&
+                    resolveGazeObjectCenter(from.mObjectRef, target);
+                break;
+            case GazeTarget::MOTION:
+            default:
+                break;
+        }
+
+        if (!use_point && !fallback_to_tangent)
+        {
+            return false;
+        }
+        out_distance = 0.f;
+        out_dir = use_point ? target - headPos : tangentDir();
+        if (use_point)
+        {
+            out_distance = out_dir.magVec();
+            if (out_dir.magVecSquared() < GAZE_MIN_DIST * GAZE_MIN_DIST)
+            {
+                if (!fallback_to_tangent)
+                {
+                    return false;
+                }
+                out_dir = tangentDir();
+                out_distance = 0.f;
+            }
+        }
+        return out_dir.magVecSquared() > 1e-6f;
+    };
+
+    const U64 seed = ALGazeMath::castSeedFromUUID(av->getID());
+    const F64 t_sec = LLPresentationTime::currentFrame().presentation_time;
+
+    static LLCachedControl<F32> gaze_microlife(
+        gSavedSettings, "DirectorGazeMicroLife", 0.4f);
+    static LLCachedControl<bool> gaze_blinks(
+        gSavedSettings, "DirectorGazeBlinks", true);
+    static LLCachedControl<F32> gaze_break_freq(
+        gSavedSettings, "DirectorGazeBreakFrequency", 0.3f);
+    static LLCachedControl<F32> gaze_body_turn_thresh(
+        gSavedSettings, "DirectorGazeBodyTurnThresholdDeg", 90.f);
+    static LLCachedControl<F32> gaze_variation(
+        gSavedSettings, "DirectorGazeVariation", 0.3f);
+    static LLCachedControl<F32> gaze_camera_roll(
+        gSavedSettings, "DirectorGazeCameraRoll", 0.f);
+    static LLCachedControl<F32> gaze_exaggerate(
+        gSavedSettings, "DirectorGazeExaggerate", 1.f);
+
+    // Coordinated gaze motor programs (spec 2.6 / 6A). The master gate and its
+    // tunables are read here but only consumed on the gate-on branch below; the
+    // legacy path never touches them, so gate-off stays byte-identical.
+    static LLCachedControl<bool> gaze_motion_programs(
+        gSavedSettings, "DirectorGazeMotionPrograms", false);
+    static LLCachedControl<F32> gaze_mp_valence(
+        gSavedSettings, "DirectorGazeValence", 0.f);
+    static LLCachedControl<F32> gaze_mp_arousal(
+        gSavedSettings, "DirectorGazeArousal", 0.5f);
+    static LLCachedControl<F32> gaze_mp_dominance(
+        gSavedSettings, "DirectorGazeDominance", 0.f);
+    static LLCachedControl<F32> gaze_mp_soft_recruit(
+        gSavedSettings, "DirectorGazeSoftRecruitDeg", 0.f);
+    static LLCachedControl<F32> gaze_mp_comfort_yaw(
+        gSavedSettings, "DirectorGazeComfortYawDeg", 25.f);
+    static LLCachedControl<F32> gaze_mp_comfort_pitch(
+        gSavedSettings, "DirectorGazeComfortPitchDeg", 14.f);
+    static LLCachedControl<F32> gaze_mp_eye_dur_base(
+        gSavedSettings, "DirectorGazeEyeDurationBaseMs", 25.f);
+    static LLCachedControl<F32> gaze_mp_eye_dur_perdeg(
+        gSavedSettings, "DirectorGazeEyeDurationPerDegMs", 2.8f);
+    static LLCachedControl<F32> gaze_mp_head_latency(
+        gSavedSettings, "DirectorGazeHeadLatencyMs", 40.f);
+    static LLCachedControl<F32> gaze_mp_head_dur_base(
+        gSavedSettings, "DirectorGazeHeadDurationBaseMs", 150.f);
+
+    // Cinematic subtlety controls (spec: default 0 = byte-identical). Stillness
+    // freezes the head/neck/torso recruited contribution; Restraint globally
+    // dampens micro-life, blink rate, and head-turn magnitude; NearLensDeg is
+    // the living off-lens eye offset for the NEAR_LENS eye mode.
+    static LLCachedControl<F32> gaze_stillness(
+        gSavedSettings, "DirectorGazeStillness", 0.f);
+    static LLCachedControl<F32> gaze_restraint(
+        gSavedSettings, "DirectorGazeRestraint", 0.f);
+    static LLCachedControl<F32> gaze_near_lens_deg(
+        gSavedSettings, "DirectorGazeNearLensDeg", 3.f);
+    const F32 cine_stillness = llclamp((F32)gaze_stillness, 0.f, 1.f);
+    const F32 cine_restraint = llclamp((F32)gaze_restraint, 0.f, 1.f);
+
+    ALGazeMath::GazeLifeParams in_params;
+    in_params.mMicroLife = g.mMicroLifeOverride >= 0.f
+        ? llclamp(g.mMicroLifeOverride, 0.f, 1.f)
+        : (F32)gaze_microlife;
+    in_params.mBlinks = g.mBlinksOverride >= 0
+        ? g.mBlinksOverride != 0 : (bool)gaze_blinks;
+    in_params.mBlinkRate = llmax(g.mBlinkRateScale, 0.f);
+    in_params.mBreakFrequency = g.mBreakFrequencyOverride >= 0.f
+        ? llclamp(g.mBreakFrequencyOverride, 0.f, 1.f)
+        : (F32)gaze_break_freq;
+    in_params.mBodyTurnThresholdDeg = (F32)gaze_body_turn_thresh;
+    in_params.mVariation = g.mVariationOverride >= 0.f
+        ? llclamp(g.mVariationOverride, 0.f, 1.f)
+        : (F32)gaze_variation;
+
+    ALGazeMath::GazePersona persona;
+    persona.mDominance = g.mPersonaDominance;
+    persona.mAffection = g.mPersonaAffection;
+    persona.mAnxiety = g.mPersonaAnxiety;
+    const ALGazeMath::PersonaModulation persona_mod =
+        ALGazeMath::mapPersona(persona);
+    ALGazeMath::GazeLifeParams persona_params;
+    ALGazeMath::applyPersona(persona_mod, in_params, persona_params);
+
+    ALGazeMath::GazeLifeParams life_params;
+    F32 var_int = 1.f, var_sm = 1.f;
+    ALGazeMath::applySubjectVariation(
+        seed, persona_params.mVariation, persona_params,
+        life_params, var_int, var_sm);
+
+    // Cinematic Restraint (shared by BOTH the motor and legacy paths): scale
+    // DOWN the micro-life amplitude and blink rate for a subtler performance.
+    // life_params.mMicroLife feeds the motor's drift/microsaccade amplitudes
+    // (via micro_life below) AND the legacy evalMicroLife; life_params.mBlinkRate
+    // feeds the motor's blink scheduler (ms.mBlinkRate) AND the legacy blink
+    // lattice -- so scaling here dampens saccades/drift/blinks everywhere.
+    // Restraint 0 -> factors 1 -> byte-identical. (The head-turn MAGNITUDE side
+    // of Restraint is applied to the recruited/chain output further below.)
+    if (cine_restraint > 0.f)
+    {
+        life_params.mMicroLife *= (1.f - 0.85f * cine_restraint);
+        life_params.mBlinkRate = llmax(
+            life_params.mBlinkRate * (1.f - 0.6f * cine_restraint), 0.f);
+    }
+
+    const F32 effective_intensity = llclamp(g.mIntensity * var_int, 0.f, 1.f);
+    const F32 effective_smoothing = llclamp(
+        (g.mSmoothing + persona_mod.mSmoothingAdd) * var_sm, 0.f, 1.f);
+    const F32 effective_head_eye_blend = llclamp(
+        g.mHeadEyeBlend + persona_mod.mHeadEyeBlendAdd, 0.f, 1.f);
+    const F32 camera_roll_amount = llclamp(
+        g.mCameraRollOverride >= 0.f ? g.mCameraRollOverride
+                                     : (F32)gaze_camera_roll, 0.f, 1.f);
+    const F32 anatomy_scale = llclamp(
+        g.mExaggerateOverride >= 0.f ? g.mExaggerateOverride
+                                     : (F32)gaze_exaggerate, 1.f, 3.f);
+
+    // Coordinated gaze motor activation edge (spec 2.6). Detect the operator
+    // selecting a new gaze method -- or gaze (re)activating -- while the master
+    // gate stays ON, so the motor acquires the freshly selected target THIS
+    // frame instead of ramping in through the shared upstream smoothing
+    // (mSmoothDir + the dead-zone body-aim chase, tau up to 0.5 s each) and
+    // stalling on the retarget dwell. The generation is a cheap signature of
+    // the DISCRETE selection (mode + cast/object reference); continuous
+    // point/target motion is deliberately excluded so a moving target does not
+    // re-acquire every frame -- the motor's own dwell handles ordinary motion.
+    // motor_acquire can only be true on the gate-on path (it requires the gate
+    // to be enabled AND the motor to have run at least once), so every snap it
+    // guards below leaves the gate-off code byte-identical.
+    U32 gaze_target_gen = static_cast<U32>(g.mTarget) * 2654435761u;
+    gaze_target_gen ^= g.mCastTarget.getCRC32() + 0x9E3779B9u +
+        (gaze_target_gen << 6) + (gaze_target_gen >> 2);
+    gaze_target_gen ^= g.mObjectTarget.getCRC32() + 0x9E3779B9u +
+        (gaze_target_gen << 6) + (gaze_target_gen >> 2);
+    const bool motor_acquire = (bool)gaze_motion_programs &&
+        g.mGazeMotor.mHasTargetGen &&
+        g.mGazeMotor.mLastTargetGen != gaze_target_gen;
+
+    // The render camera and the gaze CAMERA target share this exact gate-first
+    // source selection. Camera roll is evaluated directly every frame; it has
+    // no history and therefore seeks/scrubs like the camera transform itself.
+    F32 camera_follow_roll = 0.f;
+    if (g.mTarget == GAZE_CAMERA && camera_roll_amount > 0.f)
+    {
+        LLVector3 ignored_eye;
+        LLQuaternion gate_rotation;
+        LLVector3 camera_forward;
+        LLVector3 camera_up;
+        if (LLPrismLens::gateOnAirCameraEye(
+                ignored_eye, nullptr, &gate_rotation))
+        {
+            camera_forward = LLVector3(0.f, 0.f, -1.f) * gate_rotation;
+            camera_up = LLVector3::y_axis * gate_rotation;
+        }
+        else
+        {
+            LLViewerCamera* camera = LLViewerCamera::getInstance();
+            camera_forward = camera->getAtAxis();
+            camera_up = camera->getUpAxis();
+        }
+
+        // Camera and actor face one another, so their forward/aim axes point in
+        // opposite directions. Negate conventional camera roll so matching the
+        // camera's up axis cocks the head in the intuitive screen direction.
+        camera_follow_roll = -ALGazeMath::cameraRollAboutForward(
+            camera_forward, camera_up) * camera_roll_amount;
+    }
+    const F32 camera_neck_roll =
+        camera_follow_roll * GAZE_CAMERA_ROLL_NECK_SHARE;
+
     LLVector3 dir(0.f, 0.f, 0.f);
     bool      haveDir = false;
+    F32       targetDistance = 0.f;
     if (g.mEnabled)
     {
         LLVector3 target(0.f, 0.f, 0.f);
@@ -3574,9 +7398,19 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         switch (g.mTarget)
         {
             case GAZE_CAMERA:
-                target   = LLViewerCamera::getInstance()->getOrigin();
+            {
+                LLVector3 gate_eye;
+                if (LLPrismLens::gateOnAirCameraEye(gate_eye))
+                {
+                    target = gate_eye;
+                }
+                else
+                {
+                    target = LLViewerCamera::getInstance()->getOrigin();
+                }
                 usePoint = true;
                 break;
+            }
             case GAZE_POINT:
                 if (!g.mPoint.isExactlyZero())
                 {
@@ -3601,6 +7435,12 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 }
                 break;
             }
+            case GAZE_OBJECT:
+            {
+                usePoint = g.mObjectTarget.notNull() &&
+                    resolveGazeObjectCenter(g.mObjectTarget, target);
+                break;
+            }
             case GAZE_TANGENT:
             default:
                 break;
@@ -3609,17 +7449,82 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         if (usePoint)
         {
             dir = target - headPos;
+            targetDistance = dir.magVec();
             if (dir.magVecSquared() < GAZE_MIN_DIST * GAZE_MIN_DIST)
             {
                 dir = tangentDir();     // target on top of the head -> fall back
+                targetDistance = 0.f;
             }
         }
         else
         {
             dir = tangentDir();
         }
+
+        if (director_runtime && director_runtime->mCueOverride)
+        {
+            LLVector3 from_dir;
+            F32 from_distance = 0.f;
+            if (resolveTargetDirection(
+                    director_runtime->mCueFromTarget,
+                    from_dir, from_distance, true) &&
+                dir.magVecSquared() > 1e-6f)
+            {
+                from_dir.normVec();
+                const LLVector3 from_target_dir = from_dir;
+                const F32 from_target_distance = from_distance;
+                if (director_runtime->mCueFromTargetBlend < 0.9999f ||
+                    director_runtime->mCueFromTargetBlend > 1.0001f)
+                {
+                    LLVector3 from_base_dir;
+                    F32 from_base_distance = 0.f;
+                    if (resolveTargetDirection(
+                            director_runtime->mCueFromBaseTarget,
+                            from_base_dir, from_base_distance, true))
+                    {
+                        from_base_dir.normVec();
+                        const F32 from_blend = llclamp(
+                            director_runtime->mCueFromTargetBlend, 0.f, 1.25f);
+                        from_dir = from_base_dir * (1.f - from_blend) +
+                            from_target_dir * from_blend;
+                        if (from_dir.magVecSquared() <= 1e-6f)
+                        {
+                            from_dir = from_blend >= 0.5f
+                                ? from_target_dir
+                                : from_base_dir;
+                        }
+                        from_dir.normVec();
+                        from_distance = from_base_distance +
+                            (from_target_distance - from_base_distance) *
+                            llclamp(from_blend, 0.f, 1.f);
+                    }
+                }
+                LLVector3 to_dir = dir;
+                to_dir.normVec();
+                const F32 cue_blend = llclamp(
+                    director_runtime->mCueTargetBlend, 0.f, 1.25f);
+                dir = from_dir * (1.f - cue_blend) + to_dir * cue_blend;
+                if (dir.magVecSquared() <= 1e-6f)
+                {
+                    dir = cue_blend >= 0.5f ? to_dir : from_dir;
+                }
+                targetDistance = from_distance +
+                    (targetDistance - from_distance) *
+                    llclamp(cue_blend, 0.f, 1.f);
+            }
+        }
         if (dir.magVecSquared() > 1e-6f)
         {
+            const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
+            const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
+            if (fabsf(eyeline_yaw) + fabsf(eyeline_pitch) > 1e-4f)
+            {
+                const LLVector3 up_axis = LLVector3(0.f, 0.f, 1.f) * rootWorld;
+                dir = ALGazeMath::eyelineOffsetDir(
+                    dir, up_axis, eyeline_yaw, eyeline_pitch);
+            }
+
+            // Natural breaks within range (§B3): glance away periodically
             dir.normVec();
             haveDir = true;
         }
@@ -3628,15 +7533,20 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // ---- smooth the direction (exp toward the target; reseed on activation) ----
     if (haveDir)
     {
-        if (!g.mDirValid)
+        // motor_acquire (gate-on only) snaps the direction smoother to the
+        // freshly selected target so the coordinated motor acquires it
+        // immediately rather than tracking the exponential ramp; gate-off never
+        // sets it, so its reseed condition is unchanged.
+        if (!g.mDirValid || motor_acquire)
         {
             g.mSmoothDir = dir;
             g.mDirValid  = true;
         }
         else if (advance)
         {
-            const F32 tau = GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
-            const F32 a   = 1.f - expf(-dt / llmax(tau, 0.01f));
+            const F32 tau = GAZE_TAU_MIN +
+                (GAZE_TAU_MAX - GAZE_TAU_MIN) * effective_smoothing;
+            const F32 a   = ALGazeMath::chaseAlpha(dt, tau);
             g.mSmoothDir += (dir - g.mSmoothDir) * a;
             if (g.mSmoothDir.normVec() < 1e-4f)
             {
@@ -3653,12 +7563,18 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     // eased envelope * intensity = overall paint weight; the head/eyes blend gates
     // the body chain (torso/neck/head) so blend=0 is eyes-only.
     const F32 env_eased = g.mEnv * g.mEnv * (3.f - 2.f * g.mEnv);    // smoothstep
-    const F32 env_i     = env_eased * g.mIntensity;
+    // [Machinima] Goal 3b: the keyframed influence multiplies the FINAL legacy
+    // write envelope. At influence 1 (empty track) this is the EXACT original
+    // assignment (execution-path byte-identical, not a reorganized *1.f); a
+    // value < 1 scales the write so influence 0 writes nothing (animation shows)
+    // while mIntensity/cue weighting still shape the owned pose.
+    const F32 env_i     = (timeline_influence != 1.f)
+        ? env_eased * effective_intensity * timeline_influence
+        : env_eased * effective_intensity;
 
-    const LLQuaternion rootWorld = root->getWorldRotation();
     const LLQuaternion invRoot   = ~rootWorld;
 
-    LLVector3 look = g.mSmoothDir;      // unit world direction
+    LLVector3 look = g.mSmoothDir;      // statefully smoothed base direction
 
     // head aim in the root frame, with the built-in's degenerate guard: a target
     // directly overhead / underfoot makes left ~ 0, so lerp toward straight ahead.
@@ -3679,10 +7595,6 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     const LLQuaternion targetHeadWorld(look, left, up);
     LLQuaternion       head_rot_local = targetHeadWorld * invRoot;   // root-relative
 
-    static LLCachedControl<F32> head_yaw_max_deg(
-        gSavedSettings, "BDMergeGazeHeadYawMax", 72.f);
-    static LLCachedControl<F32> head_pitch_max_deg(
-        gSavedSettings, "BDMergeGazeHeadPitchMax", 45.f);
     static LLCachedControl<F32> head_slew_rate_deg(
         gSavedSettings, "BDMergeGazeHeadSlewRate", 480.f);
     static LLCachedControl<F32> dead_zone_deg(
@@ -3701,8 +7613,8 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         fabsf(raw_yaw) > llclamp((F32)behind_angle_deg, 0.f, 180.f) * DEG_TO_RAD;
     if (advance)
     {
-        const F32 step = (GAZE_EASE_TIME > 0.f) ? dt / GAZE_EASE_TIME : 1.f;
-        g.mBehindEnv = llclamp(g.mBehindEnv + (behind ? -step : step), 0.f, 1.f);
+        g.mBehindEnv = ALGazeMath::behindEnvStep(
+            g.mBehindEnv, behind, dt, GAZE_EASE_TIME);
     }
     if (behind_policy != 1)
     {
@@ -3710,8 +7622,246 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
     }
     const F32 behind_eased =
         g.mBehindEnv * g.mBehindEnv * (3.f - 2.f * g.mBehindEnv);
-    const F32 wEye = env_i * behind_eased;
-    const F32 dead_zone = llmax((F32)dead_zone_deg, 0.f) * DEG_TO_RAD;
+    const F32 cue_eye_weight = director_runtime && director_runtime->mCueOverride
+        ? director_runtime->mCueEyeWeight : 1.f;
+    const F32 cue_head_weight = director_runtime && director_runtime->mCueOverride
+        ? director_runtime->mCueHeadWeight : 1.f;
+    const F32 cue_body_weight = director_runtime && director_runtime->mCueOverride
+        ? director_runtime->mCueBodyWeight : 1.f;
+    const F32 wEye = env_i * behind_eased * cue_eye_weight;
+    const S32 gaze_priority = g.mGazePriorityOverride >= 0
+        ? llclamp(g.mGazePriorityOverride,
+                  (S32)GAZE_PRIORITY_BLEND, (S32)GAZE_PRIORITY_PLANTED_SPINE)
+        : currentGazePriority();
+    // [Machinima] Explicit scope predicates (NOT numeric >= alone) so the new
+    // Planted-spine scope (3) owns the spine but never the pelvis:
+    //   head+eyes owned  : Head+Eyes, Upper body, Planted spine
+    //   spine (torso) owned: Upper body, Planted spine
+    //   pelvis owned     : Upper body ONLY
+    const bool override_head_eyes =
+        gaze_priority >= GAZE_PRIORITY_HEAD_EYES;
+    const bool override_upper_body =
+        (gaze_priority == GAZE_PRIORITY_UPPER_BODY) ||
+        (gaze_priority == GAZE_PRIORITY_PLANTED_SPINE);
+    const bool planted_spine =
+        (gaze_priority == GAZE_PRIORITY_PLANTED_SPINE);
+    // Pelvis is gaze-owned only under Upper body; Planted spine keeps the base
+    // (and legs) on the animation and never rotates mPelvis.
+    const bool strict_pelvis =
+        (gaze_priority == GAZE_PRIORITY_UPPER_BODY);
+    // [Machinima] Phase 2 -- resolve the effective custom cone-limit profile
+    // and the planted chest share ONCE, shared by both execution paths below.
+    // Defaults (Head+Eyes scope, DirectorGazeCustomLimitsEnabled off, all
+    // per-actor overrides inherited) resolve to profile_ptr == nullptr and
+    // chest_share == 0, which every downstream call treats byte-identically
+    // to the pre-profile signatures.
+    static LLCachedControl<bool> gaze_custom_limits_enabled(
+        gSavedSettings, "DirectorGazeCustomLimitsEnabled", false);
+    static LLCachedControl<F32> gaze_chest_share_global(
+        gSavedSettings, "DirectorGazeChestShare", 0.55f);
+    static LLCachedControl<F32> gaze_lim_eye_yaw(
+        gSavedSettings, "DirectorGazeLimitEyeYawDeg", 25.f);
+    static LLCachedControl<F32> gaze_lim_eye_pitch(
+        gSavedSettings, "DirectorGazeLimitEyePitchDeg", 14.f);
+    static LLCachedControl<F32> gaze_lim_head_yaw(
+        gSavedSettings, "DirectorGazeLimitHeadYawDeg", 35.f);
+    static LLCachedControl<F32> gaze_lim_head_pitch(
+        gSavedSettings, "DirectorGazeLimitHeadPitchDeg", 42.f);
+    static LLCachedControl<F32> gaze_lim_neck_yaw(
+        gSavedSettings, "DirectorGazeLimitNeckYawDeg", 35.f);
+    static LLCachedControl<F32> gaze_lim_neck_pitch(
+        gSavedSettings, "DirectorGazeLimitNeckPitchDeg", 26.f);
+    static LLCachedControl<F32> gaze_lim_spine_yaw(
+        gSavedSettings, "DirectorGazeLimitSpineYawDeg", 45.f);
+    static LLCachedControl<F32> gaze_lim_spine_pitch(
+        gSavedSettings, "DirectorGazeLimitSpinePitchDeg", 20.f);
+    static LLCachedControl<F32> gaze_lim_hips_yaw(
+        gSavedSettings, "DirectorGazeLimitHipsYawDeg", 35.f);
+    static LLCachedControl<F32> gaze_lim_hips_pitch(
+        gSavedSettings, "DirectorGazeLimitHipsPitchDeg", 15.f);
+    static LLCachedControl<F32> gaze_lim_eye_apply_yaw(
+        gSavedSettings, "DirectorGazeLimitEyeApplyYawDeg", 24.f);
+    static LLCachedControl<F32> gaze_lim_eye_apply_pitch(
+        gSavedSettings, "DirectorGazeLimitEyeApplyPitchDeg", 14.f);
+    static LLCachedControl<F32> gaze_lim_eye_radial(
+        gSavedSettings, "DirectorGazeLimitEyeRadialDeg", 19.8f);
+    // [Machinima] Asymmetric up/down gaze pitch. The scale multiplies the
+    // LEGACY (constant-path) upward pitch caps so looking up reaches further
+    // while chin-down stays as-is; custom profiles carry their own explicit
+    // upward cones below instead.
+    static LLCachedControl<F32> gaze_pitch_up_scale(
+        gSavedSettings, "DirectorGazePitchUpScale", 1.3f);
+    static LLCachedControl<F32> gaze_lim_eye_pitch_up(
+        gSavedSettings, "DirectorGazeLimitEyePitchUpDeg", 20.f);
+    static LLCachedControl<F32> gaze_lim_head_pitch_up(
+        gSavedSettings, "DirectorGazeLimitHeadPitchUpDeg", 50.f);
+    static LLCachedControl<F32> gaze_lim_neck_pitch_up(
+        gSavedSettings, "DirectorGazeLimitNeckPitchUpDeg", 34.f);
+    static LLCachedControl<F32> gaze_lim_spine_pitch_up(
+        gSavedSettings, "DirectorGazeLimitSpinePitchUpDeg", 24.f);
+    static LLCachedControl<F32> gaze_lim_hips_pitch_up(
+        gSavedSettings, "DirectorGazeLimitHipsPitchUpDeg", 18.f);
+    static LLCachedControl<F32> gaze_lim_eye_apply_pitch_up(
+        gSavedSettings, "DirectorGazeLimitEyeApplyPitchUpDeg", 20.f);
+    const F32 pitch_up_scale = (F32)gaze_pitch_up_scale;
+    // Tri-state per-actor limit mode: -1 inherits the global enable, 0 forces
+    // the legacy constants regardless of the global, 1 uses this actor's own
+    // profile values.
+    const bool use_custom_limits =
+        (g.mLimitProfileModeOverride == 1) ||
+        (g.mLimitProfileModeOverride == -1 &&
+         (bool)gaze_custom_limits_enabled);
+    ALGazeMath::AnatomicalLimitProfile eff_profile;
+    if (use_custom_limits)
+    {
+        if (g.mLimitProfileModeOverride == 1)
+        {
+            eff_profile = g.mLimitProfile;
+        }
+        else
+        {
+            eff_profile.mEyeYawDeg       = (F32)gaze_lim_eye_yaw;
+            eff_profile.mEyePitchDeg     = (F32)gaze_lim_eye_pitch;
+            eff_profile.mHeadYawDeg      = (F32)gaze_lim_head_yaw;
+            eff_profile.mHeadPitchDeg    = (F32)gaze_lim_head_pitch;
+            eff_profile.mNeckYawDeg      = (F32)gaze_lim_neck_yaw;
+            eff_profile.mNeckPitchDeg    = (F32)gaze_lim_neck_pitch;
+            eff_profile.mSpineYawDeg     = (F32)gaze_lim_spine_yaw;
+            eff_profile.mSpinePitchDeg   = (F32)gaze_lim_spine_pitch;
+            eff_profile.mHipsYawDeg      = (F32)gaze_lim_hips_yaw;
+            eff_profile.mHipsPitchDeg    = (F32)gaze_lim_hips_pitch;
+            eff_profile.mEyeApplyYawDeg  = (F32)gaze_lim_eye_apply_yaw;
+            eff_profile.mEyeApplyPitchDeg = (F32)gaze_lim_eye_apply_pitch;
+            eff_profile.mEyeRadialDeg    = (F32)gaze_lim_eye_radial;
+            // Upward pitch cones (asymmetric up/down gaze pitch).
+            eff_profile.mEyePitchUpDeg      = (F32)gaze_lim_eye_pitch_up;
+            eff_profile.mHeadPitchUpDeg     = (F32)gaze_lim_head_pitch_up;
+            eff_profile.mNeckPitchUpDeg     = (F32)gaze_lim_neck_pitch_up;
+            eff_profile.mSpinePitchUpDeg    = (F32)gaze_lim_spine_pitch_up;
+            eff_profile.mHipsPitchUpDeg     = (F32)gaze_lim_hips_pitch_up;
+            eff_profile.mEyeApplyPitchUpDeg = (F32)gaze_lim_eye_apply_pitch_up;
+        }
+    }
+    // nullptr by default: the math layer's profile==nullptr paths are the
+    // untouched constant code, so the default output stays bit-exact.
+    const ALGazeMath::AnatomicalLimitProfile* profile_ptr =
+        use_custom_limits ? &eff_profile : nullptr;
+    // Chest share is a Planted-spine-only split of the conserved spine bucket;
+    // every other scope MUST see exactly 0 so no chest write ever engages.
+    const F32 chest_share = planted_spine
+        ? llclamp(g.mChestShareOverride >= 0.f
+                      ? g.mChestShareOverride
+                      : (F32)gaze_chest_share_global,
+                  0.f, 1.f)
+        : 0.f;
+    // [Machinima] Goal 3c: resolve the lean curve + parameters ONCE
+    // (per-actor override wins; -1/-1.f inherits the global), shared by both
+    // execution paths. Angle-ease is Planted-spine-ONLY in v1: lean_active
+    // requires planted AND curve 1. The LEGACY default (and every non-planted
+    // scope) leaves lean_active false, and every lean branch below is guarded
+    // on it, so the existing allocation runs unchanged -- byte-identical.
+    static LLCachedControl<S32> gaze_lean_curve_global(
+        gSavedSettings, "DirectorGazeLeanCurve", 0);
+    static LLCachedControl<F32> gaze_lean_threshold_global(
+        gSavedSettings, "DirectorGazeLeanThresholdDeg", 25.f);
+    static LLCachedControl<F32> gaze_lean_softness_global(
+        gSavedSettings, "DirectorGazeLeanSoftnessDeg", 20.f);
+    static LLCachedControl<F32> gaze_lean_max_global(
+        gSavedSettings, "DirectorGazeLeanMaxDeg", 20.f);
+    const S32 lean_curve = g.mLeanCurveOverride >= 0
+        ? g.mLeanCurveOverride : (S32)gaze_lean_curve_global;
+    const F32 lean_threshold_deg = g.mLeanThresholdDegOverride >= 0.f
+        ? g.mLeanThresholdDegOverride : (F32)gaze_lean_threshold_global;
+    const F32 lean_softness_deg = g.mLeanSoftnessDegOverride >= 0.f
+        ? g.mLeanSoftnessDegOverride : (F32)gaze_lean_softness_global;
+    const F32 lean_max_deg = g.mLeanMaxDegOverride >= 0.f
+        ? g.mLeanMaxDegOverride : (F32)gaze_lean_max_global;
+    const bool lean_active =
+        planted_spine && lean_curve == (S32)GAZE_LEAN_ANGLE_EASE;
+    // Spine cone caps for the lean curve: the ANATOMICAL safety ellipse
+    // (unweighted). The custom profile's spine axes when a profile is active;
+    // the legacy 45/20 deg TORSO_MAX constants otherwise.
+    const F32 spine_cap_yaw_rad = (use_custom_limits
+        ? llmax(eff_profile.mSpineYawDeg, 0.f) : 45.f) * DEG_TO_RAD;
+    const F32 spine_cap_pitch_rad = (use_custom_limits
+        ? llmax(eff_profile.mSpinePitchDeg, 0.f) : 20.f) * DEG_TO_RAD;
+    // [Machinima] Asymmetric up/down pitch: sanitized upward scale for the
+    // LEGACY (constant) caps below, mirroring the chain allocator's up_k
+    // (effectiveCapacities / distributeAnatomicalChain): custom profiles use
+    // their explicit m*PitchUpDeg cones UNSCALED; the legacy constants scale
+    // by DirectorGazePitchUpScale. Inert plain consts on the default path.
+    const F32 up_scale_k = std::isfinite(pitch_up_scale)
+        ? llmax(pitch_up_scale, 0.f) : 1.f;
+    // UPWARD spine ellipse semi-axis for the Angle-ease lean (spineLean).
+    const F32 spine_cap_pitch_up_rad = (use_custom_limits
+        ? llmax(eff_profile.mSpinePitchUpDeg, 0.f)
+        : 20.f * up_scale_k) * DEG_TO_RAD;
+    // [Machinima] Goal 2: per-joint ADDITIVE correction caps (radians). These
+    // bound only the gaze-authored DELTA in the additive/blend endpoints below
+    // (never the animation's own rotation). Same source and Exaggerate
+    // semantics as the chain allocator: custom profile axes when enabled, the
+    // legacy constants otherwise; head/neck scale with anatomy_scale while
+    // spine/hips stay unscaled (matching fillEffectiveCapacities /
+    // distributeAnatomicalChain). Inert plain consts under Replace -- no
+    // quaternion math, no writes.
+    const F32 add_cap_head_yaw = (use_custom_limits
+        ? llmax(eff_profile.mHeadYawDeg, 0.f) : 35.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_head_pitch = (use_custom_limits
+        ? llmax(eff_profile.mHeadPitchDeg, 0.f) : 42.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_neck_yaw = (use_custom_limits
+        ? llmax(eff_profile.mNeckYawDeg, 0.f) : 35.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_neck_pitch = (use_custom_limits
+        ? llmax(eff_profile.mNeckPitchDeg, 0.f) : 26.f) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_spine_yaw = spine_cap_yaw_rad;
+    const F32 add_cap_spine_pitch = spine_cap_pitch_rad;
+    const F32 add_cap_hips_yaw = (use_custom_limits
+        ? llmax(eff_profile.mHipsYawDeg, 0.f) : 35.f) * DEG_TO_RAD;
+    const F32 add_cap_hips_pitch = (use_custom_limits
+        ? llmax(eff_profile.mHipsPitchDeg, 0.f) : 15.f) * DEG_TO_RAD;
+    // [Machinima] Asymmetric up/down pitch: UPWARD additive-delta pitch caps,
+    // one per channel, mirroring the chain allocator exactly -- profile
+    // m*PitchUpDeg cones (unscaled by DirectorGazePitchUpScale) when custom
+    // limits are on, else the legacy constants times up_scale_k; head/neck
+    // scale with anatomy_scale while spine/hips stay unscaled. They feed only
+    // the UPWARD (negative) side of additiveOverlayLocal's delta clamp; the
+    // downward side keeps the add_cap_*_pitch values above unchanged.
+    const F32 add_cap_head_pitch_up = (use_custom_limits
+        ? llmax(eff_profile.mHeadPitchUpDeg, 0.f) : 42.f * up_scale_k) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_neck_pitch_up = (use_custom_limits
+        ? llmax(eff_profile.mNeckPitchUpDeg, 0.f) : 26.f * up_scale_k) *
+        DEG_TO_RAD * anatomy_scale;
+    const F32 add_cap_spine_pitch_up = spine_cap_pitch_up_rad;
+    const F32 add_cap_hips_pitch_up = (use_custom_limits
+        ? llmax(eff_profile.mHipsPitchUpDeg, 0.f) : 15.f * up_scale_k) *
+        DEG_TO_RAD;
+    // [Machinima] Resolve the SL animation-priority for the strict-yield gate,
+    // ORTHOGONAL to the ownership scope above. Per-actor override wins (>= -1,
+    // since -1 is the meaningful "Legacy final" value here, NOT inherit); -2
+    // inherits the global. Ceiling is 6: 7 is ADDITIVE_PRIORITY, never a
+    // selectable normal priority. Legacy final (-1) short-circuits every gate.
+    static LLCachedControl<S32> gaze_anim_priority_global(
+        gSavedSettings, "DirectorGazeAnimationPriority", -1);
+    const S32 gaze_anim_priority = g.mAnimPriorityOverride >= -1
+        ? llclamp(g.mAnimPriorityOverride, -1, 6)
+        : llclamp(static_cast<S32>(gaze_anim_priority_global), -1, 6);
+    // Priority owns only the animation-vs-gaze blend. Intensity and cue channel
+    // weights shape the authored gaze pose below, while this envelope reaches
+    // one at full acquire so the selected joints contain no animation bleed.
+    // [Machinima] Goal 3b: influence also multiplies the strict-owned final
+    // write envelope, so a zero key performs NO owned write (revealing the
+    // animation) rather than replacing it with a neutral owned pose. Exact
+    // legacy assignment at influence 1 (execution-path byte-identical).
+    const F32 priority_env = (timeline_influence != 1.f)
+        ? env_eased * behind_eased * timeline_influence
+        : env_eased * behind_eased;
+    const F32 dead_zone = (g.mDeadZoneDegOverride >= 0.f
+        ? llclamp(g.mDeadZoneDegOverride, 0.f, 15.f)
+        : llmax((F32)dead_zone_deg, 0.f)) * DEG_TO_RAD;
     if (!g.mBodyAimValid)
     {
         // Straight ahead is the initial held pose. A target outside the zone
@@ -3730,34 +7880,1496 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
         // back to its edge suppresses small jitter without repeatedly crossing
         // the threshold, while the exponential step avoids quantizing real
         // motion into dead-zone-sized snaps.
-        const F32 tau =
-            GAZE_TAU_MIN + (GAZE_TAU_MAX - GAZE_TAU_MIN) * g.mSmoothing;
-        const F32 a = 1.f - expf(-dt / llmax(tau, 0.01f));
-        const F32 chase = a * (aim_error - dead_zone) / aim_error;
-        g.mBodyAimPitch += pitch_delta * chase;
-        g.mBodyAimYaw =
-            llsimple_angle(g.mBodyAimYaw + yaw_delta * chase);
+        const F32 tau = GAZE_TAU_MIN +
+            (GAZE_TAU_MAX - GAZE_TAU_MIN) * effective_smoothing;
+        ALGazeMath::deadZoneChase(
+            g.mBodyAimPitch, g.mBodyAimYaw, raw_pitch, raw_yaw,
+            dead_zone, ALGazeMath::chaseAlpha(dt, tau));
     }
-    const F32 wBody = env_i * g.mHeadEyeBlend * behind_eased;
+    // Activation/method-switch edge: bypass the dead-zone body-aim low-pass so
+    // the motor's target reflects the freshly selected method THIS frame
+    // (paired with in.mAcquire below). raw_yaw/raw_pitch already reflect the
+    // true target because the direction smoother was snapped above. Guarded by
+    // motor_acquire (gate-on only), so gate-off stays byte-identical.
+    if (motor_acquire)
+    {
+        g.mBodyAimPitch = raw_pitch;
+        g.mBodyAimYaw   = raw_yaw;
+        g.mBodyAimValid = true;
+    }
+    const F32 wBody = env_i * effective_head_eye_blend * behind_eased;
+
+    // ==== GATE ON: coordinated gaze motor programs (spec 2.6 / 6A) ==========
+    // DirectorGazeMotionPrograms replaces, on THIS branch only, the hard-cut
+    // applied-aim stage, the hard-knee anatomical distribute, and the legacy
+    // eye/blink/micro-life derivation with a single ALGazeMotor::step() call,
+    // then applies the returned pose through the SAME priority/cue-weighted
+    // joint + Blink_* machinery the legacy path uses. Everything upstream
+    // (target resolution, direction smoothing, the dead-zone body-aim chase,
+    // envelopes, priority, cue weights, capture/restore) is shared. The branch
+    // returns before the legacy applied stage, so the gate-off code below runs
+    // completely unmodified -- byte-identical to today.
+    if (gaze_motion_programs)
+    {
+        ALGazeMotor::GazeMotorSettings ms;
+        ms.mMasterGate          = true;
+        ms.mEyeDurationBaseMs   = (F32)gaze_mp_eye_dur_base;
+        ms.mEyeDurationPerDegMs = (F32)gaze_mp_eye_dur_perdeg;
+        ms.mHeadLatencyBaseMs   = (F32)gaze_mp_head_latency;
+        ms.mHeadDurationBaseMs  = (F32)gaze_mp_head_dur_base;
+        ms.mSoftRecruitBandDeg  = llmax((F32)gaze_mp_soft_recruit, 0.f);
+        // [Machinima] Goal 3a: the custom profile's final applied-eye caps drive
+        // the motor VOR comfort cone when enabled; the legacy comfort settings
+        // are used otherwise (byte-identical default).
+        ms.mComfortYawDeg       = use_custom_limits
+            ? eff_profile.mEyeApplyYawDeg : (F32)gaze_mp_comfort_yaw;
+        ms.mComfortPitchDeg     = use_custom_limits
+            ? eff_profile.mEyeApplyPitchDeg : (F32)gaze_mp_comfort_pitch;
+        // Mirror distributeAnatomicalChain's authored distribution inputs so
+        // band 0 recruits the same joints the legacy hard knee would.
+        ms.mHeadEyeBlend        = effective_head_eye_blend;
+        ms.mTorsoAmount         = g.mTorsoAmount;
+        ms.mAnatomyScale        = anatomy_scale;
+        // [Machinima] Planted-spine scope: hips capacity forced to zero so the
+        // motor never recruits/writes the pelvis (base/legs stay planted).
+        ms.mPlantPelvis         = planted_spine;
+        // [Machinima] Phase 2: custom cone profile + planted chest split feed.
+        // mUseLimitProfile false (the default) leaves the motor's constant
+        // capacity path untouched; mLimitProfile is only consulted when it is
+        // true. chest_share is already exactly 0 unless Planted spine.
+        ms.mUseLimitProfile     = use_custom_limits;
+        ms.mLimitProfile        = eff_profile;
+        ms.mChestShare          = chest_share;
+        // [Machinima] Asymmetric up/down pitch: upward caps on the motor's
+        // constant capacity path scale by this; 1 = symmetric (byte-identical).
+        ms.mPitchUpScale        = pitch_up_scale;
+        // [Machinima] Goal 3c: angle-driven lean feed. Only set when
+        // lean_active (Planted spine + Angle-ease curve); otherwise the
+        // defaults (mLeanCurve 0) keep the motor's recruit on the untouched
+        // legacy path -- bit-exact band-0 contract preserved.
+        if (lean_active)
+        {
+            ms.mLeanCurve        = 1;
+            ms.mLeanThresholdDeg = lean_threshold_deg;
+            ms.mLeanSoftnessDeg  = lean_softness_deg;
+            ms.mLeanMaxDeg       = lean_max_deg;
+            ms.mSpineCapYawRad   = spine_cap_yaw_rad;
+            ms.mSpineCapPitchRad = spine_cap_pitch_rad;
+            // Asymmetric up/down pitch: upward spine semi-axis for the
+            // motor's internal Angle-ease lean (spineLean selects it by the
+            // sign of the aim's pitch; symmetric values are byte-identical).
+            ms.mSpineCapPitchUpRad = spine_cap_pitch_up_rad;
+        }
+        // Cinematic subtlety: Stillness freezes the recruited head/neck/torso;
+        // Restraint additionally shrinks the head-turn magnitude. Both scale the
+        // recruited body output inside step() and leave the eyes + micro-life
+        // untouched (Restraint's micro-life/blink damping is already folded into
+        // life_params above). Defaults 0 -> no change.
+        ms.mStillness           = cine_stillness;
+        ms.mRestraint           = cine_restraint;
+        // Blink scheduling honors the existing enable + rate scale; disabling
+        // blinks zeroes both the spontaneous lattice and the evoked source.
+        const bool blinks_on    = life_params.mBlinks;
+        ms.mBlinkRate           = blinks_on
+            ? llmax(life_params.mBlinkRate, 0.f) : 0.f;
+        ms.mGazeEvokedBlink     = blinks_on ? 1.f : 0.f;
+        // Fix 3: wire the Life control (DirectorGazeMicroLife + its per-target
+        // override, resolved into life_params.mMicroLife) into the motor's
+        // drift + microsaccade amplitudes, so Life = 0 kills motor micro-life
+        // and Life scales it, mirroring the legacy evalMicroLife intensity.
+        const F32 micro_life = llclamp(life_params.mMicroLife, 0.f, 1.f);
+        ms.mEyeDriftAmpRad     *= micro_life;
+        ms.mHeadDriftAmpRad    *= micro_life;
+        ms.mMicrosaccadeAmpRad *= micro_life;
+
+        ALGazeMotor::AffectState affect;
+        affect.mValence   = llclamp((F32)gaze_mp_valence,   -1.f, 1.f);
+        affect.mArousal   = llclamp((F32)gaze_mp_arousal,    0.f, 1.f);
+        affect.mDominance = llclamp((F32)gaze_mp_dominance, -1.f, 1.f);
+
+        // [Machinima] behind-shoulder / no-snap (motor path): feed the motor a
+        // physically reachable yaw target. The motor's channel programs unwrap
+        // each commit's target next to the current sample by SHORTEST arc, so
+        // a raw target crossing the +-180 seam behind the actor would either
+        // wind the aim through the back (unreachable -- the saturated recruit
+        // pins the wrong shoulder) or flip the recruit sign. The resolver
+        // holds the committed shoulder at the seam and then walks the fed
+        // target to the other shoulder through the FRONT at head_slew_rate,
+        // so every motor commit is a small front-path arc. Reach is the sum of
+        // the motor's OWN weighted yaw capacities (effectiveCapacities: same
+        // blend/torso/anatomy shaping as distributeAnatomicalChain, hips
+        // zeroed by ms.mPlantPelvis under Planted spine), so "beyond reach"
+        // matches actual saturation. A target that never leaves reach passes
+        // through bit-identically (in.mTargetYaw == g.mBodyAimYaw). The raw
+        // g.mBodyAimYaw still drives the Director body-turn trigger below.
+        F32 reach_caps_yaw[ALGazeMotor::CHAIN_JOINTS];
+        F32 reach_caps_pitch[ALGazeMotor::CHAIN_JOINTS];
+        ALGazeMotor::effectiveCapacities(ms, reach_caps_yaw, reach_caps_pitch);
+        F32 motor_reach_yaw = 0.f;
+        for (S32 rc = 0; rc < ALGazeMotor::CHAIN_JOINTS; ++rc)
+        {
+            motor_reach_yaw += reach_caps_yaw[rc];
+        }
+        const F32 chain_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                               DEG_TO_RAD * dt;
+        const F32 motor_target_yaw = resolveBehindShoulderChainYaw(
+            g.mBodyAimYaw, motor_reach_yaw, chain_step, advance,
+            g.mChainYawValid, g.mChainYaw, g.mBehindShoulderSign,
+            g.mBehindSweeping);
+
+        ALGazeMotor::GazeMotorInput in;
+        // Desired chain aim in the SAME root-relative frame the legacy solve
+        // measures raw_yaw/raw_pitch in; the dead-zone body-aim chase above is
+        // its (shared) low-pass. mRefWorldRot maps that frame to world for the
+        // VOR solve; mHeadWorldRot is the head's current sampled world rotation
+        // (this frame, pre-repaint) so counter-rotation falls out over frames.
+        in.mTargetYaw    = motor_target_yaw;
+        in.mTargetPitch  = g.mBodyAimPitch;
+        in.mTargetRoll   = 0.f;   // camera roll stays a world-space op below
+        in.mHeadWorldRot = head->getWorldRotation();
+        in.mRefWorldRot  = rootWorld;
+        in.mTimeSeconds  = t_sec;
+        in.mDeltaTime    = dt;
+        in.mSeed         = seed;
+        in.mCueWeight    = 1.f;
+        in.mAffect       = affect;
+        in.mSettings     = ms;
+        // Activation edge -> commit the freshly selected target immediately (no
+        // retarget dwell). mTargetGeneration lets the motor store the discrete
+        // selection signature so the edge is detected here next time; a change
+        // is honored as an implicit acquire even if the flag path is missed.
+        in.mAcquire          = motor_acquire;
+        in.mTargetGeneration = gaze_target_gen;
+
+        ALGazeMotor::GazeMotorPose pose;
+        ALGazeMotor::step(g.mGazeMotor, in, pose);
+
+        // Fix 2 (gate-transition, byte-identical-whenever-off): the legacy
+        // applied-aim stage below is skipped on this branch. Snapping
+        // g.mApplied* straight to the current target here would diverge from
+        // never-enabled legacy DURING a >90-degree limiter slew: legacy holds an
+        // INTERMEDIATE applied yaw/pitch across frames while the limiter walks
+        // it toward the target, so toggling the gate OFF mid-slew must resume
+        // from that intermediate value, not the snapped target. Mirror the exact
+        // legacy applied-slew update below (see the gate-off stage) so g.mApplied*
+        // evolve frame-for-frame identically; a later ON->OFF toggle then resumes
+        // seamlessly. The motor path itself does not read g.mApplied*, so this
+        // only affects a subsequent gate-off.
+        {
+            const F32 target_yaw = llclamp(g.mBodyAimYaw, -F_PI, F_PI);
+            constexpr F32 CHAIN_PITCH_MAX = 100.f * DEG_TO_RAD;
+            const F32 target_pitch = llclamp(
+                g.mBodyAimPitch, -CHAIN_PITCH_MAX, CHAIN_PITCH_MAX);
+            if (!g.mAppliedValid)
+            {
+                g.mAppliedYaw = target_yaw;
+                g.mAppliedPitch = target_pitch;
+                g.mTorsoAimYaw = target_yaw;
+                g.mTorsoAimPitch = target_pitch;
+                g.mAppliedValid = true;
+                g.mAppliedSlewing = false;
+            }
+            else if (advance)
+            {
+                F32 yaw_delta = llsimple_angle(target_yaw - g.mAppliedYaw);
+                F32 pitch_delta = llsimple_angle(
+                    target_pitch - g.mAppliedPitch);
+                constexpr F32 APPLIED_SLEW_TRIGGER = 90.f * DEG_TO_RAD;
+                if (!g.mAppliedSlewing &&
+                    sqrtf(yaw_delta * yaw_delta + pitch_delta * pitch_delta) >
+                        APPLIED_SLEW_TRIGGER)
+                {
+                    g.mAppliedSlewing = true;
+                }
+
+                if (g.mAppliedSlewing)
+                {
+                    const F32 max_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                                         DEG_TO_RAD * dt;
+                    g.mAppliedYaw = llsimple_angle(
+                        g.mAppliedYaw +
+                        llclamp(yaw_delta, -max_step, max_step));
+                    g.mAppliedPitch = llsimple_angle(
+                        g.mAppliedPitch +
+                        llclamp(pitch_delta, -max_step, max_step));
+
+                    yaw_delta = llsimple_angle(target_yaw - g.mAppliedYaw);
+                    pitch_delta = llsimple_angle(
+                        target_pitch - g.mAppliedPitch);
+                    if (fabsf(yaw_delta) <= 1e-5f &&
+                        fabsf(pitch_delta) <= 1e-5f)
+                    {
+                        g.mAppliedYaw = target_yaw;
+                        g.mAppliedPitch = target_pitch;
+                        g.mAppliedSlewing = false;
+                    }
+                }
+                else
+                {
+                    g.mAppliedYaw = target_yaw;
+                    g.mAppliedPitch = target_pitch;
+                }
+            }
+        }
+
+        // Recruited joint contributions land in an AnatomicalChainPose so the
+        // apply below reads exactly like the legacy joint stage. Head drift is
+        // already folded into pose.mHead* (post-smoothing additive, spec step
+        // 5), so no separate micro term is added here.
+        ALGazeMath::AnatomicalChainPose chain;
+        chain.mHeadYaw    = pose.mHeadYaw;
+        chain.mHeadPitch  = pose.mHeadPitch;
+        chain.mNeckYaw    = pose.mNeckYaw;
+        chain.mNeckPitch  = pose.mNeckPitch;
+        chain.mTorsoYaw   = pose.mTorsoYaw;
+        chain.mTorsoPitch = pose.mTorsoPitch;
+        chain.mChestYaw   = pose.mChestYaw;
+        chain.mChestPitch = pose.mChestPitch;
+        chain.mHipsYaw    = pose.mHipsYaw;
+        chain.mHipsPitch  = pose.mHipsPitch;
+
+        // [Machinima] Chest fold-back: a rig without an mChest joint returns
+        // the split share to the torso BEFORE the torso write so no reach is
+        // ever lost. chest_share == 0 on every non-planted path keeps
+        // pose.mChest* at exactly +0, so this is a no-op there.
+        LLJoint* chest_joint = av->getJoint("mChest");
+        if (!chest_joint && chest_share > 0.f)
+        {
+            // Fold the WHOLE split share back (any magnitude) so no reach is
+            // lost on a chest-less rig, even for a tiny residual. chest_share==0
+            // (every non-planted path) keeps chain.mChest* at exactly +0, so
+            // this stays a no-op there and the torso value is untouched.
+            chain.mTorsoYaw   += chain.mChestYaw;
+            chain.mTorsoPitch += chain.mChestPitch;
+            chain.mChestYaw   = 0.f;
+            chain.mChestPitch = 0.f;
+        }
+
+        // Head roll = camera-follow roll (world-space, as legacy) plus the
+        // motor's dominance/dutch head tilt, applied in the same channel.
+        const F32 head_roll = camera_follow_roll + pose.mHeadRoll;
+
+        // Fix 5 (re-integrate the Director large-turn root replant): mMode == 1
+        // rotates the whole avatar root for big gaze shifts (respecting the
+        // 3 deg / 120 ms hysteresis + START/STOP thresholds inside
+        // applyDirectorBodyTurn). The motor's recruited torso/hips compose with
+        // the replant exactly as legacy (llactormover.cpp:5080-5097): subtract
+        // the yaw the root just absorbed from the chain aim and re-recruit the
+        // yaw chain from that residual, so root + upper chain sum to the full
+        // aim instead of double-counting it. Pitch and head roll keep the motor
+        // trajectory. Same guard as legacy (mMode 1, not sitting, full body cue
+        // weight, trigger OR an already-active turn).
+        // [Machinima] Goal 3b: a zero influence hides the ENTIRE gaze layer,
+        // including the Director Turn-body root replant -- otherwise the head/
+        // spine/eye writes vanish but the root still rotates. Gate the whole
+        // body-turn block on influence; the mBodyTurnActive latch is left
+        // untouched so the turn resumes warm when influence returns.
+        if (director_runtime && director_runtime->mMode == 1 &&
+            !av->isSitting() && cue_body_weight >= 0.999f &&
+            timeline_influence > 0.001f)
+        {
+            ALGazeMath::AnatomicalChainPose trigger_chain;
+            ALGazeMath::distributeAnatomicalChain(
+                g.mBodyAimYaw, g.mBodyAimPitch,
+                effective_head_eye_blend, g.mTorsoAmount,
+                body_turn_threshold_deg, trigger_chain, anatomy_scale,
+                /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+                pitch_up_scale);
+            if (trigger_chain.mTriggerBodyTurn ||
+                director_runtime->mBodyTurnActive)
+            {
+                director_runtime->mBodyTurnActive = true;
+                applyDirectorBodyTurn(av, *director_runtime, g.mSmoothDir);
+
+                const LLVector3 base_at = LLVector3(1.f, 0.f, 0.f) * rootWorld;
+                const LLVector3 turned_at =
+                    LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
+                const F32 base_yaw = atan2f(base_at.mV[VY], base_at.mV[VX]);
+                const F32 turned_yaw =
+                    atan2f(turned_at.mV[VY], turned_at.mV[VX]);
+                const F32 root_delta = llsimple_angle(turned_yaw - base_yaw);
+                const F32 reduced_aim_yaw =
+                    llsimple_angle(pose.mChainAimYaw - root_delta);
+
+                F32 caps_yaw[ALGazeMotor::CHAIN_JOINTS];
+                F32 caps_pitch[ALGazeMotor::CHAIN_JOINTS];
+                ALGazeMotor::effectiveCapacities(ms, caps_yaw, caps_pitch);
+                const F32 recruit_band = (std::isfinite(ms.mSoftRecruitBandDeg)
+                    ? llmax(ms.mSoftRecruitBandDeg, 0.f) : 0.f) * DEG_TO_RAD;
+                const bool eye_only = ALGazeMotor::isEyeOnlyBlend(ms);
+                // [Machinima] Goal 3c: under Angle-ease + Planted spine the
+                // residual re-recruit after the root turn runs the SAME
+                // lean-aware solve -- the spine's share of the REDUCED aim
+                // comes from the pure curve and head/neck recruit only the
+                // face residual. Pitch keeps the motor trajectory, matching
+                // the legacy re-recruit's yaw-only scope (the curve still
+                // sees the chain aim pitch so the angular magnitude the
+                // falloff responds to is the true 2D aim). Guarded on
+                // lean_active so the default path below is unchanged.
+                if (lean_active)
+                {
+                    const ALGazeMath::SpineLeanResult lean_rr =
+                        ALGazeMath::spineLean(
+                            reduced_aim_yaw, pose.mChainAimPitch,
+                            lean_threshold_deg, lean_softness_deg,
+                            lean_max_deg,
+                            g.mTorsoAmount, effective_head_eye_blend,
+                            spine_cap_yaw_rad, spine_cap_pitch_rad,
+                            spine_cap_pitch_up_rad);
+                    chain.mHeadYaw = ALGazeMotor::recruitSlot(
+                        lean_rr.mFaceYaw, caps_yaw, recruit_band, 1,
+                        eye_only);
+                    chain.mNeckYaw = ALGazeMotor::recruitSlot(
+                        lean_rr.mFaceYaw, caps_yaw, recruit_band, 2,
+                        eye_only);
+                    chain.mTorsoYaw = lean_rr.mSpineYaw;
+                }
+                else
+                {
+                chain.mHeadYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 1, eye_only);
+                chain.mNeckYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 2, eye_only);
+                chain.mTorsoYaw = ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 3, eye_only);
+                }
+                // [Machinima] Planted chest split of the re-recruited spine
+                // yaw: torso+chest must still sum to the one spine bucket
+                // after the root-turn re-solve (the split from step() above
+                // was computed against the pre-turn aim). Skipped when the
+                // rig has no chest joint (the share was already folded back
+                // into the torso above) and when chest_share == 0 (every
+                // non-planted path) -- a no-op there.
+                if (chest_joint && chest_share > 0.f)
+                {
+                    chain.mChestYaw  = chain.mTorsoYaw * chest_share;
+                    chain.mTorsoYaw -= chain.mChestYaw;
+                }
+                // [Machinima] Planted-spine: hard-zero hips (see the same
+                // carve-out in ALGazeMotor::step); the soft knee at capacity 0
+                // would otherwise leak a spurious pelvis contribution.
+                chain.mHipsYaw = planted_spine ? 0.f : ALGazeMotor::recruitSlot(
+                    reduced_aim_yaw, caps_yaw, recruit_band, 4, eye_only);
+            }
+        }
+
+        const F32 wCueBody = wBody * cue_body_weight;
+        const F32 wCueHead = wBody * cue_head_weight;
+        const F32 body_pose_weight = llclamp(
+            effective_intensity * cue_body_weight, 0.f, 1.f);
+        const F32 head_pose_weight = llclamp(
+            effective_intensity * cue_head_weight, 0.f, 1.f);
+        const bool head_priority_active =
+            override_head_eyes && priority_env > 0.001f;
+        const bool body_priority_active =
+            override_upper_body && priority_env > 0.001f;
+        // [Machinima] Pelvis ownership is Upper-body only; Planted spine never
+        // gaze-writes mPelvis (base/legs stay on the animation).
+        const bool pelvis_priority_active = strict_pelvis && priority_env > 0.001f;
+        if (wBody > 0.001f || head_priority_active || body_priority_active)
+        {
+            if (pelvis_priority_active ||
+                (wCueBody > 0.001f &&
+                 (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
+            {
+                if (LLJoint* pelvis = av->getJoint("mPelvis"))
+                {
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    // Pelvis OWNED write only under Upper body (pelvis_priority_active),
+                    // never Planted spine -- identical to body_priority_active for
+                    // scopes 0-2; the two differ only under planted.
+                    if (pelvis_priority_active)
+                    {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
+                        const LLQuaternion owned_target = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), owned_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: additive/blend. FULL-
+                            // strength desired (raw hips_target * root) under
+                            // the CURRENT parent; the clamped correction
+                            // DELTA -- not the endpoint -- is scaled by the
+                            // same body_pose_weight Replace used, so weight 0
+                            // leaves the animation untouched (Codex defect 1).
+                            LLQuaternion desired_local =
+                                hips_target * root->getWorldRotation();
+                            if (LLJoint* parent = pelvis->getParent())
+                            {
+                                desired_local = desired_local *
+                                    ~parent->getWorldRotation();
+                            }
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    desired_local, anim_snap.local(pelvis),
+                                    add_cap_hips_yaw, add_cap_hips_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/body_pose_weight,
+                                    /*cap_pitch_up=*/add_cap_hips_pitch_up);
+                            const LLQuaternion q_replace = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_target);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, q_replace,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, pelvis, priority_env, gaze_anim_priority);
+                            if (ga > 0.f)
+                                pelvis->setRotation(nlerp(
+                                    ga, pelvis->getRotation(), q_endpoint));
+                        }
+                    }
+                    else
+                    {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), hips_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: legacy Blend-scope additive
+                            // -- a proper clamped RESIDUAL delta over the
+                            // animation (never a second absolute application
+                            // of the chain target; Codex defect 2), scaled by
+                            // the existing wCueBody alpha.
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    hips_target, anim_snap.local(pelvis),
+                                    add_cap_hips_yaw, add_cap_hips_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/wCueBody,
+                                    /*cap_pitch_up=*/add_cap_hips_pitch_up);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, hips_target,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, pelvis, wCueBody, gaze_anim_priority);
+                            if (ga > 0.f)
+                                pelvis->setRotation(nlerp(
+                                    ga, pelvis->getRotation(), q_endpoint));
+                        }
+                    }
+                }
+            }
+            if (body_priority_active ||
+                (wCueBody > 0.001f &&
+                 (fabsf(chain.mTorsoYaw) + fabsf(chain.mTorsoPitch)) > 1e-5f))
+            {
+                if (LLJoint* torso = av->getJoint("mTorso"))
+                {
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    if (body_priority_active)
+                    {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
+                        const LLQuaternion owned_target = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), owned_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: additive/blend. FULL-
+                            // strength desired world = raw torso * raw hips *
+                            // root under the CURRENT painted parent; the
+                            // clamped correction DELTA is scaled by the same
+                            // body_pose_weight Replace used, so weight 0
+                            // leaves the animation untouched (Codex defect 1).
+                            LLQuaternion hips_stack;
+                            hips_stack.setEulerAngles(
+                                0.f, chain.mHipsPitch, chain.mHipsYaw);
+                            const LLQuaternion desired_world = torso_target *
+                                hips_stack * root->getWorldRotation();
+                            LLQuaternion desired_local = desired_world;
+                            if (LLJoint* parent = torso->getParent())
+                            {
+                                desired_local = desired_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    desired_local, anim_snap.local(torso),
+                                    add_cap_spine_yaw, add_cap_spine_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/body_pose_weight,
+                                    /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                            const LLQuaternion q_replace = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_target);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, q_replace,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, torso, priority_env, gaze_anim_priority);
+                            if (ga > 0.f)
+                                torso->setRotation(nlerp(
+                                    ga, torso->getRotation(), q_endpoint));
+                        }
+                    }
+                    else
+                    {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), torso_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: legacy Blend-scope additive
+                            // -- clamped RESIDUAL delta over the animation
+                            // (never a second absolute application; Codex
+                            // defect 2), scaled by the existing wCueBody.
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    torso_target, anim_snap.local(torso),
+                                    add_cap_spine_yaw, add_cap_spine_pitch,
+                                    /*preserve_anim_roll=*/true,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/wCueBody,
+                                    /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, torso_target,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, torso, wCueBody, gaze_anim_priority);
+                            if (ga > 0.f)
+                                torso->setRotation(nlerp(
+                                    ga, torso->getRotation(), q_endpoint));
+                        }
+                    }
+                }
+            }
+            // [Machinima] Planted-spine chest write: the split share of the
+            // conserved spine bucket lands on mChest, parent-to-child after
+            // the torso. Guarded on a nonzero chest angle, so chest_share == 0
+            // (every pre-existing scope) never enters this block. Because
+            // mSpine3/mSpine4 sit between mTorso and mChest, the owned
+            // endpoint is built in WORLD space through the chain stack
+            // (chest over torso over hips over root) and converted through
+            // the chest joint's ACTUAL parent, exactly like the neck/head
+            // owned writes below; the cue-weighted branch mirrors the torso's
+            // local partial write.
+            if (chest_joint &&
+                (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f &&
+                (body_priority_active || wCueBody > 0.001f))
+            {
+                LLQuaternion chest_target;
+                chest_target.setEulerAngles(
+                    0.f, chain.mChestPitch, chain.mChestYaw);
+                if (body_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, chest_target);
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    const LLQuaternion owned_hips = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                    const LLQuaternion owned_torso = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                    const LLQuaternion desired_world = owned_target *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = chest_joint->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend. FULL-strength
+                        // desired world = raw chest * raw torso * raw hips *
+                        // root under the CURRENT painted parent; the clamped
+                        // correction DELTA is scaled by the same
+                        // body_pose_weight Replace used (Codex defect 1).
+                        // Spine caps -- chest shares the conserved bucket.
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_stack;
+                        torso_stack.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        const LLQuaternion desired_world = chest_target *
+                            torso_stack * hips_stack * root->getWorldRotation();
+                        LLQuaternion local_target = desired_world;
+                        if (LLJoint* parent = chest_joint->getParent())
+                        {
+                            local_target =
+                                desired_world * ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                local_target, anim_snap.local(chest_joint),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/body_pose_weight,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                        LLQuaternion q_endpoint = q_additive;
+                        if (composition == GAZE_COMPOSE_BLEND)
+                        {
+                            // Blend needs the weighted Replace endpoint too.
+                            const LLQuaternion owned_target = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                chest_target);
+                            const LLQuaternion owned_hips = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_stack);
+                            const LLQuaternion owned_torso = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_stack);
+                            const LLQuaternion replace_world = owned_target *
+                                owned_torso * owned_hips *
+                                root->getWorldRotation();
+                            LLQuaternion q_replace = replace_world;
+                            if (LLJoint* parent = chest_joint->getParent())
+                            {
+                                q_replace = replace_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            q_endpoint = nlerp(
+                                composition_mix, q_replace, q_additive);
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, chest_joint, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            chest_joint->setRotation(nlerp(
+                                ga, chest_joint->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), chest_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueBody.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                chest_target, anim_snap.local(chest_joint),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueBody,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, chest_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, chest_joint, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            chest_joint->setRotation(nlerp(
+                                ga, chest_joint->getRotation(), q_endpoint));
+                    }
+                }
+            }
+            if (head_priority_active ||
+                (wCueHead > 0.001f &&
+                 (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
+                  fabsf(camera_neck_roll)) > 1e-5f))
+            {
+                if (LLJoint* neck = av->getJoint("mNeck"))
+                {
+                    LLQuaternion neck_target;
+                    neck_target.setEulerAngles(
+                        0.f, chain.mNeckPitch, chain.mNeckYaw);
+                    if (head_priority_active)
+                    {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
+                        const LLQuaternion owned_target = nlerp(
+                            head_pose_weight, LLQuaternion::DEFAULT, neck_target);
+                        LLQuaternion hips_target;
+                        hips_target.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_target;
+                        torso_target.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        const LLQuaternion owned_hips = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                        const LLQuaternion owned_torso = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                        // [Machinima] When the planted chest carries part of the
+                        // spine bucket, the neck's cumulative world frame must
+                        // include the chest contribution (neck * chest * torso *
+                        // hips * root) or the neck (and head above it) under-aim
+                        // by the chest share. Guarded on a live chest angle and
+                        // written as the verbatim original product otherwise, so
+                        // the default path keeps its exact left-assoc rounding.
+                        LLQuaternion desired_world;
+                        if (chest_joint &&
+                            (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                        {
+                            LLQuaternion chest_stack;
+                            chest_stack.setEulerAngles(
+                                0.f, chain.mChestPitch, chain.mChestYaw);
+                            const LLQuaternion owned_chest = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                            desired_world = owned_target * owned_chest *
+                                owned_torso * owned_hips * root->getWorldRotation();
+                        }
+                        else
+                        {
+                            desired_world = owned_target *
+                                owned_torso * owned_hips * root->getWorldRotation();
+                        }
+                        LLQuaternion rolled_world = desired_world;
+                        applyGazeAimRoll(
+                            rolled_world,
+                            camera_neck_roll * head_pose_weight *
+                                effective_head_eye_blend);
+                        LLQuaternion local_target = rolled_world;
+                        if (LLJoint* parent = neck->getParent())
+                        {
+                            local_target =
+                                rolled_world * ~parent->getWorldRotation();
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), local_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: additive/blend. FULL-
+                            // strength desired world (raw neck * [raw chest]
+                            // * raw torso * raw hips * root, full-strength
+                            // roll channel) under the CURRENT painted parent;
+                            // the clamped correction DELTA is scaled by the
+                            // same head_pose_weight Replace used, so weight 0
+                            // leaves the animation untouched (Codex defect 1).
+                            // Animation roll is preserved unless the camera-
+                            // roll channel intentionally contributes roll.
+                            LLQuaternion hips_stack;
+                            hips_stack.setEulerAngles(
+                                0.f, chain.mHipsPitch, chain.mHipsYaw);
+                            LLQuaternion torso_stack;
+                            torso_stack.setEulerAngles(
+                                0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                            LLQuaternion chest_stack;
+                            const bool chest_live = chest_joint &&
+                                (fabsf(chain.mChestYaw) +
+                                 fabsf(chain.mChestPitch)) > 1e-5f;
+                            LLQuaternion desired_world;
+                            if (chest_live)
+                            {
+                                chest_stack.setEulerAngles(
+                                    0.f, chain.mChestPitch, chain.mChestYaw);
+                                desired_world = neck_target * chest_stack *
+                                    torso_stack * hips_stack *
+                                    root->getWorldRotation();
+                            }
+                            else
+                            {
+                                desired_world = neck_target *
+                                    torso_stack * hips_stack *
+                                    root->getWorldRotation();
+                            }
+                            const F32 neck_roll_term = camera_neck_roll *
+                                effective_head_eye_blend;
+                            LLQuaternion rolled_world = desired_world;
+                            applyGazeAimRoll(rolled_world, neck_roll_term);
+                            LLQuaternion local_target = rolled_world;
+                            if (LLJoint* parent = neck->getParent())
+                            {
+                                local_target =
+                                    rolled_world * ~parent->getWorldRotation();
+                            }
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    local_target, anim_snap.local(neck),
+                                    add_cap_neck_yaw, add_cap_neck_pitch,
+                                    fabsf(neck_roll_term) <= 1e-5f,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/head_pose_weight,
+                                    /*cap_pitch_up=*/add_cap_neck_pitch_up);
+                            LLQuaternion q_endpoint = q_additive;
+                            if (composition == GAZE_COMPOSE_BLEND)
+                            {
+                                // Blend needs the weighted Replace endpoint.
+                                const LLQuaternion owned_target = nlerp(
+                                    head_pose_weight, LLQuaternion::DEFAULT,
+                                    neck_target);
+                                const LLQuaternion owned_hips = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    hips_stack);
+                                const LLQuaternion owned_torso = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    torso_stack);
+                                LLQuaternion replace_world;
+                                if (chest_live)
+                                {
+                                    const LLQuaternion owned_chest = nlerp(
+                                        body_pose_weight,
+                                        LLQuaternion::DEFAULT, chest_stack);
+                                    replace_world = owned_target *
+                                        owned_chest * owned_torso *
+                                        owned_hips * root->getWorldRotation();
+                                }
+                                else
+                                {
+                                    replace_world = owned_target *
+                                        owned_torso * owned_hips *
+                                        root->getWorldRotation();
+                                }
+                                applyGazeAimRoll(
+                                    replace_world,
+                                    camera_neck_roll * head_pose_weight *
+                                        effective_head_eye_blend);
+                                LLQuaternion q_replace = replace_world;
+                                if (LLJoint* parent = neck->getParent())
+                                {
+                                    q_replace = replace_world *
+                                        ~parent->getWorldRotation();
+                                }
+                                q_endpoint = nlerp(
+                                    composition_mix, q_replace, q_additive);
+                            }
+                            const F32 ga = gazeAllowedAlpha(
+                                av, neck, priority_env, gaze_anim_priority);
+                            if (ga > 0.f)
+                                neck->setRotation(nlerp(
+                                    ga, neck->getRotation(), q_endpoint));
+                        }
+                    }
+                    else
+                    {
+                        if (composition == GAZE_COMPOSE_REPLACE)
+                        {
+                        applyGazeAimRoll(neck_target, camera_neck_roll);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, wCueHead, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), neck_target));
+                        }
+                        else
+                        {
+                            // [Machinima] Goal 2: legacy Blend-scope additive
+                            // -- clamped RESIDUAL delta over the animation
+                            // (never a second absolute application; Codex
+                            // defect 2), scaled by the existing wCueHead.
+                            LLQuaternion cue_target = neck_target;
+                            applyGazeAimRoll(cue_target, camera_neck_roll);
+                            const LLQuaternion q_additive =
+                                ALGazeMath::additiveOverlayLocal(
+                                    cue_target, anim_snap.local(neck),
+                                    add_cap_neck_yaw, add_cap_neck_pitch,
+                                    fabsf(camera_neck_roll) <= 1e-5f,
+                                    /*radial_cap_rad=*/-1.f,
+                                    /*strength=*/wCueHead,
+                                    /*cap_pitch_up=*/add_cap_neck_pitch_up);
+                            const LLQuaternion q_endpoint =
+                                composition == GAZE_COMPOSE_ADDITIVE
+                                ? q_additive
+                                : nlerp(composition_mix, cue_target,
+                                        q_additive);
+                            const F32 ga = gazeAllowedAlpha(
+                                av, neck, wCueHead, gaze_anim_priority);
+                            if (ga > 0.f)
+                                neck->setRotation(nlerp(
+                                    ga, neck->getRotation(), q_endpoint));
+                        }
+                    }
+                }
+            }
+            if (head_priority_active ||
+                (wCueHead > 0.001f &&
+                 (fabsf(chain.mHeadYaw) + fabsf(chain.mHeadPitch) +
+                  fabsf(head_roll)) > 1e-5f))
+            {
+                LLQuaternion head_target;
+                head_target.setEulerAngles(
+                    0.f, chain.mHeadPitch, chain.mHeadYaw);
+                if (head_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        head_pose_weight, LLQuaternion::DEFAULT, head_target);
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    LLQuaternion neck_target;
+                    neck_target.setEulerAngles(
+                        0.f, chain.mNeckPitch, chain.mNeckYaw);
+                    const LLQuaternion owned_hips = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                    const LLQuaternion owned_torso = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                    const LLQuaternion owned_neck = nlerp(
+                        head_pose_weight, LLQuaternion::DEFAULT, neck_target);
+                    // [Machinima] Insert the planted chest contribution into the
+                    // head's cumulative world frame (head * neck * chest * torso
+                    // * hips * root) when it is live, so the head reaches the
+                    // full aim; verbatim original product otherwise (byte-parity).
+                    LLQuaternion desired_world;
+                    if (chest_joint &&
+                        (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                    {
+                        LLQuaternion chest_stack;
+                        chest_stack.setEulerAngles(
+                            0.f, chain.mChestPitch, chain.mChestYaw);
+                        const LLQuaternion owned_chest = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                        desired_world = owned_target * owned_neck * owned_chest *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
+                    else
+                    {
+                        desired_world = owned_target * owned_neck *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
+                    applyGazeAimRoll(
+                        desired_world,
+                        (head_roll + camera_neck_roll) *
+                            head_pose_weight * effective_head_eye_blend);
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = head->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend. FULL-strength
+                        // desired world (raw head * raw neck * [raw chest] *
+                        // raw torso * raw hips * root, full-strength roll
+                        // channel) under the CURRENT painted parent; the
+                        // clamped correction DELTA is scaled by the same
+                        // head_pose_weight Replace used, so weight 0 leaves
+                        // the animation untouched (Codex defect 1). A
+                        // residual larger than the head caps undershoots
+                        // predictably.
+                        // TODO(phase5): end-effector residual distribution
+                        // (Codex defect 3) -- measure the ANIMATED head
+                        // forward from the anim_snap WORLD rotations, compute
+                        // the shortest root-relative yaw/pitch residual to
+                        // the desired aim, distribute THAT residual via
+                        // distributeAnatomicalChain, and compose per joint,
+                        // so an animation that already aims via a different
+                        // neck/head split keeps its own distribution.
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_stack;
+                        torso_stack.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        LLQuaternion neck_stack;
+                        neck_stack.setEulerAngles(
+                            0.f, chain.mNeckPitch, chain.mNeckYaw);
+                        LLQuaternion chest_stack;
+                        const bool chest_live = chest_joint &&
+                            (fabsf(chain.mChestYaw) +
+                             fabsf(chain.mChestPitch)) > 1e-5f;
+                        LLQuaternion desired_world;
+                        if (chest_live)
+                        {
+                            chest_stack.setEulerAngles(
+                                0.f, chain.mChestPitch, chain.mChestYaw);
+                            desired_world = head_target * neck_stack *
+                                chest_stack * torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        else
+                        {
+                            desired_world = head_target * neck_stack *
+                                torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        const F32 head_roll_term =
+                            (head_roll + camera_neck_roll) *
+                            effective_head_eye_blend;
+                        applyGazeAimRoll(desired_world, head_roll_term);
+                        LLQuaternion local_target = desired_world;
+                        if (LLJoint* parent = head->getParent())
+                        {
+                            local_target =
+                                desired_world * ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                local_target, anim_snap.local(head),
+                                add_cap_head_yaw, add_cap_head_pitch,
+                                fabsf(head_roll_term) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/head_pose_weight,
+                                /*cap_pitch_up=*/add_cap_head_pitch_up);
+                        LLQuaternion q_endpoint = q_additive;
+                        if (composition == GAZE_COMPOSE_BLEND)
+                        {
+                            // Blend needs the weighted Replace endpoint too.
+                            const LLQuaternion owned_target = nlerp(
+                                head_pose_weight, LLQuaternion::DEFAULT,
+                                head_target);
+                            const LLQuaternion owned_hips = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_stack);
+                            const LLQuaternion owned_torso = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_stack);
+                            const LLQuaternion owned_neck = nlerp(
+                                head_pose_weight, LLQuaternion::DEFAULT,
+                                neck_stack);
+                            LLQuaternion replace_world;
+                            if (chest_live)
+                            {
+                                const LLQuaternion owned_chest = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    chest_stack);
+                                replace_world = owned_target * owned_neck *
+                                    owned_chest * owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            else
+                            {
+                                replace_world = owned_target * owned_neck *
+                                    owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            applyGazeAimRoll(
+                                replace_world,
+                                (head_roll + camera_neck_roll) *
+                                    head_pose_weight *
+                                    effective_head_eye_blend);
+                            LLQuaternion q_replace = replace_world;
+                            if (LLJoint* parent = head->getParent())
+                            {
+                                q_replace = replace_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            q_endpoint = nlerp(
+                                composition_mix, q_replace, q_additive);
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, head, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            head->setRotation(nlerp(
+                                ga, head->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    applyGazeAimRoll(head_target, head_roll);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, wCueHead, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), head_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueHead.
+                        LLQuaternion cue_target = head_target;
+                        applyGazeAimRoll(cue_target, head_roll);
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                cue_target, anim_snap.local(head),
+                                add_cap_head_yaw, add_cap_head_pitch,
+                                fabsf(head_roll) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueHead,
+                                /*cap_pitch_up=*/add_cap_head_pitch_up);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, cue_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, head, wCueHead, gaze_anim_priority);
+                        if (ga > 0.f)
+                            head->setRotation(nlerp(
+                                ga, head->getRotation(), q_endpoint));
+                    }
+                }
+            }
+        }
+
+        // Eyes: solve the eye-in-head AFTER the recruited head/neck were just
+        // painted (fix 1, spec 2.6/10.5). The motor supplies the DESIRED WORLD
+        // gaze (pose.mDesiredWorldGaze, carrying the eye saccade dynamics); we
+        // solve eye-in-head against the head's NOW-painted world rotation with
+        // ALGazePolicy::eyeInHeadFromWorldGaze, then re-add the motor's
+        // deterministic micro-life. Solving against the final head (not the
+        // pre-gaze pose) is why the eyes fixate the target instead of
+        // overshooting it by the recruited head rotation. VOR counter-rotation
+        // falls out by construction.
+        //
+        // Fix 6 (split-eye target): when a distinct eyes-only target is set
+        // ("look at camera, eyes at object"), aim the EYES at that target's
+        // world direction while the head keeps aiming at the head target.
+        // Relaxed (eyes idle): the eye-target combo's "eyes don't track"
+        // choice. No fixation, no split-eye direction, no vergence -- the
+        // eyes just sit neutral in the socket plus the motor's own
+        // micro-life. Head/neck/torso above are untouched and keep tracking
+        // the head target normally.
+        const bool eye_relaxed =
+            eye_target && eye_target->mMode == GazeTarget::RELAXED;
+        // Near-lens ("just off camera"): the eyes fixate the SAME camera/head
+        // direction the head aims (pose.mDesiredWorldGaze) but sit a few living
+        // degrees off the lens -- not relaxed (they still fixate + carry
+        // micro-life), and not an independent target (so the split-eye resolve
+        // below is skipped in its favour).
+        const bool eye_near_lens =
+            eye_target && eye_target->mMode == GazeTarget::NEAR_LENS;
+        LLVector3 eye_world_gaze = pose.mDesiredWorldGaze;
+        F32 eye_target_distance = targetDistance;
+        if (eye_target && !eye_relaxed && !eye_near_lens)
+        {
+            LLVector3 split_eye_look;
+            F32 split_eye_distance = 0.f;
+            if (resolveTargetDirection(
+                    *eye_target, split_eye_look, split_eye_distance, false))
+            {
+                const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
+                const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
+                if (fabsf(eyeline_yaw) + fabsf(eyeline_pitch) > 1e-4f)
+                {
+                    split_eye_look = ALGazeMath::eyelineOffsetDir(
+                        split_eye_look, root_up, eyeline_yaw, eyeline_pitch);
+                }
+                if (split_eye_look.normVec() > 1e-4f)
+                {
+                    eye_world_gaze = split_eye_look;
+                    eye_target_distance = split_eye_distance;
+                }
+            }
+        }
+        else if (eye_near_lens)
+        {
+            // Aim the eyes at the camera/head direction, offset by the living
+            // off-lens wander. The head keeps aiming at the camera normally.
+            eye_world_gaze = nearLensOffsetDir(
+                eye_world_gaze, root_up, seed, t_sec, (F32)gaze_near_lens_deg);
+        }
+
+        F32 lid_follow_pitch = 0.f;
+        bool have_lid_follow_pitch = false;
+        const bool eye_priority_active =
+            override_head_eyes && priority_env > 0.001f;
+        if (wEye > 0.001f || eye_priority_active)
+        {
+            // [Machinima] Goal 3a: custom-profile radial eye cone when enabled.
+            const F32 eye_rot_max_base = use_custom_limits
+                ? eff_profile.mEyeRadialDeg * DEG_TO_RAD
+                : GAZE_DIRECTOR_EYE_ROT_MAX;
+            const F32 scaled_eye_rot_max = anatomy_scale == 1.f
+                ? eye_rot_max_base
+                : eye_rot_max_base * anatomy_scale;
+            const F32 comfort_yaw_deg = ms.mComfortYawDeg *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale);
+            const F32 comfort_pitch_deg = ms.mComfortPitchDeg *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale);
+            const F32 comfort_yaw_rad = comfort_yaw_deg * DEG_TO_RAD;
+            const F32 comfort_pitch_rad = comfort_pitch_deg * DEG_TO_RAD;
+            // [Machinima] Asymmetric up/down pitch: the UPWARD (negative)
+            // eye-apply cap comes from the profile's explicit up cone when
+            // custom limits are on, else from the legacy comfort pitch scaled
+            // by DirectorGazePitchUpScale. Downward keeps the current cap.
+            const F32 comfort_pitch_up_base = llmax(use_custom_limits
+                ? eff_profile.mEyeApplyPitchUpDeg
+                : ms.mComfortPitchDeg * pitch_up_scale, 0.f);
+            // Degrees form for the asymmetric SOFT limit inside
+            // eyeInHeadFromWorldGaze (defect A): without it the symmetric
+            // tanh soft-clamp squashes an upward request to ~the downward
+            // comfort before the asymmetric hard clamp below can ever see
+            // it. Same anatomy scaling as comfort_pitch_deg; with scale 1
+            // and a symmetric profile this is bit-equal to comfort_pitch_deg
+            // and the soft limit takes its ORIGINAL branch verbatim.
+            const F32 comfort_pitch_up_deg = comfort_pitch_up_base *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale);
+            const F32 comfort_pitch_up_rad = comfort_pitch_up_base *
+                (anatomy_scale == 1.f ? 1.f : anatomy_scale) * DEG_TO_RAD;
+            const F32 eye_pose_weight = llclamp(
+                effective_intensity * cue_eye_weight, 0.f, 1.f);
+
+            // Solve against the painted head, then fold in the motor micro-life.
+            const LLQuaternion headWorld = head->getWorldRotation();
+            F32 eye_yaw = 0.f;
+            F32 eye_pitch = 0.f;
+            if (eye_relaxed)
+            {
+                // Neutral eye-in-head (no fixation) plus the motor's own
+                // drift/microsaccade -- eyes stay centred in the socket.
+                eye_yaw = pose.mEyeYawMicro;
+                eye_pitch = pose.mEyePitchMicro;
+            }
+            else
+            {
+                ALGazePolicy::eyeInHeadFromWorldGaze(
+                    eye_world_gaze, headWorld, comfort_yaw_deg, comfort_pitch_deg,
+                    eye_yaw, eye_pitch, comfort_pitch_up_deg);
+                eye_yaw += pose.mEyeYawMicro;
+                eye_pitch += pose.mEyePitchMicro;
+            }
+
+            // Lid-follow samples this eye pitch (fix 4 composition below).
+            // Asymmetric: upward (negative) side uses the up cap.
+            lid_follow_pitch =
+                llclamp(eye_pitch, -comfort_pitch_up_rad, comfort_pitch_rad);
+            have_lid_follow_pitch = true;
+
+            // Fix 7 (vergence): near targets toe the eyes in from the target
+            // distance and the per-actor mVergenceScale, applied with opposite
+            // sign per eye exactly as the legacy eye stage. Relaxed eyes skip
+            // vergence entirely (no target to converge on).
+            const F32 convergence = eye_relaxed ? 0.f : ALGazeMath::vergenceAngle(
+                eye_target_distance, 0.064f, g.mVergenceScale);
+            auto applyMotorEye = [&](LLJoint* eye, F32 convergence_sign)
+            {
+                if (!eye)
+                {
+                    return;
+                }
+                const F32 yaw = llclamp(
+                    eye_yaw + convergence_sign * convergence,
+                    -comfort_yaw_rad, comfort_yaw_rad);
+                // Asymmetric eye-apply pitch: upward (negative) cap may
+                // exceed the downward one so looking up reaches further.
+                const F32 pitch =
+                    llclamp(eye_pitch, -comfort_pitch_up_rad, comfort_pitch_rad);
+                LLQuaternion tgt;
+                tgt.setEulerAngles(0.f, pitch, yaw);
+                if (constrain_eye_cone)
+                {
+                    tgt.constrain(scaled_eye_rot_max);
+                }
+                if (eye_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(
+                            ga, eye->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend eyes, still
+                        // solved AFTER the painted head (VOR preserved). The
+                        // smallest clamped eye delta from the SNAPSHOT
+                        // animation eye rotation toward the FULL-strength
+                        // desired eye-in-head composes over the animation,
+                        // with the correction DELTA scaled by the same
+                        // eye_pose_weight Replace used (Codex defect 1).
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                tgt, anim_snap.local(eye),
+                                comfort_yaw_rad, comfort_pitch_rad,
+                                /*preserve_anim_roll=*/true,
+                                constrain_eye_cone ? scaled_eye_rot_max
+                                                   : -1.f,
+                                /*strength=*/eye_pose_weight,
+                                /*cap_pitch_up=*/comfort_pitch_up_rad);
+                        const LLQuaternion q_replace = nlerp(
+                            eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, q_replace, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, eye, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            eye->setRotation(nlerp(
+                                ga, eye->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, wEye, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend eyes on the
+                        // cue-weighted path -- clamped RESIDUAL delta over
+                        // the animation (Codex defect 2), scaled by the
+                        // existing wEye alpha.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                tgt, anim_snap.local(eye),
+                                comfort_yaw_rad, comfort_pitch_rad,
+                                /*preserve_anim_roll=*/true,
+                                constrain_eye_cone ? scaled_eye_rot_max
+                                                   : -1.f,
+                                /*strength=*/wEye,
+                                /*cap_pitch_up=*/comfort_pitch_up_rad);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, tgt, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, eye, wEye, gaze_anim_priority);
+                        if (ga > 0.f)
+                            eye->setRotation(nlerp(
+                                ga, eye->getRotation(), q_endpoint));
+                    }
+                }
+            };
+            applyMotorEye(av->getJoint("mEyeLeft"), -1.f);
+            applyMotorEye(av->getJoint("mEyeRight"), 1.f);
+            applyMotorEye(av->getJoint("mFaceEyeAltLeft"), -1.f);
+            applyMotorEye(av->getJoint("mFaceEyeAltRight"), 1.f);
+        }
+
+        // Tier-0 lids (fix 4): compose the full lid stack in the legacy order
+        // (spec 2.5 stages) -- (1) gaze-position lid-follow -> (2) affect
+        // aperture posture -> (3) blink override -> (4) cue widen/narrow. The
+        // motor already pre-folded (2) aperture + (3) blink into
+        // pose.mLidClosure*; here we add (1) DirectorGazeLidFollow
+        // (ALGazeMath::lidFollowClosure of the just-solved eye pitch) and the
+        // persona_mod.mLidNarrow cue via max (both gaze-weighted like legacy),
+        // then apply the cue widen. Same director-owned, capture-backed Blink_*
+        // channel and ownership gate as the legacy lid stage.
+        static LLCachedControl<F32> gaze_mp_lid_follow(
+            gSavedSettings, "DirectorGazeLidFollow", 0.6f);
+        if (director_runtime &&
+            (life_params.mBlinks || (F32)gaze_mp_lid_follow > 0.001f ||
+             persona_mod.mLidNarrow > 0.001f ||
+             (director_runtime->mCueOverride &&
+              director_runtime->mCueLidWiden > 0.001f)))
+        {
+            const F32 follow = have_lid_follow_pitch
+                ? ALGazeMath::lidFollowClosure(
+                      lid_follow_pitch, (F32)gaze_mp_lid_follow) * wEye
+                : 0.f;
+            const F32 narrow = persona_mod.mLidNarrow * wEye;
+            const F32 widen = 1.f - llclamp(
+                director_runtime->mCueLidWiden, 0.f, 1.f);
+            auto compose_lid = [&](F32 motor_closure) -> F32
+            {
+                const F32 c = llmax(
+                    llclamp(motor_closure, 0.f, 1.f), llmax(follow, narrow));
+                return llclamp(c * widen, 0.f, 1.f);
+            };
+            const F32 closure_l = compose_lid(pose.mLidClosureLeft);
+            const F32 closure_r = compose_lid(pose.mLidClosureRight);
+            bool visual_params_changed = false;
+            auto apply_lid = [&](const char* name, F32 closure)
+            {
+                if (LLVisualParam* param = av->getVisualParam(name))
+                {
+                    if (fabsf(av->getVisualParamWeight(param) - closure) > 1e-6f)
+                    {
+                        visual_params_changed |=
+                            av->setVisualParamWeight(param, closure);
+                    }
+                }
+            };
+            apply_lid("Blink_Left",  closure_l);
+            apply_lid("Blink_Right", closure_r);
+            if (visual_params_changed)
+            {
+                av->updateVisualParams();
+            }
+        }
+        return;
+    }
+
+    // Fix 2 (gate OFF -> ON re-inits on the current target): the gate-on branch
+    // above owns the motor state and calls step(); on THIS legacy path step() is
+    // never called, so its master-gate-off reset is unreachable. Drop any stale
+    // motor state here so a later gate-ON re-initializes on whatever target is
+    // current then instead of slewing from an old committed target. This writes
+    // only g.mGazeMotor, which the legacy path never reads -- gate-off output
+    // stays byte-identical.
+    if (g.mGazeMotor.mInitialized)
+    {
+        g.mGazeMotor = ALGazeMotor::GazeMotorState();
+    }
 
     // clamp yaw AND pitch to human head+neck+torso capacity and zero the roll, so
     // a target behind the actor eases to the max and HOLDS there (no neck-wrap, no
     // snap) -- the "give up gracefully" behavior.
     {
-        const F32 head_yaw_max =
-            llclamp((F32)head_yaw_max_deg, 0.f, 180.f) * DEG_TO_RAD;
-        const F32 head_pitch_max =
-            llclamp((F32)head_pitch_max_deg, 0.f, 180.f) * DEG_TO_RAD;
-        const F32 target_yaw = llclamp(
-            g.mBodyAimYaw, -head_yaw_max, head_yaw_max);
+        // Individual joint limits belong to the anatomical chain below. Keep
+        // only a whole-chain safety clamp here so yaw can cross the body-turn
+        // threshold instead of being truncated at the old head-only limit.
+        const F32 target_yaw = llclamp(g.mBodyAimYaw, -F_PI, F_PI);
+        constexpr F32 CHAIN_PITCH_MAX = 100.f * DEG_TO_RAD;
         const F32 target_pitch = llclamp(
-            g.mBodyAimPitch, -head_pitch_max, head_pitch_max);
+            g.mBodyAimPitch, -CHAIN_PITCH_MAX, CHAIN_PITCH_MAX);
         if (!g.mAppliedValid)
         {
             // Activation starts at today's target pose; never slew in from a
             // stale or arbitrary rotation.
             g.mAppliedYaw = target_yaw;
             g.mAppliedPitch = target_pitch;
+            g.mTorsoAimYaw = target_yaw;
+            g.mTorsoAimPitch = target_pitch;
             g.mAppliedValid = true;
             g.mAppliedSlewing = false;
         }
@@ -3806,89 +9418,1265 @@ void LLActorMover::gazePaint(LLVOAvatar* av, Gaze& g, const Move* mv, F32 dt, bo
                 g.mAppliedPitch = target_pitch;
             }
         }
-        head_rot_local.setEulerAngles(
-            0.f, g.mAppliedPitch, g.mAppliedYaw);
     }
 
-    if (wBody > 0.001f)
+    // [Machinima] behind-shoulder / no-snap (legacy path): the pose chains
+    // below consume a resolved chain feed that can never sign-flip through
+    // the back at the +-180 seam -- it holds the committed shoulder while the
+    // target hovers dead-behind, then sweeps to the other shoulder through
+    // the FRONT at head_slew_rate. Reach is the sum of the SAME weighted
+    // capacities distributeAnatomicalChain allocates from (Planted spine
+    // excludes the hips), so "beyond reach" matches actual saturation, and a
+    // target that never leaves reach passes through bit-identically
+    // (chain_yaw == g.mAppliedYaw). The trigger_chain solve right below
+    // deliberately keeps the RAW g.mAppliedYaw so the Turn-body handoff
+    // still fires on a behind target.
+    const F32 chain_reach_yaw = ALGazeMath::chainReachYaw(
+        effective_head_eye_blend, g.mTorsoAmount, anatomy_scale,
+        /*recruit_hips=*/!planted_spine, profile_ptr);
+    const F32 chain_step = llmax((F32)head_slew_rate_deg, 0.f) *
+                           DEG_TO_RAD * dt;
+    F32 chain_yaw = resolveBehindShoulderChainYaw(
+        g.mAppliedYaw, chain_reach_yaw, chain_step, advance,
+        g.mChainYawValid, g.mChainYaw, g.mBehindShoulderSign,
+        g.mBehindSweeping);
+    ALGazeMath::AnatomicalChainPose trigger_chain;
+    ALGazeMath::distributeAnatomicalChain(
+        g.mAppliedYaw, g.mAppliedPitch,
+        effective_head_eye_blend, g.mTorsoAmount,
+        body_turn_threshold_deg, trigger_chain, anatomy_scale,
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+        pitch_up_scale);
+
+    // The old Director body mode now opts into threshold-driven replanting,
+    // using the resolved/smoothed target rather than the render camera.
+    // [Machinima] Goal 3b: influence 0 hides the whole gaze layer, so gate the
+    // root replant on it too (the mBodyTurnActive latch stays warm).
+    if (director_runtime && director_runtime->mMode == 1 && !av->isSitting() &&
+        cue_body_weight >= 0.999f && timeline_influence > 0.001f &&
+        (trigger_chain.mTriggerBodyTurn || director_runtime->mBodyTurnActive))
     {
-        // torso takes a small share (large turns lean the chest). Root-relative
-        // approximation as in the built-in; nlerp from the anim pose so the walk's
-        // torso sway still reads at partial weight.
-        if (g.mTorsoAmount > 0.f)
+        director_runtime->mBodyTurnActive = true;
+        applyDirectorBodyTurn(av, *director_runtime, g.mSmoothDir);
+
+        // Root paint is restored before animation on the next frame, so derive
+        // this frame's upper-chain residual explicitly from the root turn just
+        // applied. Otherwise root and neck/head would both consume the full yaw.
+        const LLVector3 base_at = LLVector3(1.f, 0.f, 0.f) * rootWorld;
+        const LLVector3 turned_at =
+            LLVector3(1.f, 0.f, 0.f) * root->getWorldRotation();
+        const F32 base_yaw = atan2f(base_at.mV[VY], base_at.mV[VX]);
+        const F32 turned_yaw = atan2f(turned_at.mV[VY], turned_at.mV[VX]);
+        chain_yaw = llsimple_angle(
+            chain_yaw - llsimple_angle(turned_yaw - base_yaw));
+    }
+
+    // All frame-delta state, including an optional body turn, is settled.
+    // Layer deterministic naturalism only now so it cannot feed smoothing.
+    F32 break_yaw = 0.f, break_pitch = 0.f;
+    if (allow_natural_break)
+    {
+        ALGazeMath::evalNaturalBreak(
+            seed, t_sec, life_params.mBreakFrequency,
+            break_yaw, break_pitch);
+        const ALGazeMath::ContactRationOffset contact =
+            ALGazeMath::evalContactRation(seed, t_sec, persona_mod);
+        break_yaw += contact.mDeflectYaw;
+        break_pitch += contact.mDeflectPitch;
+    }
+    const F32 expressive_pitch =
+        break_pitch + persona_mod.mEyelinePitchBias;
+    if (fabsf(break_yaw) + fabsf(expressive_pitch) > 1e-4f)
+    {
+        look = ALGazeMath::eyelineOffsetDir(
+            look, root_up, break_yaw, expressive_pitch);
+        look.normVec();
+    }
+
+    // Relaxed (eyes idle): no fixation, no split-eye direction, no vergence
+    // -- the eyes just sit neutral in the socket plus the legacy path's own
+    // micro-saccade. Head/neck/torso above are untouched and keep tracking
+    // the head target normally.
+    const bool eye_relaxed =
+        eye_target && eye_target->mMode == GazeTarget::RELAXED;
+    // Near-lens ("just off camera"): the eyes fixate the head/camera direction
+    // (`look`) offset by the living off-lens wander -- not relaxed (they still
+    // fixate) and not an independent target (the split-eye resolve is skipped).
+    const bool eye_near_lens =
+        eye_target && eye_target->mMode == GazeTarget::NEAR_LENS;
+    LLVector3 eye_look = look;
+    F32 eye_target_distance = targetDistance;
+    if (eye_target && !eye_relaxed && !eye_near_lens)
+    {
+        LLVector3 split_eye_look;
+        F32 split_eye_distance = 0.f;
+        if (resolveTargetDirection(
+                *eye_target, split_eye_look, split_eye_distance, false))
+        {
+            const F32 eyeline_yaw = g.mEyelineYawDeg * DEG_TO_RAD;
+            const F32 eyeline_pitch = g.mEyelinePitchDeg * DEG_TO_RAD;
+            if (fabsf(eyeline_yaw) + fabsf(eyeline_pitch) > 1e-4f)
+            {
+                split_eye_look = ALGazeMath::eyelineOffsetDir(
+                    split_eye_look, root_up, eyeline_yaw, eyeline_pitch);
+            }
+            if (fabsf(break_yaw) + fabsf(expressive_pitch) > 1e-4f)
+            {
+                split_eye_look = ALGazeMath::eyelineOffsetDir(
+                    split_eye_look, root_up, break_yaw, expressive_pitch);
+            }
+            if (split_eye_look.normVec() > 1e-4f)
+            {
+                eye_look = split_eye_look;
+                eye_target_distance = split_eye_distance;
+            }
+        }
+    }
+    else if (eye_near_lens)
+    {
+        LLVector3 near_look = nearLensOffsetDir(
+            eye_look, root_up, seed, t_sec, (F32)gaze_near_lens_deg);
+        if (near_look.normVec() > 1e-4f)
+        {
+            eye_look = near_look;
+        }
+    }
+
+    // Preserve the existing expressive eye/head/neck glance, but take every
+    // pelvis/torso component from a second, break-free solve. Natural breaks,
+    // contact-ration aversion, and persona eyeline/chin bias must never kick the
+    // body chain or its turn trigger.
+    ALGazeMath::AnatomicalChainPose chain;
+    if (lean_active)
+    {
+        // [Machinima] Goal 3c (legacy path, Angle-ease + Planted spine): run
+        // the pure curve ONCE on the break-free applied body aim -- the spine
+        // takes its angle-eased, ellipse-clamped share and the FACE residual
+        // (plus the expressive break/persona offsets, which must never feed
+        // the spine) is allocated to eye/head/neck ONLY: torso_amount 0 and
+        // recruit_hips false give the spine/hips slots zero capacity, and
+        // chest_share 0 keeps the face solve from splitting a chest. Excess
+        // beyond face + spine reach remains an undershoot (design doc).
+        const ALGazeMath::SpineLeanResult lean = ALGazeMath::spineLean(
+            chain_yaw, g.mAppliedPitch,
+            lean_threshold_deg, lean_softness_deg, lean_max_deg,
+            g.mTorsoAmount, effective_head_eye_blend,
+            spine_cap_yaw_rad, spine_cap_pitch_rad,
+            spine_cap_pitch_up_rad);
+        ALGazeMath::distributeAnatomicalChain(
+            lean.mFaceYaw + break_yaw,
+            lean.mFacePitch + expressive_pitch + persona_mod.mChinPitchBias,
+            effective_head_eye_blend, /*torso_amount=*/0.f,
+            body_turn_threshold_deg, chain, anatomy_scale,
+            /*recruit_hips=*/false, profile_ptr, /*chest_share=*/0.f,
+            pitch_up_scale);
+        // The conserved spine vector replaces the (zero) torso allocation,
+        // then splits across torso/chest with the SAME share the legacy
+        // planted split uses (torso+chest == the one spine bucket; the
+        // chest-less-rig fold-back below stays consistent).
+        chain.mTorsoYaw   = lean.mSpineYaw;
+        chain.mTorsoPitch = lean.mSpinePitch;
+        if (chest_share > 0.f)
+        {
+            chain.mChestYaw   = chain.mTorsoYaw * chest_share;
+            chain.mChestPitch = chain.mTorsoPitch * chest_share;
+            chain.mTorsoYaw  -= chain.mChestYaw;
+            chain.mTorsoPitch -= chain.mChestPitch;
+        }
+        // Planted: pelvis stays exactly +0 (the face solve already
+        // canonicalized its zero-capacity hips to +0; keep it explicit).
+        chain.mHipsYaw   = 0.f;
+        chain.mHipsPitch = 0.f;
+        // Turn-body handoff is keyed to the FULL body aim, never the face
+        // residual: same predicate distributeAnatomicalChain applies to its
+        // (full) input yaw. The actual root-turn gate above already used the
+        // unchanged trigger_chain solve on the raw g.mAppliedYaw.
+        chain.mTriggerBodyTurn = fabsf(chain_yaw) >
+            llclamp(body_turn_threshold_deg, 45.f, 180.f) * DEG_TO_RAD;
+    }
+    else
+    {
+    ALGazeMath::distributeAnatomicalChain(
+        chain_yaw + break_yaw,
+        g.mAppliedPitch + expressive_pitch + persona_mod.mChinPitchBias,
+        effective_head_eye_blend, g.mTorsoAmount,
+        body_turn_threshold_deg, chain, anatomy_scale,
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+        pitch_up_scale);
+    ALGazeMath::AnatomicalChainPose break_free_body_chain;
+    ALGazeMath::distributeAnatomicalChain(
+        chain_yaw, g.mAppliedPitch,
+        effective_head_eye_blend, g.mTorsoAmount,
+        body_turn_threshold_deg, break_free_body_chain, anatomy_scale,
+        /*recruit_hips=*/!planted_spine, profile_ptr, chest_share,
+        pitch_up_scale);
+    chain.mTorsoYaw = break_free_body_chain.mTorsoYaw;
+    chain.mTorsoPitch = break_free_body_chain.mTorsoPitch;
+    // [Machinima] Chest is a spine component: take it from the SAME break-free
+    // solve as the torso so torso+chest stay one conserved bucket (natural
+    // breaks never kick the body chain). Both are +0 when chest_share == 0.
+    chain.mChestYaw = break_free_body_chain.mChestYaw;
+    chain.mChestPitch = break_free_body_chain.mChestPitch;
+    chain.mHipsYaw = break_free_body_chain.mHipsYaw;
+    chain.mHipsPitch = break_free_body_chain.mHipsPitch;
+    chain.mTriggerBodyTurn = break_free_body_chain.mTriggerBodyTurn;
+    } // end legacy double solve (lean_active == false)
+    // [Machinima] Chest fold-back (legacy path): a rig without an mChest joint
+    // returns the split share to the torso BEFORE the torso write so no reach
+    // is ever lost. chest_share == 0 on every non-planted path keeps mChest*
+    // at exactly +0, so this is a no-op there.
+    LLJoint* chest_joint = av->getJoint("mChest");
+    if (!chest_joint && chest_share > 0.f)
+    {
+        // Fold the WHOLE split share back (any magnitude) so no reach is lost
+        // on a chest-less rig. chest_share==0 (every non-planted path) keeps
+        // chain.mChest* at exactly +0, so this is a no-op and torso is untouched.
+        chain.mTorsoYaw   += chain.mChestYaw;
+        chain.mTorsoPitch += chain.mChestPitch;
+        chain.mChestYaw   = 0.f;
+        chain.mChestPitch = 0.f;
+    }
+    ALGazeMath::applySideEye(persona_mod.mSideEyeStrength, chain);
+    if (director_runtime && director_runtime->mCueOverride)
+    {
+        chain.mHeadPitch += director_runtime->mCueHeadRecoilPitch;
+    }
+
+    // Cinematic Stillness (+ Restraint head-turn magnitude) on the legacy path:
+    // scale the recruited head/neck/torso/hips chain toward zero so the body
+    // barely moves, while the eyes (eye_look, applied below) and the micro-life
+    // added at apply time stay fully alive. Same combined factor as the motor
+    // path (ALGazeMotor RESTRAINT_HEADTURN_K); defaults 0 -> factor 1 ->
+    // byte-identical. The body-turn TRIGGER and camera roll are left intact.
+    if (cine_stillness > 0.f || cine_restraint > 0.f)
+    {
+        const F32 body_scale = (1.f - cine_stillness) *
+            (1.f - ALGazeMotor::RESTRAINT_HEADTURN_K * cine_restraint);
+        chain.mHeadYaw    *= body_scale;
+        chain.mHeadPitch  *= body_scale;
+        chain.mNeckYaw    *= body_scale;
+        chain.mNeckPitch  *= body_scale;
+        chain.mTorsoYaw   *= body_scale;
+        chain.mTorsoPitch *= body_scale;
+        // [Machinima] Chest scales with its torso sibling so the conserved
+        // spine bucket shrinks as one (the motor path splits AFTER its own
+        // stillness scaling, which is equivalent). +0 stays +0 by default.
+        chain.mChestYaw   *= body_scale;
+        chain.mChestPitch *= body_scale;
+        chain.mHipsYaw    *= body_scale;
+        chain.mHipsPitch  *= body_scale;
+    }
+
+    // Micro-life evaluation (§B1)
+    const ALGazeMath::MicroLifeOffsets micro =
+        ALGazeMath::evalMicroLife(
+            seed, t_sec, life_params.mMicroLife,
+            life_params.mBlinks, life_params.mBlinkRate);
+
+    const bool head_priority_active = override_head_eyes && priority_env > 0.001f;
+    const bool body_priority_active = override_upper_body && priority_env > 0.001f;
+    // [Machinima] Pelvis ownership is Upper-body only; Planted spine never
+    // gaze-writes mPelvis (base/legs stay on the animation).
+    const bool pelvis_priority_active = strict_pelvis && priority_env > 0.001f;
+    if (wBody > 0.001f || head_priority_active || body_priority_active)
+    {
+        const F32 wCueBody = wBody * cue_body_weight;
+        const F32 wCueHead = wBody * cue_head_weight;
+        const F32 body_pose_weight = llclamp(
+            effective_intensity * cue_body_weight, 0.f, 1.f);
+        const F32 head_pose_weight = llclamp(
+            effective_intensity * cue_head_weight, 0.f, 1.f);
+        if (pelvis_priority_active ||
+            (wCueBody > 0.001f &&
+             (fabsf(chain.mHipsYaw) + fabsf(chain.mHipsPitch)) > 1e-5f))
+        {
+            if (LLJoint* pelvis = av->getJoint("mPelvis"))
+            {
+                LLQuaternion hips_target;
+                hips_target.setEulerAngles(0.f, chain.mHipsPitch, chain.mHipsYaw);
+                // Pelvis OWNED write only under Upper body, never Planted spine
+                // (byte-identical to body_priority_active for scopes 0-2).
+                if (pelvis_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, pelvis, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        pelvis->setRotation(nlerp(
+                            ga, pelvis->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend (legacy path);
+                        // same construction as the motor pelvis branch --
+                        // FULL-strength desired, correction DELTA scaled by
+                        // body_pose_weight (Codex defect 1).
+                        LLQuaternion desired_local =
+                            hips_target * root->getWorldRotation();
+                        if (LLJoint* parent = pelvis->getParent())
+                        {
+                            desired_local = desired_local *
+                                ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                desired_local, anim_snap.local(pelvis),
+                                add_cap_hips_yaw, add_cap_hips_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/body_pose_weight,
+                                /*cap_pitch_up=*/add_cap_hips_pitch_up);
+                        const LLQuaternion q_replace = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            hips_target);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, q_replace, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const F32 ga = gazeAllowedAlpha(
+                        av, pelvis, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        pelvis->setRotation(nlerp(
+                            ga, pelvis->getRotation(), hips_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueBody.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                hips_target, anim_snap.local(pelvis),
+                                add_cap_hips_yaw, add_cap_hips_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueBody,
+                                /*cap_pitch_up=*/add_cap_hips_pitch_up);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, hips_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, pelvis, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            pelvis->setRotation(nlerp(
+                                ga, pelvis->getRotation(), q_endpoint));
+                    }
+                }
+            }
+        }
+        if (body_priority_active ||
+            (wCueBody > 0.001f &&
+             (fabsf(chain.mTorsoYaw) + fabsf(chain.mTorsoPitch)) > 1e-5f))
         {
             if (LLJoint* torso = av->getJoint("mTorso"))
             {
-                const LLQuaternion torso_target =
-                    nlerp(g.mTorsoAmount, LLQuaternion::DEFAULT, head_rot_local);
-                torso->setRotation(nlerp(wBody, torso->getRotation(), torso_target));
+                LLQuaternion torso_target;
+                torso_target.setEulerAngles(0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                if (body_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, torso, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        torso->setRotation(nlerp(
+                            ga, torso->getRotation(), owned_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend (legacy path);
+                        // same construction as the motor torso branch --
+                        // FULL-strength desired, correction DELTA scaled by
+                        // body_pose_weight (Codex defect 1).
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        const LLQuaternion desired_world = torso_target *
+                            hips_stack * root->getWorldRotation();
+                        LLQuaternion desired_local = desired_world;
+                        if (LLJoint* parent = torso->getParent())
+                        {
+                            desired_local = desired_world *
+                                ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                desired_local, anim_snap.local(torso),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/body_pose_weight,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                        const LLQuaternion q_replace = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            torso_target);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, q_replace, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const F32 ga = gazeAllowedAlpha(
+                        av, torso, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        torso->setRotation(nlerp(
+                            ga, torso->getRotation(), torso_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueBody.
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                torso_target, anim_snap.local(torso),
+                                add_cap_spine_yaw, add_cap_spine_pitch,
+                                /*preserve_anim_roll=*/true,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueBody,
+                                /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, torso_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, torso, wCueBody, gaze_anim_priority);
+                        if (ga > 0.f)
+                            torso->setRotation(nlerp(
+                                ga, torso->getRotation(), q_endpoint));
+                    }
+                }
             }
         }
 
-        // neck + head split, converted into the neck's parent-local frame exactly
-        // like LLHeadRotMotion so the chain composes correctly.
-        LLJoint* neck = av->getJoint("mNeck");
-        if (neck && neck->getParent())
+        // [Machinima] Planted-spine chest write (legacy path): the split share
+        // of the conserved spine bucket lands on mChest, parent-to-child after
+        // the torso. Guarded on a nonzero chest angle, so chest_share == 0
+        // (every pre-existing scope) never enters this block. Because
+        // mSpine3/mSpine4 sit between mTorso and mChest, the owned endpoint is
+        // built in WORLD space through the chain stack (chest over torso over
+        // hips over root) and converted through the chest joint's ACTUAL
+        // parent, exactly like the neck/head owned writes below; the
+        // cue-weighted branch mirrors the torso's local partial write.
+        if (chest_joint &&
+            (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f &&
+            (body_priority_active || wCueBody > 0.001f))
         {
-            const LLQuaternion torsoRotLocal = neck->getParent()->getWorldRotation() * invRoot;
-            const LLQuaternion head_rel      = head_rot_local * ~torsoRotLocal;
-            const LLQuaternion neck_target   = nlerp(GAZE_NECK_LAG,       LLQuaternion::DEFAULT, head_rel);
-            const LLQuaternion head_target   = nlerp(1.f - GAZE_NECK_LAG, LLQuaternion::DEFAULT, head_rel);
-            neck->setRotation(nlerp(wBody, neck->getRotation(), neck_target));
-            head->setRotation(nlerp(wBody, head->getRotation(), head_target));
+            LLQuaternion chest_target;
+            chest_target.setEulerAngles(0.f, chain.mChestPitch, chain.mChestYaw);
+            if (body_priority_active)
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const LLQuaternion owned_target = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, chest_target);
+                LLQuaternion hips_target;
+                hips_target.setEulerAngles(
+                    0.f, chain.mHipsPitch, chain.mHipsYaw);
+                LLQuaternion torso_target;
+                torso_target.setEulerAngles(
+                    0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                const LLQuaternion owned_hips = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                const LLQuaternion owned_torso = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                const LLQuaternion desired_world = owned_target *
+                    owned_torso * owned_hips * root->getWorldRotation();
+                LLQuaternion local_target = desired_world;
+                if (LLJoint* parent = chest_joint->getParent())
+                {
+                    local_target = desired_world * ~parent->getWorldRotation();
+                }
+                const F32 ga = gazeAllowedAlpha(
+                    av, chest_joint, priority_env, gaze_anim_priority);
+                if (ga > 0.f)
+                    chest_joint->setRotation(nlerp(
+                        ga, chest_joint->getRotation(), local_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend (legacy path); same
+                    // construction as the motor chest branch -- FULL-strength
+                    // desired, correction DELTA scaled by body_pose_weight
+                    // (Codex defect 1). Spine caps -- chest shares the
+                    // conserved spine bucket.
+                    LLQuaternion hips_stack;
+                    hips_stack.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_stack;
+                    torso_stack.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    const LLQuaternion desired_world = chest_target *
+                        torso_stack * hips_stack * root->getWorldRotation();
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = chest_joint->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            local_target, anim_snap.local(chest_joint),
+                            add_cap_spine_yaw, add_cap_spine_pitch,
+                            /*preserve_anim_roll=*/true,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/body_pose_weight,
+                            /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                    LLQuaternion q_endpoint = q_additive;
+                    if (composition == GAZE_COMPOSE_BLEND)
+                    {
+                        // Blend needs the weighted Replace endpoint too.
+                        const LLQuaternion owned_target = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            chest_target);
+                        const LLQuaternion owned_hips = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            hips_stack);
+                        const LLQuaternion owned_torso = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            torso_stack);
+                        const LLQuaternion replace_world = owned_target *
+                            owned_torso * owned_hips *
+                            root->getWorldRotation();
+                        LLQuaternion q_replace = replace_world;
+                        if (LLJoint* parent = chest_joint->getParent())
+                        {
+                            q_replace = replace_world *
+                                ~parent->getWorldRotation();
+                        }
+                        q_endpoint = nlerp(
+                            composition_mix, q_replace, q_additive);
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), q_endpoint));
+                }
+            }
+            else
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const F32 ga = gazeAllowedAlpha(
+                    av, chest_joint, wCueBody, gaze_anim_priority);
+                if (ga > 0.f)
+                    chest_joint->setRotation(nlerp(
+                        ga, chest_joint->getRotation(), chest_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: legacy Blend-scope additive --
+                    // clamped RESIDUAL delta over the animation (never a
+                    // second absolute application; Codex defect 2), scaled
+                    // by the existing wCueBody.
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            chest_target, anim_snap.local(chest_joint),
+                            add_cap_spine_yaw, add_cap_spine_pitch,
+                            /*preserve_anim_roll=*/true,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/wCueBody,
+                            /*cap_pitch_up=*/add_cap_spine_pitch_up);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, chest_target, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, chest_joint, wCueBody, gaze_anim_priority);
+                    if (ga > 0.f)
+                        chest_joint->setRotation(nlerp(
+                            ga, chest_joint->getRotation(), q_endpoint));
+                }
+            }
+        }
+        if (head_priority_active ||
+            (wCueHead > 0.001f &&
+             (fabsf(chain.mNeckYaw) + fabsf(chain.mNeckPitch) +
+              fabsf(camera_neck_roll)) > 1e-5f))
+        {
+            if (LLJoint* neck = av->getJoint("mNeck"))
+            {
+                LLQuaternion neck_target;
+                neck_target.setEulerAngles(0.f, chain.mNeckPitch, chain.mNeckYaw);
+                if (head_priority_active)
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    const LLQuaternion owned_target = nlerp(
+                        head_pose_weight, LLQuaternion::DEFAULT, neck_target);
+                    LLQuaternion hips_target;
+                    hips_target.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_target;
+                    torso_target.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    const LLQuaternion owned_hips = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                    const LLQuaternion owned_torso = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                    // Priority resolves the neutral root-frame chain in world
+                    // space, then cancels the actual animated parent. Otherwise
+                    // an AO-driven chest/spine can drag the locked neck/head.
+                    // [Machinima] Include the planted chest contribution (neck *
+                    // chest * torso * hips * root) when it is live so the neck
+                    // reaches the full aim; verbatim original otherwise.
+                    LLQuaternion desired_world;
+                    if (chest_joint &&
+                        (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                    {
+                        LLQuaternion chest_stack;
+                        chest_stack.setEulerAngles(
+                            0.f, chain.mChestPitch, chain.mChestYaw);
+                        const LLQuaternion owned_chest = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                        desired_world = owned_target * owned_chest *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
+                    else
+                    {
+                        desired_world = owned_target *
+                            owned_torso * owned_hips * root->getWorldRotation();
+                    }
+                    LLQuaternion rolled_world = desired_world;
+                    applyGazeAimRoll(
+                        rolled_world,
+                        camera_neck_roll * head_pose_weight *
+                            effective_head_eye_blend);
+                    LLQuaternion local_target = rolled_world;
+                    if (LLJoint* parent = neck->getParent())
+                    {
+                        local_target = rolled_world * ~parent->getWorldRotation();
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, neck, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        neck->setRotation(nlerp(
+                            ga, neck->getRotation(), local_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: additive/blend (legacy path);
+                        // same construction as the motor neck branch -- FULL-
+                        // strength desired, correction DELTA scaled by
+                        // head_pose_weight (Codex defect 1). Animation roll
+                        // survives unless the camera-roll channel
+                        // intentionally contributes roll here.
+                        LLQuaternion hips_stack;
+                        hips_stack.setEulerAngles(
+                            0.f, chain.mHipsPitch, chain.mHipsYaw);
+                        LLQuaternion torso_stack;
+                        torso_stack.setEulerAngles(
+                            0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                        LLQuaternion chest_stack;
+                        const bool chest_live = chest_joint &&
+                            (fabsf(chain.mChestYaw) +
+                             fabsf(chain.mChestPitch)) > 1e-5f;
+                        LLQuaternion desired_world;
+                        if (chest_live)
+                        {
+                            chest_stack.setEulerAngles(
+                                0.f, chain.mChestPitch, chain.mChestYaw);
+                            desired_world = neck_target * chest_stack *
+                                torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        else
+                        {
+                            desired_world = neck_target *
+                                torso_stack * hips_stack *
+                                root->getWorldRotation();
+                        }
+                        const F32 neck_roll_term = camera_neck_roll *
+                            effective_head_eye_blend;
+                        LLQuaternion rolled_world = desired_world;
+                        applyGazeAimRoll(rolled_world, neck_roll_term);
+                        LLQuaternion local_target = rolled_world;
+                        if (LLJoint* parent = neck->getParent())
+                        {
+                            local_target =
+                                rolled_world * ~parent->getWorldRotation();
+                        }
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                local_target, anim_snap.local(neck),
+                                add_cap_neck_yaw, add_cap_neck_pitch,
+                                fabsf(neck_roll_term) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/head_pose_weight,
+                                /*cap_pitch_up=*/add_cap_neck_pitch_up);
+                        LLQuaternion q_endpoint = q_additive;
+                        if (composition == GAZE_COMPOSE_BLEND)
+                        {
+                            // Blend needs the weighted Replace endpoint too.
+                            const LLQuaternion owned_target = nlerp(
+                                head_pose_weight, LLQuaternion::DEFAULT,
+                                neck_target);
+                            const LLQuaternion owned_hips = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                hips_stack);
+                            const LLQuaternion owned_torso = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                torso_stack);
+                            LLQuaternion replace_world;
+                            if (chest_live)
+                            {
+                                const LLQuaternion owned_chest = nlerp(
+                                    body_pose_weight, LLQuaternion::DEFAULT,
+                                    chest_stack);
+                                replace_world = owned_target * owned_chest *
+                                    owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            else
+                            {
+                                replace_world = owned_target *
+                                    owned_torso * owned_hips *
+                                    root->getWorldRotation();
+                            }
+                            applyGazeAimRoll(
+                                replace_world,
+                                camera_neck_roll * head_pose_weight *
+                                    effective_head_eye_blend);
+                            LLQuaternion q_replace = replace_world;
+                            if (LLJoint* parent = neck->getParent())
+                            {
+                                q_replace = replace_world *
+                                    ~parent->getWorldRotation();
+                            }
+                            q_endpoint = nlerp(
+                                composition_mix, q_replace, q_additive);
+                        }
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, priority_env, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), q_endpoint));
+                    }
+                }
+                else
+                {
+                    if (composition == GAZE_COMPOSE_REPLACE)
+                    {
+                    applyGazeAimRoll(neck_target, camera_neck_roll);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, neck, wCueHead, gaze_anim_priority);
+                    if (ga > 0.f)
+                        neck->setRotation(nlerp(
+                            ga, neck->getRotation(), neck_target));
+                    }
+                    else
+                    {
+                        // [Machinima] Goal 2: legacy Blend-scope additive --
+                        // clamped RESIDUAL delta over the animation (never a
+                        // second absolute application; Codex defect 2),
+                        // scaled by the existing wCueHead.
+                        LLQuaternion cue_target = neck_target;
+                        applyGazeAimRoll(cue_target, camera_neck_roll);
+                        const LLQuaternion q_additive =
+                            ALGazeMath::additiveOverlayLocal(
+                                cue_target, anim_snap.local(neck),
+                                add_cap_neck_yaw, add_cap_neck_pitch,
+                                fabsf(camera_neck_roll) <= 1e-5f,
+                                /*radial_cap_rad=*/-1.f,
+                                /*strength=*/wCueHead,
+                                /*cap_pitch_up=*/add_cap_neck_pitch_up);
+                        const LLQuaternion q_endpoint =
+                            composition == GAZE_COMPOSE_ADDITIVE
+                            ? q_additive
+                            : nlerp(composition_mix, cue_target, q_additive);
+                        const F32 ga = gazeAllowedAlpha(
+                            av, neck, wCueHead, gaze_anim_priority);
+                        if (ga > 0.f)
+                            neck->setRotation(nlerp(
+                                ga, neck->getRotation(), q_endpoint));
+                    }
+                }
+            }
+        }
+        if (head_priority_active ||
+            (wCueHead > 0.001f &&
+             (fabsf(chain.mHeadYaw) + fabsf(chain.mHeadPitch) +
+              fabsf(micro.mHeadDriftYaw) + fabsf(micro.mHeadDriftPitch) +
+              fabsf(camera_follow_roll)) > 1e-5f))
+        {
+            LLQuaternion head_target;
+            head_target.setEulerAngles(
+                0.f, chain.mHeadPitch + micro.mHeadDriftPitch,
+                chain.mHeadYaw + micro.mHeadDriftYaw);
+            if (head_priority_active)
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const LLQuaternion owned_target = nlerp(
+                    head_pose_weight, LLQuaternion::DEFAULT, head_target);
+                LLQuaternion hips_target;
+                hips_target.setEulerAngles(
+                    0.f, chain.mHipsPitch, chain.mHipsYaw);
+                LLQuaternion torso_target;
+                torso_target.setEulerAngles(
+                    0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                LLQuaternion neck_target;
+                neck_target.setEulerAngles(
+                    0.f, chain.mNeckPitch, chain.mNeckYaw);
+                const LLQuaternion owned_hips = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, hips_target);
+                const LLQuaternion owned_torso = nlerp(
+                    body_pose_weight, LLQuaternion::DEFAULT, torso_target);
+                const LLQuaternion owned_neck = nlerp(
+                    head_pose_weight, LLQuaternion::DEFAULT, neck_target);
+                // [Machinima] Include the planted chest contribution (head *
+                // neck * chest * torso * hips * root) when live so the head
+                // reaches the full aim; verbatim original product otherwise.
+                LLQuaternion desired_world;
+                if (chest_joint &&
+                    (fabsf(chain.mChestYaw) + fabsf(chain.mChestPitch)) > 1e-5f)
+                {
+                    LLQuaternion chest_stack;
+                    chest_stack.setEulerAngles(
+                        0.f, chain.mChestPitch, chain.mChestYaw);
+                    const LLQuaternion owned_chest = nlerp(
+                        body_pose_weight, LLQuaternion::DEFAULT, chest_stack);
+                    desired_world = owned_target * owned_neck * owned_chest *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                }
+                else
+                {
+                    desired_world = owned_target * owned_neck *
+                        owned_torso * owned_hips * root->getWorldRotation();
+                }
+                // Roll is the last world-space head operation. Including the
+                // neck share here keeps priority cancellation from erasing the
+                // parent cock when it derives the head-local target.
+                applyGazeAimRoll(
+                    desired_world,
+                    (camera_follow_roll + camera_neck_roll) *
+                        head_pose_weight * effective_head_eye_blend);
+                LLQuaternion local_target = desired_world;
+                if (LLJoint* parent = head->getParent())
+                {
+                    local_target = desired_world * ~parent->getWorldRotation();
+                }
+                const F32 ga = gazeAllowedAlpha(
+                    av, head, priority_env, gaze_anim_priority);
+                if (ga > 0.f)
+                    head->setRotation(nlerp(
+                        ga, head->getRotation(), local_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend (legacy path); same
+                    // construction as the motor head branch -- FULL-strength
+                    // desired, correction DELTA scaled by head_pose_weight
+                    // (Codex defect 1); exact fixation under the additively
+                    // painted parents via the identical parent-cancel.
+                    // TODO(phase5): end-effector residual distribution
+                    // (Codex defect 3) -- measure the ANIMATED head forward
+                    // from the anim_snap WORLD rotations, compute the
+                    // shortest root-relative yaw/pitch residual to the
+                    // desired aim, distribute THAT residual via
+                    // distributeAnatomicalChain, and compose per joint, so
+                    // an animation that already aims via a different
+                    // neck/head split keeps its own distribution.
+                    LLQuaternion hips_stack;
+                    hips_stack.setEulerAngles(
+                        0.f, chain.mHipsPitch, chain.mHipsYaw);
+                    LLQuaternion torso_stack;
+                    torso_stack.setEulerAngles(
+                        0.f, chain.mTorsoPitch, chain.mTorsoYaw);
+                    LLQuaternion neck_stack;
+                    neck_stack.setEulerAngles(
+                        0.f, chain.mNeckPitch, chain.mNeckYaw);
+                    LLQuaternion chest_stack;
+                    const bool chest_live = chest_joint &&
+                        (fabsf(chain.mChestYaw) +
+                         fabsf(chain.mChestPitch)) > 1e-5f;
+                    LLQuaternion desired_world;
+                    if (chest_live)
+                    {
+                        chest_stack.setEulerAngles(
+                            0.f, chain.mChestPitch, chain.mChestYaw);
+                        desired_world = head_target * neck_stack *
+                            chest_stack * torso_stack * hips_stack *
+                            root->getWorldRotation();
+                    }
+                    else
+                    {
+                        desired_world = head_target * neck_stack *
+                            torso_stack * hips_stack *
+                            root->getWorldRotation();
+                    }
+                    const F32 head_roll_term =
+                        (camera_follow_roll + camera_neck_roll) *
+                        effective_head_eye_blend;
+                    applyGazeAimRoll(desired_world, head_roll_term);
+                    LLQuaternion local_target = desired_world;
+                    if (LLJoint* parent = head->getParent())
+                    {
+                        local_target =
+                            desired_world * ~parent->getWorldRotation();
+                    }
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            local_target, anim_snap.local(head),
+                            add_cap_head_yaw, add_cap_head_pitch,
+                            fabsf(head_roll_term) <= 1e-5f,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/head_pose_weight,
+                            /*cap_pitch_up=*/add_cap_head_pitch_up);
+                    LLQuaternion q_endpoint = q_additive;
+                    if (composition == GAZE_COMPOSE_BLEND)
+                    {
+                        // Blend needs the weighted Replace endpoint too.
+                        const LLQuaternion owned_target = nlerp(
+                            head_pose_weight, LLQuaternion::DEFAULT,
+                            head_target);
+                        const LLQuaternion owned_hips = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            hips_stack);
+                        const LLQuaternion owned_torso = nlerp(
+                            body_pose_weight, LLQuaternion::DEFAULT,
+                            torso_stack);
+                        const LLQuaternion owned_neck = nlerp(
+                            head_pose_weight, LLQuaternion::DEFAULT,
+                            neck_stack);
+                        LLQuaternion replace_world;
+                        if (chest_live)
+                        {
+                            const LLQuaternion owned_chest = nlerp(
+                                body_pose_weight, LLQuaternion::DEFAULT,
+                                chest_stack);
+                            replace_world = owned_target * owned_neck *
+                                owned_chest * owned_torso * owned_hips *
+                                root->getWorldRotation();
+                        }
+                        else
+                        {
+                            replace_world = owned_target * owned_neck *
+                                owned_torso * owned_hips *
+                                root->getWorldRotation();
+                        }
+                        applyGazeAimRoll(
+                            replace_world,
+                            (camera_follow_roll + camera_neck_roll) *
+                                head_pose_weight * effective_head_eye_blend);
+                        LLQuaternion q_replace = replace_world;
+                        if (LLJoint* parent = head->getParent())
+                        {
+                            q_replace = replace_world *
+                                ~parent->getWorldRotation();
+                        }
+                        q_endpoint = nlerp(
+                            composition_mix, q_replace, q_additive);
+                    }
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), q_endpoint));
+                }
+            }
+            else
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                applyGazeAimRoll(head_target, camera_follow_roll);
+                const F32 ga = gazeAllowedAlpha(
+                    av, head, wCueHead, gaze_anim_priority);
+                if (ga > 0.f)
+                    head->setRotation(nlerp(
+                        ga, head->getRotation(), head_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: legacy Blend-scope additive --
+                    // clamped RESIDUAL delta (incl. micro drift) over the
+                    // animation (never a second absolute application; Codex
+                    // defect 2), scaled by the existing wCueHead.
+                    LLQuaternion cue_target = head_target;
+                    applyGazeAimRoll(cue_target, camera_follow_roll);
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            cue_target, anim_snap.local(head),
+                            add_cap_head_yaw, add_cap_head_pitch,
+                            fabsf(camera_follow_roll) <= 1e-5f,
+                            /*radial_cap_rad=*/-1.f,
+                            /*strength=*/wCueHead,
+                            /*cap_pitch_up=*/add_cap_head_pitch_up);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, cue_target, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, head, wCueHead, gaze_anim_priority);
+                    if (ga > 0.f)
+                        head->setRotation(nlerp(
+                            ga, head->getRotation(), q_endpoint));
+                }
+            }
         }
     }
 
-    // eyes: residual toward the target RELATIVE to the head's actual world rotation
-    // (recomputed from the locals just set). Eyes carry whatever the head did not
-    // -- the full angle when blend=0 (eyes-only), near zero when the head turned.
-    if (wEye > 0.001f)
+    // eyes: residual toward the target RELATIVE to the head's actual world
+    // rotation, with micro-saccades. Blinks close the eyelids below and never
+    // roll an open eyeball down into the socket.
+    F32 lid_follow_pitch = 0.f;
+    bool have_lid_follow_pitch = false;
+    const bool eye_priority_active = override_head_eyes && priority_env > 0.001f;
+    if (wEye > 0.001f || eye_priority_active)
     {
         static LLCachedControl<F32> eye_yaw_max_deg(
-            gSavedSettings, "BDMergeGazeEyeYawMax", 35.f);
+            gSavedSettings, "BDMergeGazeEyeYawMax", 24.f);
         static LLCachedControl<F32> eye_pitch_max_deg(
-            gSavedSettings, "BDMergeGazeEyePitchMax", 25.f);
-        const F32 eye_yaw_max =
-            llclamp((F32)eye_yaw_max_deg, 0.f, 180.f) * DEG_TO_RAD;
-        const F32 eye_pitch_max =
-            llclamp((F32)eye_pitch_max_deg, 0.f, 180.f) * DEG_TO_RAD;
+            gSavedSettings, "BDMergeGazeEyePitchMax", 14.f);
+        // [Machinima] Goal 3a: custom-profile final applied-eye axis + radial
+        // caps when enabled; legacy BDMerge caps / constant radial otherwise
+        // (byte-identical default -- the false branch is the verbatim original).
+        const F32 eye_yaw_max = (use_custom_limits
+            ? llclamp(eff_profile.mEyeApplyYawDeg, 0.f, 180.f)
+            : llclamp((F32)eye_yaw_max_deg, 0.f, 180.f)) * DEG_TO_RAD;
+        const F32 eye_pitch_max = (use_custom_limits
+            ? llclamp(eff_profile.mEyeApplyPitchDeg, 0.f, 180.f)
+            : llclamp((F32)eye_pitch_max_deg, 0.f, 180.f)) * DEG_TO_RAD;
+        // [Machinima] Asymmetric up/down pitch: the UPWARD (negative) apply
+        // cap comes from the profile's explicit up cone when custom limits
+        // are on, else from the legacy cap scaled by DirectorGazePitchUpScale.
+        // Downward keeps the current cap.
+        const F32 eye_pitch_up_max = (use_custom_limits
+            ? llclamp(eff_profile.mEyeApplyPitchUpDeg, 0.f, 180.f)
+            : llclamp((F32)eye_pitch_max_deg * pitch_up_scale, 0.f, 180.f)) *
+            DEG_TO_RAD;
+        const F32 scaled_eye_yaw_max = anatomy_scale == 1.f
+            ? eye_yaw_max : eye_yaw_max * anatomy_scale;
+        const F32 scaled_eye_pitch_max = anatomy_scale == 1.f
+            ? eye_pitch_max : eye_pitch_max * anatomy_scale;
+        const F32 scaled_eye_pitch_up_max = anatomy_scale == 1.f
+            ? eye_pitch_up_max : eye_pitch_up_max * anatomy_scale;
+        const F32 eye_rot_max_base = use_custom_limits
+            ? eff_profile.mEyeRadialDeg * DEG_TO_RAD
+            : GAZE_DIRECTOR_EYE_ROT_MAX;
+        const F32 scaled_eye_rot_max = anatomy_scale == 1.f
+            ? eye_rot_max_base
+            : eye_rot_max_base * anatomy_scale;
+        // VOR / eyeline weld: query this world rotation only AFTER the head
+        // joint above received its deterministic drift. Eyes are solved against
+        // the final head pose and counter-rotate to keep the world eyeline fixed.
         const LLQuaternion headWorld = head->getWorldRotation();
-        auto applyEye = [&](LLJoint* eye)
+        // Relaxed eyes skip vergence entirely (no target to converge on).
+        const F32 convergence = eye_relaxed ? 0.f : ALGazeMath::vergenceAngle(
+            eye_target_distance, 0.064f, g.mVergenceScale);
+        const F32 eye_pose_weight = llclamp(
+            effective_intensity * cue_eye_weight, 0.f, 1.f);
+        const ALGazeMath::MicroLifeOffsets lid_lead_micro =
+            ALGazeMath::evalMicroLife(
+                seed, t_sec + 0.03, life_params.mMicroLife,
+                life_params.mBlinks, life_params.mBlinkRate);
+        auto applyEye = [&](LLJoint* eye, F32 convergence_sign)
         {
             if (!eye)
             {
                 return;
             }
-            const LLVector3 skyward(0.f, 0.f, 1.f);
-            LLVector3 eleft = skyward % look;
-            if (eleft.magVecSquared() < 1e-4f)
+            LLQuaternion tgt;
+            F32 pitch = 0.f, yaw = 0.f;
+            if (eye_relaxed)
             {
-                return;         // looking straight up/down: leave the eyes be
+                // No fixation target: pitch/yaw stay at neutral (0,0) --
+                // tgt is fully rebuilt from pitch/yaw below via
+                // setEulerAngles, so only the micro-saccade added there
+                // moves the eye off-centre.
             }
-            eleft.normVec();
-            LLVector3 eup = look % eleft;
-            eup.normVec();
-            LLQuaternion tgt(look, eleft, eup);     // world
-            tgt = tgt * ~headWorld;                 // head-local
-            F32 roll = 0.f, pitch = 0.f, yaw = 0.f;
-            tgt.getEulerAngles(&roll, &pitch, &yaw);
-            yaw   = llclamp(yaw,   -eye_yaw_max,   eye_yaw_max);
-            pitch = llclamp(pitch, -eye_pitch_max, eye_pitch_max);
+            else
+            {
+                const LLVector3 skyward(0.f, 0.f, 1.f);
+                LLVector3 eleft = skyward % eye_look;
+                if (eleft.magVecSquared() < 1e-4f)
+                {
+                    return;         // looking straight up/down: leave the eyes be
+                }
+                eleft.normVec();
+                LLVector3 eup = eye_look % eleft;
+                eup.normVec();
+                tgt = LLQuaternion(eye_look, eleft, eup); // world
+                tgt = tgt * ~headWorld;                   // head-local
+                F32 roll = 0.f;
+                tgt.getEulerAngles(&roll, &pitch, &yaw);
+            }
+            if (!have_lid_follow_pitch)
+            {
+                lid_follow_pitch = llclamp(
+                    pitch + lid_lead_micro.mEyeSaccadePitch,
+                    -scaled_eye_pitch_up_max, scaled_eye_pitch_max);
+                have_lid_follow_pitch = true;
+            }
+            yaw   += micro.mEyeSaccadeYaw;
+            pitch += micro.mEyeSaccadePitch;
+            yaw   += convergence_sign * convergence;
+            yaw   = llclamp(yaw,   -scaled_eye_yaw_max,   scaled_eye_yaw_max);
+            // Asymmetric eye-apply pitch: upward (negative) side uses the
+            // up cap so looking up reaches further; downward is unchanged.
+            pitch = llclamp(pitch, -scaled_eye_pitch_up_max,
+                            scaled_eye_pitch_max);
             tgt.setEulerAngles(0.f, pitch, yaw);
             if (constrain_eye_cone)
             {
-                // Match stock LLEyeMotion's total-angle safety cone. Without
-                // this, 35 degrees of yaw plus 25 degrees of pitch produces a
-                // roughly 43-degree rotation that swings Bento-weighted eyes
-                // visibly around their socket pivots.
-                tgt.constrain(GAZE_DIRECTOR_EYE_ROT_MAX);
+                // A conservative total-angle cap keeps simultaneous yaw and
+                // pitch inside classic and Bento-weighted eye sockets.
+                tgt.constrain(scaled_eye_rot_max);
             }
-            eye->setRotation(nlerp(wEye, eye->getRotation(), tgt));
+            // Gate ONLY the write -- lid_follow_pitch above is already computed,
+            // so a yielded eye still drives the lids correctly.
+            if (eye_priority_active)
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const LLQuaternion owned_target = nlerp(
+                    eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                const F32 ga = gazeAllowedAlpha(
+                    av, eye, priority_env, gaze_anim_priority);
+                if (ga > 0.f)
+                    eye->setRotation(nlerp(
+                        ga, eye->getRotation(), owned_target));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend eyes, still solved
+                    // AFTER the painted head (VOR preserved). The smallest
+                    // clamped eye delta from the SNAPSHOT animation eye
+                    // rotation toward the FULL-strength desired eye-in-head
+                    // composes over the animation, with the correction DELTA
+                    // scaled by the same eye_pose_weight Replace used
+                    // (Codex defect 1).
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            tgt, anim_snap.local(eye),
+                            scaled_eye_yaw_max, scaled_eye_pitch_max,
+                            /*preserve_anim_roll=*/true,
+                            constrain_eye_cone ? scaled_eye_rot_max : -1.f,
+                            /*strength=*/eye_pose_weight,
+                            /*cap_pitch_up=*/scaled_eye_pitch_up_max);
+                    const LLQuaternion q_replace = nlerp(
+                        eye_pose_weight, LLQuaternion::DEFAULT, tgt);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, q_replace, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, priority_env, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(
+                            ga, eye->getRotation(), q_endpoint));
+                }
+            }
+            else
+            {
+                if (composition == GAZE_COMPOSE_REPLACE)
+                {
+                const F32 ga = gazeAllowedAlpha(
+                    av, eye, wEye, gaze_anim_priority);
+                if (ga > 0.f)
+                    eye->setRotation(nlerp(ga, eye->getRotation(), tgt));
+                }
+                else
+                {
+                    // [Machinima] Goal 2: additive/blend eyes on the cue-
+                    // weighted path -- clamped RESIDUAL delta over the
+                    // animation (Codex defect 2), scaled by the existing
+                    // wEye alpha.
+                    const LLQuaternion q_additive =
+                        ALGazeMath::additiveOverlayLocal(
+                            tgt, anim_snap.local(eye),
+                            scaled_eye_yaw_max, scaled_eye_pitch_max,
+                            /*preserve_anim_roll=*/true,
+                            constrain_eye_cone ? scaled_eye_rot_max : -1.f,
+                            /*strength=*/wEye,
+                            /*cap_pitch_up=*/scaled_eye_pitch_up_max);
+                    const LLQuaternion q_endpoint =
+                        composition == GAZE_COMPOSE_ADDITIVE
+                        ? q_additive
+                        : nlerp(composition_mix, tgt, q_additive);
+                    const F32 ga = gazeAllowedAlpha(
+                        av, eye, wEye, gaze_anim_priority);
+                    if (ga > 0.f)
+                        eye->setRotation(nlerp(
+                            ga, eye->getRotation(), q_endpoint));
+                }
+            }
         };
-        applyEye(av->getJoint("mEyeLeft"));
-        applyEye(av->getJoint("mEyeRight"));
-        applyEye(av->getJoint("mFaceEyeAltLeft"));      // Bento alt eyes, if present
-        applyEye(av->getJoint("mFaceEyeAltRight"));
+        applyEye(av->getJoint("mEyeLeft"), -1.f);
+        applyEye(av->getJoint("mEyeRight"), 1.f);
+        applyEye(av->getJoint("mFaceEyeAltLeft"), -1.f); // Bento alt eyes, if present
+        applyEye(av->getJoint("mFaceEyeAltRight"), 1.f);
+    }
+
+    // Director owns the stock eyelid morphs while procedural blink or lid
+    // follow is active. Captured native weights are restored before the next
+    // motion update and on release, keeping this a render-only override. Downward
+    // follow samples the deterministic eye saccade 30 ms ahead; upward gaze
+    // contributes zero closure on avatars without a dedicated lid-raise param.
+    static LLCachedControl<F32> gaze_lid_follow(
+        gSavedSettings, "DirectorGazeLidFollow", 0.6f);
+    if (director_runtime &&
+        (life_params.mBlinks || (F32)gaze_lid_follow > 0.001f ||
+         persona_mod.mLidNarrow > 0.001f ||
+         (director_runtime->mCueOverride &&
+          director_runtime->mCueLidWiden > 0.001f)))
+    {
+        const F32 follow = have_lid_follow_pitch
+            ? ALGazeMath::lidFollowClosure(
+                  lid_follow_pitch, (F32)gaze_lid_follow) * wEye
+            : 0.f;
+        F32 closure = llmax(
+            llclamp(micro.mBlinkFraction, 0.f, 1.f),
+            llmax(follow, persona_mod.mLidNarrow * wEye));
+        closure *= 1.f - llclamp(
+            director_runtime->mCueLidWiden, 0.f, 1.f);
+        bool visual_params_changed = false;
+        auto apply_lid = [&](const char* name)
+        {
+            if (LLVisualParam* param = av->getVisualParam(name))
+            {
+                if (fabsf(av->getVisualParamWeight(param) - closure) > 1e-6f)
+                {
+                    visual_params_changed |=
+                        av->setVisualParamWeight(param, closure);
+                }
+            }
+        };
+        apply_lid("Blink_Left");
+        apply_lid("Blink_Right");
+        if (visual_params_changed)
+        {
+            av->updateVisualParams();
+        }
     }
 }
 
@@ -4429,6 +11217,175 @@ static LLStaticHashedString sGhostLook("ghostLook");
 static LLStaticHashedString sGhostDistort("ghostDistort");
 static LLStaticHashedString sGhostDistortParams("ghostDistortParams");
 static LLStaticHashedString sGhostUseVertexAlpha("ghostUseVertexAlpha");
+static LLStaticHashedString sGhostAlphaCutoffMode("ghostAlphaCutoffMode");
+static LLStaticHashedString sGhostWorldLinear("ghostWorldLinear");
+static LLStaticHashedString sGhostGlowOnly("ghostGlowOnly");
+static LLStaticHashedString sGhostFragOffset("ghostFragOffset");
+static LLStaticHashedString sGhostScreenSize("ghostScreenSize");
+static LLStaticHashedString sGhostDissolveProgress("ghostDissolveProgress");
+static LLStaticHashedString sGhostCoverageLayerStrength(
+    "ghostCoverageLayerStrength");
+static LLStaticHashedString sGhostIndexedMaterialFactor(
+    "ghostIndexedMaterialFactor");
+static LLStaticHashedString sGhostIndexedTextureAlpha(
+    "ghostIndexedTextureAlpha");
+static LLStaticHashedString sGhostIndexedMinimumAlpha(
+    "ghostIndexedMinimumAlpha");
+static LLStaticHashedString sGhostIndexedUseVertexAlpha(
+    "ghostIndexedUseVertexAlpha");
+static LLStaticHashedString sGhostIndexedAlphaCutoffMode(
+    "ghostIndexedAlphaCutoffMode");
+static LLStaticHashedString sGhostSystemColor("ghostSystemColor");
+// x: honor sampled texture alpha; y: authored PBR base-colour factor alpha.
+// OPAQUE PBR materials deliberately upload (0, 1): their base-colour alpha is
+// not opacity and can contain arbitrary/packed data.
+static LLStaticHashedString sGhostAlpha("ghostAlpha");
+// [TronT2] Look 36 "Tron Suit" -- actorghostF.glsl GHOST_WORLD_PASS. Optional
+// uniforms (see the T2 contract section 1.3): NOT added to the shared-replay
+// required[] list below -- a driver stripping them from a program that never
+// reaches look 36 must not fail the whole shared replay.
+static LLStaticHashedString sGhostTronParams("ghostTronParams");
+static LLStaticHashedString sGhostTronParams2("ghostTronParams2");
+static LLStaticHashedString sGhostTronColor("ghostTronColor");
+
+// [TronT2] Shared by both ghost uniform sets (the apply_program lambda's
+// world-linear branch and renderSystemActorGhost's upload lambda) -- packing
+// identical to actorFxTronParams/2/Color (T2 contract sections 1.2/1.3)
+// except for the mode flag below. Upload state 1/2 always (never 0), and
+// never gate on TronEnabled: look 36 always uses the live Tron pulse
+// accumulator (design v3 section 6.5). Callers invoke this only while the
+// replayed look is ACTOR_LOOK_TRON_SUIT ([TronT2 fix]: the shader reads these
+// uniforms under ghostLook == 36 only, so the settings/palette reads are
+// skipped for every other look).
+// [TronT2 fix] cover_mode: the replay has no actorFxParams2.w, so the cast
+// member's Suit mode rides in ghostTronParams.x as +4 (Layer keeps the
+// authored replay body and adds the neon; Cover darkens it to the suit).
+static void upload_ghost_tron_params(LLGLSLShader& shader, bool cover_mode)
+{
+    static LLCachedControl<bool> suit_use_palette(gSavedSettings, "TronSuitUsePalette", true);
+    static LLCachedControl<F32>  suit_seam_cell(gSavedSettings, "TronSuitSeamCell", 0.12f);
+    static LLCachedControl<F32>  suit_seam_width(gSavedSettings, "TronSuitSeamWidth", 0.012f);
+    static LLCachedControl<F32>  suit_seam_density(gSavedSettings, "TronSuitSeamDensity", 0.55f);
+    static LLCachedControl<F32>  suit_seam_gain(gSavedSettings, "TronSuitSeamGain", 1.0f);
+    static LLCachedControl<F32>  suit_rim_gain(gSavedSettings, "TronSuitRimGain", 1.0f);
+    static LLCachedControl<F32>  tron_pulse_amount(gSavedSettings, "TronPulseAmount", 0.35f);
+
+    const auto finite_or = [](F32 v, F32 fallback)
+    { return std::isfinite(v) ? v : fallback; };
+    const F32 tron_state = ((ALTron::isEnabledMaster() && suit_use_palette()) ? 2.f : 1.f)
+                         + (cover_mode ? 4.f : 0.f);
+    const ALTron::Palette tron_palette = ALTron::palette();
+
+    shader.uniform4f(sGhostTronParams,
+                      tron_state,
+                      llclamp(finite_or((F32)suit_seam_cell(), 0.12f), 0.02f, 1.f),
+                      llclamp(finite_or((F32)suit_seam_width(), 0.012f), 0.002f, 0.1f),
+                      ALTron::pulse01());
+    shader.uniform4f(sGhostTronParams2,
+                      llclamp(finite_or((F32)suit_seam_density(), 0.55f), 0.f, 1.f),
+                      llclamp(finite_or((F32)suit_seam_gain(), 1.f), 0.f, 4.f),
+                      llclamp(finite_or((F32)suit_rim_gain(), 1.f), 0.f, 4.f),
+                      llclamp(finite_or((F32)tron_pulse_amount(), 0.35f), 0.f, 1.f));
+    shader.uniform4f(sGhostTronColor,
+                      tron_palette.mPrimary.mV[0], tron_palette.mPrimary.mV[1],
+                      tron_palette.mPrimary.mV[2], ALTron::clock().mPulsePhase01);
+}
+
+// Legacy per-vertex glow is a duplicate sidecar, like GLTF glow, but it is not
+// part of Ghost Studio's historical SWEEP_GLOW contract. Keep the predicate
+// private and explicit so the global ghost_pass_is_glow() semantics do not
+// change under existing clone/coverage code.
+static bool ghost_pass_is_legacy_authored_glow(U32 pass)
+{
+    return pass == LLRenderPass::PASS_GLOW_RIGGED;
+}
+
+// Single-output shared Actor FX programs must not leave the deferred target's
+// auxiliary attachments active: an unwritten MRT output is undefined even when
+// a cached per-attachment colour mask says "off" on some drivers.  Restrict the
+// replay to HDR colour, then restore the target's canonical attachment list.
+struct ScopedSharedActorHDRDrawBuffer
+{
+    explicit ScopedSharedActorHDRDrawBuffer(bool enable)
+    {
+        mTarget = enable ? LLRenderTarget::getCurrentBoundTarget() : nullptr;
+        mCount = mTarget ? llmin(mTarget->getNumTextures(), 4u) : 0u;
+        if (mCount > 0)
+        {
+            gGL.flush();
+            const GLenum hdr = GL_COLOR_ATTACHMENT0;
+            glDrawBuffers(1, &hdr);
+        }
+    }
+
+    ~ScopedSharedActorHDRDrawBuffer()
+    {
+        if (mCount > 0)
+        {
+            gGL.flush();
+            static const GLenum full[] = {
+                GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+            };
+            glDrawBuffers((GLsizei)mCount, full);
+        }
+    }
+
+    LLRenderTarget* mTarget = nullptr;
+    U32 mCount = 0;
+};
+
+// Preserve Ghost Studio's historical overlay clock. Shared world Actor FX uses
+// LLRenderPass::actorFxFrameTime() so legacy/system/PBR/authored-glow surfaces
+// all receive the exact same quantized phase and tiled-snapshot freeze.
+F32 actor_ghost_studio_frame_time(F32 requested_fps)
+{
+    static bool sInitialized = false;
+    static F64 sEpoch = 0.0;
+    static U32 sFrame = U32_MAX;
+    static F64 sFrameClock = 0.0;
+    static F64 sSnapshotTime = 0.0;
+    static bool sWasSnapshot = false;
+
+    if (sFrame != gFrameCount)
+    {
+        sFrame = gFrameCount;
+        sFrameClock = LLFrameTimer::getElapsedSeconds();
+    }
+    if (!sInitialized)
+    {
+        sEpoch = sFrameClock;
+        sInitialized = true;
+    }
+    const F64 elapsed = llmax(sFrameClock - sEpoch, 0.0);
+    if (gSnapshot && !sWasSnapshot)
+    {
+        sSnapshotTime = elapsed;
+    }
+    const F64 real_time = gSnapshot ? sSnapshotTime : elapsed;
+    sWasSnapshot = gSnapshot;
+    const F64 fps = static_cast<F64>(llclamp(requested_fps, 0.f, 30.f));
+    return static_cast<F32>(fps > 0.0
+        ? floor(real_time * fps) / fps : real_time);
+}
+
+LLVector2 actor_ghost_frag_offset()
+{
+    LLVector2 offset;
+    const F32 zoom = LLViewerCamera::getInstance()->getZoomFactor();
+    if (gSnapshot && gViewerWindow && zoom > 1.f)
+    {
+        const S32 tiles = llceil(zoom);
+        const S32 sub = LLViewerCamera::getInstance()->getZoomSubRegion();
+        const S32 tile_y = sub / tiles;
+        const S32 tile_x = sub - tile_y * tiles;
+        offset.mV[VX] = static_cast<F32>(
+            tile_x * gViewerWindow->getWorldViewWidthRaw());
+        offset.mV[VY] = static_cast<F32>(
+            tile_y * gViewerWindow->getWorldViewHeightRaw());
+    }
+    return offset;
+}
 
 // ---------------------------------------------------------------------------
 // Per-batch alpha semantics: how does the REAL render treat this rigged pass's
@@ -4454,6 +11411,59 @@ bool ghost_pass_is_mask(U32 pass)
     }
 }
 
+// Native legacy MASK shaders do not share one coverage law. Ordinary simple
+// masks compare texture * diffuse vertex alpha; fullbright masks compare only
+// texture alpha; material masks compare texture alpha against a threshold
+// reduced by half an 8-bit quantization step. Keep these small numeric values
+// synchronized with actorghostF/emissive{Indexed}F.
+enum EGhostAlphaCutoffMode : S32
+{
+    GHOST_CUTOFF_NONE = 0,
+    GHOST_CUTOFF_TEXTURE_ONLY = 1,
+    GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA = 2,
+    GHOST_CUTOFF_MATERIAL_BIASED = 3
+};
+
+S32 ghost_batch_alpha_cutoff_mode(U32 pass)
+{
+    switch (pass)
+    {
+    case LLRenderPass::PASS_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK_RIGGED:
+        return GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA;
+    case LLRenderPass::PASS_MATERIAL_ALPHA_MASK_RIGGED:
+    case LLRenderPass::PASS_SPECMAP_MASK_RIGGED:
+    case LLRenderPass::PASS_NORMMAP_MASK_RIGGED:
+    case LLRenderPass::PASS_NORMSPEC_MASK_RIGGED:
+        return GHOST_CUTOFF_MATERIAL_BIASED;
+    case LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK_RIGGED:
+        return GHOST_CUTOFF_TEXTURE_ONLY;
+    default:
+        return GHOST_CUTOFF_NONE;
+    }
+}
+
+S32 ghost_static_alpha_cutoff_mode(
+    const LLActorMover::GhostStaticFace& source)
+{
+    if (source.mAlphaKind != 1 || !source.mFace)
+    {
+        return GHOST_CUTOFF_NONE;
+    }
+    switch (source.mFace->getPoolType())
+    {
+    case LLDrawPool::POOL_ALPHA_MASK:
+    case LLDrawPool::POOL_GLTF_PBR_ALPHA_MASK:
+        return GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA;
+    case LLDrawPool::POOL_MATERIALS:
+        return GHOST_CUTOFF_MATERIAL_BIASED;
+    case LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK:
+        return GHOST_CUTOFF_TEXTURE_ONLY;
+    default:
+        return GHOST_CUTOFF_NONE;
+    }
+}
+
 // (ghost_pass_is_blend / ghost_pass_is_glow moved OUT of this anonymous
 // namespace -- see below the namespace close. The deferred submission's
 // coverage accounting in pipeline.cpp needs the SAME classification, and a
@@ -4464,13 +11474,34 @@ bool ghost_pass_is_mask(U32 pass)
 // carry? 1 = scalar (mGLTFMaterial / mTexture as usual). >1 = the vertex
 // buffer's texture_index attribute selects the material per vertex, and a
 // single bound texture is WRONG for every non-anchor slot (this is how eye
-// materials merged into a head's indexed batch came out white) -- the clone
-// redraws such a batch once per slot with the ghostSlot shader filter.
+// materials merged into a head's indexed batch came out white). Shared world
+// replay uses its true indexed program; Ghost Studio retains its historical
+// per-slot ghostSlot replay.
 S32 ghost_batch_slot_count(LLDrawInfo* di)
 {
     if (di->mGLTFMaterialList.size() > 1)  return (S32)di->mGLTFMaterialList.size();
     if (di->mMaterialSlotList.size() > 1)  return (S32)di->mMaterialSlotList.size();
     if (di->mTextureList.size() > 1)       return (S32)di->mTextureList.size();
+    return 1;
+}
+
+// Shared world legacy replay can consume both of the viewer's ordinary
+// texture-indexed descriptor families in one draw. GLTF material lists are
+// intentionally excluded: authoritative shared PBR owns those commands.
+S32 ghost_legacy_indexed_slot_count(const LLDrawInfo* di)
+{
+    if (!di)
+    {
+        return 1;
+    }
+    if (di->mMaterialSlotList.size() > 1)
+    {
+        return (S32)di->mMaterialSlotList.size();
+    }
+    if (di->mTextureList.size() > 1)
+    {
+        return (S32)di->mTextureList.size();
+    }
     return 1;
 }
 
@@ -4493,7 +11524,11 @@ LLViewerTexture* ghost_batch_slot_texture(LLDrawInfo* di, S32 slot, bool emissiv
         {
             return nullptr;     // gap left by a fragmented batch (never sampled)
         }
-        if (m->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+        if ((size_t)slot < di->mGLTFAlphaMaskCutoffList.size())
+        {
+            out_cutoff = di->mGLTFAlphaMaskCutoffList[slot];
+        }
+        else if (m->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
         {
             out_cutoff = m->mAlphaCutoff;
         }
@@ -4552,7 +11587,7 @@ F32 ghost_batch_cutoff(LLDrawInfo* di, U32 pass)
     }
     if (di->mGLTFMaterial.notNull())
     {
-        return di->mGLTFMaterial->mAlphaCutoff;
+        return di->mAlphaMaskCutoff;
     }
     return di->mAlphaMaskCutoff;
 }
@@ -4680,31 +11715,73 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                       const LLVector3& foot, const LLColor4& tint, F32 alpha,
                       S32 style,
                       const LLActorMover::GhostDrawParams& gp = LLActorMover::GhostDrawParams(),
-                      const std::vector<LLActorMover::GhostStaticFace>* static_faces = nullptr)
+                      const std::vector<LLActorMover::GhostStaticFace>* static_faces = nullptr,
+                      bool* out_complete = nullptr)
 {
-    if (!av || av->isDead() || (batches.empty() && (!static_faces || static_faces->empty())))
+    bool complete = true;
+    if (out_complete)
     {
+        *out_complete = true;
+    }
+    if (!av || av->isDead() || !av->getRootJoint() || (batches.empty() && (!static_faces || static_faces->empty())))
+    {
+        if (out_complete)
+        {
+            *out_complete = false;
+        }
         return 0;
+    }
+
+    // IDs above the shared prefix are a live-world contract. Preserve the
+    // historical default Ghost behavior for every non-world caller even if
+    // malformed/future instance data somehow supplies a live-only value.
+    if (!gp.mWorldLinear && LLDirectorCast::isLiveActorStyleLook(style))
+    {
+        style = GHOST_STYLE_GHOST;
     }
 
     // shader choice + graceful degradation (see the header comment). The
     // rigged variant skins the batches; the BASE variant places the NON-RIGGED
     // attachment faces (collar/jewelry/flexi) through their own render matrix.
-    LLGLSLShader* fx = gActorGhostProgram.mRiggedVariant;
+    // Shared live Actor FX runs in the HDR world stream and therefore uses a
+    // dedicated atmospherics + rest-space-dissolve permutation. Ghost Studio,
+    // path ghosts and every legacy overlay keep the interface program.
+    LLGLSLShader* fx_base = gp.mWorldLinear
+        ? &gWorldActorGhostProgram : &gActorGhostProgram;
+    LLGLSLShader* fx = fx_base->mRiggedVariant;
     const bool have_fx = fx && fx->mProgramObject;
+    if (gp.mWorldLinear && !have_fx)
+    {
+        // Shared activation preflights the world permutation before native
+        // suppression. Falling back here is still useful to legacy callers,
+        // but is an invariant violation for the shared replay.
+        complete = false;
+    }
     if (!have_fx && style != GHOST_STYLE_GHOST && style != GHOST_STYLE_CLONE
         && style != GHOST_STYLE_WIREFRAME)
     {
         style = GHOST_STYLE_GHOST;
     }
     LLGLSLShader* shader = have_fx ? fx : gHighlightProgram.mRiggedVariant;
-    LLGLSLShader* static_shader = have_fx ? &gActorGhostProgram : &gHighlightProgram;
+    LLGLSLShader* static_shader = have_fx ? fx_base : &gHighlightProgram;
+    LLGLSLShader* indexed_shader = gp.mWorldLinear
+        ? &gWorldSkinnedActorGhostIndexedProgram : nullptr;
+    const bool have_indexed_shader = indexed_shader
+        && indexed_shader->mProgramObject;
     if (!shader)
     {
+        if (out_complete)
+        {
+            *out_complete = false;
+        }
         return 0;
     }
     if (!static_shader->mProgramObject)
     {
+        if (static_faces && !static_faces->empty())
+        {
+            complete = false;
+        }
         static_faces = nullptr;     // base variant unavailable: rigged-only ghost
     }
 
@@ -4716,7 +11793,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // Pivoting at the foot keeps rotated/scaled feet planted on `foot`; with
     // the default params (yaw 0, scale 1) this collapses to the classic pure
     // translation T(foot - live_foot).
-    const LLVector3 live_root = av->getRenderPosition();
+    // Pivot on the SKELETON ROOT (the same reference the live skinning palette is
+    // built from), NOT getRenderPosition() (the drawable). A Mover-V2 path walk
+    // advances only the skeleton root and leaves the drawable placement put, so
+    // pivoting on the drawable drifted the node ghost by the walked distance
+    // (foot landed at N + (root - drawable)). getRootJoint() null-guarded above.
+    const LLVector3 live_root = av->getRootJoint()->getWorldPosition();
     // getPelvisToFoot() can return a negative, absurd, or non-finite value for a
     // non-standard or still-loading skeleton (e.g. a tiny "special skeleton"
     // avatar). Used raw it drops the scale pivot ABOVE the mesh, so scaling
@@ -4741,6 +11823,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // instead -- the caller falls back to the billboard/stick card.
     if (!pivot.isFinite() || !foot.isFinite())
     {
+        if (out_complete)
+        {
+            *out_complete = false;
+        }
         return 0;
     }
 
@@ -4752,14 +11838,28 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // (re)applied to whichever variant a sweep binds.
     LLColor4  style_color(1.f, 1.f, 1.f, alpha);    // set per style below
     LLVector4 style_params(0.f, 0.f, 0.f, 6.f);     // ghostParams per style
-    const F32 ghost_real_time = (F32)LLFrameTimer::getElapsedSeconds();
-    const F32 effect_fps = llclamp(gp.mEffectFps, 0.f, 30.f);
-    const F32 ghost_now = effect_fps > 0.f
-        ? floorf(ghost_real_time * effect_fps) / effect_fps
-        : ghost_real_time;
+    const F32 ghost_now = gp.mWorldLinear
+        ? LLRenderPass::actorFxFrameTime(gp.mEffectFps)
+        : actor_ghost_studio_frame_time(gp.mEffectFps);
+    bool glow_only = false;
+
+    // gl_FragCoord restarts at zero for each high-resolution snapshot tile.
+    // Supply its bottom-up whole-image pixel origin so scanlines, noise and
+    // pixel blocks meet exactly at the tile boundaries (including HiDPI).
+    const LLVector2 ghost_frag_offset = gp.mWorldLinear
+        ? LLRenderPass::actorFxFragOffset() : actor_ghost_frag_offset();
+    const LLVector2 ghost_screen_size = gp.mWorldLinear
+        ? LLRenderPass::actorFxScreenSize() : LLVector2(1.f, 1.f);
     auto apply_program = [&](LLGLSLShader* sh)
     {
-        sh->bind();
+        if (gp.mWorldLinear)
+        {
+            gPipeline.bindDeferredShaderFast(*sh);
+        }
+        else
+        {
+            sh->bind();
+        }
         if (have_fx)
         {
             // neutral alpha state (per-draw code retargets ghostAux.xy and
@@ -4778,6 +11878,35 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // so a program switch / empty sweep never inherits the prior
             // draw's per-batch upload
             sh->uniform1i(sGhostUseVertexAlpha, 0);
+            if (gp.mWorldLinear)
+            {
+                sh->uniform1i(sGhostAlphaCutoffMode,
+                              GHOST_CUTOFF_NONE);
+            }
+            sh->uniform2f(sGhostAlpha, 0.f, 1.f);
+            sh->uniform1i(sGhostWorldLinear, gp.mWorldLinear ? 1 : 0);
+            if (gp.mWorldLinear)
+            {
+                sh->uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
+            }
+            sh->uniform2fv(sGhostFragOffset, 1, ghost_frag_offset.mV);
+            if (gp.mWorldLinear)
+            {
+                sh->uniform2fv(sGhostScreenSize, 1, ghost_screen_size.mV);
+                sh->uniform1f(sGhostCoverageLayerStrength,
+                              gp.mCoverageLayerStrength);
+                // [TronT2] Look 36 "Tron Suit" -- world-linear (GHOST_WORLD_PASS)
+                // only; the interface program does not declare these uniforms
+                // and uniform4f on a -1 location is a no-op. [TronT2 fix]
+                // Only for look 36 (the shader never reads them otherwise);
+                // gp.mCoverMode is the cast member's Cover/Layer mode.
+                if (style == LLDirectorCast::ACTOR_LOOK_TRON_SUIT)
+                {
+                    upload_ghost_tron_params(*sh, gp.mCoverMode);
+                }
+            }
+            sh->uniform1f(sGhostDissolveProgress,
+                          llclamp(gp.mDissolveProgress, 0.f, 1.f));
         }
         // [R2-4] park the diffuse_color GENERIC at white: buffers WITHOUT a
         // COLOR array (PBR) read the generic, whose GL boot default is BLACK
@@ -4846,6 +11975,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // has its real texture bound for its ALPHA channel
     auto draw_batches = [&](S32 subset, bool texture_rgb, bool clone_color, bool alpha_aware)
     {
+        // A preceding static sweep or indexed batch may have left a different
+        // program bound. Start every rigged sweep from a proven scalar state;
+        // individual indexed descriptors switch below and the tail restores it.
+        apply_program(shader);
+        LLGLSLShader* active_shader = shader;
         const LLVOAvatar* lastAvatar = nullptr;
         U64  lastMeshId = 0;
         bool skipLastSkin = false;
@@ -4855,6 +11989,12 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         for (const LLActorMover::GhostBatch& gb : batches)
         {
             LLDrawInfo* di = gb.mInfo;
+            if (!di || di->mVertexBuffer.isNull() || di->mAvatar.isNull()
+                || di->mSkinInfo.isNull())
+            {
+                complete = false;
+                continue;
+            }
             const bool is_blend = ghost_pass_is_blend(gb.mPass);
             const bool is_glow  = ghost_pass_is_glow(gb.mPass);
             // glow duplicates base-pass geometry: only the glow sweep draws it
@@ -4866,6 +12006,53 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 || (subset == SWEEP_BLEND && !is_blend))
             {
                 continue;
+            }
+
+            const S32 indexed_slot_count =
+                ghost_legacy_indexed_slot_count(di);
+            const bool indexed_world = gp.mWorldLinear
+                && indexed_slot_count > 1;
+            if (indexed_world
+                && !di->mVertexBuffer->hasDataType(
+                    LLVertexBuffer::TYPE_TEXTURE_INDEX))
+            {
+                // Queue preflight rejects this before suppression. If source
+                // topology mutates mid-frame, drop the component and report an
+                // invariant failure rather than silently drawing slot zero.
+                complete = false;
+                continue;
+            }
+            LLGLSLShader* batch_shader = indexed_world
+                ? indexed_shader : shader;
+            if (!batch_shader || !batch_shader->mProgramObject
+                || (batch_shader->mAttributeMask
+                    & ~di->mVertexBuffer->getTypeMask()))
+            {
+                complete = false;
+                continue;
+            }
+            if (batch_shader != active_shader)
+            {
+                apply_program(batch_shader);
+                active_shader = batch_shader;
+                lastAvatar = nullptr;
+                lastMeshId = 0;
+                skipLastSkin = false;
+                cur_cutoff = -1.f;
+                tex_mat_on = false;
+            }
+
+            // [AvatarLightResponse] light response goes to the program that is BOUND for this draw (batch_shader
+            // == active_shader here), on every batch of every style so identity always resets; only
+            // a Studio CLONE draw carries a non-zero response. GLOW slot: the additive authored-
+            // emissive sweep receives Glow (z := g) and never Brightness.
+            {
+                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                LLRenderPass::uploadAvatarLightResponseTo(*batch_shader,
+                    alr_on ? gp.mLightResponseKey : LLUUID::null,
+                    alr_on ? di->mActorFxOwner : LLUUID::null,
+                    alr_on ? di->mActorFxFallbackOwner : LLUUID::null,
+                    subset == SWEEP_GLOW ? LLRenderPass::ALR_SLOT_GLOW : LLRenderPass::ALR_SLOT_BEAUTY);
             }
 
             // matrix palette: a FROZEN studio instance uploads the snapshot
@@ -4881,9 +12068,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 {
                     // same uniform the live path drives (AVATAR_MATRIX, GL-ready
                     // 3x4 floats, 12 per joint)
-                    shader->uniformMatrix3x4fv(LLViewerShaderMgr::AVATAR_MATRIX,
-                                               (U32)(fit->second.size() / 12),
-                                               false, fit->second.data());
+                    batch_shader->uniformMatrix3x4fv(
+                        LLViewerShaderMgr::AVATAR_MATRIX,
+                        (U32)(fit->second.size() / 12), false,
+                        fit->second.data());
                     // poison the live-upload cache so a following live batch
                     // re-uploads instead of "already bound" skipping
                     lastAvatar = nullptr;
@@ -4895,22 +12083,34 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 && !LLRenderPass::uploadMatrixPalette(di->mAvatar, di->mSkinInfo,
                                                       lastAvatar, lastMeshId, skipLastSkin))
             {
+                complete = false;
                 continue;
             }
 
             const bool is_mask = ghost_pass_is_mask(gb.mPass);
 
-            // vertex-colour ALPHA is real opacity only where the stock
-            // pipeline honors it: the alpha pool (blend passes) and PBR.
-            // Legacy non-alpha-pool faces bake SHININESS there (shiny "None"
-            // == 0), which discarded masked faces / blended styled ones to
-            // nothing unless the material happened to carry a spec/normal map.
+            // Vertex-colour ALPHA is real opacity only where the stock
+            // pipeline honors it: BLEND, ordinary simple MASK, and PBR MASK.
+            // Fullbright/material MASK use texture-only coverage (material
+            // also biases the cutoff); PBR OPAQUE ignores base-colour alpha.
+            // Legacy non-alpha-pool faces otherwise bake SHININESS there
+            // (shiny "None" == 0).
             if (have_fx)
             {
-                const bool use_vertex_alpha = is_blend
-                    || di->mGLTFMaterial.notNull()
+                const bool is_pbr = di->mGLTFMaterial.notNull()
                     || !di->mGLTFMaterialList.empty();
-                shader->uniform1i(sGhostUseVertexAlpha, use_vertex_alpha ? 1 : 0);
+                const S32 cutoff_mode = is_mask
+                    ? ghost_batch_alpha_cutoff_mode(gb.mPass)
+                    : GHOST_CUTOFF_NONE;
+                const bool use_vertex_alpha = is_blend
+                    || cutoff_mode == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA
+                    || (is_pbr && is_mask);
+                batch_shader->uniform1i(sGhostUseVertexAlpha,
+                                        use_vertex_alpha ? 1 : 0);
+                if (gp.mWorldLinear)
+                {
+                    batch_shader->uniform1i(sGhostAlphaCutoffMode, cutoff_mode);
+                }
             }
 
             // [R2-5] double-sided GLTF unculls for this batch, exactly like
@@ -4924,6 +12124,148 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             LLGLDisable no_cull(two_sided ? GL_CULL_FACE : 0);
 
+            // Shared world replay uses the viewer's full ordinary indexed-
+            // texture width (tex0..texN). Both mTextureList and legacy
+            // mMaterialSlotList therefore shade their complete VBO exactly
+            // once per intentional depth/beauty/bloom/wire sweep. Ghost Studio
+            // remains on the historical scalar slot-filter loop below.
+            if (indexed_world)
+            {
+                const S32 capacity = LLGLSLShader::sIndexedTextureChannels;
+                if (!have_indexed_shader || indexed_slot_count > capacity)
+                {
+                    complete = false;
+                    continue;
+                }
+
+                const bool material_slots =
+                    di->mMaterialSlotList.size() > 1;
+                const bool authored_alpha = alpha_aware
+                    && (is_mask || is_blend);
+                S32 cutoff_mode = is_mask
+                    ? ghost_batch_alpha_cutoff_mode(gb.mPass)
+                    : GHOST_CUTOFF_NONE;
+                F32 common_cutoff = alpha_aware
+                    ? ghost_batch_cutoff(di, gb.mPass) : 0.f;
+                if (alpha_aware && style == GHOST_STYLE_WIREFRAME
+                    && is_blend)
+                {
+                    // Hidden-line replay discards only fully transparent card
+                    // texels while retaining continuous authored BLEND alpha.
+                    cutoff_mode = GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA;
+                    common_cutoff = llmax(common_cutoff, 1.f / 255.f);
+                }
+
+                // Shader mapping has an engine-wide 32-channel canary. Keep
+                // the hot replay path entirely stack based: Layer can execute
+                // several intentional sweeps, and per-batch heap churn here
+                // would recreate the reported indexed-material FPS cliff.
+                constexpr S32 MAX_INDEXED_GHOST_CHANNELS = 32;
+                if (capacity > MAX_INDEXED_GHOST_CHANNELS)
+                {
+                    complete = false;
+                    continue;
+                }
+                F32 material_factor[4 * MAX_INDEXED_GHOST_CHANNELS];
+                F32 texture_alpha[MAX_INDEXED_GHOST_CHANNELS];
+                F32 minimum_alpha[MAX_INDEXED_GHOST_CHANNELS];
+                GLint use_vertex_alpha[MAX_INDEXED_GHOST_CHANNELS];
+                GLint alpha_cutoff_mode[MAX_INDEXED_GHOST_CHANNELS];
+                std::fill(std::begin(material_factor),
+                          std::end(material_factor), 1.f);
+                std::fill(std::begin(texture_alpha),
+                          std::end(texture_alpha),
+                          authored_alpha ? 1.f : 0.f);
+                std::fill(std::begin(minimum_alpha),
+                          std::end(minimum_alpha), common_cutoff);
+                std::fill(std::begin(use_vertex_alpha),
+                          std::end(use_vertex_alpha),
+                          (is_blend
+                           || cutoff_mode
+                                == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA)
+                              ? 1 : 0);
+                std::fill(std::begin(alpha_cutoff_mode),
+                          std::end(alpha_cutoff_mode), cutoff_mode);
+
+                // Clone's authored-colour baseline is common to the batch;
+                // the factor array carries only the rare no-texture/no-colour
+                // mid-grey fallback that formerly varied per slot.
+                if (clone_color)
+                {
+                    F32 r = 0.98f, g = 0.98f, b = 0.98f;
+                    if (gp.mTintCustom)
+                    {
+                        const F32 mx = llmax(
+                            llmax(tint.mV[0], tint.mV[1]),
+                            llmax(tint.mV[2], 0.001f));
+                        constexpr F32 st = 0.65f;
+                        r *= 1.f - st + st * (tint.mV[0] / mx);
+                        g *= 1.f - st + st * (tint.mV[1] / mx);
+                        b *= 1.f - st + st * (tint.mV[2] / mx);
+                    }
+                    gGL.diffuseColor4f(r, g, b, alpha);
+                }
+
+                for (S32 slot = 0; slot < indexed_slot_count; ++slot)
+                {
+                    LLViewerTexture* tex = nullptr;
+                    if (material_slots)
+                    {
+                        const LLDrawInfo::MaterialSlot& material =
+                            di->mMaterialSlotList[(size_t)slot];
+                        tex = material.mDiffuse.get();
+                        if (is_mask)
+                        {
+                            minimum_alpha[slot] =
+                                material.mAlphaMaskCutoff;
+                        }
+                    }
+                    else if ((size_t)slot < di->mTextureList.size())
+                    {
+                        tex = di->mTextureList[(size_t)slot].get();
+                    }
+                    gGL.getTexUnit(slot)->bind(
+                        tex ? tex
+                            : (LLViewerTexture*)
+                                LLViewerFetchedTexture::sWhiteImagep);
+
+                    if (clone_color && !tex
+                        && !(di->mVertexBuffer->getTypeMask()
+                             & LLVertexBuffer::MAP_COLOR))
+                    {
+                        const size_t base = (size_t)slot * 4u;
+                        material_factor[base] = 0.5f / 0.98f;
+                        material_factor[base + 1] = 0.5f / 0.98f;
+                        material_factor[base + 2] = 0.5f / 0.98f;
+                    }
+                }
+
+                batch_shader->uniform4fv(
+                    sGhostIndexedMaterialFactor, indexed_slot_count,
+                    material_factor);
+                batch_shader->uniform1fv(
+                    sGhostIndexedTextureAlpha, indexed_slot_count,
+                    texture_alpha);
+                batch_shader->uniform1fv(
+                    sGhostIndexedMinimumAlpha, indexed_slot_count,
+                    minimum_alpha);
+                batch_shader->uniform1iv(
+                    sGhostIndexedUseVertexAlpha, indexed_slot_count,
+                    use_vertex_alpha);
+                batch_shader->uniform1iv(
+                    sGhostIndexedAlphaCutoffMode, indexed_slot_count,
+                    alpha_cutoff_mode);
+                batch_shader->uniform4f(
+                    sGhostAux, 0.f, tex_mix, gp.mPixelSize, gp.mPhase);
+                batch_shader->uniform1i(sGhostSlot, -1);
+
+                di->mVertexBuffer->setBuffer();
+                di->mVertexBuffer->drawRange(
+                    LLRender::TRIANGLES, di->mStart, di->mEnd,
+                    di->mCount, di->mOffset);
+                continue;
+            }
+
             // [R2-2] indexed multi-material batches: the vertex buffer's
             // texture_index attribute picks the material per vertex, so ONE
             // bound texture is wrong for every non-anchor slot (white eyes).
@@ -4933,7 +12275,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             // sample texture RGB keep the single unfiltered draw.
             const S32 slot_count = ghost_batch_slot_count(di);
             const bool per_slot = have_fx && slot_count > 1
-                && (texture_rgb || (alpha_aware && is_mask))
+                && (texture_rgb || (alpha_aware && (is_mask || is_blend)))
                 && di->mVertexBuffer->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
             const S32 draws = per_slot ? slot_count : 1;
 
@@ -5004,8 +12346,29 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     }
                 }
 
+                // Hidden-line Wire must not let a completely transparent BLEND
+                // card prime depth or expose its rectangular/internal topology.
+                // A one-byte coverage floor preserves every visible authored
+                // alpha value while discarding only effectively empty texels.
+                if (alpha_aware && style == GHOST_STYLE_WIREFRAME && is_blend)
+                {
+                    cutoff = llmax(cutoff, 1.f / 255.f);
+                }
+
                 gGL.getTexUnit(0)->bind(
                     tex ? tex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
+
+                if (have_fx)
+                {
+                    // Alpha follows the material's ALPHA MODE, not merely the
+                    // presence of an alpha channel. PBR base-colour factor alpha
+                    // is already baked into MAP_COLOR by LLFace; multiplying it
+                    // here again made MASK/BLEND coverage factor-squared.
+                    const bool authored_alpha = alpha_aware && (is_mask || is_blend);
+                    shader->uniform2f(sGhostAlpha,
+                                      authored_alpha ? 1.f : 0.f,
+                                      1.f);
+                }
 
                 if (clone_color)
                 {
@@ -5014,7 +12377,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     // reads as glow); a GLTF base-colour / emissive factor
                     // tints as authored (linear pushed to gamma space --
                     // documented approximation for an unlit clone).
-                    F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                    F32 r = 0.98f, g = 0.98f, b = 0.98f, a = alpha;
                     if (!tex && subset != SWEEP_GLOW
                         && !(di->mVertexBuffer->getTypeMask() & LLVertexBuffer::MAP_COLOR))
                     {
@@ -5025,15 +12388,17 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         // as missing in a dark set.
                         r = g = b = 0.5f;
                     }
-                    if (have_factor)
+                    // Base-colour factors are already in MAP_COLOR. Emissive
+                    // factors are not, so the independent glow sweep still
+                    // needs its authored factor here.
+                    if (have_factor && subset == SWEEP_GLOW)
                     {
                         r *= powf(llmax(factor.mV[0], 0.f), 0.4545f);
                         g *= powf(llmax(factor.mV[1], 0.f), 0.4545f);
                         b *= powf(llmax(factor.mV[2], 0.f), 0.4545f);
-                        if (subset != SWEEP_GLOW)
-                        {
-                            a = factor.mV[3];   // factor alpha shapes the blended sweep
-                        }
+                        // Factor alpha is uploaded separately in ghostAlpha so
+                        // the instance/Actor-FX alpha remains authoritative and
+                        // is never replaced by the material alpha.
                     }
                     // Ghost Studio's custom hue applies to the clone too (the fix
                     // for "the hue slider does nothing in Clone"): a deliberate art
@@ -5118,6 +12483,11 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             gGL.loadIdentity();
             gGL.matrixMode(LLRender::MM_MODELVIEW);
         }
+        if (active_shader != shader)
+        {
+            apply_program(shader);
+            active_shader = shader;
+        }
         if (have_fx)
         {
             shader->uniform1i(sGhostSlot, -1);      // never leak the slot filter
@@ -5152,6 +12522,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
             if (!vb)
             {
+                complete = false;
                 continue;
             }
 
@@ -5190,7 +12561,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 ftex ? ftex : (LLViewerTexture*)LLViewerFetchedTexture::sWhiteImagep);
             if (clone_color)
             {
-                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = 1.f;
+                F32 r = 0.98f, g = 0.98f, b = 0.98f, a = alpha;
                 if (!ftex && !(vb->getTypeMask() & LLVertexBuffer::MAP_COLOR))
                 {
                     // [R3] mid-grey says "untextured" -- but ONLY for a face
@@ -5202,14 +12573,9 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                     // keep the near-white base so tint x white == authored.
                     r = g = b = 0.5f;
                 }
-                if (gmat)
-                {
-                    const LLColor4& f = gmat->mBaseColor;
-                    r *= powf(llmax(f.mV[0], 0.f), 0.4545f);
-                    g *= powf(llmax(f.mV[1], 0.f), 0.4545f);
-                    b *= powf(llmax(f.mV[2], 0.f), 0.4545f);
-                    a  = f.mV[3];
-                }
+                // LLFace already baked a GLTF base-colour factor into
+                // MAP_COLOR. Applying gmat->mBaseColor again here produced
+                // factor-squared RGB and alpha on static attachments.
                 if (gp.mTintCustom)
                 {
                     const F32 mx = llmax(llmax(tint.mV[0], tint.mV[1]),
@@ -5223,14 +12589,33 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             if (have_fx)
             {
-                // same channel-semantics gate as the rigged sweep, per face:
-                // isInAlphaPool() matches llface's vertex-alpha bake gate
-                // (covers all three alpha pools); a PBR face's vertex alpha
-                // is always real opacity
+                // Same channel-semantics gate as the rigged sweep, per face:
+                // alpha-pool BLEND and ordinary simple/PBR MASK use diffuse
+                // vertex alpha. Fullbright/material MASK are texture-only;
+                // PBR OPAQUE explicitly ignores base-colour alpha.
+                const bool authored_alpha = alpha_aware && gf.mAlphaKind != 0;
+                const S32 cutoff_mode = gf.mAlphaKind == 1
+                    ? ghost_static_alpha_cutoff_mode(gf)
+                    : GHOST_CUTOFF_NONE;
+                const bool use_vertex_alpha = face->isInAlphaPool()
+                    || cutoff_mode == GHOST_CUTOFF_TEXTURE_VERTEX_ALPHA
+                    || (gmat != nullptr && authored_alpha);
                 static_shader->uniform1i(sGhostUseVertexAlpha,
-                    (face->isInAlphaPool() || gmat != nullptr) ? 1 : 0);
+                    use_vertex_alpha ? 1 : 0);
+                if (gp.mWorldLinear)
+                {
+                    static_shader->uniform1i(sGhostAlphaCutoffMode,
+                                             cutoff_mode);
+                }
+                static_shader->uniform2f(sGhostAlpha,
+                    authored_alpha ? 1.f : 0.f,
+                    1.f);
+                const F32 wire_blend_cutoff =
+                    alpha_aware && style == GHOST_STYLE_WIREFRAME
+                    && gf.mAlphaKind == 2 ? (1.f / 255.f) : 0.f;
                 static_shader->uniform4f(sGhostAux,
-                    (alpha_aware && gf.mAlphaKind == 1) ? gf.mCutoff : 0.f,
+                    (alpha_aware && gf.mAlphaKind == 1)
+                        ? gf.mCutoff : wire_blend_cutoff,
                     texture_rgb ? 1.f : 0.f, gp.mPixelSize, gp.mPhase);
             }
             // per-face UV transform (SL texture animation / GLTF KHR)
@@ -5282,6 +12667,18 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             }
             gGL.syncMatrices();
 
+            // [AvatarLightResponse] static faces draw through static_shader (the program bound by apply_program above);
+            // same rule as the rigged sweep -- every face, identity for non-CLONE styles.
+            {
+                const LLDrawInfo* alr_di = face->mDrawInfo;
+                const bool alr_on = style == GHOST_STYLE_CLONE && gp.mLightResponseKey.notNull();
+                LLRenderPass::uploadAvatarLightResponseTo(*static_shader,
+                    alr_on ? gp.mLightResponseKey : LLUUID::null,
+                    alr_on && alr_di ? alr_di->mActorFxOwner : LLUUID::null,
+                    alr_on && alr_di ? alr_di->mActorFxFallbackOwner : LLUUID::null,
+                    LLRenderPass::ALR_SLOT_BEAUTY);   // static faces never run SWEEP_GLOW
+            }
+
             vb->setBuffer();
             vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
                           face->getGeomIndex() + face->getGeomCount() - 1,
@@ -5310,12 +12707,15 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // excludes BLENDED layers from the prime so the body under a sheer skirt
     // still shades (they get their own blended sweep below); the flat-tint
     // styles keep them (a translucent layer still contributes silhouette to a
-    // flat ghost). Wireframe stays fully unmasked: hidden-line wants the whole
-    // mesh's edges, holes included. [R2-2] the non-rigged attachment faces
+    // flat ghost). Wireframe primes only SOLID/MASK coverage: faint BLEND cards
+    // must not become opaque hidden-line occluders. Their lines are drawn later
+    // with authored alpha, depth testing enabled, and depth writes disabled.
+    // [R2-2] the non-rigged attachment faces
     // prime alongside the batches so collar and body occlude each other right.
     // [GhostDeferred] the prime deliberately IGNORES overlay_mask: a deferred-
     // covered solid category is exactly the occluder the remaining overlay
     // categories need, so every present solid still primes depth here.
+    if (!gp.mNativeDepthAvailable)
     {
         LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
         LLGLDisable   blend(GL_BLEND);
@@ -5329,8 +12729,8 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.setColorMask(false, false);
         if (style == GHOST_STYLE_WIREFRAME)
         {
-            draw_batches(SWEEP_ALL, false, false, false);
-            draw_static(SWEEP_ALL, false, false, false);
+            draw_batches(SWEEP_SOLID, false, false, true);
+            draw_static(SWEEP_SOLID, false, false, true);
         }
         else
         {
@@ -5348,6 +12748,27 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     // --- pass 2: shade the primed front layer, per style ---
     // each style sets style_color / style_params FIRST (apply_program pushes
     // them to whichever shader variant a sweep binds), then runs its sweeps
+    if (!gp.mDepthOnly)
+    {
+    // In the main HDR target alpha is the bloom channel, not ordinary colour
+    // opacity. Shared world-linear beauty must therefore match the native
+    // alpha pool's separate RGB/alpha factors: composite RGB normally while
+    // attenuating bloom behind the translucent surface. Ghost Studio's legacy
+    // offscreen/path rendering retains its established two-factor blend.
+    auto set_alpha_beauty_blend = [&gp]()
+    {
+        if (gp.mWorldLinear)
+        {
+            gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                          LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                          LLRender::BF_ZERO,
+                          LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+        }
+        else
+        {
+            gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        }
+    };
     switch (style)
     {
     case GHOST_STYLE_CLONE:
@@ -5369,7 +12790,28 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         if (overlay_mask & (GHOST_COVERAGE_RIGGED_SOLID | GHOST_COVERAGE_STATIC_SOLID))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
-            LLGLDisable   blend(GL_BLEND);
+            // A world-linear opaque/masked beauty fragment replaces HDR RGB
+            // and explicitly clears bloom beneath it. Its authored/synthetic
+            // bloom is then added exactly once by the deliberate glow sweep.
+            // Legacy ghost rendering keeps the original no-blend behaviour.
+            LLGLDisable no_blend(gp.mWorldLinear ? 0 : GL_BLEND);
+            LLGLEnable world_blend(gp.mWorldLinear ? GL_BLEND : 0);
+            if (gp.mWorldLinear)
+            {
+                // Clone is the one style whose historical Studio solid sweep
+                // is opaque. In the live world path, only a fully opaque Cover
+                // has that contract. Layer and a partial Cover must respect the
+                // operator's style opacity, just like system/BOM and shared PBR.
+                if (gp.mCoverMode && alpha >= 0.999f)
+                {
+                    gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ZERO,
+                                  LLRender::BF_ZERO, LLRender::BF_ZERO);
+                }
+                else
+                {
+                    set_alpha_beauty_blend();
+                }
+            }
             if (overlay_mask & GHOST_COVERAGE_RIGGED_SOLID)
             {
                 draw_batches(SWEEP_SOLID, true, true, true);
@@ -5379,11 +12821,14 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                 draw_static(SWEEP_SOLID, true, true, true);
             }
         }
+        // The blended and glow sweeps need alpha writes enabled even when the
+        // preceding world-linear solid sweep used replacement semantics.
+        gGL.setColorMask(true, true);
         if (overlay_mask & (GHOST_COVERAGE_RIGGED_BLEND | GHOST_COVERAGE_STATIC_BLEND))
         {
             LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
             LLGLEnable    blend(GL_BLEND);
-            gGL.setSceneBlendType(LLRender::BT_ALPHA);
+            set_alpha_beauty_blend();
             if (overlay_mask & GHOST_COVERAGE_RIGGED_BLEND)
             {
                 draw_batches(SWEEP_BLEND, true, true, true);
@@ -5399,7 +12844,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             LLGLEnable    blend(GL_BLEND);
             gGL.setSceneBlendType(LLRender::BT_ADD);
             draw_batches(SWEEP_GLOW, true, true, true);
-            gGL.setSceneBlendType(LLRender::BT_ALPHA);  // leave standard state
+            set_alpha_beauty_blend();  // leave standard state
         }
         break;
     }
@@ -5409,7 +12854,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // white than the classic ghost, and more opaque, so 1px lines read)
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
         const F32 t = 0.55f;
         style_color.set(tint.mV[VX] * (1.f - t) + t,
@@ -5418,9 +12863,10 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
                         llmin(1.f, alpha * 1.5f));
         gGL.diffuseColor4fv(style_color.mV);
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        draw_batches(SWEEP_ALL, false, false, false);
-        draw_static(SWEEP_ALL, false, false, false);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        draw_batches(SWEEP_ALL, false, false, true);
+        draw_static(SWEEP_ALL, false, false, true);
+        glPolygonMode(GL_FRONT_AND_BACK,
+                      gUseWireframe ? GL_LINE : GL_FILL);
         break;
     }
     case GHOST_STYLE_HOLOGRAM:
@@ -5430,7 +12876,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // the look (x scanlines, y rim, z flicker, w scanline period px)
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
         if (style == GHOST_STYLE_HOLOGRAM)
         {
@@ -5451,13 +12897,24 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
             style_color.set(0.55f * (1.f - t) + tint.mV[VX] * t,
                             0.75f * (1.f - t) + tint.mV[VY] * t,
                             1.00f * (1.f - t) + tint.mV[VZ] * t,
-                            alpha * 0.4f);
+                            gp.mWorldLinear ? alpha : alpha * 0.4f);
             style_params = LLVector4(0.f, 2.2f, 0.f, 6.f);
         }
         gGL.diffuseColor4fv(style_color.mV);
         shader->uniform4fv(sGhostParams, 1, style_params.mV);
         draw_batches(SWEEP_SOLID, true, false, true);
         draw_static(SWEEP_SOLID, true, false, true);
+        // Shared live Actor FX must replay authored BLEND cards (hair, lace,
+        // multi-face alpha) at the actor's alpha-stream turn. Ghost Studio and
+        // path ghosts deliberately retain their established overlay semantics.
+        if (gp.mWorldLinear)
+        {
+            // Preserve this look's style_color on authored alpha cards.  The
+            // texture still supplies RGB/coverage, but Clone's per-material
+            // colour setup must never replace Hologram/X-ray tint/opacity.
+            draw_batches(SWEEP_BLEND, true, false, true);
+            draw_static(SWEEP_BLEND, true, false, true);
+        }
         break;
     }
     case GHOST_STYLE_THERMAL:
@@ -5483,20 +12940,65 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
     case GHOST_STYLE_HALFTONE:
     case GHOST_STYLE_SONAR:
     case GHOST_STYLE_HOLO_ECHO:
+    case LLDirectorCast::ACTOR_LOOK_RIM_NOIR:
+    case LLDirectorCast::ACTOR_LOOK_GEL_SPLIT:
+    case LLDirectorCast::ACTOR_LOOK_BASS_SWEEP:
+    case LLDirectorCast::ACTOR_LOOK_MOONLIT:
+    case LLDirectorCast::ACTOR_LOOK_POSSESSED:
+    // [ActorFX33-35Fix] Seraph/Interrogation/Wraith fell through to
+    // default: (untextured classic Ghost sweep) -- route them through the
+    // shared textured front-surface sweep like every other toolkit look.
+    case LLDirectorCast::ACTOR_LOOK_SERAPH:
+    case LLDirectorCast::ACTOR_LOOK_INTERROGATION:
+    case LLDirectorCast::ACTOR_LOOK_WRAITH:
+    // [TronT2] Tron Suit: same textured front-surface sweep; the actual
+    // seams/rim/tint are supplied by the shared actorghostF.glsl look-36
+    // branch reading ghostTronParams/2/Color (uploaded below).
+    case LLDirectorCast::ACTOR_LOOK_TRON_SUIT:
     {
         // Toolkit looks share one shader and one clean front-surface sweep.
         // This prevents cosmetic/alpha layers from double-blending while still
         // resolving every indexed material slot for texture-driven looks.
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        if (gp.mWorldLinear
+            && style == LLDirectorCast::ACTOR_LOOK_TRON_SUIT
+            && !gp.mCoverMode)
+        {
+            // [TronT2 fix] Layer-mode Tron Suit: the actorghostF look-36
+            // branch publishes ONLY the neon (body = 0, haze-free fog), so
+            // ADD it over the retained native lit beauty instead of
+            // alpha-compositing an unlit texture over it. Colour: src *
+            // coverage(strength) + dst; HDR alpha (bloom) untouched -- the
+            // glow_only replay below owns the suit's bloom. Cover and every
+            // other look keep set_alpha_beauty_blend() byte-identical.
+            gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                          LLRender::BF_ZERO, LLRender::BF_ONE);
+        }
+        else
+        {
+            set_alpha_beauty_blend();
+        }
         gGL.setColorMask(true, true);
-        style_color.set(tint.mV[VX], tint.mV[VY], tint.mV[VZ], alpha);
+        const bool coverage_layer = gp.mWorldLinear
+            && style == GHOST_STYLE_DISSOLVE
+            && gp.mCoverageLayerStrength >= 0.f;
+        style_color.set(tint.mV[VX], tint.mV[VY], tint.mV[VZ],
+                        coverage_layer ? 1.f : alpha);
+        // ghostParams.x remains the historical scanline channel. Dedicated
+        // world-only ghostCoverageLayerStrength carries Dissolve's Layer mix.
         style_params = LLVector4(0.f, 1.f, 0.f, 8.f);
         gGL.diffuseColor4fv(style_color.mV);
         shader->uniform4fv(sGhostParams, 1, style_params.mV);
         draw_batches(SWEEP_SOLID, true, false, true);
         draw_static(SWEEP_SOLID, true, false, true);
+        if (gp.mWorldLinear)
+        {
+            // Creative looks keep their own style colour on blended surfaces;
+            // clone_color is exclusively the Clone look's authored-colour path.
+            draw_batches(SWEEP_BLEND, true, false, true);
+            draw_static(SWEEP_BLEND, true, false, true);
+        }
         break;
     }
     case GHOST_STYLE_GHOST:
@@ -5507,7 +13009,7 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         // actors' ghosts stay distinguishable without hiding the body shape
         LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
         LLGLEnable    blend(GL_BLEND);
-        gGL.setSceneBlendType(LLRender::BT_ALPHA);
+        set_alpha_beauty_blend();
         gGL.setColorMask(true, true);
         const F32 t = 0.25f;
         style_color.set(1.f - t + tint.mV[VX] * t,
@@ -5517,18 +13019,62 @@ S32 drawGeometryGhost(LLVOAvatar* av, const std::vector<LLActorMover::GhostBatch
         gGL.diffuseColor4fv(style_color.mV);
         draw_batches(SWEEP_SOLID, false, false, true);
         draw_static(SWEEP_SOLID, false, false, true);
+        if (gp.mWorldLinear)
+        {
+            draw_batches(SWEEP_BLEND, false, false, true);
+            draw_static(SWEEP_BLEND, false, false, true);
+        }
         break;
+    }
+    }
+
+    // Shared live Actor FX beauty clears/attenuates HDR alpha deliberately, so
+    // the treatment bloom must be replayed as a separate alpha-only draw. Reuse
+    // the exact actorghost program and geometry subset from this queue item:
+    // animated scanlines/noise, mask cutoffs, authored BLEND coverage, indexed
+    // material slots and the moving dissolve boundary therefore cannot drift.
+    if (gp.mWorldLinear && LLRenderPass::actorFxLookNeedsSyntheticBloom(style))
+    {
+        ScopedSharedActorHDRDrawBuffer hdr_only(true);
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable blend(GL_BLEND);
+        gGL.setColorMask(true, true);
+        gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                      LLRender::BF_ONE, LLRender::BF_ONE);
+        glow_only = true;
+        apply_program(shader);
+        draw_batches(SWEEP_ALL, true, false, true);
+        draw_static(SWEEP_ALL, true, false, true);
+        glow_only = false;
+        apply_program(shader); // never leak glow-only into the next shared item
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
     }
     }
 
     gGL.popMatrix();
     gGL.syncMatrices();
     gGL.setColorMask(true, true);
+    if (gp.mWorldLinear && !gp.mDepthOnly)
+    {
+        // Shared replay is interleaved with native LLDrawPoolAlpha items. Never
+        // leak Clone replacement/additive factors into the next queue item.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
     // [R2-4] restore the diffuse_color generic to the GL boot default so no
     // later pass inherits our white park (generic state is global)
     shader->vertexAttrib4f(LLVertexBuffer::TYPE_COLOR, 0.f, 0.f, 0.f, 1.f);
     shader->unbind();   // draw_static always hands back to the rigged program
+    if (out_complete)
+    {
+        *out_complete = complete;
+    }
     return (S32)(batches.size() + (static_faces ? static_faces->size() : 0));
 }
 } // anonymous namespace
@@ -5560,10 +13106,9 @@ bool ghost_pass_is_blend(U32 pass)
 // emissive sweep -- otherwise the body would double-draw. Only the GLTF glow
 // pass is collected: PBR emissive is real surface COLOUR (emissive map x
 // emissive colour -- the missing iris on emissive-driven eyes); legacy
-// PASS_GLOW_RIGGED is a bloom intensity whose per-vertex glow amount lives in
-// the EMISSIVE vertex attribute this shader does not read, so honoring it
-// faithfully is out of scope (its faces' base colour already draws via their
-// base pass).
+// PASS_GLOW_RIGGED is deliberately NOT part of this public Ghost Studio sweep:
+// shared Actor FX harvests that duplicate through a private callback/map and
+// replays it with the stock emissive attribute contract under Cover only.
 bool ghost_pass_is_glow(U32 pass)
 {
     return pass == LLRenderPass::PASS_GLTF_GLOW_RIGGED;
@@ -5584,7 +13129,7 @@ static int ghost_pass_sweep_class(U32 pass)
 }
 
 // ---------------------------------------------------------------------------
-void LLActorMover::renderHeadingPreview()
+void LLActorMover::renderHeadingPreview(bool depth_aware)
 {
     // (Ghost Studio instances do NOT draw here: they are scene dressing, not
     // an editing indicator, so render_ui_3d() calls renderStudioGhosts()
@@ -5632,9 +13177,12 @@ void LLActorMover::renderHeadingPreview()
     static LLCachedControl<F32>  ghost_distort_amount(gSavedSettings, "PathGhostDistortAmount", 0.5f);
     const F32 dist = llmax((F32)distance, 0.1f);
 
-    // same beacon-style local overlay as renderObjectBeacons(): UI shader, no
-    // texture, no depth writes -- strictly a client-side overlay
-    LLGLSUIDefault gls_ui;
+    // The main view supplies its scene color/depth target here. Blend the guides
+    // into color without writing depth; opaque avatars, deferred actor ghosts,
+    // props, and terrain therefore remain visually in front of the path.
+    LLGLEnable blend_state(GL_BLEND);
+    LLGLDisable cull(GL_CULL_FACE);
+    LLGLDepthTest depth(depth_aware, false, GL_LEQUAL);
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
 
@@ -5667,11 +13215,8 @@ void LLActorMover::renderHeadingPreview()
     const S32    edit_node  = mEditNode;
 
     // Ghost billboards are collected across the whole roster and drawn LAST, in a
-    // single far-to-near pass, so the translucent avatar cards blend correctly
-    // against each other (the UI 3D pass runs on a cleared depth buffer, so there
-    // is no scene depth to sort against -- painter order is what we control) and
-    // do not interleave with the opaque line/ribbon viz. Only populated when the
-    // ghost toggle is on, so the default-off path allocates nothing.
+    // single far-to-near pass, so translucent cards blend correctly against each
+    // other and do not interleave with the line/ribbon visualization.
     struct GhostItem
     {
         LLVOAvatar* mAv;
@@ -5688,8 +13233,8 @@ void LLActorMover::renderHeadingPreview()
         roster.push_back(LLUUID::null);     // my avatar
     }
     // While the in-world path edit tool is active it draws the edit actor's path
-    // overlay itself (with hover/selection feedback via renderActorPathOverlay,
-    // called from render_ui_3d), so skip that actor here to avoid a double-draw.
+    // overlay itself (with hover/selection feedback via renderActorPathOverlay in
+    // the same scene-depth guide pass), so skip that actor here to avoid a double-draw.
     // Non-edit actors preview normally.
     const bool path_edit_tool_active =
         (LLToolMgr::getInstance()->getCurrentTool() == (LLTool*)ALToolPathEdit::getInstance());
@@ -5752,7 +13297,14 @@ void LLActorMover::renderHeadingPreview()
             const bool loop = (path.mEndMode == 1);
             for (S32 i = 0; i < n; ++i)
             {
-                LLVector3 base = gAgent.getPosAgentFromGlobal(path.mNodes[i].mPosGlobal);
+                LLVector3d event_global = path.mNodes[i].mPosGlobal;
+                LLVector3d event_tangent(1.0, 0.0, 0.0);
+                if (i < static_cast<S32>(path.mNodeDist.size()))
+                {
+                    path.evalAtDistance(
+                        path.mNodeDist[i], event_global, event_tangent);
+                }
+                LLVector3 base = gAgent.getPosAgentFromGlobal(event_global);
                 base.mV[VZ] += NODE_BASE_LIFT;
                 const bool is_start = (i == 0);
                 const bool is_end   = (i == n - 1) && !loop;    // a loop has no distinct end
@@ -5775,19 +13327,9 @@ void LLActorMover::renderHeadingPreview()
                 // ghost pass below (real impostor billboard, or stick fallback).
                 if (onion)
                 {
-                    S32 fromIdx = i;
-                    S32 toIdx   = (i + 1 < n) ? (i + 1) : (loop ? 0 : i);
-                    if (toIdx == fromIdx && i > 0)
-                    {
-                        fromIdx = i - 1;    // last node of an open path: face along the incoming leg
-                        toIdx   = i;
-                    }
-                    LLVector3 face(1.f, 0.f, 0.f);
-                    if (toIdx != fromIdx)
-                    {
-                        face = gAgent.getPosAgentFromGlobal(path.mNodes[toIdx].mPosGlobal)
-                             - gAgent.getPosAgentFromGlobal(path.mNodes[fromIdx].mPosGlobal);
-                    }
+                    LLVector3 face(static_cast<F32>(event_tangent.mdV[VX]),
+                                   static_cast<F32>(event_tangent.mdV[VY]),
+                                   static_cast<F32>(event_tangent.mdV[VZ]));
                     const F32 gh = path.mNodes[i].mRootAbove * 1.9f;
                     ghosts.push_back({ av, base, face, gh, col_mid });
                 }
@@ -5915,10 +13457,10 @@ void LLActorMover::renderHeadingPreview()
     // actor's own worn mesh re-skinned and re-placed, depth-tested so it reads as
     // a real translucent body), else a real avatar impostor billboard (drawImpostor-
     // Ghost), else the readable stick figure (drawPoseGhost). Sorted far-to-near so
-    // the translucent draws stack correctly. NOTE (documented caveat): the ghost
-    // pass runs on a cleared depth buffer, so world geometry does NOT occlude the
-    // ghosts -- they read as a client overlay ON TOP of the scene (each model
-    // ghost still self-occludes cleanly via its own depth prime).
+    // the translucent draws stack correctly. In the scene-depth guide pass, world
+    // geometry occludes these ghosts; each model ghost also self-occludes via its
+    // own depth prime. The fallback UI path remains available to non-depth-aware
+    // callers.
     if (!ghosts.empty())
     {
         const LLVector3 cam_pos = cam->getOrigin();
@@ -5973,7 +13515,7 @@ void LLActorMover::renderHeadingPreview()
             }
         }
 
-        // Pass B: billboard / stick fallback on the cleared-depth UI overlay.
+        // Pass B: billboard / stick fallback, inheriting the caller's depth mode.
         for (const GhostItem* gp : fallback)
         {
             const GhostItem& g = *gp;
@@ -6007,13 +13549,14 @@ void LLActorMover::renderHeadingPreview()
 
 // ---------------------------------------------------------------------------
 // Lean per-actor path overlay used by the in-world path edit tool (called from
-// render_ui_3d while the tool is active). Draws the actor's spline ribbon +
+// the scene-depth guide pass while the tool is active). Draws the spline ribbon +
 // chevrons (>= 2 nodes) and numbered node markers (from the FIRST node), a
 // breathing highlight on the edit-selected node and a steady highlight on the
 // hovered node. Independent of the roster / floater / >=2-node / Show-path gating
 // in renderHeadingPreview(), so editing always shows what is being marked. Zero
 // cost when the actor has no path.
-void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, S32 hover_node)
+void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing,
+                                          S32 hover_node, bool depth_aware)
 {
     auto pit = mPaths.find(actor_id);
     if (pit == mPaths.end() || pit->second.mNodes.empty())
@@ -6026,9 +13569,9 @@ void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, 
         path.rebuild();
     }
 
-    // same beacon-style client overlay as renderHeadingPreview(): UI shader, no
-    // texture, no depth writes -- a pure client-side indicator over any ground.
-    LLGLSUIDefault gls_ui;
+    LLGLEnable blend_state(GL_BLEND);
+    LLGLDisable cull(GL_CULL_FACE);
+    LLGLDepthTest depth(depth_aware, false, GL_LEQUAL);
     gUIProgram.bind();
     gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
 
@@ -6096,6 +13639,31 @@ void LLActorMover::renderActorPathOverlay(const LLUUID& actor_id, bool editing, 
             drawSelectedHighlight(base, c, pulse);
         }
         drawNodeMarker(base, c, path.mNodes[i].mDwell > 0.f);
+
+        // A rounded node is a control pivot outside the traveled fillet. Show a
+        // thin tether and a secondary route marker at the logical event midpoint,
+        // while keeping the numbered pivot as the draggable edit target.
+        if (path.mNodes[i].mCornerRadius > 0.f &&
+            i < static_cast<S32>(path.mNodeDist.size()))
+        {
+            LLVector3d route_global;
+            LLVector3d route_tangent;
+            path.evalAtDistance(path.mNodeDist[i], route_global, route_tangent);
+            LLVector3 route = gAgent.getPosAgentFromGlobal(route_global);
+            route.mV[VZ] += NODE_BASE_LIFT;
+            if ((route - base).magVecSquared() > 0.0001f)
+            {
+                gGL.setLineWidth(1.f);
+                gGL.begin(LLRender::LINES);
+                gGL.color4f(c.mV[VX], c.mV[VY], c.mV[VZ], 0.45f);
+                gGL.vertex3fv(base.mV);
+                gGL.vertex3fv(route.mV);
+                gGL.end();
+                LLColor4 route_col = c;
+                route_col.mV[VW] = 0.55f;
+                drawNodeMarker(route, route_col, false);
+            }
+        }
 
         LLVector3 num_at = base;
         num_at.mV[VZ] += NODE_STICK_H + 0.06f;
@@ -6261,7 +13829,9 @@ constexpr U32 kRiggedPasses[] = {
 // No draw calls, no dedup here -- callers decide what to keep.
 void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                                            const ghost_rigged_source_cb_t& rigged_cb,
-                                           const ghost_static_source_cb_t& static_cb)
+                                           const ghost_static_source_cb_t& static_cb,
+                                           const ghost_rigged_source_cb_t&
+                                               shared_legacy_glow_cb)
 {
     if (!av || av->isDead())
     {
@@ -6272,12 +13842,7 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
 
     static LLCachedControl<bool> exclude_temporary(
         gSavedSettings, "GhostUnifiedExcludeTemporaryAttachments", false);
-    ALGhostAttachmentEnumerator::visitWorldRoots(
-            av,
-            exclude_temporary
-                ? ALGhostTempAttachmentPolicy::EXCLUDE
-                : ALGhostTempAttachmentPolicy::INCLUDE,
-            [&](LLViewerObject* attached, S32, bool)
+    auto gather_root_geometry = [&](LLViewerObject* attached)
     {
         std::vector<LLViewerObject*> objs;
         if (attached)
@@ -6314,7 +13879,34 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                 }
             }
         }
-    });
+    };
+
+    // A standalone or independently styled Animesh resolves to its generated
+    // LLControlAvatar. Its visible animated linkset is mRootVolp, not an object
+    // in the control avatar's attachment-point map, so the ordinary wearer walk
+    // cannot discover any of its faces. Harvest that same root/children domain
+    // directly; worn Animesh reached through a human wearer keeps the normal
+    // attachment enumeration below.
+    LLControlAvatar* control = av->isControlAvatar()
+        ? static_cast<LLControlAvatar*>(av) : nullptr;
+    if (control && control->mRootVolp && !control->mRootVolp->isDead()
+        && !control->mRootVolp->isHUDAttachment()
+        && (!exclude_temporary || !control->mRootVolp->isTempAttachment()))
+    {
+        gather_root_geometry(control->mRootVolp);
+    }
+    else
+    {
+        ALGhostAttachmentEnumerator::visitWorldRoots(
+                av,
+                exclude_temporary
+                    ? ALGhostTempAttachmentPolicy::EXCLUDE
+                    : ALGhostTempAttachmentPolicy::INCLUDE,
+                [&](LLViewerObject* attached, S32, bool)
+        {
+            gather_root_geometry(attached);
+        });
+    }
 
     for (LLSpatialGroup* group : groups)
     {
@@ -6337,15 +13929,48 @@ void LLActorMover::walkGhostSourceGeometry(LLVOAvatar* av,
                 rigged_cb(av, group, pass, draw_info);
             }
         }
+
+        // PASS_GLOW_RIGGED duplicates base geometry and is not part of Ghost
+        // Studio's historical beauty domain. Enumerate it only for the explicit
+        // shared-activation consumer so ordinary clones cannot accidentally
+        // shade the bloom sidecar as a solid surface.
+        if (shared_legacy_glow_cb)
+        {
+            constexpr U32 pass = LLRenderPass::PASS_GLOW_RIGGED;
+            auto found = group->mDrawMap.find(pass);
+            if (found != group->mDrawMap.end())
+            {
+                for (const LLPointer<LLDrawInfo>& draw_info : found->second)
+                {
+                    LLDrawInfo* di = draw_info.get();
+                    if (!di || di->mAvatar.isNull()
+                        || di->mSkinInfo.isNull()
+                        || di->mVertexBuffer.isNull())
+                    {
+                        continue;
+                    }
+                    shared_legacy_glow_cb(av, group, pass, draw_info);
+                }
+            }
+        }
     }
 }
 
 void LLActorMover::collectGhostBatches()
 {
-    // Two independent reasons to collect: the PATH-NODE ghost preview (its
+    // Shared Actor FX is strictly same-frame. Clear first so every early return
+    // is fail-open for native beauty rather than reusing stale replay pointers.
+    mSharedActorStyleProxies.clear();
+    mSharedActorLegacyGlowBatches.clear();
+    mSharedActorStyleFrame = LLFrameTimer::getFrameCount();
+    mSharedActorStyleDepthFrame = 0xFFFFFFFF;
+
+    // Three independent reasons to collect: the PATH-NODE ghost preview (its
     // classic gate: setting trio + an operator floater up) and the GHOST
     // STUDIO (enabled instances render floater-or-not -- they are scene
-    // dressing, not an editing overlay). Neither active = byte-identical
+    // dressing, not an editing overlay), plus per-cast ACTOR STYLES, which use
+    // the same frame-local geometry harvest at the actor's live placement.
+    // None active = byte-identical
     // zero cost.
     static LLCachedControl<bool> show(gSavedSettings, "ActorMoverShowHeading", true);
     static LLCachedControl<bool> onion(gSavedSettings, "PathShowOnionSkin", false);
@@ -6361,7 +13986,22 @@ void LLActorMover::collectGhostBatches()
         }
     }
     const bool studio = ALGhostStudio::instance().anyEnabled();
-    if (!path_ghosts && !studio)
+    LLDirectorCast& director_cast = LLDirectorCast::instance();
+    bool actor_styles = actor_style_wants_shared_replay(
+        director_cast.getActorStyle(LLUUID::null));
+    if (!actor_styles)
+    {
+        for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+        {
+            if (actor_style_wants_shared_replay(
+                    director_cast.getActorStyle(member.mId)))
+            {
+                actor_styles = true;
+                break;
+            }
+        }
+    }
+    if (!path_ghosts && !studio && !actor_styles)
     {
         // Preserve the zero-cost teardown path and release retained keys when
         // neither feature can consume their capacity.
@@ -6417,6 +14057,30 @@ void LLActorMover::collectGhostBatches()
             {
                 wanted.insert(av);
             }
+        }
+    }
+    if (actor_styles)
+    {
+        // Null is the model's stable key for You. Cast member ids may be stable
+        // entity ids; resolve() supplies their current runtime avatar, and the
+        // wanted set deduplicates a wearer that is reachable through both keys.
+        auto add_styled_actor = [&](const LLUUID& style_id)
+        {
+            if (!actor_style_wants_shared_replay(
+                    director_cast.getActorStyle(style_id)))
+            {
+                return;
+            }
+            LLVOAvatar* av = director_cast.resolve(style_id);
+            if (av && !av->isDead())
+            {
+                wanted.insert(av);
+            }
+        };
+        add_styled_actor(LLUUID::null);
+        for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+        {
+            add_styled_actor(member.mId);
         }
     }
     // Retain capacity only for sources wanted this frame. This bounds the maps
@@ -6489,10 +14153,23 @@ void LLActorMover::collectGhostBatches()
             [&](LLVOAvatar* wearer, LLSpatialGroup* group, U32 pass,
                 const LLPointer<LLDrawInfo>& draw_info)
             {
-                // [R2-6] everything in an attachment group belongs to THIS wearer
-                // by construction (animesh included -- those draw infos carry the
-                // attachment's own control avatar as mAvatar), so no owner check.
                 LLDrawInfo* di = draw_info.get();
+                // A spatial group is a shared world bucket, not an attachment-
+                // owner bucket. Filter every rigged draw back to this wearer;
+                // otherwise nearby avatars in the same group leak into the
+                // harvest, multiplying draw cost and producing PBR/alpha
+                // flicker as group membership changes. An animesh attachment's
+                // draw info names its LLControlAvatar, whose attached avatar is
+                // the wearer. A cast actor that IS a control avatar still wins
+                // the direct pointer comparison first.
+                LLVOAvatar* drawing_avatar = di->mAvatar.get();
+                const bool belongs_to_wearer = drawing_avatar == wearer
+                    || (drawing_avatar && drawing_avatar->isControlAvatar()
+                        && drawing_avatar->getAttachedAvatar() == wearer);
+                if (!belongs_to_wearer)
+                {
+                    return;
+                }
                 // Dedup is per SWEEP-CLASS, not pass-blind: a VB+range twin is a
                 // true duplicate only WITHIN the same sweep (SOLID/BLEND/GLOW). A
                 // different-class twin -- notably the PASS_GLTF_GLOW_RIGGED additive
@@ -6507,7 +14184,8 @@ void LLActorMover::collectGhostBatches()
                     if (b.mInfo->mVertexBuffer.get() == di->mVertexBuffer.get()
                         && b.mInfo->mStart == di->mStart && b.mInfo->mEnd == di->mEnd
                         && b.mInfo->mOffset == di->mOffset
-                        && ghost_pass_sweep_class(b.mPass) == ghost_pass_sweep_class(pass))
+                        && ghost_pass_sweep_class(b.mPass) ==
+                           ghost_pass_sweep_class(pass))
                     {
                         dup = true;
                         break;
@@ -6515,7 +14193,7 @@ void LLActorMover::collectGhostBatches()
                 }
                 if (!dup)
                 {
-                    bucket.push_back({ di, pass });
+                    bucket.push_back({ di, pass, group });
                 }
                 // [CloneFidelity] raw source truth + whether the VB+range dedup
                 // retained THIS entry (so the audit can report DROP_DEDUP).
@@ -6527,14 +14205,29 @@ void LLActorMover::collectGhostBatches()
                 // ---- [R2-2] NON-RIGGED faces (collar / jewelry / flexi): they
                 // never carry LLFace::mAvatar, so no rigged pass owns them --
                 // per-face alpha classification mirroring the real pools (GLTF
-                // mode wins; legacy mask from the material; the alpha POOL marks
-                // its faces blended).
+                // mode wins; explicit legacy material modes are next; actual
+                // alpha-mask pool routing captures no-material auto-mask faces;
+                // the alpha POOL marks its faces blended).
                 GhostStaticFace gf;
                 gf.mFace = face;
                 gf.mObjectId = obj->getID();
                 const LLTextureEntry* te = face->getTextureEntry();
                 LLGLTFMaterial* gmat = te ? te->getGLTFRenderMaterial() : nullptr;
-                if (gmat)
+                LLDrawInfo* face_info = face->mDrawInfo;
+                if (face_info &&
+                    face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_MASK)
+                {
+                    gf.mAlphaKind = 1;
+                    gf.mCutoff = face_info->mAlphaMaskCutoff;
+                    gf.mDoubleSided = gmat && gmat->mDoubleSided;
+                }
+                else if (face_info &&
+                         face_info->mEffectiveAlphaMode == LLPipeline::ALPHA_MODE_BLEND)
+                {
+                    gf.mAlphaKind = 2;
+                    gf.mDoubleSided = gmat && gmat->mDoubleSided;
+                }
+                else if (gmat)
                 {
                     gf.mDoubleSided = gmat->mDoubleSided;
                     if (gmat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
@@ -6555,6 +14248,22 @@ void LLActorMover::collectGhostBatches()
                         gf.mAlphaKind = 1;
                         gf.mCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
                     }
+                    else if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND)
+                    {
+                        gf.mAlphaKind = 2;
+                    }
+                    else if (!mat
+                             && (face->getPoolType() == LLDrawPool::POOL_ALPHA_MASK
+                                 || face->getPoolType() == LLDrawPool::POOL_FULLBRIGHT_ALPHA_MASK))
+                    {
+                        // Stock canRenderAsMask routing for legacy faces without
+                        // LLMaterial uses the DrawInfo cutoff (normally 0.33;
+                        // session force-mask overrides may replace it). Mirror
+                        // the exact generated value when it is available.
+                        gf.mAlphaKind = 1;
+                        gf.mCutoff = face->mDrawInfo
+                            ? face->mDrawInfo->mAlphaMaskCutoff : 0.33f;
+                    }
                     else if (face->getPoolType() == LLDrawPool::POOL_ALPHA
                              || te->getColor().mV[VW] < 0.999f)
                     {
@@ -6566,7 +14275,42 @@ void LLActorMover::collectGhostBatches()
                 // (pass the alpha classification directly -- no pointer retained).
                 LLCloneFidelityAudit::instance().captureEarlyStatic(
                     wearer, obj, face, gf.mAlphaKind, gf.mCutoff, gf.mDoubleSided);
-            });
+            },
+            actor_styles
+                ? ghost_rigged_source_cb_t(
+                    [&](LLVOAvatar* wearer, LLSpatialGroup* group, U32 pass,
+                        const LLPointer<LLDrawInfo>& draw_info)
+                    {
+                        LLDrawInfo* di = draw_info.get();
+                        LLVOAvatar* drawing_avatar = di ? di->mAvatar.get() : nullptr;
+                        const bool belongs_to_wearer = drawing_avatar == wearer
+                            || (drawing_avatar && drawing_avatar->isControlAvatar()
+                                && drawing_avatar->getAttachedAvatar() == wearer);
+                        if (!belongs_to_wearer)
+                        {
+                            return;
+                        }
+
+                        std::vector<GhostBatch>& glow_bucket =
+                            mSharedActorLegacyGlowBatches[wearer->getID()];
+                        const bool duplicate = std::find_if(
+                            glow_bucket.begin(), glow_bucket.end(),
+                            [di](const GhostBatch& batch)
+                            {
+                                return batch.mInfo
+                                    && batch.mInfo->mVertexBuffer.get()
+                                        == di->mVertexBuffer.get()
+                                    && batch.mInfo->mStart == di->mStart
+                                    && batch.mInfo->mEnd == di->mEnd
+                                    && batch.mInfo->mCount == di->mCount
+                                    && batch.mInfo->mOffset == di->mOffset;
+                            }) != glow_bucket.end();
+                        if (!duplicate)
+                        {
+                            glow_bucket.push_back({ di, pass, group });
+                        }
+                    })
+                : ghost_rigged_source_cb_t{});
 
         // keep both maps miss-cheap
         if (bucket.empty())
@@ -6580,6 +14324,7 @@ void LLActorMover::collectGhostBatches()
     }
 
     LLCloneFidelityAudit::instance().endEarlyCapture();
+    buildSharedActorStyleQueue();
 }
 
 // ---------------------------------------------------------------------------
@@ -6643,7 +14388,7 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         ++mGhostDeferredCounters.mLiveInstancesConsidered;
 
         LLVOAvatar* av = resolve_actor(inst.mSource);
-        if (!av || av->isDead())
+        if (!av || av->isDead() || !av->getRootJoint())
         {
             ++mGhostDeferredCounters.mUnresolvedSources;
             continue;
@@ -6672,7 +14417,12 @@ void LLActorMover::buildGhostDeferredQueue(const LLCamera& camera, U32 view_stam
         // then suppressed the correctly placed overlay, making the crowd vanish.
         proxy.mRotation     = ~av->getRotation() * inst.mRotation;
         proxy.mScale        = llclamp(inst.mScale, GHOST_SCALE_MIN, GHOST_SCALE_MAX);
-        const LLVector3 live_root = av->getRenderPosition();
+        // Pivot on the SKELETON ROOT (matches the world-space skinning palette),
+        // NOT getRenderPosition() (the drawable): a Mover path walk advances only
+        // the root, so a drawable-based pivot drifted the deferred clone -- and its
+        // cull bounds -- by the walked distance. Same bug/fix as drawGeometryGhost;
+        // getRootJoint() null-guarded at the source check above.
+        const LLVector3 live_root = av->getRootJoint()->getWorldPosition();
         // Same non-standard / still-loading skeleton hazard as the forward overlay
         // (drawGeometryGhost): a raw pelvis-to-foot can come back negative or
         // non-finite, which skews the pivot and bakes NaN into the proxy bounds
@@ -7041,6 +14791,7 @@ void LLActorMover::renderStudioGhosts()
         // [GhostDeferred] hand the coverage picture to the draw (clone-only)
         gp.mDeferredCoverage = coverage;
         gp.mPresentCoverage  = item.mPresent;
+        gp.mLightResponseKey = inst.mId; // [AvatarLightResponse]
 
         drawGeometryGhost(item.mAv, *item.mBatches, item.mFootAgent, tint,
                           llclamp(inst.mAlpha, 0.f, 1.f), inst.mStyle, gp,
@@ -7099,4 +14850,3060 @@ void LLActorMover::renderStudioGhosts()
     }
 
     gGL.flush();
+}
+
+// ---------------------------------------------------------------------------
+// [ActorStyle] Dedicated classic/system-avatar replay. Modern attachments use
+// harvested DrawInfo/face geometry; BOM head/upper/lower/skirt/hair/eyelashes
+// instead live behind LLVOAvatar::renderSkinned and its classic matrix palette.
+// Keep this a two-sweep API so the shared proxy scheduler can submit SOLID at
+// the opaque boundary and BLEND in its ordered alpha stage.
+bool LLActorMover::canRenderSystemActorGhost(LLVOAvatar* avatar,
+                                             const LLUUID& style_id) const
+{
+    if (!avatar || avatar->isDead() || avatar->isControlAvatar()
+        || avatar->isUIAvatar() || avatar->mDrawable.isNull()
+        || avatar->isHardVisualMute()
+        || avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE
+        || !gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR)
+        || !gAvatarActorGhostProgram.mProgramObject
+        || !gAvatarEyeballActorGhostProgram.mProgramObject
+        || gAvatarActorGhostProgram.getUniformLocation(
+               sGhostAlphaCutoffMode) < 0
+        || gAvatarEyeballActorGhostProgram.getUniformLocation(
+               sGhostAlphaCutoffMode) < 0
+        || gAvatarActorGhostProgram.getUniformLocation(sGhostScreenSize) < 0
+        || gAvatarEyeballActorGhostProgram.getUniformLocation(
+               sGhostScreenSize) < 0
+        || gAvatarActorGhostProgram.getUniformLocation(
+               sGhostCoverageLayerStrength) < 0
+        || gAvatarEyeballActorGhostProgram.getUniformLocation(
+               sGhostCoverageLayerStrength) < 0
+        || !avatar->isActorGhostSystemReplayReady())
+    {
+        return false;
+    }
+
+    static LLCachedControl<bool> friends_only(
+        gSavedSettings, "RenderAvatarFriendsOnly", false);
+    if (friends_only() && !avatar->isSelf() && !avatar->isBuddy())
+    {
+        return false;
+    }
+
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(style_id);
+    return style.mEnabled
+        && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+            || style.mAlpha > 0.001f);
+}
+
+bool LLActorMover::renderSystemActorGhost(LLVOAvatar* avatar,
+                                          const LLUUID& style_id,
+                                          bool blend_sweep,
+                                          bool depth_only,
+                                          bool depth_available)
+{
+    if (!canRenderSystemActorGhost(avatar, style_id))
+    {
+        return false;
+    }
+
+    const LLDirectorCast::ActorStyle& style =
+        LLDirectorCast::instance().getActorStyle(style_id);
+    const S32 look = llclamp(
+        style.mStyle,
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_DEFAULT),
+        static_cast<S32>(LLDirectorCast::ACTOR_LOOK_MAX));
+    const F32 treatment_strength = llclamp(style.mAlpha, 0.f, 1.f);
+    const bool coverage_replacement =
+        style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+        && look == GHOST_STYLE_DISSOLVE;
+    // Ordinary Layer alpha is compositing opacity. Dissolve instead owns the
+    // authored surface so its coverage can match PBR/shadows; alpha remains a
+    // separate treatment strength and the replay itself stays material-opaque.
+    const F32 base_alpha = coverage_replacement ? 1.f : treatment_strength;
+
+    const LLUUID stable_id = style_id.isNull() && gAgentID.notNull()
+        ? gAgentID : style_id;
+    LLColor4 tint;
+    if (style.mUseActorHue)
+    {
+        tint = actorPathColor(stable_id);
+    }
+    else
+    {
+        tint.setHSL(fmodf(llmax(style.mHue, 0.f), 360.f) / 360.f,
+                    0.9f, 0.6f);
+        tint.mV[VW] = 1.f;
+    }
+
+    LLColor4 style_color(tint.mV[VX], tint.mV[VY], tint.mV[VZ], base_alpha);
+    LLVector4 style_params(0.f, 0.f, 0.f, 6.f);
+    bool texture_rgb = look != GHOST_STYLE_GHOST
+                    && look != GHOST_STYLE_WIREFRAME;
+    if (look == GHOST_STYLE_CLONE)
+    {
+        style_color.set(0.98f, 0.98f, 0.98f, base_alpha);
+        if (!style.mUseActorHue)
+        {
+            const F32 mx = llmax(llmax(tint.mV[VX], tint.mV[VY]),
+                                 llmax(tint.mV[VZ], 0.001f));
+            constexpr F32 strength = 0.65f;
+            style_color.mV[VX] *= 1.f - strength + strength * tint.mV[VX] / mx;
+            style_color.mV[VY] *= 1.f - strength + strength * tint.mV[VY] / mx;
+            style_color.mV[VZ] *= 1.f - strength + strength * tint.mV[VZ] / mx;
+        }
+    }
+    else if (look == GHOST_STYLE_HOLOGRAM)
+    {
+        constexpr F32 t = 0.25f;
+        style_color.set(0.25f * (1.f - t) + tint.mV[VX] * t,
+                        0.85f * (1.f - t) + tint.mV[VY] * t,
+                        1.00f * (1.f - t) + tint.mV[VZ] * t,
+                        base_alpha);
+        style_params.set(1.f, 0.8f, 1.f, 6.f);
+    }
+    else if (look == GHOST_STYLE_XRAY)
+    {
+        constexpr F32 t = 0.35f;
+        style_color.set(0.55f * (1.f - t) + tint.mV[VX] * t,
+                        0.75f * (1.f - t) + tint.mV[VY] * t,
+                        1.00f * (1.f - t) + tint.mV[VZ] * t,
+                        base_alpha);
+        style_params.set(0.f, 2.2f, 0.f, 6.f);
+    }
+    else if (look == GHOST_STYLE_WIREFRAME)
+    {
+        constexpr F32 t = 0.55f;
+        style_color.set(tint.mV[VX] * (1.f - t) + t,
+                        tint.mV[VY] * (1.f - t) + t,
+                        tint.mV[VZ] * (1.f - t) + t,
+                        llmin(1.f, base_alpha * 1.5f));
+    }
+    else if (look == GHOST_STYLE_GHOST)
+    {
+        constexpr F32 t = 0.25f;
+        style_color.set(1.f - t + tint.mV[VX] * t,
+                        1.f - t + tint.mV[VY] * t,
+                        1.f - t + tint.mV[VZ] * t,
+                        base_alpha);
+    }
+    else
+    {
+        style_params.set(0.f, 1.f, 0.f, 8.f);
+    }
+
+    GhostDrawParams gp;
+    gp.mPixelSize = llmax(0.f, style.mPixelSize);
+    gp.mShimmerSpeed = llmax(0.f, style.mShimmerSpeed);
+    gp.mShimmerIntensity = llclamp(style.mShimmerAmount, 0.f, 1.f);
+    gp.mGlitch = llclamp(style.mGlitch, 0.f, 1.f);
+    gp.mDistort = llmax(0, style.mDistortion);
+    gp.mDistortAmount = llclamp(style.mDistortionAmount, 0.f, 1.f);
+    gp.mBrightness = llclamp(style.mBrightness, 0.05f, 1.5f);
+    gp.mEffectFps = llclamp(style.mEffectFps, 0.f, 30.f);
+    gp.mDissolveProgress = llclamp(style.mDissolveProgress, 0.f, 1.f);
+    gp.mWorldLinear = true;
+    gp.mPhase = (F32)(stable_id.mData[0] | (stable_id.mData[1] << 8))
+        * (F_TWO_PI / 65536.f);
+
+    const F32 ghost_now = LLRenderPass::actorFxFrameTime(gp.mEffectFps);
+    const LLVector2 frag_offset = LLRenderPass::actorFxFragOffset();
+    const LLVector2 screen_size = LLRenderPass::actorFxScreenSize();
+    bool glow_only = false;
+    auto upload = [&](LLGLSLShader& shader, F32 cutoff)
+    {
+        shader.uniform1f(sGhostTime, ghost_now);
+        shader.uniform4fv(sGhostParams, 1, style_params.mV);
+        shader.uniform4f(sGhostAux, cutoff, texture_rgb ? 1.f : 0.f,
+                         gp.mPixelSize, gp.mPhase);
+        shader.uniform4f(sGhostFx, gp.mShimmerSpeed, gp.mShimmerIntensity,
+                         gp.mGlitch, gp.mBrightness);
+        shader.uniform1i(sGhostSlot, -1);
+        shader.uniform1i(sGhostLook, look);
+        shader.uniform1i(sGhostDistort, gp.mDistort);
+        shader.uniform4f(sGhostDistortParams, gp.mDistortAmount,
+                         0.5f, 0.5f, 0.f);
+        shader.uniform1i(sGhostUseVertexAlpha, 0);
+        shader.uniform1i(sGhostAlphaCutoffMode,
+            cutoff > 0.f ? GHOST_CUTOFF_TEXTURE_ONLY : GHOST_CUTOFF_NONE);
+        shader.uniform2f(sGhostAlpha, 1.f, 1.f);
+        shader.uniform1i(sGhostWorldLinear, 1);
+        shader.uniform1i(sGhostGlowOnly, glow_only ? 1 : 0);
+        shader.uniform2fv(sGhostFragOffset, 1, frag_offset.mV);
+        shader.uniform2fv(sGhostScreenSize, 1, screen_size.mV);
+        shader.uniform1f(sGhostDissolveProgress, gp.mDissolveProgress);
+        shader.uniform1f(sGhostCoverageLayerStrength,
+                         coverage_replacement ? treatment_strength : -1.f);
+        shader.uniform4fv(sGhostSystemColor, 1, style_color.mV);
+        // [TronT2] Look 36 "Tron Suit" -- this system-avatar replay path is
+        // always world-linear (gp.mWorldLinear is forced true above).
+        // [TronT2 fix] Only for look 36, with the cast member's Suit mode.
+        if (look == LLDirectorCast::ACTOR_LOOK_TRON_SUIT)
+        {
+            upload_ghost_tron_params(
+                shader, style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE);
+        }
+    };
+
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    LLGLSLShader* saved_avatar_shader = LLDrawPoolAvatar::sVertexProgram;
+    const S32 saved_diffuse_channel = LLDrawPoolAvatar::sDiffuseChannel;
+    const bool saved_skip_opaque = LLDrawPoolAvatar::sSkipOpaque;
+    const bool saved_skip_transparent = LLDrawPoolAvatar::sSkipTransparent;
+
+    const bool alpha_blend = !depth_only && (blend_sweep
+        || style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+        || look != GHOST_STYLE_CLONE
+        || base_alpha < 0.999f);
+    // Cover and coverage-changing Layer+Dissolve suppress native beauty, so
+    // their solid replay must restore the ordinary opaque depth surface.
+    // BLEND remains depth-tested with no writes so alpha cards never occlude.
+    const bool replace_solid = !blend_sweep
+        && (style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE
+            || coverage_replacement);
+    const bool write_solid_depth = replace_solid && !depth_available;
+    LLGLDepthTest depth(GL_TRUE, write_solid_depth,
+                        write_solid_depth ? GL_LESS : GL_LEQUAL);
+    // Shared system-avatar beauty is composited directly into the HDR target,
+    // whose alpha channel is bloom rather than ordinary surface opacity.
+    // Keep blending enabled for every colour draw so the opaque Clone case can
+    // replace RGB while explicitly clearing bloom beneath its covered pixels.
+    LLGLState blend(GL_BLEND, !depth_only
+        ? LLGLState::ENABLED_STATE : LLGLState::DISABLED_STATE);
+    LLGLEnable cull(GL_CULL_FACE);
+    if (alpha_blend)
+    {
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
+    else if (!depth_only)
+    {
+        gGL.blendFunc(LLRender::BF_ONE, LLRender::BF_ZERO,
+                      LLRender::BF_ZERO, LLRender::BF_ZERO);
+    }
+    if (!depth_only
+        && look == LLDirectorCast::ACTOR_LOOK_TRON_SUIT
+        && style.mMode != LLDirectorCast::ACTOR_STYLE_REPLACE)
+    {
+        // [TronT2 fix] Layer-mode Tron Suit: the actorghostF look-36 branch
+        // publishes ONLY the neon (body = 0, haze-free fog), so ADD it over
+        // the retained native lit beauty instead of alpha-compositing an
+        // unlit texture over it. Colour: src * coverage(strength) + dst; HDR
+        // alpha (bloom) untouched -- the glow_only replay below owns the
+        // suit's bloom and the trailing restores put the split blend back.
+        // Cover and every other look keep the blend state above.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA, LLRender::BF_ONE,
+                      LLRender::BF_ZERO, LLRender::BF_ONE);
+    }
+    gGL.setColorMask(!depth_only, !depth_only);
+
+    const GLenum saved_polygon_mode = gUseWireframe ? GL_LINE : GL_FILL;
+    if (look == GHOST_STYLE_WIREFRAME && !depth_only)
+    {
+        gGL.flush();
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    }
+
+    LLGLSLShader& body_shader = gAvatarActorGhostProgram;
+    gPipeline.bindDeferredShaderFast(body_shader);
+    const S32 body_diffuse = body_shader.enableTexture(
+        LLViewerShaderMgr::DIFFUSE_MAP);
+    LLDrawPoolAvatar::sVertexProgram = &body_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = body_diffuse;
+    // Opaque system body/head meshes use the viewer's authored BOM alpha-mask
+    // cutoff.  The separate BLEND sweep must keep the complete coverage ramp;
+    // applying 0.2 there would punch away faint hair/eyelash/skirt texels.
+    upload(body_shader, blend_sweep ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+    if (LLPipeline::RenderAvatarCloth)
+    {
+        LLMatrix4 rot_mat;
+        LLViewerCamera::getInstance()->getMatrixToLocal(rot_mat);
+        LLMatrix4 cfr(OGL_TO_CFR_ROTATION);
+        rot_mat *= cfr;
+
+        LLVector4 wind;
+        wind.setVec(avatar->mWindVec);
+        wind.mV[VW] = 0.f;
+        wind = wind * rot_mat;
+        wind.mV[VW] = avatar->mWindVec.mV[VW];
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_WIND, 1, wind.mV);
+
+        const F32 phase = -avatar->mRipplePhase;
+        const F32 freq = 7.f + noise1(avatar->mRipplePhase) * 2.f;
+        const LLVector4 sin_params(freq, freq, freq, phase);
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_SINWAVE,
+                               1, sin_params.mV);
+
+        LLVector4 gravity(0.f, 0.f, -0.7f, 0.f);
+        gravity = gravity * rot_mat;
+        body_shader.uniform4fv(LLViewerShaderMgr::AVATAR_GRAVITY,
+                               1, gravity.mV);
+    }
+    if (blend_sweep)
+    {
+        // The stock transparent path assumes the opaque pass already uploaded
+        // this program's palette. Shared alpha can be interleaved much later,
+        // so explicitly seed it from the first available classic body mesh.
+        avatar->uploadActorGhostPalette();
+        avatar->renderTransparent(true);
+    }
+    else
+    {
+        LLDrawPoolAvatar::sSkipOpaque = false;
+        LLDrawPoolAvatar::sSkipTransparent = true;
+        avatar->renderSkinned();
+    }
+    body_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+
+    if (!blend_sweep)
+    {
+        LLGLSLShader& eye_shader = gAvatarEyeballActorGhostProgram;
+        gPipeline.bindDeferredShaderFast(eye_shader);
+        const S32 eye_diffuse = eye_shader.enableTexture(
+            LLViewerShaderMgr::DIFFUSE_MAP);
+        LLDrawPoolAvatar::sVertexProgram = &eye_shader;
+        LLDrawPoolAvatar::sDiffuseChannel = eye_diffuse;
+        upload(eye_shader, LLDrawPoolAvatar::sMinimumAlpha);
+        avatar->renderRigid();
+        eye_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+    }
+
+    // BOM body/head/skirt and rigid eyes do not use the generic rigged VBO
+    // layout, so replay them through their own actorghost permutations. This is
+    // the same geometry/coverage path as beauty, now with RGB preserved and the
+    // animated treatment energy accumulated into HDR bloom alpha only.
+    if (!depth_only && LLRenderPass::actorFxLookNeedsSyntheticBloom(look))
+    {
+        ScopedSharedActorHDRDrawBuffer hdr_only(true);
+        LLGLDepthTest glow_depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable glow_blend(GL_BLEND);
+        gGL.setColorMask(true, true);
+        gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                      LLRender::BF_ONE, LLRender::BF_ONE);
+        glow_only = true;
+
+        gPipeline.bindDeferredShaderFast(body_shader);
+        const S32 glow_body_diffuse = body_shader.enableTexture(
+            LLViewerShaderMgr::DIFFUSE_MAP);
+        LLDrawPoolAvatar::sVertexProgram = &body_shader;
+        LLDrawPoolAvatar::sDiffuseChannel = glow_body_diffuse;
+        upload(body_shader, blend_sweep ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+        if (blend_sweep)
+        {
+            avatar->uploadActorGhostPalette();
+            avatar->renderTransparent(true);
+        }
+        else
+        {
+            LLDrawPoolAvatar::sSkipOpaque = false;
+            LLDrawPoolAvatar::sSkipTransparent = true;
+            avatar->renderSkinned();
+        }
+        body_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+
+        if (!blend_sweep)
+        {
+            LLGLSLShader& eye_shader = gAvatarEyeballActorGhostProgram;
+            gPipeline.bindDeferredShaderFast(eye_shader);
+            const S32 glow_eye_diffuse = eye_shader.enableTexture(
+                LLViewerShaderMgr::DIFFUSE_MAP);
+            LLDrawPoolAvatar::sVertexProgram = &eye_shader;
+            LLDrawPoolAvatar::sDiffuseChannel = glow_eye_diffuse;
+            upload(eye_shader, LLDrawPoolAvatar::sMinimumAlpha);
+            avatar->renderRigid();
+            eye_shader.disableTexture(LLViewerShaderMgr::DIFFUSE_MAP);
+        }
+
+        glow_only = false;
+        gPipeline.bindDeferredShaderFast(body_shader);
+        upload(body_shader, blend_sweep ? 0.f : LLDrawPoolAvatar::sMinimumAlpha);
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
+
+    gGL.flush();
+    if (look == GHOST_STYLE_WIREFRAME && !depth_only)
+    {
+        glPolygonMode(GL_FRONT_AND_BACK, saved_polygon_mode);
+    }
+    LLDrawPoolAvatar::sVertexProgram = saved_avatar_shader;
+    LLDrawPoolAvatar::sDiffuseChannel = saved_diffuse_channel;
+    LLDrawPoolAvatar::sSkipOpaque = saved_skip_opaque;
+    LLDrawPoolAvatar::sSkipTransparent = saved_skip_transparent;
+    gGL.setColorMask(true, true);
+    if (!depth_only)
+    {
+        // The shared actor item sits inside the native alpha drain. Restore its
+        // expected split HDR blend after an opaque replacement draw as well.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    }
+    LLVertexBuffer::unbind();
+    if (saved_shader && saved_shader->mProgramObject)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+    gGL.getTexUnit(saved_texture_unit)->activate();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// [ActorStyle/SharedActivation] Build one frame-local solid item per eligible
+// actor plus one item for each authored alpha component. Ghost Studio's harvest
+// is intentionally permissive; every descriptor is re-gated here so Actor FX
+// never revives hidden geometry.
+namespace
+{
+bool shared_rigged_descriptor_ready(const LLActorMover::GhostBatch& batch)
+{
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    LLVOAvatar* drawing_avatar = info ? info->mAvatar.get() : nullptr;
+    if (!info || !vb || !drawing_avatar || drawing_avatar->isDead()
+        || info->mSkinInfo.isNull() || !info->mCount
+        || info->mStart > info->mEnd
+        || info->mEnd >= vb->getNumVerts()
+        || info->mOffset > vb->getNumIndices()
+        || info->mCount > vb->getNumIndices() - info->mOffset)
+    {
+        return false;
+    }
+
+    // This is the sole late structural failure in uploadMatrixPalette().
+    // Prove it now, in the same frame, before actor-wide native suppression.
+    const LLVOAvatar::MatrixPaletteCache& palette =
+        drawing_avatar->updateSkinInfoMatrixPalette(info->mSkinInfo);
+    if (palette.mMatrixPalette.empty() || palette.mGLMp.empty())
+    {
+        return false;
+    }
+
+    const S32 slot_count = ghost_batch_slot_count(info);
+    if (slot_count > 1)
+    {
+        if (!vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX))
+        {
+            return false;
+        }
+        // The actorghost per-slot loop deliberately skips null GLTF gap slots.
+        // Without scanning the GPU index attribute we cannot prove such a gap
+        // is unreferenced, so shared activation conservatively fails open.
+        if (info->mGLTFMaterialList.size() > 1)
+        {
+            for (const LLPointer<LLFetchedGLTFMaterial>& material :
+                 info->mGLTFMaterialList)
+            {
+                if (material.isNull())
+                {
+                    return false;
+                }
+            }
+        }
+    }
+
+    if (ghost_pass_is_glow(batch.mPass)
+        && info->mGLTFMaterialList.size() <= 1
+        && info->mGLTFMaterial.isNull())
+    {
+        return false;
+    }
+    return true;
+}
+
+bool shared_world_indexed_actorghost_ready(
+    const LLActorMover::GhostBatch& batch)
+{
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    const S32 slots = ghost_legacy_indexed_slot_count(info);
+    if (slots <= 1)
+    {
+        return true;
+    }
+    if (!vb || !vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX)
+        || slots > LLGLSLShader::sIndexedTextureChannels
+        || !gWorldSkinnedActorGhostIndexedProgram.mProgramObject
+        || (gWorldSkinnedActorGhostIndexedProgram.mAttributeMask
+            & ~vb->getTypeMask()))
+    {
+        return false;
+    }
+
+    // Every indexed-only array plus every world creative-control uniform is
+    // proven before actor-wide suppression. A driver optimizing out or failing
+    // to link any part of this contract keeps the whole actor native for the
+    // frame instead of publishing a partial shared replay.
+    LLGLSLShader& shader = gWorldSkinnedActorGhostIndexedProgram;
+    const LLStaticHashedString* required[] = {
+        &sGhostTime, &sGhostParams, &sGhostAux, &sGhostFx, &sGhostSlot,
+        &sGhostLook, &sGhostDistort, &sGhostDistortParams,
+        &sGhostWorldLinear, &sGhostGlowOnly, &sGhostFragOffset,
+        &sGhostScreenSize, &sGhostDissolveProgress,
+        &sGhostCoverageLayerStrength, &sGhostIndexedMaterialFactor,
+        &sGhostIndexedTextureAlpha, &sGhostIndexedMinimumAlpha,
+        &sGhostIndexedUseVertexAlpha, &sGhostIndexedAlphaCutoffMode
+    };
+    for (const LLStaticHashedString* uniform : required)
+    {
+        if (shader.getUniformLocation(*uniform) < 0)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool shared_static_descriptor_ready(const LLActorMover::GhostStaticFace& source)
+{
+    LLFace* face = source.mFace;
+    LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+    if (!face || !vb || !face->getGeomCount() || !face->getIndicesCount())
+    {
+        return false;
+    }
+    const U32 vertex_offset = face->getGeomIndex();
+    const U32 vertex_count = face->getGeomCount();
+    const U32 index_offset = face->getIndicesStart();
+    const U32 index_count = face->getIndicesCount();
+    return vertex_offset < vb->getNumVerts()
+        && vertex_count <= vb->getNumVerts() - vertex_offset
+        && index_offset <= vb->getNumIndices()
+        && index_count <= vb->getNumIndices() - index_offset;
+}
+
+bool shared_batch_is_pbr(const LLActorMover::GhostBatch& batch)
+{
+    const LLDrawInfo* info = batch.mInfo;
+    return info && (info->mGLTFMaterial.notNull()
+                    || !info->mGLTFMaterialList.empty());
+}
+
+bool shared_legacy_glow_ready(const LLActorMover::GhostBatch& batch)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    if (!ghost_pass_is_legacy_authored_glow(batch.mPass) || !vb
+        || !vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        return false;
+    }
+
+    const bool indexed = info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? gDeferredEmissiveIndexedProgram.mRiggedVariant
+        : gDeferredEmissiveProgram.mRiggedVariant;
+    if (!shader || !shader->mProgramObject
+        || !(shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        || (shader->mAttributeMask & ~vb->getTypeMask())
+        || shader->getUniformLocation(sAuthoredOnly) < 0
+        || shader->getUniformLocation(sGlowAttenuation) < 0
+        || shader->getUniformLocation(sMinimumAlpha) < 0
+        || shader->getUniformLocation(sAlphaCutoffMode) < 0
+        || shader->getUniformLocation(sUseCoverageAlpha) < 0)
+    {
+        return false;
+    }
+    if (indexed)
+    {
+        const S32 slots = (S32)info->mMaterialSlotList.size();
+        return LLGLSLShader::sIndexedGLTFChannels > 0
+            && slots <= llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+    }
+    return info->mTextureList.size()
+        <= (size_t)LLGLSLShader::sIndexedTextureChannels;
+}
+
+bool shared_legacy_blend_glow_ready(
+    const LLActorMover::GhostBatch& batch)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    if (!ghost_pass_is_blend(batch.mPass) || !info || !info->mHasGlow
+        || !vb || !vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        return false;
+    }
+
+    const bool indexed = info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? gDeferredEmissiveIndexedProgram.mRiggedVariant
+        : gDeferredEmissiveProgram.mRiggedVariant;
+    if (!shader || !shader->mProgramObject
+        || !(shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        || (shader->mAttributeMask & ~vb->getTypeMask())
+        || shader->getUniformLocation(sAuthoredOnly) < 0
+        || shader->getUniformLocation(sGlowAttenuation) < 0
+        || shader->getUniformLocation(sMinimumAlpha) < 0
+        || shader->getUniformLocation(sAlphaCutoffMode) < 0
+        || shader->getUniformLocation(sUseCoverageAlpha) < 0)
+    {
+        return false;
+    }
+    if (indexed)
+    {
+        const S32 slots = (S32)info->mMaterialSlotList.size();
+        return LLGLSLShader::sIndexedGLTFChannels > 0
+            && slots <= llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+    }
+    return info->mTextureList.size()
+        <= (size_t)LLGLSLShader::sIndexedTextureChannels;
+}
+
+bool shared_same_static_geometry(const LLActorMover::GhostStaticFace& source,
+                                 const LLDrawInfo* info)
+{
+    LLFace* face = source.mFace;
+    LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+    return face && vb && info
+        && info->mVertexBuffer.get() == vb
+        && info->mStart == face->getGeomIndex()
+        && info->mEnd == face->getGeomIndex() + face->getGeomCount() - 1
+        && info->mCount == face->getIndicesCount()
+        && info->mOffset == face->getIndicesStart();
+}
+
+bool shared_static_legacy_glow_ready(const LLActorMover::GhostBatch& batch)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLDrawInfo* info = batch.mInfo;
+    LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+    if (!info || batch.mPass != LLRenderPass::PASS_GLOW || !vb
+        || !info->mCount || info->mStart > info->mEnd
+        || info->mEnd >= vb->getNumVerts()
+        || info->mOffset > vb->getNumIndices()
+        || info->mCount > vb->getNumIndices() - info->mOffset
+        || !vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE))
+    {
+        return false;
+    }
+
+    const bool indexed = info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? &gDeferredEmissiveIndexedProgram
+        : &gDeferredEmissiveProgram;
+    if (!shader->mProgramObject
+        || !(shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        || (shader->mAttributeMask & ~vb->getTypeMask())
+        || shader->getUniformLocation(sAuthoredOnly) < 0
+        || shader->getUniformLocation(sGlowAttenuation) < 0
+        || shader->getUniformLocation(sMinimumAlpha) < 0
+        || shader->getUniformLocation(sAlphaCutoffMode) < 0
+        || shader->getUniformLocation(sUseCoverageAlpha) < 0)
+    {
+        return false;
+    }
+    if (indexed)
+    {
+        const S32 slots = (S32)info->mMaterialSlotList.size();
+        return LLGLSLShader::sIndexedGLTFChannels > 0
+            && slots <= llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX);
+    }
+    return info->mTextureList.size()
+        <= (size_t)LLGLSLShader::sIndexedTextureChannels;
+}
+
+bool shared_static_legacy_blend_glow_ready(
+    const LLActorMover::GhostStaticFace& source)
+{
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+    LLFace* face = source.mFace;
+    LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+    const LLTextureEntry* te = face ? face->getTextureEntry() : nullptr;
+    LLDrawInfo* info = face ? face->mDrawInfo : nullptr;
+    const bool indexed = info && info->mMaterialSlotList.size() > 1;
+    LLGLSLShader* shader = indexed
+        ? &gDeferredEmissiveIndexedProgram : &gDeferredEmissiveProgram;
+    const U8 texture_index = face
+        ? face->getTextureIndex() : FACE_DO_NOT_BATCH_TEXTURES;
+    const bool texture_index_ready = indexed
+        ? info && texture_index < info->mMaterialSlotList.size()
+            && info->mMaterialSlotList.size()
+                <= (size_t)llmin(LLGLSLShader::sIndexedGLTFChannels, 8)
+            && vb && vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX)
+        : texture_index == FACE_DO_NOT_BATCH_TEXTURES
+            || texture_index < LLGLSLShader::sIndexedTextureChannels;
+    return source.mAlphaKind == 2 && te && te->getGlow() > 0.f
+        && shared_static_descriptor_ready(source) && vb
+        && vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE)
+        && texture_index_ready
+        && shader->mProgramObject
+        && (shader->mAttributeMask & LLVertexBuffer::MAP_EMISSIVE)
+        && !(shader->mAttributeMask & ~vb->getTypeMask())
+        && shader->getUniformLocation(sAuthoredOnly) >= 0
+        && shader->getUniformLocation(sGlowAttenuation) >= 0
+        && shader->getUniformLocation(sMinimumAlpha) >= 0
+        && shader->getUniformLocation(sAlphaCutoffMode) >= 0
+        && shader->getUniformLocation(sUseCoverageAlpha) >= 0;
+}
+
+bool shared_same_pbr_geometry(const LLDrawInfo* lhs, const LLDrawInfo* rhs)
+{
+    return lhs && rhs
+        && lhs->mVertexBuffer.get() == rhs->mVertexBuffer.get()
+        && lhs->mAvatar.get() == rhs->mAvatar.get()
+        && lhs->mSkinInfo.get() == rhs->mSkinInfo.get()
+        && lhs->mStart == rhs->mStart && lhs->mEnd == rhs->mEnd
+        && lhs->mCount == rhs->mCount && lhs->mOffset == rhs->mOffset;
+}
+
+bool shared_pbr_alpha_mode(const LLDrawInfo* info, U8& out_mode)
+{
+    if (!info)
+    {
+        return false;
+    }
+    switch (info->mEffectiveAlphaMode)
+    {
+    case LLPipeline::ALPHA_MODE_OPAQUE:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE;
+        return true;
+    case LLPipeline::ALPHA_MODE_MASK:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+        return true;
+    case LLPipeline::ALPHA_MODE_BLEND:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool shared_pbr_authored_alpha_mode(
+    const LLFetchedGLTFMaterial* material, U8& out_mode)
+{
+    if (!material)
+    {
+        return false;
+    }
+    switch (material->mAlphaMode)
+    {
+    case LLGLTFMaterial::ALPHA_MODE_OPAQUE:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_OPAQUE;
+        return true;
+    case LLGLTFMaterial::ALPHA_MODE_MASK:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+        return true;
+    case LLGLTFMaterial::ALPHA_MODE_BLEND:
+        out_mode = SHARED_ACTOR_FX_PBR_ALPHA_BLEND;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool shared_pbr_material_has_authored_emissive(
+    const LLFetchedGLTFMaterial* material, bool& out_emissive)
+{
+    if (!material
+        || !llfinite(material->mEmissiveColor.mV[VX])
+        || !llfinite(material->mEmissiveColor.mV[VY])
+        || !llfinite(material->mEmissiveColor.mV[VZ]))
+    {
+        return false;
+    }
+    // Native PBR glow multiplies the emissive texture by this factor and by
+    // exact per-vertex TE glow. A black factor emits nothing even when a map or
+    // another face's group-wide TYPE_EMISSIVE stream happens to be present.
+    out_emissive = material->mEmissiveColor.mV[VX] > 0.f
+        || material->mEmissiveColor.mV[VY] > 0.f
+        || material->mEmissiveColor.mV[VZ] > 0.f;
+    return true;
+}
+
+LLFetchedGLTFMaterial* shared_static_pbr_material(
+    const LLActorMover::GhostStaticFace& source)
+{
+    LLFace* face = source.mFace;
+    const LLTextureEntry* te = face ? face->getTextureEntry() : nullptr;
+    return te ? dynamic_cast<LLFetchedGLTFMaterial*>(
+                    te->getGLTFRenderMaterial()) : nullptr;
+}
+
+// Match the alpha pool's group depth metric without mutating the source
+// group's cached sort state. Rigged-alpha groups deliberately skip the normal
+// updateDistance() path, so mDepth is not reliable for these replay items.
+F32 shared_component_alpha_depth(LLSpatialGroup* group, F32 fallback)
+{
+    if (!group || !group->getSpatialPartition())
+    {
+        return fallback;
+    }
+
+    auto depth_for_camera = [group](const LLCamera& camera) -> F32
+    {
+        const LLVector4a* bounds = group->getObjectBounds();
+        LLVector4a origin;
+        origin.load3(camera.getOrigin().mV);
+        LLVector4a eye;
+        eye.setSub(bounds[0], origin);
+
+        LLVector4a at;
+        at.load3(camera.getAtAxis().mV);
+        LLVector4a front = at;
+        front.mul(0.25f);
+        front.mul(bounds[1]);
+        eye.sub(front);
+        return eye.dot3(at).getF32();
+    };
+
+    LLCamera world_camera = *LLViewerCamera::getInstance();
+    if (LLSpatialBridge* bridge =
+            group->getSpatialPartition()->asBridge())
+    {
+        LLCamera local_camera = bridge->transformCamera(world_camera);
+        const F32 depth = depth_for_camera(local_camera);
+        return llfinite(depth) ? depth : fallback;
+    }
+    const F32 depth = depth_for_camera(world_camera);
+    return llfinite(depth) ? depth : fallback;
+}
+
+// Layer must composite immediately after the native actor ensemble.  Reuse the
+// exact avatar-depth stamp consumed by LLDrawPoolAlpha instead of recomputing a
+// per-component bounds key; Cover has no native alpha item and deliberately
+// keeps the component key above for world interleaving.
+F32 shared_native_layer_alpha_depth(LLSpatialGroup* group, F32 fallback)
+{
+    if (!group)
+    {
+        return fallback;
+    }
+
+    if (group->mAvatarp && llfinite(group->mAvatarDepth))
+    {
+        return group->mAvatarDepth;
+    }
+    LLSpatialPartition* partition = group->getSpatialPartition();
+    LLSpatialBridge* bridge = partition ? partition->asBridge() : nullptr;
+    if (bridge && bridge->mAvatarp && llfinite(bridge->mAvatarDepth))
+    {
+        return bridge->mAvatarDepth;
+    }
+    return fallback;
+}
+} // anonymous namespace
+
+void LLActorMover::buildSharedActorStyleQueue()
+{
+    mSharedActorStyleProxies.clear();
+    mSharedActorStyleFrame = LLFrameTimer::getFrameCount();
+    mSharedActorStyleDepthFrame = 0xFFFFFFFF;
+    // Suppressing native geometry is safe only when the authored Actor FX
+    // modules themselves are present.  Identity fallbacks may link, but they
+    // cannot provide an authoritative legacy/system/PBR/shadow replacement.
+    if (!shared_actor_main_world_context()
+        || !LLViewerShaderMgr::hasPrimaryActorFxModules())
+    {
+        return;
+    }
+
+    LLDirectorCast& director_cast = LLDirectorCast::instance();
+    const F32 water_height = gPipeline.getRenderWaterHeight();
+    const bool camera_above_water =
+        LLViewerCamera::getInstance()->getOrigin().mV[VZ] >= water_height;
+    std::set<LLUUID> added_wearers;
+    std::set<LLUUID> exact_styled_controls;
+
+    auto remember_exact_control = [&](const LLUUID& style_id)
+    {
+        if (!actor_style_wants_shared_replay(
+                director_cast.getActorStyle(style_id)))
+        {
+            return;
+        }
+        LLVOAvatar* resolved = director_cast.resolve(style_id);
+        if (resolved && resolved->isControlAvatar())
+        {
+            exact_styled_controls.insert(resolved->getID());
+        }
+    };
+    remember_exact_control(LLUUID::null);
+    for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+    {
+        remember_exact_control(member.mId);
+    }
+
+    auto actor_visible_in_main_cull = [&](LLVOAvatar* avatar) -> bool
+    {
+        if (!avatar || avatar->isDead() || !avatar->getRootJoint()
+            || avatar->isUIAvatar() || avatar->mDrawable.isNull()
+            || !avatar->mDrawable->isVisible() || !avatar->isVisible()
+            || !avatar->isFullyLoaded() || avatar->isHardVisualMute()
+            || avatar->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE)
+        {
+            return false;
+        }
+        if (avatar->isSelf() && !gAgent.needsRenderAvatar())
+        {
+            return false;
+        }
+        const U32 render_type = avatar->isControlAvatar()
+            ? LLPipeline::RENDER_TYPE_CONTROL_AV : LLPipeline::RENDER_TYPE_AVATAR;
+        if (!gPipeline.hasRenderType(render_type))
+        {
+            return false;
+        }
+
+        LLVOAvatar* wearer = avatar->getAttachedAvatar();
+        if (wearer && (wearer->isDead() || wearer->isUIAvatar()
+            || wearer->mDrawable.isNull() || !wearer->isVisible()
+            || wearer->isHardVisualMute()
+            || wearer->getOverallAppearance() == LLVOAvatar::AOA_INVISIBLE
+            || !gPipeline.hasRenderType(LLPipeline::RENDER_TYPE_AVATAR)))
+        {
+            return false;
+        }
+
+        LLSpatialGroup* avatar_group = avatar->mDrawable->getSpatialGroup();
+        if (avatar_group && (!avatar_group->isVisible()
+            || (LLPipeline::sUseOcclusion
+                && avatar_group->isOcclusionState(LLSpatialGroup::OCCLUDED))))
+        {
+            return false;
+        }
+
+        // Shared proxies are consumed exactly once, in POST_WATER. Only actors
+        // wholly on the camera side are eligible; opposite-side/straddling
+        // actors fail open to the native PRE/POST split.
+        const LLVector3* extents = avatar->getLastAnimExtents();
+        if (!extents || !extents[0].isFinite() || !extents[1].isFinite())
+        {
+            return false;
+        }
+        const F32 low_z = llmin(extents[0].mV[VZ], extents[1].mV[VZ]);
+        const F32 high_z = llmax(extents[0].mV[VZ], extents[1].mV[VZ]);
+        if ((low_z < water_height && high_z > water_height)
+            || (camera_above_water && low_z < water_height)
+            || (!camera_above_water && high_z > water_height))
+        {
+            return false;
+        }
+        return true;
+    };
+
+    auto add_actor = [&](const LLUUID& style_id)
+    {
+        const LLDirectorCast::ActorStyle& style =
+            director_cast.getActorStyle(style_id);
+        if (!actor_style_wants_shared_replay(style))
+        {
+            return;
+        }
+        LLVOAvatar* avatar = director_cast.resolve(style_id);
+        if (!actor_visible_in_main_cull(avatar)
+            || !added_wearers.insert(avatar->getID()).second)
+        {
+            return;
+        }
+
+        SharedActorStyleProxy proxy;
+        proxy.mStyleId = style_id;
+        proxy.mWearerId = avatar->getID();
+        proxy.mAvatar = avatar;
+        std::vector<GhostBatch> eligible_batches;
+        std::vector<GhostStaticFace> eligible_faces;
+        bool replay_complete = true;
+        const bool cover_mode =
+            style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE;
+        const bool coverage_replacement =
+            style.mMode == LLDirectorCast::ACTOR_STYLE_LAYER
+            && style.mStyle == GHOST_STYLE_DISSOLVE;
+        // Dissolve is the sole Layer look that changes authored coverage. Its
+        // shared replay must therefore own native beauty and authored bloom,
+        // just like Cover, or native colour/glow would remain in the holes.
+        const bool owns_native_beauty =
+            cover_mode || coverage_replacement;
+
+        if (const std::vector<GhostBatch>* harvested =
+                ghostBatchesFor(avatar->getID()))
+        {
+            for (const GhostBatch& batch : *harvested)
+            {
+                LLDrawInfo* info = batch.mInfo;
+                LLSpatialGroup* group = batch.mGroup;
+                if (!info || !group || group->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (!group->isVisible()
+                    || (LLPipeline::sUseOcclusion
+                        && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
+                    || !gPipeline.hasRenderType(batch.mPass))
+                {
+                    continue;
+                }
+                LLVOAvatar* drawing_avatar = info->mAvatar.get();
+                if (drawing_avatar && drawing_avatar != avatar
+                    && drawing_avatar->isControlAvatar()
+                    && exact_styled_controls.count(drawing_avatar->getID()))
+                {
+                    // Exact control style owns this Animesh. The human wearer
+                    // inherits it only when no independent control style exists.
+                    continue;
+                }
+                if (!drawing_avatar || drawing_avatar->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (drawing_avatar->isUIAvatar()
+                    || drawing_avatar->isHardVisualMute()
+                    || drawing_avatar->getOverallAppearance()
+                        == LLVOAvatar::AOA_INVISIBLE
+                    || (drawing_avatar->isControlAvatar()
+                        && !gPipeline.hasRenderType(
+                            LLPipeline::RENDER_TYPE_CONTROL_AV)))
+                {
+                    continue;
+                }
+                if (!shared_rigged_descriptor_ready(batch))
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                eligible_batches.push_back(batch);
+            }
+        }
+
+        if (const std::vector<GhostStaticFace>* harvested =
+                ghostStaticFacesFor(avatar->getID()))
+        {
+            for (const GhostStaticFace& source_face : *harvested)
+            {
+                LLFace* face = source_face.mFace;
+                LLDrawable* drawable = face ? face->getDrawable() : nullptr;
+                LLSpatialGroup* group = drawable ? drawable->getSpatialGroup() : nullptr;
+                if (!face || !drawable || drawable->isDead()
+                    || !group || group->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (!drawable->isVisible() || !group->isVisible()
+                    || (LLPipeline::sUseOcclusion
+                        && group->isOcclusionState(LLSpatialGroup::OCCLUDED))
+                    || !gPipeline.hasRenderType(face->getPoolType()))
+                {
+                    continue;
+                }
+                LLViewerObject* source_object = face->getViewerObject();
+                LLControlAvatar* source_control =
+                    source_object ? source_object->getControlAvatar() : nullptr;
+                if (source_control && source_control != avatar
+                    && exact_styled_controls.count(source_control->getID()))
+                {
+                    continue;
+                }
+                if (!shared_static_descriptor_ready(source_face))
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                eligible_faces.push_back(source_face);
+            }
+        }
+
+        // Separate exact PBR replay from the legacy actorghost path.  Glow
+        // descriptors duplicate their base geometry, so retain them only as
+        // authored-emissive sidecars and never as independent beauty commands.
+        std::vector<GhostBatch> legacy_batches;
+        std::vector<GhostBatch> legacy_glow_batches;
+        std::vector<GhostBatch> static_legacy_glow_batches;
+        std::vector<GhostBatch> pbr_base_batches;
+        std::vector<GhostBatch> pbr_glow_batches;
+        for (const GhostBatch& batch : eligible_batches)
+        {
+            if (!shared_batch_is_pbr(batch))
+            {
+                legacy_batches.push_back(batch);
+            }
+            else if (ghost_pass_is_glow(batch.mPass))
+            {
+                pbr_glow_batches.push_back(batch);
+            }
+            else
+            {
+                pbr_base_batches.push_back(batch);
+            }
+        }
+
+        // Legacy authored bloom is intentionally harvested outside the public
+        // Ghost Studio batch map. Native glow is suppressed whenever shared
+        // beauty owns coverage: Cover and coverage-changing Layer+Dissolve.
+        if (owns_native_beauty
+            && gPipeline.hasRenderType(LLRenderPass::PASS_GLOW_RIGGED))
+        {
+            auto glow_it =
+                mSharedActorLegacyGlowBatches.find(avatar->getID());
+            if (glow_it != mSharedActorLegacyGlowBatches.end())
+            {
+                for (const GhostBatch& batch : glow_it->second)
+                {
+                    LLDrawInfo* info = batch.mInfo;
+                    LLSpatialGroup* group = batch.mGroup;
+                    if (!info || !group || group->isDead())
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    if (!group->isVisible()
+                        || (LLPipeline::sUseOcclusion
+                            && group->isOcclusionState(
+                                LLSpatialGroup::OCCLUDED))
+                        || !gPipeline.hasRenderType(batch.mPass))
+                    {
+                        continue;
+                    }
+                    LLVOAvatar* drawing_avatar = info->mAvatar.get();
+                    if (drawing_avatar && drawing_avatar != avatar
+                        && drawing_avatar->isControlAvatar()
+                        && exact_styled_controls.count(
+                            drawing_avatar->getID()))
+                    {
+                        continue;
+                    }
+                    if (!drawing_avatar || drawing_avatar->isDead())
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    if (drawing_avatar->isUIAvatar()
+                        || drawing_avatar->isHardVisualMute()
+                        || drawing_avatar->getOverallAppearance()
+                            == LLVOAvatar::AOA_INVISIBLE
+                        || (drawing_avatar->isControlAvatar()
+                            && !gPipeline.hasRenderType(
+                                LLPipeline::RENDER_TYPE_CONTROL_AV)))
+                    {
+                        continue;
+                    }
+                    if (!shared_rigged_descriptor_ready(batch))
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    legacy_glow_batches.push_back(batch);
+                }
+            }
+        }
+
+        auto matching_legacy_glow = [&](const GhostBatch& base)
+            -> const GhostBatch*
+        {
+            const GhostBatch* match = nullptr;
+            for (const GhostBatch& glow : legacy_glow_batches)
+            {
+                if (shared_same_pbr_geometry(base.mInfo, glow.mInfo))
+                {
+                    // Harvest dedup makes this one-to-one. Treat an unexpected
+                    // duplicate as unprovable and fail open below.
+                    if (match)
+                    {
+                        return nullptr;
+                    }
+                    match = &glow;
+                }
+            }
+            return match;
+        };
+
+        auto matching_static_legacy_glow =
+            [&](const GhostStaticFace& base) -> const GhostBatch*
+        {
+            const GhostBatch* match = nullptr;
+            for (const GhostBatch& glow : static_legacy_glow_batches)
+            {
+                if (shared_same_static_geometry(base, glow.mInfo))
+                {
+                    if (match)
+                    {
+                        return nullptr;
+                    }
+                    match = &glow;
+                }
+            }
+            return match;
+        };
+
+        std::vector<GhostStaticFace> legacy_faces;
+        std::vector<SharedActorPBRCommand> pbr_commands;
+        const bool synthetic_glow =
+            LLRenderPass::actorFxLookNeedsSyntheticBloom(style.mStyle);
+
+        auto selected_program = [](U8 mode, bool rigged, bool indexed,
+                                   bool glow, bool synthetic,
+                                   bool depth) -> LLGLSLShader*
+        {
+            if (mode >= SHARED_ACTOR_FX_PBR_ALPHA_COUNT)
+            {
+                return nullptr;
+            }
+            if (depth)
+            {
+                if (mode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+                {
+                    return nullptr;
+                }
+                if (rigged)
+                {
+                    return indexed
+                        ? &gSharedActorFxSkinnedPBRDepthSlotProgram[mode]
+                        : &gSharedActorFxSkinnedPBRDepthProgram[mode];
+                }
+                return indexed ? &gSharedActorFxPBRDepthSlotProgram[mode]
+                               : &gSharedActorFxPBRDepthProgram[mode];
+            }
+            if (glow)
+            {
+                if (synthetic)
+                {
+                    if (rigged)
+                    {
+                        return indexed
+                            ? &gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode]
+                            : &gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode];
+                    }
+                    return indexed
+                        ? &gSharedActorFxPBRSyntheticGlowSlotProgram[mode]
+                        : &gSharedActorFxPBRSyntheticGlowProgram[mode];
+                }
+                if (rigged)
+                {
+                    return indexed
+                        ? &gSharedActorFxSkinnedPBRGlowSlotProgram[mode]
+                        : &gSharedActorFxSkinnedPBRGlowProgram[mode];
+                }
+                return indexed
+                    ? &gSharedActorFxPBRGlowSlotProgram[mode]
+                    : &gSharedActorFxPBRGlowProgram[mode];
+            }
+            if (rigged)
+            {
+                return indexed ? &gSharedActorFxSkinnedPBRSlotProgram[mode]
+                               : &gSharedActorFxSkinnedPBRProgram[mode];
+            }
+            return indexed ? &gSharedActorFxPBRSlotProgram[mode]
+                           : &gSharedActorFxPBRProgram[mode];
+        };
+
+        auto program_accepts = [](LLGLSLShader* shader,
+                                  LLVertexBuffer* vb) -> bool
+        {
+            return shader && shader->mProgramObject && vb
+                && !(shader->mAttributeMask & ~vb->getTypeMask());
+        };
+        static const LLStaticHashedString sPBRSyntheticEnabled(
+            "sharedActorFxSyntheticEnabled");
+        static const LLStaticHashedString sActorFxParams2("actorFxParams2");
+
+        auto find_glow_info = [&](LLDrawInfo* base,
+                                  bool& ambiguous) -> LLDrawInfo*
+        {
+            ambiguous = false;
+            LLDrawInfo* match = nullptr;
+            for (const GhostBatch& glow : pbr_glow_batches)
+            {
+                if (shared_same_pbr_geometry(base, glow.mInfo))
+                {
+                    if (match)
+                    {
+                        ambiguous = true;
+                        return nullptr;
+                    }
+                    match = glow.mInfo;
+                }
+            }
+            return match;
+        };
+
+        auto command_ready = [&](const SharedActorPBRCommand& command) -> bool
+        {
+            LLVertexBuffer* vb = command.mRigged
+                ? (command.mBatch.mInfo
+                    ? command.mBatch.mInfo->mVertexBuffer.get() : nullptr)
+                : (command.mStaticFace.mFace
+                    ? command.mStaticFace.mFace->getVertexBuffer() : nullptr);
+            const bool indexed = command.mIndexed;
+            LLDrawInfo* base_info = command.mBatch.mInfo;
+            if (indexed)
+            {
+                if (!command.mRigged || !base_info
+                    || base_info->mGLTFMaterialList.size() < 2
+                    || base_info->mTexture.notNull()
+                    || LLGLSLShader::sSharedPBRIndexedGLTFChannels <= 0
+                    || base_info->mGLTFMaterialList.size()
+                        > (size_t)llmin(
+                            LLGLSLShader::sSharedPBRIndexedGLTFChannels, 8)
+                    || !vb->hasDataType(LLVertexBuffer::TYPE_TEXTURE_INDEX))
+                {
+                    return false;
+                }
+                U8 draw_mode = 0;
+                if (!shared_pbr_alpha_mode(base_info, draw_mode) ||
+                    draw_mode != command.mAlphaMode)
+                {
+                    return false;
+                }
+                for (const LLPointer<LLFetchedGLTFMaterial>& material :
+                     base_info->mGLTFMaterialList)
+                {
+                    if (material.isNull())
+                    {
+                        return false;
+                    }
+                }
+            }
+            LLGLSLShader* beauty = selected_program(
+                command.mAlphaMode, command.mRigged, indexed,
+                false, false, false);
+            if (!command.mMaterial || !program_accepts(beauty, vb)
+                || (style.mStyle == GHOST_STYLE_WIREFRAME
+                    && beauty->getUniformLocation(sActorFxParams2) < 0))
+            {
+                return false;
+            }
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND
+                && !program_accepts(selected_program(
+                       command.mAlphaMode, command.mRigged, indexed,
+                       false, false, true), vb))
+            {
+                return false;
+            }
+
+            if (command.mAuthoredGlow)
+            {
+                LLVertexBuffer* glow_vb = command.mRigged
+                    ? (command.mGlowInfo
+                        ? command.mGlowInfo->mVertexBuffer.get() : nullptr)
+                    : vb;
+                if (indexed)
+                {
+                    if (!command.mGlowInfo
+                        || command.mGlowInfo->mTexture.notNull()
+                        || command.mGlowInfo->mGLTFMaterialList.size()
+                            != base_info->mGLTFMaterialList.size()
+                        || !glow_vb
+                        || !glow_vb->hasDataType(
+                            LLVertexBuffer::TYPE_TEXTURE_INDEX))
+                    {
+                        return false;
+                    }
+                    for (size_t slot = 0;
+                         slot < base_info->mGLTFMaterialList.size(); ++slot)
+                    {
+                        if (command.mGlowInfo->mGLTFMaterialList[slot].isNull()
+                            || command.mGlowInfo->mGLTFMaterialList[slot].get()
+                                != base_info->mGLTFMaterialList[slot].get())
+                        {
+                            return false;
+                        }
+                    }
+                }
+                return glow_vb
+                    && glow_vb->hasDataType(LLVertexBuffer::TYPE_EMISSIVE)
+                    && program_accepts(selected_program(
+                        command.mAlphaMode, command.mRigged, indexed,
+                        true, false, false),
+                        glow_vb)
+                    && selected_program(command.mAlphaMode, command.mRigged,
+                                        indexed, true, false, false)
+                           ->getUniformLocation(sPBRSyntheticEnabled) >= 0;
+            }
+            if (synthetic_glow)
+            {
+                return program_accepts(selected_program(
+                    command.mAlphaMode, command.mRigged, indexed,
+                    true, true, false), vb);
+            }
+            return true;
+        };
+
+        auto append_rigged_pbr = [&](const GhostBatch& batch,
+                                     bool indexed)
+        {
+            LLDrawInfo* info = batch.mInfo;
+            LLFetchedGLTFMaterial* material = info
+                ? (indexed && !info->mGLTFMaterialList.empty()
+                    ? info->mGLTFMaterialList.front().get()
+                    : (info->mGLTFMaterial.notNull()
+                        ? info->mGLTFMaterial.get()
+                        : (!info->mGLTFMaterialList.empty()
+                            ? info->mGLTFMaterialList.front().get()
+                            : nullptr)))
+                : nullptr;
+            U8 alpha_mode = 0;
+            if (!info || !shared_pbr_alpha_mode(info, alpha_mode))
+            {
+                replay_complete = false;
+                return;
+            }
+
+            // Per-sweep harvest can encounter the same geometry in more than
+            // one map. Material alpha mode, not that map, owns placement in the
+            // shared solid/blend queue; suppress duplicate geometry here.
+            for (const SharedActorPBRCommand& existing : pbr_commands)
+            {
+                if (existing.mRigged
+                    && shared_same_pbr_geometry(existing.mBatch.mInfo, info))
+                {
+                    return;
+                }
+            }
+
+            SharedActorPBRCommand command;
+            command.mBatch = batch;
+            command.mMaterial = material;
+            command.mIndexed = indexed;
+            bool any_material_emissive = false;
+            if (indexed)
+            {
+                // genDrawInfo hard-splits indexed batches by alpha mode, cull
+                // state and authored TE glow. Re-prove the material-side part
+                // here before native suppression so one command can safely own
+                // the complete vertex-indexed batch.
+                if (info->mGLTFMaterialList.size() < 2)
+                {
+                    replay_complete = false;
+                    return;
+                }
+                for (const LLPointer<LLFetchedGLTFMaterial>& slot_material :
+                     info->mGLTFMaterialList)
+                {
+                    bool slot_emissive = false;
+                    if (slot_material.isNull()
+                        || !shared_pbr_material_has_authored_emissive(
+                               slot_material.get(), slot_emissive))
+                    {
+                        replay_complete = false;
+                        return;
+                    }
+                    any_material_emissive |= slot_emissive;
+                }
+            }
+            else if (!shared_pbr_material_has_authored_emissive(
+                         material, any_material_emissive))
+            {
+                replay_complete = false;
+                return;
+            }
+
+            bool ambiguous_glow = false;
+            LLDrawInfo* exact_glow = find_glow_info(info, ambiguous_glow);
+            if (ambiguous_glow)
+            {
+                replay_complete = false;
+                return;
+            }
+            if (exact_glow && !info->mHasGlow)
+            {
+                // PASS_GLTF_GLOW and the base DrawInfo are built from the same
+                // TE. Disagreement means the frame-local descriptors cannot be
+                // paired authoritatively.
+                replay_complete = false;
+                return;
+            }
+            if (any_material_emissive && info->mHasGlow)
+            {
+                // Opaque/mask ordinarily has an exact duplicated glow pass;
+                // alpha PBR emits from the base draw. mHasGlow is per DrawInfo
+                // (volume batching splits on it), unlike the VBO's group-wide
+                // TYPE_EMISSIVE allocation, so either source is exact here.
+                command.mGlowInfo = exact_glow ? exact_glow : info;
+                command.mAuthoredGlow = true;
+            }
+            command.mAlphaMode = alpha_mode;
+            command.mRigged = true;
+            if (!command_ready(command))
+            {
+                replay_complete = false;
+                return;
+            }
+            pbr_commands.push_back(command);
+        };
+
+        if (!pbr_base_batches.empty() || !pbr_glow_batches.empty())
+        {
+            if (!LLViewerShaderMgr::hasSharedActorFxPBRShaders())
+            {
+                replay_complete = false;
+            }
+            for (const GhostBatch& batch : pbr_base_batches)
+            {
+                LLDrawInfo* info = batch.mInfo;
+                if (!info)
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                if (info->mGLTFMaterialList.size() > 1)
+                {
+                    const S32 slots = (S32)info->mGLTFMaterialList.size();
+                    if (info->mTexture.notNull()
+                        || LLGLSLShader::sSharedPBRIndexedGLTFChannels <= 0
+                        || slots
+                            > LLGLSLShader::sSharedPBRIndexedGLTFChannels
+                        || !info->mVertexBuffer->hasDataType(
+                            LLVertexBuffer::TYPE_TEXTURE_INDEX))
+                    {
+                        replay_complete = false;
+                        continue;
+                    }
+                    append_rigged_pbr(batch, true);
+                }
+                else
+                {
+                    append_rigged_pbr(batch, false);
+                }
+            }
+
+            // Every collected authored-glow sidecar must resolve to a base
+            // command. Otherwise native glow suppression would drop content.
+            for (const GhostBatch& glow : pbr_glow_batches)
+            {
+                bool matched = false;
+                for (const GhostBatch& base : pbr_base_batches)
+                {
+                    if (shared_same_pbr_geometry(base.mInfo, glow.mInfo))
+                    {
+                        matched = true;
+                        break;
+                    }
+                }
+                replay_complete &= matched;
+            }
+        }
+
+        for (const GhostStaticFace& source_face : eligible_faces)
+        {
+            LLFetchedGLTFMaterial* material =
+                shared_static_pbr_material(source_face);
+            if (!material)
+            {
+                legacy_faces.push_back(source_face);
+                continue;
+            }
+
+            U8 alpha_mode = 0;
+            LLDrawInfo* static_info =
+                source_face.mFace ? source_face.mFace->mDrawInfo : nullptr;
+            if (!LLViewerShaderMgr::hasSharedActorFxPBRShaders()
+                || !(static_info
+                         ? shared_pbr_alpha_mode(static_info, alpha_mode)
+                         : shared_pbr_authored_alpha_mode(material, alpha_mode)))
+            {
+                replay_complete = false;
+                continue;
+            }
+            SharedActorPBRCommand command;
+            command.mStaticFace = source_face;
+            command.mMaterial = material;
+            command.mAlphaMode = alpha_mode;
+            command.mRigged = false;
+            LLFace* face = source_face.mFace;
+            const LLTextureEntry* te = face ? face->getTextureEntry() : nullptr;
+            bool material_emissive = false;
+            if (!te || !shared_pbr_material_has_authored_emissive(
+                           material, material_emissive))
+            {
+                replay_complete = false;
+                continue;
+            }
+            // Static faces retain an exact TE, so do not infer ownership from
+            // the shared VBO's group-wide attribute mask. Authored PBR bloom
+            // exists only when this face's glow and this material's emissive
+            // response are both nonzero; otherwise the look's synthetic path
+            // remains eligible.
+            command.mAuthoredGlow = material_emissive && te->getGlow() > 0.f;
+            if (!command_ready(command))
+            {
+                replay_complete = false;
+                continue;
+            }
+            pbr_commands.push_back(command);
+        }
+
+        if (owns_native_beauty
+            && gPipeline.hasRenderType(LLRenderPass::PASS_GLOW))
+        {
+            // Static legacy glow lives in PASS_GLOW and is suppressed with the
+            // rest of Cover's native beauty. Resolve it from each already-
+            // eligible worn face's own spatial group and require an exact
+            // one-face range match; a merged/ambiguous batch fails the entire
+            // actor open rather than replaying a neighbour or another wearer.
+            for (const GhostStaticFace& source_face : legacy_faces)
+            {
+                if (source_face.mAlphaKind == 2)
+                {
+                    // BLEND bloom is emitted from the alpha pool's base face;
+                    // it deliberately has no PASS_GLOW sidecar and is proven
+                    // separately below.
+                    continue;
+                }
+                LLFace* face = source_face.mFace;
+                LLDrawable* drawable = face ? face->getDrawable() : nullptr;
+                LLSpatialGroup* group = drawable
+                    ? drawable->getSpatialGroup() : nullptr;
+                if (!group || group->isDead())
+                {
+                    replay_complete = false;
+                    continue;
+                }
+                const LLTextureEntry* te = face->getTextureEntry();
+                auto found = group->mDrawMap.find(LLRenderPass::PASS_GLOW);
+                if (found == group->mDrawMap.end())
+                {
+                    if (te && te->getGlow() > 0.f)
+                    {
+                        replay_complete = false;
+                    }
+                    continue;
+                }
+
+                LLDrawInfo* exact = nullptr;
+                for (const LLPointer<LLDrawInfo>& candidate : found->second)
+                {
+                    if (!shared_same_static_geometry(
+                            source_face, candidate.get()))
+                    {
+                        continue;
+                    }
+                    if (exact)
+                    {
+                        replay_complete = false;
+                        exact = nullptr;
+                        break;
+                    }
+                    exact = candidate.get();
+                }
+                if (!exact && te && te->getGlow() > 0.f)
+                {
+                    // Native Cover suppression would otherwise erase authored
+                    // static bloom. A merged/non-exact PASS_GLOW DrawInfo cannot
+                    // be replayed without also drawing another face, so fail the
+                    // whole actor open for this frame.
+                    replay_complete = false;
+                }
+                if (exact)
+                {
+                    GhostBatch sidecar{
+                        exact, LLRenderPass::PASS_GLOW, group };
+                    if (!shared_static_legacy_glow_ready(sidecar))
+                    {
+                        replay_complete = false;
+                    }
+                    else
+                    {
+                        static_legacy_glow_batches.push_back(sidecar);
+                    }
+                }
+            }
+        }
+
+        if (synthetic_glow)
+        {
+            if ((!legacy_batches.empty()
+                 && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                        sGhostGlowOnly) < 0)
+                || (!legacy_faces.empty()
+                    && gWorldActorGhostProgram.getUniformLocation(
+                        sGhostGlowOnly) < 0))
+            {
+                replay_complete = false;
+            }
+        }
+
+        if ((!legacy_batches.empty()
+             && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                    sGhostAlphaCutoffMode) < 0)
+            || (!legacy_faces.empty()
+                && gWorldActorGhostProgram.getUniformLocation(
+                       sGhostAlphaCutoffMode) < 0)
+            || (!legacy_batches.empty()
+                && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                       sGhostScreenSize) < 0)
+            || (!legacy_faces.empty()
+                && gWorldActorGhostProgram.getUniformLocation(
+                       sGhostScreenSize) < 0)
+            || (!legacy_batches.empty()
+                && gWorldSkinnedActorGhostProgram.getUniformLocation(
+                       sGhostCoverageLayerStrength) < 0)
+            || (!legacy_faces.empty()
+                && gWorldActorGhostProgram.getUniformLocation(
+                       sGhostCoverageLayerStrength) < 0))
+        {
+            replay_complete = false;
+        }
+
+        // Legacy actorghost is the authoritative beauty/synthetic path for
+        // these exact VBOs. Prove every shader attribute contract up front so
+        // Cover never suppresses native geometry and then discovers a partial
+        // component during the draw.
+        for (const GhostBatch& batch : legacy_batches)
+        {
+            LLVertexBuffer* vb = batch.mInfo
+                ? batch.mInfo->mVertexBuffer.get() : nullptr;
+            const bool indexed_world =
+                ghost_legacy_indexed_slot_count(batch.mInfo) > 1;
+            LLGLSLShader& replay_shader = indexed_world
+                ? gWorldSkinnedActorGhostIndexedProgram
+                : gWorldSkinnedActorGhostProgram;
+            if (!vb || !replay_shader.mProgramObject
+                || (replay_shader.mAttributeMask & ~vb->getTypeMask())
+                || (indexed_world
+                    && !shared_world_indexed_actorghost_ready(batch)))
+            {
+                replay_complete = false;
+            }
+            if (owns_native_beauty && ghost_pass_is_blend(batch.mPass)
+                && batch.mInfo && batch.mInfo->mHasGlow
+                && !shared_legacy_blend_glow_ready(batch))
+            {
+                // Native alpha authored bloom is suppressed with Cover's base
+                // draw. Prove its exact base-range replay before suppressing
+                // any component of this actor.
+                replay_complete = false;
+            }
+            if (ghost_pass_is_mask(batch.mPass)
+                && ghost_batch_alpha_cutoff_mode(batch.mPass)
+                    == GHOST_CUTOFF_NONE)
+            {
+                // A newly introduced native MASK pass must not be suppressed
+                // until its exact discard law is explicitly mapped above.
+                replay_complete = false;
+            }
+        }
+        for (const GhostStaticFace& source_face : legacy_faces)
+        {
+            LLVertexBuffer* vb = source_face.mFace
+                ? source_face.mFace->getVertexBuffer() : nullptr;
+            if (!vb || !gWorldActorGhostProgram.mProgramObject
+                || (gWorldActorGhostProgram.mAttributeMask
+                    & ~vb->getTypeMask()))
+            {
+                replay_complete = false;
+            }
+            const LLTextureEntry* te = source_face.mFace
+                ? source_face.mFace->getTextureEntry() : nullptr;
+            if (owns_native_beauty && source_face.mAlphaKind == 2
+                && te && te->getGlow() > 0.f
+                && !shared_static_legacy_blend_glow_ready(source_face))
+            {
+                replay_complete = false;
+            }
+            if (source_face.mAlphaKind == 1
+                && ghost_static_alpha_cutoff_mode(source_face)
+                    == GHOST_CUTOFF_NONE)
+            {
+                // Unknown pool routing means unknown native MASK coverage.
+                // Keep the actor native for this frame instead of drawing a
+                // visually plausible but non-authoritative shared substitute.
+                replay_complete = false;
+            }
+        }
+
+        if (owns_native_beauty)
+        {
+            for (const GhostBatch& glow : legacy_glow_batches)
+            {
+                S32 matches = 0;
+                for (const GhostBatch& base : legacy_batches)
+                {
+                    if (shared_same_pbr_geometry(base.mInfo, glow.mInfo))
+                    {
+                        ++matches;
+                    }
+                }
+                if (matches != 1 || !shared_legacy_glow_ready(glow))
+                {
+                    replay_complete = false;
+                }
+            }
+            for (const GhostBatch& glow : static_legacy_glow_batches)
+            {
+                S32 matches = 0;
+                for (const GhostStaticFace& base : legacy_faces)
+                {
+                    if (shared_same_static_geometry(base, glow.mInfo))
+                    {
+                        ++matches;
+                    }
+                }
+                if (matches != 1 || !shared_static_legacy_glow_ready(glow))
+                {
+                    replay_complete = false;
+                }
+            }
+        }
+
+        const bool system_replay = !avatar->isControlAvatar();
+        if (synthetic_glow && system_replay
+            && (gAvatarActorGhostProgram.getUniformLocation(sGhostGlowOnly) < 0
+                || gAvatarEyeballActorGhostProgram.getUniformLocation(
+                    sGhostGlowOnly) < 0))
+        {
+            replay_complete = false;
+        }
+        if (!replay_complete
+            || (system_replay
+                && !canRenderSystemActorGhost(avatar, style_id)))
+        {
+            return;
+        }
+        if ((!legacy_batches.empty()
+             && !gWorldSkinnedActorGhostProgram.mProgramObject)
+            || (!legacy_faces.empty()
+                && !gWorldActorGhostProgram.mProgramObject)
+            || (!system_replay && legacy_batches.empty()
+                && legacy_faces.empty() && pbr_commands.empty()))
+        {
+            return;
+        }
+
+        proxy.mFootAgent = avatar->getRenderPosition();
+        F32 pelvis_to_foot = avatar->getPelvisToFoot();
+        if (!llfinite(pelvis_to_foot))
+        {
+            pelvis_to_foot = 0.f;
+        }
+        proxy.mFootAgent.mV[VZ] -= llmax(0.f, pelvis_to_foot);
+        proxy.mAlphaDepth = avatar->calcRiggedAlphaDepth();
+        if (!proxy.mFootAgent.isFinite() || !llfinite(proxy.mAlphaDepth))
+        {
+            return;
+        }
+
+        proxy.mAlpha = llclamp(style.mAlpha, 0.f, 1.f);
+        proxy.mStyle = style.mStyle;
+        proxy.mUseActorHue = style.mUseActorHue;
+        proxy.mHue = style.mHue;
+        proxy.mPixelSize = style.mPixelSize;
+        proxy.mShimmerSpeed = style.mShimmerSpeed;
+        proxy.mShimmerAmount = style.mShimmerAmount;
+        proxy.mGlitch = style.mGlitch;
+        proxy.mDistortion = style.mDistortion;
+        proxy.mDistortionAmount = style.mDistortionAmount;
+        proxy.mBrightness = style.mBrightness;
+        proxy.mEffectFps = style.mEffectFps;
+        proxy.mDissolveProgress = style.mDissolveProgress;
+        proxy.mActive = true;
+        proxy.mSuppressible =
+            style.mMode == LLDirectorCast::ACTOR_STYLE_REPLACE;
+        proxy.mSuppressNativeBeauty = owns_native_beauty;
+        proxy.mCoverageReplacement = coverage_replacement;
+        proxy.mPBRReady = !pbr_commands.empty();
+
+        // Solid/masked material work remains one item per actor. It later gets
+        // a Cover-only depth prepass, before any native/shared alpha is drained.
+        SharedActorStyleProxy solid = proxy;
+        solid.mPart = ESharedActorStylePart::ACTOR_SOLID;
+        for (const GhostBatch& batch : legacy_batches)
+        {
+            if (!ghost_pass_is_blend(batch.mPass))
+            {
+                solid.mBatches.push_back(batch);
+                if (owns_native_beauty)
+                {
+                    if (const GhostBatch* glow = matching_legacy_glow(batch))
+                    {
+                        solid.mLegacyGlowBatches.push_back(*glow);
+                    }
+                }
+            }
+        }
+        for (const GhostStaticFace& source_face : legacy_faces)
+        {
+            if (source_face.mAlphaKind != 2)
+            {
+                solid.mStaticFaces.push_back(source_face);
+                if (owns_native_beauty)
+                {
+                    if (const GhostBatch* glow =
+                            matching_static_legacy_glow(source_face))
+                    {
+                        solid.mStaticLegacyGlowBatches.push_back(*glow);
+                    }
+                }
+            }
+        }
+        for (const SharedActorPBRCommand& command : pbr_commands)
+        {
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                solid.mPBRCommands.push_back(command);
+            }
+        }
+        if (system_replay || !solid.mBatches.empty()
+            || !solid.mStaticFaces.empty() || !solid.mPBRCommands.empty())
+        {
+            mSharedActorStyleProxies.push_back(std::move(solid));
+        }
+
+        // Each authored alpha component becomes exactly one independently
+        // sorted queue item. Copying the descriptor is cheap; VBO/face storage
+        // remains owned by the source renderer for this frame.
+        for (const GhostBatch& batch : legacy_batches)
+        {
+            if (!ghost_pass_is_blend(batch.mPass))
+            {
+                continue;
+            }
+            SharedActorStyleProxy item = proxy;
+            item.mPart = ESharedActorStylePart::RIGGED_BLEND;
+            item.mBatches.push_back(batch);
+            if (owns_native_beauty)
+            {
+                if (batch.mInfo && batch.mInfo->mHasGlow)
+                {
+                    item.mLegacyBlendGlowBatches.push_back(batch);
+                }
+            }
+            item.mAlphaDepth = owns_native_beauty
+                ? shared_component_alpha_depth(batch.mGroup, proxy.mAlphaDepth)
+                : shared_native_layer_alpha_depth(batch.mGroup,
+                                                  proxy.mAlphaDepth);
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+        for (const GhostStaticFace& source_face : legacy_faces)
+        {
+            if (source_face.mAlphaKind != 2)
+            {
+                continue;
+            }
+            SharedActorStyleProxy item = proxy;
+            item.mPart = ESharedActorStylePart::STATIC_BLEND;
+            item.mStaticFaces.push_back(source_face);
+            if (owns_native_beauty)
+            {
+                const LLTextureEntry* te = source_face.mFace
+                    ? source_face.mFace->getTextureEntry() : nullptr;
+                if (te && te->getGlow() > 0.f)
+                {
+                    item.mStaticLegacyBlendGlowFaces.push_back(source_face);
+                }
+            }
+            const F32 face_depth = source_face.mFace
+                ? source_face.mFace->getKey() : 0.f;
+            LLDrawable* drawable = source_face.mFace
+                ? source_face.mFace->getDrawable() : nullptr;
+            LLSpatialGroup* group = drawable
+                ? drawable->getSpatialGroup() : nullptr;
+            item.mAlphaDepth = !owns_native_beauty
+                ? shared_native_layer_alpha_depth(group, proxy.mAlphaDepth)
+                : (llfinite(face_depth) && face_depth > 0.f
+                    ? face_depth
+                    : shared_component_alpha_depth(group, proxy.mAlphaDepth));
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+        for (const SharedActorPBRCommand& command : pbr_commands)
+        {
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                continue;
+            }
+            SharedActorStyleProxy item = proxy;
+            item.mPart = command.mRigged
+                ? ESharedActorStylePart::RIGGED_BLEND
+                : ESharedActorStylePart::STATIC_BLEND;
+            item.mPBRCommands.push_back(command);
+            if (!owns_native_beauty)
+            {
+                LLSpatialGroup* group = command.mRigged
+                    ? command.mBatch.mGroup
+                    : (command.mStaticFace.mFace
+                        && command.mStaticFace.mFace->getDrawable()
+                        ? command.mStaticFace.mFace->getDrawable()
+                              ->getSpatialGroup()
+                        : nullptr);
+                item.mAlphaDepth = shared_native_layer_alpha_depth(
+                    group, proxy.mAlphaDepth);
+            }
+            else if (command.mRigged && command.mBatch.mGroup)
+            {
+                item.mAlphaDepth = shared_component_alpha_depth(
+                    command.mBatch.mGroup, proxy.mAlphaDepth);
+            }
+            else if (!command.mRigged && command.mStaticFace.mFace)
+            {
+                LLFace* face = command.mStaticFace.mFace;
+                const F32 face_depth = face->getKey();
+                LLDrawable* drawable = face->getDrawable();
+                item.mAlphaDepth = llfinite(face_depth) && face_depth > 0.f
+                    ? face_depth
+                    : shared_component_alpha_depth(
+                        drawable ? drawable->getSpatialGroup() : nullptr,
+                        proxy.mAlphaDepth);
+            }
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+
+        // LLVOAvatar exposes transparent BOM/system geometry only as one
+        // aggregate renderTransparent() sweep, so this is the narrowest safe
+        // ordering item until that renderer gains a per-mesh callback.
+        if (system_replay)
+        {
+            SharedActorStyleProxy item = proxy;
+            item.mPart = ESharedActorStylePart::SYSTEM_BLEND;
+            mSharedActorStyleProxies.push_back(std::move(item));
+        }
+    };
+
+    add_actor(LLUUID::null);
+    for (const LLDirectorCast::CastMember& member : director_cast.getCast())
+    {
+        add_actor(member.mId);
+    }
+
+    std::stable_sort(mSharedActorStyleProxies.begin(),
+                     mSharedActorStyleProxies.end(),
+        [](const SharedActorStyleProxy& lhs,
+           const SharedActorStyleProxy& rhs)
+        {
+            if (lhs.mAlphaDepth != rhs.mAlphaDepth)
+            {
+                return lhs.mAlphaDepth > rhs.mAlphaDepth;
+            }
+            return lhs.mWearerId < rhs.mWearerId;
+        });
+}
+
+bool LLActorMover::hasSharedActorStyleProxies() const
+{
+    return !mRenderingSharedActorStyle
+        && mSharedActorStyleFrame == LLFrameTimer::getFrameCount()
+        && shared_actor_main_world_context()
+        && !mSharedActorStyleProxies.empty();
+}
+
+size_t LLActorMover::sharedActorStyleProxyCount() const
+{
+    return hasSharedActorStyleProxies() ? mSharedActorStyleProxies.size() : 0;
+}
+
+F32 LLActorMover::sharedActorStyleProxyDepth(size_t index) const
+{
+    return hasSharedActorStyleProxies() && index < mSharedActorStyleProxies.size()
+        ? mSharedActorStyleProxies[index].mAlphaDepth : -FLT_MAX;
+}
+
+bool LLActorMover::isSharedActorStyleActive(const LLUUID& actor_id) const
+{
+    if (!hasSharedActorStyleProxies())
+    {
+        return false;
+    }
+    for (const SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        const bool matches = actor_id == proxy.mStyleId
+            || actor_id == proxy.mWearerId
+            || (proxy.mAvatar
+                && actor_id == proxy.mAvatar->getActorFxOwnerId())
+            || (proxy.mStyleId.isNull() && proxy.mAvatar
+                && proxy.mAvatar->isSelf()
+                && (actor_id.isNull() || actor_id == gAgentID));
+        if (proxy.mActive && matches)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LLActorMover::isSharedActorStylePBRReady(const LLUUID& actor_id) const
+{
+    if (!hasSharedActorStyleProxies())
+    {
+        return false;
+    }
+    for (const SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        const bool matches = actor_id == proxy.mStyleId
+            || actor_id == proxy.mWearerId
+            || (proxy.mAvatar
+                && actor_id == proxy.mAvatar->getActorFxOwnerId())
+            || (proxy.mStyleId.isNull() && proxy.mAvatar
+                && proxy.mAvatar->isSelf()
+                && (actor_id.isNull() || actor_id == gAgentID));
+        if (proxy.mActive && proxy.mPBRReady && matches)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LLActorMover::isSharedActorStyleReady(const LLUUID& actor_id) const
+{
+    if (!hasSharedActorStyleProxies())
+    {
+        return false;
+    }
+    for (const SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        const bool matches = actor_id == proxy.mStyleId
+            || actor_id == proxy.mWearerId
+            || (proxy.mAvatar
+                && actor_id == proxy.mAvatar->getActorFxOwnerId())
+            || (proxy.mStyleId.isNull() && proxy.mAvatar
+                && proxy.mAvatar->isSelf()
+                && (actor_id.isNull() || actor_id == gAgentID));
+        if (proxy.mSuppressNativeBeauty && matches)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool LLActorMover::renderSharedActorStyleProxy(size_t index)
+{
+    if (!hasSharedActorStyleProxies() || index >= mSharedActorStyleProxies.size())
+    {
+        return false;
+    }
+    return renderSharedActorStyleProxyItem(
+        mSharedActorStyleProxies[index], false);
+}
+
+void LLActorMover::renderSharedActorStyleDepthPrepass()
+{
+    const U32 frame = LLFrameTimer::getFrameCount();
+    if (!hasSharedActorStyleProxies()
+        || mSharedActorStyleDepthFrame == frame)
+    {
+        return;
+    }
+
+    // Mark first: if a replay path re-enters unexpectedly, it must not prime
+    // the entire cast twice in one frame.
+    mSharedActorStyleDepthFrame = frame;
+    for (SharedActorStyleProxy& proxy : mSharedActorStyleProxies)
+    {
+        if (!proxy.mActive
+            || proxy.mPart != ESharedActorStylePart::ACTOR_SOLID
+            || proxy.mAlpha <= 0.f
+            || (!proxy.mSuppressNativeBeauty && proxy.mPBRCommands.empty()))
+        {
+            continue;
+        }
+        proxy.mDepthPrimed = renderSharedActorStyleProxyItem(proxy, true);
+    }
+}
+
+// [AvatarLightResponse] Shared Actor FX replay: the style is the proxy's (uploadActorFxStyleOnly), but the light
+// response belongs to the command's OWN draw-info owners -- a shared command list also carries
+// worn animesh, so proxy.mStyleId would name the wrong avatar. Null owner_info => proxy identity.
+static void upload_shared_replay_light_response(const LLDrawInfo* owner_info, const LLUUID& style_id)
+{
+    if (owner_info)
+    {
+        LLRenderPass::uploadAvatarLightResponse(owner_info->mActorFxOwner, owner_info->mActorFxFallbackOwner);
+    }
+    else
+    {
+        LLRenderPass::uploadAvatarLightResponse(style_id.isNull() ? gAgentID : style_id);
+    }
+}
+
+bool LLActorMover::renderSharedActorPBRCommands(
+    const SharedActorStyleProxy& proxy, bool depth_only)
+{
+    if (proxy.mPBRCommands.empty()
+        || !LLViewerShaderMgr::hasSharedActorFxPBRShaders()
+        || proxy.mAlpha <= 0.f)
+    {
+        return proxy.mPBRCommands.empty() || proxy.mAlpha <= 0.f;
+    }
+
+    static const LLStaticHashedString sOpacity("sharedActorFxOpacity");
+    static const LLStaticHashedString sSyntheticEnabled(
+        "sharedActorFxSyntheticEnabled");
+
+    auto select_program = [](U8 mode, bool rigged, bool indexed,
+                             bool glow, bool synthetic,
+                             bool depth) -> LLGLSLShader*
+    {
+        if (mode >= SHARED_ACTOR_FX_PBR_ALPHA_COUNT)
+        {
+            return nullptr;
+        }
+        if (depth)
+        {
+            if (mode == SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                return nullptr;
+            }
+            if (rigged)
+            {
+                return indexed
+                    ? &gSharedActorFxSkinnedPBRDepthSlotProgram[mode]
+                    : &gSharedActorFxSkinnedPBRDepthProgram[mode];
+            }
+            return indexed ? &gSharedActorFxPBRDepthSlotProgram[mode]
+                           : &gSharedActorFxPBRDepthProgram[mode];
+        }
+        if (glow)
+        {
+            if (synthetic)
+            {
+                if (rigged)
+                {
+                    return indexed
+                        ? &gSharedActorFxSkinnedPBRSyntheticGlowSlotProgram[mode]
+                        : &gSharedActorFxSkinnedPBRSyntheticGlowProgram[mode];
+                }
+                return indexed
+                    ? &gSharedActorFxPBRSyntheticGlowSlotProgram[mode]
+                    : &gSharedActorFxPBRSyntheticGlowProgram[mode];
+            }
+            if (rigged)
+            {
+                return indexed
+                    ? &gSharedActorFxSkinnedPBRGlowSlotProgram[mode]
+                    : &gSharedActorFxSkinnedPBRGlowProgram[mode];
+            }
+            return indexed ? &gSharedActorFxPBRGlowSlotProgram[mode]
+                           : &gSharedActorFxPBRGlowProgram[mode];
+        }
+        if (rigged)
+        {
+            return indexed ? &gSharedActorFxSkinnedPBRSlotProgram[mode]
+                           : &gSharedActorFxSkinnedPBRProgram[mode];
+        }
+        return indexed ? &gSharedActorFxPBRSlotProgram[mode]
+                       : &gSharedActorFxPBRProgram[mode];
+    };
+
+    const F32 opacity = proxy.mSuppressible
+        ? llclamp(proxy.mAlpha, 0.f, 1.f) : 1.f;
+    const bool needs_synthetic =
+        LLRenderPass::actorFxLookNeedsSyntheticBloom(proxy.mStyle);
+
+    // These programs intentionally publish only the composited HDR colour.
+    // The main screen target can also carry visible-diffuse/coverage sidecars;
+    // leaving those draw buffers attached would make their unwritten fragment
+    // outputs undefined on some drivers.  bindTarget() always installs the
+    // target's canonical contiguous [0..N) list (LLRenderTarget is capped at
+    // four attachments), so restore that list without synchronous glGet state
+    // queries after the colour/glow replay completes.
+    struct ScopedHDRDrawBuffer
+    {
+        explicit ScopedHDRDrawBuffer(bool enable)
+        {
+            mTarget = enable ? LLRenderTarget::getCurrentBoundTarget() : nullptr;
+            mCount = mTarget ? llmin(mTarget->getNumTextures(), 4u) : 0u;
+            if (mCount > 0)
+            {
+                gGL.flush();
+                const GLenum hdr = GL_COLOR_ATTACHMENT0;
+                glDrawBuffers(1, &hdr);
+            }
+        }
+
+        ~ScopedHDRDrawBuffer()
+        {
+            if (mCount > 0)
+            {
+                gGL.flush();
+                static const GLenum full[] = {
+                    GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+                    GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+                };
+                glDrawBuffers((GLsizei)mCount, full);
+            }
+        }
+
+        LLRenderTarget* mTarget = nullptr;
+        U32 mCount = 0;
+    } hdr_draw_buffer(true);
+
+    auto draw_command = [&](const SharedActorPBRCommand& command,
+                             bool glow, bool synthetic,
+                             bool topology_wire,
+                             bool depth) -> bool
+    {
+        LLDrawInfo* base_info = command.mBatch.mInfo;
+        LLDrawInfo* draw_info = command.mRigged
+            ? ((glow && command.mAuthoredGlow)
+                ? command.mGlowInfo : base_info)
+            : nullptr;
+        LLFace* face = command.mStaticFace.mFace;
+        LLDrawInfo* policy_info =
+            command.mRigged ? base_info : (face ? face->mDrawInfo : nullptr);
+        LLVertexBuffer* vb = command.mRigged
+            ? (draw_info ? draw_info->mVertexBuffer.get() : nullptr)
+            : (face ? face->getVertexBuffer() : nullptr);
+        LLFetchedGLTFMaterial* material = command.mMaterial;
+        const bool indexed = command.mIndexed;
+        LLGLSLShader* shader = select_program(
+            command.mAlphaMode, command.mRigged, indexed,
+            glow, synthetic, depth);
+        if (!shader || !shader->mProgramObject || !vb || !material
+            || (shader->mAttributeMask & ~vb->getTypeMask()))
+        {
+            return false; // preflight made this unreachable in a valid frame
+        }
+
+        gPipeline.bindDeferredShaderFast(*shader);
+        gGL.syncLightState();
+        shader->uniform1f(sOpacity, opacity);
+        if (glow && !synthetic)
+        {
+            shader->uniform1i(sSyntheticEnabled,
+                              needs_synthetic ? 1 : 0);
+        }
+
+        LLViewerTexture* media = nullptr;
+        const LLMatrix4* texture_matrix = nullptr;
+        if (command.mRigged)
+        {
+            // Indexed replay deliberately rejects media overrides during
+            // preflight; scalar follows the native material binder exactly.
+            media = (!indexed && base_info) ? base_info->mTexture.get() : nullptr;
+            texture_matrix = base_info ? base_info->mTextureMatrix : nullptr;
+        }
+        else
+        {
+            if (face->mDrawInfo && face->mDrawInfo->mGLTFMaterial.notNull())
+            {
+                media = face->mDrawInfo->mTexture.get();
+            }
+            texture_matrix = face->mTextureMatrix;
+        }
+
+        LLRenderPass::uploadActorFxStyleOnly(proxy.mStyleId, topology_wire, true);
+        upload_shared_replay_light_response(policy_info, proxy.mStyleId); // [AvatarLightResponse]
+
+        if (command.mRigged
+            && !LLRenderPass::uploadMatrixPalette(
+                draw_info->mAvatar, draw_info->mSkinInfo))
+        {
+            if (glow && !synthetic)
+            {
+                shader->uniform1i(sSyntheticEnabled, 0);
+            }
+            return false;
+        }
+
+        if (indexed)
+        {
+            LLRenderPass::eGLTFIndexedMaps maps = LLRenderPass::GLTF_MAPS_FULL;
+            if (depth)
+            {
+                maps = command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_MASK
+                    ? LLRenderPass::GLTF_MAPS_BASE_COLOR
+                    : LLRenderPass::GLTF_MAPS_NONE;
+            }
+            else if (glow)
+            {
+                maps = synthetic ? LLRenderPass::GLTF_MAPS_BASE_COLOR
+                                 : LLRenderPass::GLTF_MAPS_GLOW;
+            }
+
+            // The indexed binder uploads all material arrays and emits this
+            // geometry exactly once. shared_replay preserves the proxy style
+            // just uploaded above and bypasses only native-pass suppression.
+            LLRenderPass::pushGLTFBatchIndexed(*draw_info, maps, true);
+            if (glow && !synthetic)
+            {
+                shader->uniform1i(sSyntheticEnabled, 0);
+            }
+            return true;
+        }
+
+        if (command.mRigged)
+        {
+            LLRenderPass::applyModelMatrix(*base_info);
+        }
+        else
+        {
+            LLRenderPass::applyModelMatrix(&face->getRenderMatrix());
+        }
+
+        bool uses_texture_matrix = !depth
+            || command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_MASK;
+        if (depth)
+        {
+            if (command.mAlphaMode == SHARED_ACTOR_FX_PBR_ALPHA_MASK)
+            {
+                LLViewerTexture* base = media ? media
+                    : (material->mBaseColorTexture.notNull()
+                        ? material->mBaseColorTexture.get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get());
+                shader->bindTexture(LLShaderMgr::DIFFUSE_MAP, base);
+                shader->uniform1f(LLShaderMgr::MINIMUM_ALPHA,
+                                  policy_info
+                                      ? policy_info->mAlphaMaskCutoff
+                                      : material->mAlphaCutoff);
+                LLGLTFMaterial::TextureTransform::Pack packed;
+                material->mTextureTransform[
+                    LLGLTFMaterial::GLTF_TEXTURE_INFO_BASE_COLOR]
+                    .getPacked(packed);
+                shader->uniform4fv(
+                    LLShaderMgr::TEXTURE_BASE_COLOR_TRANSFORM,
+                    2, packed);
+            }
+        }
+        else
+        {
+            material->bind(
+                media,
+                policy_info ? policy_info->mAlphaMaskCutoff : -2.f);
+        }
+        if (uses_texture_matrix)
+        {
+            LLRenderPass::setupGLTFTextureMatrix(texture_matrix);
+        }
+
+        LLGLDisable no_cull(material->mDoubleSided ? GL_CULL_FACE : 0);
+        vb->setBuffer();
+        if (command.mRigged)
+        {
+            vb->drawRange(LLRender::TRIANGLES, draw_info->mStart,
+                          draw_info->mEnd, draw_info->mCount,
+                          draw_info->mOffset);
+        }
+        else
+        {
+            vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
+                          face->getGeomIndex() + face->getGeomCount() - 1,
+                          face->getIndicesCount(), face->getIndicesStart());
+        }
+        if (uses_texture_matrix)
+        {
+            LLRenderPass::teardownGLTFTextureMatrix(texture_matrix);
+        }
+        if (glow && !synthetic)
+        {
+            shader->uniform1i(sSyntheticEnabled, 0);
+        }
+        return true;
+    };
+
+    bool complete = true;
+    LLGLEnable cull(GL_CULL_FACE);
+    if (depth_only)
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_TRUE, GL_LESS);
+        LLGLDisable blend(GL_BLEND);
+        gGL.setColorMask(false, false);
+        for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+        {
+            // The solid proxy contains only OPAQUE/MASK commands.
+            if (command.mAlphaMode != SHARED_ACTOR_FX_PBR_ALPHA_BLEND)
+            {
+                complete &= draw_command(command, false, false, false, true);
+            }
+        }
+        gGL.setColorMask(true, true);
+    }
+    else
+    {
+        LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+        LLGLEnable blend(GL_BLEND);
+        // HDR alpha carries bloom. Beauty must never accumulate ordinary
+        // surface opacity there; match LLDrawPoolAlpha's native contract.
+        gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                      LLRender::BF_ZERO,
+                      LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+        for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+        {
+            complete &= draw_command(command, false, false, false, false);
+
+            const bool authored = command.mAuthoredGlow;
+            const bool synthetic = !authored && needs_synthetic;
+            if (authored || synthetic)
+            {
+                // Match the native bloom pass: preserve destination RGB and add
+                // this component's luminance to destination alpha exactly once.
+                gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                              LLRender::BF_ONE, LLRender::BF_ONE);
+                complete &= draw_command(command, true, synthetic, false, false);
+                gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                              LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                              LLRender::BF_ZERO,
+                              LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+            }
+        }
+
+        if (proxy.mStyle == GHOST_STYLE_WIREFRAME)
+        {
+            // The PBR beauty pass above supplies the hidden-line backing. Replay
+            // the exact same scalar/indexed command ranges and live palettes as
+            // topology lines after every triangle component, so a later material
+            // cannot paint over an earlier slot's wire. No extra glow is emitted.
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            for (const SharedActorPBRCommand& command : proxy.mPBRCommands)
+            {
+                complete &= draw_command(command, false, false, true, false);
+            }
+            gGL.flush();
+            glPolygonMode(GL_FRONT_AND_BACK,
+                          gUseWireframe ? GL_LINE : GL_FILL);
+        }
+    }
+
+    LLRenderPass::applyModelMatrix((const LLMatrix4*)nullptr);
+    LLVertexBuffer::unbind();
+    return complete;
+}
+
+bool LLActorMover::renderSharedActorLegacyGlowCommands(
+    const SharedActorStyleProxy& proxy)
+{
+    if ((proxy.mLegacyGlowBatches.empty()
+         && proxy.mLegacyBlendGlowBatches.empty()
+         && proxy.mStaticLegacyGlowBatches.empty()
+         && proxy.mStaticLegacyBlendGlowFaces.empty())
+        || proxy.mAlpha <= 0.f)
+    {
+        return true;
+    }
+
+    static const LLStaticHashedString sAuthoredOnly(
+        "actorFxSharedAuthoredOnly");
+    static const LLStaticHashedString sGlowAttenuation(
+        "actorFxSharedGlowAttenuation");
+    static const LLStaticHashedString sMinimumAlpha(
+        "actorFxSharedMinimumAlpha");
+    static const LLStaticHashedString sAlphaCutoffMode(
+        "actorFxSharedAlphaCutoffMode");
+    static const LLStaticHashedString sUseCoverageAlpha(
+        "actorFxUseCoverageAlpha");
+
+    // Cover fades authored bloom with its surface opacity. Coverage-changing
+    // Layer+Dissolve owns the native glow pass only to apply matching holes;
+    // surviving material bloom remains fully authored, exactly like shared PBR.
+    const F32 opacity = proxy.mSuppressible
+        ? llclamp(proxy.mAlpha, 0.f, 1.f) : 1.f;
+    ScopedSharedActorHDRDrawBuffer hdr_only(true);
+    LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
+    LLGLEnable blend(GL_BLEND);
+    LLGLEnable cull(GL_CULL_FACE);
+    LLGLEnable polygon_offset(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(-1.f, -1.f);
+    // HDR RGB is immutable; authored per-vertex legacy glow contributes only
+    // to bloom alpha, exactly like LLDrawPoolGlow's native post-deferred pass.
+    gGL.setColorMask(false, true);
+    gGL.blendFunc(LLRender::BF_ZERO, LLRender::BF_ONE,
+                  LLRender::BF_ONE, LLRender::BF_ONE);
+
+    auto draw_glow = [&](const GhostBatch& glow, bool rigged, bool masked,
+                         F32 cutoff, S32 cutoff_mode,
+                         bool double_sided,
+                         bool coverage_alpha) -> bool
+    {
+        LLDrawInfo* info = glow.mInfo;
+        LLVertexBuffer* vb = info ? info->mVertexBuffer.get() : nullptr;
+        const bool indexed = info && info->mMaterialSlotList.size() > 1;
+        LLGLSLShader* shader = nullptr;
+        if (rigged)
+        {
+            shader = indexed
+                ? gDeferredEmissiveIndexedProgram.mRiggedVariant
+                : gDeferredEmissiveProgram.mRiggedVariant;
+        }
+        else
+        {
+            shader = indexed ? &gDeferredEmissiveIndexedProgram
+                             : &gDeferredEmissiveProgram;
+        }
+        if (!vb || !shader || !shader->mProgramObject)
+        {
+            return false; // all are proven during queue preflight
+        }
+
+        gPipeline.bindDeferredShaderFast(*shader);
+        gGL.syncLightState();
+        shader->uniform1i(sAuthoredOnly, 1);
+        shader->uniform1f(sGlowAttenuation, 1.f - opacity);
+        shader->uniform1i(sAlphaCutoffMode, cutoff_mode);
+        shader->uniform1i(sUseCoverageAlpha, coverage_alpha ? 1 : 0);
+
+        F32 minimum_alpha[8] = { 0.f };
+        if (indexed)
+        {
+            const S32 count = llmin((S32)info->mMaterialSlotList.size(), 8);
+            for (S32 slot = 0; slot < count; ++slot)
+            {
+                const LLDrawInfo::MaterialSlot& material =
+                    info->mMaterialSlotList[slot];
+                LLViewerTexture* diffuse = material.mDiffuse.notNull()
+                    ? material.mDiffuse.get()
+                    : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(slot)->bindFast(diffuse);
+                minimum_alpha[slot] = masked
+                    ? material.mAlphaMaskCutoff : 0.f;
+            }
+            shader->uniform1fv(sMinimumAlpha, count, minimum_alpha);
+        }
+        else
+        {
+            if (info->mTextureList.size() > 1)
+            {
+                const S32 count = llmin(
+                    (S32)info->mTextureList.size(),
+                    LLGLSLShader::sIndexedTextureChannels);
+                for (S32 slot = 0; slot < count; ++slot)
+                {
+                    LLViewerTexture* diffuse = info->mTextureList[slot].notNull()
+                        ? info->mTextureList[slot].get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get();
+                    gGL.getTexUnit(slot)->bindFast(diffuse);
+                }
+            }
+            else
+            {
+                LLViewerTexture* diffuse = info->mTexture.notNull()
+                    ? info->mTexture.get()
+                    : (!info->mTextureList.empty()
+                        && info->mTextureList.front().notNull()
+                            ? info->mTextureList.front().get()
+                            : LLViewerFetchedTexture::sWhiteImagep.get());
+                gGL.getTexUnit(0)->bindFast(diffuse);
+            }
+            shader->uniform1f(sMinimumAlpha,
+                              masked ? cutoff : 0.f);
+        }
+
+        LLRenderPass::applyModelMatrix(*info);
+        LLRenderPass::setupGLTFTextureMatrix(
+            indexed || info->mTextureList.size() > 1
+                ? nullptr : info->mTextureMatrix);
+        LLRenderPass::uploadActorFxStyleOnly(proxy.mStyleId, false, true);
+        upload_shared_replay_light_response(info, proxy.mStyleId); // [AvatarLightResponse]
+        const bool palette_ok = !rigged || LLRenderPass::uploadMatrixPalette(
+            info->mAvatar, info->mSkinInfo);
+        if (palette_ok)
+        {
+            LLGLDisable no_cull(double_sided ? GL_CULL_FACE : 0);
+            vb->setBuffer();
+            vb->drawRange(LLRender::TRIANGLES, info->mStart, info->mEnd,
+                          info->mCount, info->mOffset);
+        }
+        else
+        {
+            // Same-frame queue preflight makes this unreachable unless source
+            // skin state changes during the replay.
+        }
+        LLRenderPass::teardownGLTFTextureMatrix(
+            indexed || info->mTextureList.size() > 1
+                ? nullptr : info->mTextureMatrix);
+
+        // These programs are also used by the native glow pool. Restore every
+        // shared-only switch immediately so a later native batch cannot inherit
+        // Cover attenuation, cutoff, or Actor FX state.
+        shader->uniform1i(sAuthoredOnly, 0);
+        shader->uniform1f(sGlowAttenuation, 0.f);
+        shader->uniform1i(sAlphaCutoffMode, GHOST_CUTOFF_NONE);
+        shader->uniform1i(sUseCoverageAlpha, 0);
+        if (indexed)
+        {
+            std::fill(std::begin(minimum_alpha),
+                      std::end(minimum_alpha), 0.f);
+            shader->uniform1fv(sMinimumAlpha,
+                llmin((U32)info->mMaterialSlotList.size(), 8u), minimum_alpha);
+        }
+        else
+        {
+            shader->uniform1f(sMinimumAlpha, 0.f);
+        }
+        LLRenderPass::uploadActorFxDisabled();
+        return palette_ok;
+    };
+
+    auto draw_static_blend_glow =
+        [&](const GhostStaticFace& source) -> bool
+    {
+        LLFace* face = source.mFace;
+        LLVertexBuffer* vb = face ? face->getVertexBuffer() : nullptr;
+        LLDrawInfo* info = face ? face->mDrawInfo : nullptr;
+        const bool indexed = info && info->mMaterialSlotList.size() > 1;
+        LLGLSLShader* shader = indexed
+            ? &gDeferredEmissiveIndexedProgram : &gDeferredEmissiveProgram;
+        if (!face || !vb || !shader->mProgramObject)
+        {
+            return false; // all are proven during queue preflight
+        }
+
+        gPipeline.bindDeferredShaderFast(*shader);
+        gGL.syncLightState();
+        shader->uniform1i(sAuthoredOnly, 1);
+        shader->uniform1f(sGlowAttenuation, 1.f - opacity);
+        shader->uniform1i(sAlphaCutoffMode, GHOST_CUTOFF_NONE);
+        shader->uniform1i(sUseCoverageAlpha, 1);
+
+        LLViewerTexture* diffuse = face->getTexture();
+        F32 minimum_alpha[8] = {};
+        if (indexed)
+        {
+            const S32 count = llmin(
+                (S32)info->mMaterialSlotList.size(),
+                llmin(LLGLSLShader::sIndexedGLTFChannels, 8));
+            shader->uniform1fv(sMinimumAlpha, count, minimum_alpha);
+            for (S32 slot = 0; slot < count; ++slot)
+            {
+                LLViewerTexture* slot_diffuse =
+                    info->mMaterialSlotList[slot].mDiffuse.notNull()
+                        ? info->mMaterialSlotList[slot].mDiffuse.get()
+                        : LLViewerFetchedTexture::sWhiteImagep.get();
+                gGL.getTexUnit(slot)->bindFast(slot_diffuse);
+            }
+        }
+        else
+        {
+            shader->uniform1f(sMinimumAlpha, 0.f);
+            const U8 source_index = face->getTextureIndex();
+            const S32 texture_unit = source_index < FACE_DO_NOT_BATCH_TEXTURES
+                ? (S32)source_index : 0;
+            // The scalar emissive shader still carries the viewer's indexed-
+            // texture feature.  Exact face replay must therefore populate the
+            // face's actual unit rather than assuming slot zero.
+            gGL.getTexUnit(texture_unit)->bindFast(diffuse
+                ? diffuse : LLViewerFetchedTexture::sWhiteImagep.get());
+        }
+        LLRenderPass::applyModelMatrix(&face->getRenderMatrix());
+        LLRenderPass::setupGLTFTextureMatrix(
+            indexed ? nullptr : face->mTextureMatrix);
+        LLRenderPass::uploadActorFxStyleOnly(proxy.mStyleId, false, true);
+        upload_shared_replay_light_response(info, proxy.mStyleId); // [AvatarLightResponse]
+        LLGLDisable no_cull(source.mDoubleSided ? GL_CULL_FACE : 0);
+        vb->setBuffer();
+        vb->drawRange(LLRender::TRIANGLES, face->getGeomIndex(),
+                      face->getGeomIndex() + face->getGeomCount() - 1,
+                      face->getIndicesCount(), face->getIndicesStart());
+        LLRenderPass::teardownGLTFTextureMatrix(
+            indexed ? nullptr : face->mTextureMatrix);
+
+        shader->uniform1i(sAuthoredOnly, 0);
+        shader->uniform1f(sGlowAttenuation, 0.f);
+        if (indexed)
+        {
+            shader->uniform1fv(sMinimumAlpha,
+                llmin((U32)info->mMaterialSlotList.size(), 8u), minimum_alpha);
+        }
+        else
+        {
+            shader->uniform1f(sMinimumAlpha, 0.f);
+        }
+        shader->uniform1i(sAlphaCutoffMode, GHOST_CUTOFF_NONE);
+        shader->uniform1i(sUseCoverageAlpha, 0);
+        LLRenderPass::uploadActorFxDisabled();
+        return true;
+    };
+
+    bool complete = true;
+    for (const GhostBatch& glow : proxy.mLegacyGlowBatches)
+    {
+        const GhostBatch* base = nullptr;
+        for (const GhostBatch& candidate : proxy.mBatches)
+        {
+            if (shared_same_pbr_geometry(candidate.mInfo, glow.mInfo))
+            {
+                if (base)
+                {
+                    base = nullptr;
+                    break;
+                }
+                base = &candidate;
+            }
+        }
+        if (!base)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_glow(
+            glow, true, ghost_pass_is_mask(base->mPass),
+            ghost_pass_is_mask(base->mPass)
+                ? ghost_batch_cutoff(base->mInfo, base->mPass) : 0.f,
+            ghost_pass_is_mask(base->mPass)
+                ? ghost_batch_alpha_cutoff_mode(base->mPass)
+                : GHOST_CUTOFF_NONE,
+            false, false);
+    }
+    for (const GhostBatch& glow : proxy.mStaticLegacyGlowBatches)
+    {
+        const GhostStaticFace* base = nullptr;
+        for (const GhostStaticFace& candidate : proxy.mStaticFaces)
+        {
+            if (shared_same_static_geometry(candidate, glow.mInfo))
+            {
+                if (base)
+                {
+                    base = nullptr;
+                    break;
+                }
+                base = &candidate;
+            }
+        }
+        if (!base)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_glow(
+            glow, false, base->mAlphaKind == 1, base->mCutoff,
+            base->mAlphaKind == 1
+                ? ghost_static_alpha_cutoff_mode(*base) : GHOST_CUTOFF_NONE,
+            base->mDoubleSided, false);
+    }
+    for (const GhostBatch& base : proxy.mLegacyBlendGlowBatches)
+    {
+        S32 matches = 0;
+        for (const GhostBatch& candidate : proxy.mBatches)
+        {
+            if (candidate.mPass == base.mPass
+                && shared_same_pbr_geometry(candidate.mInfo, base.mInfo))
+            {
+                ++matches;
+            }
+        }
+        if (matches != 1)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_glow(base, true, false, 0.f,
+                              GHOST_CUTOFF_NONE, false, true);
+    }
+    for (const GhostStaticFace& source :
+         proxy.mStaticLegacyBlendGlowFaces)
+    {
+        const S32 matches = (S32)std::count_if(
+            proxy.mStaticFaces.begin(), proxy.mStaticFaces.end(),
+            [&source](const GhostStaticFace& candidate)
+            {
+                return candidate.mFace == source.mFace
+                    && candidate.mObjectId == source.mObjectId
+                    && candidate.mAlphaKind == source.mAlphaKind;
+            });
+        if (matches != 1)
+        {
+            complete = false;
+            continue;
+        }
+        complete &= draw_static_blend_glow(source);
+    }
+
+    glPolygonOffset(0.f, 0.f);
+    LLRenderPass::applyModelMatrix((const LLMatrix4*)nullptr);
+    LLVertexBuffer::unbind();
+    gGL.setColorMask(true, true);
+    gGL.blendFunc(LLRender::BF_SOURCE_ALPHA,
+                  LLRender::BF_ONE_MINUS_SOURCE_ALPHA,
+                  LLRender::BF_ZERO,
+                  LLRender::BF_ONE_MINUS_SOURCE_ALPHA);
+    return complete;
+}
+
+bool LLActorMover::renderSharedActorStyleProxyItem(
+    SharedActorStyleProxy& proxy, bool depth_only)
+{
+    if (!proxy.mActive || !proxy.mAvatar || proxy.mAvatar->isDead())
+    {
+        return false;
+    }
+    if (depth_only
+        && (proxy.mPart != ESharedActorStylePart::ACTOR_SOLID
+            || (!proxy.mSuppressNativeBeauty && proxy.mPBRCommands.empty())))
+    {
+        return false;
+    }
+
+    struct SharedReplayScope
+    {
+        explicit SharedReplayScope(bool& flag) : mFlag(flag) { mFlag = true; }
+        ~SharedReplayScope() { mFlag = false; }
+        bool& mFlag;
+    } replay_scope(mRenderingSharedActorStyle);
+
+    // Cover opacity zero intentionally means an invisible actor: readiness and
+    // suppression remain true, but no proxy color or depth is emitted.
+    if (proxy.mAlpha <= 0.f)
+    {
+        return true;
+    }
+
+    LLColor4 tint;
+    if (proxy.mUseActorHue)
+    {
+        tint = actorPathColor(proxy.mWearerId);
+    }
+    else
+    {
+        tint.setHSL(fmodf(llmax(proxy.mHue, 0.f), 360.f) / 360.f,
+                    0.9f, 0.6f);
+        tint.mV[VW] = 1.f;
+    }
+
+    GhostDrawParams params;
+    params.mPixelSize = llmax(0.f, proxy.mPixelSize);
+    params.mShimmerSpeed = llmax(0.f, proxy.mShimmerSpeed);
+    params.mShimmerIntensity = llclamp(proxy.mShimmerAmount, 0.f, 1.f);
+    params.mGlitch = llclamp(proxy.mGlitch, 0.f, 1.f);
+    params.mDistort = llmax(0, proxy.mDistortion);
+    params.mDistortAmount = llclamp(proxy.mDistortionAmount, 0.f, 1.f);
+    params.mBrightness = llclamp(proxy.mBrightness, 0.05f, 1.5f);
+    params.mEffectFps = llclamp(proxy.mEffectFps, 0.f, 30.f);
+    params.mDissolveProgress = llclamp(proxy.mDissolveProgress, 0.f, 1.f);
+    params.mWorldLinear = true;
+    params.mCoverMode = proxy.mSuppressible;
+    params.mCoverageLayerStrength = proxy.mCoverageReplacement
+        ? llclamp(proxy.mAlpha, 0.f, 1.f) : -1.f;
+    params.mDepthOnly = depth_only;
+    params.mNativeDepthAvailable = !depth_only
+        && (proxy.mPart != ESharedActorStylePart::ACTOR_SOLID
+            || !proxy.mSuppressNativeBeauty || proxy.mDepthPrimed);
+    params.mTintCustom = !proxy.mUseActorHue;
+    params.mPhase =
+        (F32)(proxy.mWearerId.mData[0] | (proxy.mWearerId.mData[1] << 8))
+        * (F_TWO_PI / 65536.f);
+
+    LLGLSLShader* saved_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 saved_texture_unit = gGL.getCurrentTexUnitIndex();
+    const bool system_replay = !proxy.mAvatar->isControlAvatar();
+    bool complete = true;
+    switch (proxy.mPart)
+    {
+    case ESharedActorStylePart::ACTOR_SOLID:
+        if (system_replay && (!depth_only || proxy.mSuppressNativeBeauty))
+        {
+            complete &= renderSystemActorGhost(
+                proxy.mAvatar, proxy.mStyleId, false, depth_only,
+                !depth_only && proxy.mDepthPrimed);
+        }
+        if ((!depth_only || proxy.mSuppressNativeBeauty)
+            && (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty()))
+        {
+            bool geometry_complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
+                              tint, proxy.mAlpha, proxy.mStyle, params,
+                              &proxy.mStaticFaces, &geometry_complete);
+            complete &= geometry_complete;
+        }
+        if (!proxy.mPBRCommands.empty())
+        {
+            complete &= renderSharedActorPBRCommands(proxy, depth_only);
+        }
+        break;
+
+    case ESharedActorStylePart::RIGGED_BLEND:
+    case ESharedActorStylePart::STATIC_BLEND:
+        if (!depth_only
+            && (!proxy.mBatches.empty() || !proxy.mStaticFaces.empty()))
+        {
+            // Each item contains exactly one designated component. The shared
+            // draw helper's sweep filters therefore cannot replay the actor.
+            bool geometry_complete = true;
+            drawGeometryGhost(proxy.mAvatar, proxy.mBatches, proxy.mFootAgent,
+                              tint, proxy.mAlpha, proxy.mStyle, params,
+                              &proxy.mStaticFaces, &geometry_complete);
+            complete &= geometry_complete;
+        }
+        if (!depth_only && !proxy.mPBRCommands.empty())
+        {
+            complete &= renderSharedActorPBRCommands(proxy, false);
+        }
+        break;
+
+    case ESharedActorStylePart::SYSTEM_BLEND:
+        if (!depth_only && system_replay)
+        {
+            complete &= renderSystemActorGhost(
+                proxy.mAvatar, proxy.mStyleId, true, false, true);
+        }
+        break;
+    }
+
+    if (!depth_only
+        && (!proxy.mLegacyGlowBatches.empty()
+            || !proxy.mLegacyBlendGlowBatches.empty()
+            || !proxy.mStaticLegacyGlowBatches.empty()
+            || !proxy.mStaticLegacyBlendGlowFaces.empty()))
+    {
+        complete &= renderSharedActorLegacyGlowCommands(proxy);
+    }
+
+    gGL.flush();
+    LLVertexBuffer::unbind();
+    if (saved_shader && saved_shader->mProgramObject)
+    {
+        saved_shader->bind();
+    }
+    else
+    {
+        LLGLSLShader::unbind();
+    }
+    gGL.getTexUnit(saved_texture_unit)->activate();
+    if (!complete)
+    {
+        LL_WARNS("ActorFX")
+            << "Shared Actor FX replay invariant violated after actor-wide "
+               "preflight; wearer=" << proxy.mWearerId
+            << " style_id=" << proxy.mStyleId
+            << " part=" << static_cast<S32>(proxy.mPart)
+            << " depth_only=" << depth_only
+            << " frame=" << LLFrameTimer::getFrameCount()
+            << ". Native suppression remains unchanged because the native "
+               "passes may already have drained."
+            << LL_ENDL;
+    }
+    return complete;
 }

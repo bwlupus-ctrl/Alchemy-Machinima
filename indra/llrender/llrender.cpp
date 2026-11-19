@@ -649,6 +649,16 @@ void LLLightState::setFalloff(F32 v)
     }
 }
 
+// [RigRim]
+void LLLightState::setRigRim(const LLVector4& v)
+{
+    if (mRigRim != v)
+    {
+        ++gGL.mLightHash;
+        mRigRim = v;
+    }
+}
+
 void LLLightState::setAmbient(const LLColor4& ambient)
 {
     if (mAmbient != ambient)
@@ -874,6 +884,22 @@ void LLRender::refreshState(void)
     mDirty = false;
 }
 
+// [RigRim] Round-2 P2 fix.
+void LLRender::setRigRimActive(bool active)
+{
+    if (mRigRimActive != active)
+    {
+        mRigRimActive = active;
+        // Bump the light-state hash so every shader's cached mLightHash
+        // mismatches on its next sync, forcing a full re-upload. Without
+        // this, a re-enable that lands between two otherwise-unchanged
+        // syncs would never refresh a shader whose light state (position,
+        // colour, etc.) hasn't itself changed -- it would keep showing the
+        // stale (zeroed) rim state indefinitely.
+        ++mLightHash;
+    }
+}
+
 void LLRender::syncLightState()
 {
     LLGLSLShader *shader = LLGLSLShader::sCurBoundShaderPtr;
@@ -894,6 +920,7 @@ void LLRender::syncLightState()
         LLVector3 diffuse_b[LL_NUM_LIGHT_UNITS];
         bool      sun_primary[LL_NUM_LIGHT_UNITS];
         LLVector2 size[LL_NUM_LIGHT_UNITS];
+        LLVector4 rim[LL_NUM_LIGHT_UNITS]; // [RigRim]
 
         for (U32 i = 0; i < LL_NUM_LIGHT_UNITS; i++)
         {
@@ -906,12 +933,34 @@ void LLRender::syncLightState()
             diffuse_b[i].set(light->mDiffuseB.mV);
             sun_primary[i] = light->mSunIsPrimary;
             size[i].set(light->mSize, light->mFalloff);
+            // [RigRim] Round-2 P2 fix: skip even reading mRigRim while off;
+            // the upload below is skipped too, so a stale zero here is fine.
+            if (mRigRimActive)
+            {
+                rim[i] = light->mRigRim; // [RigRim]
+            }
         }
 
         shader->uniform4fv(LLShaderMgr::LIGHT_POSITION, LL_NUM_LIGHT_UNITS, position[0].mV);
         shader->uniform3fv(LLShaderMgr::LIGHT_DIRECTION, LL_NUM_LIGHT_UNITS, direction[0].mV);
         shader->uniform4fv(LLShaderMgr::LIGHT_ATTENUATION, LL_NUM_LIGHT_UNITS, attenuation[0].mV);
         shader->uniform2fv(LLShaderMgr::LIGHT_DEFERRED_ATTENUATION, LL_NUM_LIGHT_UNITS, size[0].mV);
+        // [RigRim] P2-5: this uploads the forward-lit vec4[8] interpretation of
+        // `rig_rim_lights` (parallel to light_position[8], sourced from the GL
+        // light-unit state above). The SAME uniform name is also used by
+        // gDeferredMultiLightProgram for a differently-shaped vec4[LIGHT_COUNT]
+        // array (see the manual upload beside MULTI_LIGHT_COL in
+        // LLPipeline::renderDeferredLighting()). The two never collide because
+        // this function only runs for a bound shader with a lighting/atmospherics
+        // feature flag (see syncMatrices() below), and the multi-light program
+        // sets none of them.
+        // [RigRim] Round-2 P2 fix: skip the upload entirely when off; mode 0
+        // was already uploaded via ALCineRigRim::bindGlobals() and the shader
+        // early-outs before ever reading rig_rim_lights.
+        if (mRigRimActive)
+        {
+            shader->uniform4fv(LLShaderMgr::RIG_RIM_LIGHTS, LL_NUM_LIGHT_UNITS, rim[0].mV); // [RigRim]
+        }
         shader->uniform3fv(LLShaderMgr::LIGHT_DIFFUSE, LL_NUM_LIGHT_UNITS, diffuse[0].mV);
         shader->uniform3fv(LLShaderMgr::LIGHT_AMBIENT, 1, mAmbientLightColor.mV);
         shader->uniform1i(LLShaderMgr::SUN_UP_FACTOR, sun_primary[0] ? 1 : 0);

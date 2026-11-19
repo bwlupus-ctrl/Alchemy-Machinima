@@ -52,20 +52,59 @@ uniform mat3 normal_matrix;
 in vec3 vary_position;
 
 void mirrorClip(vec3 pos);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+float actorFxAuthoredMaterialResponse();
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrAlbedoSrgb(vec3 c);
+void alrLegacySpec(inout vec3 spec_srgb, inout float gloss, inout float env);
+vec3 alrDebugEmission(vec3 e);
+bool alrDebug();
+#endif
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 
 #if (DIFFUSE_ALPHA_MODE == DIFFUSE_ALPHA_MODE_BLEND)
 
 out vec4 frag_color;
 
+#ifdef HAS_VISIBLE_DIFFUSE
+// [ReShadeBridge] Visible-diffuse sidecar MRT outputs (mRT->screen attachments
+// 1 and 2). The alpha pool renders legacy-material BLEND faces with both
+// attachments write-enabled (lldrawpoolalpha.cpp renderAlpha opens the indexed
+// guard for every draw in its loop, and this program is bound there via
+// gDeferredMaterialProgram[mask]). A program bound in that window WITHOUT these
+// outputs writes UNDEFINED values into both attachments -- the exact H1 hazard
+// the emissive sub-pass comments call out -- and the ReShade provider then
+// trusts the garbage as albedo wherever the undefined exactness K lands above
+// its threshold (saturated green/magenta patches on alpha surfaces in RTGI).
+// HAS_VISIBLE_DIFFUSE is injected by add_common_permutations()
+// (llviewershadermgr.cpp), so these exist exactly when the sidecar exists.
+// Declared ONLY in the BLEND variant: the deferred variant's frag_data[4]
+// already occupies locations 0-3.
+layout(location = 1) out vec4 visible_diffuse;
+layout(location = 2) out vec2 surface_coverage;
+#endif
+
 #ifdef HAS_SUN_SHADOW
 float sampleDirectionalShadow(vec3 pos, vec3 norm, vec2 pos_screen);
 #endif
 
+vec3 applyShadowLift(vec3 irradiance, vec3 norm, vec3 light_dir, float scol); // [EnvIntensity v2] deferredUtil.glsl
 void sampleReflectionProbesLegacy(inout vec3 ambenv, inout vec3 glossenv, inout vec3 legacyenv,
         vec2 tc, vec3 pos, vec3 norm, float glossiness, float envIntensity, bool transparent, vec3 amblit_linear);
 void applyGlossEnv(inout vec3 color, vec3 glossenv, vec4 spec, vec3 pos, vec3 norm);
 void applyLegacyEnv(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity);
+void applyLegacyEnvKeep(inout vec3 color, vec3 legacyenv, vec4 spec, vec3 pos, vec3 norm, float envIntensity, float keep); // [AvatarLightResponse]
+#ifdef HAS_ACTOR_FX
+float alrSpecKeep();
+#endif
 
 uniform samplerCube environmentMap;
 uniform sampler2D     lightFunc;
@@ -88,11 +127,19 @@ uniform vec4 light_position[8];
 uniform vec3 light_direction[8];
 uniform vec4 light_attenuation[8];
 uniform vec3 light_diffuse[8];
+uniform vec4 rig_rim_lights[8]; // [RigRim] per-unit rim params (x gain, y k, z wrap, w back bias), see LLRender::syncLightState()
 
 float getAmbientClamp();
 void waterClip(vec3 pos);
 
-vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance)
+// [RigRim] shared rim helper (deferredUtil.glsl)
+int rigRimMode();
+vec3 rigRimTerm(vec3 n, vec3 v, vec3 l, vec3 c_l, vec3 diffuseColor, float roughness, vec4 rim);
+
+// [RigRim] `rim` = this light unit's rig rim params (rig_rim_lights[i]); zero
+// for non-rig lights.  NOTE: `v` is the eye-space POSITION and `npos` the
+// normalized view vector here (legacy naming).
+vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spec, vec3 v, vec3 n, vec4 lp, vec3 ln, float la, float fa, float is_pointlight, inout float glare, float ambiance, vec4 rim)
 {
     // SL-14895 inverted attenuation work-around
     // This routine is tweaked to match deferred lighting, but previously used an inverted la value. To reconstruct
@@ -177,6 +224,19 @@ vec3 calcPointLightOrSpotLight(vec3 light_col, vec3 npos, vec3 diffuse, vec4 spe
                 glare += max(cur_glare, 0.0);
             }
         }
+
+        // [RigRim] additive rim (cone + attenuation weighted, no shadow);
+        // roughness from legacy glossiness (spec.a).  Independent of `da` so
+        // wrap can reach past the terminator.  Mode 0 never enters.
+        if (rigRimMode() != 0)
+        {
+            vec3 rim_col = rigRimTerm(n, npos, lv, (spot * spot) * dist_atten * light_col, diffuse, 1.0 - spec.a, rim);
+            if (rigRimMode() == 2)
+            {
+                col = vec3(0.0); // debug: rim only
+            }
+            col += rim_col;
+        }
     }
     float final_scale = 1.0;
     if (classic_mode > 0)
@@ -220,10 +280,10 @@ in vec4 vertex_color;
 in vec2 vary_texcoord0;
 
 // get the transformed normal and apply glossiness component from normal map
-vec3 getNormal(inout float glossiness)
+vec3 getNormal(inout float glossiness, vec2 normal_uv)
 {
 #ifdef HAS_NORMAL_MAP
-    vec4 vNt = texture(bumpMap, vary_texcoord1.xy);
+    vec4 vNt = texture(bumpMap, normal_uv);
     glossiness *= vNt.a;
     vNt.xyz = vNt.xyz * 2 - 1;
     float sign = vary_sign;
@@ -239,10 +299,17 @@ vec3 getNormal(inout float glossiness)
 #endif
 }
 
-vec4 getSpecular()
+vec4 getSpecular(vec2 spec_uv, bool fx_rgb_split)
 {
 #ifdef HAS_SPECULAR_MAP
-    vec4 spec = texture(specularMap, vary_texcoord2.xy);
+    vec4 spec = texture(specularMap, spec_uv);
+#ifdef HAS_ACTOR_FX
+    if (fx_rgb_split)
+    {
+        spec.r = texture(specularMap, actorFxRgbSplitUv(spec_uv, -1.0)).r;
+        spec.b = texture(specularMap, actorFxRgbSplitUv(spec_uv,  1.0)).b;
+    }
+#endif
     spec.rgb *= specular_color.rgb;
 #else
     vec4 spec = vec4(specular_color.rgb, 1.0);
@@ -293,6 +360,9 @@ float getShadow(vec3 pos, vec3 norm)
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
     waterClip();
 
@@ -301,11 +371,67 @@ void main()
     diffcol.rgb *= vertex_color.rgb;
     alphaMask(diffcol.a);
 
+    vec2 fx_diffuse_uv = vary_texcoord0.xy;
+    vec2 fx_normal_uv = vec2(0.0);
+    vec2 fx_spec_uv = vec2(0.0);
+#ifdef HAS_NORMAL_MAP
+    fx_normal_uv = vary_texcoord1.xy;
+#endif
+#ifdef HAS_SPECULAR_MAP
+    fx_spec_uv = vary_texcoord2.xy;
+#endif
+    bool fx_rgb_split = false;
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    bool fx_uv_transform = actor_fx_active && actorFxUvTransformEnabled();
+    fx_rgb_split = actor_fx_active && actorFxRgbSplitEnabled();
+    if (fx_uv_transform)
+    {
+        fx_diffuse_uv = actorFxUv(fx_diffuse_uv, vary_position);
+#ifdef HAS_NORMAL_MAP
+        fx_normal_uv = actorFxUv(fx_normal_uv, vary_position);
+#endif
+#ifdef HAS_SPECULAR_MAP
+        fx_spec_uv = actorFxUv(fx_spec_uv, vary_position);
+#endif
+        diffcol.rgb = texture(diffuseMap, fx_diffuse_uv).rgb * vertex_color.rgb;
+    }
+    if (fx_rgb_split)
+    {
+        diffcol.r = texture(diffuseMap,
+                            actorFxRgbSplitUv(fx_diffuse_uv, -1.0)).r * vertex_color.r;
+        diffcol.b = texture(diffuseMap,
+                            actorFxRgbSplitUv(fx_diffuse_uv,  1.0)).b * vertex_color.b;
+    }
+#endif
+
     // spec == specular map combined with specular color
-    vec4 spec = getSpecular();
+    vec4 spec = getSpecular(fx_spec_uv, fx_rgb_split);
     float env = env_intensity * spec.a;
     float glossiness = specular_color.a;
-    vec3 norm = getNormal(glossiness);
+    vec3 norm = getNormal(glossiness, fx_normal_uv);
+#ifdef HAS_ACTOR_FX
+    float actor_fx_material_response = actorFxAuthoredMaterialResponse();
+    spec.rgb *= actor_fx_material_response;
+    glossiness *= actor_fx_material_response;
+    env *= actor_fx_material_response;
+
+    // Legacy material textures/G-buffer values are sRGB. Actor FX has one
+    // linear-light contract across legacy, PBR, and fullbright surfaces.
+    vec3 actor_fx_styled_linear = vec3(0.0);
+    if (actor_fx_active)
+    {
+        actor_fx_styled_linear = actorFxApply(srgb_to_linear(diffcol.rgb),
+                                               norm, vary_position,
+                                               vary_texcoord0.xy);
+        diffcol.rgb = linear_to_srgb(actor_fx_styled_linear);
+    }
+#endif
+
+#ifdef HAS_ACTOR_FX
+    diffcol.rgb = alrAlbedoSrgb(diffcol.rgb); // [AvatarLightResponse] presented legacy surface
+    alrLegacySpec(spec.rgb, glossiness, env);
+#endif
 
     float emissive = getEmissive(diffcol);
 
@@ -340,6 +466,7 @@ void main()
     vec3 glossenv = vec3(0.0);
     vec3 legacyenv = vec3(0.0);
     sampleReflectionProbesLegacy(ambenv, glossenv, legacyenv, pos.xy*0.5+0.5, pos.xyz, norm.xyz, glossiness, env, true, amblit_linear);
+    ambenv = applyShadowLift(ambenv, norm.xyz, light_dir, shadow); // [EnvIntensity v2] no SSAO here; last irradiance-side op
 
     color = ambenv;
 
@@ -393,18 +520,23 @@ void main()
 
     if (env > 0.0)
     {  // add environmentmap
-        applyLegacyEnv(color, legacyenv, spec, pos.xyz, norm.xyz, env);
+        float alr_keep = 1.0; // [AvatarLightResponse] Tame: reflection addend only, mixing weight untouched
+#ifdef HAS_ACTOR_FX
+        alr_keep = alrSpecKeep();
+#endif
+        applyLegacyEnvKeep(color, legacyenv, spec, pos.xyz, norm.xyz, env, alr_keep);
 
         float cur_glare = max(max(legacyenv.r, legacyenv.g), legacyenv.b);
         cur_glare = clamp(cur_glare, 0, 1);
-        cur_glare *= env;
+        cur_glare *= env * alr_keep;
         glare += cur_glare;
     }
 
     vec3 npos = normalize(-pos.xyz);
     vec3 light = vec3(0, 0, 0);
 
-#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w );
+// [RigRim] trailing rig_rim_lights[i] argument
+#define LIGHT_LOOP(i) light.rgb += calcPointLightOrSpotLight(light_diffuse[i].rgb, npos, diffuse.rgb, spec, pos.xyz, norm.xyz, light_position[i], light_direction[i].xyz, light_attenuation[i].x, light_attenuation[i].y, light_attenuation[i].z, glare, light_attenuation[i].w, rig_rim_lights[i] );
 
     LIGHT_LOOP(1)
         LIGHT_LOOP(2)
@@ -416,6 +548,16 @@ void main()
 
     color += light;
 
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        // Legacy material BLEND is a forward path and has no emissive GBuffer
+        // attachment. Publish the same synthetic Actor FX emission used by the
+        // opaque/mask permutations directly into beauty before atmospheric fog.
+        color += actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+    }
+#endif
+
     color.rgb = applySkyAndWaterFog(pos.xyz, additive, atten, vec4(color, 1.0)).rgb;
 
     glare *= 1.0-emissive;
@@ -424,12 +566,35 @@ void main()
     float final_scale = 1;
     if (classic_mode > 0)
         final_scale = 1.1;
+#ifdef HAS_ACTOR_FX
+    if (alrDebug()) color = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
     frag_color = max(vec4(color * final_scale, al), vec4(0));
+
+#ifdef HAS_VISIBLE_DIFFUSE
+    // Same contract as alphaF.glsl: RGB = LINEAR diffuse reflectance of THIS
+    // layer (diffcol.rgb went through srgb_to_linear at the top of the blend
+    // path), A = the same alpha the beauty blend composites with, so the
+    // sidecar's over-blend (SRC_ALPHA / ONE_MINUS_SRC_ALPHA) and the exactness
+    // union (ONE / ONE_MINUS_SRC_ALPHA) track the on-screen composite exactly.
+    // Legacy fullbright (emissive == 1) has no diffuse-lighting response: its
+    // colour is unlit OUTPUT, not reflectance, so publish ZERO diffuse -- the
+    // same declared-BRDF statement fullbrightF.glsl makes, not a missing
+    // measurement. K still claims this layer's coverage.
+    visible_diffuse = vec4(max(diffcol.rgb, vec3(0.0)) * (1.0 - emissive), al);
+    // R = 0 is written but masked off by the pool (the seed pass owns deferred
+    // coverage); G claims forward coverage in proportion to this layer's
+    // alpha, accumulating as a union under ONE / ONE_MINUS_SRC_COLOR.
+    surface_coverage = vec2(0.0, al);
+#endif
 
 #else // mode is not DIFFUSE_ALPHA_MODE_BLEND, encode to gbuffer
     // deferred path               // See: C++: addDeferredAttachment(), shader: softenLightF.glsl
 
     float flag = GBUFFER_FLAG_HAS_ATMOS;
+#ifdef HAS_SKIN
+    flag = gbufferAvatarFlag(flag);   // [TronA0] rigged mesh: avatar geometry -> tagged flag
+#endif
 
     frag_data[0] = max(vec4(diffcol.rgb, emissive), vec4(0));        // gbuffer is sRGB for legacy materials
     frag_data[1] = max(vec4(spec.rgb, glossiness), vec4(0));           // XYZ = Specular color. W = Specular exponent.
@@ -437,9 +602,14 @@ void main()
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0, 0, 0, 0);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        frag_data[3].rgb = actorFxEmissive(vec3(0.0), actor_fx_styled_linear);
+    }
+    frag_data[3].rgb = alrDebugEmission(frag_data[3].rgb); // [AvatarLightResponse] debug REPLACES emission
+#endif
 #endif
 
 #endif
 }
-
-

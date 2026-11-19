@@ -93,11 +93,14 @@ public:
         MODE_STATIC_LOW     = 48,
         MODE_STATIC_HIGH    = 49,
         MODE_STATIC_FULL    = 50,
+        MODE_PEDRO_BOB      = 51,
     };
     static_assert(MODE_BREATHING_HOLD == 42,
                   "Persisted legacy CineCam mode values must not move");
     static_assert(MODE_STATIC_WIDE == 43 && MODE_STATIC_FULL == 50,
                   "Switcher static modes must remain appended");
+    static_assert(MODE_PEDRO_BOB == 51,
+                  "Pedro Cam mode must remain append-only");
 
     static LLCinematicCamera& instance();
 
@@ -148,6 +151,11 @@ public:
     // Queue one deterministic skeleton fit at the next cinematic-camera
     // sample. Used by the Frame tab's explicit Re-solve button.
     void requestAutoReframe();
+
+    // Start (or restart) a legacy CineCam pattern at the next presentation
+    // sample. This is the one-shot UI seam; the existing pattern generator
+    // remains the sole owner of shot geometry.
+    void triggerMode(EMode mode, bool force_look_at_head = false);
 
     // Compute and write this frame's camera. Call from the idle camera
     // dispatch INSTEAD of gAgentCamera.updateCamera() when isActive().
@@ -216,6 +224,8 @@ private:
     LLVector3 patternDetailSweep(LLVOAvatar* av, const LLVector3& center, F32 phase, LLVector3& focus_io, F32& fov_mul);
     LLVector3 patternCableCam(LLVOAvatar* av, const LLVector3& center, F32 phase);
     LLVector3 patternBreathingHold(LLVOAvatar* av, const LLVector3& center, F32 phase);
+    LLVector3 patternPedroBob(LLVOAvatar* av, const LLVector3& focus, F32 phase,
+                              F32& roll_out, F32& fov_mul);
     LLVector3 patternStaticShot(LLVOAvatar* av, const LLVector3& center,
                                 S32 mode, LLVector3& focus_io,
                                 F32& fov_mul);
@@ -245,10 +255,15 @@ private:
     // for feeding the camera operator with velocities
     LLVector3   mPrevPos = LLVector3::zero;
     LLQuaternion mPrevRot;
-    // Director Switcher one-shot transition envelope. Legacy CineCam paths
-    // never set a switcher cut serial and therefore never enter this branch.
+    // Presentation-clock shot anchor plus the Director Switcher's optional
+    // one-shot transition envelope. Legacy/manual triggers use the same anchor
+    // but never set a switcher cut serial or enter the transition branch.
     U64          mLastSwitcherCutSerial = 0;
     F64          mSwitcherPhaseAnchor = 0.0;
+    U64          mTriggerSerial = 0;
+    U64          mConsumedTriggerSerial = 0;
+    bool         mTriggeredLookAtHead = false;
+    EMode        mTriggeredLookAtHeadMode = MODE_OFF;
     bool         mEaseActive = false;
     F32          mEaseDuration = 0.f;
     S32          mEaseCurveId = 0;

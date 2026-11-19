@@ -1,0 +1,61 @@
+Adversarially review the uncommitted diff for ONE feature: raising the projector (spot) shadow ceiling
+from 6 to 10 (hardware-gated) + a rig auto-slots toggle. Normative spec: doc/SPOT_SHADOW_CEILING_DESIGN
+.md (which scoped 8; the implementation targets 10) and the brief SPOT_SHADOW_CEILING_CODEX_BRIEF.txt.
+This is layered on already-reviewed work (multi-instance, the 5 cine features, the shadow-priority fix)
+— do NOT re-review those; only flag NEW regressions the ceiling change introduces. Renderer/shader
+change — be maximally skeptical. Cite file:line. Prioritize, most severe first:
+
+1. BYTE-IDENTICAL AT 6-AND-BELOW (highest). With BDMergeMaxSpotShadows at its default (2) and for slots
+   0-5, the rendered result and shader behavior MUST be unchanged. Verify: the legacy spot-slot 0-5
+   sampling expressions in shadowUtil.glsl (sampleSpotShadow + sampleSpotShadowConservative) are
+   untouched; sun slots 0-3 and the 4-split cascade unchanged; shadow_matrix[0..9] semantics unchanged;
+   the new shadowMap10-13 / matrix[10..13] / softness[6..9] are only reached above 6. A regression here
+   breaks ALL shadows.
+
+2. CAMERA-ENUM SHIFT (crash-critical). llviewercamera.h now has CAMERA_SPOT_SHADOW0..9 before
+   CAMERA_WATER0 — every subsequent enumerator shifted +4. Find EVERY consumer of eCameraID / the
+   CAMERA_* values and confirm none hardcodes the old numeric value of CAMERA_WATER0/WATER1/
+   WEATHER_RAIN_OCCLUSION/PRISM_LENS (a switch on a literal, a serialized int, an array index by literal,
+   a cross-module assumption). NUM_CAMERAS-sized arrays auto-grow — confirm they are sized by
+   NUM_CAMERAS, not a literal. Any literal comparison to the OLD water/prism ordinal is a must-fix.
+
+3. THE TWO FLAGGED LITERAL-6 LOOPS (Codex left them unchanged). pipeline.cpp:17897 (disables shadow
+   uniforms 4-5 during cleanup) and llgltfmaterialpreviewmgr.cpp:394 (neutralizes shadow uniforms 0-5
+   for previews). Determine: with up to 13 shadow uniforms now bound, do these leave stale sampler/
+   uniform bindings for slots 6-13 that could sample a garbage/previous map, or is 4-5/0-5 correct for
+   their specific purpose? Verdict each: must-fix (extend to the new range) or intentionally-scoped.
+
+4. SHADER DISPATCH COMPLETENESS. Both sampleSpotShadow AND sampleSpotShadowConservative must map spot
+   slots 4..13 to shadowMap4..13 with NO gap or wrong-map case. Verify every slot index has a case and
+   returns the correct sampler. A missing/duplicated case = silent wrong shadow.
+
+5. UNIFORM BINDING CONTIGUITY. DEFERRED_SHADOW10..13 must be contiguous after DEFERRED_SHADOW9 (the bind
+   loop uses DEFERRED_SHADOW0 + i) and shadowMap10..13 registered in the uniform-name table; the fixed
+   llassert (llshadermgr.cpp:1439) must reference the true last index (DEFERRED_SHADOW13+1). Confirm the
+   bind loop uploads up to the active count and the shadow_matrix[14] upload count matches.
+
+6. HARDWARE GATE. bdmergeMaxSpotShadows tiers (>=32 -> 10, 28-31 -> 8, <28 -> 6, min 2) keyed on
+   gGLManager.mNumTextureImageUnits. Verify the key is the right GL query (per-stage fragment sampler
+   units, not vertex), that the tier math is correct, and that Prism's duplicate clamp (llprismlens.cpp
+   :5794) uses the SAME gate. NOTE the known limitation (the shader STATICALLY declares 14 shadow
+   samplers regardless of the gate, so the gate limits runtime shadow renders/VRAM but does NOT make the
+   shader compile on a sub-budget GPU) — confirm this is the case and flag whether it regresses shader
+   compilation on any GPU the fork currently supports (the fork already needs ~26 channels at 6 spots).
+
+7. AUTO-SLOTS LOGIC. CineLightRigAutoShadowSlots (default on): raise-only BDMergeMaxSpotShadows =
+   max(current, min(sum_requested, hw_max)); baseline captured on first raise; restore on fully-dark /
+   auto-off / shutdown ONLY if the value still equals the last auto-written value (external change
+   relinquishes ownership). Sum spans up to 5 instances x ShadowMode-allowed projectors. Verify: no
+   lowering of a user's higher value; correct baseline capture/restore; no thrash (re-raising every
+   tick); ownership relinquish is correct; multi-instance sum matches ShadowMode semantics (0 none, 1
+   key, 2 enabled roles). Check it writes the persisted global only when the value actually changes.
+
+8. RT ALLOCATION / RESIZE. handleShadowsResized and the mSpotShadow[MAX_SPOT_SHADOWS] allocation handle
+   10; going live from 2->10 reallocates without crash; VRAM cost acknowledged.
+
+9. TESTS (29-32). Non-tautological, independent expected values, fail on regression (tiers/clamp, slot->
+   sampler, camera-ID map, 5-instance sum, raise/restore/relinquish). Flag any tautology.
+
+Report each finding: file:line, severity (must-fix/should-fix/nit), concrete failure, suggested fix.
+Explicit verdicts on: (1) 6-and-below byte-identity, (2) the camera-enum shift safety, (3) each of the
+two literal-6 loops. Do not modify code.

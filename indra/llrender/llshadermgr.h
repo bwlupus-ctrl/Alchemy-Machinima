@@ -39,6 +39,9 @@ public:
     LLShaderMgr();
     virtual ~LLShaderMgr();
 
+    // [AvatarLightResponse] programs that attached alchemy/avatarLightResponseF.glsl since the last reset.
+    static U32 sAvatarLightResponseAttachCount;
+
     // Note: although you can use statically hashed strings to just bind a random uniform, it's generally preferably that you use this.
     // Always document what the actual shader uniform is next to the shader uniform in this struct.
     // clang-format off
@@ -125,6 +128,8 @@ public:
         SKY_HDR_SCALE,                      //  "sky_hdr_scale"
         SKY_SUNLIGHT_SCALE,                 //  "sky_sunlight_scale"
         SKY_AMBIENT_SCALE,                  //  "sky_ambient_scale"
+        SKY_GI_SCALE,                       //  "sky_gi_scale"          [EnvIntensity] Sky/GI EV factor (2^AlchemyEnvSkyGIEV): probe irradiance + amblit; 1.0 = stock, 1.0 in classic mode and during every probe capture
+        SKY_SUN_EV_SCALE,                   //  "sky_sun_ev_scale"      [EnvIntensity] Sun/Moon EV factor (2^AlchemyEnvSunEV) applied in linear light; 1.0 = stock, 1.0 in classic mode
         CLASSIC_MODE,                       //  "classic_mode"
         BLUE_HORIZON,                       //  "blue_horizon"
         BLUE_DENSITY,                       //  "blue_density"
@@ -233,6 +238,10 @@ public:
         DEFERRED_SHADOW7,                   //  "shadowMap7"
         DEFERRED_SHADOW8,                   //  "shadowMap8"
         DEFERRED_SHADOW9,                   //  "shadowMap9"
+        DEFERRED_SHADOW10,                  //  "shadowMap10"
+        DEFERRED_SHADOW11,                  //  "shadowMap11"
+        DEFERRED_SHADOW12,                  //  "shadowMap12"
+        DEFERRED_SHADOW13,                  //  "shadowMap13"
         DEFERRED_POSITION,                  //  "positionMap"
         DEFERRED_DIFFUSE,                   //  "diffuseRect"
         DEFERRED_SPECULAR,                  //  "specularRect"
@@ -373,6 +382,8 @@ public:
         TONEMAP_PARAMS,
         TONEMAP_AMD,                        //  "tonemap_amd" (AMD FidelityFX LPM control block)
         TONEMAP_AMD_SHOULDER,               //  "tonemap_amd_shoulder"
+        TONEMAP_KHRONOS_PARAMS,             //  "tonemap_khronos_params" (Khronos Neutral: .x=desaturation, .y=startCompression)
+        TONEMAP_GRADE,                      //  "tonemap_grade" (shared post-tonemap saturation/contrast, all operators)
 
         // Alchemy Effects Stack
         FRAME_ID,                           //  "uFrameId"
@@ -412,6 +423,88 @@ public:
         LENS_FLARE_STARBURST_FALLOFF,       //  "uLensFlareStarburstFalloff"
         LENS_FLARE_OCCLUSION_TAPS,          //  "uLensFlareOcclusionTaps"
         LENS_FLARE_LIGHT_COLOR,             //  "uLensFlareLightColor"
+
+        // Cine rig flare sources (Group 1 — rig source arrays, uploaded per
+        // frame like MULTI_LIGHT). AL_CINE_FLARE_MAX cap defined alongside
+        // LL_DEFERRED_MULTI_LIGHT_COUNT in llviewershadermgr.h.
+        CINE_FLARE_SHAFT,                   //  "uCineFlareShaft" projector-only volumetric shaft texture
+        CINE_FLARE_COUNT,                   //  "uCineFlareCount"
+        CINE_FLARE_A,                       //  "uCineFlareA"       vec4[] (uv.x, uv.y, visibility, deviceDepth)
+        CINE_FLARE_COLOR,                   //  "uCineFlareColor"   vec4[] (linRGB, +liveScale / -releaseScale)
+        CINE_FLARE_THRESHOLD,               //  "uCineFlareThreshold" minimum isolated-shaft HDR luma for a projector to flare
+        CINE_FLARE_PROBE_RADIUS,            //  "uCineFlareProbeRadius" screen-height fraction searched around the emission point
+
+        // Lens flare polished-stack additions (Group 2 — element intensities,
+        // default 0 = feature-off byte-parity with the legacy sun-only flare).
+        LENS_FLARE_GHOST_CHROMA,            //  "uLensFlareGhostChroma"
+        LENS_FLARE_HALO_CHROMA,             //  "uLensFlareHaloChroma"
+        LENS_FLARE_IRIS,                    //  "uLensFlareIris"
+        LENS_FLARE_RING,                    //  "uLensFlareRing"
+        LENS_FLARE_CIRCLE,                  //  "uLensFlareCircle"
+        LENS_FLARE_ARC,                     //  "uLensFlareArc"
+        LENS_FLARE_WARP,                    //  "uLensFlareWarp"
+        LENS_FLARE_STREAK_TIP_AMOUNT,       //  "uLensFlareStreakTipAmount"
+        LENS_FLARE_SRC_COLOR_AMOUNT,        //  "uLensFlareSrcColorAmount"
+
+        // Lens flare polished-stack shape params (Group 3 — read only when the
+        // matching Group 2 gate is > 0).
+        LENS_FLARE_IRIS_COUNT,              //  "uLensFlareIrisCount"
+        LENS_FLARE_IRIS_SIDES,              //  "uLensFlareIrisSides"
+        LENS_FLARE_IRIS_SIZE,               //  "uLensFlareIrisSize"
+        LENS_FLARE_RING_RADIUS,             //  "uLensFlareRingRadius"
+        LENS_FLARE_RING_WIDTH,              //  "uLensFlareRingWidth"
+        LENS_FLARE_RING_DISPERSION,         //  "uLensFlareRingDispersion"
+        LENS_FLARE_RING_COUNT,              //  "uLensFlareRingCount"
+        LENS_FLARE_CIRCLE_SCALE,            //  "uLensFlareCircleScale"
+        LENS_FLARE_CIRCLE_SPACING,          //  "uLensFlareCircleSpacing"
+        LENS_FLARE_CIRCLE_COUNT,            //  "uLensFlareCircleCount"
+        LENS_FLARE_STREAK_TIP_TINT,         //  "uLensFlareStreakTipTint"
+
+        // Lens flare master (Group 4 — one-knob scale over sun + rig, default
+        // 1.0 = branch not taken, byte-parity with the legacy output).
+        LENS_FLARE_MASTER,                  //  "uLensFlareMaster"
+
+        // Graduated ND (pre-tonemap exposure region). Packed:
+        //   gradnd_params  = (density_stops, angle_rad, position, softness)
+        //   gradnd_params2 = (sky_confine, sun_weight, sun_radius, flip)
+        //   gradnd_sun     = (sun_uv.x, sun_uv.y, has_sun, aspect)
+        GRADND_PARAMS,                      //  "gradnd_params"
+        GRADND_PARAMS2,                     //  "gradnd_params2"
+        GRADND_SUN,                         //  "gradnd_sun"  (shared on-lens sun: uv.xy, has_sun, aspect)
+
+        // Polarizer (pre-tonemap on-lens filter; shares gradnd_sun). Packed:
+        //   polarizer_params  = (strength, sky_saturation, sky_darken_stops, band_radius)
+        //   polarizer_params2 = (glare_stops, glare_threshold, glare_max_depth, auto_band)
+        POLARIZER_PARAMS,                   //  "polarizer_params"
+        POLARIZER_PARAMS2,                  //  "polarizer_params2"
+
+        // Night Mask (subject-anchored darkness mask; pre-tonemap on-lens
+        // filter, evaluated FIRST in the on-lens stack — see
+        // LLPipeline::applyOnLensFilters). Packed:
+        //   night_mask_params  = (active [0/1], distance, feather, darkness)
+        //   night_mask_params2 = (tint_strength, desaturation, unused, unused)
+        // night_mask_anchor_view is the smoothed subject anchor already
+        // transformed into VIEW SPACE on the CPU (gGLLastModelView), so the
+        // shader only ever compares against the current pixel's own
+        // view-space reconstruction — no agent-space math in-shader.
+        // night_mask_box_basis rotates a view-space delta into the cube's
+        // yaw-aligned local space (CPU-composed: subject yaw x the view
+        // rotation); unused for the plane/sphere shapes. night_mask_inv_proj
+        // is a DEDICATED inverse-projection matrix, deliberately NOT the
+        // managed inv_proj/INVERSE_PROJECTION_MATRIX uniform: LLVertexBuffer::
+        // drawArrays()'s gGL.syncMatrices() call re-uploads inv_proj from the
+        // LIVE GL projection whenever its hash differs from what this shader
+        // last saw, silently clobbering an explicit CPU override BEFORE the
+        // actual glDrawArrays — see LLPipeline::applyOnLensFilters. Night
+        // Mask reconstructs view-space position locally against this uniform
+        // instead of calling deferredUtil's getPosition().
+        NIGHT_MASK_PARAMS,                  //  "night_mask_params"
+        NIGHT_MASK_PARAMS2,                 //  "night_mask_params2"
+        NIGHT_MASK_ANCHOR_VIEW,             //  "night_mask_anchor_view"
+        NIGHT_MASK_BOX_BASIS,               //  "night_mask_box_basis"
+        NIGHT_MASK_TINT,                    //  "night_mask_tint"  (linear; CPU converts from the sRGB-authored setting)
+        NIGHT_MASK_SHAPE,                   //  "night_mask_shape" (0 plane, 1 sphere, 2 cube)
+        NIGHT_MASK_INV_PROJ,                 //  "night_mask_inv_proj" (dedicated; NOT the managed inv_proj)
 
         // Color Correction LUT
         COLOR_GRADE_LUT,                    //  "uColorGradeLut"
@@ -556,8 +649,25 @@ public:
         // lockstep with the mReservedUniforms push_back block in llshadermgr.cpp)
         SOFT_SHADOW_VOGEL,                 //  "soft_shadow_vogel"   (0 = fixed disk, 1 = Vogel)
         SOFT_SHADOW_TAPS,                  //  "soft_shadow_taps"    (Vogel tap count)
+        SPOT_SHADOW_SOFTNESS,              //  "spot_shadow_softness" (per shadow slot, 0 = global)
         // [BDMerge Batch 2] Feature 2: gobo/cookie mip + anisotropic filtering
         GOBO_ANISO,                        //  "gobo_aniso"
+        // [Cinematic Gobo] Per-projector procedural cookie and presentation-time UV motion.
+        GOBO_TIME,                         //  "gobo_time"
+        GOBO_PATTERN,                      //  "gobo_pattern"
+        GOBO_ANIM_PARAMS,                  //  "gobo_anim_params"
+        // [Gobo v2] colored gel tint + per-pattern variation params.
+        GOBO_TINT,                         //  "gobo_tint"
+        GOBO_PATTERN_PARAMS,               //  "gobo_pattern_params"
+
+        // [Cine Outline Phase 1] deferred normal/depth outline post pass.
+        OUTLINE_COLOR,                     //  "outline_color"
+        OUTLINE_PARAMS,                    //  "outline_params"
+        OUTLINE_PARAMS2,                   //  "outline_params2"
+
+        // [Pedro Cam Phase 1] fisheye / peephole late post pass.
+        FISHEYE_PARAMS,                    //  "fisheye_params"
+        FISHEYE_PARAMS2,                   //  "fisheye_params2"
 
         // [BDMerge A5.4-1a] velocity / motion-vector buffer. CURRENT_MODELVIEW and
         // MOTION_BLUR_STRENGTH are declared now for forward-compat (Phase 3 motion
@@ -592,6 +702,14 @@ public:
         FROXEL_NOISE_SPEED,                //  "froxel_noise_speed"
         FROXEL_WIND,                       //  "froxel_wind"          [F5] (wind_dir * noise_speed)
         FROXEL_TIME,                       //  "froxel_time"
+        // [Local Fog] Flattened eight-volume media arrays.
+        LOCALFOG_CENTER,                   //  "localfog_center"
+        LOCALFOG_EXTENTS,                  //  "localfog_extents"
+        LOCALFOG_INV_ROT,                  //  "localfog_inv_rot"
+        LOCALFOG_PARAMS,                   //  "localfog_params"
+        LOCALFOG_TINT,                     //  "localfog_tint"
+        LOCALFOG_NOISE,                    //  "localfog_noise"
+        LOCALFOG_COUNT,                    //  "localfog_count"
         FROXEL_DEBUG_MODE,                 //  "froxel_debug_mode"
         FROXEL_DEBUG_SLICE,                //  "froxel_debug_slice"
 
@@ -621,11 +739,183 @@ public:
         FROXEL_LIGHT_HISTORY,              //  "froxelLightHistory"   (sampler: prev resolved atlas)
         FROXEL_PREV_MODELVIEW,             //  "froxel_prev_modelview"
         FROXEL_TEMPORAL_BLEND,             //  "froxel_temporal_blend"
+        FROXEL_TEMPORAL_REJECT,            //  "froxel_temporal_reject"
         FROXEL_JITTER,                     //  "froxel_jitter"
         FROXEL_FRAME,                      //  "froxel_frame"
 
         WEATHER_RAIN_MAP,                  //  "weather_rain_map"
         WEATHER_RAIN_OCCLUSION_MAP,        //  "weather_rain_occlusion_map"
+
+        // [Ultimate Diopter] native lens-front diopter / halo post pass.
+        // vec4 bundles, appended at the end in lockstep with the matching
+        // push_back block in llshadermgr.cpp.
+        DIOPTER_SHAPE,                     //  "diopter_shape"      center.xy, size, stretch
+        DIOPTER_SHAPE2,                    //  "diopter_shape2"     angleRad, feather, invert, content
+        DIOPTER_SHAPE3,                    //  "diopter_shape3"     shape, hollow, cornerRound, splitCurvature
+        DIOPTER_SHAPE4,                    //  "diopter_shape4"     wobbleAmt, wobbleFreq, wavePhase, waveGain
+        DIOPTER_SHAPE5,                    //  "diopter_shape5"     polySides, starPoints, starInner, squirclePow
+        DIOPTER_SHAPE6,                    //  "diopter_shape6"     petalCount, petalDepth, blobSeed, blobAmt
+        DIOPTER_SHAPE7,                    //  "diopter_shape7"     crescentBite, crescentShift, arcLenRad, brokenCount
+        DIOPTER_FOCUS,                     //  "diopter_focus"      baseFocusM, lensFocusM, focusWidthM, falloffRate
+        DIOPTER_FOCUS2,                    //  "diopter_focus2"     falloffCurve, nearStr, farStr, maxBlurPx
+        DIOPTER_FOCUS3,                    //  "diopter_focus3"     floorMaxPx, spotBlur, bokehHi, magnify
+        DIOPTER_FOCUS4,                    //  "diopter_focus4"     axialCA_M, fieldCurve, depthEdgeM, reserved
+        DIOPTER_APERTURE,                  //  "diopter_aperture"   apShape, blades, bladeRotRad, bladeCurve
+        DIOPTER_APERTURE2,                 //  "diopter_aperture2"  apInner, anamorph, anamAngleRad, catEye
+        DIOPTER_GLASS,                     //  "diopter_glass"      profile, ior1, thickness, rimWidth
+        DIOPTER_GLASS2,                    //  "diopter_glass2"     rimWarp, placementMode, reserved, reserved
+        DIOPTER_HALO,                      //  "diopter_halo"       ringCount, ringFold, twistRad, ringPhase
+        DIOPTER_HALO2,                     //  "diopter_halo2"      lobeAmt, lobeCount, lobePhaseRad, warpActive
+        DIOPTER_PATTERN,                   //  "diopter_pattern"    mode, segments, feedRad, srcZoom
+        DIOPTER_COMP,                      //  "diopter_comp"       seamGhostPx, seamGhostAmt, caMag, edgeVig
+        DIOPTER_COMP2,                     //  "diopter_comp2"      rimCaustic, rimDarken, blend, debugView
+        DIOPTER_GHOST,                     //  "diopter_ghost"      ghostCount, ghostSpacing, radialSmear, tangentSmear
+        DIOPTER_GHOST2,                    //  "diopter_ghost2"     ghostThreshold, ghostKnee, dispersion, ghostGain
+
+        // [Ultimate Diopter] warped present depth for ReShade alignment.
+        // Appended at the end in lockstep with the matching push_back block
+        // in llshadermgr.cpp.
+        DIOPTER_WARP_MAP,                  //  "diopterWarpMap"     (sampler: RG16F diopter source-uv map)
+        DEPTH_WARP_PARAMS,                 //  "depth_warp_params"  diopterActive (0/1), fisheyeActive (0/1), reserved, reserved
+
+        // [Ultimate Kaleidoscope] tool mode 1 of the Ultimate Diopter post
+        // pass. vec4 bundles, appended at the end in lockstep with the
+        // matching push_back block in llshadermgr.cpp.
+        KAL_PATTERN,                       //  "kal_pattern"        mode, segments, ringCount, edgeWrap
+        KAL_SHAPE,                         //  "kal_shape"          rotRadTotal, twistRadTotal, starSharp, shapeBias
+        KAL_CENTER,                        //  "kal_center"         center.xy, protectCenter.xy (uv, y-up)
+        KAL_SOURCE,                        //  "kal_source"         feedRadTotal, srcZoom, srcOffset.xy
+        KAL_FX,                            //  "kal_fx"             fxBand, fxAmount, ftPhase, fxFreq
+        KAL_PROTECT,                       //  "kal_protect"        protectMode, discRadius, discFeather, depthInvert
+        KAL_DEPTH,                         //  "kal_depth"          depthCutM, depthFeatherM, reserved, reserved
+        KAL_WAVE,                          //  "kal_wave"           wavePhase, waveGain, waveAmp, waveFreq
+        KAL_LOOK,                          //  "kal_look"           seamSoften, blend, debugView, reserved
+        KAL_CELL,                          //  "kal_cell"           cellSizeVar, cellBreathe, cellSubdiv, cellMerge
+        KAL_CELL2,                         //  "kal_cell2"          cellTint, reserved, reserved, reserved
+
+        // [Cine Haze] Cinematic Depth Atmosphere (windlight/cineHazeF.glsl),
+        // uploaded by ALCineHaze::bind() from LLPipeline::bindDeferredShader()
+        // and the alpha pool's prepare_alpha_shader().  Appended at the end in
+        // lockstep with the matching push_back block in llshadermgr.cpp.
+        CINE_HAZE_ACTIVE,                  //  "cine_haze_active"      int  0 = bypass (bit-exact off path)
+        CINE_HAZE_PARAMS,                  //  "cine_haze_params"      vec4 density, start distance, max opacity, master strength
+        CINE_HAZE_HEIGHT,                  //  "cine_haze_height"      vec4 height enable, reference height, falloff, camera world height
+        CINE_HAZE_UP,                      //  "cine_haze_up"          vec3 world +Z in eye space
+        CINE_HAZE_COLOR,                   //  "cine_haze_color"       vec4 manual colour (sRGB) + intensity
+        CINE_HAZE_COLOR_MODE,              //  "cine_haze_color_mode"  int  0 manual, 1 environment-linked
+        CINE_HAZE_SUN,                     //  "cine_haze_sun"         vec4 linear sun tint * strength, lobe exponent
+        CINE_HAZE_DEBUG,                   //  "cine_haze_debug"       int  developer view selector
+        CINE_HAZE_ADDITIVE,                //  "cine_haze_additive"    int  1 = additive-blended draw (transmittance only)
+
+        // [RigRim] Rig Rim Light (Cine Light Rig Phase A; deferredUtil.glsl
+        // rigRimTerm()).  Globals are uploaded by ALCineRigRim::bindGlobals()
+        // from LLPipeline::bindDeferredShader() and prepare_alpha_shader();
+        // the per-light params by the deferred light loops / setupSpotLight()
+        // and LLRender::syncLightState().  Appended at the end in lockstep with
+        // the matching push_back block in llshadermgr.cpp.
+        RIG_RIM_MODE,                      //  "rig_rim_mode"          int  0 off (bit-exact no-op), 1 on, 2 debug rim-only
+        RIG_RIM_GLOBALS,                   //  "rig_rim_globals"       vec4 master gain, roughness softening, back softness, surface tint
+        RIG_RIM_LIGHT,                     //  "rig_rim_light"         vec4 single light: gain, k, wrap, back bias (pointLightF / spotLightF)
+        RIG_RIM_LIGHTS,                    //  "rig_rim_lights"        vec4[] batched: multiPointLightF[LIGHT_COUNT], forward alpha[LL_NUM_LIGHT_UNITS]
+        RIG_RIM_SHADOW,                    //  "rig_rim_shadow"        float 0 rim ignores the projector shadow .. 1 fully shadowed (spotLightF)
+
+        // [RotoInk] Rotoscope Ink (cineOutlineF.glsl), uploaded by
+        // LLPipeline::renderCineOutline(). OUTLINE_COLOR/PARAMS/PARAMS2 above
+        // are reused (see the shader header for their new packing). Appended
+        // in lockstep with the matching push_back block in llshadermgr.cpp.
+        ROTO_SCENE,                        //  "rotoScene"             sampler2D copy of the destination (mWaterDis scratch)
+        ROTO_LINE,                         //  "roto_line"             vec4 sil threshold, crease threshold (1-cos), sil weight, crease weight
+        ROTO_INK,                          //  "roto_ink"              vec4 opacity, match-light reach px, reserved, reserved
+        ROTO_SUBJECT,                      //  "roto_subject"          vec4 mode, subject depth m, slab half depth m, slab feather m
+        ROTO_SUBJECT2,                     //  "roto_subject2"         vec4 ellipse centre uv, ellipse radii uv
+        ROTO_SUBJECT3,                     //  "roto_subject3"         vec4 ellipse amount, ellipse feather, ellipse valid, reserved
+        ROTO_SKETCH,                       //  "roto_sketch"           vec4 enable, boil px, detail, redraw fps
+        ROTO_SKETCH2,                      //  "roto_sketch2"          vec4 strokes, roughness, seed, reserved
+        ROTO_MOTION,                       //  "roto_motion"           vec4 style, speed, amount, scale
+        ROTO_MOTION2,                      //  "roto_motion2"          vec4 layer-1 angle rad, time s, reserved, reserved
+
+        // [RotoInk Anim] animated patterns (round A) + extended subject
+        // isolation. Lockstep with the matching push_back block in
+        // llshadermgr.cpp. Off values (all 0) reproduce the pre-Anim output.
+        ROTO_MOTION3,                      //  "roto_motion3"          vec4 layer-1 shape, motion seed, hold-frame fps (0 off), tempo beats/s (0 off)
+        ROTO_MOTION4,                      //  "roto_motion4"          vec4 layer-2 style, speed, amount, scale
+        ROTO_MOTION5,                      //  "roto_motion5"          vec4 layer-2 shape, layer-2 angle rad, tempo phase beats, reserved
+        ROTO_PATTERN,                      //  "roto_pattern"          vec4 type, size px, ratio, drift px/s
+        ROTO_PATTERN2,                     //  "roto_pattern2"         vec4 hatch angle rad, hatch reach px, seed, cross 0/1
+        ROTO_COLOR2,                       //  "roto_color2"           vec4 secondary colour rgb (linear), colour mode
+        ROTO_COLOR2B,                      //  "roto_color2b"          vec4 colour speed, colour length px, reserved, reserved
+        ROTO_SUBJECT4,                     //  "roto_subject4"         vec4 target shape, invert, per-target palette, target count
+        ROTO_TARGETS,                      //  "roto_targets"          vec4[16] per target: centre uv, half extents uv
+        ROTO_TARGETS2,                     //  "roto_targets2"         vec4[16] per target: view depth m, slab half depth m, palette index, valid
+
+        // [TronT1] Tron World post pass (tronWorldF.glsl), uploaded by
+        // LLPipeline::renderTronWorld(). Appended in lockstep with the
+        // matching push_back block in llshadermgr.cpp. Every "off" value is
+        // 0. TRON_TRACE*/TRON_RIM* are reserved for T2 (circuit traces /
+        // post neon rim) so the enum never reshuffles; the T1 shader does not
+        // declare them.
+        TRON_SCENE,                        //  "tronScene"             sampler2D copy of the destination (mWaterDis scratch)
+        TRON_INV_PROJ,                     //  "tron_inv_proj"         mat4 inverse of the pass's own projection (gGLLast* / live)
+        TRON_INV_MODELVIEW,                //  "tron_inv_modelview"    mat4 inverse of the pass's own modelview
+        TRON_CAM_REL,                      //  "tron_cam_rel"          vec4 camera - anchor (m), camera agent z
+        TRON_MASTER,                       //  "tron_master"           vec4 layer, pulse01, reserved, no-post neon scale
+        TRON_PALETTE0,                     //  "tron_palette0"         vec4 primary rgb, pulse amount
+        TRON_PALETTE1,                     //  "tron_palette1"         vec4 secondary rgb, clamp-display flag
+        TRON_PALETTE2,                     //  "tron_palette2"         vec4 accent rgb, reserved
+        TRON_PALETTE3,                     //  "tron_palette3"         vec4 pulse rgb, reserved
+        TRON_GRADE,                        //  "tron_grade"            vec4 strength, darken EV, desaturate, crush
+        TRON_GRADE2,                       //  "tron_grade2"           vec4 tint rgb, tint amount
+        TRON_GRADE3,                       //  "tron_grade3"           vec4 keep-bright lo, hi, keep subject, sky darken
+        TRON_GRID,                         //  "tron_grid"             vec4 intensity, spacing m, half width m, min width px
+        TRON_GRID2,                        //  "tron_grid2"            vec4 major every N, major width x, major intensity x, far fade m
+        TRON_GRID3,                        //  "tron_grid3"            vec4 floor w, wall w, ceiling w, triplanar sharpness
+        TRON_GRID4,                        //  "tron_grid4"            vec4 normal source, glow alpha feed, subject exclude, reserved
+        TRON_GRID5,                        //  "tron_grid5"            vec4 subject radius m, radius feather m, water mode, water tolerance m
+        TRON_WATER,                        //  "tron_water"            vec4 agent water height, camera underwater, detection on, reserved
+        TRON_PULSE,                        //  "tron_pulse"            vec4 amount, CPU phase 0..1, length, wavelength m
+        TRON_PULSE2,                       //  "tron_pulse2"           vec4 density, direction mode, seed, colour mode
+        TRON_SUBJECT,                      //  "tron_subject"          vec4 target count, shape, shape feather, slab feather m
+        TRON_SUBJECT2,                     //  "tron_subject2"         vec4 grid mask source, rim mask source, invert, reserved
+        TRON_TARGETS,                      //  "tron_targets"          vec4[16] culled: centre uv, half extents uv
+        TRON_TARGETS2,                     //  "tron_targets2"         vec4[16] culled: view depth m, slab half depth m, palette idx, valid
+        TRON_ANCHORS,                      //  "tron_anchors"          vec4[16] un-culled: centre xyz (anchor frame), radius m
+        TRON_ANCHOR_COUNT,                 //  "tron_anchor_count"     int  number of valid tron_anchors
+        TRON_LATTICE_R,                    //  "tron_lattice_r"        vec4[4] lattice remainder xyz (m), scale (grid / major / wavelength / trace cell)
+        TRON_LATTICE_K,                    //  "tron_lattice_k"        uvec4[4] lattice cell index xyz (mod 2^32), 0
+        TRON_TRACE,                        //  "tron_trace"            [T2 reserved] vec4 intensity, cell m, width m, density
+        TRON_TRACE2,                       //  "tron_trace2"           [T2 reserved] vec4 pad radius m, diagonal chance, walls w, floors w
+        TRON_TRACE3,                       //  "tron_trace3"           [T2 reserved] vec4 pulse amount, CPU phase, length, seed
+        TRON_RIM,                          //  "tron_rim"              [T2 reserved] vec4 gain, exponent, silhouette gain, silhouette thr
+        TRON_RIM2,                         //  "tron_rim2"             [T2 reserved] vec4 pulse amount, scan amount, scan CPU phase, scan width
+        TRON_RIM3,                         //  "tron_rim3"             [T2 reserved] vec4 colour mode, reject floors, shape, feather
+
+        // [TronT1] Rig Rim "Tron" palette tint (deferredUtil.glsl rigRimTerm()),
+        // uploaded by ALCineRigRim::bindGlobals() (slow path) and
+        // ALCineRigRim::bindAnimated() (bindDeferredShaderFast fast path).
+        // rig_rim_tron.x == 0 is the bit-exact no-op (branch untaken).
+        RIG_RIM_TRON,                      //  "rig_rim_tron"          vec4 mode (0 off, 1 tint, 2 tint+pulse), mix 0..1, pulse multiplier, reserved
+        RIG_RIM_TRON_COLOR,                //  "rig_rim_tron_color"    vec4 palette colour rgb (linear), reserved
+
+        // [TronT3] Light-cycle trail ribbons (deferred/tronTrailF.glsl),
+        // uploaded by ALTron::renderTrails() on every draw (the program is
+        // never bound with stale uniforms; "off" == never bound).
+        TRON_TRAIL_COLOR,                  //  "tron_trail_color"      vec4 palette rgb (linear), glow feed 0..1
+        TRON_TRAIL_PARAMS,                 //  "tron_trail_params"     vec4 edge/core width (fraction), edge gain, body gain, fade exponent
+        TRON_TRAIL_PARAMS2,                //  "tron_trail_params2"    vec4 intensity, style 0/1/2, no-post scale, clamp-display flag
+        TRON_TRAIL_PARAMS3,                //  "tron_trail_params3"    vec4 fog mode, fog density 1/m, reserved, reserved
+
+        // [EnvIntensity v2] Personal Lighting exposure strip, uploaded from
+        // LLSettingsVOSky::applySpecial (SG_ANY) via ALEnvIntensity::compute().
+        // Every one of these is exactly identity (1.0 / vec3(1) / 0.0) at the
+        // default settings, in classic mode, and (sampling-time terms) during
+        // reflection-probe captures. Keep in LOCKSTEP with the push_back list
+        // in llshadermgr.cpp (llassert there is compiled out in Release).
+        SKY_AMB_SCALE,                     //  "sky_amb_scale"         float 2^(GI master + GI ambient offset): amblit in calcAtmosphericVarsLinear
+        SKY_PROBE_RAD_SCALE,               //  "sky_probe_rad_scale"   float 2^(probe reflections EV): probe radiance (glossenv/legacyenv), before SSR + hero
+        SKY_SUN_TINT,                      //  "sky_sun_tint"          vec3 luminance-normalised Kelvin x swatch tint on sunlit (sun) / swatch tint (moon)
+        SKY_AMB_TINT,                      //  "sky_amb_tint"          vec3 luminance-normalised swatch tint on amblit / probe irradiance / SSAO ceiling
+        SHADOW_LIFT_GAIN,                  //  "shadow_lift_gain"      float 2^(shadow lift EV) - 1; 0 = off (deferredUtil.glsl applyShadowLift)
+
         END_RESERVED_UNIFORMS
     } eGLSLReservedUniforms;
     // clang-format on

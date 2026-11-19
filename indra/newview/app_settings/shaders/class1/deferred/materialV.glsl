@@ -43,6 +43,9 @@ out vec3 vary_position;
 uniform mat4 texture_matrix0;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec4 diffuse_color;
 in vec3 normal;
 in vec2 texcoord0;
@@ -71,6 +74,9 @@ out vec2 vary_texcoord0;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
 #ifdef HAS_SKIN
     mat4 mat = getObjectSkinnedTransform();
 
@@ -128,4 +134,3 @@ void main()
     vary_position = (modelview_matrix*vec4(position.xyz, 1.0)).xyz;
 #endif
 }
-

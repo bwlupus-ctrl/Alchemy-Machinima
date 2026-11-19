@@ -3664,6 +3664,10 @@ void LLPanelPreferenceControls::populateControlTable()
         addControlTableSeparator();
 
         addControlTableRows("control_table_contents_media.xml");
+        addControlTableSeparator();
+
+        // [Machinima] Actor Gaze look-at-camera toggles (shipped unbound).
+        addControlTableRows("control_table_contents_machinima.xml");
     }
     else
     {

@@ -90,6 +90,23 @@ extern "C" {
 #define SLRESHADE_FLAG_VALID        0x1u  /* frame has usable G-buffer data   */
 #define SLRESHADE_FLAG_HDR          0x2u  /* normals=RGBA16, screen=RGBA16F   */
 #define SLRESHADE_FLAG_SNAPSHOT     0x4u  /* frame rendered for a snapshot    */
+#define SLRESHADE_FLAG_AVATAR_TAG   0x8u  /* [TronA0] normals .w uses gbuffer
+                                             flag ENCODING 2 (see below):
+                                             odd 1/6 codes = avatar pixels.
+                                             Also mirrored into the v1.1 tail
+                                             as SLRESHADE_CONFIG_AVATAR_TAG.  */
+
+/* [TronA0] G-buffer flag encoding published in normals .w.
+ *   1 (legacy): 0.0 SKIP_ATMOS, 0.34 HAS_ATMOS, 0.67 HAS_PBR, 1.0 HAS_HDRI;
+ *               decode: abs(w - f) < 0.1.
+ *   2 (SLRESHADE_FLAG_AVATAR_TAG set): 7-level code at multiples of 1/6.
+ *               code = floor(w*6 + 0.5); even codes 0/2/4/6 = the legacy
+ *               buckets above; odd codes 1/3/5 = "avatar + next even bucket".
+ *               untag(w) = (code + (code mod 2)) / 6 -> then decode as legacy;
+ *               avatar(w) = (code mod 2) == 1.
+ * Encoding 2 is never used with GL_RGB10_A2 normals (2-bit alpha). */
+#define SLRESHADE_GBUFFER_FLAG_ENCODING_LEGACY      1u
+#define SLRESHADE_GBUFFER_FLAG_ENCODING_AVATAR_TAG  2u
 
 /* One published texture. gl_internal_format is the GL internal format enum
  * (e.g. 0x805B GL_RGBA16, 0x881A GL_RGBA16F, 0x8058 GL_RGBA8, 0x81A6
@@ -161,8 +178,9 @@ typedef struct SLReShadeFrame
 
 /* Note on normals encoding: deferredScreen attachment 2 stores OCTAHEDRAL-
  * encoded VIEW-SPACE normals in .xy; .z is environment intensity, .w is the
- * gbuffer flags byte. The add-on publishes the raw texture; decoding is the
- * consuming shader's job.
+ * gbuffer flags byte (encoding 1, or encoding 2 when SLRESHADE_FLAG_AVATAR_TAG
+ * is set -- see the SLRESHADE_GBUFFER_FLAG_ENCODING_* note above). The add-on
+ * publishes the raw texture; decoding is the consuming shader's job.
  *
  * CORRECTED 2026-07-25 -- this comment previously described SPHEREMAP
  * encoding (fenc = xy*4-2; g = sqrt(1-f/4); n = (fenc*g, 1-f/2)). That was
@@ -251,6 +269,8 @@ typedef struct SLReShadeFrame
 #define SLRESHADE_CONFIG_SNAPSHOT         (1u << 2)
 #define SLRESHADE_CONFIG_FORCE_10BIT      (1u << 3)
 #define SLRESHADE_CONFIG_PROVIDER_OWNED   (1u << 4)
+#define SLRESHADE_CONFIG_AVATAR_TAG       (1u << 5)  /* [TronA0] == SLRESHADE_FLAG_AVATAR_TAG;
+                                                        reaches the .fx as SL_ConfigFlags */
 
 /* Exactly 24 uint32 words = 96 bytes, overlaying SLReShadeFrame::reserved.
  *

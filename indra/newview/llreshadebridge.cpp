@@ -25,6 +25,7 @@
 #include "pipeline.h"          // gPipeline, RenderTargetPack, LLRenderTarget, mVelocityMap
 #include "llviewercamera.h"    // LLViewerCamera (matrices, near/far/fov, world frame)
 #include "llviewercontrol.h"   // gSavedSettings / LLCachedControl (sidecar gate)
+#include "llviewershadermgr.h" // [TronA0] gbufferAvatarTagActive (normals .w flag encoding)
 
 extern bool gSnapshot;         // llviewerdisplay.cpp
 
@@ -216,15 +217,49 @@ void LLReShadeBridge::gatherFrame()
 
         // deferredScreen attachment layout (see addDeferredAttachments):
         //   0 = albedo/diffuse, 1 = ORM (occ/rough/metal), 2 = normals, 3 = emissive(opt)
+        //
+        // Albedo and normals are NOT read from def directly: gatherFrame() runs
+        // long after renderFinalize()'s whole post chain (see the call site in
+        // llviewerdisplay.cpp), while def's albedo/normals attachments are only
+        // known-good between the deferred geometry pass and the point
+        // renderDeferredLighting() finishes consuming them for lighting.
+        // preserveReShadeGBuffer() (pipeline.cpp) blits them into
+        // mReShadeAlbedoRaw/mReShadeNormalsRaw at that earlier, known-good
+        // moment; publish those when available. mReShadeGBufferRawValid is
+        // false whenever this isn't the main view (aux/probe/HUD/impostor/Prism
+        // passes) or RenderReShadeGBufferPublish is off, in which case this
+        // falls back to reading def live, exactly as before the fix.
         const U32 n = def.getNumTextures();
-        if (n > 0) fill_texture(f.albedo,   def, 0);
+        const bool gbuffer_raw_valid = gPipeline.mReShadeGBufferRawValid &&
+                                        gPipeline.mReShadeAlbedoRaw.getWidth() > 0 &&
+                                        gPipeline.mReShadeNormalsRaw.getWidth() > 0;
+        if (gbuffer_raw_valid)
+        {
+            fill_texture(f.albedo,  gPipeline.mReShadeAlbedoRaw, 0);
+            fill_texture(f.normals, gPipeline.mReShadeNormalsRaw, 0);
+        }
+        else
+        {
+            if (n > 0) fill_texture(f.albedo,  def, 0);
+            if (n > 2) fill_texture(f.normals, def, 2);
+        }
         if (n > 1) fill_texture(f.orm,      def, 1);
-        if (n > 2) fill_texture(f.normals,  def, 2);
         if (n > 3) fill_texture(f.emissive, def, 3);
 
-        if (scr.getNumTextures() > 0)
+        // On-lens decouple: when applyOnLensFilters captured a RAW pre-filter
+        // snapshot this frame (RenderReShadeDecoupleOnLens on + filters active),
+        // publish THAT as color_hdr so RTGI-style effects see the unfiltered
+        // scene — a lens filter must not change surface-to-surface bounce.
+        // Otherwise (filters off, decouple off, non-HDR path, or target not
+        // allocated) mReShadeRawSceneValid is false and we publish mRT->screen
+        // exactly as before, byte-identical to the legacy/coupled behavior.
+        LLRenderTarget& colorSrc = (gPipeline.mReShadeRawSceneValid &&
+                                    gPipeline.mReShadeSceneRaw.getWidth() > 0)
+                                       ? gPipeline.mReShadeSceneRaw
+                                       : scr;
+        if (colorSrc.getNumTextures() > 0)
         {
-            fill_texture(f.color_hdr, scr, 0);
+            fill_texture(f.color_hdr, colorSrc, 0);
         }
         // LLCachedControl, not getBOOL: gatherFrame() runs EVERY frame, and a
         // getBOOL is a string-keyed map lookup. Matches the hot-path convention
@@ -252,6 +287,14 @@ void LLReShadeBridge::gatherFrame()
         if (f.normals.gl_internal_format == 0x805B /*GL_RGBA16*/)
         {
             f.flags |= SLRESHADE_FLAG_HDR;
+        }
+        // [TronA0] Normals .w carries flag ENCODING 2 (odd 1/6 codes = avatar
+        // pixels) exactly when the loaded shaders were built with the tag.
+        // Keyed on the compiled define, never the raw setting, so the bit and
+        // the bytes in the texture can never disagree across a shader reload.
+        if (LLViewerShaderMgr::gbufferAvatarTagActive())
+        {
+            f.flags |= SLRESHADE_FLAG_AVATAR_TAG;
         }
         if (gSnapshot)
         {
@@ -348,6 +391,35 @@ void LLReShadeBridge::gatherFrame()
     {
         tail.semantic_valid_bits |= SLRESHADE_SEM_VALID_SURFACE_COVERAGE;
     }
+
+    // [ReShade G-buffer diag] Cheap, debug-gated verification for the
+    // albedo/normals preserve-copy fix (preserveReShadeGBuffer(), pipeline.cpp).
+    // Off by default; reads only already-computed struct fields plus one
+    // getNumTextures() call, throttled to once per ~2s so it is safe to leave
+    // on for an extended in-world check without spamming the log.
+    static LLCachedControl<bool> gbuffer_diag(gSavedSettings, "RenderReShadeGBufferDiag", false);
+    if (gbuffer_diag())
+    {
+        static F64 last_log_time = 0.0;
+        const F64 now = LLTimer::getTotalSeconds();
+        if (now - last_log_time >= 2.0)
+        {
+            last_log_time = now;
+            const U32 num_textures = gPipeline.mRT ? gPipeline.mRT->deferredScreen.getNumTextures() : 0;
+            LL_INFOS("ReShadeBridge")
+                << "gbuffer diag: deferredScreen.numTextures=" << num_textures
+                << " published albedo(gl=" << f.albedo.gl_name
+                << " fmt=0x" << std::hex << f.albedo.gl_internal_format << std::dec
+                << " " << f.albedo.width << "x" << f.albedo.height << ")"
+                << " published normals(gl=" << f.normals.gl_name
+                << " fmt=0x" << std::hex << f.normals.gl_internal_format << std::dec
+                << " " << f.normals.width << "x" << f.normals.height << ")"
+                << " preserveCopyRan=" << (gPipeline.mReShadeGBufferRawValid ? "true" : "false")
+                << " semanticValidBits=0x" << std::hex << tail.semantic_valid_bits << std::dec
+                << LL_ENDL;
+        }
+    }
+
     tail.history_reset_flags = mPendingResetFlags;
     SLReShadeV11_SetGeneration(&tail, mRenderTargetGeneration);
     tail.motion_encoding =
@@ -362,6 +434,9 @@ void LLReShadeBridge::gatherFrame()
     if (hdr)                       tail.effective_config_flags |= SLRESHADE_CONFIG_HDR_ENABLED;
     if (snapshot)                  tail.effective_config_flags |= SLRESHADE_CONFIG_SNAPSHOT;
     if (LLRender::s10bitBackBuffer) tail.effective_config_flags |= SLRESHADE_CONFIG_FORCE_10BIT;
+    // [TronA0] Mirror the avatar-tag frame flag into the tail so the .fx sees
+    // it through the EXISTING sl_config_flags uniform (no add-on C++ change).
+    if ((f.flags & SLRESHADE_FLAG_AVATAR_TAG) != 0) tail.effective_config_flags |= SLRESHADE_CONFIG_AVATAR_TAG;
     // PROVIDER_OWNED is an add-on policy and is not observable by the viewer.
     // Tail word 16 is a modulo-2^32 reset-event counter. Unlike the transient
     // flags, a sampling reader detects any event by comparing counter values.

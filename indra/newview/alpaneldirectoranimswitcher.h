@@ -55,7 +55,10 @@ private:
 
     void onSlotButton(S32 slot);
     void onSlotEnabled();
+    void onSlotKind();
     void onAnimUUID();
+    void onPoseName();
+    void onPoseLoadMethod();
     void onSlotLabel();
     void onSlotTarget();
     void onSlotPriority();
@@ -67,16 +70,23 @@ private:
     void saveBank();
 
     void refreshBank(bool force);
+    void refreshPoseChoices(const std::string& selected_pose);
     void refreshButtons();
     void refreshEditor();
     void refreshProgramState();
 
     std::array<LLButton*, ALDirectorAnimSwitcher::SLOT_COUNT> mSlotButtons{};
+    LLComboBox*     mKindCombo = nullptr;
     LLLineEditor*   mAnimUUID = nullptr;
+    LLTextBox*      mAnimUUIDText = nullptr;
     LLButton*       mFromExplorer = nullptr;
+    LLComboBox*     mPoseNameCombo = nullptr;
+    LLComboBox*     mPoseLoadMethodCombo = nullptr;
+    LLTextBox*      mPoseNameText = nullptr;
     LLLineEditor*   mSlotLabel = nullptr;
     LLComboBox*     mTargetCombo = nullptr;
     LLComboBox*     mPriorityCombo = nullptr;
+    LLTextBox*      mPriorityText = nullptr;
     LLSpinCtrl*     mSpeedSpin = nullptr;
     LLCheckBoxCtrl* mLoopCheck = nullptr;
     LLCheckBoxCtrl* mSnapCheck = nullptr;

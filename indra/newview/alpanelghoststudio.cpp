@@ -10,6 +10,8 @@
 #include "llviewerprecompiledheaders.h"
 
 #include "alpanelghoststudio.h"
+#include "llviewermenufile.h" // [AutoAnimate]
+#include "llfilepicker.h" // [AutoAnimate]
 #include "alscrollfocus.h"
 
 #include "alcompassdial.h"          // live direct-manipulation heading control
@@ -279,6 +281,19 @@ bool ALPanelGhostStudio::postBuild()
     mChaosCheck = getChild<LLCheckBoxCtrl>("chaos_check");
     mChaosSlider = getChild<LLSliderCtrl>("chaos_slider");
     mAnimSpeedSpin = getChild<LLSpinCtrl>("anim_speed_spinner");
+    // [AutoAnimate]
+    mAutoAnimCheck = getChild<LLCheckBoxCtrl>("autoanim_check");
+    mAutoAnimWindow = getChild<LLSpinCtrl>("autoanim_window_spinner");
+    mAutoAnimStatus = getChild<LLTextBox>("autoanim_status");
+    mAutoAnimFollow = getChild<LLButton>("btn_autoanim_follow");
+    mAutoAnimGo = getChild<LLButton>("btn_autoanim_go");
+    mAutoAnimLoad = getChild<LLButton>("btn_autoanim_load");
+    mAutoAnimRelearn = getChild<LLButton>("btn_autoanim_relearn");
+    mAutoAnimReseed = getChild<LLButton>("btn_autoanim_reseed");
+    mAutoAnimReset = getChild<LLButton>("reset_autoanim_window");
+    mAutoAnimSave = getChild<LLButton>("btn_autoanim_save");
+    mAutoAnimStop = getChild<LLButton>("btn_autoanim_stop");
+    mAutoAnimGo->setToolTip(std::string("Keep the current performance. True mirror switches to Mirror with a COLD body start (not seamless)."));
     mPhysicsCheck = getChild<LLCheckBoxCtrl>("physics_check");
     mAnimPauseBtn = getChild<LLButton>("btn_anim_pause");
     mAnimResumeBtn = getChild<LLButton>("btn_anim_resume");
@@ -354,6 +369,9 @@ bool ALPanelGhostStudio::postBuild()
         getChild<LLSpinCtrl>("brigade_rank_spacing_spinner");
     mFormationFacing = getChild<LLComboBox>("formation_facing_combo");
     mFormationTerrain = getChild<LLCheckBoxCtrl>("formation_terrain_check");
+    mFacingYawOffset = getChild<LLSpinCtrl>("facing_yaw_offset_spinner");
+    mPreserveSourceTilt =
+        getChild<LLCheckBoxCtrl>("preserve_source_tilt_check");
     mCrowdCopiesAs = getChild<LLComboBox>("crowd_copies_as_combo");
     mCrowdCreateMode = getChild<LLComboBox>("crowd_create_mode_combo");
     mLockMode = getChild<LLComboBox>("lock_mode_combo");
@@ -430,6 +448,16 @@ bool ALPanelGhostStudio::postBuild()
     mChaosCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mChaosSlider->setCommitCallback([this](LLUICtrl*, const LLSD&) { onChaosCommit(); });
     mAnimSpeedSpin->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAnimSpeedCommit(); });
+    // [AutoAnimate] New handlers expand selected groups just like drive-mode edits.
+    mAutoAnimCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimToggle(); });
+    mAutoAnimWindow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimWindow(); });
+    mAutoAnimStop->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::StopLearning); });
+    mAutoAnimRelearn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::Relearn); });
+    mAutoAnimReseed->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::Reseed); });
+    mAutoAnimGo->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::GoAutonomous); });
+    mAutoAnimFollow->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimAction(ALGhostAutoAnim::Action::FollowSource); });
+    mAutoAnimSave->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimFile(true); });
+    mAutoAnimLoad->setCommitCallback([this](LLUICtrl*, const LLSD&) { onAutoAnimFile(false); });
     mPhysicsCheck->setCommitCallback([this](LLUICtrl*, const LLSD&) { onPhysicsCommit(); });
     mAnimPauseBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimPause(); });
     mAnimResumeBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickAnimResume(); });
@@ -528,11 +556,31 @@ bool ALPanelGhostStudio::postBuild()
            static_cast<LLUICtrl*>(mBrigadeRankSpacing),
            static_cast<LLUICtrl*>(mFormationFacing),
            static_cast<LLUICtrl*>(mFormationTerrain),
+           static_cast<LLUICtrl*>(mPreserveSourceTilt),
            static_cast<LLUICtrl*>(mCrowdCreateMode) })
     {
         control->setCommitCallback(
             [this](LLUICtrl*, const LLSD&) { updateOwnedCrowdPlacement(); });
     }
+    // Independent of FormationSpec: the facing-offset bias lives directly on
+    // the crowd draft (CrowdPlacementDraft::mFacingYawOffset), not the spec,
+    // so it goes through its own dedicated setter rather than
+    // updateOwnedCrowdPlacement()'s spec re-resolve.
+    mFacingYawOffset->setCommitCallback(
+        [this](LLUICtrl*, const LLSD&)
+        {
+            const ALGhostStudio::CrowdPlacementDraft& draft =
+                ALGhostStudio::instance().getCrowdPlacementDraft();
+            if (!draft.mActive || draft.mOwnerId != mPlacementOwner)
+            {
+                return;
+            }
+            const F32 offset_rad =
+                (F32)mFacingYawOffset->getValue().asReal() * DEG_TO_RAD;
+            ALGhostStudio::instance().setCrowdPlacementFacingOffset(
+                mPlacementOwner, offset_rad);
+            refreshCrowdPlacement();
+        });
     mArrayBuildBtn->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClickBuildArray(); });
     mCrowdConfirmBtn->setCommitCallback(
         [this](LLUICtrl*, const LLSD&) { onClickCrowdConfirm(); });
@@ -576,6 +624,7 @@ bool ALPanelGhostStudio::postBuild()
         { "reset_scale", "scale_spinner" },
         { "reset_effect_fps", "effect_fps_spinner" },
         { "reset_anim_speed", "anim_speed_spinner" },
+        { "reset_autoanim_window", "autoanim_window_spinner" }, // [AutoAnimate]
         { "reset_array_count", "array_count_spinner" },
         { "reset_array_spacing", "array_spacing_spinner" },
         { "reset_strip_count", "strip_count_spinner" },
@@ -1194,6 +1243,7 @@ void ALPanelGhostStudio::refreshDetail()
     mChaosSlider->setEnabled(
         entity && inst->mChaosEnabled && !any_group_selected);
     mAnimSpeedSpin->setEnabled(entity);
+    refreshAutoAnimate(inst); // [AutoAnimate]
     mPhysicsCheck->setEnabled(entity);
     mAnimPauseBtn->setEnabled(entity);
     mAnimResumeBtn->setEnabled(entity);
@@ -2070,34 +2120,147 @@ void ALPanelGhostStudio::onClickAnimResume()
 
 void ALPanelGhostStudio::onDriveModeCommit()
 {
-    ALGhostStudio::Instance* inst =
-        ALGhostStudio::instance().getInstance(selectedInstance());
-    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE)
-    {
-        return;
-    }
+    // A RIGID group is one authoring unit: a drive-mode change (this is the
+    // "Mirror the actor" pose control) must reach every member, not just the
+    // list row's representative. selectedInstance() collapses a selected
+    // group header down to its FIRST member only, which used to leave every
+    // other ghost in the group on its previous drive mode. selectedInstances()
+    // expands a selected group header to its full membership -- the same
+    // pattern sibling commit handlers (onLoopModeCommit, onStyleCommit, ...)
+    // already use.
     const ALGhostStudio::EDriveMode mode =
         (ALGhostStudio::EDriveMode)mDriveModeCombo->getValue().asInteger();
     LLUUID anim(mDirectedAnimEdit->getText());
-    ALGhostStudio::instance().setInstanceDriveMode(inst->mId, mode, anim);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+        {
+            studio.setInstanceDriveMode(id, mode, anim);
+        }
+    }
+}
+
+// [AutoAnimate] All picker replies capture ids only; the panel may have closed.
+void ALPanelGhostStudio::autoAnimFileReply(const std::vector<LLUUID>& ids, bool save,
+                                         const std::vector<std::string>& filenames)
+{
+    if (filenames.empty()) return;
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    U32 index = 0;
+    for (const LLUUID& id : ids)
+    {
+        const auto* inst = studio.getInstance(id);
+        if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE) continue;
+        std::string path = filenames.front();
+        // A multi-selection saves one file per entity instead of overwriting the first.
+        if (save && index != 0)
+        {
+            const size_t dot = path.find_last_of('.');
+            path.insert(dot == std::string::npos ? path.size() : dot, "_" + id.asString().substr(0, 8));
+        }
+        if (save) studio.saveAutoAnimate(id, path); else studio.loadAutoAnimate(id, path);
+        ++index;
+    }
+}
+void ALPanelGhostStudio::onAutoAnimFile(bool save)
+{
+    const auto ids = selectedInstances();
+    const auto callback = [ids, save](const std::vector<std::string>& files, LLFilePicker::ELoadFilter, LLFilePicker::ESaveFilter)
+    { ALPanelGhostStudio::autoAnimFileReply(ids, save, files); };
+    if (save) LLFilePickerReplyThread::startPicker(callback, LLFilePicker::FFSAVE_XML, "ghost_performance.xml");
+    else LLFilePickerReplyThread::startPicker(callback, LLFilePicker::FFLOAD_XML, false);
+}
+void ALPanelGhostStudio::onAutoAnimToggle()
+{
+    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().setInstanceAutoAnimate(id, mAutoAnimCheck->get());
+}
+void ALPanelGhostStudio::onAutoAnimWindow()
+{
+    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().setInstanceAutoAnimWindow(id, mAutoAnimWindow->getValueF32());
+}
+void ALPanelGhostStudio::onAutoAnimAction(ALGhostAutoAnim::Action action)
+{
+    for (const LLUUID& id : selectedInstances()) ALGhostStudio::instance().autoAnimateAction(id, action);
+}
+void ALPanelGhostStudio::refreshAutoAnimate(const ALGhostStudio::Instance* inst)
+{
+    const bool entity = inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE;
+    ALGhostAutoAnim::LearnStatus status;
+    if (entity) ALGhostStudio::instance().getAutoAnimateStatus(inst->mId, status);
+    if (!mAutoAnimDisplayValid || mAutoAnimCheck->getEnabled() != entity)
+        mAutoAnimCheck->setToolTip(std::string(entity ? "Learn the source's idle performance, then continue independently" :
+            "AutoAnimate needs an entity clone (overlays redraw the live source)"));
+    mAutoAnimCheck->setEnabled(entity); mAutoAnimCheck->set(entity && inst->mAutoAnimate);
+    mAutoAnimWindow->setEnabled(entity);
+    if (!mAutoAnimWindow->hasFocus()) mAutoAnimWindow->setValue(status.mWindow);
+    mAutoAnimReset->setEnabled(entity);
+    mAutoAnimStop->setEnabled(entity && status.mLearning);
+    mAutoAnimRelearn->setEnabled(entity);
+    mAutoAnimReseed->setEnabled(entity && status.mOn);
+    bool entries = status.mLiveEntries != 0;
+    if (entity && inst->mAutoAnimPool)
+    {
+        entries = entries || !inst->mAutoAnimPool->mBody.entries.empty();
+        for (const auto& channel : inst->mAutoAnimPool->mAnimesh) entries = entries || !channel.second.entries.empty();
+    }
+    mAutoAnimGo->setEnabled(entity && status.mOn && entries &&
+        (inst->mDriveMode == ALGhostStudio::DRIVE_MIRROR || inst->mDriveMode == ALGhostStudio::DRIVE_TRUE_MIRROR));
+    mAutoAnimFollow->setEnabled(entity && (status.mBodyAutonomous || status.mAnimeshAutonomous));
+    mAutoAnimSave->setEnabled(entity && bool(inst->mAutoAnimPool));
+    mAutoAnimLoad->setEnabled(entity);
+    // [AutoAnimate] Fractional observed time does not change the visible clock.
+    const S32 mode = entity ? static_cast<S32>(inst->mDriveMode) : -1;
+    const auto& previous = mAutoAnimDisplay;
+    if (mAutoAnimDisplayValid && mode == mAutoAnimDisplayMode &&
+        status.mOn == previous.mOn && status.mLearning == previous.mLearning && status.mGated == previous.mGated &&
+        static_cast<S32>(status.mObserved) == static_cast<S32>(previous.mObserved) &&
+        static_cast<S32>(status.mWindow) == static_cast<S32>(previous.mWindow) &&
+        status.mBodyStates == previous.mBodyStates && status.mBodyOneShots == previous.mBodyOneShots &&
+        status.mAnimeshChannels == previous.mAnimeshChannels && status.mAnimeshAutonomous == previous.mAnimeshAutonomous &&
+        status.mBodyAutonomous == previous.mBodyAutonomous && status.mManual == previous.mManual &&
+        status.mDetail == previous.mDetail) return;
+    mAutoAnimDisplay = status; mAutoAnimDisplayMode = mode; mAutoAnimDisplayValid = true;
+    std::string text = "AutoAnimate off";
+    if (status.mOn)
+    {
+        if (status.mBodyAutonomous || status.mAnimeshAutonomous)
+            text = std::string("Autonomous (") + (status.mManual ? "manual" : "automatic") + ") - " +
+                (status.mBodyAutonomous ? "body + " : "") + std::to_string(status.mAnimeshAutonomous) + " animesh";
+        else if (status.mGated) text = "Paused: source " + std::string(status.mDetail.find("source sit") != std::string::npos ? "sitting" : "moving / airborne");
+        else if (status.mLearning)
+        {
+            const S32 elapsed = static_cast<S32>(status.mObserved), window = static_cast<S32>(status.mWindow);
+            text = llformat("Learning %d:%02d / %d:%02d", elapsed / 60, elapsed % 60, window / 60, window % 60);
+        }
+        else text = llformat("Learned: body %u stands / %u one-shots - %u animesh", status.mBodyStates, status.mBodyOneShots, status.mAnimeshChannels);
+        if (inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED) text += " (dormant: Directed)";
+        else if (inst->mDriveMode == ALGhostStudio::DRIVE_FROZEN) text += " (dormant: Frozen)";
+    }
+    if (mAutoAnimStatus->getText() != text) mAutoAnimStatus->setText(text);
+    if (mAutoAnimStatus->getToolTip() != status.mDetail) mAutoAnimStatus->setToolTip(status.mDetail);
 }
 
 void ALPanelGhostStudio::onDirectedAnimCommit()
 {
-    ALGhostStudio::Instance* inst =
-        ALGhostStudio::instance().getInstance(selectedInstance());
-    if (!inst || inst->mKind != ALGhostStudio::BACKING_ENTITY_CLONE ||
-        inst->mDriveMode != ALGhostStudio::DRIVE_DIRECTED)
-    {
-        return;
-    }
+    // See onDriveModeCommit(): apply to every member of a selected group, not
+    // just the representative.
     LLUUID anim(mDirectedAnimEdit->getText());
     if (anim.isNull())
     {
         return;
     }
-    ALGhostStudio::instance().setInstanceDriveMode(
-        inst->mId, ALGhostStudio::DRIVE_DIRECTED, anim);
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
+    {
+        const ALGhostStudio::Instance* inst = studio.getInstance(id);
+        if (inst && inst->mKind == ALGhostStudio::BACKING_ENTITY_CLONE &&
+            inst->mDriveMode == ALGhostStudio::DRIVE_DIRECTED)
+        {
+            studio.setInstanceDriveMode(id, ALGhostStudio::DRIVE_DIRECTED, anim);
+        }
+    }
 }
 
 void ALPanelGhostStudio::onAnimationLibraryCommit()
@@ -2585,11 +2748,14 @@ void ALPanelGhostStudio::onEffectFpsCommit()
 
 void ALPanelGhostStudio::onEntityLookCommit()
 {
-    if (ALGhostStudio::Instance* inst =
-            ALGhostStudio::instance().getInstance(selectedInstance()))
+    // See onDriveModeCommit(): apply to every member of a selected group, not
+    // just the representative selectedInstance() would collapse to.
+    const ALGhostStudio::EGhostLook look =
+        (ALGhostStudio::EGhostLook)mEntityLookCombo->getValue().asInteger();
+    ALGhostStudio& studio = ALGhostStudio::instance();
+    for (const LLUUID& id : selectedInstances())
     {
-        ALGhostStudio::instance().setInstanceLook(
-            inst->mId, (ALGhostStudio::EGhostLook)mEntityLookCombo->getValue().asInteger());
+        studio.setInstanceLook(id, look);
     }
 }
 
@@ -2683,6 +2849,13 @@ void ALPanelGhostStudio::onClickBuildArray()
         mLastCrowdMessage = "Could not start crowd placement.";
         return;
     }
+    // A facing-offset value set BEFORE "Preview in world" (no active draft
+    // existed yet, so the spinner's own commit callback was a no-op) must
+    // not be silently discarded: seed the just-created draft with whatever
+    // the spinner currently shows before refreshCrowdPlacement() below can
+    // pull the display back down to the draft's still-default 0.
+    studio.setCrowdPlacementFacingOffset(mPlacementOwner,
+        (F32)mFacingYawOffset->getValue().asReal() * DEG_TO_RAD);
 
     const ALGhostStudio::CrowdPlacementDraft& draft =
         studio.getCrowdPlacementDraft();
@@ -2960,6 +3133,7 @@ ALGhostStudio::FormationSpec ALPanelGhostStudio::capturePlacementSpec() const
     spec.mTerrainConform = mFormationTerrain->get();
     spec.mFacing = (ALGhostStudio::EFormationFacing)
         mFormationFacing->getValue().asInteger();
+    spec.mPreserveSourceTilt = mPreserveSourceTilt->get();
     spec.mLockMode =
         (ALGhostStudio::ELockMode)mCrowdCreateMode->getValue().asInteger();
 
@@ -3058,6 +3232,11 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
         mFormationSeed->setValue((S32)draft.mSpec.mSeed);
         mFormationTerrain->set(draft.mSpec.mTerrainConform);
         mFormationFacing->setValue((S32)draft.mSpec.mFacing);
+        mPreserveSourceTilt->set(draft.mSpec.mPreserveSourceTilt);
+        if (!mFacingYawOffset->hasFocus())
+        {
+            mFacingYawOffset->setValue(draft.mFacingYawOffset * RAD_TO_DEG);
+        }
         mCrowdCreateMode->setValue((S32)draft.mSpec.mLockMode);
         mCrowdCopiesAs->setValue((S32)draft.mSource.mKind);
         mApplyingCrowdDraft = false;
@@ -3094,6 +3273,8 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
            static_cast<LLUICtrl*>(mFormationSeed),
            static_cast<LLUICtrl*>(mFormationFacing),
            static_cast<LLUICtrl*>(mFormationTerrain),
+           static_cast<LLUICtrl*>(mFacingYawOffset),
+           static_cast<LLUICtrl*>(mPreserveSourceTilt),
            static_cast<LLUICtrl*>(mCrowdCreateMode) })
     {
         control->setEnabled(can_edit);
@@ -3125,20 +3306,42 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
     mPickFacingTarget->setEnabled(
         !draft.mActive && have_prototype);
     mCrowdConfirmBtn->setEnabled(
-        owner && draft.mValidation.mCanCommit && source_unchanged);
+        owner && draft.mValidation.mCanCommit && source_unchanged &&
+        draft.mAnchorValid);
     mCrowdUnpinBtn->setEnabled(owner && draft.mPinned);
     mCrowdCancelBtn->setEnabled(owner);
 
+    // Status vocabulary: Ready / Ready with warnings / Blocked. Only genuine
+    // blockers (missing prototype / invalid spec via mCanCommit, a legality
+    // block via !mAnchorValid, or identity/backing/group change via
+    // !source_unchanged) count as Blocked; a best-effort terrain fallback, a
+    // missing facing target, an anchor clamp/water-snap, or advisory
+    // revision drift are warnings, not failures. A legality failure used to
+    // collapse into just a nonempty mAnchorWarning -- indistinguishable from
+    // a non-blocking clamp/snap warning -- so Confirm stayed wrongly
+    // enabled; mAnchorValid is the resolver's own verdict and settles it.
     std::string status;
     if (blocked)
     {
-        status = "Read-only: another Ghost Studio panel owns placement.\n" +
+        status = "Blocked: another Ghost Studio panel owns placement.\n" +
                  draft.mValidation.mMessage;
     }
     else if (owner)
     {
+        const bool is_blocked =
+            !draft.mValidation.mCanCommit || !source_unchanged ||
+            !draft.mAnchorValid;
+        const bool has_warning =
+            !is_blocked &&
+            (draft.mValidation.mPartial || !draft.mAnchorWarning.empty() ||
+             !source_reason.empty());
+        const char* ready_word = is_blocked
+            ? "Blocked" : (has_warning ? "Ready with warnings" : "Ready");
+        const std::string basis_label =
+            ALGhostPlacementResolver::basisLabel(draft.mAnchorBasis);
         status = llformat(
-            "Preview: %d/%d slots \xC2\xB7 span %.2fm \xC2\xB7 gap %.2fm%s",
+            "%s (%s) \xC2\xB7 %d/%d slots \xC2\xB7 span %.2fm \xC2\xB7 gap %.2fm%s",
+            ready_word, basis_label.c_str(),
             (S32)draft.mValidation.mPlacedCount,
             (S32)draft.mValidation.mRequestedCount,
             draft.mValidation.mPlacedRadius,
@@ -3146,7 +3349,7 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
             draft.mPinned ? " \xC2\xB7 pinned" : "");
         if (!source_unchanged)
         {
-            status = "Cannot confirm this draft.\n" + source_reason;
+            status = "Blocked: cannot confirm this draft.\n" + source_reason;
         }
         else
         {
@@ -3162,6 +3365,14 @@ void ALPanelGhostStudio::refreshCrowdPlacement()
             if (!commit_message.empty())
             {
                 status += "\n" + commit_message;
+            }
+            else if (!draft.mAnchorWarning.empty())
+            {
+                status += "\n" + draft.mAnchorWarning;
+            }
+            else if (!source_reason.empty())
+            {
+                status += "\n" + source_reason;
             }
             else
             {

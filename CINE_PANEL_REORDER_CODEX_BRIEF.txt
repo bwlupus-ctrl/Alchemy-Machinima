@@ -1,0 +1,70 @@
+IMPLEMENTATION TASK — reorder the Cinematic Light Rig panel so the GLOBAL rig controls come BEFORE the
+per-light controls. Repo: I:\alchemy-machinima. You IMPLEMENT. Do NOT build/cmake/run. Only ONE file:
+indra/newview/skins/default/xui/en/panel_cine_light_rig.xml. This is a pure LAYOUT REORDER — do NOT
+change any control's name, control_name, callback, width, height, left, or any behavior. ONLY the
+vertical order (the `top=` coordinates) changes.
+
+=============================================================================
+CURRENT LAYOUT (absolute topleft; panel height 1546, width 350)
+=============================================================================
+Region T (TOP — KEEP EXACTLY AS-IS): panel start through the view_border at top=136. Contents: the
+  "Cinematic Light Rig" title, Enable/Power/Gizmo, "Anchor:" + cine_anchor combo, the Light-group
+  checkboxes (cine_group_*), and the divider (view_border, top=136). DO NOT MOVE region T.
+
+Region L (PER-LIGHT — the four light blocks): starts at the `<!-- KEY -->` section (cine_key_label,
+  top~144) and covers KEY, FILL, RIM, BG. Each light block has: label/On/clip, yaw(+reset),
+  pitch(+reset), profile(+reset), EV(+reset), beam(+reset), Shaft, Hero, gobo(+reset), gel(+reset),
+  shadow_soft(+reset), and any per-light dividers. Region L currently spans top~144 down to the LAST
+  BG per-light control (just before Region G).
+
+Region G (GLOBAL "RIG" — currently at the BOTTOM): starts at the "Rig" section header (the bold text
+  just above cine_radius, ~top 920) and runs to the END of the panel. Contents in order: the "Rig"
+  header, Radius(+reset), Master EV(+reset), Offset Z(+reset), Headroom(+reset), Warmth(+reset),
+  Bounce/Ratio/Ease(+resets), Follow damping(+reset), Tracking combo(+reset), Cookie UUID(+reset),
+  Catchlight/EV/Size/Angle(+resets), Aim transforms (Mirror + Yaw/Pitch buttons + Aim Reset), Setups
+  combo + Save/Delete, Effects combo + Stop, Seed + Randomize, Shadow policy combo(+reset), Auto-raise
+  Max Spot Shadows checkbox, the shadow-budget hint text, the "Allow N spot shadows" fix-it button, and
+  the final "Reset all" button — plus any section headers/dividers between them.
+
+=============================================================================
+NEW LAYOUT: Region T (unchanged) -> Region G (global) -> Region L (per-light)
+=============================================================================
+Move Region G to directly BELOW Region T (before Region L), and push Region L down below G.
+
+SAFE METHOD — uniform per-region vertical shift (preserves ALL intra-region spacing; do NOT hand-place
+controls one by one):
+1. Determine G_start = the smallest `top` in Region G (the "Rig" header) and G_end = the largest
+   (top+height) in Region G. G_height = G_end - G_start.
+2. Determine L_start = the smallest `top` in Region L (cine_key_label ~144).
+3. Choose NEW_G_start = L_start (144) — i.e. G begins right where L used to begin, just under the
+   divider. Choose a small inter-region gap GAP = the same gap Region L currently leaves under the
+   top divider (compute it: L_start - 136; reuse it consistently).
+   - New G placement: shift every control in Region G by delta_G = NEW_G_start - G_start.
+   - New L placement: shift every control in Region L by delta_L = G_height + (the intra-panel gap
+     between G_end and its following content today, or just GAP) so L now sits entirely below G.
+   Concretely: add delta_G to the `top` of EVERY element in Region G, and add delta_L to the `top` of
+   EVERY element in Region L. Region T is untouched.
+4. Pick delta_L so that (max top in the moved L) == the OLD panel maximum, i.e. the TOTAL PANEL HEIGHT
+   IS UNCHANGED (still 1546) and nothing extends past it. Because you are only swapping two adjacent
+   stacked blocks of the same combined height, delta_G is negative (G moves up) and delta_L is positive
+   (L moves down) and |used range| is identical — the panel's overall top..bottom span must not grow or
+   shrink. Keep panel height="1546".
+
+=============================================================================
+CONSTRAINTS / VERIFY
+=============================================================================
+- Change ONLY `top=` attributes (and `top_pad`/`bottom` if any element uses them relative). Touch
+  nothing else. Every control keeps its name/control_name/callbacks/left/width/height.
+- After the shift, NO two controls may overlap that didn't before (uniform per-region shift guarantees
+  this WITHIN a region; verify the G/L boundary doesn't collide — leave the same visual gap the panel
+  uses between its other sections).
+- Panel height stays 1546; do NOT touch the floater wrappers (floater_cine_light_rig.xml /
+  floater_director.xml) — total height is unchanged by a reorder.
+- The XML must still parse; the control COUNT must be identical before/after (you moved, not added or
+  removed). List the control count you preserved.
+- Do NOT reorder controls WITHIN a region — Key stays before Fill before Rim before Bg; the global
+  controls keep their internal order. Only the two big regions swap.
+
+REPORT: G_start/G_end/G_height, L_start, the deltas you applied, the new top of the "Rig" header and of
+cine_key_label, confirmation the panel span is still 0..1546 with no overlaps, and the preserved control
+count. Do not build.

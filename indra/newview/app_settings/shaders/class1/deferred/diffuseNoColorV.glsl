@@ -24,21 +24,30 @@
  */
 
 uniform mat3 normal_matrix;
+uniform mat4 modelview_matrix;
 uniform mat4 texture_matrix0;
 uniform mat4 modelview_projection_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec3 normal;
 in vec2 texcoord0;
 
 out vec3 vary_normal;
+out vec3 vary_position;
 
 out vec2 vary_texcoord0;
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
     //transform vertex
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);
+    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;
     vary_texcoord0 = (texture_matrix0 * vec4(texcoord0,0,1)).xy;
 
     vary_normal = normalize(normal_matrix * normal);

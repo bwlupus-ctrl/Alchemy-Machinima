@@ -30,7 +30,7 @@
  * that projector's sphere of influence, shaped by its frustum + cookie and
  * self-shadowed by its own shadow map. Reuses the exact spotLightF /
  * deferredUtil projector math (proj_mat/proj_n/size/color/falloff/cookie) and
- * the NSpot per-slot shadow dispatch (sampleSpotShadow, shadowMap4-9).
+ * the NSpot per-slot shadow dispatch (sampleSpotShadow, shadowMap4-13).
  */
 
 #extension GL_ARB_texture_rectangle : enable
@@ -44,8 +44,9 @@ in vec2 vary_fragcoord;
 
 // Local-light params (uploaded per slot by setupSpotLightVolumetric + the
 // per-cone color/size/falloff/shadow-index uploads in renderProjectorVolumetric).
-// proj_mat/proj_n/proj_focus/proj_lod/proj_range/size/color/projectionMap are
-// declared (and consumed) by deferredUtil.glsl - do not redeclare them here.
+// Projector uniforms consumed only inside deferredUtil.glsl are declared there.
+// Uniforms read directly in this shader object must also be declared here; the
+// GLSL linker merges matching declarations across fragment-stage objects.
 uniform vec3  center;           // LIGHT_CENTER, view space
 uniform float size;             // LIGHT_SIZE (sphere-of-influence radius); also
                                 // consumed inside deferredUtil - declared here
@@ -67,6 +68,8 @@ uniform vec3  color;            // DIFFUSE_COLOR - light's linear diffuse color 
 uniform float proj_focus;       // deferredUtil cookie LOD params (read directly here)
 uniform float proj_lod;
 uniform float proj_range;
+uniform vec3  proj_n;           // projector axis used by the shaft-length clip
+uniform float projvol_max_distance; // metres along projector axis; 0 = full range
 
 // Shared godray controls (this program uploads its OWN values into these).
 uniform int   godray_res;         // raymarch sample count (bounded local march;
@@ -77,7 +80,8 @@ uniform float projvol_g;          // Henyey-Greenstein anisotropy (forward scatt
 // [Phase 1] per-lever sub-controls (uploaded by renderProjectorVolumetric).
 uniform float projvol_feather;    // item 6: angular cone-edge softness (0 = hard)
 uniform int   projvol_shadow_samples; // item 7: occlusion sub-taps per march step
-uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static bluenoise 2=animated
+uniform int   projvol_dither;     // item 2: 0=off(centre) 1=static 2=animated;
+                                  // C++ may promote 1 to 2 behind the temporal guard
 uniform float projvol_frame;      // item 2: temporal seed (frame counter, wrapped)
 uniform float projvol_max;        // item 1: HDR headroom clamp (large in linear HDR)
 
@@ -383,11 +387,44 @@ void main()
         }
     }
 
+    // Artist-facing shaft-length cap. l_dist at a point t*d is affine in t:
+    //   l_dist(t) = -dot(C, proj_n) + t*dot(d, proj_n)
+    // Clip the march interval against that far plane so the full sample budget
+    // stays concentrated in the visible part of the beam. Surface lighting and
+    // the post-march rim evaluation remain intentionally uncapped.
+    bool shaft_empty = false;
+    if (projvol_max_distance > 0.0)
+    {
+        float axis_origin = -dot(C, proj_n);
+        float axis_rate   = dot(d, proj_n);
+        if (axis_rate > 1e-6)
+        {
+            t1 = min(t1, (projvol_max_distance - axis_origin) / axis_rate);
+        }
+        else if (axis_rate < -1e-6)
+        {
+            t0 = max(t0, (projvol_max_distance - axis_origin) / axis_rate);
+        }
+        else if (axis_origin > projvol_max_distance)
+        {
+            shaft_empty = true;
+        }
+        if (t1 <= t0)
+        {
+            // Do not return: the surface-coupled rim below is intentionally
+            // independent of the airborne shaft-length cap. Collapse the march
+            // interval and let the shader continue to that evaluation.
+            shaft_empty = true;
+            t1 = t0;
+        }
+    }
+
     float march_len = t1 - t0;
-    // max() guards godray_res == 0: the rim-only mode for froxel-injected projectors
-    // (beam lives in the grid; only the surface rim + bloom-feed halo render here).
-    // Without it dt = inf and 0*inf = NaN would poison the final shaft.
-    float dt        = march_len / max(float(godray_res), 1.0); // physical step length
+    // An empty cap interval and godray_res == 0 both mean rim-only: skip the
+    // airborne loop while preserving the later surface evaluation. max() keeps
+    // dt finite so 0*inf can never poison the final shaft.
+    int shaft_steps = shaft_empty ? 0 : godray_res;
+    float dt        = march_len / max(float(shaft_steps), 1.0); // physical step length
 
     // [Phase 1 item 2] blue-noise (interleaved gradient) march-start offset.
     // Static per pixel-quad => no crawl under camera motion; optional frame rotation.
@@ -400,8 +437,10 @@ void main()
     // warp divergence, not the hash cost, is what tanked FPS whenever the dither
     // lever left 0. Sharing the offset across each hardware 2x2 quad keeps the
     // march cache/lane-coherent while the dither/temporal averaging hides the
-    // coarser pattern. Setting semantics are unchanged: 0 = off (centred 0.5),
-    // 1 = static, 2 = animated (same golden-ratio per-frame walk).
+    // coarser pattern. Shader modes: 0 = off (centred 0.5), 1 = static, 2 =
+    // animated (golden-ratio per-frame walk). With its anti-banding guard enabled,
+    // C++ sends 2 for static mode only while the RGBA16F temporal resolve can
+    // average successive phases.
     float roffset;
     if (projvol_dither == 0)
     {
@@ -434,7 +473,7 @@ void main()
     float depth_w = 0.0;
     float w_sum   = 0.0;
 
-    for (int i = 0; i < godray_res; ++i)
+    for (int i = 0; i < shaft_steps; ++i)
     {
         float t    = t0 + (float(i) + roffset) * dt;
         vec3  spos = d * t;               // view-space sample point
@@ -753,7 +792,7 @@ void main()
                 vec3  cookie_s = projGoboTexture(l_dist_s, ptc_s.xy);
                 vec3  E        = cookie_s * atten_s * shadow_s;
 
-                // Brightness gate (RimGlow's "ignore light dimmer than"): keep the rim on
+                // Brightness gate ("ignore light dimmer than"): keep the rim on
                 // meaningfully lit surfaces so faint spill can't paint a grey outline.
                 float lum  = dot(E, vec3(0.2126, 0.7152, 0.0722));
                 float gate = (projvol_rim_threshold > 0.0)

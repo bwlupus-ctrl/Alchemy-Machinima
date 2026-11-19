@@ -782,8 +782,37 @@ bool ALChatCommand::parseCommand(std::string data)
             if (argument.empty() ||
                 (!scope.empty() && scope != "all" && scope != "selected"))
             {
-                LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|freeze> "
+                LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|truemirror|freeze|autoon|autooff|autonomous|follow|relearn|stoplearn|reseed|simloss> "
                                           "[all|selected]" << LL_ENDL;
+                return true;
+            }
+
+            // [AutoAnimate] Single-token verbs precede both drive modes and UUID parsing.
+            if (argument == "autoon" || argument == "autooff" || argument == "autonomous" ||
+                argument == "follow" || argument == "relearn" || argument == "stoplearn" ||
+                argument == "reseed" || argument == "simloss")
+            {
+                ALGhostStudio& studio = ALGhostStudio::instance();
+                std::vector<LLUUID> ids;
+                const auto* selected = studio.getInstance(studio.getSelected());
+                if (scope != "all" && selected && selected->mKind == ALGhostStudio::BACKING_ENTITY_CLONE)
+                    ids.push_back(selected->mId);
+                else for (const auto& inst : studio.getInstances())
+                    if (inst.mKind == ALGhostStudio::BACKING_ENTITY_CLONE) ids.push_back(inst.mId);
+                ALGhostAutoAnim::Action action = ALGhostAutoAnim::Action::GoAutonomous;
+                if (argument == "follow") action = ALGhostAutoAnim::Action::FollowSource;
+                else if (argument == "relearn") action = ALGhostAutoAnim::Action::Relearn;
+                else if (argument == "stoplearn") action = ALGhostAutoAnim::Action::StopLearning;
+                else if (argument == "reseed") action = ALGhostAutoAnim::Action::Reseed;
+                else if (argument == "simloss") action = ALGhostAutoAnim::Action::SimLossToggle; // Test instrument.
+                S32 changed = 0;
+                for (const LLUUID& id : ids)
+                {
+                    const bool done = argument == "autoon" || argument == "autooff"
+                        ? studio.setInstanceAutoAnimate(id, argument == "autoon") : studio.autoAnimateAction(id, action);
+                    if (done) ++changed;
+                }
+                LL_INFOS("GhostStudio") << "/ghostanim " << argument << ": updated " << changed << " entity clone(s)" << LL_ENDL;
                 return true;
             }
 
@@ -792,6 +821,11 @@ bool ALChatCommand::parseCommand(std::string data)
             if (argument == "mirror")
             {
                 mode = ALGhostStudio::DRIVE_MIRROR;
+            }
+            else if (argument == "truemirror")
+            {
+                // [TrueMirror] full post-gaze/IK pose + face stamp from the source
+                mode = ALGhostStudio::DRIVE_TRUE_MIRROR;
             }
             else if (argument == "freeze")
             {
@@ -802,7 +836,7 @@ bool ALChatCommand::parseCommand(std::string data)
                 anim.set(argument, false);
                 if (anim.isNull())
                 {
-                    LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|freeze> "
+                    LL_WARNS("GhostStudio") << "usage: /ghostanim <anim_uuid|mirror|truemirror|freeze|autoon|autooff|autonomous|follow|relearn|stoplearn|reseed|simloss> "
                                               "[all|selected]" << LL_ENDL;
                     return true;
                 }

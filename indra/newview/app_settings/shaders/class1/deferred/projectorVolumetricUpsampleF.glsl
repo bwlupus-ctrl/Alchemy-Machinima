@@ -68,12 +68,24 @@ void main()
     vec2 base = floor(f);
     vec2 frac = f - base;
 
-    // Depth similarity falloff. sigma scales with distance so the tolerance is
-    // roughly perspective-stable (far surfaces span more depth per pixel).
-    float sigma = max(d_full * 0.05, 0.10);
+    // The broad kernel preserves the existing smooth reconstruction on continuous
+    // surfaces.  A second, strict kernel is accumulated from the SAME four taps
+    // for silhouette pixels.  This costs no additional texture fetches or march
+    // samples, but prevents a half-res background ray (which integrated fog behind
+    // an avatar) from being normalized back to full strength on the avatar.
+    float sigma           = max(d_full * 0.05, 0.10);
+    float depth_tolerance = max(d_full * 0.0075, 0.015);
 
-    vec3  sum  = vec3(0.0);
-    float wsum = 0.0;
+    vec3  sum         = vec3(0.0);
+    float wsum        = 0.0;
+    vec3  strict_sum  = vec3(0.0);
+    float strict_wsum = 0.0;
+
+    float depth_min     = 1e30;
+    float depth_max     = 0.0;
+    float nearest_delta = 1e30;
+    float nearest_depth = 0.0;
+    vec3  nearest_color = vec3(0.0);
 
     for (int j = 0; j < 2; ++j)
     for (int i = 0; i < 2; ++i)
@@ -89,17 +101,61 @@ void main()
         float wy = (j == 0) ? (1.0 - frac.y) : frac.y;
         float wbil = wx * wy;
 
+        float depth_delta = abs(d_full - d_tap);
+
         // Depth-similarity (bilateral) weight - suppress taps across an edge.
-        float wdepth = exp(-abs(d_full - d_tap) / sigma);
+        float wdepth = exp(-depth_delta / sigma);
 
         float w = wbil * wdepth;
         sum  += c * w;
         wsum += w;
+
+        // Strict same-surface support used only at a detected discontinuity.  The
+        // soft shoulder avoids a hard one-pixel transition as either surface moves.
+        float strict_depth = 1.0 - smoothstep(depth_tolerance,
+                                              depth_tolerance * 3.0,
+                                              depth_delta);
+        float strict_w = wbil * strict_depth;
+        strict_sum  += c * strict_w;
+        strict_wsum += strict_w;
+
+        depth_min = min(depth_min, d_tap);
+        depth_max = max(depth_max, d_tap);
+        if (depth_delta < nearest_delta)
+        {
+            nearest_delta = depth_delta;
+            nearest_depth = d_tap;
+            nearest_color = c;
+        }
     }
 
-    // If every tap sits across a depth discontinuity (wsum collapses), fall back
-    // to a plain bilinear sample so we never divide by ~0 or drop the shaft.
-    vec3 shaft = (wsum > 1e-4) ? (sum / wsum) : texture(projectionMap, tc).rgb;
+    vec3 smooth_shaft = (wsum > 1e-4) ? (sum / wsum) : nearest_color;
+
+    // A large span between taps catches an edge even when one tap matches this
+    // pixel.  A large nearest_delta catches the more dangerous case where ALL four
+    // half-res taps landed on the other side of a thin/close avatar silhouette.
+    float span_tolerance = max(d_full * 0.015, 0.03);
+    float edge_factor = max(smoothstep(span_tolerance,
+                                      span_tolerance * 2.0,
+                                      depth_max - depth_min),
+                            smoothstep(depth_tolerance,
+                                      depth_tolerance * 3.0,
+                                      nearest_delta));
+
+    // If there is no compatible half-res ray, never borrow a longer/background
+    // march for a nearer full-res surface: that is the bright fog-over-avatar
+    // failure.  Zero is the conservative estimate there.  In the reverse case a
+    // nearer tap is safe (it can only under-integrate the background), so retain it
+    // to avoid drawing a dark outline around the avatar.
+    vec3 conservative_fallback = (d_full + depth_tolerance < nearest_depth)
+                               ? vec3(0.0)
+                               : nearest_color;
+    vec3 edge_shaft = (strict_wsum > 1e-5)
+                    ? (strict_sum / strict_wsum)
+                    : conservative_fallback;
+
+    // Continuous blend keeps moving silhouettes stable under temporal resolve.
+    vec3 shaft = mix(smooth_shaft, edge_shaft, edge_factor);
 
     // Additive composite (GL_ONE, GL_ONE) onto the linear HDR scene buffer.
     frag_color = vec4(shaft, 0.0);

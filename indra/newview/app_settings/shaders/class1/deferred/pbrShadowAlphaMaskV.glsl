@@ -45,11 +45,13 @@ out vec4 post_pos;
 out float target_pos_x;
 out vec4 vertex_color;
 out vec2 vary_texcoord0;
+out vec3 vary_actor_fx_position;
 
 void passTextureIndex();
 
 void main()
 {
+    vary_actor_fx_position = position;
     //transform vertex
 #if defined(HAS_SKIN)
     vec4 pre_pos = vec4(position.xyz, 1.0);

@@ -31,11 +31,13 @@ in vec3 position;
 in vec2 texcoord0;
 
 out vec2 vary_texcoord0;
+out vec3 vary_actor_fx_position;
 
 mat4 getObjectSkinnedTransform();
 
 void main()
 {
+    vary_actor_fx_position = position;
     //transform vertex
     mat4 mat = getObjectSkinnedTransform();
 

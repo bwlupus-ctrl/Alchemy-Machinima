@@ -84,8 +84,12 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 // (BDMergeVelocityBuffer / A5.4). Gated on SL_SEM_VALID_MOTION: when the
 // viewer's velocity buffer is off the bit is clear and (in COEXIST) the pass
 // is a pure no-op, preserving Launchpad's estimated motion.
+// SHIP DEFAULT 0: motion is OFF out of the box (iMMERSE uses its own
+// depth-derived motion estimate) — avoids pan-ghosting from noisy SL vectors
+// and the extra pass cost. OWNED mode below still force-enables it. Set to 1
+// in ReShade's per-effect preprocessor UI to feed real SL motion vectors.
 #ifndef SL_PROVIDE_MOTION
-#define SL_PROVIDE_MOTION 1
+#define SL_PROVIDE_MOTION 0
 #endif
 
 // Provide real unlit albedo into Deferred::AlbedoTex so RTGI bounces true
@@ -120,6 +124,34 @@ void SL_FullscreenVS(in uint id : SV_VertexID,
 #ifndef SL_ALBEDO_TO_LINEAR
 #define SL_ALBEDO_TO_LINEAR 0
 #endif
+
+// [AlbedoSpace] iMMERSE does its GI maths in a chroma-compressed working space:
+// RTGI's unpack_hdr() and Launchpad's albedo estimate (sdr_to_hdr ->
+// unpack_hdr_rtgi) both run colour through cone_overlap(), which pulls the
+// three channels ~98% of the way to their mean, and RTGI's final pack_hdr()
+// applies cone_overlap_inv(), which re-expands chroma ~50x. Deferred::AlbedoTex
+// is therefore expected in that compressed space. The viewer's albedo is plain
+// linear RGB, so written unconverted its chroma is expanded ~50x inside
+// `rtgi * albedo` -> saturated red skin/wood in-world (2026-09-29, confirmed:
+// red with SL albedo, none with Launchpad's). Apply the same cone_overlap
+// (k = 0.99 * 0.33, grey axis preserved) to everything written to AlbedoTex.
+// 1 = convert (correct for iMMERSE RTGI), 0 = legacy raw linear write.
+#ifndef SL_ALBEDO_RTGI_SPACE
+#define SL_ALBEDO_RTGI_SPACE 1
+#endif
+
+float3 SL_AlbedoToRtgiSpace(float3 c)
+{
+#if SL_ALBEDO_RTGI_SPACE
+    // Identical to cone_overlap() in iMMERSE_RTGI*.fx / MartysMods_LAUNCHPAD.fx.
+    float k = 0.99 * 0.33;
+    float2 f = float2(1 - 2 * k, k);
+    float3x3 m = float3x3(f.xyy, f.yxy, f.yyx);
+    return mul(c, m);
+#else
+    return c;
+#endif
+}
 
 // GL eye-space (SL, right-handed, camera looks down -Z) → iMMERSE/D3D view-space
 // (left-handed, camera looks down +Z) is a Z negate. This is the one piece that
@@ -168,12 +200,26 @@ uniform float SL_MOTION_SCALE <
 uniform bool SL_MOTION_FLIP_X < ui_label = "Motion flip X"; ui_category = "Motion"; > = true;
 uniform bool SL_MOTION_FLIP_Y < ui_label = "Motion flip Y"; ui_category = "Motion"; > = false;
 
+// GL eye-space normals are Y-UP; iMMERSE reconstructs view coords Y-DOWN
+// (uv_to_proj maps V through a positive multiplier, so +V => +Y downward).
+// Without negating Y, every off-axis normal lands on the WRONG side of 0.5 in
+// octahedral space (front-facing Y=0 is unaffected, which is why a camera-facing
+// wall still reads 0.5,0.5 and masks the bug). Live bool so the sign can be
+// confirmed in-world without a reload: ON = corrected/centered; if the vertical
+// gradient looks INVERTED, turn OFF.
+uniform bool SL_NORMAL_FLIP_Y <
+    ui_label = "Normal flip Y (GL->iMMERSE)";
+    ui_tooltip = "GL normals are Y-up, iMMERSE view space is Y-down. ON centers off-axis normals (correct). OFF = legacy unflipped.";
+    ui_category = "Advanced";
+> = true;
+
 float3 sl_gl_to_view(float3 n_gl)
 {
+    float ny = SL_NORMAL_FLIP_Y ? -n_gl.y : n_gl.y;
 #if SL_NORMAL_FLIP_Z
-    return float3(n_gl.x, n_gl.y, -n_gl.z);
+    return float3(n_gl.x, ny, -n_gl.z);
 #else
-    return n_gl;
+    return float3(n_gl.x, ny,  n_gl.z);
 #endif
 }
 
@@ -431,14 +477,45 @@ uniform float SL_VISDIFF_K_THRESHOLD <
 #define SL_ALBEDO_FLAG_COVERAGE_GATE 1
 #endif
 
+// [TronA0] G-buffer flag decoding. With SL_CONFIG_AVATAR_TAG set the viewer
+// writes flag ENCODING 2 into normals .w: a 7-level code at multiples of 1/6
+// where even codes are the legacy buckets (0 SKIP_ATMOS, 2 HAS_ATMOS 0.34,
+// 4 HAS_PBR 0.67, 6 HAS_HDRI 1.0) and odd codes are "avatar + next even
+// bucket". sl_flag_untag() rounds odd codes up to their bucket so every
+// bucket compare keeps working; without the bit it is the identity (legacy
+// encoding, no avatar information). Mirrors GBUFFER_UNTAG /
+// GBUFFER_AVATAR_TAG_OF in the viewer's shader preamble (llshadermgr.cpp).
+float sl_flag_untag(float w)
+{
+    if ((SL_ConfigFlags & SL_CONFIG_AVATAR_TAG) == 0u)
+        return w;
+    float code = floor(w * 6.0 + 0.5);
+    // ReShade FX has no fmod(); codes are non-negative integers, so parity
+    // = code - 2*floor(code/2) is exact.
+    return (code + (code - 2.0 * floor(code * 0.5))) / 6.0;
+}
+
+// True on pixels the viewer tagged as avatar geometry (system mesh, rigged
+// mesh, eyes, impostors). Always false without SL_CONFIG_AVATAR_TAG.
+// POINT-sampled for the same reason as sl_flag_covered().
+bool sl_flag_avatar(float2 uv)
+{
+    if ((SL_ConfigFlags & SL_CONFIG_AVATAR_TAG) == 0u)
+        return false;
+    float w = tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w;
+    float code = floor(w * 6.0 + 0.5);
+    return (code - 2.0 * floor(code * 0.5)) > 0.5;
+}
+
 #if SL_ALBEDO_FLAG_COVERAGE_GATE
 // True where the flag channel says a deferred surface was written this frame
 // (HAS_ATMOS or HAS_PBR bucket). POINT-sampled: linear filtering across a
 // flag boundary would blend buckets into meaningless in-between values, same
-// reason the normal samplers are POINT.
+// reason the normal samplers are POINT. Untagged first so tagged avatars
+// (odd codes 0.1667 / 0.5) still land in their bucket.
 bool sl_flag_covered(float2 uv)
 {
-    float w = tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w;
+    float w = sl_flag_untag(tex2Dlod(SL_sNormalsPoint, float4(SL_UV(uv), 0, 0)).w);
     return abs(w - 0.34) < 0.1 || abs(w - 0.67) < 0.1;
 }
 #endif
@@ -499,7 +576,7 @@ void PS_ProvideAlbedo(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
             // is not a guarantee, because the value is loaded from disk. (FX2)
             if (vd.a >= max(SL_VISDIFF_K_THRESHOLD, SL_VISDIFF_K_MIN))
             {
-                o = vd.rgb;
+                o = SL_AlbedoToRtgiSpace(vd.rgb);   // [AlbedoSpace]
                 return;
             }
 
@@ -556,7 +633,7 @@ void PS_ProvideAlbedo(in float4 vpos : SV_Position, in float2 uv : TEXCOORD,
 #if SL_ALBEDO_TO_LINEAR
     a = pow(a, 2.2);   // sRGB -> approx linear (MUST STAY OFF — double decode)
 #endif
-    o = a;
+    o = SL_AlbedoToRtgiSpace(a);   // [AlbedoSpace]
 }
 #endif
 

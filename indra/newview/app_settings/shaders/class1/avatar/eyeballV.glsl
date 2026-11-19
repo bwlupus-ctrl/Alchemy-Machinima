@@ -29,6 +29,11 @@ uniform mat4 modelview_matrix;
 uniform mat4 modelview_projection_matrix;
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+out vec3 vary_actor_fx_normal;
+out vec3 vary_actor_fx_eye_position;
+#endif
 in vec4 diffuse_color;
 in vec3 normal;
 in vec2 texcoord0;
@@ -49,6 +54,12 @@ void main()
 
     vec3 norm = normalize(normal_matrix * normal);
 
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+    vary_actor_fx_normal = norm;
+    vary_actor_fx_eye_position = pos.xyz;
+#endif
+
     calcAtmospherics(pos.xyz);
 
     vec4 specular = vec4(1.0);
@@ -56,4 +67,3 @@ void main()
     vertex_color = color;
 
 }
-

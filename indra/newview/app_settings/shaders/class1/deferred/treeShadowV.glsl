@@ -30,9 +30,11 @@ in vec3 position;
 in vec2 texcoord0;
 
 out vec2 vary_texcoord0;
+out vec3 vary_actor_fx_position;
 
 void main()
 {
+    vary_actor_fx_position = position;
     //transform vertex
     gl_Position = modelview_projection_matrix*vec4(position.xyz, 1.0);
 

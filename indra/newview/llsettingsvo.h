@@ -94,6 +94,13 @@ public:
 
     static ptr_t buildFromLegacyPreset(const std::string &name, const LLSD &oldsettings, LLSD &messages);
     static ptr_t    buildDefaultSky();
+
+    // Flat, grey-balanced, PBR-aware neutral EEP skies for machinima capture /
+    // color grading (not stylistic looks). See llsettingsvo.cpp for the exact
+    // starting values -- these are tunable and meant to be adjusted in-world.
+    static ptr_t    buildStudioNeutralDay();
+    static ptr_t    buildStudioNeutralNight();
+
     virtual ptr_t   buildClone() SETTINGS_OVERRIDE;
 
     static ptr_t buildFromLegacyPresetFile(const std::string &name, const std::string &path, LLSD &messages);

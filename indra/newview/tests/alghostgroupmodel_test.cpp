@@ -9,10 +9,26 @@
 #include "../alghostgroupmodel.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace tut
 {
+namespace
+{
+    // lltut's ensure_approximately_equals(F64/F32, F64/F32, U32 frac_bits)
+    // takes an ULP/fractional-bit precision count, not a plain epsilon -- a
+    // literal like 1.0e-8 silently truncates to the U32 0 (no tolerance at
+    // all) and trips /W4-as-error C4244 on the implicit double->U32
+    // narrowing. Use an explicit epsilon compare instead, preserving every
+    // tolerance value already chosen below.
+    template <typename T>
+    bool approxEqual(T actual, T expected, T epsilon)
+    {
+        return std::fabs(actual - expected) <= epsilon;
+    }
+}
+
 struct alghostgroupmodel_data
 {
     static LLUUID id(const char* value)
@@ -48,15 +64,15 @@ void alghostgroupmodel_object::test<1>()
 
     const ALGhostGroupModel::Group* authored = model.findGroup(group);
     ensure("group exists", authored != nullptr);
-    ensure_approximately_equals("stable centroid x",
-        authored->mWorld.mFoot.mdV[VX], 0.0, 1.0e-8);
-    ensure_approximately_equals("stable centroid z",
-        authored->mWorld.mFoot.mdV[VZ], 2.0, 1.0e-8);
+    ensure("stable centroid x",
+        approxEqual(authored->mWorld.mFoot.mdV[VX], 0.0, 1.0e-8));
+    ensure("stable centroid z",
+        approxEqual(authored->mWorld.mFoot.mdV[VZ], 2.0, 1.0e-8));
 
     ALGhostGroupModel::Transform resolved;
     ensure("member resolves", model.resolveMember(a, resolved));
-    ensure_approximately_equals("member x preserved",
-        resolved.mFoot.mdV[VX], -1.0, 1.0e-5);
+    ensure("member x preserved",
+        approxEqual(resolved.mFoot.mdV[VX], -1.0, 1.0e-5));
 }
 
 template<> template<>
@@ -78,14 +94,14 @@ void alghostgroupmodel_object::test<2>()
     ALGhostGroupModel::Transform got_b;
     ensure("a resolves", model.resolveMember(a, got_a));
     ensure("b resolves", model.resolveMember(b, got_b));
-    ensure_approximately_equals("selected member lands exactly x",
-        got_a.mFoot.mdV[VX], desired.mFoot.mdV[VX], 1.0e-5);
-    ensure_approximately_equals("selected member lands exactly y",
-        got_a.mFoot.mdV[VY], desired.mFoot.mdV[VY], 1.0e-5);
-    ensure_approximately_equals("rigid scale reaches requested",
-        got_a.mScale, desired.mScale, 1.0e-5);
-    ensure_approximately_equals("member separation scales",
-        (got_b.mFoot - got_a.mFoot).length(), 4.0, 1.0e-4);
+    ensure("selected member lands exactly x",
+        approxEqual(got_a.mFoot.mdV[VX], desired.mFoot.mdV[VX], 1.0e-5));
+    ensure("selected member lands exactly y",
+        approxEqual(got_a.mFoot.mdV[VY], desired.mFoot.mdV[VY], 1.0e-5));
+    ensure("rigid scale reaches requested",
+        approxEqual(got_a.mScale, desired.mScale, 1.0e-5f));
+    ensure("member separation scales",
+        approxEqual((got_b.mFoot - got_a.mFoot).length(), 4.0, 1.0e-4));
 }
 
 template<> template<>
@@ -104,10 +120,10 @@ void alghostgroupmodel_object::test<3>()
     ALGhostGroupModel::Transform got_b;
     model.resolveMember(a, got_a);
     model.resolveMember(b, got_b);
-    ensure_approximately_equals("selected scale changes", got_a.mScale, 2.f, 1.0e-5);
-    ensure_approximately_equals("other scale stays", got_b.mScale, 1.f, 1.0e-5);
-    ensure_approximately_equals("formation extent stays",
-        (got_b.mFoot - got_a.mFoot).length(), 2.0, 1.0e-4);
+    ensure("selected scale changes", approxEqual(got_a.mScale, 2.f, 1.0e-5f));
+    ensure("other scale stays", approxEqual(got_b.mScale, 1.f, 1.0e-5f));
+    ensure("formation extent stays",
+        approxEqual((got_b.mFoot - got_a.mFoot).length(), 2.0, 1.0e-4));
 }
 
 template<> template<>
@@ -141,20 +157,20 @@ void alghostgroupmodel_object::test<5>()
         model.setMemberWorld(a, custom, true));
     ALGhostGroupModel::Transform resolved;
     ensure("custom member resolves", model.resolveMember(a, resolved));
-    ensure_approximately_equals("custom x exact",
-        resolved.mFoot.mdV[VX], custom.mFoot.mdV[VX], 1.0e-5);
-    ensure_approximately_equals("custom y exact",
-        resolved.mFoot.mdV[VY], custom.mFoot.mdV[VY], 1.0e-5);
-    ensure_approximately_equals("custom scale exact",
-        resolved.mScale, custom.mScale, 1.0e-5);
+    ensure("custom x exact",
+        approxEqual(resolved.mFoot.mdV[VX], custom.mFoot.mdV[VX], 1.0e-5));
+    ensure("custom y exact",
+        approxEqual(resolved.mFoot.mdV[VY], custom.mFoot.mdV[VY], 1.0e-5));
+    ensure("custom scale exact",
+        approxEqual(resolved.mScale, custom.mScale, 1.0e-5f));
 
     ensure("custom offset resets", model.resetMemberOffset(a));
     ensure("authored member resolves after reset",
         model.resolveMember(a, resolved));
-    ensure_approximately_equals("authored x restored",
-        resolved.mFoot.mdV[VX], -1.0, 1.0e-5);
-    ensure_approximately_equals("authored y restored",
-        resolved.mFoot.mdV[VY], 0.0, 1.0e-5);
+    ensure("authored x restored",
+        approxEqual(resolved.mFoot.mdV[VX], -1.0, 1.0e-5));
+    ensure("authored y restored",
+        approxEqual(resolved.mFoot.mdV[VY], 0.0, 1.0e-5));
     const ALGhostGroupModel::Group* saved = model.findGroup(group);
     ensure("reset clears the pin", saved && !saved->mMembers.front().mPinned);
 }
@@ -174,13 +190,13 @@ void alghostgroupmodel_object::test<6>()
     const ALGhostGroupModel::Group* initial = model.findGroup(group);
     ensure("large-offset group exists", initial != nullptr);
     const LLVector3d local = initial->mMembers.front().mLocal.mFoot;
-    ensure_approximately_equals("large local fraction survives grouping",
-        local.mdV[VX], -1000000000.25, 1.0e-9);
+    ensure("large local fraction survives grouping",
+        approxEqual(local.mdV[VX], -1000000000.25, 1.0e-9));
     ALGhostGroupModel::Transform initial_world;
     ensure("initial large-offset member resolves",
         model.resolveMember(a, initial_world));
-    ensure_approximately_equals("initial authored foot is preserved",
-        initial_world.mFoot.mdV[VX], 0.125, 1.0e-9);
+    ensure("initial authored foot is preserved",
+        approxEqual(initial_world.mFoot.mdV[VX], 0.125, 1.0e-9));
 
     ALGhostGroupModel::Transform moved =
         transform(500000000000.0, -250000000000.0, 8.0, 0.37f, 1.f);

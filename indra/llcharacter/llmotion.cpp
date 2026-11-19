@@ -52,6 +52,9 @@ LLMotion::LLMotion( const LLUUID &id ) :
     mResidualWeight(0.f),
     mFadeWeight(1.f),
     mPriorityOverride(-1),
+    mPresentationClockMode(PresentationClockMode::NATIVE),
+    mExternalSampleTime(0.f),
+    mPresentationWeight(1.f),
     mDeactivateCallback(nullptr),
     mDeactivateCallbackUserData(nullptr)
 {
@@ -162,6 +165,73 @@ void LLMotion::setPriorityOverride(S32 priority)
     }
 }
 
+bool LLMotion::claimPresentationControl(const LLUUID& owner)
+{
+    if (owner.isNull())
+    {
+        return false;
+    }
+    if (mPresentationOwner.notNull() && mPresentationOwner != owner)
+    {
+        return false;
+    }
+    mPresentationOwner = owner;
+    return true;
+}
+
+void LLMotion::releasePresentationControl(const LLUUID& owner)
+{
+    if (owner.notNull() && mPresentationOwner == owner)
+    {
+        resetPresentationControl();
+    }
+}
+
+bool LLMotion::isPresentationControlledBy(const LLUUID& owner) const
+{
+    return owner.notNull() && mPresentationOwner == owner;
+}
+
+bool LLMotion::setExternalSampleTime(const LLUUID& owner, F32 sample_time)
+{
+    if (!isPresentationControlledBy(owner) || !supportsExternalSampling() || !llfinite(sample_time))
+    {
+        return false;
+    }
+    mExternalSampleTime = llmax(0.f, sample_time);
+    mPresentationClockMode = PresentationClockMode::EXTERNAL_SAMPLE;
+    return true;
+}
+
+bool LLMotion::useNativePresentationClock(const LLUUID& owner)
+{
+    if (!isPresentationControlledBy(owner))
+    {
+        return false;
+    }
+    mPresentationClockMode = PresentationClockMode::NATIVE;
+    mExternalSampleTime = 0.f;
+    return true;
+}
+
+bool LLMotion::setPresentationWeight(const LLUUID& owner, F32 weight)
+{
+    if (!isPresentationControlledBy(owner) || !llfinite(weight))
+    {
+        return false;
+    }
+    mPresentationWeight = llclamp(weight, 0.f, 1.f);
+    return true;
+}
+
+void LLMotion::resetPresentationControl()
+{
+    mPresentationOwner.setNull();
+    mPresentationClockMode = PresentationClockMode::NATIVE;
+    mExternalSampleTime = 0.f;
+    mPresentationWeight = 1.f;
+}
+
 void LLMotion::setDeactivateCallback( void (*cb)(void *), void* userdata )
 {
     mDeactivateCallback = cb;
@@ -206,6 +276,8 @@ void LLMotion::deactivate()
     {
         setPriorityOverride(-1);
     }
+
+    resetPresentationControl();
 
     if (mDeactivateCallback)
     {

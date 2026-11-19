@@ -38,6 +38,7 @@ public:
     LLFloaterPreferenceGraphicsAdvanced(const LLSD& key);
     ~LLFloaterPreferenceGraphicsAdvanced();
     /*virtual*/ bool postBuild();
+    /*virtual*/ void draw();
     void onOpen(const LLSD& key);
     void onClickCloseBtn(bool app_quitting);
     void disableUnavailableSettings();
@@ -51,6 +52,8 @@ public:
     void updateComplexityMode(const LLSD& newvalue);
     void updateComplexityText();
     void updateObjectMeshDetailText();
+    void refreshVRAMStatus();
+    void onVRAMCapChanged();
     void refresh();
     // callback for when client modifies a render option
     void onRenderOptionEnable();
@@ -69,4 +72,3 @@ protected:
 };
 
 #endif //LLFLOATERPREFERENCEGRAPHICSADVANCED_H
-

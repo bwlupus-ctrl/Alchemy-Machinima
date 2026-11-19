@@ -43,6 +43,18 @@ in vec2 vary_texcoord0;
 
 vec3 srgb_to_linear(vec3 cs);
 vec3 linear_to_srgb(vec3 cl);
+#ifdef HAS_ACTOR_FX
+vec3 actorFxApply(vec3 source, vec3 normal_eye, vec3 position_eye, vec2 authored_uv);
+vec3 actorFxEmissive(vec3 authored_emissive, vec3 styled_color);
+bool actorFxActive();
+void actorFxTronPrime(); // [TronT2 fix] seam footprint, uniform flow
+bool actorFxUvTransformEnabled();
+bool actorFxRgbSplitEnabled();
+vec2 actorFxUv(vec2 authored_uv, vec3 position_eye);
+vec2 actorFxRgbSplitUv(vec2 transformed_uv, float direction);
+vec3 alrPresentedLinear(vec3 c);
+bool alrDebug();
+#endif
 
 #ifdef HAS_ALPHA_MASK
 uniform float minimum_alpha;
@@ -60,6 +72,9 @@ void mirrorClip(vec3 pos);
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    actorFxTronPrime(); // [TronT2 fix] before any discard/return
+#endif
     mirrorClip(vary_position);
 #ifdef IS_ALPHA
     waterClip(vary_position.xyz);
@@ -80,6 +95,35 @@ void main()
     }
 #endif
 
+#ifdef HAS_ACTOR_FX
+    bool actor_fx_active = actorFxActive();
+    vec2 fx_uv = vary_texcoord0.xy;
+    if (actor_fx_active)
+    {
+        bool fx_uv_transform = actorFxUvTransformEnabled();
+        bool fx_rgb_split = actorFxRgbSplitEnabled();
+        if (fx_uv_transform)
+        {
+            fx_uv = actorFxUv(fx_uv, vary_position);
+#ifdef HAS_DIFFUSE_LOOKUP
+            color.rgb = diffuseLookup(fx_uv).rgb;
+#else
+            color.rgb = texture(diffuseMap, fx_uv).rgb;
+#endif
+        }
+        if (fx_rgb_split)
+        {
+#ifdef HAS_DIFFUSE_LOOKUP
+            color.r = diffuseLookup(actorFxRgbSplitUv(fx_uv, -1.0)).r;
+            color.b = diffuseLookup(actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#else
+            color.r = texture(diffuseMap, actorFxRgbSplitUv(fx_uv, -1.0)).r;
+            color.b = texture(diffuseMap, actorFxRgbSplitUv(fx_uv,  1.0)).b;
+#endif
+        }
+    }
+#endif
+
     color.rgb *= vertex_color.rgb;
 
     vec3 pos = vary_position;
@@ -88,6 +132,32 @@ void main()
     vec3 visible_diffuse_color = color.rgb;
 #ifndef IS_HUD
     color.rgb = srgb_to_linear(color.rgb);
+#ifdef HAS_ACTOR_FX
+    if (actor_fx_active)
+    {
+        // Fullbright batches intentionally do not carry a normal attribute.
+        // Derive one only for active Actor FX; disabled draws stay identity
+        // and avoid derivatives plus all style/emissive work.
+        vec3 actor_fx_normal = cross(dFdx(vary_position), dFdy(vary_position));
+        float actor_fx_normal_len2 = dot(actor_fx_normal, actor_fx_normal);
+        actor_fx_normal = actor_fx_normal_len2 > 1e-12
+            ? actor_fx_normal * inversesqrt(actor_fx_normal_len2)
+            : vec3(0.0, 0.0, 1.0);
+        color.rgb = actorFxApply(color.rgb, actor_fx_normal, vary_position,
+                                 vary_texcoord0.xy);
+#ifndef IS_ALPHA
+        // This pool is unblended: destination alpha is the renderer's glow
+        // tag, not material transparency. Active Actor FX emission is emitted
+        // in the same draw; blended alpha uses its dedicated additive pass.
+        vec3 actor_fx_emissive = actorFxEmissive(vec3(0.0), color.rgb);
+        color.a += max(max(actor_fx_emissive.r, actor_fx_emissive.g),
+                       actor_fx_emissive.b);
+#endif
+    }
+#endif
+#ifdef HAS_ACTOR_FX
+    color.rgb = alrPresentedLinear(color.rgb); // [AvatarLightResponse] presented (unlit) colour
+#endif
     visible_diffuse_color = color.rgb;
 #ifdef IS_ALPHA
 
@@ -103,6 +173,11 @@ void main()
 
 #endif
 
+#ifdef HAS_ACTOR_FX
+#ifndef IS_HUD
+    if (alrDebug()) color.rgb = vec3(1.0, 0.0, 1.0); // [AvatarLightResponse] debug override
+#endif
+#endif
     frag_color = max(color, vec4(0));
 #ifdef HAS_VISIBLE_DIFFUSE
     // A legacy fullbright surface has NO diffuse-lighting response. Its colour

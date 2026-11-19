@@ -40,6 +40,7 @@ in vec2 vary_texcoord0;
 void mirrorClip(vec3 pos);
 
 vec4 encodeNormal(vec3 n, float env, float gbuffer_flag);
+float gbufferAvatarFlag(float flag);   // [TronA0] globalF.glsl
 
 void main()
 {
@@ -55,7 +56,12 @@ void main()
     frag_data[0] = vec4(col.rgb, 0.0);
     frag_data[1] = vec4(0,0,0,0); // spec
     vec3 nvn = normalize(vary_normal);
+#ifdef HAS_SKIN
+    // [TronA0] rigged mesh: avatar geometry -> tagged flag
+    frag_data[2] = encodeNormal(nvn.xyz, 0, gbufferAvatarFlag(GBUFFER_FLAG_HAS_ATMOS));
+#else
     frag_data[2] = encodeNormal(nvn.xyz, 0, GBUFFER_FLAG_HAS_ATMOS);
+#endif
 
 #if defined(HAS_EMISSIVE)
     frag_data[3] = vec4(0);

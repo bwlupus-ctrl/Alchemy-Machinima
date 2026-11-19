@@ -1,0 +1,50 @@
+FIX ROUND — spot-shadow ceiling (10). A codex review confirmed: camera-enum shift SAFE, both literal-6
+loops intentionally scoped, 6-and-below byte-identical on 32-unit GPUs. Apply TWO fixes below. Do NOT
+address the P1 static-sampler-tiering finding in this round (deliberately deferred — see NOTE). Do NOT
+build/cmake/run. Locate by symbol/context.
+
+=============================================================================
+F1 (MUST-FIX) — auto-slots ownership: don't clobber a user's manual BDMergeMaxSpotShadows
+=============================================================================
+alcinelightrigmanager.cpp ~:374-379 (updateAutoShadowSlots, the early-return when the auto-slot inputs
+are unchanged). BUG: while (auto_enabled, requested, hw_max) are unchanged, the function early-returns
+WITHOUT observing an external change to BDMergeMaxSpotShadows. Repro: auto writes 8; user then changes
+8->10->8 while the rig stays lit; ownership is never relinquished; when the rig later goes dark, restore
+clobbers the user's explicit 8 back to the old baseline.
+FIX: before the unchanged-inputs early return, READ the current BDMergeMaxSpotShadows and compare it to
+the last auto-written value the state cached. If they DIFFER, the user (or something else) changed it =>
+RELINQUISH ownership (clear mRaised / drop the captured baseline) so no later restore fires. Only keep
+ownership while the live setting still equals what auto last wrote. (Equivalent alternative: relinquish
+from the setting's change signal — but the read-and-compare before the cache return is simplest and
+self-contained.) Preserve all existing behavior: raise-only, hw cap, first-baseline capture, restore on
+dark/auto-off/shutdown ONLY while still owner. Update/extend the TUT so the 8->10->8-while-lit sequence
+asserts ownership is relinquished and the baseline is NOT restored afterward.
+
+=============================================================================
+F2 (SHOULD-FIX) — make the slot->sampler test guard the REAL dispatch, or pin it as the single source
+=============================================================================
+tests/alcinelightrigmodel_test.cpp ~:2407-2410 (test 30) asserts spotShadowMapIndex(), a helper used
+ONLY by the test — so a missing/duplicated/wrong case in the GLSL sampleSpotShadow or
+sampleSpotShadowConservative leaves the test green.
+FIX: make spotShadowMapIndex() the SINGLE SOURCE OF TRUTH for the spot-slot -> shadowMap-index mapping
+(slot s in [0,MAX_SPOT_SHADOWS) -> map index 4 + s), assert it over ALL slots against INDEPENDENT
+literals (slot 0->4, 1->5, ... 9->13; and the sun slots 0..3 -> 0..3), AND add a prominent comment at
+BOTH GLSL dispatches in shadowUtil.glsl stating they MUST mirror spotShadowMapIndex()'s mapping (so a
+future editor keeps them in sync). If cheap, also add a static check that the count of dispatch cases ==
+MAX_SPOT_SHADOWS. TUT cannot execute GLSL, so the goal is: one tested C++ mapping + an explicit
+"keep-in-sync" contract at the shader, not a tautology. Keep the assertions independent (no self-compare).
+
+=============================================================================
+NOTE — P1 (static sampler tiering) is DEFERRED on purpose. Do NOT implement it here.
+=============================================================================
+The review's P1 (the shader statically declares 10 spot samplers regardless of the runtime hardware
+gate, so a 28-31 texture-unit GPU could overflow) is being deferred to a separate, dedicated pass
+(hardware-tiered 6/8/10 shader variants via a compile define). It does NOT affect 32-unit GPUs. Leave
+the shader declaring 10 samplers as-is for this round. Do not add shader permutations now.
+
+=============================================================================
+REPORT
+=============================================================================
+F1: the ownership read-and-compare (or change-signal relinquish) + the 8->10->8-while-lit TUT case. F2:
+spotShadowMapIndex as single source, the all-slots literal assertions, and the keep-in-sync comments at
+both GLSL dispatches. Confirm no other behavior changed and 6-and-below stays byte-identical. Do not build.

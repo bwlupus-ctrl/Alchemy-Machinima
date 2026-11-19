@@ -66,6 +66,7 @@
 #include "llworld.h"
 #include "llselectmgr.h"
 #include "pipeline.h"
+#include "alprobedirty.h" // [ProbeOnDemand]
 #include "llsdutil.h"
 #include "llmatrix4a.h"
 #include "llmediaentry.h"
@@ -79,6 +80,7 @@
 #include "llviewershadermgr.h"
 #include "llvoavatar.h"
 #include "llcontrolavatar.h"
+#include "lldirectorcast.h"
 #include "llghostavatar.h"
 #include "llvoavatarself.h"
 #include "llvocache.h"
@@ -622,6 +624,12 @@ void LLVOVolume::animateTextures()
 
         if (result)
         {
+            // [ProbeOnDemand] TXa: texture animation is running (called for every
+            // instance every frame, independent of the camera) -> debounced motion.
+            if (ALProbeDirty::recording())
+            {
+                ALProbeDirty::noteDrawable(mDrawable, ALProbeSched::R_TEX, ALProbeSched::Motion::TEXANIM);
+            }
             if (!mTexAnimMode)
             {
                 mFaceMappingChanged = true;
@@ -666,6 +674,9 @@ void LLVOVolume::animateTextures()
                     facep->mTextureMatrix = new LLMatrix4();
                     if (facep->getVirtualSize() > MIN_TEX_ANIM_SIZE)
                     {
+                        // [ProbeOnDemand] TXt: an animated-texture batch toggle is
+                        // LOD-like churn, not a content change.
+                        ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_TEXANIM_TOGGLE);
                         // Fix the one edge case missed in
                         // LLVOVolume::updateTextureVirtualSize when the
                         // mTextureMatrix is not yet present
@@ -876,6 +887,9 @@ void LLVOVolume::updateTextureVirtualSize(bool forced)
         {
             if ((vsize > MIN_TEX_ANIM_SIZE) != (old_size > MIN_TEX_ANIM_SIZE))
             {
+                // [ProbeOnDemand] TXt: size-driven texture-animation toggle (camera
+                // distance), not a content change.
+                ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_TEXANIM_TOGGLE);
                 gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_TCOORD);
                 // dirtyGeom+markRebuild tells the engine to call
                 // LLVolumeGeometryManager::rebuildGeom, which rebuilds the
@@ -930,7 +944,14 @@ void LLVOVolume::updateTextureVirtualSize(bool forced)
                 (texture_discard < current_discard || //texture has more data than last rebuild
                 current_discard < 0)) //no previous rebuild
             {
-                gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_VOLUME);
+                {
+                    // [ProbeOnDemand] MS: a refinement of an already-built sculpt is
+                    // LOD churn; a first build (current_discard < 0) stays an event.
+                    const bool probe_lod_arrival = probeNoteAssetArrival();
+                    ALProbeDirty::ScopedTag probe_tag(probe_lod_arrival ? ALProbeDirty::TAG_LOD_MESH
+                                                                        : ALProbeDirty::currentTag());
+                    gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_VOLUME);
+                }
                 mSculptChanged = true;
             }
 
@@ -1280,10 +1301,41 @@ void LLVOVolume::updateVisualComplexity()
     }
 }
 
+// [ProbeOnDemand] MS: is this rebuild a pure refinement / LOD arrival of an asset
+// this volume already built (same sculpt id + type, ready)? A first arrival or a
+// SWAPPED asset returns false and stays a real geometry event.
+bool LLVOVolume::probeNoteAssetArrival()
+{
+    if (!ALProbeDirty::recording() || !mProbeAssetReady)
+    {
+        return false;
+    }
+    const LLVolume* volume = getVolume();
+    if (!volume)
+    {
+        return false;
+    }
+    const LLVolumeParams& params = volume->getParams();
+    if (params.getSculptID() != mProbeAssetId ||
+        params.getSculptType() != mProbeAssetType)
+    {
+        return false;
+    }
+    mProbeLodArrival = true;
+    return true;
+}
+
 void LLVOVolume::notifyMeshLoaded()
 {
     mSculptChanged = true;
-    gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_GEOMETRY);
+    {
+        // [ProbeOnDemand] MS: mesh LOD / refinement of an already-built asset is
+        // camera-driven churn; a first load or a swapped asset is a real event.
+        const bool probe_lod_arrival = probeNoteAssetArrival();
+        ALProbeDirty::ScopedTag probe_tag(probe_lod_arrival ? ALProbeDirty::TAG_LOD_MESH
+                                                            : ALProbeDirty::currentTag());
+        gPipeline.markRebuild(mDrawable, LLDrawable::REBUILD_GEOMETRY);
+    }
 
     if (!mSkinInfo && !mSkinInfoUnavaliable)
     {
@@ -1703,6 +1755,9 @@ bool LLVOVolume::updateLOD()
     }
 
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
+
+    // [ProbeOnDemand] LV: a camera-distance LOD switch is not a content change.
+    ALProbeDirty::ScopedTag probe_tag(ALProbeDirty::TAG_LOD_VOLUME);
 
     bool lod_changed = false;
 
@@ -2157,6 +2212,23 @@ bool LLVOVolume::updateGeometry(LLDrawable *drawable)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
 
+    // [ProbeOnDemand] H4: a pure LOD rebuild (no content flag, no REBUILD_POSITION)
+    // is camera-driven churn: tag the WHOLE function (including genBBoxes ->
+    // movePartition) so its notes are dropped. A changed volume invalidates the
+    // built-asset identity. Nothing below runs unless RenderProbeOnDemand is ON.
+    const bool probe_rec = ALProbeDirty::recording();
+    const bool probe_lod_only = probe_rec &&
+        (mLODChanged || (mSculptChanged && mProbeLodArrival)) &&
+        !mVolumeChanged && !mFaceMappingChanged && !mColorChanged &&
+        !(mSculptChanged && !mProbeLodArrival) &&
+        !mDrawable->isState(LLDrawable::REBUILD_POSITION);
+    ALProbeDirty::ScopedTag probe_tag(probe_lod_only ? ALProbeDirty::TAG_LOD_VOLUME
+                                                     : ALProbeDirty::currentTag());
+    if (probe_rec && mVolumeChanged)
+    {
+        mProbeAssetReady = false; // volume params changed
+    }
+
     if (mDrawable->isState(LLDrawable::REBUILD_RIGGED))
     {
         LL_PROFILE_ZONE_NAMED_CATEGORY_VOLUME("rebuild rigged");
@@ -2186,6 +2258,16 @@ bool LLVOVolume::updateGeometry(LLDrawable *drawable)
     if (mDrawable.isNull()) // Not sure why this is happening, but it is...
     {
         return true; // No update to complete
+    }
+
+    // [ProbeOnDemand] H4: entry bounds + whether this rebuild changes content.
+    LLVector4a probe_entry_bounds[2];
+    bool probe_content = false;
+    if (probe_rec)
+    {
+        ALProbeDirty::snapshotBounds(mDrawable, probe_entry_bounds);
+        probe_content = !probe_lod_only &&
+            (mVolumeChanged || mSculptChanged || mFaceMappingChanged || mColorChanged);
     }
 
     bool compiled = false;
@@ -2250,6 +2332,36 @@ bool LLVOVolume::updateGeometry(LLDrawable *drawable)
     mSculptChanged = false;
     mFaceMappingChanged = false;
     mColorChanged = false;
+
+    if (probe_rec)
+    {
+        if (probe_content)
+        {
+            // Content changed: one discrete event over the entry + exit bounds.
+            ALProbeDirty::noteDrawableBounds(mDrawable, probe_entry_bounds,
+                ALProbeSched::R_GEOM, ALProbeSched::Motion::NONE);
+        }
+        else
+        {
+            // No content change but the bounds moved: motion.
+            ALProbeDirty::noteDrawableBoundsIfChanged(mDrawable, probe_entry_bounds,
+                ALProbeSched::R_GEOM, ALProbeSched::Motion::XFORM);
+        }
+        // Built-asset identity (MS): ready only once the asset itself is loaded.
+        if (mDrawable->getNumFaces() > 0)
+        {
+            const LLVolume* probe_volume = getVolume();
+            if (probe_volume)
+            {
+                const LLVolumeParams& probe_params = probe_volume->getParams();
+                mProbeAssetId = probe_params.getSculptID();
+                mProbeAssetType = probe_params.getSculptType();
+                mProbeAssetReady = isMesh() ? probe_volume->isMeshAssetLoaded()
+                                            : (probe_volume->getSculptLevel() >= 0);
+            }
+        }
+        mProbeLodArrival = false;
+    }
 
     return LLViewerObject::updateGeometry(drawable);
 }
@@ -3383,7 +3495,18 @@ void LLVOVolume::updateSpotLightPriority()
     // big set lights dominate deterministically): the same two largest
     // in-frustum projectors keep their shadows regardless of camera motion.
     static LLCachedControl<bool> stable_spots(gSavedSettings, "BDMergeStableSpotShadows", false);
-    if (stable_spots)
+    if (isCineRigEmitter())
+    {
+        // [Cine rig] The rig's invisible projectors must hold their shadow slots
+        // deterministically and camera-independently. setupSpotLight gives rig
+        // emitters a categorical tier above world projectors; the numeric value
+        // therefore only orders rig emitters among themselves. World-size r^3
+        // preserves that ordering without losing small radius differences to a
+        // large floating-point base. Gated on isCineRigEmitter() => this is
+        // byte-identical for every non-rig projector.
+        mSpotLightPriority = r * r * r;
+    }
+    else if (stable_spots)
     {
         mSpotLightPriority = r * r * r;
     }
@@ -5356,7 +5479,8 @@ bool can_batch_gltf_material(LLFace* facep)
         return false;
     }
 
-    if (gltf_mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+    if (LLPipeline::resolveAlphaPolicy(facep).mMode ==
+        LLPipeline::ALPHA_MODE_BLEND)
     { // blend is depth-sorted in PASS_ALPHA, can't be batched across materials.
       // Opaque and mask are both eligible; the accumulation keeps each batch to a
       // single alpha mode so opaque/mask faces register to their respective passes.
@@ -5401,7 +5525,8 @@ bool can_batch_legacy_material(LLFace* facep)
         return false;
     }
 
-    if (mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND ||
+    if (LLPipeline::resolveAlphaPolicy(facep).mMode ==
+            LLPipeline::ALPHA_MODE_BLEND ||
         te->getColor().mV[3] < 0.999f)
     { // blend is depth-sorted in the alpha pool
         return false;
@@ -5534,6 +5659,62 @@ static LLClientOuterTransform* resolve_outer_transform(LLFace* facep)
     return nullptr;
 }
 
+// Native Actor FX is authored for the visible Director actor, not necessarily
+// the avatar that skins this one face. Worn animated objects are skinned by an
+// LLControlAvatar. Keep that exact runtime identity in LLDrawInfo even before
+// the object joins the Director cast: cast membership can change without a
+// geometry rebuild. uploadActorFx() dynamically falls back to the wearer for
+// an uncast control avatar, so ordinary worn animesh still inherits its actor.
+struct ActorFxOwners
+{
+    LLUUID mExact;
+    LLUUID mFallback;
+};
+
+static ActorFxOwners resolve_actor_fx_owners(LLFace* facep)
+{
+    ActorFxOwners result;
+    LLViewerObject* object = facep ? facep->getViewerObject() : nullptr;
+    LLVOAvatar* exact = facep ? facep->mAvatar : nullptr;
+    if (!exact && object)
+    {
+        exact = object->getAvatar();
+    }
+    if (exact)
+    {
+        result.mExact = LLDirectorCast::canonicalActorId(exact->getID());
+        if (exact->isControlAvatar())
+        {
+            if (LLVOAvatar* wearer = exact->getAttachedAvatar())
+            {
+                result.mFallback = wearer->getID();
+            }
+        }
+        return result;
+    }
+
+    LLVOAvatar* owner = object ? object->getAvatarAncestor() : nullptr;
+
+    if (!owner)
+    {
+        owner = facep ? facep->mAvatar : nullptr;
+        if (!owner && object)
+        {
+            owner = object->getAvatar();
+        }
+        if (owner && owner->isControlAvatar())
+        {
+            if (LLVOAvatar* wearer = owner->getAttachedAvatar())
+            {
+                owner = wearer;
+            }
+        }
+    }
+
+    result.mExact = owner ? owner->getID() : LLUUID::null;
+    return result;
+}
+
 void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep, U32 type)
 {
     LL_PROFILE_ZONE_SCOPED_CATEGORY_VOLUME;
@@ -5601,6 +5782,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
     LLClientOuterTransform* outer_transform = resolve_outer_transform(facep);
 
     LLDrawable* drawable = facep->getDrawable();
+    const ActorFxOwners actor_fx_owners = resolve_actor_fx_owners(facep);
 
     if (rigged)
     {
@@ -5623,6 +5805,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
     //drawable->getVObj()->setDebugText(llformat("%d", drawable->isState(LLDrawable::ANIMATED_CHILD)));
 
     const LLTextureEntry* te = facep->getTextureEntry();
+    const bool has_glow = te && te->getGlow() > 0.f;
     U8 bump = (type == LLRenderPass::PASS_BUMP || type == LLRenderPass::PASS_POST_BUMP) ? te->getBumpmap() : 0;
     U8 shiny = te->getShiny();
 
@@ -5653,6 +5836,40 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         }
     }
 
+    const LLPipeline::AlphaPolicy alpha_policy =
+        LLPipeline::resolveAlphaPolicy(facep);
+    const bool alpha_mask_pass =
+        type == LLRenderPass::PASS_ALPHA_MASK ||
+        type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK ||
+        type == LLRenderPass::PASS_MATERIAL_ALPHA_MASK ||
+        type == LLRenderPass::PASS_SPECMAP_MASK ||
+        type == LLRenderPass::PASS_NORMMAP_MASK ||
+        type == LLRenderPass::PASS_NORMSPEC_MASK ||
+        type == LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK ||
+        type == LLRenderPass::PASS_GRASS ||
+        ((type == LLRenderPass::PASS_GLOW ||
+          type == LLRenderPass::PASS_GLTF_GLOW) &&
+         alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK);
+    const U8 effective_draw_alpha_mode =
+        type == LLRenderPass::PASS_ALPHA
+            ? (U8)LLPipeline::ALPHA_MODE_BLEND
+            : (alpha_mask_pass ? (U8)LLPipeline::ALPHA_MODE_MASK
+                               : (U8)LLPipeline::ALPHA_MODE_OPAQUE);
+    F32 effective_draw_cutoff = -1.f;
+    if (alpha_mask_pass)
+    {
+        if (alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK &&
+            alpha_policy.mCutoff >= 0.f)
+        {
+            effective_draw_cutoff = alpha_policy.mCutoff;
+        }
+        else
+        {
+            effective_draw_cutoff =
+                type == LLRenderPass::PASS_GRASS ? 0.5f : 0.33f;
+        }
+    }
+
     // A GLTF PBR face carrying a real material slot (assigned by the indexed
     // accumulation in genDrawInfo) participates in multi-material batching via
     // mGLTFMaterialList, parallel to mTextureList for diffuse texture batching.
@@ -5668,15 +5885,24 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
 
     if (mat)
     {
-        bool is_alpha = (facep->getPoolType() == LLDrawPool::POOL_ALPHA) || (te->getColor().mV[3] < 0.999f);
-        if (type == LLRenderPass::PASS_ALPHA)
+        bool is_alpha =
+            effective_draw_alpha_mode == LLPipeline::ALPHA_MODE_BLEND ||
+            te->getColor().mV[3] < 0.999f;
+        U32 material_alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT;
+        if (alpha_policy.mOverridden)
         {
-            shader_mask = mat->getShaderMask(LLMaterial::DIFFUSE_ALPHA_MODE_BLEND, is_alpha);
+            material_alpha_mode =
+                alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK
+                    ? LLMaterial::DIFFUSE_ALPHA_MODE_MASK
+                    : (alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND
+                           ? LLMaterial::DIFFUSE_ALPHA_MODE_BLEND
+                           : LLMaterial::DIFFUSE_ALPHA_MODE_NONE);
         }
-        else
+        else if (type == LLRenderPass::PASS_ALPHA)
         {
-            shader_mask = mat->getShaderMask(LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT, is_alpha);
+            material_alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_BLEND;
         }
+        shader_mask = mat->getShaderMask(material_alpha_mode, is_alpha);
     }
 
     // Build this face's per-slot legacy material data (mirrors the scalar field
@@ -5688,7 +5914,10 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         legacy_slot.mDiffuse = tex;
         legacy_slot.mNormalMap = facep->getViewerObject()->getTENormalMap(facep->getTEOffset());
         legacy_slot.mFullbright = fullbright ? 1.f : 0.f;
-        legacy_slot.mAlphaMaskCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
+        legacy_slot.mAlphaMaskCutoff =
+            effective_draw_alpha_mode == LLPipeline::ALPHA_MODE_MASK
+                ? effective_draw_cutoff
+                : mat->getAlphaMaskCutoff() * (1.f / 255.f);
 
         static const float spec_lut[4] = { 0.f, 0.25f, 0.5f, 0.75f };
         float spec_default = spec_lut[shiny & TEM_SHINY_MASK];
@@ -5719,8 +5948,17 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
                 {
                     batchable = true;
                     draw_vec[idx]->mGLTFMaterialList[index] = gltf_mat;
+                    if (index >= draw_vec[idx]->mGLTFAlphaMaskCutoffList.size())
+                    {
+                        draw_vec[idx]->mGLTFAlphaMaskCutoffList.resize(index + 1, -1.f);
+                    }
+                    draw_vec[idx]->mGLTFAlphaMaskCutoffList[index] =
+                        effective_draw_cutoff;
                 }
-                else if (draw_vec[idx]->mGLTFMaterialList[index] == gltf_mat)
+                else if (draw_vec[idx]->mGLTFMaterialList[index] == gltf_mat &&
+                         index < draw_vec[idx]->mGLTFAlphaMaskCutoffList.size() &&
+                         draw_vec[idx]->mGLTFAlphaMaskCutoffList[index] ==
+                             effective_draw_cutoff)
                 { //this face's material slot can be used with this batch
                     batchable = true;
                 }
@@ -5739,9 +5977,19 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
                     batchable = true;
                     draw_vec[idx]->mMaterialSlotList[index] = legacy_slot;
                 }
-                else if (draw_vec[idx]->mMaterialSlotList[index].mDiffuse == tex)
+                else
                 { //this face's material slot can be used with this batch
-                    batchable = true;
+                    const LLDrawInfo::MaterialSlot& prior =
+                        draw_vec[idx]->mMaterialSlotList[index];
+                    batchable =
+                        prior.mDiffuse == legacy_slot.mDiffuse &&
+                        prior.mNormalMap == legacy_slot.mNormalMap &&
+                        prior.mSpecularMap == legacy_slot.mSpecularMap &&
+                        prior.mSpecColor == legacy_slot.mSpecColor &&
+                        prior.mEnvIntensity == legacy_slot.mEnvIntensity &&
+                        prior.mAlphaMaskCutoff ==
+                            legacy_slot.mAlphaMaskCutoff &&
+                        prior.mFullbright == legacy_slot.mFullbright;
                 }
             }
             else
@@ -5786,13 +6034,24 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         // slot list (checked via `batchable` above) governs membership instead.
         (gltf_indexed || legacy_indexed || info->mMaterialID == mat_id) &&
         info->mFullbright == fullbright &&
+        // mVertexBuffer's TYPE_EMISSIVE allocation is group-wide. Preserve
+        // exact per-draw authored-glow ownership so shared Actor FX (and any
+        // other DrawInfo consumer) never classifies a neighbouring face's
+        // emissive stream as this batch's glow.
+        info->mHasGlow == has_glow &&
         info->mBump == bump &&
         (!mat || legacy_indexed || (info->mShiny == shiny)) && // need to break batches when a material is shared, but legacy settings are different
         info->mTextureMatrix == tex_mat &&
         info->mModelMatrix == model_mat &&
         info->mOuterTransform.get() == outer_transform &&
         info->mShaderMask == shader_mask &&
+        info->mEffectiveAlphaMode == effective_draw_alpha_mode &&
+        (gltf_indexed || legacy_indexed ||
+         effective_draw_alpha_mode != LLPipeline::ALPHA_MODE_MASK ||
+         info->mAlphaMaskCutoff == effective_draw_cutoff) &&
         info->mAvatar == facep->mAvatar &&
+        info->mActorFxOwner == actor_fx_owners.mExact &&
+        info->mActorFxFallbackOwner == actor_fx_owners.mFallback &&
         info->getSkinHash() == facep->getSkinHash())
     {
         info->mCount += facep->getIndicesCount();
@@ -5805,6 +6064,11 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
                 info->mGLTFMaterialList.resize(index+1);
             }
             info->mGLTFMaterialList[index] = gltf_mat;
+            if (index >= info->mGLTFAlphaMaskCutoffList.size())
+            {
+                info->mGLTFAlphaMaskCutoffList.resize(index + 1, -1.f);
+            }
+            info->mGLTFAlphaMaskCutoffList[index] = effective_draw_cutoff;
         }
         else if (legacy_indexed)
         {
@@ -5843,6 +6107,7 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
 
         draw_info->mBump  = bump;
         draw_info->mShiny = shiny;
+        draw_info->mHasGlow = has_glow;
 
         static const float alpha[4] =
         {
@@ -5860,14 +6125,17 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         draw_info->mGLTFMaterial = gltf_mat;
         draw_info->mShaderMask = shader_mask;
         draw_info->mAvatar = facep->mAvatar;
+        draw_info->mActorFxOwner = actor_fx_owners.mExact;
+        draw_info->mActorFxFallbackOwner = actor_fx_owners.mFallback;
         draw_info->mSkinInfo = facep->mSkinInfo;
-        // [BDMerge] Mark draws that belong to a worn attachment (rigged or not).
-        // getAvatar() walks parents, so a non-rigged prim of a worn attachment
-        // still resolves to its wearer; SIM-rezzed objects resolve to null. Drives
+        // [BDMerge] Mark draws that belong to a genuinely worn attachment
+        // (rigged or not). getAvatarAncestor() excludes standalone animesh even
+        // though getAvatar() returns its control avatar. Drives
         // the gated 3-pass alpha ordering in LLDrawPoolAlpha.
         {
-            const LLViewerObject* drawObj = facep->getViewerObject();
-            draw_info->mAttachedToAvatar = (drawObj && drawObj->getAvatar() != nullptr);
+            LLViewerObject* drawObj = facep->getViewerObject();
+            draw_info->mAttachedToAvatar =
+                (drawObj && drawObj->getAvatarAncestor() != nullptr);
         }
 
         if (gltf_mat)
@@ -5894,7 +6162,14 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
             }
 
             draw_info->mAlphaMaskCutoff = mat->getAlphaMaskCutoff() * (1.f / 255.f);
-            draw_info->mDiffuseAlphaMode = mat->getDiffuseAlphaMode();
+            draw_info->mDiffuseAlphaMode =
+                alpha_policy.mOverridden
+                    ? (alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK
+                           ? LLMaterial::DIFFUSE_ALPHA_MODE_MASK
+                           : (alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND
+                                  ? LLMaterial::DIFFUSE_ALPHA_MODE_BLEND
+                                  : LLMaterial::DIFFUSE_ALPHA_MODE_NONE))
+                    : mat->getDiffuseAlphaMode();
             draw_info->mNormalMap = facep->getViewerObject()->getTENormalMap(facep->getTEOffset());
 
         }
@@ -5911,51 +6186,14 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
 
         }
 
-        // [BDMerge G2.3] Single consolidated forced-mask cutoff override: while
-        // forced masking is on, any Blinn-Phong face pushed into a mask pass uses
-        // the adjustable global cutoff - material BLEND faces (whose own cutoff is
-        // meaningless) and non-material faces (stock 0.33/0.5) alike. MASK-material
-        // faces keep their own cutoff; PBR/GLTF faces are excluded (they route by
-        // mAlphaMode, not canRenderAsMask). Gate off = byte-identical stock.
-        {
-            static LLCachedControl<bool> force_mask(gSavedSettings, "BDMergeForceAlphaMask", false);
-            static LLCachedControl<F32> force_cutoff(gSavedSettings, "BDMergeForceAlphaMaskCutoff", 0.5f);
-            // [BDMerge G2.3 per-target] The right-click "Force Mask" override routes a
-            // face into the mask pass via LLFace::canRenderAsMask() independently of the
-            // global flag. The cutoff override must honor that same per-object/per-avatar
-            // choice, otherwise an explicitly force-masked BLEND face keeps its meaningless
-            // material cutoff (often 0) and the global cutoff slider appears to do nothing.
-            LLViewerObject* vobj = facep->getViewerObject();
-            LLUUID objId = (vobj && vobj->getRootEdit()) ? vobj->getRootEdit()->getID() : LLUUID::null;
-            LLUUID avId  = (vobj && vobj->getAvatar()) ? vobj->getAvatar()->getID() : LLUUID::null;
-            bool per_target_mask = !force_mask && (LLPipeline::resolveAlphaMode(objId, avId) == 1);
-            // Per-target explicit cutoff chosen from the right-click "Mask Cutoff" submenu;
-            // -1 when the user hasn't picked one (falls back to the global cutoff below).
-            F32 pt_cutoff = per_target_mask ? LLPipeline::resolveAlphaMaskCutoff(objId, avId) : -1.f;
-
-            if ((force_mask || per_target_mask)
-                && !gltf_mat
-                && (type == LLRenderPass::PASS_ALPHA_MASK || type == LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK))
-            {
-                if (per_target_mask)
-                {
-                    // The user EXPLICITLY chose Force Mask on this target, so their cutoff
-                    // wins UNCONDITIONALLY - even over a genuine creator-set MASK material
-                    // whose stored cutoff is often ~0 (the "acts like cutoff 0" bug on
-                    // force-masked mesh, e.g. rigged hair). Use their picked value if set,
-                    // else the global default.
-                    F32 c = (pt_cutoff >= 0.f) ? pt_cutoff : (F32)force_cutoff;
-                    draw_info->mAlphaMaskCutoff = llclamp(c, 0.f, 1.f);
-                }
-                else if (!mat || mat->getDiffuseAlphaMode() != LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
-                {
-                    // Global force-mask hammer: UNCHANGED behavior - only overrides faces
-                    // with a meaningless stored cutoff (no material, or None/Blend/Emissive);
-                    // a genuine MASK material keeps its own creator-set cutoff.
-                    draw_info->mAlphaMaskCutoff = llclamp((F32)force_cutoff, 0.f, 1.f);
-                }
-            }
-        }
+        // The pass is authoritative. Store the same effective policy for scalar
+        // legacy/PBR rendering, alpha-pool shader selection, shadows, velocity,
+        // and Actor FX replay. Shared material assets remain untouched.
+        draw_info->mEffectiveAlphaMode = effective_draw_alpha_mode;
+        draw_info->mAlphaMaskCutoff =
+            effective_draw_alpha_mode == LLPipeline::ALPHA_MODE_MASK
+                ? effective_draw_cutoff
+                : -1.f;
         // if (type == LLRenderPass::PASS_ALPHA) // always populate the draw_info ptr
         { //for alpha sorting
             facep->setDrawInfo(draw_info);
@@ -5965,6 +6203,9 @@ void LLVolumeGeometryManager::registerFace(LLSpatialGroup* group, LLFace* facep,
         { //initialize material slot list for indexed GLTF batching
             draw_info->mGLTFMaterialList.resize(index+1);
             draw_info->mGLTFMaterialList[index] = gltf_mat;
+            draw_info->mGLTFAlphaMaskCutoffList.resize(index + 1, -1.f);
+            draw_info->mGLTFAlphaMaskCutoffList[index] =
+                effective_draw_cutoff;
         }
         else if (legacy_indexed)
         { //initialize material slot list for indexed legacy batching
@@ -6295,7 +6536,24 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
 
                     bool force_simple = (facep->getPixelArea() < machinimaForceSimpleRenderArea()); // [BDMerge Batch4]
                     U32 type = gPipeline.getPoolTypeFromTE(te, tex);
-                    if (is_pbr && gltf_mat && gltf_mat->mAlphaMode != LLGLTFMaterial::ALPHA_MODE_BLEND)
+                    const LLPipeline::AlphaPolicy alpha_policy =
+                        LLPipeline::resolveAlphaPolicy(facep);
+                    if (alpha_policy.mOverridden &&
+                        alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND)
+                    {
+                        type = LLDrawPool::POOL_ALPHA;
+                    }
+                    else if (alpha_policy.mOverridden &&
+                             alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK)
+                    {
+                        type = is_pbr
+                            ? LLDrawPool::POOL_GLTF_PBR
+                            : (te->getMaterialParams().notNull()
+                                   ? LLDrawPool::POOL_MATERIALS
+                                   : LLDrawPool::POOL_SIMPLE);
+                    }
+                    else if (is_pbr && gltf_mat &&
+                             gltf_mat->mAlphaMode != LLGLTFMaterial::ALPHA_MODE_BLEND)
                     {
                         type = LLDrawPool::POOL_GLTF_PBR;
                     }
@@ -6390,7 +6648,8 @@ void LLVolumeGeometryManager::rebuildGeom(LLSpatialGroup* group)
                                     // discard it here if the alpha is 0 (fully transparent) to achieve parity with blinn-phong materials in
                                     // function.
                                     bool should_render = true;
-                                    if (gltf_mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                                    if (alpha_policy.mMode ==
+                                        LLPipeline::ALPHA_MODE_BLEND)
                                     {
                                         if (gltf_mat->mBaseColor.mV[3] == 0.0f && !LLDrawPoolAlpha::sShowDebugAlpha)
                                         {
@@ -6797,22 +7056,34 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             if (batch_gltf && !hud_group && can_batch_gltf_material(facep))
             {
                 // Indexed (multi-material) GLTF PBR: accumulate up to
-                // sIndexedGLTFChannels distinct materials into one batch, assigning
-                // each face a material slot via setTextureIndex. The shader selects
-                // per-vertex by that slot. See LLRenderPass::pushGLTFBatchIndexed.
-                const S32 gltf_channels = llmin((S32)LLGLSLShader::sIndexedGLTFChannels, 8);
+                // Static/native GBuffer PBR retains the full indexed material
+                // width. Rigged PBR is also eligible for shared Actor FX's
+                // forward replay, whose shadow/probe samplers require a narrower
+                // material stride. Always split rigged geometry at that safe
+                // width so live style activation never needs a geometry rebuild.
+                const S32 gltf_channels = llmin(
+                    rigged
+                        ? LLGLSLShader::sSharedPBRIndexedGLTFChannels
+                        : LLGLSLShader::sIndexedGLTFChannels,
+                    8);
                 const LLGLTFMaterial* mat_slots[8];
+                F32 cutoff_slots[8];
                 U32 slot_count = 0;
 
                 const LLGLTFMaterial* anchor_mat = facep->getTextureEntry()->getGLTFRenderMaterial();
+                const LLPipeline::AlphaPolicy anchor_policy =
+                    LLPipeline::resolveAlphaPolicy(facep);
                 const bool anchor_double = anchor_mat->mDoubleSided;
-                const U8 anchor_alpha = (U8)anchor_mat->mAlphaMode;
+                const U8 anchor_alpha = (U8)anchor_policy.mMode;
+                const bool anchor_glow = facep->getTextureEntry()->getGlow() > 0.f;
                 // Rigged batches must be a single avatar+skin -- the matrix palette
                 // is uploaded per skin. (Null/0 for the static set; the rigged guard
                 // below keeps it inert there.)
                 const LLVOAvatar* anchor_avatar = facep->mAvatar;
                 const U64 anchor_skin = facep->getSkinHash();
-                mat_slots[slot_count++] = anchor_mat;
+                mat_slots[slot_count] = anchor_mat;
+                cutoff_slots[slot_count] = anchor_policy.mCutoff;
+                ++slot_count;
                 facep->setTextureIndex(0);
 
                 while (i != end_faces)
@@ -6825,12 +7096,20 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     }
 
                     const LLGLTFMaterial* m = facep->getTextureEntry()->getGLTFRenderMaterial();
+                    const LLPipeline::AlphaPolicy face_policy =
+                        LLPipeline::resolveAlphaPolicy(facep);
+                    if ((facep->getTextureEntry()->getGlow() > 0.f) != anchor_glow)
+                    { // per-draw authored glow ownership is a hard batch key;
+                      // splitting after slot assignment would leave sparse
+                      // indexed material lists that shared replay must reject
+                        break;
+                    }
                     if (m->mDoubleSided != anchor_double)
                     { // different cull state can't share a draw call
                         break;
                     }
 
-                    if ((U8)m->mAlphaMode != anchor_alpha)
+                    if ((U8)face_policy.mMode != anchor_alpha)
                     { // opaque and mask faces register to different passes -- keep
                       // each indexed batch to a single alpha mode
                         break;
@@ -6845,7 +7124,8 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     S32 slot = -1;
                     for (U32 s = 0; s < slot_count; ++s)
                     {
-                        if (mat_slots[s] == m)
+                        if (mat_slots[s] == m &&
+                            cutoff_slots[s] == face_policy.mCutoff)
                         {
                             slot = (S32)s;
                             break;
@@ -6859,6 +7139,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                         }
                         slot = (S32)slot_count;
                         mat_slots[slot_count++] = m;
+                        cutoff_slots[slot] = face_policy.mCutoff;
                     }
 
                     if (geom_count + facep->getGeomCount() > max_vertices)
@@ -6899,6 +7180,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 LLViewerTexture* diffuse_slots[8];
                 LLMaterial* mat_slots[8];
                 U8 shiny_slots[8];
+                F32 cutoff_slots[8];
                 U32 slot_count = 0;
 
                 // A slot's spec color / env intensity come from the TE shiny value when
@@ -6911,8 +7193,30 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     return (fm && fm->getSpecularID().isNull()) ? f->getTextureEntry()->getShiny() : (U8)0;
                 };
 
+                auto material_alpha_mode =
+                    [](const LLPipeline::AlphaPolicy& policy) -> U32
+                {
+                    if (!policy.mOverridden)
+                    {
+                        return LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT;
+                    }
+                    if (policy.mMode == LLPipeline::ALPHA_MODE_MASK)
+                    {
+                        return LLMaterial::DIFFUSE_ALPHA_MODE_MASK;
+                    }
+                    if (policy.mMode == LLPipeline::ALPHA_MODE_BLEND)
+                    {
+                        return LLMaterial::DIFFUSE_ALPHA_MODE_BLEND;
+                    }
+                    return LLMaterial::DIFFUSE_ALPHA_MODE_NONE;
+                };
+
                 LLMaterial* anchor_mat = facep->getTextureEntry()->getMaterialParams().get();
-                const U32 anchor_mask = anchor_mat->getShaderMask(LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT, false);
+                const LLPipeline::AlphaPolicy anchor_policy =
+                    LLPipeline::resolveAlphaPolicy(facep);
+                const U32 anchor_mask = anchor_mat->getShaderMask(
+                    material_alpha_mode(anchor_policy), false);
+                const bool anchor_glow = facep->getTextureEntry()->getGlow() > 0.f;
                 // rigged batches are one avatar+skin (matrix palette per skin)
                 const LLVOAvatar* anchor_avatar = facep->mAvatar;
                 const U64 anchor_skin = facep->getSkinHash();
@@ -6920,6 +7224,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 diffuse_slots[0] = facep->getTexture();
                 mat_slots[0] = anchor_mat;
                 shiny_slots[0] = shiny_slot_key(facep);
+                cutoff_slots[0] = anchor_policy.mCutoff;
                 slot_count = 1;
                 facep->setTextureIndex(0);
 
@@ -6933,7 +7238,14 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     }
 
                     LLMaterial* m = facep->getTextureEntry()->getMaterialParams().get();
-                    if (m->getShaderMask(LLMaterial::DIFFUSE_ALPHA_MODE_DEFAULT, false) != anchor_mask)
+                    const LLPipeline::AlphaPolicy face_policy =
+                        LLPipeline::resolveAlphaPolicy(facep);
+                    if ((facep->getTextureEntry()->getGlow() > 0.f) != anchor_glow)
+                    { // keep indexed slot assignment aligned with the later
+                      // per-DrawInfo authored-glow batch split
+                        break;
+                    }
+                    if (m->getShaderMask(material_alpha_mode(face_policy), false) != anchor_mask)
                     { // different program -- can't share a draw call
                         break;
                     }
@@ -6948,7 +7260,9 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     S32 slot = -1;
                     for (U32 s = 0; s < slot_count; ++s)
                     {
-                        if (mat_slots[s] == m && diffuse_slots[s] == d && shiny_slots[s] == sh)
+                        if (mat_slots[s] == m && diffuse_slots[s] == d &&
+                            shiny_slots[s] == sh &&
+                            cutoff_slots[s] == face_policy.mCutoff)
                         {
                             slot = (S32)s;
                             break;
@@ -6964,6 +7278,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                         diffuse_slots[slot_count] = d;
                         mat_slots[slot_count] = m;
                         shiny_slots[slot_count] = sh;
+                        cutoff_slots[slot_count] = face_policy.mCutoff;
                         slot_count++;
                     }
 
@@ -7203,6 +7518,8 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
             const LLTextureEntry* te = facep->getTextureEntry();
             LLGLTFMaterial* gltf_mat = te->getGLTFRenderMaterial();
+            const LLPipeline::AlphaPolicy alpha_policy =
+                LLPipeline::resolveAlphaPolicy(facep);
 
             if (hud_group && gltf_mat == nullptr)
             { //all hud attachments are fullbright
@@ -7211,10 +7528,13 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
             tex = facep->getTexture();
 
-            bool is_alpha = facep->getPoolType() == LLDrawPool::POOL_ALPHA;
+            bool is_alpha = alpha_policy.mOverridden
+                ? alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND
+                : facep->getPoolType() == LLDrawPool::POOL_ALPHA;
 
             LLMaterial* mat = nullptr;
             bool can_be_shiny = false;
+            U8 legacy_alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_NONE;
 
             // ignore traditional material if GLTF material is present
             if (gltf_mat == nullptr)
@@ -7224,9 +7544,19 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 can_be_shiny = true;
                 if (mat)
                 {
-                    U8 mode = mat->getDiffuseAlphaMode();
-                    can_be_shiny = mode == LLMaterial::DIFFUSE_ALPHA_MODE_NONE ||
-                        mode == LLMaterial::DIFFUSE_ALPHA_MODE_EMISSIVE;
+                    legacy_alpha_mode = mat->getDiffuseAlphaMode();
+                    if (alpha_policy.mOverridden)
+                    {
+                        legacy_alpha_mode =
+                            alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK
+                                ? LLMaterial::DIFFUSE_ALPHA_MODE_MASK
+                                : (alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND
+                                       ? LLMaterial::DIFFUSE_ALPHA_MODE_BLEND
+                                       : LLMaterial::DIFFUSE_ALPHA_MODE_NONE);
+                    }
+                    can_be_shiny =
+                        legacy_alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_NONE ||
+                        legacy_alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_EMISSIVE;
                 }
             }
 
@@ -7246,12 +7576,12 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
 
                 if (gltf_mat)
                 { // all other parameters ignored if gltf material is present
-                    if (gltf_mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_BLEND)
+                    if (alpha_policy.mMode == LLPipeline::ALPHA_MODE_BLEND)
                     {
                         registerFace(group, facep, LLRenderPass::PASS_ALPHA);
                         is_alpha = true;
                     }
-                    else if (gltf_mat->mAlphaMode == LLGLTFMaterial::ALPHA_MODE_MASK)
+                    else if (alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK)
                     {
                         registerFace(group, facep, LLRenderPass::PASS_GLTF_PBR_ALPHA_MASK);
                     }
@@ -7267,7 +7597,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 //
                 if (te->getFullbright())
                 {
-                    if (mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                    if (legacy_alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
                     {
                         if (blinn_phong_opaque)
                         {
@@ -7338,7 +7668,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                         LLRenderPass::PASS_NORMSPEC_EMISSIVE,
                     };
 
-                    U32 alpha_mode = mat->getDiffuseAlphaMode();
+                    U32 alpha_mode = legacy_alpha_mode;
                     if (!distance_sort && alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND)
                     { // HACK - this should never happen, but sometimes we get a material that thinks it has alpha blending when it ought not
                         alpha_mode = LLMaterial::DIFFUSE_ALPHA_MODE_NONE;
@@ -7365,7 +7695,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
             }
             else if (mat)
             {
-                U8 mode = mat->getDiffuseAlphaMode();
+                U8 mode = legacy_alpha_mode;
 
                 is_alpha = (is_alpha || (mode == LLMaterial::DIFFUSE_ALPHA_MODE_BLEND));
 
@@ -7392,6 +7722,15 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 {
                     registerFace(group, facep, fullbright ? LLRenderPass::PASS_FULLBRIGHT : LLRenderPass::PASS_SIMPLE);
                 }
+            }
+            else if (alpha_policy.mOverridden &&
+                     alpha_policy.mMode == LLPipeline::ALPHA_MODE_MASK)
+            {
+                registerFace(
+                    group, facep,
+                    (fullbright || hud_group)
+                        ? LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK
+                        : LLRenderPass::PASS_ALPHA_MASK);
             }
             else if (is_alpha)
             {
@@ -7469,7 +7808,7 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                 }
                 else if (fullbright || bake_sunlight)
                 { //fullbright
-                    if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                    if (mat && legacy_alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
                     {
                         registerFace(group, facep, LLRenderPass::PASS_FULLBRIGHT_ALPHA_MASK);
                     }
@@ -7492,7 +7831,8 @@ U32 LLVolumeGeometryManager::genDrawInfo(LLSpatialGroup* group, U32 mask, LLFace
                     else
                     { //all around simple
                         llassert(mask & LLVertexBuffer::MAP_NORMAL);
-                        if (mat && mat->getDiffuseAlphaMode() == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
+                        if (mat &&
+                            legacy_alpha_mode == LLMaterial::DIFFUSE_ALPHA_MODE_MASK)
                         { //material alpha mask can be respected in non-deferred
                             registerFace(group, facep, LLRenderPass::PASS_ALPHA_MASK);
                         }

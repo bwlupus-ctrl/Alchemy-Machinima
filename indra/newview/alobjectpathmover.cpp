@@ -84,6 +84,7 @@ void ALObjectPathMover::toggleTarget(const LLUUID& root_id)
         // props have no other identity to hang session state on)
         self.stop(root_id);
         LLActorMover::instance().clearPath(root_id);
+        self.mEffects.erase(root_id);
         self.mRoster.erase(it);
     }
     else
@@ -124,6 +125,104 @@ bool ALObjectPathMover::appendWaypointHere(const LLUUID& root_id)
 }
 
 // ---------------------------------------------------------------------------
+// orientation capture
+// ---------------------------------------------------------------------------
+//static
+bool ALObjectPathMover::getWorldRotation(const LLUUID& root_id, LLQuaternion& out_rot)
+{
+    LLViewerObject* obj = resolve_object(root_id);
+    if (!obj)
+    {
+        return false;
+    }
+    out_rot = obj->getRotationRegion();
+    return true;
+}
+
+// ---------------------------------------------------------------------------
+// oscillation / rock / spin config
+// ---------------------------------------------------------------------------
+ALObjectPathMover::Effects& ALObjectPathMover::editEffects(const LLUUID& root_id)
+{
+    return mEffects[root_id];  // default-constructs an all-off entry if absent
+}
+
+const ALObjectPathMover::Effects* ALObjectPathMover::getEffects(const LLUUID& root_id) const
+{
+    auto it = mEffects.find(root_id);
+    return it != mEffects.end() ? &it->second : nullptr;
+}
+
+void ALObjectPathMover::clearEffects(const LLUUID& root_id)
+{
+    mEffects.erase(root_id);
+}
+
+// ---------------------------------------------------------------------------
+// simple axis shuttle
+// ---------------------------------------------------------------------------
+bool ALObjectPathMover::buildAxisShuttle(const LLUUID& root_id, S32 axis, bool negative,
+                                         F32 distance_m, F32 speed, F32 xz_slope_deg)
+{
+    LLViewerObject* obj = resolve_object(root_id);
+    if (!obj)
+    {
+        return false;
+    }
+
+    LLVector3 dir;
+    switch (axis)
+    {
+        case SHUTTLE_AXIS_X:  dir = LLVector3(1.f, 0.f, 0.f); break;
+        case SHUTTLE_AXIS_Y:  dir = LLVector3(0.f, 1.f, 0.f); break;
+        case SHUTTLE_AXIS_Z:  dir = LLVector3(0.f, 0.f, 1.f); break;
+        case SHUTTLE_AXIS_XZ:
+        default:
+        {
+            const F32 rad = (std::isfinite(xz_slope_deg) ? xz_slope_deg : 0.f) * DEG_TO_RAD;
+            dir = LLVector3(cosf(rad), 0.f, sinf(rad));
+            break;
+        }
+    }
+    if (negative)
+    {
+        dir *= -1.f;
+    }
+    // guard: a degenerate axis vector (should not happen -- every case above is
+    // already unit-length -- but never divide/normalize on faith)
+    const F32 mag = dir.length();
+    if (mag < 1.0e-5f)
+    {
+        return false;
+    }
+    dir *= (1.f / mag);
+
+    distance_m = llmax(distance_m, 0.01f);
+    speed = llmax(speed, 0.05f);
+
+    LLActorMover& mover = LLActorMover::instance();
+    LLActorMover::Path& path = mover.editPath(root_id);
+    path.mNodes.clear();
+    const LLVector3d origin_global = gAgent.getPosGlobalFromAgent(obj->getPositionAgent());
+    LLActorMover::Waypoint node_a, node_b;
+    node_a.mPosGlobal = origin_global;
+    node_b.mPosGlobal = origin_global + LLVector3d(dir) * (F64)distance_m;
+    path.mNodes.push_back(node_a);
+    path.mNodes.push_back(node_b);
+    // Force WAYPOINTS geometry: if the prop previously had a PRIMITIVE path,
+    // syncPrimitiveNodes() would otherwise regenerate its nodes and clobber the
+    // two shuttle endpoints we just placed (#7).
+    path.mShape = ALPathGeometry::WAYPOINTS;
+    path.mSpeed = speed;
+    path.mEndMode = 2;      // ping-pong
+    path.markDirty();
+
+    LL_INFOS("ObjectPath") << "object " << root_id << ": shuttle path built ("
+                           << distance_m << "m @ " << speed << "m/s)" << LL_ENDL;
+    return start(root_id);
+}
+
+// ---------------------------------------------------------------------------
 // transport
 // ---------------------------------------------------------------------------
 bool ALObjectPathMover::start(const LLUUID& root_id)
@@ -152,7 +251,13 @@ bool ALObjectPathMover::start(const LLUUID& root_id)
     // heading (and tilt) it had when the operator pressed start.
     LLVector3d pos, tangent;
     path->evalAtDistance(0.f, pos, tangent);
-    drive.mStartTangentYaw = atan2f((F32)tangent.mdV[VY], (F32)tangent.mdV[VX]);
+    // Vertical-tangent guard: a pure-Z path has a horizontal tangent of 0, where
+    // atan2 is undefined -- hold 0 rather than let a signed-zero flip the facing.
+    {
+        const F32 tx = (F32)tangent.mdV[VX], ty = (F32)tangent.mdV[VY];
+        drive.mStartTangentYaw = (tx * tx + ty * ty > 1e-8f) ? atan2f(ty, tx) : 0.f;
+    }
+    drive.mLastTangentYaw = drive.mStartTangentYaw;
     drive.mStartRot = obj->getRotationRegion();
     mDrives[root_id] = drive;
     LL_INFOS("ObjectPath") << "object " << root_id << ": driving "
@@ -246,6 +351,11 @@ void ALObjectPathMover::update(F32 frame_dt)
         }
         const F32 total = llmax(path->mTotalLength, 0.01f);
 
+        // [Oscillation/Spin] the effect clock runs whenever the drive exists,
+        // INCLUDING while mArrived holds the prop at a stop-mode end -- a
+        // hovering/spinning prop keeps hovering/spinning after it parks.
+        drive.mEffectTime += dt;
+
         // ---- advance the arc clock (speed overrides + ease, walk-identical) --
         if (!drive.mArrived)
         {
@@ -279,14 +389,112 @@ void ALObjectPathMover::update(F32 frame_dt)
         {
             tangent = -tangent;
         }
-        const F32 tangent_yaw = atan2f((F32)tangent.mdV[VY], (F32)tangent.mdV[VX]);
+        // Vertical-tangent guard (pure-Z shuttle): hold the last valid yaw so the
+        // ping-pong return leg's atan2(-0,-0) = -pi cannot flip the prop 180 deg.
+        F32 tangent_yaw = drive.mLastTangentYaw;
+        {
+            const F32 tx = (F32)tangent.mdV[VX], ty = (F32)tangent.mdV[VY];
+            if (tx * tx + ty * ty > 1e-8f)
+            {
+                tangent_yaw = atan2f(ty, tx);
+                drive.mLastTangentYaw = tangent_yaw;
+            }
+        }
         const F32 skid = LLActorMover::evalPathYawOffset(*path, drive.mDist);
 
         LLQuaternion delta;
         delta.setEulerAngles(0.f, 0.f, tangent_yaw + skid - drive.mStartTangentYaw);
-        // world rot = start rotation re-aimed by how far the tangent has swung
-        // (+ the authored skid), so heading convention and tilt are preserved
-        const LLQuaternion rot = drive.mStartRot * delta;
+        // FACE_PATH world rot = start rotation re-aimed by how far the tangent
+        // has swung (+ the authored skid), so heading convention and tilt are
+        // preserved. This is also the "tangent facing" half of
+        // FACE_PATH_PLUS_OFFSET below -- both read this exact formula, so an
+        // un-authored FACE_PATH_PLUS_OFFSET path is byte-identical to FACE_PATH.
+        const LLQuaternion face_path_rot = drive.mStartRot * delta;
+
+        // ---- [OrientMode] base rotation, selected by Path::mRotationMode -----
+        // FACE_PATH (default, value 0) takes the unmodified branch below, so an
+        // existing/untouched path renders byte-identically to before this
+        // feature existed.
+        LLQuaternion base_rot = face_path_rot;
+        if (path->mRotationMode == LLActorMover::Path::OBJPATH_ROT_AUTHORED)
+        {
+            base_rot = LLActorMover::evalPathOrientation(*path, drive.mDist, /*as_offset*/ false);
+        }
+        else if (path->mRotationMode == LLActorMover::Path::OBJPATH_ROT_FACE_PATH_PLUS_OFFSET)
+        {
+            // Offset is a LOCAL rotation captured against PURE tangent facing
+            // (Rz(tangent_yaw), no skid/start-alignment -- the same reference the
+            // offset was factored against in pathOrientNodeValue). Apply it as
+            // offset * pure_facing (LL: offset first). Using face_path_rot here
+            // would re-apply the start heading and double the captured turn (#2).
+            LLQuaternion pure_facing;
+            pure_facing.setEulerAngles(0.f, 0.f, tangent_yaw);
+            base_rot = LLActorMover::evalPathOrientation(*path, drive.mDist, /*as_offset*/ true) *
+                       pure_facing;
+        }
+
+        // ---- [Oscillation] rock + [Spin]: extra LOCAL rotations, neutral
+        // (identity) with no config or with every effect off -------------------
+        LLQuaternion rock_rot;   // identity by default
+        LLQuaternion spin_rot;   // identity by default
+        bool         rot_fx = false;    // any local rotation effect active this frame
+        F32 hover_z = 0.f;
+        if (const Effects* fx = getEffects(id))
+        {
+            if (fx->mRock.mOn && fx->mRock.mAmpDeg != 0.f)
+            {
+                // Single axis-angle rotation about a normalized axis -- matches the
+                // source LSL llAxisAngle2Rot(llVecNorm(<...>), angle), NOT stacked
+                // Euler angles (which would give a larger, order-dependent tilt).
+                const F32 angle = fx->mRock.mAmpDeg * DEG_TO_RAD *
+                                  sinf(F_TWO_PI * fx->mRock.mFreqHz * drive.mEffectTime);
+                LLVector3 axis = (fx->mRock.mAxis == ROCK_AXIS_XY)  ? LLVector3(1.f, 1.f, 0.f)
+                               : (fx->mRock.mAxis == ROCK_AXIS_XYZ) ? LLVector3(1.f, 1.f, 1.f)
+                               :                                      LLVector3::x_axis;
+                axis.normalize();                       // setAngleAxis also normalizes; explicit
+                rock_rot.setAngleAxis(angle, axis);
+                rot_fx = true;
+            }
+            if (fx->mSpin.mOn && fx->mSpin.mDegPerSec != 0.f)
+            {
+                // mirrors the LSL continuous-spin idiom (llTargetOmega), but
+                // driven by the same frame clock as everything else here
+                // fmod to [0,2pi): rotation is 2pi-periodic, so wrapping is
+                // invisible and keeps the angle from growing unbounded (and
+                // losing float precision) over a long-running drive.
+                const F32 angle = fmodf(fx->mSpin.mDegPerSec * DEG_TO_RAD * drive.mEffectTime, F_TWO_PI);
+                const LLVector3 axis(fx->mSpin.mAxis == SPIN_AXIS_X ? 1.f : 0.f,
+                                     fx->mSpin.mAxis == SPIN_AXIS_Y ? 1.f : 0.f,
+                                     fx->mSpin.mAxis == SPIN_AXIS_Z ? 1.f : 0.f);
+                spin_rot.setAngleAxis(angle, axis);
+                rot_fx = true;
+            }
+            if (fx->mHover.mOn && fx->mHover.mAmpMeters != 0.f)
+            {
+                // mirrors the LSL hover/buildHoverSegment math (sine, or a
+                // half-wave rectified sine for a "bounce" feel), continuous
+                const F32 s = sinf(F_TWO_PI * fx->mHover.mFreqHz * drive.mEffectTime);
+                hover_z = fx->mHover.mAmpMeters *
+                          (fx->mHover.mWave == HOVER_WAVE_HALF ? fabsf(s) : s);
+            }
+        }
+
+        // COMPOSE ORDER (LL a*b applies a FIRST; local rotations pre-multiply):
+        //   final_rot = spin * rock * base_rot(mode)   -- spin innermost, so the
+        //     model spins on its own axis and the whole spinning thing rocks in
+        //     the UN-spun body frame (a steady wobble, not a precessing sweep).
+        //   final_pos = path_pos + worldUpZ * hover
+        // With no effects active the multiply is SKIPPED entirely (not just the
+        // normalize): an identity*identity*base product can still flip signed-zero
+        // bits, so gating the whole thing keeps the off path bit-for-bit identical
+        // to today's FACE_PATH behavior. Normalize only guards F32 product drift.
+        LLQuaternion rot = base_rot;
+        if (rot_fx)
+        {
+            rot = spin_rot * rock_rot * base_rot;
+            rot.normalize();
+        }
+        pos_global.mdV[VZ] += (F64)hover_z;
 
         place_linkset(obj, gAgent.getPosAgentFromGlobal(pos_global), rot);
         ++it;

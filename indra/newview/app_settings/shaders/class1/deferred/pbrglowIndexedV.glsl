@@ -35,6 +35,7 @@ uniform mat4 projection_matrix;
 mat4 getObjectSkinnedTransform();
 #else
 uniform mat4 modelview_projection_matrix;
+uniform mat4 modelview_matrix;
 #endif
 
 // Per-material KHR_texture_transform, two vec4 (packed scale/rotation/offset) per
@@ -43,7 +44,11 @@ uniform vec4 gltf_basecolor_transform[2*GLTF_INDEXED_CHANNELS];
 uniform vec4 gltf_emissive_transform[2*GLTF_INDEXED_CHANNELS];
 
 in vec3 position;
+#ifdef HAS_ACTOR_FX
+out vec3 vary_actor_fx_position;
+#endif
 in vec4 emissive;
+in vec4 diffuse_color;
 in vec2 texcoord0;
 in int texture_index;
 
@@ -53,18 +58,25 @@ out vec2 base_color_texcoord;
 out vec2 emissive_texcoord;
 
 out vec4 vertex_emissive;
+out vec4 vertex_color;
+out vec3 vary_position;
 
 vec2 texture_transform(vec2 vertex_texcoord, vec4[2] khr_gltf_transform, mat4 sl_animation_transform);
 
 void main()
 {
+#ifdef HAS_ACTOR_FX
+    vary_actor_fx_position = position;
+#endif
 #ifdef HAS_SKIN
     mat4 mat = getObjectSkinnedTransform();
     mat = modelview_matrix * mat;
     vec3 pos = (mat*vec4(position.xyz,1.0)).xyz;
     gl_Position = projection_matrix*vec4(pos,1.0);
+    vary_position = pos;
 #else
     gl_Position = modelview_projection_matrix * vec4(position.xyz, 1.0);
+    vary_position = (modelview_matrix * vec4(position.xyz, 1.0)).xyz;
 #endif
 
     int mi = texture_index;
@@ -81,4 +93,5 @@ void main()
     emissive_texcoord   = texture_transform(texcoord0, em, ident);
 
     vertex_emissive = emissive;
+    vertex_color = diffuse_color;
 }
