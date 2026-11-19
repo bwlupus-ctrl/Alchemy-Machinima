@@ -102,6 +102,8 @@ by the hover tip. This is INFERENCE: the RLVa API was not checked.
 **Ghost targets:**
 - **Entity clone** (`findInstanceByRuntime(hit_avatar_id)` non-null): `setInstanceDriveMode(inst->mId,
   DRIVE_DIRECTED, anim)`. Store the instance id, plus the previous `mDriveMode` and directed anim (§3.3).
+  If the clone is **already** `DRIVE_DIRECTED` with this same animation and has no entry, there is
+  nothing to record. Treat the drop as the toggle: return the clone to `DRIVE_MIRROR`.
   If the clone is in a **locked group**, apply it to **every member**, as the panel does
   (`alpanelghoststudio.cpp:2255`), with one entry per member. A re-drop (toggle) or Stop on any member
   applies to **all** members of that group, matching the drop.
@@ -193,8 +195,9 @@ on every tick.
 **Non-clone entries:**
 1. Avatar not found (out of draw distance, teleported away): keep the entry and skip it.
 2. Avatar found but `getOverallAppearance() != AOA_NORMAL` (jellydoll or visually muted): if the motion
-   is active, stop it, then **suspend** the entry (keep it, don't restart). When the avatar is normal
-   again, the next step restarts it.
+   is active, stop it, then set `suspended = true` (keep the entry, don't restart it). When
+   `getOverallAppearance()` is `AOA_NORMAL` again, clear `suspended`; the next step then restarts the
+   motion.
 3. `m = av->findMotion(anim)`. "Playing" means `m && getMotionController().isMotionActive(m) &&
    !m->isStopped()`. A motion that is stopped but still active is **easing out**: leave it alone, and
    neither restart nor remove it until it is inactive.
@@ -213,8 +216,8 @@ on every tick.
        `++fail_count`. Each restart creates a new instance and a new asset request: `markBad` is
        effectively a no-op, since a NULL constructor falls back to `LLKeyframeMotion::create`
        (`llmotioncontroller.cpp:95-117`). So **back off**: retry after 1, 2, 4, … s, capped at 30 s.
-       After 5 consecutive failures, mark the entry `FAILED` (shown in the floater, never retried, and
-       removable). `fail_count` resets when the motion is seen playing.
+       After 5 consecutive failures, set `failed = true` (a flag, not a `Phase` value). A failed entry
+       is shown in the floater, never retried, and removable. `fail_count` resets when the motion is seen playing.
      - `loop_known && !loops`: remove.
      - `!loop_known` and phase `PENDING`: retry **once** (`retried` flag, `started_at` **not** reset).
        If `now - started_at > 30 s`, remove, logging "asset never loaded".
@@ -233,13 +236,17 @@ on every tick.
 - **"Local Animations" floater** (`floater_local_anims.xml` + `alfloaterlocalanims.{h,cpp}`):
   - opened from the Me menu next to Director Console, and from the Director Console;
   - registered in `llviewerfloaterreg.cpp`;
-  - rows show avatar, animation, priority and state (playing / loading / out of range / suspended);
+  - rows show avatar, animation, priority and state (playing / loading / out of range / suspended /
+    failed);
   - buttons: **Stop** per row, **Stop all on avatar**, **Stop all**;
   - rows refresh on a registry-changed signal.
 - **Chat:** `/localanim list` and `/localanim stop <name-substring|all>`. Output goes to **local chat
   as a system line** (or a notification), not `LL_INFOS`.
-- **Hooks.** Each hook **stops** every entry's motion on that avatar with `stop_immediate = true`
-  (through the `LLCharacter::` helper), **then** removes the entries. Removing entries alone is not
+- **Hooks.** For each non-clone entry on that avatar, a hook applies the sim-playing guard below: if
+  `av->mPlayingAnimations` contains the id, it only removes the entry. Otherwise it **stops** the motion
+  with `stop_immediate = true` (through the `LLCharacter::` helper), **then** removes the entry.
+  - **CLONE entries are skipped** by the hooks: the clone's drive owns playback, and a flush restarts
+    the directed animation anyway. Clones are stopped through the normal clone Stop. Removing entries alone is not
   enough: a non-self reset calls `flushAllMotions()`, which restarts every motion still in
   `mActiveMotions`, including ones easing out, without the override, leaving it untracked.
   - **"Stop Animating Me":** one line in `LLToolsStopAllAnimations::handleEvent`
@@ -431,6 +438,12 @@ on every tick.
 **rev 3 nits:**
 - un-pause added to test 6;
 - the built-in rejection is cross-referenced as the reason the `LLCharacter::` bypass is safe.
+
+**rev 3 follow-ups** (third review returned 0 must-fix; these are its should-fixes and nits):
+- the hooks apply the sim-playing guard and skip CLONE entries;
+- `failed` is a flag and is shown in the floater;
+- `suspended` is cleared on return to `AOA_NORMAL`;
+- a drop on a clone already Directed with the same animation is treated as the toggle.
 
 **rev 2 nits:**
 - the twice-called handler stays side-effect free on hover;
