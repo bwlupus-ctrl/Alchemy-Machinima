@@ -345,6 +345,18 @@ namespace tut
         Light from_snapshot;
         ensure("snapshot parses", fromLLSD(snapshot[0], from_snapshot));
         ensure("snapshots follow the replacement", from_snapshot.mTrack.mSubject == new_id);
+        // The captured Follow offset rides next to the light map and must survive a replacement (undo/redo need it).
+        const F32 keep_pos[3] = {1.f, 2.f, 3.f}, keep_rot[4] = {0.f, 0.f, 0.f, 1.f};
+        LLSD with_offset = LLSD::emptyArray();
+        LLSD item = toLLSD(light);
+        item["track_offset"] = trackOffsetToLLSD(keep_pos, keep_rot);
+        with_offset.append(item);
+        rewriteActorInSnapshot(with_offset, old_id, new_id);
+        ensure("vl_snapshot_offset_dropped", with_offset[0].has("track_offset") &&
+            with_offset[0]["track_offset"] == trackOffsetToLLSD(keep_pos, keep_rot));
+        Light replaced;
+        ensure("offset snapshot still follows", fromLLSD(with_offset[0], replaced) && replaced.mTrack.mSubject == new_id &&
+            replaced.mAimObject == new_id);
         Light other = light;
         ensure("other actors untouched", !rewriteActorInLight(other, mint(), new_id) && other.mTrack.mSubject == old_id);
     }

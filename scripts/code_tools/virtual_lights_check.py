@@ -494,6 +494,19 @@ def contracts(b):
             'LLColor4U getCurrentColor()' in b['llrender'],
             'vl_gl_colour_mips_unrestored')
 
+    # The zero-binding restore never hands TT_NONE to unbind() (it indexes past the texture-type table): the disabled
+    # state is put back with disable(), and only real targets reach unbind().
+    require('else if (previous_type == LLTexUnit::TT_NONE) unit0->disable();' in draw and
+            draw.index('previous_type == LLTexUnit::TT_NONE') < draw.index('else unit0->unbind(previous_type);'),
+            'vl_gl_none_unbind')
+
+    # Restoring Practicals applies the shaft override FIRST (it force-enables the shaft) and the saved volumetric
+    # flag LAST, so a saved "Light cone off" survives save/load and undo/redo (both reach applyPracticals).
+    require('setVolumetricShaftOverride(' in apply_pr and 'toggleVolumetricShaft(id, true)' in apply_pr and
+            apply_pr.index('setVolumetricShaftOverride(') < apply_pr.index('toggleVolumetricShaft(id, true)') and
+            apply_pr.index('clearVolumetricShaftOverride(') < apply_pr.index('toggleVolumetricShaft(id, true)'),
+            'vl_shaft_flag_overwritten')
+
     # The edit tool is released with the last light (every way a light can go) and never swallows a world click
     # when there is nothing to pick.
     release_empty = function(rt, 'void ALVirtualLights::releaseEditorIfEmpty()')
@@ -597,6 +610,10 @@ def contract_negatives():
         'vl_undo_actor_rewrite': [('rt', '            rewriteActorInSnapshot(edit->second, old_id, new_id);\n', '')],
         # shader / texture / colour left changed after the guide draw
         'vl_gl_state_unrestored': [('rt', '    if (previous_shader) previous_shader->bind(); else LLGLSLShader::unbind();\n', '')],
+        'vl_gl_none_unbind': [('rt', '    else if (previous_type == LLTexUnit::TT_NONE) unit0->disable();\n', '')],
+        # the volumetric flag restored BEFORE the override: the override re-enables a saved "Light cone off"
+        'vl_shaft_flag_overwritten': [('rt', '    if (volumetric != LLPipeline::isVolumetricShaftEnabled(id)) LLPipeline::toggleVolumetricShaft(id, true);\n', ''),
+                                      ('rt', '    if (p[kPracticalGobo].isMap()) LLPipeline::setGoboOverride', '    if (volumetric != LLPipeline::isVolumetricShaftEnabled(id)) LLPipeline::toggleVolumetricShaft(id, true);\n    if (p[kPracticalGobo].isMap()) LLPipeline::setGoboOverride')],
         'vl_focus_clears_too_often': [('rt', '        if (!changed || mFocusKey.isNull()) return;', '        if (mFocusKey.isNull()) return;')],
         'vl_texture_unwired': [('ui', '[id](ALVirtualLights::Light& light) { light.mTexture = id; });',
                                 '[id](ALVirtualLights::Light& light) { (void)id; (void)light; });')],
@@ -741,6 +758,11 @@ MODEL_NEGATIVES = {
                                       '    return target.mId.notNull() && real_alive(target.mId);'),
     'vl_track_reference_stale': ('    if (light.mTrack.mSubject == old_id)\n    {\n        light.mTrack.mSubject = new_id;',
                                  '    if (light.mTrack.mSubject == old_id)\n    {\n        light.mTrack.mSubject = old_id;'),
+    'vl_snapshot_offset_dropped': (
+        '        snapshot[i]["aim_object"] = light.mAimObject;\n        snapshot[i]["track"]["enabled"] = light.mTrack.mEnabled;\n'
+        '        snapshot[i]["track"]["has_subject"] = light.mTrack.mHasSubject;\n'
+        '        snapshot[i]["track"]["subject"] = light.mTrack.mSubject;\n',
+        '        snapshot[i] = toLLSD(light);\n'),
     'vl_track_offset_lost': ('    for (S32 i = 0; i < 3; ++i) p[i] = static_cast<F32>(data["pos"][i].asReal());\n',
                              '    for (S32 i = 0; i < 3; ++i) p[i] = 0.f;\n'),
 }

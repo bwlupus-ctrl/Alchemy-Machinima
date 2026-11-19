@@ -473,11 +473,12 @@ void ALVirtualLights::applyPracticals(Entry& entry)
     const bool no_shadow = p[kPracticalNoShadow].asBoolean();
     if (no_shadow != LLPipeline::isProjectorNoShadow(id)) LLPipeline::toggleProjectorCastShadows(id);
     const bool volumetric = p[kPracticalVolumetric].asBoolean();
-    if (volumetric != LLPipeline::isVolumetricShaftEnabled(id)) LLPipeline::toggleVolumetricShaft(id, true);
     if (p[kPracticalGobo].isMap()) LLPipeline::setGoboOverride(id, gobo_from_llsd(p[kPracticalGobo]));
     else LLPipeline::clearGoboOverride(id);
+    // Override first (it force-enables the shaft), then the saved volumetric flag LAST so "Light cone off" survives.
     if (p[kPracticalShaft].isMap()) LLPipeline::setVolumetricShaftOverride(id, shaft_from_llsd(p[kPracticalShaft]));
     else LLPipeline::clearVolumetricShaftOverride(id);
+    if (volumetric != LLPipeline::isVolumetricShaftEnabled(id)) LLPipeline::toggleVolumetricShaft(id, true);
 }
 
 LLUUID ALVirtualLights::vcamOf(const LLUUID& key) const
@@ -1284,6 +1285,7 @@ void ALVirtualLights::drawGuides()
     // case), the active unit, and the incoming current colour (after the shader: where it is written depends on it).
     if (previous_shader) previous_shader->bind(); else LLGLSLShader::unbind();
     if (previous_texture) unit0->bindManual(previous_type, previous_texture, previous_mips);
+    else if (previous_type == LLTexUnit::TT_NONE) unit0->disable();
     else unit0->unbind(previous_type);
     unit0->setHasMipMaps(previous_mips);
     gGL.color4ubv(previous_color.mV);

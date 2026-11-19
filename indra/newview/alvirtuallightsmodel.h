@@ -397,7 +397,13 @@ inline void rewriteActorInSnapshot(LLSD& snapshot, const LLUUID& old_id, const L
     {
         Light light;
         if (!fromLLSD(snapshot[i], light)) continue;
-        if (rewriteActorInLight(light, old_id, new_id)) snapshot[i] = toLLSD(light);
+        if (!rewriteActorInLight(light, old_id, new_id)) continue;
+        // Rewrite only the reference fields in place: toLLSD() omits snapshot-only data (the captured Follow
+        // "track_offset"), which a rebuilt entry would silently drop from undo history.
+        snapshot[i]["aim_object"] = light.mAimObject;
+        snapshot[i]["track"]["enabled"] = light.mTrack.mEnabled;
+        snapshot[i]["track"]["has_subject"] = light.mTrack.mHasSubject;
+        snapshot[i]["track"]["subject"] = light.mTrack.mSubject;
     }
 }
 
