@@ -472,6 +472,8 @@
     "vl_fov": {"no_widget_history": true},
     "vl_focus": {"no_widget_history": true},
     "vl_ambiance": {"no_widget_history": true},
+    "vl_texture": {"no_widget_history": true},
+    "vl_texture_name": {"no_widget_history": true},
     "vl_x": {"no_widget_history": true},
     "vl_y": {"no_widget_history": true},
     "vl_z": {"no_widget_history": true},

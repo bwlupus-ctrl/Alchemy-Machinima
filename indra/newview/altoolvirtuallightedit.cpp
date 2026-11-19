@@ -163,7 +163,9 @@ bool ALToolVirtualLightEdit::handleKey(KEY key, MASK mask)
 {
     if (key == KEY_ESCAPE)
     {
+        // Esc ends the drag AND leaves the edit tool (world clicks are no longer swallowed, the marker is gone).
         cancelGesture();
+        ALVirtualLights::releaseEditor();
         return true;
     }
     if ((mask & MASK_CONTROL) && (key == 'Z' || key == 'Y'))

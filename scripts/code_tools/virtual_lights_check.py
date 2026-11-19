@@ -6,7 +6,10 @@ renderer is an ordinary WORLD light. This gate pins the contracts that keep it t
   * never sent to the simulator, never persisted, never in the live output (marker: guide composite only);
   * no pipeline light-admission branch and never actor-only;
   * the eight-light cap, region change / logout removal, login recovery does not restore it;
-  * Volumetric, VCam, Practicals and Track reach it; Director scenes save and restore it; every edit is undoable.
+  * Volumetric, VCam, Practicals and Track reach it; Director scenes save and restore it; every edit is undoable;
+  * round 1: recreated lights read their saved values back, the marker needs a live visible Director and dies with
+    it, VCam binding settings survive scenes and undo, the async Track picker keeps its target, one edit is one undo
+    step, guide drawing restores GL state, clone replacement reaches Track references, a texture can be picked.
 
 Contract mutations are applied to an in-memory source bundle, never the checkout. Every planted negative must
 fail EXACTLY its own named assertion (a different or additional assertion tripping does not count). The model
@@ -40,6 +43,7 @@ PATHS = {
     'propmover': NEWVIEW + 'alpanelpropmover.cpp',
     'pathmover': NEWVIEW + 'alobjectpathmover.cpp',
     'select': NEWVIEW + 'llselectmgr.cpp',
+    'hist': NEWVIEW + 'alkithistory.cpp',
     'cmake': NEWVIEW + 'CMakeLists.txt',
     'settings': NEWVIEW + 'app_settings/settings.xml',
     'xui': NEWVIEW + 'skins/default/xui/en/panel_dpage_light_practicals.xml',
@@ -50,7 +54,7 @@ PATHS = {
 CARD_WIDGETS = [
     'vl_status', 'vl_place', 'vl_edit', 'vl_list', 'vl_delete', 'vl_on', 'vl_type', 'vl_color', 'vl_intensity',
     'vl_radius', 'vl_falloff', 'vl_fov', 'vl_focus', 'vl_ambiance', 'vl_x', 'vl_y', 'vl_z', 'vl_yaw',
-    'vl_pitch', 'vl_aim_pick', 'vl_vcam',
+    'vl_pitch', 'vl_aim_pick', 'vl_vcam', 'vl_texture', 'vl_texture_name',
 ]
 
 
@@ -119,16 +123,56 @@ def contracts(b):
     guard_terms = ('ALCleanFrame::active()', 'rlvHandbackActive()', 'gSnapshot', 'gCubeSnapshot',
                    'sPrismLensRender', 'sReflectionRender', 'sShadowRender', 'isTagRecordView()',
                    'getUIVisibility()', 'RENDER_DEBUG_FEATURE_UI')
+    # The WHOLE guard statement, byte for byte (the same one the keyframe overlay uses): dropping, weakening or
+    # reordering any term fails here.
+    guard_statement = (
+        '    if (!wantsGuides() || ALCleanFrame::active() || ALKeyframePlayer::instance().rlvHandbackActive() ||\n'
+        '        gSnapshot || gCubeSnapshot || LLPipeline::sPrismLensRender || LLPipeline::sReflectionRender ||\n'
+        '        LLPipeline::sShadowRender || !gPipeline.isTagRecordView() ||\n'
+        '        !gViewerWindow || !gViewerWindow->getUIVisibility() ||\n'
+        '        !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI)) return;')
     guides = function(pipe, 'void LLPipeline::renderActorPathGuides(')
     hook = 'if (ALVirtualLights::wantsGuides()) ALVirtualLights::drawGuides();'
-    require(all(t in guard for t in guard_terms) and 'ALCleanFrame::active()' in wants and
+    require(all(t in guard for t in guard_terms) and guard_statement in draw and
             pipe.count('ALVirtualLights::drawGuides()') == 1 and pipe.count('ALVirtualLights::wantsGuides()') == 2 and
             0 <= guides.find(hook) < guides.find('ALKeyframePlayer::instance().drawGuides()'),
             'vl_marker_in_frame')
+    # Eligibility itself (wantsGuides) must refuse a clean-frame take: the exact refusal line, not just a mention.
+    require('    if (sPlaced <= 0 || ALCleanFrame::active()) return false;\n' in wants and 'sPlaced <= 0' in wants,
+            'vl_marker_eligibility')
+    # The marker is a Director editing aid: it needs a LIVE, VISIBLE Director at draw time (edit tool included).
+    live = function(rt, 'bool directorLive()')
+    require('return owned && directorLive();' in wants and
+            'director->getVisible() && !director->isMinimized() && director->isInVisibleChain()' in live and
+            'const bool owned = sWantsGuides || (sEditorStamped &&' in wants,
+            'vl_marker_after_hide')
+    # ... and the two-frame stamp must not leave residual frames: release clears it synchronously.
+    release = function(rt, 'void ALVirtualLights::releaseEditor()')
+    require('    sEditorStamped = false;\n' in release and 'sWantsGuides = false;' in release and
+            'clearTransientTool()' in release and
+            'sEditorStamped = true;' in function(rt, 'void ALVirtualLights::noteEditorVisible()'),
+            'vl_marker_residual_frames')
+    # The edit tool and the guide ownership end on page hide, Director hide / minimise / close and teardown.
+    d_close = function(b['dir'], 'void LLFloaterDirector::onClose(')
+    d_visible = function(b['dir'], 'void LLFloaterDirector::setVisible(')
+    d_min = function(b['dir'], 'void LLFloaterDirector::setMinimized(')
+    d_dtor = function(b['dir'], 'LLFloaterDirector::~LLFloaterDirector()')
+    on_hide = function(ui, 'void ALVirtualLightsUI::onHide()')
+    ui_dtor = function(ui, 'ALVirtualLightsUI::~ALVirtualLightsUI()')
+    page_vis = function(ui, 'void ALPanelPracticals::onVisibilityChange(')
+    require(all('ALVirtualLights::releaseEditor();' in f for f in (d_close, d_visible, d_min, d_dtor, on_hide, ui_dtor)) and
+            'mVirtualUI.onHide();' in page_vis and 'if (!visible)' in page_vis,
+            'vl_edit_tool_survives_hide')
+    require('ALVirtualLights::releaseEditor();' in function(b['edit'], 'bool ALToolVirtualLightEdit::handleKey(') and
+            'key == KEY_ESCAPE' in function(b['edit'], 'bool ALToolVirtualLightEdit::handleKey('),
+            'vl_edit_esc_stays')
 
     # --- an ordinary WORLD light: no pipeline admission branch, never actor-only --------------------------------------------
-    require('ctorOnly' not in rt and 'ActorOnly' not in rt and
+    actor_sites = [pipe[m.start():pipe.index(')\n', m.start()) + 1] for m in re.finditer(r'actorOnlyBits\(', pipe)]
+    require('ctorOnly' not in rt and 'ActorOnly' not in rt and 'ALCineLightRigManager' not in rt and
             all('isVirtualLight' not in b[k] for k in ('pipe', 'rmm', 'env')) and
+            all('isVirtual' not in site and 'ALVirtualLights' not in site for site in actor_sites) and
+            len(actor_sites) >= 20 and
             'ALVirtualLights' not in b['rmm'] and 'ALVirtualLights' not in b['env'],
             'vl_actor_only')
 
@@ -161,8 +205,15 @@ def contracts(b):
             'vl_survives_region_change')
 
     # --- the Practicals page follows the virtual focus, not only the selection ---------------------------------------------------------------------------------------------
+    handlers = [function(ui, sig) for sig in (
+        'void ALPanelPracticals::onCastShadows()', 'void ALPanelPracticals::onVolumetric()',
+        'void ALPanelPracticals::onCaptureOverride()', 'void ALPanelPracticals::onClearOverride()',
+        'void ALPanelPracticals::onGoboChanged(', 'void ALPanelPracticals::onTrackingChanged(')]
     require(ui.count('getPrimaryObject()') == 1 and ui.count('resolveTarget()') >= 9 and
-            'lights.volumeFor(lights.focusKey())' in ui,
+            'lights.volumeFor(lights.focusKey())' in ui and
+            all('resolveTarget()' in h and 'LLSelectMgr' not in h and 'getPrimaryObject' not in h for h in handlers) and
+            'toggleProjectorCastShadows(target.mId)' in handlers[0] and
+            'toggleVolumetricShaft(target.mId)' in handlers[1],
             'vl_practicals_ignores_virtual')
 
     # --- Track: a virtual light never enters the real tracker ----------------------------------------------------------------------------------------------------------------
@@ -243,6 +294,96 @@ def contracts(b):
     require(all(name in b['cmake'] for name in ('alvirtuallights.cpp', 'altoolvirtuallightplace.cpp',
                 'altoolvirtuallightedit.cpp', 'alvirtuallightsmodel.h', 'LL_ADD_INTEGRATION_TEST(alvirtuallightsmodel')),
             'vl_not_in_build')
+
+    # --- a recreated light is read back through the real volume getters: light mode first, then the values -----------------
+    apply_entry = function(rt, 'void ALVirtualLights::applyEntry(')
+    verify = function(rt, 'bool ALVirtualLights::verifyApplied(')
+    restore_fn = function(rt, 'bool ALVirtualLights::restore(')
+    values = ('setLightTextureID', 'setLightSRGBColor', 'setLightIntensity', 'setLightRadius', 'setLightFalloff',
+              'setSpotLightParams')
+    require(apply_entry.count('setIsLight(') == 1 and
+            all(apply_entry.index('volume->setIsLight(true);') < apply_entry.index(t) for t in values),
+            'vl_recreated_params_lost')
+    require('verifyApplied(fresh, "undo-recreate");' in restore_fn and
+            'verified = verifyApplied(entry, "scene-restore") && verified;' in apply_scene and
+            all(t in verify for t in ('getIsLight()', 'getLightIntensity()', 'getLightRadius()', 'getLightFalloff()',
+                                      'lightApplied(')),
+            'vl_recreate_unverified')
+
+    # --- VCam binding settings survive scenes, delete -> undo, and are rebound BEFORE the Practicals state -----------------
+    sync_vcam = function(rt, 'void ALVirtualLights::syncVCam(')
+    require('vcam_settings_of(' in sync_vcam and
+            'setVCam(light.mKey, light.mVCamCapture, &why, light.mVCamSettings);' in apply_scene and
+            'setVCam(key, light->mVCamCapture, &why, light->mVCamSettings);' in restore_fn and
+            'setProjectorSettings(binding.mHandle, parsed' in set_vcam and
+            'out["vcam_settings"] = light.mVCamSettings;' in b['model'] and 'data["vcam_settings"]' in b['model'],
+            'vl_vcam_settings_lost')
+    require(0 <= apply_scene.index('setVCam(') < apply_scene.index('applyPracticals(') and
+            0 <= restore_fn.index('setVCam(') < restore_fn.index('applyPracticals('),
+            'vl_vcam_after_practicals')
+
+    # --- the async Track picker keeps the target it was opened for ------------------------------------------------------------
+    assign = function(ui, 'void ALPanelPracticals::assignTrackingSubject(')
+    choose = ui[ui.index('mTrackChoose->setCommitCallback'):ui.index('mTrackSelected->setCommitCallback')]
+    require('trackTargetValid(opened_for' in assign and 'resolveTarget()' not in assign and 'is_virtual_id' in assign and
+            'const ALVirtualLightsModel::TrackTargetRef opened_for = trackTargetNow();' in choose and
+            '[this, opened_for](const LLUUID& id) { assignTrackingSubject(opened_for, id, true); }' in choose and
+            'assignTrackingSubject(mLastId' not in ui,
+            'vl_track_picker_current')
+    capture_handler = ui[ui.index('mTrackCapture->setCommitCallback'):ui.index('mTrackChoose->setCommitCallback')]
+    require('edited(target, "Virtual light track capture", mTrackCapture, [&]()' in capture_handler and
+            '++entry->mLight.mTrack.mCaptures;' in function(rt, 'void ALVirtualLights::captureTrack('),
+            'vl_track_capture_unrecorded')
+
+    # --- one edit is one undo step; steps end at real gesture boundaries ----------------------------------------------------------
+    record_widget = function(b['hist'], 'void ALKitHistory::recordWidget(')
+    suppressor = function(ui, 'bool practicalsWidgetOwnedByVirtual(')
+    require('if (sWidgetSuppressor && sWidgetSuppressor(c))' in record_widget and
+            record_widget.index('sWidgetSuppressor(c)') < record_widget.index('beginGesture(') and
+            'ALKitHistory::setWidgetSuppressor(&practicalsWidgetOwnedByVirtual);' in ui and
+            'compare(0, 3, "sl_") != 0' in suppressor and 'lights.volumeFor(lights.focusKey()) != nullptr' in suppressor,
+            'vl_double_undo_step')
+    begin = function(ui, 'LLSD ALVirtualLightsUI::beginEdit(')
+    note = function(ui, 'void ALVirtualLightsUI::notePending(')
+    require('control == mPendingControl' in begin and 'GestureKind::SLIDER && sliderHeld(control)' in begin and
+            'if (gestureKind(control) == GestureKind::DISCRETE) finishPending(true);' in note and
+            'edited(target, "Virtual light gobo", source,' in ui and 'edited(target, "Virtual light track", source,' in ui,
+            'vl_undo_merges_gestures')
+    require('finishPending' not in ui_dtor and 'recordUndo' not in ui_dtor and 'mPendingBefore = LLSD();' in ui_dtor and
+            'finishPending(true);' in on_hide,
+            'vl_destructor_records_undo')
+
+    # --- clone replacement reaches virtual Track references, live and inside undo snapshots ----------------------------------------------
+    cast_rewrite = function(b['cast'], 'bool LLDirectorCast::rewriteActorReferences(')
+    require('if (ALVirtualLights::anyPlaced()) ALVirtualLights::instance().rewriteActorReferences(old_id, new_id);' in cast_rewrite and
+            'rewriteActorInLight(entry.mLight, old_id, new_id)' in function(rt, 'void ALVirtualLights::rewriteActorReferences('),
+            'vl_clone_replace_unwired')
+    require('rewriteActorInSnapshot(edit->first, old_id, new_id);' in record and
+            'rewriteActorInSnapshot(edit->second, old_id, new_id);' in record,
+            'vl_undo_actor_rewrite')
+
+    # --- guide drawing restores the GL state it changed -----------------------------------------------------------------------------------
+    require(0 <= draw.index('gGL.flush();') < draw.index('gUIProgram.bind();') and
+            'LLGLSLShader* const previous_shader = LLGLSLShader::sCurBoundShaderPtr;' in draw and
+            'const U32 previous_texture = unit0->getCurrTexture();' in draw and
+            0 <= draw.rindex('gGL.flush();') < draw.find('previous_shader->bind(); else LLGLSLShader::unbind();') and
+            draw.rindex('gGL.flush();') < draw.find('gGL.color4f(1.f, 1.f, 1.f, 1.f);') and
+            'unit0->bindManual(previous_type, previous_texture);' in draw,
+            'vl_gl_state_unrestored')
+
+    # --- the focus ends only when the primary selection CHANGES to a new non-avatar object ---------------------------------------------------
+    connect = function(rt, 'void ALVirtualLights::connectSelection()')
+    require('const bool changed = primary != mLastPrimaryId;' in connect and
+            'if (!changed || mFocusKey.isNull()) return;' in connect,
+            'vl_focus_clears_too_often')
+
+    # --- a projector texture can be picked through the standard picker and is one undo step ----------------------------------------------
+    pick = function(ui, 'void ALVirtualLightsUI::onTexturePick()')
+    picked = function(ui, 'void ALVirtualLightsUI::onTexturePicked()')
+    require('showPicker(true)' in pick and 'LLTextureCtrl::Params picker;' in ui_part and
+            'editKey(mTextureKey, "Virtual light projector texture", mTexture,' in picked and
+            '[id](ALVirtualLights::Light& light) { light.mTexture = id; });' in picked,
+            'vl_texture_unwired')
     return failed
 
 
@@ -257,18 +398,32 @@ def contract_negatives():
     """name -> list of (bundle key, old, new). Each must fail exactly that assertion."""
     return {
         'vl_sent_to_sim': [('rt', 'volume->mIsLocalOnly = true;', 'volume->mIsLocalOnly = false;')],
-        'vl_persisted': [('rt', 'sPlaced = count();\n    connectSelection();',
-                          'sPlaced = count();\n    gSavedSettings.setBOOL("VirtualLightLast", true);\n    connectSelection();')],
+        'vl_persisted': [('rt', 'sPlaced = count();\n    connectSelection();\n    mFocusKey = key;',
+                          'sPlaced = count();\n    gSavedSettings.setBOOL("VirtualLightLast", true);\n    connectSelection();\n    mFocusKey = key;')],
         'vl_marker_in_frame': [('rt', '    if (!wantsGuides() || ALCleanFrame::active() ||', '    if (!wantsGuides() ||')],
-        'vl_actor_only': [('pipe', '        static LLCachedControl<bool> show_heading(gSavedSettings, "ActorMoverShowHeading", true);\n        const bool guide_work',
-                           '        static LLCachedControl<bool> show_heading(gSavedSettings, "ActorMoverShowHeading", true);\n        if (false) { (void)isVirtualLight(); }\n        const bool guide_work')],
+        # eligibility with a FLIPPED clean-frame test: the marker would be drawn exactly during a clean-frame take
+        'vl_marker_eligibility': [('rt', '    if (sPlaced <= 0 || ALCleanFrame::active()) return false;',
+                                   '    if (sPlaced <= 0 || !ALCleanFrame::active()) return false;')],
+        # Director hidden + edit tool active would still draw the marker
+        'vl_marker_after_hide': [('rt', '    return owned && directorLive();', '    return owned;')],
+        # the two-frame stamp survives a hide: residual marker frames
+        'vl_marker_residual_frames': [('rt', '    sWantsGuides = false;\n    sEditorStamped = false;\n',
+                                       '    sWantsGuides = false;\n')],
+        'vl_edit_tool_survives_hide': [('dir', '        ALDirectorTagTargets::instance().withdraw(this);    // hidden without close or draw: no lingering highlight\n        ALVirtualLights::releaseEditor();\n',
+                                        '        ALDirectorTagTargets::instance().withdraw(this);    // hidden without close or draw: no lingering highlight\n')],
+        'vl_edit_esc_stays': [('edit', '        cancelGesture();\n        ALVirtualLights::releaseEditor();\n        return true;\n    }\n    if ((mask & MASK_CONTROL)',
+                               '        cancelGesture();\n        return true;\n    }\n    if ((mask & MASK_CONTROL)')],
+        # a REAL actor-only classification in a pipeline light site: the virtual light is skipped like a masked rig light
+        'vl_actor_only': [('pipe', '            if (ALCineLightRigManager::anyActorOnly() &&\n                ALCineLightRigManager::instance().actorOnlyBits(light->getID()))\n            {\n                continue;\n            }\n            if (light->isAttachment())',
+                           '            if (ALCineLightRigManager::anyActorOnly() &&\n                (ALCineLightRigManager::instance().actorOnlyBits(light->getID()) || light->isVirtualLight()))\n            {\n                continue;\n            }\n            if (light->isAttachment())')],
         'vl_cap_exceeded': [('model', 'if (count >= kMaxLights) return Refusal::AT_CAP;', 'if (count > kMaxLights) return Refusal::AT_CAP;')],
         'vl_volumetric_unwired': [('rt', '        LLPipeline::toggleVolumetricShaft(id, false);   // not a manual decline of an auto flag',
                                    '        (void)id;   // not a manual decline of an auto flag')],
         'vl_vcam_unwired': [('rt', '    unbindVCam(dying.get());\n', '')],
         'vl_survives_region_change': [('agent', '        ALVirtualLights::instance().clearAll("region-clear");\n', '')],
-        'vl_practicals_ignores_virtual': [('ui', 'if (target.mObject && target.mId.notNull())\n    {\n        edited(target, "Virtual light shadows", mCastShadows,',
-                                           'LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();\n    if (target.mObject && target.mId.notNull())\n    {\n        edited(target, "Virtual light shadows", mCastShadows,')],
+        # a real handler takes its WRITE target from the raw selection (the focused virtual light is ignored)
+        'vl_practicals_ignores_virtual': [('ui', '[&]() { LLPipeline::toggleProjectorCastShadows(target.mId); });',
+                                           '[&]() { LLPipeline::toggleProjectorCastShadows(LLSelectMgr::getInstance()->getSelection()->getPrimaryObject()->getID()); });')],
         'vl_tracker_gets_virtual': [('tracker', '!object->isHUDAttachment() && !object->isLocalOnly() &&',
                                      '!object->isHUDAttachment() &&')],
         'vl_logout_leak': [('app', '    ALVirtualLights::instance().clearAll("logout-clear");\n', '')],
@@ -281,6 +436,37 @@ def contract_negatives():
         'vl_exclusions_missing': [('cast', '(candidate->isColorChart() || candidate->isVirtualLight())', '(candidate->isColorChart())')],
         'vl_card_unwired': [('xui', 'name="vl_place"', 'name="vl_placeX"')],
         'vl_not_in_build': [('cmake', '    alvirtuallights.cpp\n', '')],
+        # light mode switched on AFTER the values: the volume drops them (recreated Off / non-default lights read defaults)
+        'vl_recreated_params_lost': [('rt', '    volume->setIsLight(true);\n    const LLUUID texture', '    const LLUUID texture'),
+                                     ('rt', '    if (light.mSpot) volume->setSpotLightParams(LLVector3(light.mFov, light.mFocus, light.mAmbiance));\n',
+                                      '    if (light.mSpot) volume->setSpotLightParams(LLVector3(light.mFov, light.mFocus, light.mAmbiance));\n    volume->setIsLight(true);\n')],
+        'vl_recreate_unverified': [('rt', '        verified = verifyApplied(entry, "scene-restore") && verified;\n', '        verified = true;\n')],
+        # the rebind forgets the authored binding settings (defaults come back)
+        'vl_vcam_settings_lost': [('rt', 'setVCam(light.mKey, light.mVCamCapture, &why, light.mVCamSettings);',
+                                   'setVCam(light.mKey, light.mVCamCapture, &why);')],
+        # the saved Practicals state is applied BEFORE the VCam rebind (an auto-enable could override a saved cone state)
+        'vl_vcam_after_practicals': [('rt', '        mEntries.push_back(std::move(entry));\n        ++created;\n        sPlaced = count();\n',
+                                      '        mEntries.push_back(std::move(entry));\n        applyPracticals(mEntries.back());\n        ++created;\n        sPlaced = count();\n')],
+        # the picker resolves the CURRENT target at completion (the real bug): a switch between backends edits the wrong one
+        'vl_track_picker_current': [('ui', '        const ALVirtualLightsModel::TrackTargetRef opened_for = trackTargetNow();\n        ALAvatarSubjectPicker::choose(anchor, this, mTrackMenu, true,\n            [this, opened_for](const LLUUID& id) { assignTrackingSubject(opened_for, id, true); });',
+                                     '        ALAvatarSubjectPicker::choose(anchor, this, mTrackMenu, true,\n            [this](const LLUUID& id) { assignTrackingSubject(trackTargetNow(), id, true); });')],
+        'vl_track_capture_unrecorded': [('ui', '        edited(target, "Virtual light track capture", mTrackCapture, [&]()\n        {\n            if (target.mVirtual) ALVirtualLights::instance().captureTrack(target.mKey);\n            else ALProjectorTracker::instance().capture(target.mId);\n        });',
+                                         '        if (target.mVirtual) ALVirtualLights::instance().captureTrack(target.mKey);\n        else ALProjectorTracker::instance().capture(target.mId);')],
+        # the kit widget history records a second step for the same Practicals edit (double undo)
+        'vl_double_undo_step': [('hist', '    if (sWidgetSuppressor && sWidgetSuppressor(c))\n        return;\n', '')],
+        # separate edits of different controls merge into one step
+        'vl_undo_merges_gestures': [('ui', 'const bool same = control && control == mPendingControl && lights.sceneEpoch() == mPendingEpoch;',
+                                     'const bool same = control && lights.sceneEpoch() == mPendingEpoch;')],
+        # teardown records an undo step again
+        'vl_destructor_records_undo': [('ui', '    mPendingBefore = LLSD();\n    mPendingControl = nullptr;\n    ALVirtualLights::releaseEditor();\n    sVirtualEditors.erase(this);',
+                                        '    finishPending(true);\n    ALVirtualLights::releaseEditor();\n    sVirtualEditors.erase(this);')],
+        'vl_clone_replace_unwired': [('cast', '    if (ALVirtualLights::anyPlaced()) ALVirtualLights::instance().rewriteActorReferences(old_id, new_id);\n', '')],
+        'vl_undo_actor_rewrite': [('rt', '            rewriteActorInSnapshot(edit->second, old_id, new_id);\n', '')],
+        # shader / texture / colour left changed after the guide draw
+        'vl_gl_state_unrestored': [('rt', '    if (previous_shader) previous_shader->bind(); else LLGLSLShader::unbind();\n', '')],
+        'vl_focus_clears_too_often': [('rt', '        if (!changed || mFocusKey.isNull()) return;', '        if (mFocusKey.isNull()) return;')],
+        'vl_texture_unwired': [('ui', '[id](ALVirtualLights::Light& light) { light.mTexture = id; });',
+                                '[id](ALVirtualLights::Light& light) { (void)id; (void)light; });')],
     }
 
 
@@ -311,6 +497,17 @@ MODEL_NEGATIVES = {
     'vl_scene_duplicate_key': ('if (light.mKey.isNull() || containsKey(lights, light.mKey)) light.mKey = mint();',
                                'if (light.mKey.isNull()) light.mKey = mint();'),
     'vl_track_without_subject': ('    if (!light.mTrack.mHasSubject) light.mTrack.mEnabled = false;\n', ''),
+    'vl_vcam_settings_lost': ('    if (data["vcam_settings"].isMap()) light.mVCamSettings = data["vcam_settings"];\n', ''),
+    'vl_recreated_params_lost': (
+        '    return is_light && std::fabs(intensity - want) < 1.e-4f && std::fabs(radius - light.mRadius) < 1.e-3f &&\n'
+        '        std::fabs(falloff - light.mFalloff) < 1.e-3f;',
+        '    return is_light;'),
+    'vl_track_target_current': ('    if (target.mVirtual) return target.mKey.notNull() && virtual_alive(target.mKey);',
+                                '    if (!target.mVirtual) return target.mKey.notNull() && virtual_alive(target.mKey);'),
+    'vl_virtual_id_reaches_tracker': ('    return target.mId.notNull() && !is_virtual_id(target.mId) && real_alive(target.mId);',
+                                      '    return target.mId.notNull() && real_alive(target.mId);'),
+    'vl_track_reference_stale': ('    if (light.mTrack.mSubject == old_id)\n    {\n        light.mTrack.mSubject = new_id;',
+                                 '    if (light.mTrack.mSubject == old_id)\n    {\n        light.mTrack.mSubject = old_id;'),
 }
 
 
@@ -322,7 +519,7 @@ def native_source(root, header, tests):
     assert tests.count(anchor) == 1, 'test file drifted'
     tests = tests.replace(anchor, '    test_runner_singleton runner;\n' + anchor)
     count = len(re.findall(r'void virtual_lights_object::test<(\d+)>\(\)', tests))
-    assert count >= 9, 'the virtual-light TUT must keep at least nine tests'
+    assert count >= 13, 'the virtual-light TUT must keep at least thirteen tests'
     main = ('int main(){for(int n=1;n<=%d;++n){auto result=tut::virtual_lights_tests.run_test(n);'
             'if(result.result!=tut::test_result::ok){std::cerr<<result.message<<"\\n";return 1;}}'
             'std::cout<<"PASS: actual TUT registration and execution of the virtual light model tests 1-%d\\n";return 0;}'

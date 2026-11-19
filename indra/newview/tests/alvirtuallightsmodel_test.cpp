@@ -247,4 +247,105 @@ namespace tut
         ensure_equals("index", indexOfKey(lights, lights[2].mKey), 2);
         ensure_equals("missing index", indexOfKey(lights, mint()), -1);
     }
+
+    // The full VCam binding settings survive the scene block / undo snapshot; no feed means no settings.
+    template<> template<>
+    void virtual_lights_object::test<10>()
+    {
+        Light light;
+        light.mKey = mint();
+        light.mVCamCapture = mint();
+        light.mVCamSettings = LLSD::emptyMap();
+        light.mVCamSettings["fit"] = "fill";
+        light.mVCamSettings["feed_ev"] = 1.5;
+        light.mVCamSettings["flip_h"] = true;
+        sanitize(light);
+        Light back;
+        ensure("parses", fromLLSD(toLLSD(light), back));
+        ensure("vl_vcam_settings_lost", back.mVCamSettings["fit"].asString() == "fill" &&
+            back.mVCamSettings["flip_h"].asBoolean() && back.mVCamSettings["feed_ev"].asReal() == 1.5);
+        ensure("settings take part in the undo delta", !sameLight(light, [&]() { Light x = light; x.mVCamSettings["fit"] = "fit"; return x; }()));
+        light.mVCamCapture.setNull();
+        sanitize(light);
+        ensure("no feed means no settings", light.mVCamSettings.isUndefined());
+        Light plain;
+        ensure("a light without a feed writes no settings key", !toLLSD(plain).has("vcam_settings"));
+    }
+
+    // A recreated light must read its saved values back from the volume: params written before light mode is
+    // on are dropped (the volume then reads defaults), which this check must catch, an Off light included.
+    template<> template<>
+    void virtual_lights_object::test<11>()
+    {
+        Light off;
+        off.mOn = false;
+        off.mIntensity = 0.6f;
+        off.mRadius = 7.f;
+        off.mFalloff = 0.3f;
+        ensure("an Off light reads intensity 0 with light mode on", lightApplied(off, true, 0.f, 7.f, 0.3f));
+        ensure("vl_recreated_params_lost", !lightApplied(off, true, 1.f, 10.f, 0.75f));
+        Light lit = off;
+        lit.mOn = true;
+        ensure("a non-default light reads its values", lightApplied(lit, true, 0.6f, 7.f, 0.3f));
+        ensure("default values are not the saved values", !lightApplied(lit, true, kDefaultIntensity, kDefaultRadius, kDefaultFalloff));
+        ensure("light mode off is never applied", !lightApplied(lit, false, 0.6f, 7.f, 0.3f));
+    }
+
+    // The Track picker resolves the target it was opened for, in both switch directions, and a virtual object id
+    // can never be a real tracker target.
+    template<> template<>
+    void virtual_lights_object::test<12>()
+    {
+        const LLUUID real = mint(), key = mint(), virtual_object = mint(), gone = mint();
+        auto virtual_alive = [&](const LLUUID& k) { return k == key; };
+        auto real_alive = [&](const LLUUID& id) { return id == real || id == virtual_object; };
+        auto is_virtual_id = [&](const LLUUID& id) { return id == virtual_object; };
+
+        TrackTargetRef real_target;          // opened on a real projector, the page switched to a virtual light
+        real_target.mId = real;
+        ensure("vl_track_target_current", trackTargetValid(real_target, virtual_alive, real_alive, is_virtual_id) &&
+            !real_target.mVirtual);
+        TrackTargetRef virtual_target;       // opened on a virtual light, the page switched to a real projector
+        virtual_target.mVirtual = true;
+        virtual_target.mKey = key;
+        virtual_target.mId = virtual_object;
+        ensure("virtual target stays virtual", trackTargetValid(virtual_target, virtual_alive, real_alive, is_virtual_id) &&
+            virtual_target.mVirtual);
+        TrackTargetRef leaked;
+        leaked.mId = virtual_object;
+        ensure("vl_virtual_id_reaches_tracker", !trackTargetValid(leaked, virtual_alive, real_alive, is_virtual_id));
+        TrackTargetRef vanished;
+        vanished.mVirtual = true;
+        vanished.mKey = gone;
+        ensure("a deleted virtual light does nothing", !trackTargetValid(vanished, virtual_alive, real_alive, is_virtual_id));
+        TrackTargetRef nothing;
+        ensure("an empty target does nothing", !trackTargetValid(nothing, virtual_alive, real_alive, is_virtual_id));
+    }
+
+    // Clone replacement reaches a light's Track subject and aim object, live and inside undo snapshots.
+    template<> template<>
+    void virtual_lights_object::test<13>()
+    {
+        const LLUUID old_id = mint(), new_id = mint();
+        Light light;
+        light.mKey = mint();
+        light.mTrack.mHasSubject = true;
+        light.mTrack.mEnabled = true;
+        light.mTrack.mSubject = old_id;
+        light.mAimObject = old_id;
+        Light moved = light;
+        ensure("changed", rewriteActorInLight(moved, old_id, new_id));
+        ensure("vl_track_reference_stale", moved.mTrack.mSubject == new_id && moved.mAimObject == new_id && moved.mTrack.mEnabled);
+        Light cleared = light;
+        rewriteActorInLight(cleared, old_id, LLUUID::null);
+        ensure("a retired clone clears Track", !cleared.mTrack.mHasSubject && !cleared.mTrack.mEnabled);
+        LLSD snapshot = LLSD::emptyArray();
+        snapshot.append(toLLSD(light));
+        rewriteActorInSnapshot(snapshot, old_id, new_id);
+        Light from_snapshot;
+        ensure("snapshot parses", fromLLSD(snapshot[0], from_snapshot));
+        ensure("snapshots follow the replacement", from_snapshot.mTrack.mSubject == new_id);
+        Light other = light;
+        ensure("other actors untouched", !rewriteActorInLight(other, mint(), new_id) && other.mTrack.mSubject == old_id);
+    }
 }

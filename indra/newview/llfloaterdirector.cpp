@@ -1400,6 +1400,7 @@ LLFloaterDirector::~LLFloaterDirector()
     ALAvatarSubjectPicker::cancelFor(this);
     // Destroyed without onClose (LLFloaterReg::destroyInstance): never leave a highlight behind.
     ALDirectorTagTargets::instance().withdraw(this);
+    ALVirtualLights::releaseEditor();
     if (LLContextMenu* menu = mCameraSubjectMenu.get()) menu->die();
     if (LLContextMenu* menu = mGroupPickerMenu.get()) menu->die();
     if (sRecoveryDirectorHandle.get() == this)
@@ -1423,6 +1424,7 @@ LLFloaterDirector::~LLFloaterDirector()
 
 void LLFloaterDirector::onClose(bool app_quitting)
 {
+    ALVirtualLights::releaseEditor();   // the virtual-light edit tool and marker never outlive the Director
     ALAvatarSubjectPicker::cancelFor(this);
     ALDirectorTagTargets::instance().withdraw(this);
     if (mShell) mShell->closeActorChooser();
@@ -1451,7 +1453,10 @@ void LLFloaterDirector::onFocusLost()
 void LLFloaterDirector::setVisible(bool visible)
 {
     if (!visible)
+    {
         ALDirectorTagTargets::instance().withdraw(this);    // hidden without close or draw: no lingering highlight
+        ALVirtualLights::releaseEditor();
+    }
     LLFloater::setVisible(visible);
 }
 
@@ -1460,7 +1465,10 @@ void LLFloaterDirector::setMinimized(bool minimized)
     if (minimized && mShell)
         mShell->setSearchPopupArmed(nullptr, false);
     if (minimized)
+    {
         ALDirectorTagTargets::instance().withdraw(this);
+        ALVirtualLights::releaseEditor();
+    }
     LLFloater::setMinimized(minimized);
 }
 

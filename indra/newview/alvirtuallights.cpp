@@ -16,6 +16,7 @@
 #include "alkithistory.h"
 #include "alkitshell.h"
 #include "alprojectortracker.h"
+#include "altoolvirtuallightedit.h"
 #include "alvcampagemodel.h"
 #include "llagent.h"
 #include "llapp.h"
@@ -31,7 +32,9 @@
 #include "llprismlens.h"
 #include "llrender.h"
 #include "llselectmgr.h"
+#include "llsdutil.h"
 #include "lltimer.h"
+#include "lltoolmgr.h"
 #include "llviewercamera.h"
 #include "llviewerdisplay.h"
 #include "llviewerobject.h"
@@ -64,8 +67,16 @@ constexpr char PRACTICALS_PAGE[] = "light_group/practicals_tab";
 
 // Set once from the Practicals page; the pipeline hooks read it without constructing anything.
 S32 sPlaced = 0;
-bool sWantsGuides = false;
+bool sWantsGuides = false;      // the edit tool is active
+bool sEditorStamped = false;    // the Practicals page stamped a frame; cleared synchronously on release
 U32 sEditorFrame = 0;
+
+// Draw-time truth: the marker is a Director editing aid, so it needs a live, visible Director.
+bool directorLive()
+{
+    LLFloater* director = LLFloaterReg::findInstance("director");
+    return director && director->getVisible() && !director->isMinimized() && director->isInVisibleChain();
+}
 
 LLSD gobo_to_llsd(const LLPipeline::GoboOverride& g)
 {
@@ -145,6 +156,73 @@ LLUUID default_cookie()
 
 LLVector3 vec_of(const F32 v[3]) { return LLVector3(v[0], v[1], v[2]); }
 
+// The "settings" block of this object's Prism "prism_projectors" scene item (the existing codec,
+// llprismlens.cpp sceneData), or undefined when it has no binding. Never stores the object id.
+LLSD vcam_settings_of(const LLUUID& object_id)
+{
+    if (object_id.isNull() || !LLPrismLens::instanceExists()) return LLSD();
+    const LLSD prism = LLPrismLens::sceneData();
+    for (const LLSD& item : llsd::inArray(prism["prism_projectors"]))
+        if (item["target"].asString() == "object" && item["object_id"].asUUID() == object_id &&
+            item["settings"].isMap())
+            return item["settings"];
+    return LLSD();
+}
+
+// Reads that block back (same keys and clamping as the Prism scene loader). False = unusable, keep defaults;
+// bindProjector / setProjectorSettings validate the result again.
+bool vcam_settings_from(const LLSD& s, LLPrismLens::ProjectorSettings& out)
+{
+    if (!s.isMap()) return false;
+    LLPrismLens::ProjectorSettings p;
+    const std::string fit = s["fit"].asString();
+    if (fit == "fit") p.mFitMode = LLPrismLens::EFitMode::FIT;
+    else if (fit == "fill") p.mFitMode = LLPrismLens::EFitMode::FILL;
+    else if (fit == "stretch") p.mFitMode = LLPrismLens::EFitMode::STRETCH;
+    else return false;
+    if (s["anchor"].isArray() && s["anchor"].size() == 2)
+        for (S32 i = 0; i < 2; ++i) p.mAnchor[i] = static_cast<F32>(s["anchor"][i].asReal());
+    if (s.has("feed_ev")) p.mFeedEV = static_cast<F32>(s["feed_ev"].asReal());
+    if (!LLPrismLens::projectorLampPowerFromLLSD(s, p)) return false;
+    if (s.has("follow_main_exposure")) p.mFollowMainExposure = s["follow_main_exposure"].asBoolean();
+    if (!LLPrismLens::projectorResolutionFromLLSD(s, p)) return false;
+    const std::string no_signal = s["no_signal"].asString();
+    if (no_signal == "black") p.mNoSignal = LLPrismLens::ENoSignal::BLACK;
+    else if (no_signal == "white") p.mNoSignal = LLPrismLens::ENoSignal::WHITE;
+    else p.mNoSignal = LLPrismLens::ENoSignal::OWN_COOKIE;
+    p.mKeepGobo = s["keep_gobo"].asBoolean();
+    p.mFlipH = s["flip_h"].asBoolean();
+    p.mFlipV = s["flip_v"].asBoolean();
+    if (s.has("rotate")) p.mRotate = static_cast<U8>(s["rotate"].asInteger());
+    if (s["screen_effects"].isMap())
+    {
+        const LLSD& e = s["screen_effects"];
+        LLPrismLens::ScreenEffects& fx = p.mEffects;
+        const struct { const char* mKey; F32* mValue; } reals[] = {
+            {"scanlines", &fx.mScanlines}, {"scanline_count", &fx.mScanlineCount},
+            {"scanline_depth", &fx.mScanlineDepth}, {"scanline_sharpness", &fx.mScanlineSharpness},
+            {"scanline_thickness", &fx.mScanlineThickness}, {"pixelate", &fx.mPixelate},
+            {"grayscale", &fx.mGrayscale}, {"sepia", &fx.mSepia}, {"static", &fx.mStatic},
+            {"vertical_roll", &fx.mVerticalRoll}, {"roll_speed", &fx.mRollSpeed}, {"tracking", &fx.mTracking},
+            {"flicker", &fx.mFlicker}, {"chroma_bleed", &fx.mChromaBleed}, {"vignette", &fx.mVignette},
+            {"interlace", &fx.mInterlace}, {"dropout", &fx.mDropout}, {"brightness", &fx.mBrightness},
+            {"sheen", &fx.mSheen}};
+        for (const auto& item : reals)
+        {
+            if (!e.has(item.mKey) || (!e[item.mKey].isReal() && !e[item.mKey].isInteger())) continue;
+            const F32 value = static_cast<F32>(e[item.mKey].asReal());
+            if (std::isfinite(value)) *item.mValue = value;
+        }
+        if (e.has("flip_h")) fx.mFlipH = e["flip_h"].asBoolean();
+        if (e.has("flip_v")) fx.mFlipV = e["flip_v"].asBoolean();
+        if (e.has("rotate90")) fx.mRotate90 = e["rotate90"].asBoolean();
+        fx.clampAndValidate();
+    }
+    if (s.has("look") && !LLPrismLens::projectorLookFromLLSD(s["look"], p.mLook)) return false;
+    out = p;
+    return true;
+}
+
 void octahedron(const LLVector3& c, F32 r)
 {
     const LLVector3 px = c + LLVector3(r, 0.f, 0.f), nx = c - LLVector3(r, 0.f, 0.f);
@@ -170,10 +248,12 @@ bool ALVirtualLights::anyPlaced() { return sPlaced > 0; }
 
 bool ALVirtualLights::wantsGuides()
 {
-    // Feature-off: one integer compare. With lights placed the marker shows only while the
-    // Practicals page (or the edit tool) is live; never during a clean-frame take.
+    // Feature-off: one integer compare. With lights placed the marker shows only while a live, visible
+    // Director editor owns it (the Practicals page stamped a recent frame, or the edit tool is active), and
+    // never during a clean-frame take. releaseEditor() drops the ownership synchronously on every hide.
     if (sPlaced <= 0 || ALCleanFrame::active()) return false;
-    return sWantsGuides || (LLFrameTimer::getFrameCount() - sEditorFrame) <= 2;
+    const bool owned = sWantsGuides || (sEditorStamped && (LLFrameTimer::getFrameCount() - sEditorFrame) <= 2);
+    return owned && directorLive();
 }
 
 void ALVirtualLights::setEditTool(bool active)
@@ -183,7 +263,22 @@ void ALVirtualLights::setEditTool(bool active)
 
 void ALVirtualLights::noteEditorVisible()
 {
+    sEditorStamped = true;
     sEditorFrame = LLFrameTimer::getFrameCount();
+}
+
+// Page hide, Director hide / minimise / close, teardown: the edit tool and the guide ownership end now, so
+// not one more frame can carry a marker into the presented output.
+void ALVirtualLights::releaseEditor()
+{
+    sWantsGuides = false;
+    sEditorStamped = false;
+    if (!ALToolVirtualLightEdit::instanceExists()) return;
+    ALToolVirtualLightEdit* tool = ALToolVirtualLightEdit::getInstance();
+    if (LLToolMgr::instanceExists() && LLToolMgr::getInstance()->getCurrentTool() == tool)
+        LLToolMgr::getInstance()->clearTransientTool();   // handleDeselect cancels any drag
+    else
+        tool->cancelGesture();
 }
 
 void ALVirtualLights::logEvent(const char* event, const std::string& detail, const char* verdict)
@@ -396,9 +491,12 @@ void ALVirtualLights::syncVCam(Entry& entry)
     // The registry is the truth (a capture can be removed from the VCam page).
     if (entry.mObject.isNull() || entry.mObject->isDead()) return;
     entry.mLight.mVCamCapture = vcamOf(entry.mLight.mKey);
+    entry.mLight.mVCamSettings = entry.mLight.mVCamCapture.notNull()
+        ? vcam_settings_of(entry.mObject->getID()) : LLSD();
 }
 
-bool ALVirtualLights::setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason)
+bool ALVirtualLights::setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason,
+                              const LLSD& settings)
 {
     Entry* entry = findEntry(key);
     if (!entry || entry->mObject.isNull() || entry->mObject->isDead())
@@ -410,6 +508,7 @@ bool ALVirtualLights::setVCam(const LLUUID& key, const LLUUID& capture_id, std::
     {
         unbindVCam(entry->mObject.get());
         entry->mLight.mVCamCapture.setNull();
+        entry->mLight.mVCamSettings = LLSD();
         bump();
         return true;
     }
@@ -423,6 +522,25 @@ bool ALVirtualLights::setVCam(const LLUUID& key, const LLUUID& capture_id, std::
         return false;
     }
     entry->mLight.mVCamCapture = capture_id;
+    entry->mLight.mVCamSettings = LLSD();
+    // A restored binding keeps its authored settings (fit, exposure, lamp power, flips, effects, look).
+    LLPrismLens::ProjectorSettings parsed;
+    if (settings.isMap() && vcam_settings_from(settings, parsed))
+    {
+        const LLUUID id = entry->mObject->getID();
+        const LLPrismLens::RegistrySnapshot snapshot = LLPrismLens::registrySnapshot();
+        for (U32 index = 0; index < snapshot.mProjectorCount; ++index)
+        {
+            const LLPrismLens::ProjectorDefinition& binding = snapshot.mProjectors[index];
+            if (binding.mTarget != LLPrismLens::EProjectorTarget::OBJECT || binding.mObjectId != id) continue;
+            std::string settings_reason;
+            if (LLPrismLens::setProjectorSettings(binding.mHandle, parsed, &settings_reason))
+                entry->mLight.mVCamSettings = settings;
+            else
+                logEvent("vcam-settings", "key=" + key.asString() + " " + settings_reason, "INCONCLUSIVE");
+            break;
+        }
+    }
     bump();
     return true;
 }
@@ -440,6 +558,9 @@ void ALVirtualLights::applyEntry(Entry& entry)
     entry.mRot = ALProjectorTrackMath::aim(LLVector3(dir[0], dir[1], dir[2]), entry.mRot);
     volume->setRotation(entry.mRot, false);
 
+    // Light mode FIRST: createObject() leaves it off, and while it is off getLightParams() is null, so every
+    // setter below would silently do nothing (a recreated Off or non-default light read back defaults).
+    volume->setIsLight(true);
     const LLUUID texture = light.mSpot
         ? (light.mTexture.notNull() ? light.mTexture : default_cookie()) : LLUUID::null;
     if (volume->getLightTextureID() != texture) volume->setLightTextureID(texture);
@@ -448,13 +569,23 @@ void ALVirtualLights::applyEntry(Entry& entry)
     volume->setLightRadius(light.mRadius);
     volume->setLightFalloff(light.mFalloff);
     if (light.mSpot) volume->setSpotLightParams(LLVector3(light.mFov, light.mFocus, light.mAmbiance));
-    volume->setIsLight(true);
     if (volume->mDrawable.notNull())
     {
         gPipeline.updateMoveNormalAsync(volume->mDrawable);
         volume->mDrawable->setState(LLDrawable::FORCE_INVISIBLE);
     }
     entry.mDirty = false;
+}
+
+// Reads the light back through the real volume getters (the verdict of a recreate: scene restore, undo).
+bool ALVirtualLights::verifyApplied(const Entry& entry, const char* event)
+{
+    const LLVOVolume* volume = entry.mObject.get();
+    const bool ok = volume && !volume->isDead() &&
+        lightApplied(entry.mLight, volume->getIsLight(), volume->getLightIntensity(),
+                     volume->getLightRadius(), volume->getLightFalloff());
+    logEvent("verify", std::string(event) + " key=" + entry.mLight.mKey.asString(), ok ? "PASS" : "FAIL");
+    return ok;
 }
 
 // ---- tracking (virtual backend of the Practicals Track card) -------------------------------
@@ -575,8 +706,13 @@ void ALVirtualLights::connectSelection()
     mSelectionConnected = true;
     LLSelectMgr::getInstance()->mUpdateSignal.connect([this]()
     {
-        if (mFocusKey.isNull()) return;
+        // The signal fires on every selection refresh. The focus ends only when the primary selection CHANGES
+        // to a new non-avatar object (a real prim picked in world), never on a repeated refresh of the same one.
         LLViewerObject* object = LLSelectMgr::getInstance()->getSelection()->getPrimaryObject();
+        const LLUUID primary = object ? object->getID() : LLUUID::null;
+        const bool changed = primary != mLastPrimaryId;
+        mLastPrimaryId = primary;
+        if (!changed || mFocusKey.isNull()) return;
         if (object && !object->isAvatar()) clearFocus();
     });
 }
@@ -757,7 +893,26 @@ void ALVirtualLights::enableTrack(const LLUUID& key, bool enabled)
 void ALVirtualLights::captureTrack(const LLUUID& key)
 {
     Entry* entry = findEntry(key);
-    if (entry && entry->mLight.mTrack.mMode == 1) entry->mCapturePending = true;
+    if (!entry || entry->mLight.mTrack.mMode != 1) return;
+    entry->mCapturePending = true;
+    ++entry->mLight.mTrack.mCaptures;   // the press is data, so the Practicals edit wrapper records one undo step
+    bump();
+}
+
+void ALVirtualLights::rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || old_id == new_id) return;
+    bool any = false;
+    for (Entry& entry : mEntries)
+    {
+        if (!rewriteActorInLight(entry.mLight, old_id, new_id)) continue;
+        entry.mOffsetCaptured = false;
+        entry.mMissingSince = 0.;
+        if (new_id.isNull()) entry.mTrackStatus = "Choose a subject";
+        entry.mDirty = true;
+        any = true;
+    }
+    if (any) bump();
 }
 
 const std::string& ALVirtualLights::trackStatus(const LLUUID& key) const
@@ -804,8 +959,11 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
             existing->mLight = light;
             existing->mDirty = true;
             existing->mOffsetCaptured = false;
-            applyPracticals(*existing);
-            if (existing->mLight.mVCamCapture != vcamOf(light.mKey)) to_bind.push_back(light.mKey);
+            const LLUUID object_id = existing->mObject.notNull() ? existing->mObject->getID() : LLUUID::null;
+            if (light.mVCamCapture != vcamOf(light.mKey) ||
+                (light.mVCamCapture.notNull() && light.mVCamSettings.isMap() &&
+                 light.mVCamSettings != vcam_settings_of(object_id)))
+                to_bind.push_back(light.mKey);
             next.push_back(std::move(*existing));
             existing->mObject = nullptr;   // moved-from: keep destroy below from touching it
             existing->mLight.mKey.setNull();
@@ -819,7 +977,7 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
             continue;
         }
         applyEntry(fresh);
-        applyPracticals(fresh);
+        verifyApplied(fresh, "undo-recreate");
         if (light.mVCamCapture.notNull()) to_bind.push_back(light.mKey);
         next.push_back(std::move(fresh));
     }
@@ -828,12 +986,20 @@ bool ALVirtualLights::restore(const LLSD& snapshot, std::string& reason)
         if (entry.mLight.mKey.notNull()) destroyEntry(entry);
     mEntries = std::move(next);
     sPlaced = count();
+    // Order: the VCam binding FIRST, then the Practicals state, so a bind-time auto-enable (light cone) can
+    // never override a saved light-cone state.
     for (const LLUUID& key : to_bind)
     {
         std::string why;
         const Light* light = find(key);
-        if (light) setVCam(key, light->mVCamCapture, &why);
+        if (light) setVCam(key, light->mVCamCapture, &why, light->mVCamSettings);
     }
+    for (const Light& light : wanted)
+        if (Entry* entry = findEntry(light.mKey))
+        {
+            entry->mLight.mPracticals = light.mPracticals;
+            applyPracticals(*entry);
+        }
     if (mFocusKey.notNull() && !findEntry(mFocusKey)) mFocusKey.setNull();
     ++mListRevision;
     bump();
@@ -861,30 +1027,35 @@ void ALVirtualLights::applySceneData(const LLSD& block, bool recovery)
         return;
     }
     S32 created = 0;
-    std::vector<LLUUID> to_bind;
+    bool verified = true;
     for (Light& light : lights)
     {
         Entry entry;
         entry.mLight = light;
         if (!createObject(entry)) continue;
         applyEntry(entry);
-        applyPracticals(entry);
-        if (light.mVCamCapture.notNull()) to_bind.push_back(light.mKey);
+        verified = verifyApplied(entry, "scene-restore") && verified;
         mEntries.push_back(std::move(entry));
         ++created;
+        sPlaced = count();
+        // VCam FIRST (Prism was applied before the lights), then the saved Practicals state on top.
+        if (light.mVCamCapture.notNull())
+        {
+            std::string why;
+            setVCam(light.mKey, light.mVCamCapture, &why, light.mVCamSettings);
+        }
+        if (Entry* placed = findEntry(light.mKey))
+        {
+            placed->mLight.mPracticals = light.mPracticals;
+            applyPracticals(*placed);
+        }
     }
     sPlaced = count();
-    for (const LLUUID& key : to_bind)
-    {
-        std::string why;
-        const Light* light = find(key);
-        if (light) setVCam(key, light->mVCamCapture, &why);
-    }
     connectSelection();
     ++mListRevision;
     bump();
     logEvent("scene-restore", "wanted=" + std::to_string(lights.size()) + " created=" + std::to_string(created),
-             created == static_cast<S32>(lights.size()) ? "PASS" : (created ? "INCONCLUSIVE" : "FAIL"));
+             created == static_cast<S32>(lights.size()) && verified ? "PASS" : (created ? "INCONCLUSIVE" : "FAIL"));
 }
 
 namespace
@@ -933,7 +1104,13 @@ void ALVirtualLights::recordUndo(const LLSD& before, const std::string& label)
             if (!still_valid(redo, reason)) return false;
             return instance().restore(redo ? edit->second : edit->first, reason);
         },
-        false, still_valid);
+        false, still_valid,
+        // A clone replacement rewrites the retired actor inside the saved snapshots too.
+        [edit](const LLUUID& old_id, const LLUUID& new_id)
+        {
+            rewriteActorInSnapshot(edit->first, old_id, new_id);
+            rewriteActorInSnapshot(edit->second, old_id, new_id);
+        });
 }
 
 // ---- marker ---------------------------------------------------------------------------------------
@@ -965,11 +1142,19 @@ void ALVirtualLights::drawGuides()
         !gPipeline.hasRenderDebugFeatureMask(LLPipeline::RENDER_DEBUG_FEATURE_UI)) return;
 
     ALVirtualLights& lights = instance();
+    // Flush whatever the previous pass queued under ITS state, then remember the state this draw changes
+    // (shader, texture unit 0, active unit) and put it back at the end, like the keyframe overlay.
+    gGL.flush();
+    LLGLSLShader* const previous_shader = LLGLSLShader::sCurBoundShaderPtr;
+    const U32 previous_unit = gGL.getCurrentTexUnitIndex();
+    LLTexUnit* const unit0 = gGL.getTexUnit(0);
+    const LLTexUnit::eTextureType previous_type = unit0->getCurrType();
+    const U32 previous_texture = unit0->getCurrTexture();
     LLGLEnable blend(GL_BLEND);
     LLGLDisable cull(GL_CULL_FACE);
     LLGLDepthTest depth(GL_TRUE, GL_FALSE, GL_LEQUAL);
     gUIProgram.bind();
-    gGL.getTexUnit(0)->unbind(LLTexUnit::TT_TEXTURE);
+    unit0->unbind(LLTexUnit::TT_TEXTURE);
     for (const Entry& entry : lights.mEntries)
     {
         if (!entry.mRegion) continue;
@@ -1000,4 +1185,9 @@ void ALVirtualLights::drawGuides()
         }
     }
     gGL.flush();
+    // The guide composite after us expects its own state: white current colour, the shader, the bound texture.
+    gGL.color4f(1.f, 1.f, 1.f, 1.f);
+    if (previous_shader) previous_shader->bind(); else LLGLSLShader::unbind();
+    if (previous_texture) unit0->bindManual(previous_type, previous_texture);
+    gGL.getTexUnit(previous_unit)->activate();
 }

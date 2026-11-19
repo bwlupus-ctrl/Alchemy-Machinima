@@ -78,7 +78,9 @@ public:
     bool edit(const LLUUID& key, const std::function<void(Light&)>& change);
     bool setAimObject(const LLUUID& key, const LLUUID& object_id);
     // VCam feed: null capture = Off. Reason filled on refusal.
-    bool setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason);
+    // `settings` (a saved Prism projector settings block) is applied after the bind: a recreated light keeps
+    // its authored fit / exposure / lamp power / flips / effects / look.
+    bool setVCam(const LLUUID& key, const LLUUID& capture_id, std::string* reason, const LLSD& settings = LLSD());
     LLUUID vcamOf(const LLUUID& key) const;            // the live registry binding, not the request
 
     // ---- Practicals / Track (virtual backend) ------------------------------------------
@@ -97,6 +99,9 @@ public:
     void noteEditorVisible();
     // The edit tool is active: the marker shows even when the Practicals page is not on screen.
     void setEditTool(bool active);
+    // Synchronous release of the edit tool AND the guide ownership: Practicals page hide, Director hide /
+    // minimise / close, teardown. After it returns no frame can draw the marker.
+    static void releaseEditor();
 
     // ---- undo / scene snapshots ----------------------------------------------------------
     LLSD capture();                                    // array of light maps (Practicals synced)
@@ -107,6 +112,9 @@ public:
     // snapshot "before" asks it to close that step first so the two never interleave.
     static void setPendingFlusher(std::function<void()> flusher);
     static void flushPending();
+
+    // Clone replacement: a Track subject / aim object that named the retired actor follows the new one.
+    void rewriteActorReferences(const LLUUID& old_id, const LLUUID& new_id);
 
     // ---- marker picking (edit tool) ------------------------------------------------------
     struct Pick { LLUUID mKey; S32 mHandle; LLVector3 mAgentPos; };   // handle 0 = body, 1 = aim tip
@@ -133,6 +141,7 @@ private:
     bool createObject(Entry& entry);
     void destroyEntry(Entry& entry);
     void applyEntry(Entry& entry);
+    bool verifyApplied(const Entry& entry, const char* event);
     void applyPracticals(Entry& entry);
     void syncPracticals(Entry& entry);
     void syncVCam(Entry& entry);
@@ -144,6 +153,7 @@ private:
 
     std::vector<Entry> mEntries;
     LLUUID mFocusKey;
+    LLUUID mLastPrimaryId;   // the primary selection the focus rule last saw
     U64 mRevision = 1;
     U64 mListRevision = 1;
     U64 mEpoch = 1;

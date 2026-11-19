@@ -11,6 +11,7 @@
 
 #include "alpanelpracticals.h"
 #include "alavatarsubjectpicker.h"
+#include "alkithistory.h"
 #include "alprojectortracker.h"
 #include "altoolvirtuallightedit.h"
 #include "altoolvirtuallightplace.h"
@@ -18,6 +19,7 @@
 #include "llfloaterdirector.h"
 #include "llprismlens.h"
 #include "lldirectorcast.h"
+#include "llinventorymodel.h"
 #include "llmenugl.h"
 #include "llvoavatar.h"
 
@@ -32,9 +34,12 @@
 #include "llsliderctrl.h"
 #include "llspinctrl.h"
 #include "lltextbox.h"
+#include "lltexturectrl.h"
 #include "lltoolmgr.h"
+#include "lluictrlfactory.h"
 #include "llviewercontrol.h"
 #include "llviewerobject.h"
+#include "llviewerobjectlist.h"
 #include "llvovolume.h"
 #include "pipeline.h"
 
@@ -42,6 +47,19 @@
 
 // The injector name must match class="panel_practicals" in the generated page XML.
 static LLPanelInjector<ALPanelPracticals> t_panel_practicals("panel_practicals");
+
+namespace
+{
+// A Practicals (sl_*) row aimed at a virtual light records ONE custom light-snapshot step; the kit's own widget
+// history entry for the same commit would be a second undo step, so it is suppressed while a virtual light is
+// the target. A real projector keeps the kit's widget history exactly as before.
+bool practicalsWidgetOwnedByVirtual(LLUICtrl* control)
+{
+    if (!ALVirtualLights::anyPlaced() || !control || control->getName().compare(0, 3, "sl_") != 0) return false;
+    ALVirtualLights& lights = ALVirtualLights::instance();
+    return lights.volumeFor(lights.focusKey()) != nullptr;
+}
+}
 
 bool ALPanelPracticals::postBuild()
 {
@@ -63,31 +81,35 @@ bool ALPanelPracticals::postBuild()
         edited(target, "Virtual light track", mTrack, [&]()
         {
             if (target.mVirtual) ALVirtualLights::instance().enableTrack(target.mKey, on);
-            else ALProjectorTracker::instance().enable(mLastId, on);
+            else ALProjectorTracker::instance().enable(target.mId, on);
         });
         refreshTracking(true);
     });
     for (LLUICtrl* control : {static_cast<LLUICtrl*>(mTrackJoint),
             static_cast<LLUICtrl*>(mTrackMode), static_cast<LLUICtrl*>(mTrackSmoothing)})
-        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTrackingChanged(); });
+        control->setCommitCallback([this, control](LLUICtrl*, const LLSD&) { onTrackingChanged(control); });
     mTrackCapture->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         const Target target = resolveTarget();
-        if (target.mVirtual) ALVirtualLights::instance().captureTrack(target.mKey);
-        else ALProjectorTracker::instance().capture(mLastId);
+        edited(target, "Virtual light track capture", mTrackCapture, [&]()
+        {
+            if (target.mVirtual) ALVirtualLights::instance().captureTrack(target.mKey);
+            else ALProjectorTracker::instance().capture(target.mId);
+        });
     });
     mTrackChoose->setCommitCallback([this](LLUICtrl* anchor, const LLSD&)
     {
-        const LLUUID projector = mLastId;
+        // The pick is asynchronous: remember which target it was opened for.
+        const ALVirtualLightsModel::TrackTargetRef opened_for = trackTargetNow();
         ALAvatarSubjectPicker::choose(anchor, this, mTrackMenu, true,
-            [this, projector](const LLUUID& id) { assignTrackingSubject(projector, id, true); });
+            [this, opened_for](const LLUUID& id) { assignTrackingSubject(opened_for, id, true); });
     });
     mTrackSelected->setCommitCallback([this](LLUICtrl*, const LLSD&)
     {
         auto* avatar = ALAvatarSubjectPicker::fromSelection();
         if (ALAvatarSubjectPicker::valid(avatar, true))
         {
-            assignTrackingSubject(mLastId, avatar->getID(), true);
+            assignTrackingSubject(trackTargetNow(), avatar->getID(), true);
             return;
         }
         // The projector must remain the world selection. A cast-row selection
@@ -99,14 +121,14 @@ bool ALPanelPracticals::postBuild()
             const auto selected = director->currentCastSelection();
             if (!selected.empty() && ALAvatarSubjectPicker::valid(
                     LLDirectorCast::instance().resolve(selected.front()), true))
-                assignTrackingSubject(mLastId, selected.front(), true);
+                assignTrackingSubject(trackTargetNow(), selected.front(), true);
             break;
         }
     });
     mTrackYou->setCommitCallback([this](LLUICtrl*, const LLSD&)
-        { assignTrackingSubject(mLastId, gAgentID, true); });
+        { assignTrackingSubject(trackTargetNow(), gAgentID, true); });
     mTrackClear->setCommitCallback([this](LLUICtrl*, const LLSD&)
-        { assignTrackingSubject(mLastId, LLUUID::null, false); });
+        { assignTrackingSubject(trackTargetNow(), LLUUID::null, false); });
     mVirtualUI.attach(this);
     mCastShadows = getChild<LLCheckBoxCtrl>("sl_cast_shadows");
     mVolumetric = getChild<LLCheckBoxCtrl>("sl_volumetric");
@@ -128,13 +150,14 @@ bool ALPanelPracticals::postBuild()
     mVolumetric->setCommitCallback([this](LLUICtrl*, const LLSD&) { onVolumetric(); });
     mCapture->setCommitCallback([this](LLUICtrl*, const LLSD&) { onCaptureOverride(); });
     mClear->setCommitCallback([this](LLUICtrl*, const LLSD&) { onClearOverride(); });
+    ALKitHistory::setWidgetSuppressor(&practicalsWidgetOwnedByVirtual);
     for (LLUICtrl* control : { static_cast<LLUICtrl*>(mGoboPattern), static_cast<LLUICtrl*>(mGoboAnim),
                                static_cast<LLUICtrl*>(mGoboSpeed), static_cast<LLUICtrl*>(mGoboZoom),
                                static_cast<LLUICtrl*>(mGoboDispersion), static_cast<LLUICtrl*>(mGoboTint),
                                static_cast<LLUICtrl*>(mGoboVar1), static_cast<LLUICtrl*>(mGoboVar2),
                                static_cast<LLUICtrl*>(mGoboSoft), static_cast<LLUICtrl*>(mGoboInvert) })
     {
-        control->setCommitCallback([this](LLUICtrl*, const LLSD&) { onGoboChanged(); });
+        control->setCommitCallback([this, control](LLUICtrl*, const LLSD&) { onGoboChanged(control); });
     }
 
     refreshFromSelection();
@@ -178,8 +201,18 @@ ALPanelPracticals::Target ALPanelPracticals::resolveTarget() const
 void ALPanelPracticals::edited(const Target& target, const char* label, LLUICtrl* control,
                                const std::function<void()>& fn)
 {
-    if (target.mVirtual) mVirtualUI.practicalsEdit(label, control, fn);
+    if (target.mVirtual) mVirtualUI.practicalsEdit(target.mKey, label, control, fn);
     else fn();
+}
+
+ALVirtualLightsModel::TrackTargetRef ALPanelPracticals::trackTargetNow() const
+{
+    const Target target = resolveTarget();
+    ALVirtualLightsModel::TrackTargetRef ref;
+    ref.mVirtual = target.mVirtual;
+    ref.mKey = target.mKey;
+    ref.mId = target.mVirtual ? LLUUID::null : target.mId;
+    return ref;
 }
 
 void ALPanelPracticals::refreshFromSelection()
@@ -325,7 +358,7 @@ void ALPanelPracticals::onClearOverride()
     }
 }
 
-void ALPanelPracticals::onGoboChanged()
+void ALPanelPracticals::onGoboChanged(LLUICtrl* source)
 {
     const Target target = resolveTarget();
     LLViewerObject* object = target.mObject;
@@ -334,7 +367,7 @@ void ALPanelPracticals::onGoboChanged()
     {
         return;
     }
-    edited(target, "Virtual light gobo", mGoboPattern, [&]()
+    edited(target, "Virtual light gobo", source, [&]()
     {
     LLPipeline::GoboOverride gobo;
     gobo.mPattern = mGoboPattern->getValue().asInteger();
@@ -401,12 +434,37 @@ void ALPanelPracticals::configureTrackFor(const Target& target, const LLUUID& su
         static_cast<ALProjectorTracker::Mode>(mode), smoothing);
 }
 
-void ALPanelPracticals::assignTrackingSubject(const LLUUID& projector, const LLUUID& subject, bool has_subject)
+void ALPanelPracticals::assignTrackingSubject(const ALVirtualLightsModel::TrackTargetRef& opened_for,
+                                              const LLUUID& subject, bool has_subject)
 {
-    Target target = resolveTarget();
-    // A real projector keeps the id the picker was opened for, even if the selection moved on.
-    if (!target.mVirtual) target.mId = projector;
+    // Resolve and validate exactly the target the pick was opened for, whatever the page edits by now. A target
+    // that is gone means nothing happens; a virtual object id is never a real tracker target.
+    const bool placed = ALVirtualLights::anyPlaced();
+    const auto virtual_alive = [placed](const LLUUID& key)
+        { return placed && ALVirtualLights::instance().volumeFor(key) != nullptr; };
+    const auto real_alive = [](const LLUUID& id)
+        { LLViewerObject* object = gObjectList.findObject(id); return object && !object->isDead(); };
+    const auto is_virtual_id = [placed](const LLUUID& id)
+        { return placed && ALVirtualLights::instance().isVirtualObject(id); };
+    if (!ALVirtualLightsModel::trackTargetValid(opened_for, virtual_alive, real_alive, is_virtual_id)) return;
+    Target target;
+    if (opened_for.mVirtual)
+    {
+        LLVOVolume* volume = ALVirtualLights::instance().volumeFor(opened_for.mKey);
+        target.mObject = volume;
+        target.mVolume = volume;
+        target.mId = volume->getID();
+        target.mKey = opened_for.mKey;
+        target.mVirtual = true;
+    }
+    else
+    {
+        target.mObject = gObjectList.findObject(opened_for.mId);
+        target.mVolume = dynamic_cast<LLVOVolume*>(target.mObject);
+        target.mId = opened_for.mId;
+    }
     const TrackView s = trackView(target);
+    if (!s.eligible) return;
     edited(target, "Virtual light track subject", mTrack, [&]()
     {
         configureTrackFor(target, LLDirectorCast::canonicalActorId(subject), has_subject,
@@ -415,11 +473,11 @@ void ALPanelPracticals::assignTrackingSubject(const LLUUID& projector, const LLU
     refreshTracking(true);
 }
 
-void ALPanelPracticals::onTrackingChanged()
+void ALPanelPracticals::onTrackingChanged(LLUICtrl* source)
 {
     const Target target = resolveTarget();
     const TrackView s = trackView(target);
-    edited(target, "Virtual light track", mTrackMode, [&]()
+    edited(target, "Virtual light track", source, [&]()
     {
         configureTrackFor(target, s.subject, s.hasSubject, mTrackJoint->getValue().asInteger(),
             mTrackMode->getValue().asInteger(),
@@ -472,6 +530,7 @@ void ALPanelPracticals::onVisibilityChange(bool visible)
     {
         ALAvatarSubjectPicker::cancelFor(this);
         if (auto* menu = mTrackMenu.get()) menu->hide();
+        mVirtualUI.onHide();
     }
     LLPanel::onVisibilityChange(visible);
 }
@@ -491,14 +550,37 @@ bool sliderHeld(LLUICtrl* control)
     auto* slider = dynamic_cast<LLSliderCtrl*>(control);
     return slider && (slider->isMouseHeldDown() || slider->isWheelSettlePending());
 }
+
+// How a control's edits form gestures. DISCRETE (checkbox, combo, button): every commit is its own step, closed
+// at once. SLIDER: one step from the first drag / wheel tick until the mouse-up / wheel settle. TIMED (colour
+// picker, spinner, whose gesture end is not reported): same-control edits within the burst window are one step.
+enum class GestureKind { DISCRETE, TIMED, SLIDER };
+
+GestureKind gestureKind(LLUICtrl* control)
+{
+    if (dynamic_cast<LLSliderCtrl*>(control)) return GestureKind::SLIDER;
+    if (dynamic_cast<LLColorSwatchCtrl*>(control) || dynamic_cast<LLSpinCtrl*>(control)) return GestureKind::TIMED;
+    return GestureKind::DISCRETE;
+}
 }
 
 ALVirtualLightsUI::~ALVirtualLightsUI()
 {
     // A pick armed from this card must not call back into a destroyed page.
     if (ALToolVirtualLightPlace::instanceExists()) ALToolVirtualLightPlace::getInstance()->cancel();
-    finishPending(true);
+    // Teardown DISCARDS a pending edit: nothing is recorded into undo while the page is being destroyed
+    // (the visibility hook already flushed it when the page was hidden).
+    mPendingBefore = LLSD();
+    mPendingControl = nullptr;
+    ALVirtualLights::releaseEditor();
     sVirtualEditors.erase(this);
+}
+
+void ALVirtualLightsUI::onHide()
+{
+    finishPending(true);
+    if (ALToolVirtualLightPlace::instanceExists()) ALToolVirtualLightPlace::getInstance()->cancel();
+    ALVirtualLights::releaseEditor();
 }
 
 void ALVirtualLightsUI::finishAllPending()
@@ -518,6 +600,8 @@ void ALVirtualLightsUI::attach(LLPanel* root)
     mStatus = root->findChild<LLTextBox>("vl_status");
     mType = root->findChild<LLComboBox>("vl_type");
     mVCam = root->findChild<LLComboBox>("vl_vcam");
+    mTexture = root->findChild<LLButton>("vl_texture");
+    mTextureName = root->findChild<LLTextBox>("vl_texture_name");
     mColor = root->findChild<LLColorSwatchCtrl>("vl_color");
     mIntensity = root->findChild<LLSliderCtrl>("vl_intensity");
     mRadius = root->findChild<LLSliderCtrl>("vl_radius");
@@ -532,7 +616,7 @@ void ALVirtualLightsUI::attach(LLPanel* root)
     mPitch = root->findChild<LLSpinCtrl>("vl_pitch");
     if (!mPlace || !mDelete || !mAimPick || !mEditToggle || !mOn || !mList || !mStatus || !mType || !mVCam ||
         !mColor || !mIntensity || !mRadius || !mFalloff || !mFov || !mFocus || !mAmbiance || !mX || !mY ||
-        !mZ || !mYaw || !mPitch)
+        !mZ || !mYaw || !mPitch || !mTexture || !mTextureName)
     {
         LL_WARNS_ONCE("VirtualLight") << "Virtual lights card is missing required widgets" << LL_ENDL;
         mList = nullptr;
@@ -614,6 +698,20 @@ void ALVirtualLightsUI::attach(LLPanel* root)
         });
     }
     mVCam->setCommitCallback([this](LLUICtrl*, const LLSD&) { onVCam(); });
+    // The standard viewer texture picker (the one Build > Features uses for the projector texture), driven by
+    // a hidden texture control so no new kit row kind is needed.
+    LLTextureCtrl::Params picker;
+    picker.name("vl_texture_picker");
+    picker.rect(LLRect(0, 64, 64, 0));
+    picker.visible(false);
+    picker.allow_no_texture(true);
+    mTexturePicker = LLUICtrlFactory::create<LLTextureCtrl>(picker);
+    if (mTexturePicker)
+    {
+        root->addChild(mTexturePicker);
+        mTexturePicker->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTexturePicked(); });
+    }
+    mTexture->setCommitCallback([this](LLUICtrl*, const LLSD&) { onTexturePick(); });
     refresh(true);
 }
 
@@ -636,8 +734,11 @@ void ALVirtualLightsUI::tick()
 void ALVirtualLightsUI::finishPending(bool force)
 {
     if (mPendingBefore.isUndefined()) return;
+    // Real gesture boundaries: a slider ends at mouse-up / wheel settle, a spinner or colour picker after its
+    // burst window; a discrete control never reaches here pending (it closes at once).
     if (!force && (sliderHeld(mPendingControl) ||
-                   LLTimer::getElapsedSeconds() - mLastEdit < kEditCoalesceSeconds)) return;
+                   (gestureKind(mPendingControl) == GestureKind::TIMED &&
+                    LLTimer::getElapsedSeconds() - mLastEdit < kEditCoalesceSeconds))) return;
     const LLSD before = mPendingBefore;
     const std::string label = mPendingLabel;
     const U64 epoch = mPendingEpoch;
@@ -657,27 +758,74 @@ void ALVirtualLightsUI::notePending(const LLSD& before, const char* label, LLUIC
     }
     mPendingControl = control;
     mLastEdit = LLTimer::getElapsedSeconds();
+    if (gestureKind(control) == GestureKind::DISCRETE) finishPending(true);
+}
+
+LLSD ALVirtualLightsUI::beginEdit(LLUICtrl* control)
+{
+    ALVirtualLights& lights = ALVirtualLights::instance();
+    if (!mPendingBefore.isUndefined())
+    {
+        const GestureKind kind = gestureKind(control);
+        const bool same = control && control == mPendingControl && lights.sceneEpoch() == mPendingEpoch;
+        const bool continues = same && ((kind == GestureKind::SLIDER && sliderHeld(control)) ||
+            (kind == GestureKind::TIMED && LLTimer::getElapsedSeconds() - mLastEdit < kEditCoalesceSeconds));
+        if (continues) return LLSD();
+        finishPending(true);   // a different control or a new gesture: its own undo step
+    }
+    return lights.capture();
+}
+
+void ALVirtualLightsUI::editKey(const LLUUID& key, const char* label, LLUICtrl* control,
+                                const std::function<void(ALVirtualLights::Light&)>& change)
+{
+    ALVirtualLights& lights = ALVirtualLights::instance();
+    if (key.isNull() || !lights.find(key)) return;
+    const LLSD before = beginEdit(control);
+    if (lights.edit(key, change)) notePending(before, label, control);
 }
 
 void ALVirtualLightsUI::edit(const char* label, LLUICtrl* control,
                              const std::function<void(ALVirtualLights::Light&)>& change)
 {
-    ALVirtualLights& lights = ALVirtualLights::instance();
-    const LLUUID key = lights.focusKey();
-    if (key.isNull()) return;
-    const LLSD before = mPendingBefore.isUndefined() ? lights.capture() : LLSD();
-    if (lights.edit(key, change)) notePending(before, label, control);
+    editKey(ALVirtualLights::instance().focusKey(), label, control, change);
 }
 
-void ALVirtualLightsUI::practicalsEdit(const char* label, LLUICtrl* control, const std::function<void()>& fn)
+void ALVirtualLightsUI::practicalsEdit(const LLUUID& key, const char* label, LLUICtrl* control,
+                                       const std::function<void()>& fn)
 {
     ALVirtualLights& lights = ALVirtualLights::instance();
-    const LLUUID key = lights.focusKey();
-    const LLSD before = (mPendingBefore.isUndefined() && key.notNull()) ? lights.capture() : LLSD();
+    const LLSD before = key.notNull() ? beginEdit(control) : LLSD();
     fn();
     if (key.isNull()) return;
     lights.notePracticalsEdit(key);
     notePending(before, label, control);
+}
+
+void ALVirtualLightsUI::onTexturePick()
+{
+    ALVirtualLights& lights = ALVirtualLights::instance();
+    const ALVirtualLights::Light* light = lights.find(lights.focusKey());
+    if (!light || !mTexturePicker) return;
+    finishPending(true);
+    mTextureKey = light->mKey;
+    mTexturePicker->setImageAssetID(light->mTexture);
+    mTexturePicker->showPicker(true);
+}
+
+void ALVirtualLightsUI::onTexturePicked()
+{
+    if (!mTexturePicker) return;
+    const LLUUID id = mTexturePicker->getImageAssetID();
+    if (const LLInventoryItem* item = gInventory.getItem(mTexturePicker->getImageItemID()))
+    {
+        mNamedTexture = id;
+        mNamedTextureName = item->getName();
+    }
+    // The light the picker was opened for, not whatever has the focus now.
+    editKey(mTextureKey, "Virtual light projector texture", mTexture,
+            [id](ALVirtualLights::Light& light) { light.mTexture = id; });
+    mForce = true;
 }
 
 void ALVirtualLightsUI::onPlace()
@@ -814,6 +962,7 @@ void ALVirtualLightsUI::refresh(bool force)
             static_cast<LLUICtrl*>(mAmbiance), static_cast<LLUICtrl*>(mYaw), static_cast<LLUICtrl*>(mPitch),
             static_cast<LLUICtrl*>(mAimPick)})
         setEnabledIfChanged(control, spot);
+    setEnabledIfChanged(mTexture, spot);
     setEnabledIfChanged(mEditToggle, lights.count() > 0);
     setValueIfChanged(mEditToggle, LLSD(LLToolMgr::getInstance()->getCurrentTool() ==
         static_cast<LLTool*>(ALToolVirtualLightEdit::getInstance())), true);
@@ -834,6 +983,11 @@ void ALVirtualLightsUI::refresh(bool force)
     setValueIfChanged(mZ, LLSD(static_cast<F64>(light->mPos[2])), force_ctrl);
     setValueIfChanged(mYaw, LLSD(static_cast<F64>(light->mYawDeg)), force_ctrl);
     setValueIfChanged(mPitch, LLSD(static_cast<F64>(light->mPitchDeg)), force_ctrl);
+    std::string texture_text = "Default";
+    if (light->mTexture.notNull())
+        texture_text = light->mTexture == mNamedTexture && !mNamedTextureName.empty()
+            ? mNamedTextureName : "Custom texture " + light->mTexture.asString().substr(0, 8);
+    setTextIfChanged(mTextureName, spot ? texture_text : std::string("Spot only"), true);
     // registrySnapshot() copies the whole registry: read the feed only when something could have changed.
     if (force_ctrl || prism_changed) setValueIfChanged(mVCam, LLSD(lights.vcamOf(focus)), true);
 }

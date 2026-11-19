@@ -67,6 +67,7 @@ struct Track
     S32   mJoint = 0;
     S32   mMode = 0;          // 0 = Aim, 1 = Follow
     F32   mSmoothing = 0.15f;
+    U32   mCaptures = 0;      // Follow "Capture" presses: part of the snapshot so a capture is one undo step
 };
 
 struct Light
@@ -86,7 +87,11 @@ struct Light
     F32    mFocus = 0.f;
     F32    mAmbiance = 0.f;
     LLUUID mVCamCapture;            // VCam feed (capture id), null = none
-    LLUUID mAimObject;              // aim at this object every tick, null = use yaw/pitch
+    // The full binding settings of that feed (the Prism "prism_projectors" item "settings" block, no object
+    // id), so a recreated light rebinds with its authored fit, exposure, lamp power, flips, effects and look.
+    // Undefined = Prism defaults.
+    LLSD   mVCamSettings;
+    LLUUID mAimObject;             // aim at this object every tick, null = use yaw/pitch
     Track  mTrack;
     // Practicals state that LLPipeline keeps by object id: no_shadow, volumetric,
     // gobo{...}, shaft{...}. Stored here so a recreated light gets it back.
@@ -117,6 +122,7 @@ inline void sanitize(Light& light)
     light.mTrack.mSmoothing = clampTo(light.mTrack.mSmoothing, 0.f, 2.f, 0.15f);
     if (!light.mTrack.mHasSubject) light.mTrack.mEnabled = false;
     if (!light.mPracticals.isMap()) light.mPracticals = LLSD::emptyMap();
+    if (!light.mVCamSettings.isMap() || light.mVCamCapture.isNull()) light.mVCamSettings = LLSD();
 }
 
 // Aim direction in region axes: yaw counter-clockwise from +X, pitch up from the horizon.
@@ -227,6 +233,7 @@ inline LLSD toLLSD(const Light& light)
     out["focus"] = LLSD::Real(light.mFocus);
     out["ambiance"] = LLSD::Real(light.mAmbiance);
     out["vcam_capture"] = light.mVCamCapture;
+    if (light.mVCamSettings.isMap()) out["vcam_settings"] = light.mVCamSettings;
     out["aim_object"] = light.mAimObject;
     LLSD track = LLSD::emptyMap();
     track["enabled"] = light.mTrack.mEnabled;
@@ -235,6 +242,7 @@ inline LLSD toLLSD(const Light& light)
     track["joint"] = light.mTrack.mJoint;
     track["mode"] = light.mTrack.mMode;
     track["smoothing"] = LLSD::Real(light.mTrack.mSmoothing);
+    track["captures"] = static_cast<LLSD::Integer>(light.mTrack.mCaptures);
     out["track"] = track;
     out["practicals"] = light.mPracticals.isMap() ? light.mPracticals : LLSD::emptyMap();
     return out;
@@ -262,6 +270,7 @@ inline bool fromLLSD(const LLSD& data, Light& out)
     if (data.has("focus")) light.mFocus = static_cast<F32>(data["focus"].asReal());
     if (data.has("ambiance")) light.mAmbiance = static_cast<F32>(data["ambiance"].asReal());
     light.mVCamCapture = data["vcam_capture"].asUUID();
+    if (data["vcam_settings"].isMap()) light.mVCamSettings = data["vcam_settings"];
     light.mAimObject = data["aim_object"].asUUID();
     const LLSD& track = data["track"];
     if (track.isMap())
@@ -272,6 +281,7 @@ inline bool fromLLSD(const LLSD& data, Light& out)
         light.mTrack.mJoint = track["joint"].asInteger();
         light.mTrack.mMode = track["mode"].asInteger();
         if (track.has("smoothing")) light.mTrack.mSmoothing = static_cast<F32>(track["smoothing"].asReal());
+        if (track.has("captures")) light.mTrack.mCaptures = static_cast<U32>(std::max(0, track["captures"].asInteger()));
     }
     if (data["practicals"].isMap()) light.mPracticals = data["practicals"];
     sanitize(light);
@@ -310,6 +320,59 @@ constexpr char kPracticalNoShadow[] = "no_shadow";
 constexpr char kPracticalVolumetric[] = "volumetric";
 constexpr char kPracticalGobo[] = "gobo";
 constexpr char kPracticalShaft[] = "shaft";
+
+// ---- verification helpers (pure, so the rules are testable without a viewer) ----------------------------
+// What a recreated light must read back from the real volume getters. Params written while the light mode is
+// off are dropped by the volume, so "applied" means: light mode on AND every value present. An Off light reads
+// intensity 0 with light mode still on (a VCam target must stay a live light).
+inline bool lightApplied(const Light& light, bool is_light, F32 intensity, F32 radius, F32 falloff)
+{
+    const F32 want = light.mOn ? light.mIntensity : 0.f;
+    return is_light && std::fabs(intensity - want) < 1.e-4f && std::fabs(radius - light.mRadius) < 1.e-3f &&
+        std::fabs(falloff - light.mFalloff) < 1.e-3f;
+}
+
+// The async Track picker captures this when it opens and resolves exactly this target when it completes,
+// whatever the Practicals page edits by then. A virtual object id can never be a real tracker target.
+struct TrackTargetRef
+{
+    bool   mVirtual = false;
+    LLUUID mKey;    // virtual light key
+    LLUUID mId;     // real object id
+};
+
+template <class VirtualAlive, class RealAlive, class IsVirtualId>
+inline bool trackTargetValid(const TrackTargetRef& target, VirtualAlive virtual_alive, RealAlive real_alive,
+                             IsVirtualId is_virtual_id)
+{
+    if (target.mVirtual) return target.mKey.notNull() && virtual_alive(target.mKey);
+    return target.mId.notNull() && !is_virtual_id(target.mId) && real_alive(target.mId);
+}
+
+// Clone replacement: a Track subject or aim object that named the retired actor follows the new one (or clears).
+// Works on a snapshot array (undo steps) exactly as on the live lights.
+inline bool rewriteActorInLight(Light& light, const LLUUID& old_id, const LLUUID& new_id)
+{
+    bool changed = false;
+    if (light.mTrack.mSubject == old_id)
+    {
+        light.mTrack.mSubject = new_id;
+        if (new_id.isNull()) { light.mTrack.mHasSubject = false; light.mTrack.mEnabled = false; }
+        changed = true;
+    }
+    if (light.mAimObject == old_id) { light.mAimObject = new_id; changed = true; }
+    return changed;
+}
+inline void rewriteActorInSnapshot(LLSD& snapshot, const LLUUID& old_id, const LLUUID& new_id)
+{
+    if (old_id.isNull() || !snapshot.isArray()) return;
+    for (S32 i = 0; i < snapshot.size(); ++i)
+    {
+        Light light;
+        if (!fromLLSD(snapshot[i], light)) continue;
+        if (rewriteActorInLight(light, old_id, new_id)) snapshot[i] = toLLSD(light);
+    }
+}
 
 // Undo-delta helper: true when two lights differ in anything an edit can change.
 inline bool sameLight(const Light& a, const Light& b)

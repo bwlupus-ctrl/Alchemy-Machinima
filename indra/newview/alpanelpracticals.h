@@ -26,6 +26,7 @@
 class LLContextMenu;
 class LLScrollListCtrl;
 class LLSpinCtrl;
+class LLTextureCtrl;
 class LLViewerObject;
 class LLVOVolume;
 class LLButton;
@@ -42,20 +43,30 @@ class ALVirtualLightsUI
 {
 public:
     ALVirtualLightsUI() = default;
+    // Teardown DISCARDS a pending edit (no undo recording while the page is being destroyed).
     ~ALVirtualLightsUI();
     void attach(LLPanel* root);
+    // Page hidden: the pending edit becomes its undo step now; the place / edit tools and the marker end.
+    void onHide();
     // From the page draw(): cheap checks only, throttled mirror writes.
     void tick();
     void onReveal() { mForce = true; }
     // A Practicals-card edit (cast shadows, gobo, track, ...) aimed at a virtual light.
-    void practicalsEdit(const char* label, LLUICtrl* control, const std::function<void()>& fn);
+    void practicalsEdit(const LLUUID& key, const char* label, LLUICtrl* control, const std::function<void()>& fn);
     static void finishAllPending();
 
 private:
     void refresh(bool force);
     void edit(const char* label, LLUICtrl* control, const std::function<void(ALVirtualLights::Light&)>& change);
+    void editKey(const LLUUID& key, const char* label, LLUICtrl* control,
+                 const std::function<void(ALVirtualLights::Light&)>& change);
+    // Closes the pending step unless `control` continues the same gesture; returns the "before" snapshot the
+    // caller hands to notePending (undefined while a gesture continues).
+    LLSD beginEdit(LLUICtrl* control);
     void notePending(const LLSD& before, const char* label, LLUICtrl* control);
     void finishPending(bool force);
+    void onTexturePick();
+    void onTexturePicked();
     void onPlace();
     void onAimPick();
     void onDelete();
@@ -72,6 +83,12 @@ private:
     LLTextBox* mStatus = nullptr;
     LLComboBox* mType = nullptr;
     LLComboBox* mVCam = nullptr;
+    LLButton* mTexture = nullptr;
+    LLTextBox* mTextureName = nullptr;
+    LLTextureCtrl* mTexturePicker = nullptr;   // hidden: opens the viewer's standard texture picker floater
+    LLUUID mTextureKey;                        // the light the picker was opened for
+    LLUUID mNamedTexture;
+    std::string mNamedTextureName;
     LLColorSwatchCtrl* mColor = nullptr;
     LLSliderCtrl* mIntensity = nullptr;
     LLSliderCtrl* mRadius = nullptr;
@@ -137,15 +154,19 @@ private:
                            S32 joint, S32 mode, F32 smoothing);
     // One undo step per edit when the target is a virtual light; a plain call otherwise.
     void edited(const Target& target, const char* label, LLUICtrl* control, const std::function<void()>& fn);
+    // The Track picker is asynchronous: it captures WHICH target it was opened for (kind + stable id) and, on
+    // completion, resolves and validates exactly that one (a vanished target means nothing happens).
+    ALVirtualLightsModel::TrackTargetRef trackTargetNow() const;
     void refreshFromSelection();
     void onCastShadows();
     void onVolumetric();
     void onCaptureOverride();
     void onClearOverride();
-    void onGoboChanged();
+    void onGoboChanged(LLUICtrl* source);
     void refreshTracking(bool force);
-    void onTrackingChanged();
-    void assignTrackingSubject(const LLUUID& projector, const LLUUID& subject, bool has_subject);
+    void onTrackingChanged(LLUICtrl* source);
+    void assignTrackingSubject(const ALVirtualLightsModel::TrackTargetRef& target, const LLUUID& subject,
+                               bool has_subject);
     LLCheckBoxCtrl* mTrack = nullptr;
     LLComboBox* mTrackJoint = nullptr;
     LLComboBox* mTrackMode = nullptr;
