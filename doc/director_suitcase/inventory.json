@@ -7,8 +7,8 @@
       "EXCLUDED-PERF": 20,
       "GENERATED": 740,
       "HOOK": 564,
-      "OWNED": 975,
-      "TOOLING": 551
+      "OWNED": 982,
+      "TOOLING": 553
     },
     "dirty_product_inputs": [
       "indra/newview/skins/default/xui/en/director_kit_index.xml",
@@ -69,14 +69,14 @@
           "NO_EXERCISE"
         ],
         "csv": "doc/director_kit/wiring/wiring_table.csv",
-        "csv_sha256": "ba2c79568f560b3260b0abe57595b0d758c0fd6c3a5154f9ac2fd4b5b65e8ccb",
+        "csv_sha256": "a8ce6e475ef3b32996a170943d8cc9dbafdb8df072374c60aa0966ab0905c4a8",
         "director_rules": {
           "known_legacy": 0,
           "links": 19,
           "pages": 42,
           "popovers": 6
         },
-        "entries": 4963,
+        "entries": 5007,
         "generated_kit_pages": [
           "frame_orbit_tab",
           "keyframes_tab",
@@ -120,9 +120,9 @@
           "shadows_probes_tab",
           "weather_tab"
         ],
-        "generated_kit_rows": 2668,
+        "generated_kit_rows": 2691,
         "generator": "scripts/code_tools/director_functional_manifest.py",
-        "interactive_rows": 2249,
+        "interactive_rows": 2270,
         "pages": 41,
         "rim_preset_written_settings": [
           "CineRigRimMasterGain",
@@ -233,19 +233,19 @@
       "limits": "Existing generated evidence is consumed, not rerun; hashes/counts are not runtime proof.",
       "page_summary": {
         "ambiguous_rows": 0,
-        "independent_json_rows": 2392,
+        "independent_json_rows": 2415,
         "multi_page_settings": 21,
         "owner_roots": 38,
         "pages": 41,
-        "rows": 2392,
-        "unresolved_rows": 92
+        "rows": 2415,
+        "unresolved_rows": 113
       },
-      "wiring_rows": 2392
+      "wiring_rows": 2415
     },
-    "head_source_tree": "1cfea55c12733e61af410f12bba6fb7032c37e77",
+    "head_source_tree": "c893fb088b75c6b84b73e410923cccc8d6e200e0",
     "hook_files": 564,
-    "hunks": 3629,
-    "input_sha256": "38a7d682e4a7b41db6889b3d07ddf775097de8b2acc0a5d5e35c18ef2d2088cc",
+    "hunks": 3630,
+    "input_sha256": "591e75d85f3ab490fada17b926b5c66955395436ab59725812371e03a034b9e8",
     "opaque_shader_paths": [
       "reshade-addon/shaders/SL_Bridge.fxh",
       "reshade-addon/shaders/SL_BridgeDebug.fx",
@@ -12652,9 +12652,7 @@
       "reason": "present at local base; adapt individual hunks, never copy wholesale"
     },
     {
-      "candidate_features_from_subjects": [
-        "clones"
-      ],
+      "candidate_features_from_subjects": [],
       "class": "HOOK",
       "deleted": false,
       "feature_evidence": [
@@ -17077,8 +17075,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell",
         "shafts-volumetrics"
       ],
       "class": "OWNED",
@@ -17649,8 +17645,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "roto-tron"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -18716,8 +18711,6 @@
     {
       "candidate_features_from_subjects": [
         "director-shell",
-        "gaze",
-        "sensor",
         "shafts-volumetrics",
         "vcam"
       ],
@@ -18753,13 +18746,15 @@
         "owned source / hook delta identifiers and comments"
       ],
       "features": [
+        "clones",
+        "common-ui",
         "director-shell",
         "looks",
         "shafts-volumetrics",
         "vcam"
       ],
       "git_status": "A",
-      "layer": 2,
+      "layer": 1,
       "path": "indra/newview/alpanelpracticals.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
@@ -19293,8 +19288,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "vcam"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -19317,8 +19311,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "vcam"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -20315,6 +20308,71 @@
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "director-shell"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/altoolvirtuallightedit.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/altoolvirtuallightedit.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "one-hop include neighbors; tentative, not required closure"
+      ],
+      "features": [
+        "clones",
+        "composition",
+        "director-shell",
+        "sensor",
+        "tracking",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/altoolvirtuallightplace.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "composition"
+      ],
+      "git_status": "A",
+      "layer": 3,
+      "path": "indra/newview/altoolvirtuallightplace.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
       "candidate_features_from_subjects": [
         "gaze"
       ],
@@ -20859,6 +20917,65 @@
       "git_status": "A",
       "layer": 3,
       "path": "indra/newview/alviewfinder.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "actor-bar",
+        "clones",
+        "director-shell",
+        "rig",
+        "sensor",
+        "shafts-volumetrics",
+        "tracking",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alvirtuallights.cpp",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "director-shell",
+        "sensor",
+        "tracking",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 2,
+      "path": "indra/newview/alvirtuallights.h",
+      "reason": "absent at local base; drop-in source unit, dependencies still required"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "OWNED",
+      "deleted": false,
+      "feature_evidence": [
+        "owned source / hook delta identifiers and comments"
+      ],
+      "features": [
+        "clones",
+        "sensor",
+        "shafts-volumetrics",
+        "vcam"
+      ],
+      "git_status": "A",
+      "layer": 4,
+      "path": "indra/newview/alvirtuallightsmodel.h",
       "reason": "absent at local base; drop-in source unit, dependencies still required"
     },
     {
@@ -28389,7 +28506,6 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
         "vcam",
         "weather"
       ],
@@ -28546,8 +28662,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "composition"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -28809,8 +28924,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "director-shell"
+        "clones"
       ],
       "class": "OWNED",
       "deleted": false,
@@ -31717,8 +31831,7 @@
     },
     {
       "candidate_features_from_subjects": [
-        "clones",
-        "vcam"
+        "clones"
       ],
       "class": "HOOK",
       "deleted": false,
@@ -41414,6 +41527,19 @@
     },
     {
       "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "indra/newview/tests/alvirtuallightsmodel_test.cpp",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
       "class": "EXCLUDED-PERF",
       "deleted": false,
       "feature_evidence": [],
@@ -47722,6 +47848,19 @@
       "git_status": "A",
       "layer": 9,
       "path": "scripts/code_tools/vcam_runtime_rect_check.py",
+      "reason": "generator/check/fixture/build tooling; carry validation separately"
+    },
+    {
+      "candidate_features_from_subjects": [],
+      "class": "TOOLING",
+      "deleted": false,
+      "feature_evidence": [],
+      "features": [
+        "unknown"
+      ],
+      "git_status": "A",
+      "layer": 99,
+      "path": "scripts/code_tools/virtual_lights_check.py",
       "reason": "generator/check/fixture/build tooling; carry validation separately"
     },
     {

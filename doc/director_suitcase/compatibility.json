@@ -3909,6 +3909,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alkitpage.cpp",
+    "dependency": "indra/newview/alpanelpracticals.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alkitpage.cpp",
     "dependency": "indra/newview/alpanelprojectorshafts.h",
     "excluded": false,
     "origin": "fork-added",
@@ -6789,7 +6798,34 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/alpanelpracticals.cpp",
+    "dependency": "indra/newview/alkithistory.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelpracticals.cpp",
     "dependency": "indra/newview/alprojectortracker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelpracticals.cpp",
+    "dependency": "indra/newview/altoolvirtuallightedit.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelpracticals.cpp",
+    "dependency": "indra/newview/altoolvirtuallightplace.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -6826,6 +6862,24 @@
     "class": "OWNED",
     "consumer": "indra/newview/alpanelpracticals.cpp",
     "dependency": "indra/newview/aluirefresh.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelpracticals.h",
+    "dependency": "indra/newview/aluirefresh.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alpanelpracticals.h",
+    "dependency": "indra/newview/alvirtuallights.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -8048,6 +8102,78 @@
   {
     "action": "carry/adapt fork source",
     "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightedit.cpp",
+    "dependency": "indra/newview/altoolvirtuallightedit.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightedit.cpp",
+    "dependency": "indra/newview/alcleanframe.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightedit.cpp",
+    "dependency": "indra/newview/alkitpage.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightedit.cpp",
+    "dependency": "indra/newview/alkitshell.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightedit.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightplace.cpp",
+    "dependency": "indra/newview/altoolvirtuallightplace.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightplace.cpp",
+    "dependency": "indra/newview/alcleanframe.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/altoolvirtuallightplace.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
     "consumer": "indra/newview/altron.cpp",
     "dependency": "indra/newview/alpresetlook.h",
     "excluded": false,
@@ -8572,6 +8698,123 @@
     "class": "OWNED",
     "consumer": "indra/newview/alviewermenu.cpp",
     "dependency": "indra/newview/llprismlens.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alcleanframe.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alkeyframeplayer.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alkithistory.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alkitshell.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alprojectortracker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/altoolvirtuallightedit.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alpanelpracticals.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/alvcampagemodel.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/lldirectorcast.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.cpp",
+    "dependency": "indra/newview/llprismlens.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.h",
+    "dependency": "indra/newview/alprojectortrackmath.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/alvirtuallights.h",
+    "dependency": "indra/newview/alvirtuallightsmodel.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -9480,6 +9723,15 @@
     "action": "carry/adapt fork source",
     "class": "OWNED",
     "consumer": "indra/newview/llagent.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llagent.cpp",
     "dependency": "indra/newview/alreflectanim.h",
     "excluded": false,
     "origin": "fork-added",
@@ -9661,6 +9913,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llappviewer.cpp",
     "dependency": "indra/newview/alprojectortracker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llappviewer.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -10237,6 +10498,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/lldirectorcast.cpp",
     "dependency": "indra/newview/alprojectortracker.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/lldirectorcast.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -11110,6 +11380,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/llfloaterdirector.cpp",
     "dependency": "indra/newview/alcinelightrigmanager.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/llfloaterdirector.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
@@ -14602,6 +14881,15 @@
     "class": "OWNED",
     "consumer": "indra/newview/pipeline.cpp",
     "dependency": "indra/newview/alkeyframeplayer.h",
+    "excluded": false,
+    "origin": "fork-added",
+    "reason": "absent at local base; drop-in source unit, dependencies still required"
+  },
+  {
+    "action": "carry/adapt fork source",
+    "class": "OWNED",
+    "consumer": "indra/newview/pipeline.cpp",
+    "dependency": "indra/newview/alvirtuallights.h",
     "excluded": false,
     "origin": "fork-added",
     "reason": "absent at local base; drop-in source unit, dependencies still required"
